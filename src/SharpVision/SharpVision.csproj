@@ -5,8 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Fonts/figlet-fonts.zip" LogicalName="SharpVision.Fonts.figlet-fonts.zip" />
-    <EmbeddedResource Include="../../data/figlet/fonts.manifest.json" Link="Fonts/fonts.manifest.json" LogicalName="SharpVision.Fonts.fonts.manifest.json" />
+    <EmbeddedResource Include="../../extern/figlet/figlet-fonts.zip" Link="Fonts/figlet-fonts.zip" LogicalName="SharpVision.Fonts.figlet-fonts.zip" />
+    <EmbeddedResource Include="../../extern/figlet/fonts.manifest.json" Link="Fonts/fonts.manifest.json" LogicalName="SharpVision.Fonts.fonts.manifest.json" />
   </ItemGroup>
 
   <PropertyGroup>

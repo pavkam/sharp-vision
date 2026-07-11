@@ -5,7 +5,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const sourceDirectory = path.join(root, "data", "unicode", "17.0.0");
+const sourceDirectory = path.join(root, "extern", "unicode", "17.0.0");
 const outputDirectory = path.join(
   root,
   "src",

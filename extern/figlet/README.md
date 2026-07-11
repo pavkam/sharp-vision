@@ -8,9 +8,8 @@ The catalog contains the 400 `.flf` and `.tlf` files at the root of
 
 `fonts.manifest.json` records the original filename, format, byte length,
 SHA-256, embedded comment notice, and conservative license classification for
-every entry. `src/SharpVision/Fonts/figlet-fonts.zip` is generated from those
-exact bytes with sorted UTF-8 entry names, fixed DOS timestamps, and
-deterministic Deflate compression.
+every entry. `figlet-fonts.zip` is generated from those exact bytes with sorted
+UTF-8 entry names, fixed DOS timestamps, and deterministic Deflate compression.
 
 ## Audit result
 
@@ -36,11 +35,11 @@ With the exact source checkout available:
 node scripts/audit-figlet-fonts.mjs \
   --source /path/to/figlet-fonts \
   --commit 417429ef36ab039cbf192a4424c60aa23fc32de8 \
-  --output data/figlet/fonts.manifest.json
+  --output extern/figlet/fonts.manifest.json
 
 node scripts/package-figlet-fonts.mjs \
   --source /path/to/figlet-fonts \
-  --output src/SharpVision/Fonts/figlet-fonts.zip
+  --output extern/figlet/figlet-fonts.zip
 ```
 
 The expected archive SHA-256 is

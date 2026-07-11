@@ -10,7 +10,7 @@ first generated tables. Source data and attribution are checked in with the
 generator output.
 
 The exact Unicode property and conformance inputs live under
-`data/unicode/17.0.0`. `npm run generate:unicode` reads those local files and
+`extern/unicode/17.0.0`. `npm run generate:unicode` reads those local files and
 deterministically emits the runtime lookup table; `npm run check:unicode`
 requires no network. Maintainers use the explicit `npm run refresh:unicode`
 command to redownload the pinned official files and verify their recorded
