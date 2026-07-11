@@ -169,7 +169,7 @@ events only after their documented commit points.
 - Modify: `docs/concepts/threading.md`
 - Modify: `docs/concepts/lifecycle-events.md`
 
-- [ ] **Step 1: Write failing ownership and queue tests**
+- [x] **Step 1: Write failing ownership and queue tests**
 
   Prove `Start` creates one named background thread, callbacks are FIFO,
   `CheckAccess` is true only there, `VerifyAccess` fails elsewhere,
@@ -188,7 +188,7 @@ events only after their documented commit points.
   work to run before another wait. Hold an internal pending-phase lease and
   prove idle does not fire until it is released.
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --filter-class "*DispatcherTests" --minimum-expected-tests 1 --timeout 60s
@@ -196,7 +196,7 @@ events only after their documented commit points.
 
   Expected: compile failure because `Dispatcher` is absent.
 
-- [ ] **Step 3: Implement the bounded dedicated-thread loop**
+- [x] **Step 3: Implement the bounded dedicated-thread loop**
 
   `Dispatcher.Start(int capacity = 4096, string? name = null)` starts exactly
   one thread. A private lock protects only queue and lifecycle state; actions
@@ -211,13 +211,13 @@ events only after their documented commit points.
   never poll or sleep. Route action exceptions through `UnhandledException` and
   stop only when unhandled.
 
-- [ ] **Step 4: Verify dispatcher semantics**
+- [x] **Step 4: Verify dispatcher semantics**
 
   Run Step 2, then repeat the suite with `--repeat 20` if supported by the local
   runner; otherwise use an explicit 1,000-operation ordering test. Expected:
   stable order, no timeout, no busy-spin counter growth.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Threading tests/SharpVision.Tests/Threading docs/concepts/threading.md docs/concepts/lifecycle-events.md

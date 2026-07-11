@@ -24,6 +24,12 @@ metrics. Failed frames produce diagnostics and force invalidation instead.
 layout, and rendering, directly before waiting. Scheduled ticks are separate and
 never implemented by repeated idle callbacks.
 
+The dispatcher primitive now enforces the empty ready/pending transition and
+handler-posted-work rule. `Application` connects terminal input, timers, layout,
+and renderer pending leases to that primitive later in Phase 4; until that host
+exists, a bare dispatcher idle event describes only its own posted and pending
+work.
+
 The terminal `Runtime.Session` now supplies ordered resize, input, closure, and
 fault records plus reversible mode ownership. It does not raise application
 starting/started/stopping/stopped, timers, frame-rendered, or `Idle`; those are
