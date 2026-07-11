@@ -501,7 +501,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Controls/ListTests.cs`
 - Modify: `docs/controls/collections/list.md`
 
-- [ ] **Step 1: Write failing List tests**
+- [x] **Step 1: Write failing List tests**
 
   Cover empty and replacement Items, null/template failures before mutation, all
   selection modes, invalid indexes, cancellable selection, event added/ removed
@@ -511,11 +511,11 @@ must not add partial placeholder versions of later controls.
   exact cells. Assert every realized control has exactly one parent and no
   recycled state leakage; do not assert virtualization.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*ListTests`; expect missing List APIs.
 
-- [ ] **Step 3: Implement realized items over ScrollView**
+- [x] **Step 3: Implement realized items over ScrollView**
 
   ```csharp
   public delegate Control ItemTemplate(object item);
@@ -538,7 +538,7 @@ must not add partial placeholder versions of later controls.
   changes before notifications, and use one active index for focus/navigation.
   Selected views are owner-backed read-only collections without per-get arrays.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run List, ScrollView, focus, tree, and integration tests; commit as
   `feat: add list control`.

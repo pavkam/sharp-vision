@@ -326,6 +326,8 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     private bool IsRendering { get; set; }
 
+    private bool HasSelectedState { get; set; }
+
     private List<IHandler>? Handlers { get; set; }
 
     /// <summary>Gets the inherited focus manager while one owns this subtree.</summary>
@@ -784,6 +786,22 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed)));
     }
 
+    /// <summary>Propagates semantic selected visual state through one realized item subtree.</summary>
+    /// <param name="value">Whether the subtree is selected.</param>
+    internal void SetSelectedState(bool value)
+    {
+        VerifyMutable();
+
+        if (HasSelectedState == value)
+        {
+            return;
+        }
+
+        HasSelectedState = value;
+        Invalidate(Invalidation.Render);
+        VisitChildren(child => child.SetSelectedState(value));
+    }
+
     /// <summary>Validates that the complete subtree may receive a dispatcher.</summary>
     internal void ValidateAttachment()
     {
@@ -876,6 +894,11 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         if (!EffectiveIsEnabled)
         {
             result |= State.Disabled;
+        }
+
+        if (HasSelectedState)
+        {
+            result |= State.Checked;
         }
 
         return result;
