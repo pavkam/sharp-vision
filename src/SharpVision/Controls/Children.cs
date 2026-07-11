@@ -232,8 +232,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 
     private static void Detach(Control item)
     {
-        item.FocusOwner?.Unavailable(item);
-        item.CaptureOwner?.Unavailable(item, ReleaseReason.Detached);
+        item.NotifyUnavailable(ReleaseReason.Detached);
         item.SetFocusOwner(null);
         item.SetCaptureOwner(null);
         item.Detach();

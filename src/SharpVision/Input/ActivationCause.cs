@@ -1,0 +1,20 @@
+using System.Diagnostics.CodeAnalysis;
+
+namespace SharpVision.Input;
+
+/// <summary>Identifies the input path that completed one semantic activation.</summary>
+[SuppressMessage(
+    "Naming",
+    "CA1720:Identifier contains type name",
+    Justification = "Pointer is the conventional terminal input path name.")]
+public enum ActivationCause
+{
+    /// <summary>A keyboard command completed activation.</summary>
+    Keyboard,
+
+    /// <summary>A primary pointer release completed activation.</summary>
+    Pointer,
+
+    /// <summary>A direct public API completed activation.</summary>
+    Programmatic,
+}

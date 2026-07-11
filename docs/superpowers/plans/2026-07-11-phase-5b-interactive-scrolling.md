@@ -46,7 +46,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Controls/PressableTests.cs`
 - Modify: `docs/concepts/input-routing.md`
 
-- [ ] **Step 1: Write failing interaction tests**
+- [x] **Step 1: Write failing interaction tests**
 
   Define a test-only control deriving from `Pressable` in its own exactly named
   file. Prove Space press/release, Enter direct activation, primary pointer
@@ -55,7 +55,7 @@ must not add partial placeholder versions of later controls.
   exact `ActivationCause`, handled state, focus acquisition, and
   normal/hovered/pressed/focused/disabled state transitions.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --configuration Release --filter-class "*PressableTests" --minimum-expected-tests 1 --timeout 60s
@@ -64,7 +64,7 @@ must not add partial placeholder versions of later controls.
   Expected: compile failure because the activation contracts and Pressable do
   not exist.
 
-- [ ] **Step 3: Implement the shared interaction state machine**
+- [x] **Step 3: Implement the shared interaction state machine**
 
   ```csharp
   public enum ActivationCause { Keyboard, Pointer, Programmatic }
@@ -89,7 +89,7 @@ must not add partial placeholder versions of later controls.
   without retaining detached controls. Validate every routed payload before
   mutation and use `Debug.Assert` for impossible held/capture combinations.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run `*PressableTests`, then commit as `feat: add shared activation behavior`.
 

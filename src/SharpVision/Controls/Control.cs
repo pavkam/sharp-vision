@@ -746,6 +746,7 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         IsFocused = value;
         Invalidate(Invalidation.Render);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused)));
+        OnFocusChanged(value);
     }
 
     /// <summary>Updates hover visual state on the owning dispatcher.</summary>
@@ -809,6 +810,16 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <param name="eventArgs">The non-null event state and typed payload.</param>
     protected virtual void OnEvent(RoutedEventArgs eventArgs) =>
         ArgumentNullException.ThrowIfNull(eventArgs);
+
+    /// <summary>Responds after this control's keyboard-focus state changes.</summary>
+    /// <param name="focused">The newly committed focus state.</param>
+    protected virtual void OnFocusChanged(bool focused) =>
+        Debug.Assert(!IsDisposed, "A disposed control cannot change focus state.");
+
+    /// <summary>Releases derived transient state when this control becomes unavailable.</summary>
+    /// <param name="reason">The precise unavailability reason.</param>
+    protected virtual void OnUnavailable(ReleaseReason reason) =>
+        Debug.Assert(Enum.IsDefined(reason), "Unavailable reasons are validated internally.");
 
     /// <summary>Draws this control's own content into its clipped border box.</summary>
     /// <param name="canvas">The frame-owned canvas clipped to <see cref="Bounds"/>.</param>
@@ -1079,12 +1090,13 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         Handlers = null;
     }
 
-    private void NotifyUnavailable(ReleaseReason reason)
+    internal void NotifyUnavailable(ReleaseReason reason)
     {
         var focus = FocusOwner;
         var capture = CaptureOwner;
         focus?.Unavailable(this);
         capture?.Unavailable(this, reason);
+        OnUnavailable(reason);
 
         if (reason == ReleaseReason.Disposed)
         {
