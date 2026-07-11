@@ -34,6 +34,18 @@ No application callback runs while an internal lock is held. Event dispatch uses
 a snapshot route so tree mutations affect later events, not the current
 preview/bubble path. Reentrant layout and render calls queue invalidation.
 
+`SharpVision.Runtime.Application` owns the dispatcher, root, terminal `Session`,
+renderer, focus/capture managers, and active back frame. Session callbacks copy
+immutable records into a bounded queue; they never enter the control tree.
+Resize uses a newest-value slot plus one queued wake, so storms cannot grow work
+without bound.
+
+`StartAsync` raises `Starting` on the dispatcher before `Session.RunAsync` can
+enable a mode. The first resize attaches the root, creates focus/capture
+ownership, commits layout, raises `Resize`, and starts frame rendering.
+`Started` follows the first flushed frame; a zero-cell suspended layout starts
+without a frame.
+
 ## Resize ordering
 
 Resize storms coalesce to the newest valid size. The dispatcher commits the
@@ -41,11 +53,22 @@ size, invalidates root measure, completes layout, raises one resize event with
 committed geometry, processes resulting invalidation, and renders. Zero-sized
 terminals remain valid suspended layouts.
 
+Input received before the first resize remains in the bounded queue until the
+tree is attached. Key/text/paste target focus; pointer values use capture then
+hit testing; terminal focus loss cancels pointer interaction. Each input drain
+processes resulting layout/render invalidation before idleness.
+
 ## Shutdown
 
 Stopping rejects new application work, cancels waits, drains required cleanup,
 restores terminal modes, raises stopped once, and completes pending invocations
 with documented cancellation or failure.
+
+An explicit `Stopping` callback may cancel the request. Closure, terminal fault,
+or an unhandled application callback forces the same idempotent path. Active
+render cancellation during requested shutdown is not promoted to failure.
+`Failure` preserves the first primary exception; `LastCleanupException` exposes
+a later session or synchronized-output cleanup failure.
 
 ## Terminal session implementation
 

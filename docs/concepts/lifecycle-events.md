@@ -24,23 +24,22 @@ metrics. Failed frames produce diagnostics and force invalidation instead.
 layout, and rendering, directly before waiting. Scheduled ticks are separate and
 never implemented by repeated idle callbacks.
 
-The dispatcher primitive now enforces the empty ready/pending transition and
-handler-posted-work rule. `Application` connects terminal input, timers, layout,
-and renderer pending leases to that primitive later in Phase 4; until that host
-exists, a bare dispatcher idle event describes only its own posted and pending
-work.
+The dispatcher primitive enforces the empty ready/pending transition and
+handler-posted-work rule. `Application` now connects terminal input, layout, and
+renderer pending leases to that primitive. A render holds one pending lease
+until its completion callback runs on the dispatcher, so `Idle` cannot precede
+flush, `FrameRendered`, or `Started`.
 
-The terminal `Runtime.Session` now supplies ordered resize, input, closure, and
+The terminal `Runtime.Session` supplies ordered resize, input, closure, and
 fault records plus reversible mode ownership. It does not raise application
-starting/started/stopping/stopped, timers, frame-rendered, or `Idle`; those are
-dispatcher responsibilities in Phase 4. This separation prevents transport waits
-from masquerading as application idleness.
+starting/started/stopping/stopped, frame-rendered, or `Idle`; the application
+dispatcher owns those callbacks. This separation prevents transport waits from
+masquerading as application idleness.
 
 Zero-cell dimensions are delivered as a valid suspended `Dimensions` value.
 Positive cell and pixel dimensions derive `Geometry.Metrics` only when both axes
-produce a positive cell size. The Phase 4 dispatcher coalesces those terminal
-records into committed layout and the public resize event ordering described
-above.
+produce a positive cell size. `Application` coalesces those terminal records
+into committed layout and the public resize event ordering described above.
 
 ## Tests
 

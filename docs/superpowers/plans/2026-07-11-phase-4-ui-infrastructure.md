@@ -647,7 +647,7 @@ events only after their documented commit points.
 - Modify: `docs/concepts/lifecycle-events.md`
 - Modify: `docs/concepts/threading.md`
 
-- [ ] **Step 1: Write failing lifecycle and ordering tests**
+- [x] **Step 1: Write failing lifecycle and ordering tests**
 
   Use a deterministic fake terminal boundary to prove starting precedes terminal
   mode startup; started follows first resize, committed layout, and completed
@@ -665,7 +665,7 @@ events only after their documented commit points.
   ]);
   ```
 
-- [ ] **Step 2: Run runtime tests and verify RED**
+- [x] **Step 2: Run runtime tests and verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --filter-class "*ApplicationTests" "*OrderingTests" --minimum-expected-tests 1 --timeout 60s
@@ -673,7 +673,7 @@ events only after their documented commit points.
 
   Expected: compile failure because `Application` is absent.
 
-- [ ] **Step 3: Implement the terminal-to-dispatcher host**
+- [x] **Step 3: Implement the terminal-to-dispatcher host**
 
   `Application` owns `Dispatcher`, root `Control`, terminal `Session`,
   `Rendering.Renderer`, focus/capture/router, and the active frame. It
@@ -691,13 +691,13 @@ events only after their documented commit points.
   awaits reverse mode cleanup, disposes owned frames/resources, and preserves
   the primary exception.
 
-- [ ] **Step 4: Verify no-spin lifecycle**
+- [x] **Step 4: Verify no-spin lifecycle**
 
   Run Step 2 with a fake waiter that counts blocks and wakes. Assert an
   unchanged idle application blocks exactly once, a queued tick is distinct from
   idle, and no loop iteration occurs without work or a wake.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Runtime tests/SharpVision.Tests/Runtime tests/SharpVision.Tests/Support/FakeTerminal.cs docs/architecture/runtime-event-loop.md docs/concepts/lifecycle-events.md docs/concepts/threading.md

@@ -37,6 +37,12 @@ and pending work reach zero, `Idle` runs once on the owner thread; work posted
 by that handler drains before another wait, and the loop blocks on a condition
 rather than polling.
 
+`Application` holds a pending lease while renderer I/O is incomplete. The lease
+may be released from a renderer continuation, but frame and lifecycle callbacks
+are posted back first and run on the owner. The bounded input queue and
+newest-resize slot use short locks only to copy records and schedule one wake;
+no user callback or terminal I/O runs under them.
+
 ## Tests
 
 Cover off-thread failure before mutation, posted/invoked success, exception and
