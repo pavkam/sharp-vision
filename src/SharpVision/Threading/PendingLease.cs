@@ -1,9 +1,18 @@
 namespace SharpVision.Threading;
 
 /// <summary>Suppresses dispatcher idle while asynchronous work remains pending.</summary>
-internal sealed class PendingLease(Dispatcher owner): IDisposable
+internal sealed class PendingLease: IDisposable
 {
-    private Dispatcher? _owner = owner;
+    private Dispatcher? _owner;
+
+    /// <summary>Initializes a lease for one non-null dispatcher.</summary>
+    /// <param name="owner">The dispatcher whose pending count is held.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
+    internal PendingLease(Dispatcher owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        _owner = owner;
+    }
 
     /// <summary>Releases the pending-work count exactly once.</summary>
     public void Dispose() => Interlocked.Exchange(ref _owner, null)?.ReleasePending();

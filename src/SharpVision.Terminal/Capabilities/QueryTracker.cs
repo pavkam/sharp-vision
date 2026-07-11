@@ -5,19 +5,24 @@ namespace SharpVision.Terminal.Capabilities;
 /// <summary>
 /// Tracks a finite number of correlated and uncorrelated terminal queries.
 /// </summary>
-/// <param name="limits">Optional immutable protocol limits.</param>
-/// <param name="timeProvider">Optional deterministic clock.</param>
-public sealed class QueryTracker(
-    Limits? limits = null,
-    TimeProvider? timeProvider = null)
+public sealed class QueryTracker
 {
-    private readonly Limits _limits = limits ?? Limits.Default;
-    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    private readonly Limits _limits;
+    private readonly TimeProvider _timeProvider;
     private readonly Dictionary<Key, Active> _active = [];
     private readonly Dictionary<long, Key> _tokens = [];
     private readonly Dictionary<Key, History> _history = [];
     private readonly Queue<Key> _historyOrder = [];
     private long _nextToken;
+
+    /// <summary>Initializes a bounded query tracker.</summary>
+    /// <param name="limits">Optional immutable protocol limits.</param>
+    /// <param name="timeProvider">Optional deterministic clock.</param>
+    public QueryTracker(Limits? limits = null, TimeProvider? timeProvider = null)
+    {
+        _limits = limits ?? Limits.Default;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
 
     /// <summary>Gets the current number of in-flight queries.</summary>
     public int ActiveCount => _active.Count;

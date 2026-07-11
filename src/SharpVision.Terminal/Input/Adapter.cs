@@ -3,23 +3,34 @@ using SharpVision.Terminal.Protocols;
 namespace SharpVision.Terminal.Input;
 
 /// <summary>Adapts borrowed parser callbacks to one stateful input decoder.</summary>
-internal readonly struct Adapter(Decoder owner): ISequenceSink
+internal readonly struct Adapter: ISequenceSink
 {
-    /// <inheritdoc/>
-    public void Text(ReadOnlySpan<byte> value) => owner.AcceptText(value);
+    private readonly Decoder _owner;
+
+    /// <summary>Initializes an adapter for one non-null decoder.</summary>
+    /// <param name="owner">The stateful decoder receiving callbacks.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
+    internal Adapter(Decoder owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        _owner = owner;
+    }
 
     /// <inheritdoc/>
-    public void Control(byte value) => owner.AcceptControl(value);
+    public void Text(ReadOnlySpan<byte> value) => _owner.AcceptText(value);
+
+    /// <inheritdoc/>
+    public void Control(byte value) => _owner.AcceptControl(value);
 
     /// <inheritdoc/>
     public void Escape(ReadOnlySpan<byte> intermediates, byte final) =>
-        owner.AcceptEscape(intermediates, final);
+        _owner.AcceptEscape(intermediates, final);
 
     /// <inheritdoc/>
     public void Csi(
         ReadOnlySpan<byte> parameters,
         ReadOnlySpan<byte> intermediates,
-        byte final) => owner.AcceptCsi(parameters, intermediates, final);
+        byte final) => _owner.AcceptCsi(parameters, intermediates, final);
 
     /// <inheritdoc/>
     public void Sequence(
@@ -29,7 +40,7 @@ internal readonly struct Adapter(Decoder owner): ISequenceSink
     {
         _ = value;
         _ = terminator;
-        owner.AcceptSequence(kind);
+        _owner.AcceptSequence(kind);
     }
 
     /// <inheritdoc/>
@@ -45,10 +56,9 @@ internal readonly struct Adapter(Decoder owner): ISequenceSink
         _ = final;
         _ = value;
         _ = terminator;
-        owner.AcceptDcs();
+        _owner.AcceptDcs();
     }
 
     /// <inheritdoc/>
-    public void Report(in Diagnostic value) => owner.AcceptDiagnostic(in value);
+    public void Report(in Diagnostic value) => _owner.AcceptDiagnostic(in value);
 }
-

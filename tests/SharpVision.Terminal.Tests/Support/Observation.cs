@@ -3,14 +3,34 @@ using SharpVision.Terminal.Protocols;
 namespace SharpVision.Terminal.Tests.Support;
 
 /// <summary>Represents one copied parser callback for deterministic comparisons.</summary>
-/// <param name="Type">The callback type.</param>
-/// <param name="First">The first borrowed byte field.</param>
-/// <param name="Second">The second borrowed byte field.</param>
-/// <param name="Final">The sequence final byte.</param>
-/// <param name="Diagnostic">The structured diagnostic, when present.</param>
-public sealed record Observation(
-    string Type,
-    byte[] First,
-    byte[] Second,
-    byte Final,
-    Diagnostic? Diagnostic);
+public sealed record Observation
+{
+    /// <summary>Initializes one validated copied parser observation.</summary>
+    public Observation(string type, byte[] first, byte[] second, byte final, Diagnostic? diagnostic)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(type);
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+
+        Type = type;
+        First = first;
+        Second = second;
+        Final = final;
+        Diagnostic = diagnostic;
+    }
+
+    /// <summary>Gets the callback type.</summary>
+    public string Type { get; }
+
+    /// <summary>Gets the copied first byte field.</summary>
+    public byte[] First { get; }
+
+    /// <summary>Gets the copied second byte field.</summary>
+    public byte[] Second { get; }
+
+    /// <summary>Gets the sequence final byte.</summary>
+    public byte Final { get; }
+
+    /// <summary>Gets the structured diagnostic, when present.</summary>
+    public Diagnostic? Diagnostic { get; }
+}

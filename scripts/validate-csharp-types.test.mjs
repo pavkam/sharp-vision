@@ -51,6 +51,45 @@ test("validateCSharpTypes_WhenGeneratedFileNameDiffers_ReportsExactName", async 
   }
 });
 
+test("validateCSharpTypes_WhenTypesUsePrimaryConstructors_ReportsEveryType", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(join(root, "Widget.cs"), "public sealed class Widget(int value) {}\n");
+    await writeFile(join(root, "Token.cs"), "public readonly struct Token(int value) {}\n");
+    await writeFile(
+      join(root, "Result.cs"),
+      "public readonly record struct Result(int value);\n",
+    );
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.equal(errors.length, 3);
+    assert.match(errors[0], /Result\.cs.*Result.*primary constructor/iu);
+    assert.match(errors[1], /Token\.cs.*Token.*primary constructor/iu);
+    assert.match(errors[2], /Widget\.cs.*Widget.*primary constructor/iu);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateCSharpTypes_WhenConstructorIsExplicit_ReturnsNoErrors", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(
+      join(root, "Widget.cs"),
+      "public sealed class Widget { public Widget(int value) {} }\n",
+    );
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("validateCSharpTypes_WhenFileContainsTwoTypes_ReportsBoth", async () => {
   const root = await createRoot();
 

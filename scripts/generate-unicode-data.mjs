@@ -345,11 +345,35 @@ internal enum EastAsianWidth
 `);
 
   outputs.set("PropertyRange.cs", `${header}
+using System.Diagnostics;
+
 /// <summary>Stores one inclusive scalar range and its generated property value.</summary>
-/// <param name="Start">The first Unicode scalar.</param>
-/// <param name="End">The last Unicode scalar.</param>
-/// <param name="Value">The generated enum or Boolean value.</param>
-internal readonly record struct PropertyRange(int Start, int End, int Value);
+internal readonly record struct PropertyRange
+{
+    /// <summary>Initializes one generated inclusive scalar range.</summary>
+    /// <param name="start">The first Unicode scalar.</param>
+    /// <param name="end">The last Unicode scalar.</param>
+    /// <param name="value">The generated enum or Boolean value.</param>
+    internal PropertyRange(int start, int end, int value)
+    {
+        Debug.Assert(start >= 0, "A generated scalar range cannot start below zero.");
+        Debug.Assert(end >= start, "A generated scalar range cannot end before it starts.");
+        Debug.Assert(end <= 0x10FFFF, "A generated scalar range must end within Unicode.");
+
+        Start = start;
+        End = end;
+        Value = value;
+    }
+
+    /// <summary>Gets the first Unicode scalar.</summary>
+    internal int Start { get; }
+
+    /// <summary>Gets the last Unicode scalar.</summary>
+    internal int End { get; }
+
+    /// <summary>Gets the generated enum or Boolean value.</summary>
+    internal int Value { get; }
+}
 `);
 
   outputs.set("Data.cs", `${header}

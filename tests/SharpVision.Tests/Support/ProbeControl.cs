@@ -9,8 +9,14 @@ using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 namespace SharpVision.Tests.Support;
 
 /// <summary>Provides a recording leaf for shared control infrastructure tests.</summary>
-internal sealed class ProbeControl(Size intrinsic = default): Control
+internal sealed class ProbeControl: Control
 {
+    private readonly Size _intrinsic;
+
+    /// <summary>Initializes a probe with one validated intrinsic size.</summary>
+    /// <param name="intrinsic">The non-negative intrinsic content size.</param>
+    internal ProbeControl(Size intrinsic = default) => _intrinsic = intrinsic;
+
     /// <summary>Gets constraints received by the content measure extension point.</summary>
     internal List<Constraint> MeasureConstraints { get; } = [];
 
@@ -37,7 +43,7 @@ internal sealed class ProbeControl(Size intrinsic = default): Control
     {
         MeasureConstraints.Add(constraint);
         Measuring?.Invoke(this);
-        return intrinsic;
+        return _intrinsic;
     }
 
     /// <inheritdoc/>

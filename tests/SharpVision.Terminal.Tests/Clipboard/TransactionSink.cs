@@ -4,9 +4,18 @@ using SharpVision.Terminal.Protocols;
 namespace SharpVision.Terminal.Tests.Clipboard;
 
 /// <summary>Feeds parsed Kitty OSC packets into one transaction.</summary>
-internal sealed class TransactionSink(KittyTransaction transaction): ISequenceSink
+internal sealed class TransactionSink: ISequenceSink
 {
-    private readonly KittyTransaction _transaction = transaction;
+    private readonly KittyTransaction _transaction;
+
+    /// <summary>Initializes a sink for one active transaction.</summary>
+    /// <param name="transaction">The non-null transaction receiving packets.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="transaction"/> is null.</exception>
+    internal TransactionSink(KittyTransaction transaction)
+    {
+        ArgumentNullException.ThrowIfNull(transaction);
+        _transaction = transaction;
+    }
 
     /// <inheritdoc/>
     public void Text(ReadOnlySpan<byte> value) => _ = value;

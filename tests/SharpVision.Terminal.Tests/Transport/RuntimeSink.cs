@@ -5,8 +5,14 @@ using SharpVision.Terminal.Runtime;
 namespace SharpVision.Terminal.Tests.Transport;
 
 /// <summary>Records one expected pseudoterminal resize and runtime faults.</summary>
-internal sealed class RuntimeSink(Dimensions expected): ISink
+internal sealed class RuntimeSink: ISink
 {
+    private readonly Dimensions _expected;
+
+    /// <summary>Initializes a sink for one expected resize.</summary>
+    /// <param name="expected">The validated expected dimensions.</param>
+    internal RuntimeSink(Dimensions expected) => _expected = expected;
+
     /// <summary>Gets completion for the expected resize.</summary>
     internal TaskCompletionSource<Dimensions> Expected { get; } =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -35,7 +41,7 @@ internal sealed class RuntimeSink(Dimensions expected): ISink
     /// <inheritdoc/>
     public void Resize(in Dimensions value)
     {
-        if (value == expected)
+        if (value == _expected)
         {
             _ = Expected.TrySetResult(value);
         }

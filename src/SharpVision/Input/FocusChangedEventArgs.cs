@@ -3,11 +3,20 @@ using SharpVision.Controls;
 namespace SharpVision.Input;
 
 /// <summary>Describes one committed focus transition.</summary>
-public sealed class FocusChangedEventArgs(Control? previous, Control? current): EventArgs
+public sealed class FocusChangedEventArgs: EventArgs
 {
+    /// <summary>Initializes one committed focus transition.</summary>
+    /// <param name="previous">The previously focused control.</param>
+    /// <param name="current">The newly focused control.</param>
+    public FocusChangedEventArgs(Control? previous, Control? current)
+    {
+        Previous = previous;
+        Current = current;
+    }
+
     /// <summary>Gets the control focused before the commit.</summary>
-    public Control? Previous { get; } = previous;
+    public Control? Previous { get; }
 
     /// <summary>Gets the control focused after the commit.</summary>
-    public Control? Current { get; } = current;
+    public Control? Current { get; }
 }

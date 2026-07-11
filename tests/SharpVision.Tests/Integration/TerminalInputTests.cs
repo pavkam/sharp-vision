@@ -147,7 +147,7 @@ public sealed class TerminalInputTests
         terminal.QueueInput(bytes);
         await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
 
-        focus.ShouldBe(new Focus(Gained: true));
+        focus.ShouldBe(new Focus(gained: true));
         pointer!.Value.Pixels.ShouldBe(new Point(16, 32));
         pointer.Value.Cells.ShouldBe(new Point(2, 2));
         pointer.Value.IsCellPositionInferred.ShouldBeTrue();

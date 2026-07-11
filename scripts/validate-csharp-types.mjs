@@ -14,6 +14,7 @@ const ordinaryType = /\b(?:class|enum|interface|struct)\s+([\p{L}_][\p{L}\p{N}_]
 const recordType = /\brecord(?:\s+(?:class|struct))?\s+([\p{L}_][\p{L}\p{N}_]*)/gu;
 const delegateType = /\bdelegate\b([^;{]*?)\(/gu;
 const identifier = /[\p{L}_][\p{L}\p{N}_]*/gu;
+const primaryConstructorType = /\b(?:class|struct|record(?:\s+(?:class|struct))?)\s+([\p{L}_][\p{L}\p{N}_]*)(?:\s*<[^>{};()]*>)?\s*\(/gu;
 
 async function findCSharpFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -69,6 +70,12 @@ function collectTypes(content) {
   return types
     .sort((left, right) => left.index - right.index)
     .map((value) => value.name);
+}
+
+function collectPrimaryConstructors(content) {
+  const visible = stripTriviaAndLiterals(content);
+
+  return [...visible.matchAll(primaryConstructorType)].map((match) => match[1]);
 }
 
 function stripTriviaAndLiterals(content) {
@@ -201,8 +208,16 @@ export async function validateCSharpTypes(root) {
   const errors = [];
 
   for (const path of files) {
-    const types = collectTypes(await readFile(path, "utf8"));
+    const content = await readFile(path, "utf8");
+    const types = collectTypes(content);
+    const primaryConstructors = collectPrimaryConstructors(content);
     const displayPath = relative(absoluteRoot, path);
+
+    for (const type of primaryConstructors) {
+      errors.push(
+        `${displayPath} declares ${type} with a primary constructor; define and validate an explicit constructor instead.`,
+      );
+    }
 
     if (types.length > 1) {
       errors.push(

@@ -58,6 +58,8 @@ cross-layer paths. A mock-heavy green suite is not evidence of correctness.
 - Prefer readonly structs for small immutable wrappers with valid defaults and
   cheap copies; preserve classes when tests rely on real identity, ownership,
   lifetime, or polymorphic behavior.
+- Never use primary or positional constructors in production or test code.
+  Define constructors explicitly and test every argument-validation boundary.
 
 ## Example review
 

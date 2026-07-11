@@ -102,7 +102,7 @@ public sealed class OrderingTests
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var focus = new Focus(Gained: true);
+        var focus = new Focus(gained: true);
         application.Input(in focus);
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         await application.StartAsync(TestContext.Current.CancellationToken);

@@ -243,12 +243,22 @@ public sealed class RoutingTests
             isMotion: true,
             isCellPositionInferred: false);
         var paste = new Paste("hello"u8);
-        var focus = new Focus(Gained: true);
+        var focus = new Focus(gained: true);
 
         new TextEventArgs(text).Text.ShouldBe(text);
         new PointerEventArgs(pointer).Pointer.ShouldBe(pointer);
         new PasteEventArgs(paste).Paste.Utf8.ShouldBe(paste.Utf8);
         new FocusEventArgs(focus).Focus.ShouldBe(focus);
+    }
+
+    /// <summary>Verifies explicit interaction-event construction validates reference and enum arguments.</summary>
+    [Fact]
+    public void Constructor_WhenCancellationPayloadIsInvalid_ThrowsDocumentedException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            new CaptureCancelledEventArgs(null!, ReleaseReason.Detached));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new CaptureCancelledEventArgs(new ProbeControl(), (ReleaseReason) int.MaxValue));
     }
 
     /// <summary>Verifies source retargeting is controlled while original source is immutable.</summary>

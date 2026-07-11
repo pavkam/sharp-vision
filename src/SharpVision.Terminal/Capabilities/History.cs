@@ -1,6 +1,24 @@
+using System.Diagnostics;
+
 namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>Stores one bounded recent query outcome.</summary>
-/// <param name="Outcome">The terminal query outcome.</param>
-/// <param name="Until">The exclusive retention deadline.</param>
-internal readonly record struct History(Outcome Outcome, DateTimeOffset Until);
+internal readonly record struct History
+{
+    /// <summary>Initializes one validated retained outcome.</summary>
+    /// <param name="outcome">The terminal query outcome.</param>
+    /// <param name="until">The exclusive retention deadline.</param>
+    internal History(Outcome outcome, DateTimeOffset until)
+    {
+        Debug.Assert(Enum.IsDefined(outcome), "A retained query outcome must be defined.");
+
+        Outcome = outcome;
+        Until = until;
+    }
+
+    /// <summary>Gets the terminal query outcome.</summary>
+    internal Outcome Outcome { get; }
+
+    /// <summary>Gets the exclusive retention deadline.</summary>
+    internal DateTimeOffset Until { get; }
+}

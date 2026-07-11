@@ -18,6 +18,16 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies mutable resources, state precedence, inheritance, and cells.</summary>
 public sealed class StyleTests
 {
+    /// <summary>Verifies explicit style-event construction rejects unknown state and impact values.</summary>
+    [Fact]
+    public void Constructor_WhenStyleChangeIsInvalid_ThrowsDocumentedException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ChangedEventArgs((State) int.MaxValue, Impact.Render));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ChangedEventArgs(State.Normal, (Impact) int.MaxValue));
+    }
+
     /// <summary>Verifies every state pair resolves by documented field precedence.</summary>
     [Fact]
     public void Resolve_WhenStatesConflict_UsesPairwisePrecedence()

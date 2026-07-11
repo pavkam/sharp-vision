@@ -11,6 +11,17 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 /// </summary>
 public sealed class CapabilitiesTests
 {
+    /// <summary>Verifies public capability values reject undefined evidence and invalid tokens.</summary>
+    [Fact]
+    public void Constructor_WhenCapabilityValueIsInvalid_ThrowsDocumentedException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new Feature((CapabilitySupport) int.MaxValue, Origin.Default));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new Feature(CapabilitySupport.Unknown, (Origin) int.MaxValue));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new QueryToken(0));
+    }
+
     /// <summary>
     /// Verifies optional protocols are never enabled by built-in defaults.
     /// </summary>

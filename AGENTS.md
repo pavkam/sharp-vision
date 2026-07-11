@@ -56,6 +56,10 @@ in the protocol document.
   copying is cheap and the default value is valid. Use a class when reference
   identity, polymorphism, shared mutable state, disposal, weak-table storage, or
   a large copy cost is part of the contract.
+- Never use primary constructors or positional record declarations. Declare
+  every constructor explicitly, validate all arguments before assigning state,
+  and document its validation and exceptions. Preserve explicit `Deconstruct`
+  members when a value type intentionally offers tuple-style consumption.
 - Prefer `Rune`, `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>`,
   and `IBufferWriter<T>` in text, protocol, and rendering paths. Do not reduce
   Unicode input to `char` or allocate strings in hot loops.

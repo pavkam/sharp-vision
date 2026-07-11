@@ -9,6 +9,18 @@ namespace SharpVision.Terminal.Tests.Unicode;
 /// </summary>
 public sealed class MeasurementTests
 {
+    /// <summary>Verifies explicit Unicode-value constructors reject impossible ranges and counts.</summary>
+    [Fact]
+    public void Constructor_WhenUnicodeValueIsInvalid_ThrowsDocumentedException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new Grapheme(offset: -1, length: 1, hasInvalidData: false));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new Grapheme(offset: 0, length: 0, hasInvalidData: false));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new Measurement(cells: -1, graphemes: 0, controls: 0));
+    }
+
     /// <summary>
     /// Verifies policy validation itself remains allocation-free after warm-up.
     /// </summary>

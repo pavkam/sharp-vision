@@ -51,6 +51,8 @@ asynchrony. Layout never guesses final space during intrinsic measurement.
 - Prefer readonly structs for small immutable wrappers with valid defaults and
   cheap copies; preserve classes for identity, ownership, polymorphism, or
   shared mutable state.
+- Never use primary or positional constructors. Define constructors explicitly,
+  validate before assignment, and document every rejected argument.
 
 ## Example review
 

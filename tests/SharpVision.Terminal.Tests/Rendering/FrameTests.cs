@@ -6,6 +6,7 @@ using SharpVision.Terminal.Rendering;
 using Shouldly;
 
 using CellMetrics = SharpVision.Terminal.Geometry.Metrics;
+using RenderingMetrics = SharpVision.Terminal.Rendering.Metrics;
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
@@ -14,6 +15,19 @@ namespace SharpVision.Terminal.Tests.Rendering;
 /// </summary>
 public sealed class FrameTests
 {
+    /// <summary>Verifies explicit rendering-value constructors reject impossible metrics.</summary>
+    [Fact]
+    public void Constructor_WhenRenderingValueIsInvalid_ThrowsDocumentedException()
+    {
+        _ = Should.Throw<ArgumentException>(() =>
+            new CellInfo(Style.Default, width: 1, isContinuation: true, lead: default));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new DrawResult(default, graphemes: -1, cells: 0, clipped: 0, replaced: 0));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new EncodeResult(-1, full: false));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new RenderingMetrics(0, 0, 0, full: false, elapsed: TimeSpan.FromTicks(-1)));
+    }
+
     /// <summary>
     /// Verifies negative extents are rejected by geometry value constructors.
     /// </summary>
