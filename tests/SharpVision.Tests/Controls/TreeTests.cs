@@ -1,3 +1,4 @@
+using SharpVision.Input;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
@@ -108,6 +109,85 @@ public sealed class TreeTests
         first.Parent.ShouldBeNull();
         second.Parent.ShouldBeNull();
         replacement.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies capacity-one ownership rejects overflow before mutation.</summary>
+    [Fact]
+    public void Add_WhenCollectionCapacityIsOne_ThrowsBeforeMutation()
+    {
+        var parent = new ProbeContainer(capacity: 1);
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        parent.Children.Add(first);
+
+        _ = Should.Throw<InvalidOperationException>(() => parent.Children.Add(second));
+
+        parent.Children.ShouldBe([first]);
+        first.Parent.ShouldBeSameAs(parent);
+        second.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies single-child replacement validates the new owner before detaching the old.</summary>
+    [Fact]
+    public void SetOnly_WhenReplacementIsInvalid_PreservesExistingOwnership()
+    {
+        var parent = new ProbeContainer(capacity: 1);
+        var other = new ProbeContainer();
+        var first = new ProbeControl();
+        var invalid = new ProbeControl();
+        parent.Children.SetOnly(first);
+        other.Children.Add(invalid);
+
+        _ = Should.Throw<ArgumentException>(() => parent.Children.SetOnly(invalid));
+
+        parent.Children.ShouldBe([first]);
+        first.Parent.ShouldBeSameAs(parent);
+        invalid.Parent.ShouldBeSameAs(other);
+    }
+
+    /// <summary>Verifies single-child replacement commits both ownership edges atomically.</summary>
+    [Fact]
+    public void SetOnly_WhenReplacementIsValid_TransfersOnlyAfterValidation()
+    {
+        var parent = new ProbeContainer(capacity: 1);
+        var first = new ProbeControl();
+        var replacement = new ProbeControl();
+        parent.Children.SetOnly(first);
+
+        parent.Children.SetOnly(replacement);
+
+        parent.Children.ShouldBe([replacement]);
+        first.Parent.ShouldBeNull();
+        replacement.Parent.ShouldBeSameAs(parent);
+    }
+
+    /// <summary>Verifies failed replacement retains active focus and pointer capture.</summary>
+    [Fact]
+    public async Task SetOnly_WhenReplacementIsInvalid_PreservesManagerOwnershipAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var parent = new ProbeContainer(capacity: 1);
+        var other = new ProbeContainer();
+        var first = new ProbeControl { CanFocus = true };
+        var invalid = new ProbeControl();
+        parent.Children.SetOnly(first);
+        other.Children.Add(invalid);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            parent.Attach(dispatcher);
+            using var focus = new FocusManager(parent);
+            using var capture = new CaptureManager(parent);
+            focus.Focus(first).ShouldBeTrue();
+            capture.Capture(first).ShouldBeTrue();
+
+            _ = Should.Throw<ArgumentException>(() => parent.Children.SetOnly(invalid));
+
+            focus.Focused.ShouldBeSameAs(first);
+            capture.Captured.ShouldBeSameAs(first);
+            first.Parent.ShouldBeSameAs(parent);
+            first.Dispatcher.ShouldBeSameAs(dispatcher);
+        }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies disposing a container recursively disposes owned descendants.</summary>

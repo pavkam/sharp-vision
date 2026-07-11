@@ -7,7 +7,14 @@ namespace SharpVision.Controls;
 public abstract class Container: Control
 {
     /// <summary>Initializes an empty ordered child collection.</summary>
-    protected Container() => Children = new Children(this);
+    protected Container() : this(int.MaxValue)
+    {
+    }
+
+    /// <summary>Initializes an empty ordered child collection with a finite capacity.</summary>
+    /// <param name="capacity">The non-negative maximum child count.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
+    protected Container(int capacity) => Children = new Children(this, capacity);
 
     /// <summary>Gets the owned ordered children.</summary>
     public Children Children { get; }

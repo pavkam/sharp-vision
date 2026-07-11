@@ -9,14 +9,19 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 {
     private readonly List<Control> _items = [];
     private readonly Container _owner;
+    private readonly int _capacity;
 
-    /// <summary>Initializes an empty collection for one non-null owner.</summary>
+    /// <summary>Initializes an empty collection for one non-null owner and finite capacity.</summary>
     /// <param name="owner">The owning container.</param>
+    /// <param name="capacity">The non-negative maximum child count.</param>
     /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
-    internal Children(Container owner)
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
+    internal Children(Container owner, int capacity)
     {
         ArgumentNullException.ThrowIfNull(owner);
+        ArgumentOutOfRangeException.ThrowIfNegative(capacity);
         _owner = owner;
+        _capacity = capacity;
     }
 
     /// <inheritdoc/>
@@ -100,9 +105,69 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
         ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutable();
         ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) _items.Count);
+
+        if (_items.Count >= _capacity)
+        {
+            throw new InvalidOperationException("The child collection is at capacity.");
+        }
+
         Validate(item);
         Attach(item);
         _items.Insert(index, item);
+        _owner.Invalidate(Invalidation.Measure);
+    }
+
+    /// <summary>Atomically assigns or clears the only child of a capacity-one collection.</summary>
+    /// <param name="item">The new detached child, or null to clear the collection.</param>
+    /// <exception cref="ArgumentException"><paramref name="item"/> cannot be owned by this container.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The owner is mutated off-dispatcher or the collection capacity is not one.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The owner or new child is disposed.</exception>
+    internal void SetOnly(Control? item)
+    {
+        _owner.VerifyMutable();
+
+        if (_capacity != 1)
+        {
+            throw new InvalidOperationException("Only a capacity-one collection supports SetOnly.");
+        }
+
+        var previous = _items.Count == 0 ? null : _items[0];
+
+        if (ReferenceEquals(previous, item))
+        {
+            return;
+        }
+
+        if (item is not null)
+        {
+            Validate(item);
+        }
+
+        if (previous is not null)
+        {
+            Detach(previous);
+        }
+
+        if (item is null)
+        {
+            _items.Clear();
+        }
+        else
+        {
+            Attach(item);
+
+            if (_items.Count == 0)
+            {
+                _items.Add(item);
+            }
+            else
+            {
+                _items[0] = item;
+            }
+        }
+
         _owner.Invalidate(Invalidation.Measure);
     }
 

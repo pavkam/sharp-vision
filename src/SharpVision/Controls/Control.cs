@@ -232,6 +232,19 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     public bool EffectiveIsVisible => Visibility == Visibility.Visible &&
         (Parent?.EffectiveIsVisible ?? true);
 
+    /// <summary>Gets or sets whether pointer hit testing may target this control.</summary>
+    /// <remarks>
+    /// This property affects pointer targeting only. It does not suppress
+    /// rendering, visibility, enabled state, or programmatic focus.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool IsHitTestVisible
+    {
+        get;
+        set => _ = Set(ref field, value, Invalidation.None);
+    } = true;
+
     /// <summary>Gets or sets whether the control may receive keyboard focus.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -317,6 +330,9 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets the inherited capture manager while one owns this subtree.</summary>
     internal CaptureManager? CaptureOwner { get; private set; }
 
+    /// <summary>Gets whether this control clips owned descendants to its bounds.</summary>
+    internal virtual bool ClipsChildren => true;
+
     /// <summary>Gets the complete terminal style for the resolved appearance.</summary>
     internal TerminalStyle ResolvedStyle => Resolver.ToTerminal(Appearance);
 
@@ -360,7 +376,8 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <param name="point">The screen-cell point.</param>
     /// <returns>This control when eligible and contained; otherwise null.</returns>
     public virtual Control? HitTest(Point point) =>
-        !IsDisposed && EffectiveIsVisible && EffectiveIsEnabled && Bounds.Contains(point)
+        !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
+        Bounds.Contains(point)
             ? this
             : null;
 
@@ -544,9 +561,11 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
             // Every control receives a canvas clipped by every ancestor. The
             // coordinate system remains absolute, so no transform can drift.
+            // Panels may deliberately retain the ancestor clip for children,
+            // while their own drawing always remains inside their bounds.
             var clipped = canvas.Clip(Bounds);
             RenderCore(clipped);
-            RenderChildren(clipped);
+            RenderChildren(ClipsChildren ? clipped : canvas);
         }
         catch
         {

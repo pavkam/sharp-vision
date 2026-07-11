@@ -43,6 +43,45 @@ public sealed class RenderingTests
         frame.Cursor.ShouldBe(default);
     }
 
+    /// <summary>Verifies an explicit child policy can render outside the owner's bounds.</summary>
+    [Fact]
+    public void Render_WhenContainerDoesNotClipChildren_DrawsWithinAncestorCanvas()
+    {
+        var root = new ProbeContainer
+        {
+            Bounds = new Rect(0, 0, 1, 1),
+            ClipChildren = false,
+        };
+        var child = new ProbeControl
+        {
+            Bounds = new Rect(1, 0, 1, 1),
+            Content = "X".AsMemory(),
+        };
+        root.Children.Add(child);
+        using var frame = new Frame(new Size(2, 1));
+
+        root.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("X");
+    }
+
+    /// <summary>Verifies hit-test transparency leaves semantic drawing enabled.</summary>
+    [Fact]
+    public void Render_WhenControlIsHitTestTransparent_StillDrawsCells()
+    {
+        var control = new ProbeControl
+        {
+            Bounds = new Rect(0, 0, 1, 1),
+            Content = "X".AsMemory(),
+            IsHitTestVisible = false,
+        };
+        using var frame = new Frame(new Size(1, 1));
+
+        control.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, default).ShouldBe("X");
+    }
+
     /// <summary>Verifies hidden and collapsed controls skip rendering entirely.</summary>
     [Fact]
     public void Render_WhenVisibilitySuppressesDrawing_LeavesCellsBlank()

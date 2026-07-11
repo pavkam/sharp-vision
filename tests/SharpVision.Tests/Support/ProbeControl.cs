@@ -65,6 +65,3 @@ internal sealed class ProbeControl(Size intrinsic = default): Control
         _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
     }
 }
-
-/// <summary>Provides a concrete parent for shared control infrastructure tests.</summary>
-internal sealed class ProbeContainer: Container;

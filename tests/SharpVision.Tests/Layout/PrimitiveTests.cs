@@ -8,6 +8,11 @@ namespace SharpVision.Tests.Layout;
 /// <summary>Verifies immutable layout units and saturated box-model geometry.</summary>
 public sealed class PrimitiveTests
 {
+    /// <summary>Verifies the shared panel orientation has exactly two defined values.</summary>
+    [Fact]
+    public void Orientation_WhenEnumerated_ContainsVerticalAndHorizontal() =>
+        Enum.GetValues<Orientation>().ShouldBe([Orientation.Vertical, Orientation.Horizontal]);
+
     /// <summary>Verifies every supported length factory preserves its exact value.</summary>
     [Fact]
     public void Factory_WhenLengthIsValid_PreservesKindAndValue()

@@ -1,5 +1,6 @@
 using SharpVision.Controls;
 using SharpVision.Layout;
+using SharpVision.Terminal.Geometry;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
@@ -29,9 +30,26 @@ public sealed class PropertyTests
         control.Visibility.ShouldBe(Visibility.Visible);
         control.IsEnabled.ShouldBeTrue();
         control.EffectiveIsEnabled.ShouldBeTrue();
+        control.IsHitTestVisible.ShouldBeTrue();
         control.CanFocus.ShouldBeFalse();
         control.TabIndex.ShouldBe(0);
         control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies hit-test transparency does not suppress rendering or focus eligibility.</summary>
+    [Fact]
+    public void HitTest_WhenControlIsTransparent_RejectsPointerTargetOnly()
+    {
+        var control = new ProbeControl
+        {
+            Bounds = new Rect(0, 0, 2, 1),
+            CanFocus = true,
+            IsHitTestVisible = false,
+        };
+
+        control.HitTest(default).ShouldBeNull();
+        control.CanFocus.ShouldBeTrue();
+        control.EffectiveIsVisible.ShouldBeTrue();
     }
 
     /// <summary>Verifies inconsistent constraints are rejected before property replacement.</summary>
@@ -127,6 +145,21 @@ public sealed class PropertyTests
         _ = Should.Throw<InvalidOperationException>(() => control.Width = Length.Cells(3));
 
         control.Width.ShouldBe(Length.Auto);
+    }
+
+    /// <summary>Verifies hit-test policy mutation is dispatcher-affine.</summary>
+    [Fact]
+    public async Task IsHitTestVisible_WhenAttachedAndSetOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new ProbeControl();
+        await dispatcher.InvokeAsync(
+            () => control.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => control.IsHitTestVisible = false);
+
+        control.IsHitTestVisible.ShouldBeTrue();
     }
 
     /// <summary>Verifies invalid enums and disposed access fail before mutation.</summary>

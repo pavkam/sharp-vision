@@ -20,6 +20,7 @@ dispatcher.
 | `HorizontalAlignment`, `VerticalAlignment` | `Stretch`              | Placement within the arranged slot.                     |
 | `Visibility`                               | `Visible`              | Visible, hidden, or collapsed.                          |
 | `IsEnabled`                                | `true`                 | Inherited effective input state.                        |
+| `IsHitTestVisible`                         | `true`                 | Whether pointer hit testing may target the control.     |
 | `CanFocus`, `TabIndex`                     | `false`, `0`           | Focus participation and deterministic order.            |
 | `IsFocused`, `IsHovered`, `IsPressed`      | `false`                | Read-only committed interaction state.                  |
 | `Style`                                    | `null`                 | Optional direct resource; null inherits from ancestors. |
@@ -34,6 +35,8 @@ disposed access throw documented argument or object-lifetime exceptions.
 
 `EffectiveIsEnabled` and `EffectiveIsVisible` are computed through the complete
 ancestor chain. Changing an inherited state invalidates affected descendants.
+`IsHitTestVisible` affects pointer targeting only; it does not suppress drawing,
+visibility, enabled state, or explicit focus.
 
 ## Children and ownership
 
@@ -45,6 +48,11 @@ two parents, appear twice, or be inserted beneath one of its own descendants.
 Adding below an attached container recursively attaches the subtree. Removing
 recursively detaches it and clears its parent. Disposing a container disposes
 all owned descendants; repeated disposal is safe.
+
+Specialized single-child containers use the same collection with capacity one.
+Their child property validates a complete replacement before detaching the
+previous child, so a failed assignment preserves ownership, dispatcher, focus,
+and pointer capture.
 
 When a root owns focus or capture managers, that ownership propagates with the
 tree. Removal, inherited disable/hide, and disposal synchronously release
@@ -67,6 +75,7 @@ root.
 | Width, height, min/max, margin, padding, collapse | Measure, arrange, and render |
 | Horizontal or vertical alignment                  | Arrange and render           |
 | Enabled state or visible/hidden transition        | Render                       |
+| Hit-test visibility                               | No layout or render phase    |
 
 ## Lifecycle and events
 
@@ -93,6 +102,10 @@ not repeat box-model arithmetic.
 If an extension point changes a layout property, that invalidation remains
 pending for a later transaction. If it throws, the active phase is marked dirty
 again before the exception escapes.
+
+Control content always draws through a canvas clipped to its own `Bounds`.
+Containers may opt to retain only the ancestor clip for descendants; this is the
+shared mechanism behind documented Overlay and Canvas unclipped-child modes.
 
 ## Styling extension point
 

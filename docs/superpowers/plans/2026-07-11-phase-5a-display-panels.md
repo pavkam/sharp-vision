@@ -48,7 +48,7 @@ versions of those APIs.
   `tests/SharpVision.Tests/Controls/{PropertyTests,RenderingTests,TreeTests}.cs`
 - Modify: `docs/controls/control.md`
 
-- [ ] **Step 1: Split the touched test helper file**
+- [x] **Step 1: Split the touched test helper file**
 
   Move `ProbeContainer` from `ProbeControl.cs` into `ProbeContainer.cs` without
   changing behavior. Run the complete UI test assembly before further edits.
@@ -59,7 +59,7 @@ versions of those APIs.
 
   Expected: existing tests pass and each touched helper file contains one type.
 
-- [ ] **Step 2: Write failing child-policy tests**
+- [x] **Step 2: Write failing child-policy tests**
 
   Add tests proving:
 
@@ -73,7 +73,7 @@ versions of those APIs.
 
   Use `MethodName_WhenThis_ThatIsExpected` names and semantic frame assertions.
 
-- [ ] **Step 3: Run the focused tests and verify RED**
+- [x] **Step 3: Run the focused tests and verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --configuration Release --filter-class "*PropertyTests" "*RenderingTests" "*TreeTests" --minimum-expected-tests 3 --timeout 60s
@@ -81,7 +81,7 @@ versions of those APIs.
 
   Expected: compile failures for the new child policy API.
 
-- [ ] **Step 4: Implement the shared policy minimally**
+- [x] **Step 4: Implement the shared policy minimally**
 
   Add `Orientation.Vertical` and `Orientation.Horizontal` in its own file. Add
   `Control.IsHitTestVisible` (default true) and make `HitTest` reject false. Add
@@ -95,7 +95,7 @@ versions of those APIs.
   ScrollView, Popup, and Window. Validate the complete replacement before any
   detach or attach mutation.
 
-- [ ] **Step 5: Verify GREEN, format, and commit**
+- [x] **Step 5: Verify GREEN, format, and commit**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --configuration Release --filter-class "*PropertyTests" "*RenderingTests" "*TreeTests" --minimum-expected-tests 3 --timeout 60s
@@ -404,10 +404,10 @@ versions of those APIs.
   over borrowed spans. Content defaults empty; `Wrapping.None`, `Trimming.None`,
   text `Alignment.Start`, and null color/attribute overrides are the defaults.
   It exposes those modes, optional foreground/background/attributes, and
-  read-only committed `Lines`.
-  Measure/layout caches key on content identity, width, modes, and ambiguous
-  width policy. Render draws precomputed grapheme-safe line slices plus typed
-  ellipsis cells through `Canvas.Draw`; it never emits protocol bytes.
+  read-only committed `Lines`. Measure/layout caches key on content identity,
+  width, modes, and ambiguous width policy. Render draws precomputed
+  grapheme-safe line slices plus typed ellipsis cells through `Canvas.Draw`; it
+  never emits protocol bytes.
 
 - [ ] **Step 4: Verify GREEN, allocation behavior, and commit**
 
