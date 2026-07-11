@@ -60,6 +60,29 @@ contained non-negative rectangles.
 Fractional percentage/proportional boundaries use cumulative edge rounding so
 adjacent tracks share one boundary and the final track receives the remainder.
 
+## Track allocation
+
+`Tracks.Resolve` is the common integer allocator for Grid rows and columns.
+Fixed and automatic tracks reserve their clamped requests first. Percentage
+tracks use cumulative edges against the complete final axis rather than a
+shrinking remainder. Star tracks then divide the non-negative remainder by
+weight, redistributing cells when a maximum clips a share.
+
+The convenience overload returns an array. The full overload accepts
+`ReadOnlySpan<T>` inputs and caller-owned `Span<int>` output and performs no
+managed allocation. It validates every length, intrinsic request, limit, and
+destination size before writing output. During unbounded measure, percentage and
+star tracks use their intrinsic automatic requests.
+
+When bounded requests exceed the axis, percentage, automatic, fixed, then star
+requests shrink in that order while respecting feasible minimums. If the sum of
+minimums itself cannot fit, containment wins and extents shrink below minimums
+instead of overflowing the terminal viewport.
+
+`Tracks.Satisfy` expands a contiguous set of tracks for a spanning intrinsic
+request. It distributes only the missing cells through cumulative integer edges,
+so the final combined extent is exact.
+
 ## Panels
 
 - Stack measures along one axis and aligns on the cross axis.

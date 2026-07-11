@@ -366,7 +366,7 @@ events only after their documented commit points.
 - Modify: `docs/concepts/layout.md`
 - Modify: `docs/testing/correctness-model.md`
 
-- [ ] **Step 1: Write failing allocator tests**
+- [x] **Step 1: Write failing allocator tests**
 
   Test fixed reservation, percent of final content space, automatic intrinsic
   maxima, star weight distribution, deficits, min/max clamps, zero space,
@@ -382,11 +382,11 @@ events only after their documented commit points.
   result.ShouldBe([6, 3, 2]);
   ```
 
-- [ ] **Step 2: Run track tests and verify RED**
+- [x] **Step 2: Run track tests and verify RED**
 
   Run the layout filter from Task 4. Expected: compile failure for `Tracks`.
 
-- [ ] **Step 3: Implement cumulative-edge allocation**
+- [x] **Step 3: Implement cumulative-edge allocation**
 
   Resolve fixed and clamped auto tracks first. Percent edges are calculated from
   the final available axis, not a shrinking remainder. Star tracks divide the
@@ -397,13 +397,13 @@ events only after their documented commit points.
   Reject mismatched array lengths and invalid track definitions before writing
   caller output.
 
-- [ ] **Step 4: Verify the randomized invariant**
+- [x] **Step 4: Verify the randomized invariant**
 
   Generate 20,000 valid track sets at fixed seed `0x4A70`. Assert no negative
   extent, no overflow, exact bounded sum, min/max compliance, stable repeat, and
   no allocation after warm-up with caller-owned spans.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Layout/Tracks.cs tests/SharpVision.Tests/Layout docs/concepts/layout.md docs/testing/correctness-model.md

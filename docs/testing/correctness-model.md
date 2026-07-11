@@ -20,6 +20,12 @@ test observed failing for the intended reason.
 Higher levels do not excuse missing focused tests; focused mocks do not replace
 integration.
 
+The track allocator uses seed `0x4A70` for 20,000 bounded definition sets. Each
+case is resolved twice and proves stable output, exact allocation when an
+uncapped star can absorb the remainder, non-negative extents, and feasible
+min/max compliance. A separate warmed caller-owned-span loop proves the core
+allocator performs no managed allocation.
+
 ## Test doubles
 
 Use Moq only for a genuine external interaction whose call contract is the
