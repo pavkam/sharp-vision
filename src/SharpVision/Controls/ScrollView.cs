@@ -414,73 +414,46 @@ public sealed class ScrollView: Container
         }
 
         var page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
-        var handled = eventArgs.Stroke.Code switch
-        {
-            Code.Left => ScrollBy(-LineSize, 0, Cause.Keyboard),
-            Code.Right => ScrollBy(LineSize, 0, Cause.Keyboard),
-            Code.Up => ScrollBy(0, -LineSize, Cause.Keyboard),
-            Code.Down => ScrollBy(0, LineSize, Cause.Keyboard),
-            Code.PageUp => ScrollBy(0, -page, Cause.Keyboard),
-            Code.PageDown => ScrollBy(0, page, Cause.Keyboard),
-            Code.Home => Apply(HorizontalOffset, 0, Cause.Keyboard),
-            Code.End => Apply(HorizontalOffset, MaximumY(), Cause.Keyboard),
-            Code.Unknown => throw new NotImplementedException(),
-            Code.Character => throw new NotImplementedException(),
-            Code.Escape => throw new NotImplementedException(),
-            Code.Enter => throw new NotImplementedException(),
-            Code.Tab => throw new NotImplementedException(),
-            Code.Backspace => throw new NotImplementedException(),
-            Code.Insert => throw new NotImplementedException(),
-            Code.Delete => throw new NotImplementedException(),
-            Code.F1 => throw new NotImplementedException(),
-            Code.F2 => throw new NotImplementedException(),
-            Code.F3 => throw new NotImplementedException(),
-            Code.F4 => throw new NotImplementedException(),
-            Code.F5 => throw new NotImplementedException(),
-            Code.F6 => throw new NotImplementedException(),
-            Code.F7 => throw new NotImplementedException(),
-            Code.F8 => throw new NotImplementedException(),
-            Code.F9 => throw new NotImplementedException(),
-            Code.F10 => throw new NotImplementedException(),
-            Code.F11 => throw new NotImplementedException(),
-            Code.F12 => throw new NotImplementedException(),
-            Code.F13 => throw new NotImplementedException(),
-            Code.F14 => throw new NotImplementedException(),
-            Code.F15 => throw new NotImplementedException(),
-            Code.F16 => throw new NotImplementedException(),
-            Code.F17 => throw new NotImplementedException(),
-            Code.F18 => throw new NotImplementedException(),
-            Code.F19 => throw new NotImplementedException(),
-            Code.F20 => throw new NotImplementedException(),
-            Code.F21 => throw new NotImplementedException(),
-            Code.F22 => throw new NotImplementedException(),
-            Code.F23 => throw new NotImplementedException(),
-            Code.F24 => throw new NotImplementedException(),
-            Code.F25 => throw new NotImplementedException(),
-            Code.F26 => throw new NotImplementedException(),
-            Code.F27 => throw new NotImplementedException(),
-            Code.F28 => throw new NotImplementedException(),
-            Code.F29 => throw new NotImplementedException(),
-            Code.F30 => throw new NotImplementedException(),
-            Code.F31 => throw new NotImplementedException(),
-            Code.F32 => throw new NotImplementedException(),
-            Code.F33 => throw new NotImplementedException(),
-            Code.F34 => throw new NotImplementedException(),
-            Code.F35 => throw new NotImplementedException(),
-            Code.CapsLock => throw new NotImplementedException(),
-            Code.ScrollLock => throw new NotImplementedException(),
-            Code.NumLock => throw new NotImplementedException(),
-            Code.PrintScreen => throw new NotImplementedException(),
-            Code.Pause => throw new NotImplementedException(),
-            Code.Menu => throw new NotImplementedException(),
-            _ => false,
-        };
+        var code = eventArgs.Stroke.Code;
 
-        if (handled || eventArgs.Stroke.Code is Code.Left or Code.Right or Code.Up or Code.Down or
-            Code.PageUp or Code.PageDown or Code.Home or Code.End)
+        if (code == Code.Left)
         {
-            eventArgs.Handled = true;
+            _ = ScrollBy(-LineSize, 0, Cause.Keyboard);
         }
+        else if (code == Code.Right)
+        {
+            _ = ScrollBy(LineSize, 0, Cause.Keyboard);
+        }
+        else if (code == Code.Up)
+        {
+            _ = ScrollBy(0, -LineSize, Cause.Keyboard);
+        }
+        else if (code == Code.Down)
+        {
+            _ = ScrollBy(0, LineSize, Cause.Keyboard);
+        }
+        else if (code == Code.PageUp)
+        {
+            _ = ScrollBy(0, -page, Cause.Keyboard);
+        }
+        else if (code == Code.PageDown)
+        {
+            _ = ScrollBy(0, page, Cause.Keyboard);
+        }
+        else if (code == Code.Home)
+        {
+            _ = Apply(HorizontalOffset, 0, Cause.Keyboard);
+        }
+        else if (code == Code.End)
+        {
+            _ = Apply(HorizontalOffset, MaximumY(), Cause.Keyboard);
+        }
+        else
+        {
+            return;
+        }
+
+        eventArgs.Handled = true;
     }
 
     private void Handle(PointerEventArgs eventArgs)

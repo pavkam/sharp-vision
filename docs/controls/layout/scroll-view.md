@@ -56,6 +56,8 @@ range; Left/Right address horizontal movement.
 enabled. `Auto` uses strict `extent > viewport`; `Always` reserves one cell even
 for a stationary range. Wide graphemes crossing a horizontal clip edge are
 removed as complete semantic cell owners—never split into orphan continuations.
+Every defined non-scroll key remains unhandled so focused descendants and
+ancestor controls can apply their own behavior without a viewport exception.
 
 ## Example
 

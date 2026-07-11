@@ -1,3 +1,5 @@
+using System.Text;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -193,6 +195,41 @@ public sealed class ScrollViewTests
         view.VerticalOffset.ShouldBe(16);
         Key(view, Code.Home);
         view.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies every defined non-scroll key remains available to other controls.</summary>
+    [Fact]
+    public void Dispatch_WhenNonScrollKeyArrives_LeavesEventUnhandledWithoutThrowing()
+    {
+        var scrollCodes = new HashSet<Code>
+        {
+            Code.Left,
+            Code.Right,
+            Code.Up,
+            Code.Down,
+            Code.PageUp,
+            Code.PageDown,
+            Code.Home,
+            Code.End,
+        };
+        var view = Hidden(new ProbeControl(new Size(20, 20)));
+        new Engine().Layout(view, new Size(5, 4));
+
+        foreach (var code in Enum.GetValues<Code>().Where(code => !scrollCodes.Contains(code)))
+        {
+            var eventArgs = new KeyEventArgs(new Stroke(
+                code,
+                code == Code.Character ? new Rune('x') : null,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press));
+
+            Router.Route(view, Events.Key, eventArgs);
+
+            eventArgs.Handled.ShouldBeFalse($"{code} is not a scroll command");
+        }
+
+        new Point(view.HorizontalOffset, view.VerticalOffset).ShouldBe(default);
     }
 
     /// <summary>Verifies composed scrollbar changes synchronize back to viewport offsets.</summary>

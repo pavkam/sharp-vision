@@ -394,15 +394,4 @@ public sealed class RoutingTests
         Modifiers.None,
         KeyAction.Press);
 
-    private sealed class Listener
-    {
-        /// <summary>Consumes one key event to create a real delegate target.</summary>
-        /// <param name="sender">The current route control.</param>
-        /// <param name="eventArgs">The key payload.</param>
-        internal void Handle(object? sender, KeyEventArgs eventArgs)
-        {
-            ArgumentNullException.ThrowIfNull(sender);
-            ArgumentNullException.ThrowIfNull(eventArgs);
-        }
-    }
 }

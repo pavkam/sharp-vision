@@ -591,14 +591,14 @@ must not add partial placeholder versions of later controls.
 - Modify: `docs/controls/index.md`
 - Modify: `docs/superpowers/plans/2026-07-11-phase-5b-interactive-scrolling.md`
 
-- [ ] **Step 1: Audit public API and one-type-per-file compliance**
+- [x] **Step 1: Audit public API and one-type-per-file compliance**
 
   Compare every documented default, exception, invalidation, event order,
   ownership rule, keyboard/pointer/focus behavior, visual state, Unicode rule,
   and example against source and tests. Every added or touched named type must
   be alone in its exactly named non-generated file.
 
-- [ ] **Step 2: Run all quality gates**
+- [x] **Step 2: Run all quality gates**
 
   ```bash
   make format
@@ -615,7 +615,7 @@ must not add partial placeholder versions of later controls.
   Markdown links, randomized corpora, allocation gates, and placeholder scan are
   clean.
 
-- [ ] **Step 3: Commit the verified slice**
+- [x] **Step 3: Commit the verified slice**
 
   Commit documentation as `chore: complete interactive controls and scrolling`.
 
