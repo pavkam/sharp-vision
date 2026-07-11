@@ -237,7 +237,7 @@ events only after their documented commit points.
 - Create: `tests/SharpVision.Tests/Support/ProbeControl.cs`
 - Modify: `docs/controls/control.md`
 
-- [ ] **Step 1: Write failing tree and mutation tests**
+- [x] **Step 1: Write failing tree and mutation tests**
 
   Cover attachment to one dispatcher, detached construction/mutation, attached
   cross-thread rejection before mutation, null/duplicate/cycle/cross-parent
@@ -254,7 +254,7 @@ events only after their documented commit points.
   Should.Throw<ArgumentException>(() => parent.Children.Add(child));
   ```
 
-- [ ] **Step 2: Run focused control tests and verify RED**
+- [x] **Step 2: Run focused control tests and verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --filter-class "*TreeTests" "*PropertyTests" --minimum-expected-tests 1 --timeout 60s
@@ -262,7 +262,7 @@ events only after their documented commit points.
 
   Expected: compile failure because the control types are absent.
 
-- [ ] **Step 3: Implement ownership, state, and phase invalidation**
+- [x] **Step 3: Implement ownership, state, and phase invalidation**
 
   `Control` exposes validated width/height/min/max/margin/padding/alignment,
   visibility, enabled, focusability, tab index, parent, dispatcher, desired
@@ -277,12 +277,12 @@ events only after their documented commit points.
   flags enum ordered Measure => Arrange => Render; promotion bubbles once toward
   the root and is coalesced by the host callback.
 
-- [ ] **Step 4: Verify tree behavior and allocation ownership**
+- [x] **Step 4: Verify tree behavior and allocation ownership**
 
   Run Step 2 and the public XML-doc build. Expected: all tests pass; no child or
   dispatcher reference remains after detach/dispose.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Controls tests/SharpVision.Tests/Controls tests/SharpVision.Tests/Support/ProbeControl.cs docs/controls/control.md
