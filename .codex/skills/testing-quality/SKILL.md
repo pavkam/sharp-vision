@@ -49,6 +49,8 @@ cross-layer paths. A mock-heavy green suite is not evidence of correctness.
   resize, disabled state, and cleanup.
 - Test discovery is part of the gate; use `--minimum-expected-tests` so zero
   discovered tests cannot pass.
+- Keep one named type per non-generated file, including tests and test helpers;
+  name the file exactly after the type and split touched legacy violations.
 
 ## Example review
 

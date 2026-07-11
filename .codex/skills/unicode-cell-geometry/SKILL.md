@@ -42,6 +42,8 @@ of Rune widths. Keep every consumer on one versioned geometry implementation.
 - Canonically equivalent precomposed and decomposed text has equal cell width
   without allocating normalized strings.
 - Hot measurement and cell operations allocate no object per Rune or cell.
+- Keep one named type per non-generated file, name the file exactly after the
+  type, and split any existing multi-type or nested-type file when touching it.
 
 ## Example review
 
