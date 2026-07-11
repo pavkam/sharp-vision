@@ -23,6 +23,19 @@ Cell equality includes grapheme identity, width/continuation ownership, colors,
 attributes, hyperlinks, and renderer-visible metadata. Damage expands to every
 cell owned by an affected grapheme, then merges adjacent ranges.
 
+`Frame` owns a pooled row-major cell array and a finite pooled UTF-8 grapheme
+arena. Public callers observe only `CellInfo` and copy a complete grapheme into
+their own span; pooled memory never escapes. `Canvas.Draw` segments and measures
+with the frame's explicit ambiguous-width policy, preflights the complete arena
+cost, then mutates in a second pass. A failed capacity check therefore leaves
+the frame unchanged.
+
+Wide leads own exactly one continuation in the current implementation.
+Overwriting or clearing either cell first repairs the complete previous owner.
+`Edge.Clip`, `Edge.Wrap`, and `Edge.Replace` skip, move, or replace the whole
+cluster at the right edge; none emits or stores half a glyph. Child canvases use
+the geometric intersection of their requested clip, parent clip, and frame.
+
 The encoder minimizes cursor moves and style transitions only after correctness
 is known. When synchronized output is available, one complete frame is wrapped
 according to the

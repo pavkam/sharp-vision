@@ -36,6 +36,13 @@ Targeted transitions include no-op, sparse/dense/style-only damage, deletion,
 narrow↔wide, combining changes, edge clipping/wrapping, bottom-right behavior,
 resize, failed/partial writes, and full invalidation.
 
+Before diff encoding exists, frame/canvas tests prove lead/continuation
+metadata, complete UTF-8 copying, two-pass arena-limit validation, clip
+intersection, right-edge policy, overwrite and clear repair from either occupied
+cell, and idempotent disposal. A fixed-seed mutation suite checks every cell
+after each random draw/clear operation and prints the seed plus operation on
+failure.
+
 ## Allocation
 
 Hot measurement, canvas, damage, and encoding cases assert no object per

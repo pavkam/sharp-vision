@@ -26,6 +26,12 @@ owned arrays. A completed `KittyTransaction` transfers its accumulated MIME
 buffers into `KittyResult`; the result owner must dispose it, which clears every
 buffer. Temporary Base64 and transaction buffers are returned with clearing.
 
+A rendering `Frame` owns its pooled cells and UTF-8 arena until disposal.
+`CellInfo` contains metadata only; `CopyGrapheme` is the caller-owned byte
+boundary. `Canvas` borrows its frame and becomes unusable when that frame is
+disposed. `Frame.Clear` clears active text bytes for reuse, while disposal
+clears the full rented arrays—including hyperlink references—before pool return.
+
 ## Span and asynchronous boundaries
 
 Protocol encoders write synchronously to caller spans or `IBufferWriter<byte>`.

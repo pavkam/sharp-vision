@@ -328,7 +328,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/architecture/memory-ownership.md`
 - Modify: `docs/architecture/rendering-pipeline.md`
 
-- [ ] **Step 1: Write geometry, ownership, and repair tests**
+- [x] **Step 1: Write geometry, ownership, and repair tests**
 
   Cover negative validation, zero-sized frames, bounds, clipping rectangles,
   style equality, UTF-8 copy sizing, narrow/wide drawing, combining and ZWJ
@@ -343,12 +343,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeFalse();
   ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
   Run with `--filter-class "*FrameTests" "*CanvasTests"`. Expected: compile
   failure because geometry, `Frame`, and `Canvas` are absent.
 
-- [ ] **Step 3: Implement frame and canvas ownership**
+- [x] **Step 3: Implement frame and canvas ownership**
 
   `Frame` rents a cleared cell array and a bounded growable UTF-8 arena. Lead
   cells store arena offset/length/hash, width, and `Style`; continuation cells
@@ -374,13 +374,13 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   `Replace` are explicit; no path writes half a cluster. Row hashes are dirtied
   by every semantic mutation and sealed lazily.
 
-- [ ] **Step 4: Run focused and randomized ownership tests**
+- [x] **Step 4: Run focused and randomized ownership tests**
 
   Seed random narrow/wide writes and clears, then assert every continuation
   points to a valid lead whose width covers it. Run focused tests; expected: all
   pass with the seed printed on failure.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Commit message: `feat: add grapheme-safe cell frames`
 
