@@ -1,5 +1,7 @@
 using System.Collections;
 
+using SharpVision.Input;
+
 namespace SharpVision.Controls;
 
 /// <summary>Owns one container's validated ordered child controls.</summary>
@@ -154,6 +156,8 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
     private void Attach(Control item)
     {
         item.SetParent(_owner);
+        item.SetFocusOwner(_owner.FocusOwner);
+        item.SetCaptureOwner(_owner.CaptureOwner);
 
         if (_owner.Dispatcher is { } dispatcher)
         {
@@ -163,6 +167,10 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 
     private static void Detach(Control item)
     {
+        item.FocusOwner?.Unavailable(item);
+        item.CaptureOwner?.Unavailable(item, ReleaseReason.Detached);
+        item.SetFocusOwner(null);
+        item.SetCaptureOwner(null);
         item.Detach();
         item.SetParent(null);
     }

@@ -89,6 +89,18 @@ Pointer events preserve screen cells, optional pixels, inferred cell position,
 buttons, wheel delta, modifiers, action, and timestamp. Local coordinates are
 derived from committed transforms at each route element.
 
+`Control.HitTest(Point)` requires effective visibility and enabled state, clips
+at each parent, and searches `Container.Children` from last to first so the
+highest z-order wins. A pointer handler receives `LocalCells` relative to its
+current sender's committed bounds.
+
+`CaptureManager.Dispatch` targets exclusive capture when present and otherwise
+uses root hit testing. It updates `IsHovered` and `IsPressed` before routing so
+handlers observe committed visual state. Release clears press after routing.
+Explicit `Release` is quiet; detach, disable, hide, disposal, and terminal-focus
+loss emit one `Cancelled` callback with a precise `ReleaseReason`, then clear
+capture, hover, and press references synchronously.
+
 ## Tests
 
 Use recording controls to assert route order, handled semantics, default action,

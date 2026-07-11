@@ -485,7 +485,7 @@ events only after their documented commit points.
 - Modify: `docs/concepts/focus.md`
 - Modify: `docs/concepts/input-routing.md`
 
-- [ ] **Step 1: Write failing focus and pointer tests**
+- [x] **Step 1: Write failing focus and pointer tests**
 
   Focus tests cover eligibility, explicit focus, cancellable preview, manager
   update before lost/gained callbacks, tab/shift-tab order by tab index then
@@ -494,12 +494,12 @@ events only after their documented commit points.
   coordinates, disabled exclusion, capture precedence, explicit release, detach
   release, terminal-focus loss, hover transitions, and pressed cancellation.
 
-- [ ] **Step 2: Run focused input tests and verify RED**
+- [x] **Step 2: Run focused input tests and verify RED**
 
   Run the `*FocusTests` and `*PointerTests` classes. Expected: compile failure
   for both managers.
 
-- [ ] **Step 3: Implement transactional managers**
+- [x] **Step 3: Implement transactional managers**
 
   `FocusManager.Focus(Control?)` verifies dispatcher access and membership,
   snapshots old/new routes, raises cancellable preview, commits `Focused` before
@@ -513,12 +513,12 @@ events only after their documented commit points.
   terminal focus loss, or disposal releases capture, clears hover/pressed state,
   and emits one cancellation event where required.
 
-- [ ] **Step 4: Verify manager cleanup**
+- [x] **Step 4: Verify manager cleanup**
 
   Run both suites plus tree tests. Expected: no manager references detached
   controls and every state invalidation occurs on the dispatcher.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Input src/SharpVision/Controls tests/SharpVision.Tests/Input docs/concepts/focus.md docs/concepts/input-routing.md

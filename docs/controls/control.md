@@ -21,6 +21,7 @@ dispatcher.
 | `Visibility`                               | Visible, hidden, or collapsed.                          |
 | `IsEnabled`                                | Inherited effective input state.                        |
 | `CanFocus`, `TabIndex`                     | Focus participation and deterministic order.            |
+| `IsFocused`, `IsHovered`, `IsPressed`      | Read-only committed interaction state.                  |
 | `DesiredSize`                              | Read-only result of the last successful measure.        |
 | `Bounds`                                   | Read-only committed arranged rectangle.                 |
 
@@ -42,6 +43,10 @@ two parents, appear twice, or be inserted beneath one of its own descendants.
 Adding below an attached container recursively attaches the subtree. Removing
 recursively detaches it and clears its parent. Disposing a container disposes
 all owned descendants; repeated disposal is safe.
+
+When a root owns focus or capture managers, that ownership propagates with the
+tree. Removal, inherited disable/hide, and disposal synchronously release
+manager state before clearing parent or dispatcher references.
 
 ```csharp
 var panel = new StackPanel();

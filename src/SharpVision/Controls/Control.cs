@@ -192,6 +192,11 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             if (Set(ref field, value, invalidation))
             {
                 InvalidateDescendants(invalidation);
+
+                if (value != Visibility.Visible)
+                {
+                    NotifyUnavailable(ReleaseReason.Hidden);
+                }
             }
         }
     } = Visibility.Visible;
@@ -207,6 +212,11 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             if (Set(ref field, value, Invalidation.Render))
             {
                 InvalidateDescendants(Invalidation.Render);
+
+                if (!value)
+                {
+                    NotifyUnavailable(ReleaseReason.Disabled);
+                }
             }
         }
     } = true;
@@ -236,6 +246,15 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         set => _ = Set(ref field, value, Invalidation.None);
     }
 
+    /// <summary>Gets whether this control currently owns keyboard focus.</summary>
+    public bool IsFocused { get; private set; }
+
+    /// <summary>Gets whether pointer targeting currently hovers this control.</summary>
+    public bool IsHovered { get; private set; }
+
+    /// <summary>Gets whether an active pointer press began on this control.</summary>
+    public bool IsPressed { get; private set; }
+
     /// <summary>Gets the desired border-box size from the last successful measure.</summary>
     public Size DesiredSize { get; internal set; }
 
@@ -257,6 +276,12 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     private bool IsArranging { get; set; }
 
     private List<IHandler>? Handlers { get; set; }
+
+    /// <summary>Gets the inherited focus manager while one owns this subtree.</summary>
+    internal FocusManager? FocusOwner { get; private set; }
+
+    /// <summary>Gets the inherited capture manager while one owns this subtree.</summary>
+    internal CaptureManager? CaptureOwner { get; private set; }
 
     /// <summary>Adds one typed routed-event handler to this control.</summary>
     /// <typeparam name="TArgs">The exact event-argument type.</typeparam>
@@ -293,6 +318,14 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         (Handlers ??= []).Add(registration);
         return registration;
     }
+
+    /// <summary>Returns the highest eligible control containing a screen-cell point.</summary>
+    /// <param name="point">The screen-cell point.</param>
+    /// <returns>This control when eligible and contained; otherwise null.</returns>
+    public virtual Control? HitTest(Point point) =>
+        !IsDisposed && EffectiveIsVisible && EffectiveIsEnabled && Bounds.Contains(point)
+            ? this
+            : null;
 
     /// <summary>Attaches a root and its descendants to one dispatcher atomically.</summary>
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
@@ -472,6 +505,7 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         }
 
         VerifyAccess();
+        NotifyUnavailable(ReleaseReason.Disposed);
         if (Parent is { } parent)
         {
             _ = parent.Children.Remove(this);
@@ -518,6 +552,11 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             return;
         }
 
+        if (eventArgs is PointerEventArgs pointer)
+        {
+            pointer.SetLocal(this);
+        }
+
         var snapshot = System.Buffers.ArrayPool<IHandler>.Shared.Rent(handlers.Count);
         handlers.CopyTo(snapshot);
         var count = handlers.Count;
@@ -553,6 +592,65 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         {
             handler.Detach();
         }
+    }
+
+    /// <summary>Assigns inherited focus-manager ownership recursively.</summary>
+    internal void SetFocusOwner(FocusManager? value)
+    {
+        FocusOwner = value;
+        VisitChildren(child => child.SetFocusOwner(value));
+    }
+
+    /// <summary>Assigns inherited capture-manager ownership recursively.</summary>
+    internal void SetCaptureOwner(CaptureManager? value)
+    {
+        CaptureOwner = value;
+        VisitChildren(child => child.SetCaptureOwner(value));
+    }
+
+    /// <summary>Updates focus visual state on the owning dispatcher.</summary>
+    internal void SetFocused(bool value)
+    {
+        VerifyMutable();
+
+        if (IsFocused == value)
+        {
+            return;
+        }
+
+        IsFocused = value;
+        Invalidate(Invalidation.Render);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused)));
+    }
+
+    /// <summary>Updates hover visual state on the owning dispatcher.</summary>
+    internal void SetHovered(bool value)
+    {
+        VerifyMutable();
+
+        if (IsHovered == value)
+        {
+            return;
+        }
+
+        IsHovered = value;
+        Invalidate(Invalidation.Render);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsHovered)));
+    }
+
+    /// <summary>Updates pressed visual state on the owning dispatcher.</summary>
+    internal void SetPressed(bool value)
+    {
+        VerifyMutable();
+
+        if (IsPressed == value)
+        {
+            return;
+        }
+
+        IsPressed = value;
+        Invalidate(Invalidation.Render);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed)));
     }
 
     /// <summary>Validates that the complete subtree may receive a dispatcher.</summary>
@@ -756,6 +854,27 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
         handlers.Clear();
         Handlers = null;
+    }
+
+    private void NotifyUnavailable(ReleaseReason reason)
+    {
+        var focus = FocusOwner;
+        var capture = CaptureOwner;
+        focus?.Unavailable(this);
+        capture?.Unavailable(this, reason);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            if (focus is not null && ReferenceEquals(focus.Root, this))
+            {
+                focus.RootDisposed();
+            }
+
+            if (capture is not null && ReferenceEquals(capture.Root, this))
+            {
+                capture.RootDisposed();
+            }
+        }
     }
 
     private Constraint CreateContentConstraint(Constraint constraint) => new(

@@ -1,3 +1,5 @@
+using SharpVision.Terminal.Geometry;
+
 namespace SharpVision.Controls;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
@@ -8,6 +10,27 @@ public abstract class Container: Control
 
     /// <summary>Gets the owned ordered children.</summary>
     public Children Children { get; }
+
+    /// <inheritdoc/>
+    public override Control? HitTest(Point point)
+    {
+        var hit = base.HitTest(point);
+
+        if (hit is null)
+        {
+            return null;
+        }
+
+        for (var index = Children.Count - 1; index >= 0; index--)
+        {
+            if (Children[index].HitTest(point) is { } child)
+            {
+                return child;
+            }
+        }
+
+        return this;
+    }
 
     /// <inheritdoc/>
     internal override void VisitChildren(Action<Control> visitor)
