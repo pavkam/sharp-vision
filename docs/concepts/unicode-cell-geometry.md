@@ -21,6 +21,14 @@ Width is assigned to the cluster, never calculated by summing scalar East Asian
 Width values. The default ambiguous-width policy is narrow; callers may choose
 wide explicitly through `Capabilities`.
 
+`Graphemes.Enumerate(ReadOnlySpan<char>)` returns an allocation-free
+`GraphemeEnumerable`. Each `Grapheme` is a borrowed `(Offset, Length)` into the
+original UTF-16 span and is invalid as soon as that source is no longer valid.
+`HasInvalidData` identifies a segment whose single ill-formed UTF-16 code unit
+is interpreted as U+FFFD. The enumerator applies UAX 29 GB3 through GB13 and
+GB999 directly, including regional-indicator parity, Indic conjunct state, and
+extended-pictographic ZWJ state; it does not allocate a normalized string.
+
 ## Width rules
 
 - Printable narrow clusters occupy one cell.

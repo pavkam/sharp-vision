@@ -6,6 +6,12 @@ Geometry fixtures pin Unicode 17 grapheme, East Asian Width, and emoji source
 versions. Generated tables have sorted/non-overlap and first/last boundary
 tests. Conformance failures print the exact code points and rule context.
 
+The checked-in Unicode 17 `GraphemeBreakTest.txt` is executed line by line.
+Expected boundaries are decoded independently from its division/multiplication
+markers and compared with `Graphemes.Enumerate`; curated cases separately name
+CR/LF, Hangul, Indic, flags, modifiers, keycaps, ZWJ families, and invalid
+UTF-16. A warmed mixed-text loop must allocate zero managed bytes.
+
 ## Curated cases
 
 Cover ASCII, CJK, supplementary ideographs, full/half/ambiguous widths under

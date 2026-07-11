@@ -206,7 +206,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/concepts/unicode-cell-geometry.md`
 - Modify: `docs/testing/unicode-rendering.md`
 
-- [ ] **Step 1: Write curated and full-conformance failing tests**
+- [x] **Step 1: Write curated and full-conformance failing tests**
 
   Curated cases cover CR/LF, controls, combining marks, Hangul, prepend and
   spacing marks, Indic conjuncts, regional-indicator parity, emoji modifiers,
@@ -227,12 +227,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   }
   ```
 
-- [ ] **Step 2: Run segmentation tests and verify RED**
+- [x] **Step 2: Run segmentation tests and verify RED**
 
   Run with `--filter-class "*GraphemeTests" "*ConformanceTests"`. Expected:
   compile failure because `Graphemes` and its enumerator do not exist.
 
-- [ ] **Step 3: Implement the allocation-free enumerator**
+- [x] **Step 3: Implement the allocation-free enumerator**
 
   Add a `ref struct GraphemeEnumerator` over `ReadOnlySpan<char>` and a readonly
   `Grapheme` containing `Offset`, `Length`, and `HasInvalidData`. `MoveNext`
@@ -249,13 +249,13 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   Debug assertions prove every returned segment is non-empty, ordered, and
   inside the original span.
 
-- [ ] **Step 4: Run curated, conformance, and allocation tests**
+- [x] **Step 4: Run curated, conformance, and allocation tests**
 
   Add a warmed 10,000-iteration enumeration test requiring zero managed bytes.
   Run the focused tests; expected: all Unicode 17 boundary lines and curated
   cases pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Commit message: `feat: segment Unicode grapheme clusters`
 
