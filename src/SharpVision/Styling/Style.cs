@@ -1,25 +1,5 @@
 namespace SharpVision.Styling;
 
-/// <summary>Identifies whether one resource change affects render or measurement.</summary>
-public enum Impact
-{
-    /// <summary>Only semantic cell appearance changed.</summary>
-    Render,
-
-    /// <summary>Content or box geometry may have changed.</summary>
-    Measure,
-}
-
-/// <summary>Describes one committed state appearance change.</summary>
-public sealed class ChangedEventArgs(State state, Impact impact): EventArgs
-{
-    /// <summary>Gets the single state definition that changed.</summary>
-    public State State { get; } = state;
-
-    /// <summary>Gets the earliest affected control phase.</summary>
-    public Impact Impact { get; } = impact;
-}
-
 /// <summary>Stores mutable appearance overlays for individual visual states.</summary>
 public sealed class Style
 {

@@ -1,0 +1,100 @@
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+
+import { validateCSharpTypes } from "./validate-csharp-types.mjs";
+
+test("validateCSharpTypes_WhenFilesMatchTypes_ReturnsNoErrors", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(join(root, "Widget.cs"), "public sealed class Widget<T> {}\n");
+    await writeFile(join(root, "Factory.cs"), "public delegate object Factory(int value);\n");
+    await writeFile(join(root, "Data.g.cs"), "class First {} class Second {}\n");
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateCSharpTypes_WhenFileContainsTwoTypes_ReportsBoth", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(
+      join(root, "Outer.cs"),
+      "public sealed class Outer { private sealed class Inner {} }\n",
+    );
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /Outer\.cs.*Outer, Inner.*exactly one named type/iu);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateCSharpTypes_WhenFileNameDiffers_ReportsExpectedName", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(join(root, "Widget.Part.cs"), "public partial class Widget {}\n");
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /Widget\.Part\.cs.*Widget\.cs/iu);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateCSharpTypes_WhenCommentsAndStringsNameTypes_IgnoresThem", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(
+      join(root, "Real.cs"),
+      [
+        "// class Commented {}",
+        "public sealed class Real",
+        "{",
+        "    private const string Example = \"record Fake;\";",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateCSharpTypes_WhenIgnoredDirectoryContainsViolations_SkipsIt", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(join(root, "Real.cs"), "public sealed class Real {}\n");
+    await mkdir(join(root, "obj"));
+    await writeFile(join(root, "obj", "Bad.cs"), "class One {} class Two {}\n");
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+async function createRoot() {
+  return await mkdtemp(join(tmpdir(), "sharpvision-csharp-types-"));
+}
