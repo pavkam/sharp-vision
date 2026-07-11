@@ -402,7 +402,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Text/RandomizedEditTests.cs`
 - Modify: `docs/controls/input/text-input.md`
 
-- [ ] **Step 1: Write failing edit-model tests**
+- [x] **Step 1: Write failing edit-model tests**
 
   Cover valid/invalid UTF-16, caret and selection boundary validation, movement,
   extend selection, Backspace/Delete, Home/End, word movement, replacement,
@@ -411,14 +411,14 @@ must not add partial placeholder versions of later controls.
   edit sequences and assert every committed index is a grapheme boundary,
   deterministic replay, no split surrogate/cluster, and max-length compliance.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run edit tests; expect missing model types.
 
-- [ ] **Step 3: Implement immutable edit transactions**
+- [x] **Step 3: Implement immutable edit transactions**
 
   ```csharp
-  public readonly record struct Selection(int Start, int Length);
+  public readonly record struct Selection(int Anchor, int Caret);
   public readonly record struct EditResult(string Text, Selection Selection, bool Changed);
   public static class Edit { /* validated boundary operations */ }
   ```
@@ -429,7 +429,7 @@ must not add partial placeholder versions of later controls.
   UTF-16 is retained as replacement-width source units without creating invalid
   indices. Caller-owned history remains outside the pure functions.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run deterministic/random edit tests; commit as
   `feat: add grapheme edit model`.
