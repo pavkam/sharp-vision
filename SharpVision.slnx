@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SharpVision.Showcase/SharpVision.Showcase.csproj" />
+    <Project Path="src/SharpVision.Terminal/SharpVision.Terminal.csproj" />
+    <Project Path="src/SharpVision/SharpVision.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj" />
+    <Project Path="tests/SharpVision.Terminal.Tests/SharpVision.Terminal.Tests.csproj" />
+    <Project Path="tests/SharpVision.Tests/SharpVision.Tests.csproj" />
+  </Folder>
+</Solution>

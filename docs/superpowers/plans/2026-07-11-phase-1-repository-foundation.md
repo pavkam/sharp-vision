@@ -108,7 +108,7 @@ expected name in the other two tests.
 
 ```bash
 dotnet restore SharpVision.slnx
-dotnet test SharpVision.slnx --no-restore --verbosity minimal
+dotnet test --solution SharpVision.slnx --no-restore --verbosity minimal
 ```
 
 Expected: three tests pass without xUnit assembly collisions.
