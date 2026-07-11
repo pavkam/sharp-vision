@@ -567,7 +567,7 @@ must not add partial placeholder versions of later controls.
   automatic bars inducing each other, focus bring-into-view, pixel accumulation,
   resizing, and exact final offsets/thumb cells.
 
-- [ ] **Step 3: Add allocation and retained-memory gates**
+- [x] **Step 3: Add allocation and retained-memory gates**
 
   Warm unchanged 80×24 and 200×60 interactive trees, repeated TextInput edits,
   ScrollBar drags, 1,000 list items, and nested scroll commands. Require

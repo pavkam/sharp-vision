@@ -62,3 +62,19 @@ the bounded work object and records completion throughput.
 Reports include .NET runtime, OS, process architecture, elapsed time, and
 iteration count. Only deterministic allocation budgets gate local/ordinary CI;
 wall-clock values remain informational.
+
+## Current Phase 5B gates
+
+`InteractivePerformanceTests` renders a representative List, TextInput,
+ScrollBar, and ScrollView tree at 80×24 and 200×60. Five measured 200-frame
+windows must include a zero-allocation window after warm-up. The test process
+disables tiered compilation so the gate consistently measures fully optimized
+steady-state code instead of background JIT promotion timing.
+
+TextInput replacement and captured ScrollBar dragging each run 1,000 public
+operations under finite per-operation allocation budgets, and 1,000 nested wheel
+commands repeatedly consume deltas through both scrollable ancestors under a
+finite routed-command budget. Replacing 1,000 List items must release every
+detached generated control, and 1,000 unchanged layout passes must allocate
+exactly zero managed bytes. Timings remain diagnostic; allocation and
+retained-memory assertions are mandatory.
