@@ -291,7 +291,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Controls/ScrollBarTests.cs`
 - Modify: `docs/controls/layout/scroll-bar.md`
 
-- [ ] **Step 1: Write failing ScrollBar tests**
+- [x] **Step 1: Write failing ScrollBar tests**
 
   Cover every range property and pre-mutation failure, programmatic throw versus
   command clamp, event old/new/cause order, both orientations, arrows,
@@ -300,11 +300,11 @@ must not add partial placeholder versions of later controls.
   states, custom narrow glyph validation, huge ranges, exact thumb cells, and
   resize rounding.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*ScrollBarTests`; expect missing ScrollBar API.
 
-- [ ] **Step 3: Implement ScrollBar**
+- [x] **Step 3: Implement ScrollBar**
 
   ```csharp
   public sealed class ScrollBar : Control
@@ -326,7 +326,7 @@ must not add partial placeholder versions of later controls.
   from mutated intermediate values. Render only semantic button, track, and
   thumb cells with resolved normal/hovered/pressed/focused/disabled styles.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run ScrollBar, pointer, capture, and rendering tests; commit as
   `feat: add scroll bar control`.

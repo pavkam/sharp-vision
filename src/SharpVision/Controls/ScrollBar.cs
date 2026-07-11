@@ -1,0 +1,586 @@
+using System.Diagnostics;
+using System.Text;
+
+using SharpVision.Input;
+using SharpVision.Layout;
+using SharpVision.Scrolling;
+using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Input;
+
+using KeyAction = SharpVision.Terminal.Input.Action;
+using ScrollRange = SharpVision.Scrolling.Range;
+using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
+using UnicodeWidth = SharpVision.Terminal.Unicode.Width;
+
+namespace SharpVision.Controls;
+
+/// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
+public sealed class ScrollBar: Control
+{
+    private int _value;
+    private bool _dragging;
+    private int _dragPointerStart;
+    private int? _dragPixelStart;
+    private int _dragThumbStart;
+    private int _dragTrackLength;
+    private ScrollRange _dragRange;
+    private CaptureManager? _subscribedCapture;
+
+    /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
+    public ScrollBar() => CanFocus = true;
+
+    /// <summary>Raised after a changed value commits.</summary>
+    public event EventHandler<ScrollEventArgs>? ValueChanged;
+
+    /// <summary>Gets or sets the non-negative inclusive lower endpoint.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="ArgumentException">The value exceeds Maximum or the current Value.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int Minimum
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+
+            if (value > Maximum || value > Value)
+            {
+                throw new ArgumentException(
+                    "Minimum cannot exceed Maximum or the current Value.",
+                    nameof(value));
+            }
+
+            _ = Set(ref field, value, Invalidation.Render);
+        }
+    }
+
+    /// <summary>Gets or sets the inclusive upper endpoint.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="ArgumentException">The value is below Minimum or the current Value.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int Maximum
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+
+            if (value < Minimum || value < Value)
+            {
+                throw new ArgumentException(
+                    "Maximum cannot be below Minimum or the current Value.",
+                    nameof(value));
+            }
+
+            _ = Set(ref field, value, Invalidation.Render);
+        }
+    } = 100;
+
+    /// <summary>Gets or sets the non-negative visible extent represented by the thumb.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int ViewportSize
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _ = Set(ref field, value, Invalidation.Render);
+        }
+    }
+
+    /// <summary>Gets or sets the current value inside the inclusive endpoints.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the range.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int Value
+    {
+        get => _value;
+        set
+        {
+            if (value < Minimum || value > Maximum)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "Value must be inside the inclusive range.");
+            }
+
+            _ = Commit(value, Cause.Programmatic);
+        }
+    }
+
+    /// <summary>Gets or sets the non-negative line/button change.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int SmallChange
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _ = Set(ref field, value, Invalidation.None);
+        }
+    } = 1;
+
+    /// <summary>Gets or sets the non-negative page/track change.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int LargeChange
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _ = Set(ref field, value, Invalidation.None);
+        }
+    } = 10;
+
+    /// <summary>Gets or sets whether the range runs top-to-bottom or left-to-right.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Orientation Orientation
+    {
+        get;
+        set
+        {
+            Validate(value);
+            _ = Set(ref field, value, Invalidation.Measure);
+        }
+    }
+
+    /// <summary>Gets or sets the printable narrow decrement-button glyph.</summary>
+    /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Rune DecrementGlyph
+    {
+        get;
+        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
+    } = new('-');
+
+    /// <summary>Gets or sets the printable narrow increment-button glyph.</summary>
+    /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Rune IncrementGlyph
+    {
+        get;
+        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
+    } = new('+');
+
+    /// <summary>Gets or sets the printable narrow unoccupied-track glyph.</summary>
+    /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Rune TrackGlyph
+    {
+        get;
+        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
+    } = new('.');
+
+    /// <summary>Gets or sets the printable narrow thumb glyph.</summary>
+    /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Rune ThumbGlyph
+    {
+        get;
+        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
+    } = new('#');
+
+    /// <summary>Adds a signed command delta with saturation and endpoint clamping.</summary>
+    /// <param name="delta">The signed requested change.</param>
+    /// <param name="cause">The defined input path.</param>
+    /// <returns>True when a changed value committed; otherwise false.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool ScrollBy(int delta, Cause cause = Cause.Programmatic)
+    {
+        Validate(cause);
+        VerifyMutable();
+        var range = CurrentRange();
+        return Commit(range.Move(delta), cause);
+    }
+
+    /// <inheritdoc/>
+    protected override Size MeasureCore(Constraint constraint)
+    {
+        _ = constraint.Width;
+        Debug.Assert(Enum.IsDefined(Orientation), "Orientation is validated before assignment.");
+        return Orientation == Orientation.Vertical ? new Size(1, 3) : new Size(3, 1);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (!EffectiveIsEnabled || !EffectiveIsVisible)
+        {
+            return;
+        }
+
+        if (eventArgs is KeyEventArgs key)
+        {
+            Handle(key);
+        }
+        else if (eventArgs is PointerEventArgs pointer)
+        {
+            Handle(pointer);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (!focused)
+        {
+            CancelDrag(releaseCapture: true);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+        CancelDrag(releaseCapture: false);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            ValueChanged = null;
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void RenderCore(TerminalCanvas canvas)
+    {
+        var bounds = ContentBounds;
+        var length = AxisLength(bounds);
+
+        if (length == 0)
+        {
+            return;
+        }
+
+        var buttons = length >= 2 ? 1 : 0;
+        var trackLength = Math.Max(0, length - (buttons * 2));
+        var thumb = Thumb.Resolve(CurrentRange(), trackLength);
+
+        for (var position = 0; position < length; position++)
+        {
+            var glyph = ResolveGlyph(position, length, buttons, thumb);
+            Draw(canvas, PointAt(bounds, position), glyph);
+        }
+    }
+
+    private bool Commit(int value, Cause cause)
+    {
+        value = Math.Clamp(value, Minimum, Maximum);
+        var previous = _value;
+
+        if (!Set(ref _value, value, Invalidation.Render, nameof(Value)))
+        {
+            return false;
+        }
+
+        Debug.Assert(value >= Minimum && value <= Maximum, "Committed value remains in range.");
+        ValueChanged?.Invoke(this, new ScrollEventArgs(previous, value, cause));
+        return true;
+    }
+
+    private void Handle(KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        {
+            return;
+        }
+
+        var code = eventArgs.Stroke.Code;
+        var decrement = Orientation == Orientation.Vertical ? Code.Up : Code.Left;
+        var increment = Orientation == Orientation.Vertical ? Code.Down : Code.Right;
+
+        if (code == decrement)
+        {
+            _ = ScrollBy(Negate(SmallChange), Cause.Keyboard);
+        }
+        else if (code == increment)
+        {
+            _ = ScrollBy(SmallChange, Cause.Keyboard);
+        }
+        else if (code == Code.PageUp)
+        {
+            _ = ScrollBy(Negate(LargeChange), Cause.Keyboard);
+        }
+        else if (code == Code.PageDown)
+        {
+            _ = ScrollBy(LargeChange, Cause.Keyboard);
+        }
+        else if (code == Code.Home)
+        {
+            _ = Commit(Minimum, Cause.Keyboard);
+        }
+        else if (code == Code.End)
+        {
+            _ = Commit(Maximum, Cause.Keyboard);
+        }
+        else
+        {
+            return;
+        }
+
+        eventArgs.Handled = true;
+    }
+
+    private void Handle(PointerEventArgs eventArgs)
+    {
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action == PointerAction.Wheel)
+        {
+            HandleWheel(eventArgs);
+            return;
+        }
+
+        if (_dragging)
+        {
+            Drag(eventArgs);
+            return;
+        }
+
+        if (pointer.Action != PointerAction.Press ||
+            (pointer.Buttons & Buttons.Primary) == 0 ||
+            !Bounds.Contains(pointer.Cells))
+        {
+            return;
+        }
+
+        var bounds = ContentBounds;
+        var length = AxisLength(bounds);
+        var position = Axis(pointer.Cells) - AxisOrigin(bounds);
+
+        if (length == 0 || position < 0 || position >= length)
+        {
+            return;
+        }
+
+        _ = FocusOwner?.Focus(this);
+        eventArgs.Handled = true;
+
+        if (length >= 2 && position == 0)
+        {
+            _ = ScrollBy(Negate(SmallChange), Cause.Pointer);
+            return;
+        }
+
+        if (length >= 2 && position == length - 1)
+        {
+            _ = ScrollBy(SmallChange, Cause.Pointer);
+            return;
+        }
+
+        var buttons = length >= 2 ? 1 : 0;
+        var trackLength = Math.Max(0, length - (buttons * 2));
+        var trackPosition = position - buttons;
+        var range = CurrentRange();
+        var thumb = Thumb.Resolve(range, trackLength);
+
+        if (trackPosition < thumb.Start)
+        {
+            _ = ScrollBy(Negate(LargeChange), Cause.Pointer);
+        }
+        else if (trackPosition >= thumb.Start + thumb.Length)
+        {
+            _ = ScrollBy(LargeChange, Cause.Pointer);
+        }
+        else
+        {
+            BeginDrag(pointer, trackPosition, trackLength, thumb, range);
+        }
+    }
+
+    private void HandleWheel(PointerEventArgs eventArgs)
+    {
+        var wheel = Orientation == Orientation.Vertical
+            ? eventArgs.Pointer.WheelY
+            : eventArgs.Pointer.WheelX;
+
+        if (wheel == 0)
+        {
+            return;
+        }
+
+        var requested = -(long) wheel * SmallChange;
+        var delta = (int) Math.Clamp(requested, int.MinValue, int.MaxValue);
+        _ = ScrollBy(delta, Cause.Wheel);
+        eventArgs.Handled = true;
+    }
+
+    private void BeginDrag(
+        Pointer pointer,
+        int trackPosition,
+        int trackLength,
+        Thumb thumb,
+        ScrollRange range)
+    {
+        var capture = CaptureOwner;
+
+        if (capture is null || !capture.Capture(this))
+        {
+            return;
+        }
+
+        _dragging = true;
+        _dragPointerStart = trackPosition;
+        _dragPixelStart = pointer.Pixels is { } pixels ? Axis(pixels) : null;
+        _dragThumbStart = thumb.Start;
+        _dragTrackLength = trackLength;
+        _dragRange = range;
+        SubscribeCapture(capture);
+        SetPressed(true);
+    }
+
+    private void Drag(PointerEventArgs eventArgs)
+    {
+        var pointer = eventArgs.Pointer;
+        var bounds = ContentBounds;
+        var buttons = AxisLength(bounds) >= 2 ? 1 : 0;
+        var position = Axis(pointer.Cells) - AxisOrigin(bounds) - buttons;
+        var delta = Difference(position, _dragPointerStart);
+
+        if (_dragPixelStart.HasValue && pointer.Pixels is { } pixels)
+        {
+            var pixelDelta = Difference(Axis(pixels), _dragPixelStart.Value);
+            Debug.Assert(
+                delta == 0 || pixelDelta == 0 || Math.Sign(delta) == Math.Sign(pixelDelta),
+                "Inferred cell and pixel drag directions must agree.");
+        }
+
+        var start = SaturatingAdd(_dragThumbStart, delta);
+        var value = Thumb.ValueAt(_dragRange, _dragTrackLength, start);
+        _ = Commit(value, Cause.Pointer);
+        eventArgs.Handled = true;
+
+        if (pointer.Action is PointerAction.Release or PointerAction.Leave)
+        {
+            CancelDrag(releaseCapture: true);
+        }
+    }
+
+    private void OnCaptureCancelled(object? sender, CaptureCancelledEventArgs eventArgs)
+    {
+        if (ReferenceEquals(eventArgs.Control, this))
+        {
+            Debug.Assert(ReferenceEquals(sender, _subscribedCapture), "Cancellation owner is stable.");
+            CancelDrag(releaseCapture: false);
+        }
+    }
+
+    private void CancelDrag(bool releaseCapture)
+    {
+        _dragging = false;
+        _dragPixelStart = null;
+        UnsubscribeCapture();
+        SetPressed(false);
+
+        if (releaseCapture && CaptureOwner?.Captured is { } captured && ReferenceEquals(captured, this))
+        {
+            CaptureOwner.Release();
+        }
+    }
+
+    private void SubscribeCapture(CaptureManager value)
+    {
+        UnsubscribeCapture();
+        _subscribedCapture = value;
+        value.Cancelled += OnCaptureCancelled;
+    }
+
+    private void UnsubscribeCapture()
+    {
+        if (_subscribedCapture is { } capture)
+        {
+            capture.Cancelled -= OnCaptureCancelled;
+            _subscribedCapture = null;
+        }
+    }
+
+    private ScrollRange CurrentRange() => new(Minimum, Maximum, Value, ViewportSize);
+
+    private Rune ResolveGlyph(int position, int length, int buttons, Thumb thumb)
+    {
+        if (buttons == 0)
+        {
+            return ThumbGlyph;
+        }
+
+        if (position == 0)
+        {
+            return DecrementGlyph;
+        }
+
+        if (position == length - 1)
+        {
+            return IncrementGlyph;
+        }
+
+        var trackPosition = position - buttons;
+        return trackPosition >= thumb.Start && trackPosition < thumb.Start + thumb.Length
+            ? ThumbGlyph
+            : TrackGlyph;
+    }
+
+    private void Draw(TerminalCanvas canvas, Point point, Rune glyph)
+    {
+        Span<char> buffer = stackalloc char[2];
+        var length = glyph.EncodeToUtf16(buffer);
+        _ = canvas.Draw(buffer[..length], point, ResolvedStyle);
+    }
+
+    private int Axis(Point point) => Orientation == Orientation.Vertical ? point.Y : point.X;
+
+    private int AxisLength(Rect bounds) =>
+        Orientation == Orientation.Vertical ? bounds.Height : bounds.Width;
+
+    private int AxisOrigin(Rect bounds) => Orientation == Orientation.Vertical ? bounds.Y : bounds.X;
+
+    private Point PointAt(Rect bounds, int position) => Orientation == Orientation.Vertical
+        ? new Point(bounds.X, SaturatingAdd(bounds.Y, position))
+        : new Point(SaturatingAdd(bounds.X, position), bounds.Y);
+
+    private static int Difference(int left, int right) =>
+        (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
+
+    private static int SaturatingAdd(int left, int right) =>
+        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
+
+    private static int Negate(int value) => value == int.MinValue ? int.MaxValue : -value;
+
+    private static void Validate<T>(T value) where T : struct, Enum
+    {
+        if (!Enum.IsDefined(value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, "The enum value is unknown.");
+        }
+    }
+
+    private static Rune Validate(Rune value, string name)
+    {
+        Span<char> buffer = stackalloc char[2];
+        var length = value.EncodeToUtf16(buffer);
+        var measurement = UnicodeWidth.Measure(buffer[..length]);
+
+        return measurement.Cells == 1 && measurement.Controls == 0
+            ? value
+            : throw new ArgumentException("A scrollbar glyph must be printable and one cell wide.", name);
+    }
+}
