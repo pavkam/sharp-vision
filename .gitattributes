@@ -1,0 +1,15 @@
+* text=auto
+
+*.cs text eol=lf
+*.csproj text eol=lf
+*.md text eol=lf
+*.props text eol=lf
+*.slnx text eol=lf
+*.targets text eol=lf
+*.verified.txt text eol=lf working-tree-encoding=UTF-8
+*.verified.xml text eol=lf working-tree-encoding=UTF-8
+*.verified.json text eol=lf working-tree-encoding=UTF-8
+*.verified.bin binary
+*.bin binary
+
+**/Snapshots/** linguist-generated=true

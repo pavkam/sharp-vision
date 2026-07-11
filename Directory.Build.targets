@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <!-- Test names intentionally use MethodName_WhenThis_ThatIsExpected. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+</Project>

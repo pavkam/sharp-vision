@@ -4,4 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace SharpVision.Terminal;
 
+/// <summary>
+/// Identifies the terminal protocol assembly to its test suite.
+/// </summary>
 internal sealed class AssemblyMarker;
