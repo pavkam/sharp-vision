@@ -251,26 +251,26 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/OscTests.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/ModesTests.cs`
 
-- [ ] **Step 1: Write parameter grammar tests**
+- [x] **Step 1: Write parameter grammar tests**
 
   Prove empty/default fields, semicolon parameters, colon subparameters, private
   prefixes, max count, max magnitude, and numeric overflow. Parsing returns an
   enum result (`Value`, `Default`, `Invalid`, `Overflow`, `End`) and never
   allocates a string.
 
-- [ ] **Step 2: Run parameter tests and verify RED**
+- [x] **Step 2: Run parameter tests and verify RED**
 
   Expected: compilation fails because `Parameters` does not exist.
 
-- [ ] **Step 3: Implement allocation-free parameter enumeration**
+- [x] **Step 3: Implement allocation-free parameter enumeration**
 
   Store the raw `ReadOnlySpan<byte>` in a `ref struct`; advance by indexes;
   parse checked decimal digits; preserve `:` boundaries instead of flattening
   subparameters. Validate configured count and magnitude at the typed boundary.
 
-- [ ] **Step 4: Run parameter tests and verify GREEN**
+- [x] **Step 4: Run parameter tests and verify GREEN**
 
-- [ ] **Step 5: Write exact-byte tests for the typed API**
+- [x] **Step 5: Write exact-byte tests for the typed API**
 
   Cover cursor up/down/forward/back/position, erase display/line, insert/delete
   character/line, scroll up/down, save/restore cursor, visibility, alternate
@@ -280,21 +280,21 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   mode 5522. Assert rejected zero coordinates, invalid RGB/index values,
   forbidden hyperlink controls, and unsupported sequence kinds write nothing.
 
-- [ ] **Step 6: Run typed command tests and verify RED**
+- [x] **Step 6: Run typed command tests and verify RED**
 
   Expected: compilation fails because the typed command classes do not exist.
 
-- [ ] **Step 7: Implement typed command classes**
+- [x] **Step 7: Implement typed command classes**
 
-  Expose static methods that accept `ref Writer`; use `stackalloc` plus
-  `Utf8Formatter.TryFormat` for small numeric payloads. Use contextual enums
-  (`EraseArea`, `Color`, `Attribute`, `Mode`) and avoid repeated `Terminal`
-  prefixes. XML docs state examples, argument exceptions, ownership, and safe
-  fallback behavior.
+  Expose static methods that accept the immutable `Writer` value; use
+  `stackalloc` plus `Utf8Formatter.TryFormat` for small numeric payloads. Use
+  contextual enums (`EraseArea`, `Color`, `Rendition`, `Movement`) and avoid
+  repeated `Terminal` prefixes. XML docs state examples, argument exceptions,
+  ownership, and safe fallback behavior.
 
-- [ ] **Step 8: Run all typed command tests and verify GREEN**
+- [x] **Step 8: Run all typed command tests and verify GREEN**
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
   Commit message: `feat: add typed control sequence encoders`
 
