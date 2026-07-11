@@ -446,7 +446,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Controls/TextInputTests.cs`
 - Modify: `docs/controls/input/text-input.md`
 
-- [ ] **Step 1: Write failing TextInput tests**
+- [x] **Step 1: Write failing TextInput tests**
 
   Cover every property default/validation, cancellable TextChanging, committed
   event order, typed text, paste, navigation/selection/deletion, read-only,
@@ -455,11 +455,11 @@ must not add partial placeholder versions of later controls.
   caret visibility/cursor state, resize, focus/disabled styling, Unicode output,
   and dispatcher/exception recovery.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*TextInputTests`; expect missing TextInput and event types.
 
-- [ ] **Step 3: Implement TextInput over Edit and Text layout**
+- [x] **Step 3: Implement TextInput over Edit and Text layout**
 
   ```csharp
   public sealed class TextInput : Control
@@ -483,7 +483,7 @@ must not add partial placeholder versions of later controls.
   formatting, diagnostics, or clipboard defaults. Render selection and caret
   through semantic styles and set the frame cursor only while focused.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run TextInput, edit, input integration, Unicode, and allocation tests; commit
   as `feat: add text input control`.

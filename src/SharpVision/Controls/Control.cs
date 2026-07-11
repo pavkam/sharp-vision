@@ -1039,6 +1039,20 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         return true;
     }
 
+    /// <summary>Raises one derived committed-property notification after atomic field mutation.</summary>
+    /// <param name="propertyName">The non-empty public property name.</param>
+    /// <param name="invalidation">The earliest phase affected by the committed transaction.</param>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    private protected void NotifyChanged(string propertyName, Invalidation invalidation)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+        Invalidate(invalidation);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
     private void InvalidateDescendants(Invalidation value) =>
         VisitChildren(child =>
         {

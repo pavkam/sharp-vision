@@ -38,17 +38,36 @@ direction.
 
 ## API
 
-- `Text` is non-null; invalid assignment throws before mutation.
+- `Text` is non-null. Direct assignment validates return/tab policy,
+  `MaxLength`, and complete Unicode boundaries before mutation, moves the caret
+  to the new end, and participates in cancellable events and undo history.
 - `IsReadOnly`, `AcceptsReturn`, `AcceptsTab`, `PasswordCharacter`, and
   `MaxLength` define editing policy. Max length counts grapheme clusters.
-- `CaretIndex`, `SelectionStart`, and `SelectionLength` clamp only through
-  explicit selection methods; invalid direct values throw.
-- `TextChanging` is cancellable; `TextChanged`, `SelectionChanged`, and
-  `Submitted` occur after commit.
+- `CaretIndex`, `SelectionStart`, and `SelectionLength` never clamp direct
+  assignments. `Select(start, length)` validates overflow, containment, and both
+  grapheme boundaries before committing a forward range.
+- `SelectedText` returns a caller-owned copy. `HorizontalOffset` and
+  `VerticalOffset` expose automatic caret scrolling in cells and logical lines.
+- `CopySelection()` returns owned selected text and `CutSelection()` deletes it
+  when mutable. Password mode returns empty and performs no cut, while read-only
+  mode permits copying but never deletes.
+- `UndoLimit` defaults to 100; zero disables retained undo. `CanUndo`,
+  `CanRedo`, `Undo()`, and `Redo()` operate on immutable text-and-selection
+  snapshots and never retain more than the configured number per stack.
+- `TextChanging` receives the complete proposed `EditResult` and may cancel
+  before any field changes. After atomic text, selection, and scroll commit,
+  `TextChanged` precedes `SelectionChanged` when both apply. `Submitted` carries
+  the committed single-line text.
 
 Password mode masks display and excludes secret text from diagnostics,
 snapshots, and default clipboard copy. The model still stores caller-provided
 text; it is not a secure-memory primitive.
+
+Rendering never builds a source-containing password display string: it emits one
+validated mask `Rune` directly for each source cluster. A selected wide cluster
+receives reverse rendition on both its lead and continuation cells. The terminal
+cursor is visible only while focused and its position is committed through the
+semantic frame, never by emitting terminal bytes from the control.
 
 ## Interaction
 
@@ -56,6 +75,21 @@ Typed text, navigation, selection, Backspace/Delete, Home/End, word movement,
 undo/redo policy, paste, copy/cut, mouse placement/drag, and scrolling operate
 on grapheme boundaries. IME composition is represented separately from committed
 text when the terminal protocol supplies it.
+
+Space-independent text events insert decoded `Rune` values. Bracketed paste
+decodes its owned UTF-8 payload once and applies one atomic proposal; policy
+rejection drops the complete proposal, while subscriber exceptions propagate
+after any committed notification state. Shift extends from the retained anchor,
+Control modifies word movement, Up/Down map the rendered caret column to the
+nearest grapheme boundary on an adjacent line, and Control+A/Z/Y select all,
+undo, and redo. Enter inserts LF only when `AcceptsReturn`; otherwise it
+submits. Tab inserts only when `AcceptsTab`.
+
+Primary pointer press focuses and captures. Cell coordinates—including those
+inferred from pixel protocols—map through the same grapheme widths used for
+rendering, so wide and combining clusters cannot yield interior indices. Drag
+release, focus/capture cancellation, disable, hide, detach, and disposal release
+transient ownership without changing text.
 
 ## Example
 

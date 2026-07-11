@@ -100,6 +100,13 @@ public readonly struct Canvas
         }
     }
 
+    /// <summary>Sets the owning frame cursor through this borrowed canvas.</summary>
+    /// <param name="position">The in-frame cursor cell.</param>
+    /// <param name="visible">Whether the terminal cursor is visible.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The position is outside the frame.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    public void SetCursor(Point position, bool visible) => _frame.SetCursor(position, visible);
+
     private DrawResult Process(
         ReadOnlySpan<char> value,
         Point origin,

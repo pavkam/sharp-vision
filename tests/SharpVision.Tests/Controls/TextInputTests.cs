@@ -1,0 +1,448 @@
+using System.Text;
+
+using SharpVision.Controls;
+using SharpVision.Input;
+using SharpVision.Layout;
+using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Rendering;
+using SharpVision.Tests.Support;
+using SharpVision.Text;
+using SharpVision.Threading;
+
+using Shouldly;
+
+using KeyAction = SharpVision.Terminal.Input.Action;
+using TerminalText = SharpVision.Terminal.Input.Text;
+
+namespace SharpVision.Tests.Controls;
+
+/// <summary>Verifies TextInput validation, editing, events, input, rendering, and history.</summary>
+public sealed class TextInputTests
+{
+    /// <summary>Verifies conservative defaults and every direct assignment validates before mutation.</summary>
+    [Fact]
+    public void Properties_WhenAssignmentsAreInvalid_PreservePreviousState()
+    {
+        var control = new TextInput();
+
+        control.Text.ShouldBeEmpty();
+        control.CaretIndex.ShouldBe(0);
+        control.SelectionStart.ShouldBe(0);
+        control.SelectionLength.ShouldBe(0);
+        control.MaxLength.ShouldBe(0);
+        control.IsReadOnly.ShouldBeFalse();
+        control.AcceptsReturn.ShouldBeFalse();
+        control.AcceptsTab.ShouldBeFalse();
+        control.CanFocus.ShouldBeTrue();
+
+        _ = Should.Throw<ArgumentNullException>(() => control.Text = null!);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.MaxLength = -1);
+        control.Text = "Ae\u0301Z";
+        _ = Should.Throw<ArgumentException>(() => control.CaretIndex = 2);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SelectionStart = 20);
+        _ = Should.Throw<ArgumentException>(() => control.PasswordCharacter = new Rune('\n'));
+
+        control.Text.ShouldBe("Ae\u0301Z");
+        control.CaretIndex.ShouldBe(control.Text.Length);
+        control.PasswordCharacter.ShouldBeNull();
+    }
+
+    /// <summary>Verifies cancellable proposal precedes one atomic committed notification sequence.</summary>
+    [Fact]
+    public void Text_WhenChangingIsCancelled_PreservesStateAndEventOrder()
+    {
+        var control = new TextInput { Text = "A" };
+        var order = new List<string>();
+        control.TextChanging += (_, eventArgs) =>
+        {
+            order.Add($"changing:{control.Text}:{eventArgs.Proposal.Text}");
+            eventArgs.Cancel = eventArgs.Proposal.Text == "blocked";
+        };
+        control.TextChanged += (_, eventArgs) =>
+            order.Add($"text:{eventArgs.PreviousText}>{eventArgs.Text}:{control.CaretIndex}");
+        control.SelectionChanged += (_, eventArgs) =>
+            order.Add($"selection:{eventArgs.Previous.Caret}>{eventArgs.Selection.Caret}");
+
+        control.Text = "blocked";
+        control.Text.ShouldBe("A");
+        control.Text = "界";
+
+        order.ShouldBe([
+            "changing:A:blocked",
+            "changing:A:界",
+            "text:A>界:1",
+        ]);
+    }
+
+    /// <summary>Verifies typed text and owned paste share policy and grapheme maximum handling.</summary>
+    [Fact]
+    public void Dispatch_WhenTextAndPasteArrive_AppliesPolicyAndMaximum()
+    {
+        var control = new TextInput { MaxLength = 3 };
+
+        Route(control, new TextEventArgs(new TerminalText(new Rune('界'))), Events.Text);
+        Route(control, new PasteEventArgs(new Paste(Encoding.UTF8.GetBytes("e\u0301👩‍💻Z"))), Events.Paste);
+
+        control.Text.ShouldBe("界e\u0301👩‍💻");
+        Edit.GraphemeCount(control.Text).ShouldBe(3);
+        Route(control, new TextEventArgs(new TerminalText(new Rune('\n'))), Events.Text);
+        control.Text.ShouldBe("界e\u0301👩‍💻");
+
+        control.AcceptsReturn = true;
+        control.MaxLength = 0;
+        Route(control, new TextEventArgs(new TerminalText(new Rune('\n'))), Events.Text);
+        control.Text.ShouldEndWith("\n");
+    }
+
+    /// <summary>Verifies navigation, extension, word movement, and deletion use grapheme boundaries.</summary>
+    [Fact]
+    public void Dispatch_WhenEditingKeysArrive_UsesDirectionalGraphemeSelection()
+    {
+        var control = new TextInput { Text = "one e\u0301👩‍💻" };
+
+        Key(control, Code.Left, Modifiers.Shift);
+        Key(control, Code.Left, Modifiers.Shift);
+        control.SelectionLength.ShouldBe(7);
+        Key(control, Code.Left, Modifiers.None);
+        control.SelectionLength.ShouldBe(0);
+        control.CaretIndex.ShouldBe(4);
+        Key(control, Code.Right, Modifiers.Control);
+        control.CaretIndex.ShouldBe(control.Text.Length);
+        Key(control, Code.Backspace, Modifiers.None);
+
+        control.Text.ShouldBe("one e\u0301");
+        Edit.IsBoundary(control.Text, control.CaretIndex).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies bounded undo and redo retain immutable text and selection snapshots.</summary>
+    [Fact]
+    public void Undo_WhenHistoryExists_RestoresTextSelectionAndRedo()
+    {
+        var control = new TextInput
+        {
+            UndoLimit = 2,
+            Text = "A"
+        };
+        control.Text = "AB";
+        control.Text = "ABC";
+
+        control.CanUndo.ShouldBeTrue();
+        control.Undo().ShouldBeTrue();
+        control.Text.ShouldBe("AB");
+        control.Undo().ShouldBeTrue();
+        control.Text.ShouldBe("A");
+        control.Undo().ShouldBeFalse();
+        control.Redo().ShouldBeTrue();
+        control.Text.ShouldBe("AB");
+    }
+
+    /// <summary>Verifies read-only suppresses mutation while single-line Enter submits committed text.</summary>
+    [Fact]
+    public void Dispatch_WhenReadOnlyOrSubmitted_UsesDocumentedBehavior()
+    {
+        var control = new TextInput { Text = "value", IsReadOnly = true };
+        SubmittedEventArgs? submitted = null;
+        control.Submitted += (_, eventArgs) => submitted = eventArgs;
+
+        Route(control, new TextEventArgs(new TerminalText(new Rune('X'))), Events.Text);
+        Key(control, Code.Backspace, Modifiers.None);
+        Key(control, Code.Enter, Modifiers.None);
+
+        control.Text.ShouldBe("value");
+        _ = submitted.ShouldNotBeNull();
+        submitted.Text.ShouldBe("value");
+    }
+
+    /// <summary>Verifies password rendering masks every cluster and focused caret reaches the frame.</summary>
+    [Fact]
+    public void Render_WhenPasswordIsFocused_MasksSourceAndSetsVisibleCursor()
+    {
+        var control = new TextInput
+        {
+            Text = "Ae\u0301👩‍💻",
+            PasswordCharacter = new Rune('*'),
+        };
+        control.SetFocused(true);
+        new Engine().Layout(control, new Size(6, 1));
+        using var frame = new Frame(new Size(6, 1));
+
+        control.Render(frame.Canvas);
+
+        Cells(frame, 3).ShouldBe("***");
+        frame.Cursor.Visible.ShouldBeTrue();
+        frame.Cursor.Position.ShouldBe(new Point(3, 0));
+        Encoding.UTF8.GetString(CopyOccupied(frame)).ShouldNotContain("A");
+    }
+
+    /// <summary>Verifies selected cells render reversed without splitting a wide grapheme.</summary>
+    [Fact]
+    public void Render_WhenSelectionContainsWideRune_StylesCompleteOwnedCells()
+    {
+        var control = new TextInput { Text = "A界Z" };
+        control.Select(start: 1, length: 1);
+        new Engine().Layout(control, new Size(4, 1));
+        using var frame = new Frame(new Size(4, 1));
+
+        control.Render(frame.Canvas);
+
+        (frame.GetCell(new Point(1, 0)).Style.Attributes & Attributes.Reverse)
+            .ShouldBe(Attributes.Reverse);
+        (frame.GetCell(new Point(2, 0)).Style.Attributes & Attributes.Reverse)
+            .ShouldBe(Attributes.Reverse);
+        frame.GetCell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies pointer press and inferred-pixel drag focus, capture, and select boundaries.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerDrags_SelectsByRenderedCellsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var control = new TextInput
+            {
+                Bounds = new Rect(0, 0, 8, 1),
+                Text = "A界e\u0301Z",
+            };
+            control.Attach(dispatcher);
+            using var focus = new FocusManager(control);
+            using var capture = new CaptureManager(control);
+
+            _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, new Point(5, 5)));
+            _ = capture.Dispatch(Pointer(new Point(4, 0), PointerAction.Move, new Point(45, 5)));
+            _ = capture.Dispatch(Pointer(new Point(4, 0), PointerAction.Release, new Point(45, 5)));
+
+            focus.Focused.ShouldBeSameAs(control);
+            capture.Captured.ShouldBeNull();
+            control.SelectionStart.ShouldBe(0);
+            control.SelectionLength.ShouldBe(4);
+            Edit.IsBoundary(control.Text, control.CaretIndex).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies caret visibility updates horizontal and vertical offsets after resize.</summary>
+    [Fact]
+    public void Arrange_WhenCaretExceedsViewport_ScrollsAndClampsAfterResize()
+    {
+        var control = new TextInput
+        {
+            AcceptsReturn = true,
+            Text = "123456\nabcdef\nXYZ",
+        };
+        var engine = new Engine();
+
+        engine.Layout(control, new Size(3, 2));
+        control.HorizontalOffset.ShouldBe(1);
+        control.VerticalOffset.ShouldBe(1);
+
+        control.CaretIndex = 6;
+        engine.Layout(control, new Size(3, 2));
+        control.HorizontalOffset.ShouldBe(4);
+        control.VerticalOffset.ShouldBe(0);
+        engine.Layout(control, new Size(10, 5));
+        control.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a notification exception preserves the committed atomic state.</summary>
+    [Fact]
+    public void Text_WhenChangedHandlerThrows_PreservesCommittedStateAndFutureEdits()
+    {
+        var control = new TextInput();
+        var failure = new InvalidOperationException("observer");
+        void handler(object? sender, TextChangedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            throw failure;
+        }
+        control.TextChanged += handler;
+
+        Should.Throw<InvalidOperationException>(() => control.Text = "A").ShouldBeSameAs(failure);
+        control.Text.ShouldBe("A");
+        control.CaretIndex.ShouldBe(1);
+        control.TextChanged -= handler;
+        control.Text = "B";
+        control.Text.ShouldBe("B");
+    }
+
+    /// <summary>Verifies typed-input observers cannot be mistaken for rejected edit policy.</summary>
+    [Fact]
+    public void Dispatch_WhenObserverThrowsArgumentException_PropagatesAfterCommit()
+    {
+        var control = new TextInput();
+        var failure = new ArgumentException("observer");
+        control.TextChanged += (_, _) => throw failure;
+
+        Should.Throw<ArgumentException>(() =>
+            Route(control, new TextEventArgs(new TerminalText(new Rune('A'))), Events.Text))
+            .ShouldBeSameAs(failure);
+
+        control.Text.ShouldBe("A");
+        control.CaretIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies standard select-all, undo, and redo shortcuts use immutable snapshots.</summary>
+    [Fact]
+    public void Dispatch_WhenControlShortcutsArrive_SelectsAndRestoresHistory()
+    {
+        var control = new TextInput { Text = "A" };
+        control.Text = "AB";
+
+        CharacterKey(control, new Rune('a'), Modifiers.Control);
+        control.SelectionStart.ShouldBe(0);
+        control.SelectionLength.ShouldBe(2);
+        CharacterKey(control, new Rune('z'), Modifiers.Control);
+        control.Text.ShouldBe("A");
+        CharacterKey(control, new Rune('y'), Modifiers.Control);
+        control.Text.ShouldBe("AB");
+    }
+
+    /// <summary>Verifies copy/cut ownership, read-only behavior, and password secrecy defaults.</summary>
+    [Fact]
+    public void CutSelection_WhenSelectionExists_ReturnsOwnedTextAndHonorsSecurityPolicy()
+    {
+        var control = new TextInput { Text = "A界Z" };
+        control.Select(1, 1);
+
+        control.CopySelection().ShouldBe("界");
+        control.CutSelection().ShouldBe("界");
+        control.Text.ShouldBe("AZ");
+
+        control.Text = "secret";
+        control.Select(0, control.Text.Length);
+        control.IsReadOnly = true;
+        control.CutSelection().ShouldBe("secret");
+        control.Text.ShouldBe("secret");
+        control.PasswordCharacter = new Rune('*');
+        control.CopySelection().ShouldBeEmpty();
+        control.CutSelection().ShouldBeEmpty();
+        control.Text.ShouldBe("secret");
+    }
+
+    /// <summary>Verifies vertical navigation maps the current rendered column to an adjacent line.</summary>
+    [Fact]
+    public void Dispatch_WhenUpArrives_MovesToNearestBoundaryOnPreviousLine()
+    {
+        var control = new TextInput
+        {
+            AcceptsReturn = true,
+            Text = "abc\n12345",
+        };
+
+        Key(control, Code.Up, Modifiers.None);
+
+        control.CaretIndex.ShouldBe(3);
+    }
+
+    /// <summary>Verifies losing focus during pointer selection releases capture and held state.</summary>
+    [Fact]
+    public async Task Dispatch_WhenFocusLeavesDuringPointerDrag_CancelsCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 2) };
+            var control = new TextInput
+            {
+                Bounds = new Rect(0, 0, 8, 1),
+                Text = "select",
+            };
+            var other = new ProbeControl
+            {
+                Bounds = new Rect(10, 0, 2, 1),
+                CanFocus = true,
+            };
+            root.Children.Add(control);
+            root.Children.Add(other);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var capture = new CaptureManager(root);
+
+            _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, new Point(5, 5)));
+            capture.Captured.ShouldBeSameAs(control);
+            focus.Focus(other).ShouldBeTrue();
+
+            capture.Captured.ShouldBeNull();
+            control.IsFocused.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    private static void Key(TextInput control, Code code, Modifiers modifiers) =>
+        Route(
+            control,
+            new KeyEventArgs(new Stroke(
+                code,
+                character: null,
+                nativeCode: 0,
+                modifiers,
+                KeyAction.Press)),
+            Events.Key);
+
+    private static void CharacterKey(TextInput control, Rune character, Modifiers modifiers) =>
+        Route(
+            control,
+            new KeyEventArgs(new Stroke(
+                Code.Character,
+                character,
+                nativeCode: 0,
+                modifiers,
+                KeyAction.Press)),
+            Events.Key);
+
+    private static void Route<T>(TextInput control, T eventArgs, Event<T> routedEvent)
+        where T : RoutedEventArgs => Router.Route(control, routedEvent, eventArgs);
+
+    private static Pointer Pointer(Point cells, PointerAction action, Point pixels) => new(
+        cells,
+        pixels,
+        Buttons.Primary,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        Modifiers.None,
+        isMotion: action == PointerAction.Move,
+        isCellPositionInferred: true);
+
+    private static string Cells(Frame frame, int count)
+    {
+        var result = new StringBuilder(count);
+
+        for (var x = 0; x < count; x++)
+        {
+            _ = result.Append(FrameOracle.Get(frame, new Point(x, 0)));
+        }
+
+        return result.ToString();
+    }
+
+    private static byte[] CopyOccupied(Frame frame)
+    {
+        var result = new List<byte>();
+
+        for (var x = 0; x < frame.Size.Width; x++)
+        {
+            var point = new Point(x, 0);
+
+            if (frame.GetCell(point).IsContinuation)
+            {
+                continue;
+            }
+
+            var length = frame.GetGraphemeByteCount(point);
+
+            if (length == 0)
+            {
+                continue;
+            }
+
+            var bytes = new byte[length];
+            _ = frame.CopyGrapheme(point, bytes);
+            result.AddRange(bytes);
+        }
+
+        return [.. result];
+    }
+}
