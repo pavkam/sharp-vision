@@ -17,6 +17,7 @@ using KeyAction = SharpVision.Terminal.Input.Action;
 namespace SharpVision.Tests.Performance;
 
 /// <summary>Gates deterministic UI infrastructure allocations and records timings.</summary>
+[Collection(PerformanceGroup.Name)]
 public sealed class InfrastructurePerformanceTests
 {
     /// <summary>Verifies unchanged box layout allocates no managed memory after warmup.</summary>
