@@ -44,6 +44,8 @@ public sealed class RoutingTests
             "middle-Bubble",
             "root-Bubble",
             "target-default",
+            "middle-default",
+            "root-default",
         ]);
         eventArgs.OriginalSource.ShouldBeSameAs(target);
         eventArgs.Source.ShouldBeSameAs(target);
@@ -145,6 +147,7 @@ public sealed class RoutingTests
             "target-Bubble",
             "old-Bubble",
             "target-default",
+            "old-default",
         ]);
         order.Clear();
 
@@ -155,6 +158,7 @@ public sealed class RoutingTests
             "target-Bubble",
             "new-Bubble",
             "target-default",
+            "new-default",
         ]);
     }
 
@@ -217,6 +221,7 @@ public sealed class RoutingTests
             "target-Bubble",
             "root-Bubble",
             "target-default",
+            "root-default",
             "target-direct-Bubble",
             "target-default",
         ]);

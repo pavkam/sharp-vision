@@ -552,7 +552,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Performance/InteractivePerformanceTests.cs`
 - Modify: `docs/testing/{controls-integration,performance,unicode-rendering}.md`
 
-- [ ] **Step 1: Drive real terminal input**
+- [x] **Step 1: Drive real terminal input**
 
   Compose every Phase 5B control under a real Application/FakeTerminal. Send
   Kitty/legacy keys, UTF-8 text, bracketed paste, SGR cell and pixel pointer,
@@ -560,7 +560,7 @@ must not add partial placeholder versions of later controls.
   state, capture/focus cleanup, exact semantic frames, incremental bytes, and no
   stale cells after item/content removal.
 
-- [ ] **Step 2: Prove nested scrolling**
+- [x] **Step 2: Prove nested scrolling**
 
   Compose horizontal and vertical nested ScrollViews containing wide Unicode and
   focusable controls. Assert local delta consumption, bubbled remainder,
@@ -575,7 +575,7 @@ must not add partial placeholder versions of later controls.
   no retained detached item controls after forced collection through weak
   references, and diagnostic elapsed-time output without noisy thresholds.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
   Run all Phase 5B unit, randomized, integration, and performance classes;
   commit as `test: prove interactive controls and scrolling`.

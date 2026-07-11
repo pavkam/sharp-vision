@@ -69,9 +69,12 @@ public static class Router
                 route[index].InvokeHandlers(routedEvent, eventArgs, sequence);
             }
 
-            if (!eventArgs.Handled)
+            // Default behaviors follow the completed bubble from the semantic
+            // leaf toward its owning controls. This lets composite controls
+            // remain interactive when hit testing selects their child content.
+            for (index = 0; index < bubbleCount && !eventArgs.Handled; index++)
             {
-                target.InvokeDefault(eventArgs);
+                route[index].InvokeDefault(eventArgs);
             }
         }
         finally

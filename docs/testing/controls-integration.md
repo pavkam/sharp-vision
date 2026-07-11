@@ -41,18 +41,21 @@ removal damage, text mutation, and resize reflow on the same dispatcher-owned
 tree. Fresh semantic frames confirm removed content does not survive, while
 later transport writes prove incremental output followed each mutation.
 
-`InteractiveControlTests` focuses a real `TextInput`, then sends UTF-8 CJK,
-owned bracketed paste containing a combining sequence, a legacy Left key, and
-Backspace through `Session`. Sequential checkpoints prove the decoder and
-dispatcher committed each exact grapheme transition; a fresh semantic frame and
-captured renderer bytes prove the final decomposed cluster without stale wide
-cells. A raw terminal focus-loss report is delivered while logical widget focus
-is intentionally retained and pointer capture is empty.
+`InteractiveControlTests` composes Button, CheckBox, RadioButton, TextInput,
+ScrollBar, ScrollView, and List under one real application. Raw SGR cell clicks,
+Kitty Enter, wheel input, UTF-8 CJK, item removal, terminal focus loss, and
+resize prove ordered activation/selection events, focus and capture cleanup,
+exact semantic cells, wide-cell ownership, incremental bytes, and cleared stale
+item rows. A separate editor path adds owned bracketed paste containing a
+combining sequence, legacy Left, and Backspace checkpoints.
 
-`ScrollingTests` sends 20 raw SGR wheel reports into nested hidden-bar
-`ScrollView`s. It proves the inner range consumes its complete 12-line capacity,
-the exact remaining four lines propagate outward, and a later pixel-dimensioned
-resize clamps the outer offset before the committed frame callback.
+`ScrollingTests` first sends 20 raw SGR wheel reports into nested hidden-bar
+ScrollViews and proves exact inner consumption, outward remainder, and resize
+clamping. A second application uses automatic bars on both nested axes, inferred
+pixel coordinates, and wide Unicode content. It proves pixel thumb dragging,
+horizontal and vertical remainder, focus reveal through both viewports, exact
+outer thumb cells, capture release, and removal of outer bars after a larger
+pixel-dimensioned resize.
 
 ## Controls with state machines
 

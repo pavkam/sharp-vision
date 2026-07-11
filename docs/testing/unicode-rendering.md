@@ -69,3 +69,6 @@ The interactive host proof additionally enters CJK followed by decomposed text
 through distinct UTF-8 and bracketed-paste paths, navigates across their shared
 grapheme boundaries, deletes the complete preceding wide cluster, and verifies
 the remaining combining cluster in a fresh semantic frame and terminal output.
+The nested automatic-scroll proof renders wide CJK content through two clipped
+viewports while offsets and pixel-derived pointer cells change, then asserts no
+orphan continuation survives at the exposed frame edge.

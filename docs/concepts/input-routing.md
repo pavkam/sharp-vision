@@ -63,8 +63,8 @@ sealed argument classes over the immutable terminal input values.
 
 `Control.AddHandler` rejects null or duplicate event/delegate pairs and returns
 an idempotent registration. Attached registration and removal are
-dispatcher-affine. Setting `Handled` skips later ordinary handlers and target
-default behavior; `handledEventsToo: true` opts into observing handled routes.
+dispatcher-affine. Setting `Handled` skips later ordinary handlers and remaining
+default behaviors; `handledEventsToo: true` opts into observing handled routes.
 
 `Router.Route` snapshots both ancestry and the registration-order cutoff before
 preview begins. Reparenting and newly added handlers therefore affect the next
@@ -75,8 +75,11 @@ not retain controls or delegates.
 `OriginalSource` remains the initiating target. `Source` begins at that target
 and can be changed through `Retarget` only while dispatch is active. The current
 route control is the handler's `sender`; `Phase` reports preview or bubble.
-After an unhandled bubble, only the target's protected default behavior runs.
-Exceptions propagate after route state and pooled storage are cleaned.
+After an unhandled bubble, protected default behavior runs from the target
+toward the root until one route member handles the event. Composite controls
+therefore retain their traditional behavior when semantic child content is the
+pointer target. Exceptions propagate after route state and pooled storage are
+cleaned.
 
 ## Pointer capture and coordinates
 

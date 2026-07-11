@@ -707,7 +707,7 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>Runs target default behavior after an unhandled bubble.</summary>
+    /// <summary>Runs this route member's default behavior after an unhandled bubble.</summary>
     internal void InvokeDefault(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);

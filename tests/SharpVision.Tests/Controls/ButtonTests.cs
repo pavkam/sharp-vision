@@ -5,6 +5,7 @@ using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
+using SharpVision.Threading;
 
 using Shouldly;
 
@@ -126,6 +127,31 @@ public sealed class ButtonTests
         command.Executions.Count.ShouldBe(1);
     }
 
+    /// <summary>Verifies semantic content hit testing still reaches the owning default behavior.</summary>
+    [Fact]
+    public async Task Dispatch_WhenContentIsPointerTarget_ActivatesOwningButtonAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var button = new Button
+        {
+            Bounds = new Rect(0, 0, 6, 1),
+            Content = new ControlText("Click"),
+        };
+        new Engine().Layout(button, new Size(6, 1));
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            button.Attach(dispatcher);
+            using var capture = new CaptureManager(button);
+            _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Press));
+            _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Release));
+        }, TestContext.Current.CancellationToken);
+
+        clicks.ShouldBe(1);
+    }
+
     /// <summary>Verifies padding, margin, Unicode content, and semantic rendering.</summary>
     [Fact]
     public void Render_WhenButtonHasUnicodeContent_ComputesExactBoundsAndCells()
@@ -157,4 +183,15 @@ public sealed class ButtonTests
 
         clicks.ShouldBe(0);
     }
+
+    private static Pointer Pointer(Point cells, PointerAction action) => new(
+        cells,
+        pixels: null,
+        Buttons.Primary,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        Modifiers.None,
+        isMotion: false,
+        isCellPositionInferred: false);
 }
