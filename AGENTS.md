@@ -46,9 +46,8 @@ in the protocol document.
 - Put every named C# type in its own file named exactly after the type, with the
   generic arity omitted: `Button` belongs in `Button.cs`. This applies to
   classes, structs, records, interfaces, enums, delegates, production code,
-  tests, and test helpers. Do not declare nested named types or place two types
-  in one file. Generated source is the only exception. When touching an existing
-  violation, split it as part of the same change.
+  generated source, tests, and test helpers. Do not declare nested named types
+  or place two types in one file. There are no generated-source exceptions.
 - Prefer `Rune`, `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>`,
   and `IBufferWriter<T>` in text, protocol, and rendering paths. Do not reduce
   Unicode input to `char` or allocate strings in hot loops.

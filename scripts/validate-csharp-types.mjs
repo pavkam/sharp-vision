@@ -10,7 +10,6 @@ const ignoredDirectories = new Set([
   "obj",
 ]);
 
-const generatedFile = /(?:\.g|\.generated|\.designer)\.cs$/iu;
 const ordinaryType = /\b(?:class|enum|interface|struct)\s+([\p{L}_][\p{L}\p{N}_]*)/gu;
 const recordType = /\brecord(?:\s+(?:class|struct))?\s+([\p{L}_][\p{L}\p{N}_]*)/gu;
 const delegateType = /\bdelegate\b([^;{]*?)\(/gu;
@@ -31,7 +30,7 @@ async function findCSharpFiles(directory) {
       continue;
     }
 
-    if (entry.isFile() && entry.name.endsWith(".cs") && !generatedFile.test(entry.name)) {
+    if (entry.isFile() && entry.name.endsWith(".cs")) {
       files.push(path);
     }
   }
@@ -190,8 +189,8 @@ function countRun(content, start, value) {
 }
 
 /**
- * Validates that each non-generated C# file contains at most one named type and
- * that a type-containing file is named exactly after that type.
+ * Validates that each C# file contains at most one named type and that a
+ * type-containing file is named exactly after that type.
  *
  * @param {string} root Directory to scan recursively.
  * @returns {Promise<string[]>} Validation messages; an empty array means success.
@@ -207,7 +206,7 @@ export async function validateCSharpTypes(root) {
 
     if (types.length > 1) {
       errors.push(
-        `${displayPath} declares ${types.join(", ")}; each non-generated file must contain exactly one named type.`,
+        `${displayPath} declares ${types.join(", ")}; each file must contain exactly one named type.`,
       );
       continue;
     }
@@ -228,7 +227,7 @@ async function main() {
   const errors = await validateCSharpTypes(process.cwd());
 
   if (errors.length === 0) {
-    console.log("Every non-generated C# named type has its own exactly named file.");
+    console.log("Every C# named type has its own exactly named file.");
     return;
   }
 

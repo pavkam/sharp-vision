@@ -43,8 +43,8 @@ screen equivalence is established.
   never observable.
 - Steady-state scanning and emission allocate no object per cell.
 - Controls draw cells only; they never choose ANSI/CSI/OSC sequences.
-- Keep one named type per non-generated file, name the file exactly after the
-  type, and split any existing multi-type or nested-type file when touching it.
+- Keep one named type per file, including generated files, name the file exactly
+  after the type, and never declare nested named types.
 
 ## Example review
 

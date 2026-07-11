@@ -43,8 +43,8 @@ and a showcase page.
   documented policy.
 - Public/internal members have useful XML docs, validation, exceptions, and
   examples where relevant.
-- Keep one named type per non-generated file, name the file exactly after the
-  type, and split any existing multi-type or nested-type file when touching it.
+- Keep one named type per file, including generated files, name the file exactly
+  after the type, and never declare nested named types.
 
 ## Example review
 
