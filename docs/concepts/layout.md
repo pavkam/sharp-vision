@@ -85,10 +85,13 @@ so the final combined extent is exact.
 
 ## Panels
 
-The following concrete containers are Phase 5 specifications, not Phase 4 public
+`Stack` is the first shipped concrete panel. It uses the common track allocator
+along its sequential axis and the base box model across it. Reverse order
+affects geometry, rendering, and default focus traversal together.
+
+The remaining concrete containers are Phase 5 specifications not yet public
 types:
 
-- Stack measures along one axis and aligns on the cross axis.
 - Grid supports fixed, percent, auto, proportional tracks, spacing, and spans.
 - Dock consumes remaining edges in child order.
 - Overlay shares the content box and uses deterministic z-order.

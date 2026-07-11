@@ -2,29 +2,6 @@ using SharpVision.Controls;
 
 namespace SharpVision.Input;
 
-/// <summary>Provides cancellable state before one focus transaction commits.</summary>
-public sealed class FocusChangingEventArgs(Control? previous, Control? next): EventArgs
-{
-    /// <summary>Gets the control focused before the request.</summary>
-    public Control? Previous { get; } = previous;
-
-    /// <summary>Gets the requested next control, or null for release.</summary>
-    public Control? Next { get; } = next;
-
-    /// <summary>Gets or sets whether an explicit request should be cancelled.</summary>
-    public bool Cancel { get; set; }
-}
-
-/// <summary>Describes one committed focus transition.</summary>
-public sealed class FocusChangedEventArgs(Control? previous, Control? current): EventArgs
-{
-    /// <summary>Gets the control focused before the commit.</summary>
-    public Control? Previous { get; } = previous;
-
-    /// <summary>Gets the control focused after the commit.</summary>
-    public Control? Current { get; } = current;
-}
-
 /// <summary>Owns transactional keyboard focus within one attached control tree.</summary>
 public sealed class FocusManager: IDisposable
 {
@@ -242,9 +219,9 @@ public sealed class FocusManager: IDisposable
 
         if (control is Container container)
         {
-            foreach (var child in container.Children)
+            for (var index = 0; index < container.NavigationCount; index++)
             {
-                Collect(child, candidates, ref order);
+                Collect(container.NavigationAt(index), candidates, ref order);
             }
         }
     }

@@ -113,7 +113,7 @@ versions of those APIs.
 - Modify: `docs/controls/layout/stack.md`
 - Modify: `docs/concepts/layout.md`
 
-- [ ] **Step 1: Write failing Stack tests**
+- [x] **Step 1: Write failing Stack tests**
 
   Cover both orientations, default vertical orientation, non-negative `Spacing`,
   `Reverse`, collapsed-child spacing removal, fixed/auto/percent/star mixtures,
@@ -121,7 +121,7 @@ versions of those APIs.
   order, and ownership. Assert percentage tracks against final content size and
   require all allocated stack-axis extents plus spacing to stay contained.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --configuration Release --filter-class "*StackTests" --minimum-expected-tests 1 --timeout 60s
@@ -129,7 +129,7 @@ versions of those APIs.
 
   Expected: compile failure because `Stack` does not exist.
 
-- [ ] **Step 3: Implement Stack**
+- [x] **Step 3: Implement Stack**
 
   `Stack : Container` exposes `Orientation`, `Spacing`, and `Reverse`. Measure
   visible non-collapsed children intrinsically along the stack axis and against
@@ -142,7 +142,7 @@ versions of those APIs.
   measure; reverse changes arrange/render. Use pooled or stack storage for small
   track vectors and return cleared rented arrays in `finally`.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --configuration Release --filter-class "*StackTests" --minimum-expected-tests 1 --timeout 60s

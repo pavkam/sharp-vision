@@ -19,6 +19,14 @@ public abstract class Container: Control
     /// <summary>Gets the owned ordered children.</summary>
     public Children Children { get; }
 
+    /// <summary>Gets the number of children participating in default navigation.</summary>
+    internal virtual int NavigationCount => Children.Count;
+
+    /// <summary>Gets one child in default navigation order.</summary>
+    /// <param name="index">The zero-based navigation index.</param>
+    /// <returns>The child at the requested navigation position.</returns>
+    internal virtual Control NavigationAt(int index) => Children[index];
+
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
     {

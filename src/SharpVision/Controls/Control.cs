@@ -316,6 +316,10 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     private Rect? LastArrangeSlot { get; set; }
 
+    private bool LastWidthResolved { get; set; }
+
+    private bool LastHeightResolved { get; set; }
+
     private bool IsMeasuring { get; set; }
 
     private bool IsArranging { get; set; }
@@ -471,7 +475,17 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// The attached control is accessed off-dispatcher or arrange is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void Arrange(Rect slot)
+    internal void Arrange(Rect slot) => Arrange(slot, widthResolved: false, heightResolved: false);
+
+    /// <summary>Arranges with optional parent-resolved border-box axes.</summary>
+    /// <param name="slot">The final non-negative outer rectangle including margin.</param>
+    /// <param name="widthResolved">Whether the parent already resolved the border-box width.</param>
+    /// <param name="heightResolved">Whether the parent already resolved the border-box height.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The attached control is accessed off-dispatcher or arrange is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void Arrange(Rect slot, bool widthResolved, bool heightResolved)
     {
         VerifyMutable();
 
@@ -480,7 +494,10 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             throw new InvalidOperationException("Arrange cannot be reentered.");
         }
 
-        if ((Pending & Invalidation.Arrange) == 0 && LastArrangeSlot == slot)
+        if ((Pending & Invalidation.Arrange) == 0 &&
+            LastArrangeSlot == slot &&
+            LastWidthResolved == widthResolved &&
+            LastHeightResolved == heightResolved)
         {
             return;
         }
@@ -494,32 +511,40 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             {
                 Bounds = default;
                 LastArrangeSlot = slot;
+                LastWidthResolved = widthResolved;
+                LastHeightResolved = heightResolved;
                 return;
             }
 
             var available = Margin.Deflate(slot);
-            var width = ResolveArrangeAxis(
-                Width,
-                HorizontalAlignment == HorizontalAlignment.Stretch,
-                slot.Width,
-                available.Width,
-                DesiredSize.Width,
-                MinWidth,
-                MaxWidth);
-            var height = ResolveArrangeAxis(
-                Height,
-                VerticalAlignment == VerticalAlignment.Stretch,
-                slot.Height,
-                available.Height,
-                DesiredSize.Height,
-                MinHeight,
-                MaxHeight);
+            var width = widthResolved
+                ? available.Width
+                : ResolveArrangeAxis(
+                    Width,
+                    HorizontalAlignment == HorizontalAlignment.Stretch,
+                    slot.Width,
+                    available.Width,
+                    DesiredSize.Width,
+                    MinWidth,
+                    MaxWidth);
+            var height = heightResolved
+                ? available.Height
+                : ResolveArrangeAxis(
+                    Height,
+                    VerticalAlignment == VerticalAlignment.Stretch,
+                    slot.Height,
+                    available.Height,
+                    DesiredSize.Height,
+                    MinHeight,
+                    MaxHeight);
             var x = Align(available.X, available.Width, width, HorizontalAlignment);
             var y = Align(available.Y, available.Height, height, VerticalAlignment);
             var bounds = new Rect(x, y, width, height);
 
             Bounds = bounds;
             LastArrangeSlot = slot;
+            LastWidthResolved = widthResolved;
+            LastHeightResolved = heightResolved;
             ArrangeCore(Padding.Deflate(bounds));
         }
         catch
@@ -961,7 +986,14 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
-    private bool Set<T>(
+    /// <summary>Commits one derived or base property and requests its earliest phase.</summary>
+    /// <typeparam name="T">The property value type.</typeparam>
+    /// <param name="field">The current backing field.</param>
+    /// <param name="value">The validated replacement value.</param>
+    /// <param name="invalidation">The earliest affected phase.</param>
+    /// <param name="propertyName">The property name supplied by the compiler.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    private protected bool Set<T>(
         ref T field,
         T value,
         Invalidation invalidation,
