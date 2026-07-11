@@ -7,60 +7,6 @@ using SharpVision.Terminal.Protocols;
 namespace SharpVision.Terminal.Clipboard;
 
 /// <summary>
-/// Identifies a Kitty OSC 5522 packet operation.
-/// </summary>
-public enum KittyOperation
-{
-    /// <summary>No operation was decoded.</summary>
-    None,
-
-    /// <summary>A clipboard read, list, or read response.</summary>
-    Read,
-
-    /// <summary>A clipboard write start or write response.</summary>
-    Write,
-
-    /// <summary>A clipboard MIME data packet or write terminator.</summary>
-    WriteData,
-
-    /// <summary>A MIME alias packet.</summary>
-    WriteAlias,
-}
-
-/// <summary>
-/// Identifies a Kitty OSC 5522 response status.
-/// </summary>
-public enum KittyReplyStatus
-{
-    /// <summary>The packet has no response status.</summary>
-    None,
-
-    /// <summary>The terminal accepted a read request.</summary>
-    Ok,
-
-    /// <summary>The packet carries one data chunk.</summary>
-    Data,
-
-    /// <summary>The transaction completed successfully.</summary>
-    Done,
-
-    /// <summary>An input/output error occurred.</summary>
-    Io,
-
-    /// <summary>The request or Base64 data was invalid.</summary>
-    Invalid,
-
-    /// <summary>The requested selection or operation is unavailable.</summary>
-    Unavailable,
-
-    /// <summary>Clipboard permission was denied.</summary>
-    Denied,
-
-    /// <summary>The clipboard resource is temporarily busy.</summary>
-    Busy,
-}
-
-/// <summary>
 /// Represents an immutable, redaction-safe Kitty OSC 5522 packet.
 /// </summary>
 public sealed class KittyPacket

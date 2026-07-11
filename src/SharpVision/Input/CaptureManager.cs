@@ -5,35 +5,6 @@ using SharpVision.Terminal.Input;
 
 namespace SharpVision.Input;
 
-/// <summary>Identifies why active pointer interaction was cancelled.</summary>
-public enum ReleaseReason
-{
-    /// <summary>The owned subtree detached.</summary>
-    Detached,
-
-    /// <summary>The owned subtree became disabled.</summary>
-    Disabled,
-
-    /// <summary>The owned subtree became hidden or collapsed.</summary>
-    Hidden,
-
-    /// <summary>The terminal reported focus loss.</summary>
-    TerminalFocusLost,
-
-    /// <summary>The owned subtree was disposed.</summary>
-    Disposed,
-}
-
-/// <summary>Describes one implicit capture or press cancellation.</summary>
-public sealed class CaptureCancelledEventArgs(Control control, ReleaseReason reason): EventArgs
-{
-    /// <summary>Gets the captured or pressed control.</summary>
-    public Control Control { get; } = control;
-
-    /// <summary>Gets why interaction was cancelled.</summary>
-    public ReleaseReason Reason { get; } = reason;
-}
-
 /// <summary>Owns hit targeting, hover, press, and exclusive pointer capture.</summary>
 public sealed class CaptureManager: IDisposable
 {
