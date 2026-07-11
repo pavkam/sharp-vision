@@ -535,7 +535,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Test: `tests/SharpVision.Terminal.Tests/Capabilities/QueryTrackerTests.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/ResponsesTests.cs`
 
-- [ ] **Step 1: Write immutable profile and precedence tests**
+- [x] **Step 1: Write immutable profile and precedence tests**
 
   Assert defaults enable no optional feature. Cover TERM/COLORTERM/kitty/iTerm
   hints as tentative only, SSH/tmux/screen narrowing, valid query refinement,
@@ -543,9 +543,9 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   winning last. Assert an existing profile never mutates when a new one is
   produced.
 
-- [ ] **Step 2: Run capability tests and verify RED**
+- [x] **Step 2: Run capability tests and verify RED**
 
-- [ ] **Step 3: Implement profiles and detector**
+- [x] **Step 3: Implement profiles and detector**
 
   Model `Support` as `Unknown`, `Unsupported`, `Tentative`, or `Supported` plus
   an origin enum. Include color depth, synchronized output, focus, bracketed
@@ -553,9 +553,9 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   hooks for graphics/sixel/iTerm images. Environment inputs are an immutable
   dictionary supplied by the caller, never read globally inside detection.
 
-- [ ] **Step 4: Run capability tests and verify GREEN**
+- [x] **Step 4: Run capability tests and verify GREEN**
 
-- [ ] **Step 5: Write query tracker tests**
+- [x] **Step 5: Write query tracker tests**
 
   Cover one active uncorrelated query per response family, unique Kitty ID
   registration, maximum total concurrency, matched response, duplicate response
@@ -564,9 +564,9 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   cursor-position DSR, DECRPM, OSC default-color, and malformed replies without
   throwing.
 
-- [ ] **Step 6: Run query tests and verify RED**
+- [x] **Step 6: Run query tests and verify RED**
 
-- [ ] **Step 7: Implement bounded query tracking**
+- [x] **Step 7: Implement bounded query tracking**
 
   Store at most `MaxConcurrentQueries`; calculate deadlines from the injected
   `TimeProvider`; permit only one uncorrelated in-flight query for each response
@@ -575,9 +575,9 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   throwing for absent or malformed terminal replies. `Responses` validates raw
   parser callbacks and produces typed DA, DSR, DECRPM, and OSC color values.
 
-- [ ] **Step 8: Run all capability tests and verify GREEN**
+- [x] **Step 8: Run all capability tests and verify GREEN**
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
   Commit message: `feat: add conservative terminal capabilities`
 
