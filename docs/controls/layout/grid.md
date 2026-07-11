@@ -7,12 +7,19 @@ proportional row/column tracks with spacing and spans.
 
 ## API
 
-- `Rows` and `Columns` are non-null track collections; each track validates
-  length and min/max.
-- `RowSpacing` and `ColumnSpacing` are non-negative cells.
+- `Rows` and `Columns` are permanent non-null `TrackCollection` values. Empty
+  definitions mean one implicit automatic track.
+- Immutable `Track` stores `Length`, `Minimum`, and `Maximum` and provides
+  `Auto`, `Cells`, `Percent`, and `Star` factories. Limits are non-negative and
+  maximum cannot be below minimum.
+- `RowSpacing` and `ColumnSpacing` default zero and are non-negative cells.
 - Attached `Row`, `Column`, `RowSpan`, and `ColumnSpan` require in-range origins
-  and positive spans after definitions are committed.
+  and positive spans after definitions are committed. Defaults are row/column
+  zero and spans one.
 - `Children` follows managed ownership.
+
+Track collection and placement mutation validates dispatcher affinity before
+observable state changes, then invalidates measure once after a real change.
 
 Measure resolves fixed tracks, gathers intrinsic non-spanning requirements, then
 satisfies spanning requirements deterministically. Arrange resolves percent
@@ -24,7 +31,7 @@ tracks using cumulative rounding.
 ```csharp
 var grid = new Grid
 {
-    Columns = { GridLength.Cells(20), GridLength.Star(1) },
+    Columns = { Track.Cells(20), Track.Star(1) },
     ColumnSpacing = 1,
 };
 ```

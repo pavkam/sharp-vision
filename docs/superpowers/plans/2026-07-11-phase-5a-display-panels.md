@@ -261,30 +261,33 @@ versions of those APIs.
 - Create: `src/SharpVision/Layout/Track.cs`
 - Create: `src/SharpVision/Layout/TrackCollection.cs`
 - Create: `src/SharpVision/Controls/GridPlacement.cs`
+- Create: `src/SharpVision/Controls/Grid.cs`
 - Create: `tests/SharpVision.Tests/Layout/GridPrimitiveTests.cs`
 - Modify: `docs/controls/layout/grid.md`
 
-- [ ] **Step 1: Write failing Grid primitive tests**
+- [x] **Step 1: Write failing Grid primitive tests**
 
   Prove `Track` factories and constructor validate length/min/max, collections
   are never null and invalidate their owner once per actual mutation, empty
   definitions imply one automatic track, row/column origins are non-negative,
   spans are positive, and invalid attached changes preserve prior metadata.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*GridPrimitiveTests`; expect compile failure for `Track`,
   `TrackCollection`, and placement methods.
 
-- [ ] **Step 3: Implement the primitives**
+- [x] **Step 3: Implement the primitives**
 
   `Track` is an immutable record struct with `Length`, `Minimum`, and `Maximum`
   plus `Auto`, `Cells`, `Percent`, and `Star` factories. `TrackCollection`
   implements `IList<Track>` and calls one validated owner invalidation callback.
   `GridPlacement` weakly stores row, column, row span, and column span defaults
-  of 0, 0, 1, 1. Keep every type in its own file.
+  of 0, 0, 1, 1. Create the `Grid` ownership/API shell with non-null Rows and
+  Columns, spacing validation, and static placement methods; Task 7 adds its
+  layout algorithm. Keep every type in its own file.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run the focused test and commit as `feat: add grid definitions`.
 
@@ -292,7 +295,7 @@ versions of those APIs.
 
 **Files:**
 
-- Create: `src/SharpVision/Controls/Grid.cs`
+- Modify: `src/SharpVision/Controls/Grid.cs`
 - Create: `tests/SharpVision.Tests/Controls/GridTests.cs`
 - Create: `tests/SharpVision.Tests/Controls/RandomizedGridTests.cs`
 - Modify: `docs/controls/layout/grid.md`
