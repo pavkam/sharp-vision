@@ -14,6 +14,11 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     private readonly List<byte[]> _writes = [];
     private int _disposed;
 
+    /// <summary>Initializes empty deterministic input, resize, and captured-output streams.</summary>
+    internal FakeTerminal()
+    {
+    }
+
     /// <summary>Gets isolated copies of every terminal write.</summary>
     internal IReadOnlyList<byte[]> Writes
     {

@@ -82,7 +82,7 @@ internal sealed class Page
     /// <summary>Creates one fresh detached live example tree.</summary>
     /// <returns>The detached example root owned by the caller.</returns>
     /// <exception cref="InvalidOperationException">
-    /// The factory returns null, a parented control, or the same control more than once.
+    /// The factory returns null or a control that already has a parent.
     /// </exception>
     internal Control CreateExamples()
     {
