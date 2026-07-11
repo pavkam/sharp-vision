@@ -643,33 +643,33 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 
 - Modify only files required by verified failures.
 
-- [ ] **Step 1: Run formatting**
+- [x] **Step 1: Run formatting**
 
   Run: `make format`
 
   Expected: command exits 0 and leaves no unintended formatting diff.
 
-- [ ] **Step 2: Run lint**
+- [x] **Step 2: Run lint**
 
   Run: `make lint`
 
   Expected: command exits 0 with no analyzer, Markdown, Prettier, skill, or link
   errors.
 
-- [ ] **Step 3: Run release build**
+- [x] **Step 3: Run release build**
 
   Run: `make build`
 
   Expected: all projects build in Release with 0 warnings and 0 errors.
 
-- [ ] **Step 4: Run all tests**
+- [x] **Step 4: Run all tests**
 
   Run: `make test`
 
   Expected: every discovered test passes; the output reports non-zero test
   counts for all three test projects.
 
-- [ ] **Step 5: Check repository hygiene and public docs**
+- [x] **Step 5: Check repository hygiene and public docs**
 
   Run:
 
@@ -682,7 +682,10 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   Expected: no whitespace errors, only intended Phase 2 changes before the final
   commit, and no placeholders in implemented Phase 2 scope.
 
-- [ ] **Step 6: Commit the verified phase**
+  Verified 203 tests: 200 terminal, 1 UI scaffold, and 2 showcase scaffold. The
+  placeholder scan matched only this plan's literal audit command.
+
+- [x] **Step 6: Commit the verified phase**
 
   Commit message: `chore: complete terminal protocol engine`
 
