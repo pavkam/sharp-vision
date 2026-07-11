@@ -290,13 +290,4 @@ public sealed class Session: IAsyncDisposable
     private void ThrowIfDisposed() =>
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
-    private enum Lease
-    {
-        AlternateScreen,
-        Cursor,
-        Focus,
-        Paste,
-        Mouse,
-        Keyboard,
-    }
 }

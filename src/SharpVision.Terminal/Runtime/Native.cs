@@ -48,12 +48,4 @@ internal static partial class Native
     [LibraryImport("libc", EntryPoint = "ioctl", SetLastError = true)]
     private static partial int Ioctl(int fileDescriptor, nuint request, nint value);
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WindowSize
-    {
-        internal ushort Rows;
-        internal ushort Columns;
-        internal ushort PixelWidth;
-        internal ushort PixelHeight;
-    }
 }

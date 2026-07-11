@@ -920,21 +920,4 @@ public sealed class Parser: IDisposable
         }
     }
 
-    private enum State
-    {
-        Ground,
-        Escape,
-        EscapeIntermediate,
-        EscapeIgnore,
-        Csi,
-        CsiIntermediate,
-        CsiIgnore,
-        Dcs,
-        DcsIntermediate,
-        DcsHeaderIgnore,
-        StringPayload,
-        StringEscape,
-        StringIgnore,
-        StringIgnoreEscape,
-    }
 }
