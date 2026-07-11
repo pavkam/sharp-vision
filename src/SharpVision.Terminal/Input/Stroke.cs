@@ -11,6 +11,8 @@ public readonly record struct Stroke
     /// <param name="nativeCode">The non-negative native numeric code, or zero.</param>
     /// <param name="modifiers">The active modifiers.</param>
     /// <param name="action">The key transition.</param>
+    /// <param name="shifted">The optional shifted key identity.</param>
+    /// <param name="baseLayout">The optional standard PC-101 key identity.</param>
     /// <exception cref="ArgumentException">
     /// Character presence does not agree with <paramref name="code"/>.
     /// </exception>
@@ -22,7 +24,9 @@ public readonly record struct Stroke
         Rune? character,
         int nativeCode,
         Modifiers modifiers,
-        Action action)
+        Action action,
+        Rune? shifted = null,
+        Rune? baseLayout = null)
     {
         if (!Enum.IsDefined(code))
         {
@@ -56,6 +60,8 @@ public readonly record struct Stroke
         NativeCode = nativeCode;
         Modifiers = modifiers;
         Action = action;
+        Shifted = shifted;
+        BaseLayout = baseLayout;
     }
 
     /// <summary>Gets every currently defined modifier flag.</summary>
@@ -83,4 +89,10 @@ public readonly record struct Stroke
 
     /// <summary>Gets the transition kind.</summary>
     public Action Action { get; }
+
+    /// <summary>Gets the optional shifted key identity reported by Kitty.</summary>
+    public Rune? Shifted { get; }
+
+    /// <summary>Gets the optional standard PC-101 base-layout key identity.</summary>
+    public Rune? BaseLayout { get; }
 }

@@ -25,6 +25,9 @@ public enum ResponseKind
 
     /// <summary>An OSC 11 default background color reply.</summary>
     BackgroundColor,
+
+    /// <summary>Current Kitty progressive keyboard flags.</summary>
+    Keyboard,
 }
 
 /// <summary>
@@ -125,6 +128,21 @@ public static class Responses
                 ResponseKind.PrivateMode,
                 values,
                 isSupported: values[1] is 1 or 2);
+            return true;
+        }
+
+        if (final == (byte) 'u' && intermediates.IsEmpty)
+        {
+            var reader = new Parameters(parameters, maxCount: 1, maxValue: 31);
+
+            if (reader.PrivateMarker != (byte) '?' ||
+                !TryReadValues(ref reader, minimum: 1, out var values) ||
+                values.Length != 1)
+            {
+                return false;
+            }
+
+            response = new Response(ResponseKind.Keyboard, values);
             return true;
         }
 

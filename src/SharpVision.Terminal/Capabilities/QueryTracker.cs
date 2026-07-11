@@ -27,6 +27,9 @@ public enum QueryKind
 
     /// <summary>A correlated Kitty clipboard response.</summary>
     KittyClipboard,
+
+    /// <summary>Current Kitty progressive keyboard flags.</summary>
+    Keyboard,
 }
 
 /// <summary>
@@ -146,6 +149,42 @@ public sealed class QueryTracker(
         return QueryMatch.Unknown;
     }
 
+    /// <summary>Matches a typed CSI response and applies Kitty detection ordering.</summary>
+    /// <param name="response">The recognized typed response.</param>
+    /// <returns>The match outcome for <paramref name="response"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The response kind is not query-trackable.</exception>
+    public QueryMatch Match(Response response)
+    {
+        var kind = response.Kind switch
+        {
+            ResponseKind.PrimaryAttributes => QueryKind.PrimaryAttributes,
+            ResponseKind.SecondaryAttributes => QueryKind.SecondaryAttributes,
+            ResponseKind.CursorPosition => QueryKind.CursorPosition,
+            ResponseKind.PrivateMode => QueryKind.PrivateMode,
+            ResponseKind.ForegroundColor => QueryKind.ForegroundColor,
+            ResponseKind.BackgroundColor => QueryKind.BackgroundColor,
+            ResponseKind.Keyboard => QueryKind.Keyboard,
+            ResponseKind.None => throw new ArgumentOutOfRangeException(
+                nameof(response),
+                response,
+                "An unrecognized response cannot be tracked."),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(response),
+                response,
+                "The response kind is not query-trackable."),
+        };
+        var keyboardUnsupported = kind == QueryKind.PrimaryAttributes &&
+            CompleteUnsupported(QueryKind.Keyboard);
+        var result = Match(kind);
+
+        if (keyboardUnsupported)
+        {
+            LastDiagnostic = CreateDiagnostic(DiagnosticCode.Unsupported, QueryKind.Keyboard);
+        }
+
+        return result;
+    }
+
     /// <summary>Cancels one active token and retains a bounded late-reply guard.</summary>
     /// <param name="token">The tracker-local token.</param>
     /// <returns>Whether an active query was cancelled.</returns>
@@ -184,6 +223,20 @@ public sealed class QueryTracker(
 
         _history[key] = new History(outcome, now + _limits.QueryTimeout);
         _historyOrder.Enqueue(key);
+    }
+
+    private bool CompleteUnsupported(QueryKind kind)
+    {
+        var key = new Key(kind, null);
+
+        if (!_active.Remove(key, out var active))
+        {
+            return false;
+        }
+
+        _ = _tokens.Remove(active.Token.Value);
+        AddHistory(key, Outcome.Unsupported, _timeProvider.GetUtcNow());
+        return true;
     }
 
     private int ExpireCore(DateTimeOffset now)
@@ -275,5 +328,6 @@ public sealed class QueryTracker(
         Completed,
         Cancelled,
         TimedOut,
+        Unsupported,
     }
 }

@@ -38,5 +38,16 @@ uncorrelated query per family, and distinct Kitty clipboard IDs. Completed,
 cancelled, and timed-out correlations remain in a bounded grace window so
 duplicates and late replies cannot mutate a published profile.
 
-Cell/pixel metrics and Kitty keyboard/graphics-specific probe decoders remain
-assigned to Phase 3 or their documented extension boundary.
+Cell/pixel metrics and Kitty graphics-specific probe decoders remain assigned to
+later Phase 3 work or their documented extension boundary.
+
+## Phase 3 Kitty detection
+
+`Responses.TryCsi` recognizes a bounded `CSI ? flags u` reply as
+`ResponseKind.Keyboard`, accepting only the defined five-bit range.
+`QueryTracker` tracks the uncorrelated `QueryKind.Keyboard` family. Detection
+sends the keyboard status query followed by DA1, as required by the
+[Kitty keyboard protocol](kitty-keyboard.md#implemented-api-and-grammar). A
+keyboard reply before DA matches both queries and proves support; DA arriving
+while keyboard status is still pending closes that query as unsupported. A later
+status reply is therefore late evidence and cannot silently enable the mode.

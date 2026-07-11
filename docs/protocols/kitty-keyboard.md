@@ -23,8 +23,37 @@ Enable the minimum flags needed for unambiguous modified keys and event types,
 decode press/repeat/release plus associated text, and restore the previous mode
 on exit. Safe fallback is legacy xterm/VT key decoding.
 
+## Implemented API and grammar
+
+`Protocols.Keyboard` writes the official query (`CSI ? u`), push
+(`CSI > flags u`), pop (`CSI < number u`), and direct set/clear forms. The
+`Enhancement` flags are Disambiguate (1), EventTypes (2), AlternateKeys (4),
+AllKeys (8), and AssociatedText (16). Unknown bits are rejected before output;
+AssociatedText without AllKeys is rejected because Kitty defines that
+combination as undefined. `EnhancementMode` exposes replace (1), set (2), and
+clear (3).
+
+`Input.Decoder` recognizes `CSI key:shifted:base;modifiers:event;text…u` without
+allocation or retained parser spans. Modifier values are decoded as the wire
+value minus one across Shift, Alt, Control, Super, Hyper, Meta, Caps Lock, and
+Num Lock. Event 1/2/3 maps to press/repeat/release. The immutable `Stroke`
+preserves the main logical code, native number, optional shifted and PC-101
+base-layout Runes, modifiers, and action; up to 32 validated associated text
+scalars follow as ordered `Text` values.
+
+Escape, Enter, Tab, Backspace, lock keys, Print Screen, Pause, Menu, and F13-F35
+have named logical codes. Other valid PUA functional values remain
+`Code.Unknown` with their native number. Impossible scalars, modifier values
+outside 1-256, event values outside 1-3, extra groups, control characters in
+associated text, and excessive text fields report one redacted diagnostic and
+recover to the next input. Legacy decoding remains active for terminals where
+[`QueryTracker`](device-attributes.md#phase-3-kitty-detection) does not prove
+support.
+
 ## Tests
 
-Use official examples plus every modifier/event kind, Enter/Tab/Backspace,
-functional keys, Unicode text, unknown codes, malformed fields, all split
-points, negotiation, nesting, fallback, and cleanup.
+Tests use official full-field examples plus every modifier/event kind,
+Enter/Tab/Backspace/Escape, known and unknown functional keys, pure Unicode
+text, alternate keys, malformed fields, all split points, exact negotiation
+bytes, query ordering, and legacy coexistence. Runtime lifecycle tests own
+nesting and cleanup.

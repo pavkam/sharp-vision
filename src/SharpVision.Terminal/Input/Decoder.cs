@@ -390,6 +390,16 @@ public sealed partial class Decoder: IDisposable
         EndX10IfPending();
         EndSs3IfPending();
 
+        if (intermediates.IsEmpty && final == (byte) 'u')
+        {
+            if (!Responses.TryCsi(parameters, intermediates, final, out _))
+            {
+                HandleKitty(parameters);
+            }
+
+            return;
+        }
+
         if (intermediates.IsEmpty && parameters.IsEmpty && final is (byte) 'I' or (byte) 'O')
         {
             var focus = new Focus(final == (byte) 'I');

@@ -637,7 +637,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/protocols/kitty-keyboard.md`
 - Modify: `docs/protocols/device-attributes.md`
 
-- [ ] **Step 1: Write exact-byte and official-example tests**
+- [x] **Step 1: Write exact-byte and official-example tests**
 
   Encoder tests require query `CSI ? u`, push `CSI > flags u`, pop `CSI < u`,
   flag validation, and no mutation on invalid values. Decoder tests use official
@@ -645,12 +645,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   kind, Enter/Tab/Backspace, functional keys, Unicode, unknown codes, malformed
   fields, query replies, all split points, and fallback coexistence.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
   Run `--filter-class "*KeyboardTests" "*KittyKeyboardTests"`. Expected:
   compile/test failure because keyboard commands and CSI-u decoding are absent.
 
-- [ ] **Step 3: Implement keyboard commands and typed replies**
+- [x] **Step 3: Implement keyboard commands and typed replies**
 
   Add validated flags for disambiguation, event types, alternate keys, all-keys,
   and associated text. The first milestone pushes disambiguation plus event
@@ -658,7 +658,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   `QueryTracker` with the uncorrelated Kitty-keyboard family; a DA reply before
   keyboard status classifies the query as unsupported.
 
-- [ ] **Step 4: Implement CSI-u decoding**
+- [x] **Step 4: Implement CSI-u decoding**
 
   Parse main/shift/base code alternatives, modifier/event subparameters, and
   associated Unicode code points with finite counts and scalar validation.
@@ -666,12 +666,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   ordered `Text` values for associated text. Invalid fields report once and do
   not consume the next valid event.
 
-- [ ] **Step 5: Run focused and integration tests**
+- [x] **Step 5: Run focused and integration tests**
 
   Add writer-to-parser-to-input integration for push/query/reply/key/pop.
   Expected: exact bytes, every-split decoding, correlation, and fallback pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `feat: support Kitty keyboard input`
 
