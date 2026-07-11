@@ -251,7 +251,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Scrolling/RandomizedRangeTests.cs`
 - Modify: `docs/concepts/scrolling.md`
 
-- [ ] **Step 1: Write failing pure geometry tests**
+- [x] **Step 1: Write failing pure geometry tests**
 
   Cover minimum/maximum/value validation, zero/full range, viewport larger than
   range, one-cell minimum thumb, horizontal/vertical track lengths, cumulative
@@ -260,11 +260,11 @@ must not add partial placeholder versions of later controls.
   proving containment, monotonicity, endpoint exactness, and round-trip error
   bounded by one representable track step.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run the two scrolling geometry classes; expect missing types.
 
-- [ ] **Step 3: Implement allocation-free geometry**
+- [x] **Step 3: Implement allocation-free geometry**
 
   ```csharp
   public readonly record struct Range(int Minimum, int Maximum, int Value, int Viewport);
@@ -277,7 +277,7 @@ must not add partial placeholder versions of later controls.
   outside the non-negative track. Visibility enum values are Hidden, Auto, and
   Always.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run deterministic/randomized range tests; commit as
   `feat: add scroll geometry`.
