@@ -25,6 +25,12 @@ Optimization is rejected when it breaks model equivalence, increases unbounded
 memory, or improves one synthetic case while materially regressing the common
 dense/sparse counterpart without an approved tradeoff.
 
+Phase 5A warms representative 80×24 and 200×60 display trees, then measures five
+500-iteration layout/render windows. At least one window must allocate exactly
+zero managed bytes. A separate 1,000-child Grid/Stack tree measures five
+1,000-iteration unchanged-layout windows with the same requirement. Elapsed
+times are diagnostic output rather than flaky wall-clock gates.
+
 ## Current Phase 3 gates
 
 The warmed unchanged-frame path performs 10,000 measured calls and requires zero

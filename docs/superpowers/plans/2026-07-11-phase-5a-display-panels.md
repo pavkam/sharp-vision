@@ -464,20 +464,20 @@ versions of those APIs.
 - Create: `tests/SharpVision.Tests/Performance/DisplayPanelPerformanceTests.cs`
 - Modify: `docs/testing/{controls-integration,performance}.md`
 
-- [ ] **Step 1: Write cross-layer composition tests**
+- [x] **Step 1: Write cross-layer composition tests**
 
   Compose Grid, Stack, Overlay, Dock, Canvas, Border, and Text under a real
   `Application` with `FakeTerminal`. Drive multiple resizes and style changes,
   then assert committed bounds, wide-cell ownership, final semantic frame,
   incremental output bytes, and absence of stale cells after removal/movement.
 
-- [ ] **Step 2: Add performance gates**
+- [x] **Step 2: Add performance gates**
 
   Measure warmed unchanged layout/render for representative 80x24 and 200x60
   trees plus a 1,000-child Grid/Stack tree. Gate deterministic allocations and
   retained memory; report elapsed time without flaky wall-clock thresholds.
 
-- [ ] **Step 3: Run the Phase 5A focused suite**
+- [x] **Step 3: Run the Phase 5A focused suite**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --configuration Release --filter-class "*StackTests" "*OverlayTests" "*DockTests" "*CanvasTests" "*GridTests" "*TextTests" "*BorderTests" "*DisplayPanelTests" "*DisplayPanelPerformanceTests" --minimum-expected-tests 9 --timeout 120s
@@ -486,7 +486,7 @@ versions of those APIs.
   Expected: all deterministic, randomized, cross-layer, and allocation proofs
   pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   Commit as `test: prove display and panel composition`.
 

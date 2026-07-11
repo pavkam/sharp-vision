@@ -34,6 +34,13 @@ mutation, completed frame callbacks, and the final UTF-8 bytes written by the
 renderer transport. `ResizeRenderTests` proves zero-cell suspension resumes with
 committed layout before its first positive frame.
 
+`DisplayPanelTests` composes Grid, Dock, Stack, Overlay, Canvas, Border, and
+Text under a real `Application` backed by `FakeTerminal`. It proves startup
+bytes, committed bounds, exact semantic cells, wide-cell continuation ownership,
+removal damage, text mutation, and resize reflow on the same dispatcher-owned
+tree. Fresh semantic frames confirm removed content does not survive, while
+later transport writes prove incremental output followed each mutation.
+
 ## Controls with state machines
 
 Phase 5 buttons, toggles, radio groups, text editing, selection, menus, popups,
