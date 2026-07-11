@@ -437,7 +437,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Test: `tests/SharpVision.Terminal.Tests/Clipboard/KittyPacketTests.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Clipboard/KittyWriterTests.cs`
 
-- [ ] **Step 1: Write metadata parser tests**
+- [x] **Step 1: Write metadata parser tests**
 
   Parse colon-separated `key=value` fields for `type`, `status`, `mime`, `loc`,
   `id`, `pw`, and `name`. Cover unknown keys preserved as observations,
@@ -445,18 +445,18 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   metadata limit, and IDs restricted to `[A-Za-z0-9-_+.]`. Assert password and
   payload bytes never appear in diagnostics or `ToString()`.
 
-- [ ] **Step 2: Run packet tests and verify RED**
+- [x] **Step 2: Run packet tests and verify RED**
 
-- [ ] **Step 3: Implement packet parsing**
+- [x] **Step 3: Implement packet parsing**
 
   Split the selector/body without allocating substrings, validate ASCII keys,
   decode Base64 to owned bounded memory only when the caller requests it, and
   represent statuses `OK`, `DATA`, `DONE`, `EIO`, `EINVAL`, `ENOSYS`, `EPERM`,
   and `EBUSY` as enums. Preserve the optional sanitized correlation ID.
 
-- [ ] **Step 4: Run packet tests and verify GREEN**
+- [x] **Step 4: Run packet tests and verify GREEN**
 
-- [ ] **Step 5: Write exact-byte encoder and chunk tests**
+- [x] **Step 5: Write exact-byte encoder and chunk tests**
 
   Cover read, MIME-list (`.`), primary selection, password/name, write start,
   write end, `wdata`, `walias`, and paste mode/query. For MIME data sizes 0, 1,
@@ -465,17 +465,17 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   chunks are contiguous, and the final packet is exactly
   `OSC 5522;type=wdata ST`.
 
-- [ ] **Step 6: Run encoder tests and verify RED**
+- [x] **Step 6: Run encoder tests and verify RED**
 
-- [ ] **Step 7: Implement canonical OSC 5522 encoding**
+- [x] **Step 7: Implement canonical OSC 5522 encoding**
 
   Emit ST only. Encode metadata values exactly once. Use 4096-byte raw slices,
   `Base64.EncodeToUtf8`, and bounded stack/rented scratch storage. Validate all
   inputs before the first output write so invalid requests are atomic.
 
-- [ ] **Step 8: Run encoder tests and verify GREEN**
+- [x] **Step 8: Run encoder tests and verify GREEN**
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
   Commit message: `feat: encode Kitty clipboard packets`
 
