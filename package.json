@@ -8,6 +8,7 @@
     "format": "prettier --write \"**/*.md\"",
     "format:check": "prettier --check \"**/*.md\"",
     "generate:unicode": "node scripts/generate-unicode-data.mjs",
+    "lint:csharp-types": "node scripts/validate-csharp-types.mjs",
     "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.worktrees\"",
     "lint:links": "node scripts/validate-doc-links.mjs",
     "refresh:unicode": "node scripts/generate-unicode-data.mjs --refresh",

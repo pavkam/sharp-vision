@@ -44,6 +44,7 @@ test-ci:
 lint: restore
 	@echo "🔍 Checking source and documentation..."
 	@dotnet format $(SOLUTION) --verify-no-changes --no-restore --verbosity diagnostic
+	@npm run lint:csharp-types
 	@npm run format:check
 	@npm run lint:markdown
 	@npm run lint:links
