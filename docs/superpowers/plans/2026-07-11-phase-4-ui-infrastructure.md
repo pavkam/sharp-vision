@@ -717,7 +717,7 @@ events only after their documented commit points.
 - Modify: `docs/testing/correctness-model.md`
 - Modify: `docs/testing/performance.md`
 
-- [ ] **Step 1: Prove raw terminal input through final cells**
+- [x] **Step 1: Prove raw terminal input through final cells**
 
   Feed UTF-8, legacy/Kitty keys, focus, cell/pixel mouse, paste, and resize
   bytes through the real terminal `Decoder`, `Runtime.Session`, UI
@@ -726,7 +726,7 @@ events only after their documented commit points.
   focused/captured control state plus final cells. Do not replace parser,
   router, layout, or encoder with mocks.
 
-- [ ] **Step 2: Add fixed-seed hostile layout mutation**
+- [x] **Step 2: Add fixed-seed hostile layout mutation**
 
   Seed `0x51A4_7001` generates attach/detach, valid property changes,
   visibility, resize, focus, capture, and invalidation between 0×0 and 240×80.
@@ -735,14 +735,14 @@ events only after their documented commit points.
   incremental/full screen equivalence. Failure reports seed, case, operation,
   tree, bounds, and frame.
 
-- [ ] **Step 3: Add allocation and throughput records**
+- [x] **Step 3: Add allocation and throughput records**
 
   Warm and measure dispatcher post/drain, unchanged layout, sparse invalidation,
   80×24 render, routing depth 20, and resize coalescing. Gate deterministic
   allocation budgets; record runtime/OS/architecture and timing without making
   wall-clock time a local pass criterion.
 
-- [ ] **Step 4: Run the Phase 4 focused suite**
+- [x] **Step 4: Run the Phase 4 focused suite**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --minimum-expected-tests 1 --timeout 120s
@@ -753,7 +753,7 @@ events only after their documented commit points.
   Expected: every UI and terminal test passes; docs, links, analyzers, and XML
   documentation remain clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add tests/SharpVision.Tests docs/testing

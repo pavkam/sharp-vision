@@ -26,6 +26,12 @@ uncapped star can absorb the remainder, non-negative extents, and feasible
 min/max compliance. A separate warmed caller-owned-span loop proves the core
 allocator performs no managed allocation.
 
+The mutable UI infrastructure uses seed `0x51A47001` for 2,000 attach/detach,
+length, edge, visibility, enabled, resize, focus, capture, pointer, layout, and
+render operations. Every case reports seed, case, operation, and size while
+checking one-parent ownership, dispatcher consistency, containment, valid
+manager targets, and complete wide-cell lead/continuation ownership.
+
 ## Test doubles
 
 Use Moq only for a genuine external interaction whose call contract is the

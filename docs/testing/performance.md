@@ -44,3 +44,15 @@ windows must include a zero-byte sample after tiered compilation has crossed its
 warm-up. Test output records elapsed time, .NET runtime, OS, and process
 architecture, but elapsed time is intentionally informational on local and
 ordinary CI machines.
+
+## Current Phase 4 gates
+
+`InfrastructurePerformanceTests` warms and samples unchanged box layout, reused
+80×24 semantic control rendering, and stable depth-20 routed events. The minimum
+of five measured windows must allocate zero managed bytes. A separate
+1,000-operation dispatcher post/drain run allows at most 256 bytes per post for
+the bounded work object and records completion throughput.
+
+Reports include .NET runtime, OS, process architecture, elapsed time, and
+iteration count. Only deterministic allocation budgets gate local/ordinary CI;
+wall-clock values remain informational.

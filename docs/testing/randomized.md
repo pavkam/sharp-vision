@@ -25,3 +25,7 @@ Generators enforce only input-domain preconditions, not the property being
 tested. Production functions never create expected values. Seeded quick cases
 run in pull requests; larger fixed-time corpora run in extended/release gates.
 No random test uses time-based seeding without printing and persisting it.
+
+Phase 4 adds `0x51A47001` as the hostile mutable-tree seed. Its permanent corpus
+mixes zero through 240×80 viewports with layout, visibility, focus, capture, and
+render mutations; every failure includes the exact case and operation.
