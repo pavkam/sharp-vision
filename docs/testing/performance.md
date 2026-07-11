@@ -24,3 +24,15 @@ still publishes comparative results.
 Optimization is rejected when it breaks model equivalence, increases unbounded
 memory, or improves one synthetic case while materially regressing the common
 dense/sparse counterpart without an approved tradeoff.
+
+## Current renderer gates
+
+The warmed unchanged-frame path performs 10,000 measured calls and requires zero
+thread-local managed allocation. Sparse and dense encodes reuse the
+renderer-owned finite pooled batch; exceeding its configured byte limit must
+fail before transport output. A deliberately blocked fake transport proves the
+render stays pending without queue growth, while partial write, flush,
+cancellation, and synchronized cleanup failures prove that only a complete
+write-and-flush commits front state. These guarantees implement the ownership
+rules in the
+[rendering pipeline](../architecture/rendering-pipeline.md#commit-and-invalidation).

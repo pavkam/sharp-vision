@@ -456,7 +456,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/architecture/memory-ownership.md`
 - Modify: `docs/testing/performance.md`
 
-- [ ] **Step 1: Write transport and renderer failure tests**
+- [x] **Step 1: Write transport and renderer failure tests**
 
   Test async read/write, caller cancellation, serialized concurrent writes,
   leave-open ownership, disposal, a deliberately blocked write, successful
@@ -464,12 +464,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   failed write, cancellation, synchronized wrapping, cleanup failure, and
   original-exception preservation.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
   Run `--filter-class "*StreamTransportTests" "*RendererTests"`. Expected:
   compile failure because transport and renderer contracts are absent.
 
-- [ ] **Step 3: Implement direct awaited transport**
+- [x] **Step 3: Implement direct awaited transport**
 
   ```csharp
   public interface ITransport: IAsyncDisposable
@@ -485,7 +485,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   the gate, and honors `leaveOpen`. Awaiting the underlying stream is the
   bounded-backpressure mechanism.
 
-- [ ] **Step 4: Implement renderer ownership and recovery**
+- [x] **Step 4: Implement renderer ownership and recovery**
 
   `Renderer` owns the committed front frame and a cleared pooled byte writer.
   `RenderAsync` encodes against front state, awaits one complete transport write
@@ -495,13 +495,13 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   `Metrics` reports bytes, writes, spans, full/incremental, and elapsed time
   only for completed frames.
 
-- [ ] **Step 5: Run focused tests and allocation checks**
+- [x] **Step 5: Run focused tests and allocation checks**
 
   Require a warmed no-change frame to allocate zero and sparse/dense frames to
   allocate only within the reusable renderer buffer. Expected: focused tests
   pass and the blocked fake proves backpressure without queue growth.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `feat: render frames through bounded transport`
 

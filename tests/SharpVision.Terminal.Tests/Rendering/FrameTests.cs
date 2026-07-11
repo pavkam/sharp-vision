@@ -5,6 +5,8 @@ using SharpVision.Terminal.Rendering;
 
 using Shouldly;
 
+using CellMetrics = SharpVision.Terminal.Geometry.Metrics;
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>
@@ -20,7 +22,7 @@ public sealed class FrameTests
     {
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new Size(-1, 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new Rect(0, 0, -1, 0));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Metrics(0, 1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new CellMetrics(0, 1));
     }
 
     /// <summary>

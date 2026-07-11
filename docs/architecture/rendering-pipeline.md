@@ -43,10 +43,32 @@ according to the
 
 ## Commit and invalidation
 
-A complete successful write commits the back frame as the new front state. A
-partial/interrupted write, resize, capability change, alternate-screen
-transition, clear, or out-of-band output marks terminal state unknown and forces
-the next frame to redraw completely.
+`Renderer.RenderAsync` accepts a borrowed back `Frame`, `ITransport`, immutable
+`Capabilities`, and cancellation token. It encodes into one finite reusable
+pooled batch, performs one directly awaited complete write followed by flush,
+and only then copies or switches the target into its renderer-owned front frame.
+Any required front-frame allocation or capacity growth happens before the first
+terminal byte, so a successful flush cannot be followed by a failed memory
+allocation during commit.
+
+A partial/interrupted write, cancelled write, failed flush, resize, capability
+change, alternate-screen transition, clear, or out-of-band output marks terminal
+state unknown and forces the next frame to redraw completely. Explicit callers
+use `Renderer.Invalidate`; changed dimensions and capability snapshots
+invalidate automatically. Cancellation observed before a write preserves the
+previously committed state.
+
+There is no renderer output queue. A pending transport operation directly
+backpressures `RenderAsync`, and a concurrent render attempt throws. The
+transport is borrowed; disposing the renderer releases only its front frame and
+pooled batch.
+
+When
+[synchronized output is proven](../protocols/synchronized-output.md#synchronized-output-contract),
+the renderer wraps only non-empty batches in mode 2026. If that batch fails, it
+attempts a separate disable-and-flush with a finite independent timeout.
+`LastCleanupException` exposes a cleanup diagnostic without replacing the
+original write, flush, or cancellation exception.
 
 `Damage.Enumerate` compares semantic cells row-major and returns merged
 `DamageSpan` values expanded through ownership in both frames. A grapheme hash
@@ -62,3 +84,8 @@ Tests apply incremental bytes for frame B to a virtual terminal initialized by
 frame A and compare the final screen, cursor, style, hyperlink, and mode state
 with a clean full render of B. Random frame pairs and targeted wide-cell
 transitions use this same oracle.
+
+`Rendering.Metrics` reports bytes, writes, damage spans, full/incremental
+classification, and elapsed time only for completed operations. An unchanged
+frame reports zero bytes and writes and follows a synchronous zero-allocation
+fast path.

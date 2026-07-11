@@ -18,7 +18,6 @@ public sealed class Frame: IDisposable
 {
     private Cell[]? _cells;
     private byte[]? _text;
-    private int _textLength;
 
     /// <summary>Initializes a blank frame with finite text storage.</summary>
     /// <param name="size">The non-negative frame size in terminal cells.</param>
@@ -152,8 +151,8 @@ public sealed class Frame: IDisposable
     public void Clear(Style style = default)
     {
         ThrowIfDisposed();
-        Text[.._textLength].Clear();
-        _textLength = 0;
+        Text[..TextLength].Clear();
+        TextLength = 0;
         FillBlank(style);
     }
 
@@ -195,7 +194,7 @@ public sealed class Frame: IDisposable
 
         _cells = null;
         _text = null;
-        _textLength = 0;
+        TextLength = 0;
         ArrayPool<Cell>.Shared.Return(cells, clearArray: true);
         ArrayPool<byte>.Shared.Return(text, clearArray: true);
     }
@@ -221,6 +220,51 @@ public sealed class Frame: IDisposable
             ThrowIfDisposed();
             return _text;
         }
+    }
+
+    /// <summary>Gets the active UTF-8 arena byte count.</summary>
+    internal int TextLength { get; private set; }
+
+    /// <summary>Creates an independent pooled copy of this active frame.</summary>
+    /// <returns>A frame whose semantic state equals this frame.</returns>
+    internal Frame Clone()
+    {
+        ThrowIfDisposed();
+        var result = new Frame(Size, MaxTextBytes, AmbiguousWidth);
+
+        try
+        {
+            result.CopyFrom(this);
+            return result;
+        }
+        catch
+        {
+            result.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Prepares storage so a later copy cannot allocate.</summary>
+    /// <param name="source">The compatible active source frame.</param>
+    internal void PrepareCopyFrom(Frame source)
+    {
+        ValidateCopySource(source);
+        EnsureCapacity(source.TextLength);
+    }
+
+    /// <summary>Copies compatible semantic state without retaining borrowed storage.</summary>
+    /// <param name="source">The compatible active source frame.</param>
+    internal void CopyFrom(Frame source)
+    {
+        ValidateCopySource(source);
+        Debug.Assert(
+            source.TextLength <= Text.Length,
+            "Copy storage must be prepared before terminal output is committed.");
+        Text[..TextLength].Clear();
+        source.Text[..source.TextLength].CopyTo(Text);
+        source.Cells.CopyTo(Cells);
+        TextLength = source.TextLength;
+        Cursor = source.Cursor;
     }
 
     /// <summary>Gets a copied internal cell by absolute row-major index.</summary>
@@ -307,7 +351,7 @@ public sealed class Frame: IDisposable
     {
         Debug.Assert(additionalBytes >= 0, "Preflight byte counts cannot be negative.");
 
-        if (additionalBytes > MaxTextBytes - _textLength)
+        if (additionalBytes > MaxTextBytes - TextLength)
         {
             throw new InvalidOperationException("The frame text arena limit would be exceeded.");
         }
@@ -330,7 +374,7 @@ public sealed class Frame: IDisposable
             Repair(index + 1);
         }
 
-        var offset = _textLength;
+        var offset = TextLength;
         var length = Append(value);
         var bytes = Text.Slice(offset, length);
         var hash = Hash(bytes);
@@ -408,8 +452,8 @@ public sealed class Frame: IDisposable
     {
         var byteCount = CountUtf8(value);
         EnsureAppendable(byteCount);
-        EnsureCapacity(checked(_textLength + byteCount));
-        var start = _textLength;
+        EnsureCapacity(checked(TextLength + byteCount));
+        var start = TextLength;
         var position = 0;
 
         while (position < value.Length)
@@ -422,11 +466,11 @@ public sealed class Frame: IDisposable
                 consumed = 1;
             }
 
-            _textLength += rune.EncodeToUtf8(Text[_textLength..]);
+            TextLength += rune.EncodeToUtf8(Text[TextLength..]);
             position += consumed;
         }
 
-        Debug.Assert(_textLength - start == byteCount, "UTF-8 preflight and encoding must agree.");
+        Debug.Assert(TextLength - start == byteCount, "UTF-8 preflight and encoding must agree.");
         return byteCount;
     }
 
@@ -442,10 +486,31 @@ public sealed class Frame: IDisposable
             : Text.Length * 2;
         var length = Math.Max(required, doubled);
         var replacement = ArrayPool<byte>.Shared.Rent(length);
-        Text[.._textLength].CopyTo(replacement);
+        Text[..TextLength].CopyTo(replacement);
         var previous = _text;
         _text = replacement;
         ArrayPool<byte>.Shared.Return(previous!, clearArray: true);
+    }
+
+    private void ValidateCopySource(Frame source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ThrowIfDisposed();
+        source.ThrowIfDisposed();
+
+        if (source.Size != Size || source.AmbiguousWidth != AmbiguousWidth)
+        {
+            throw new ArgumentException(
+                "The source frame geometry and width policy must match.",
+                nameof(source));
+        }
+
+        if (source.TextLength > MaxTextBytes)
+        {
+            throw new ArgumentException(
+                "The source frame text exceeds this frame's arena limit.",
+                nameof(source));
+        }
     }
 
     private void FillBlank(Style style)
