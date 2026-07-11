@@ -7,6 +7,9 @@ agree.
 The [protocol index](protocols/index.md#protocol-families) defines terminal wire
 behavior and the [coverage matrix](protocols/coverage-matrix.md#coverage) states
 what the current code actually proves. The
+[architecture map](architecture/index.md#architecture-map) defines ownership and
+runtime flow, while the [concept map](concepts/index.md#concept-map) defines
+shared UI and terminal behavior. The
 [approved foundation design](superpowers/specs/2026-07-11-sharpvision-foundation-design.md#1-purpose)
 defines the product boundary while the detailed specifications are built out.
 
