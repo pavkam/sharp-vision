@@ -101,7 +101,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Controls/ButtonTests.cs`
 - Modify: `docs/controls/input/button.md`
 
-- [ ] **Step 1: Write failing Button tests**
+- [x] **Step 1: Write failing Button tests**
 
   Cover null/one child, atomic replacement, capacity enforcement, default
   focusability, programmatic `PerformClick`, Space/Enter/pointer parity, `Click`
@@ -110,11 +110,11 @@ must not add partial placeholder versions of later controls.
   Unicode content, padding, tiny bounds, inherited states, and exact semantic
   cells.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*ButtonTests`; expect compile failure for Button.
 
-- [ ] **Step 3: Implement Button**
+- [x] **Step 3: Implement Button**
 
   ```csharp
   public sealed class Button : Pressable
@@ -136,7 +136,7 @@ must not add partial placeholder versions of later controls.
   subscribes the next, and invalidates render when executability changes.
   Default/cancel routing is stored now and consumed by Window in Phase 5C.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run `*ButtonTests` and routing tests; commit as `feat: add button control`.
 
