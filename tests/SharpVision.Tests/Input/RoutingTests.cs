@@ -10,6 +10,7 @@ using SharpVision.Threading;
 using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
+using TerminalText = SharpVision.Terminal.Input.Text;
 
 namespace SharpVision.Tests.Input;
 
@@ -225,7 +226,7 @@ public sealed class RoutingTests
     [Fact]
     public void Constructor_WhenPayloadIsValid_PreservesTypedTerminalValue()
     {
-        var text = new Text(new Rune('λ'));
+        var text = new TerminalText(new Rune('λ'));
         var pointer = new Pointer(
             new Point(2, 3),
             pixels: new Point(16, 48),

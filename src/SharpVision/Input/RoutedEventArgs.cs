@@ -1,8 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
-
 using SharpVision.Controls;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Input;
 
 namespace SharpVision.Input;
 
@@ -58,74 +54,4 @@ public abstract class RoutedEventArgs: EventArgs
 
     /// <summary>Ends the active route while preserving observable final values.</summary>
     internal void End() => IsRouting = false;
-}
-
-/// <summary>Provides an immutable decoded keyboard transition.</summary>
-/// <param name="stroke">The decoded keyboard transition.</param>
-public sealed class KeyEventArgs(Stroke stroke): RoutedEventArgs
-{
-    /// <summary>Gets the decoded keyboard transition.</summary>
-    public Stroke Stroke { get; } = stroke;
-}
-
-/// <summary>Provides one immutable Unicode text scalar.</summary>
-/// <param name="text">The decoded text scalar.</param>
-public sealed class TextEventArgs(Text text): RoutedEventArgs
-{
-    /// <summary>Gets the decoded text scalar.</summary>
-    public Text Text { get; } = text;
-}
-
-/// <summary>Provides immutable cell and optional pixel pointer input.</summary>
-/// <param name="pointer">The decoded pointer value.</param>
-[SuppressMessage(
-    "Naming",
-    "CA1720:Identifier contains type name",
-    Justification = "Pointer is the conventional terminal input domain term.")]
-public sealed class PointerEventArgs(Pointer pointer): RoutedEventArgs
-{
-    /// <summary>Gets the decoded pointer value.</summary>
-    public Pointer Pointer { get; } = pointer;
-
-    /// <summary>Gets current screen cells relative to the active handler control.</summary>
-    public Point LocalCells { get; private set; } = pointer.Cells;
-
-    /// <summary>Updates local coordinates for one route element.</summary>
-    internal void SetLocal(Control control)
-    {
-        ArgumentNullException.ThrowIfNull(control);
-        LocalCells = new Point(
-            Difference(Pointer.Cells.X, control.Bounds.X),
-            Difference(Pointer.Cells.Y, control.Bounds.Y));
-    }
-
-    private static int Difference(int left, int right)
-    {
-        var result = (long) left - right;
-        return (int) Math.Clamp(result, int.MinValue, int.MaxValue);
-    }
-}
-
-/// <summary>Provides an owned immutable bracketed-paste payload.</summary>
-public sealed class PasteEventArgs: RoutedEventArgs
-{
-    /// <summary>Initializes paste event arguments.</summary>
-    /// <param name="paste">The non-null owned paste payload.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="paste"/> is null.</exception>
-    public PasteEventArgs(Paste paste)
-    {
-        ArgumentNullException.ThrowIfNull(paste);
-        Paste = paste;
-    }
-
-    /// <summary>Gets the owned paste payload.</summary>
-    public Paste Paste { get; }
-}
-
-/// <summary>Provides an immutable terminal focus transition.</summary>
-/// <param name="focus">The decoded focus transition.</param>
-public sealed class FocusEventArgs(Focus focus): RoutedEventArgs
-{
-    /// <summary>Gets the decoded focus transition.</summary>
-    public Focus Focus { get; } = focus;
 }

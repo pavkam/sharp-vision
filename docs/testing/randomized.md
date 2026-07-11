@@ -37,3 +37,11 @@ suite requires pairwise deterministic geometry, containment, non-negative
 extents, stable ordered edges, and exact final-axis consumption through an
 uncapped proportional track. Failures report the corpus seed, case index,
 derived case seed, and viewport.
+
+Text layout uses seed `0x007E875A` for 5,000 cases assembled from ASCII,
+whitespace, tabs, every newline form, combining sequences, CJK, ambiguous
+characters, emoji ZWJ sequences, selectors, and lone surrogate code units. Every
+wrapping, trimming, alignment, and ambiguous-width mode participates. The oracle
+independently enumerates source graphemes and cell widths, requiring
+deterministic output, monotonic source slices, valid grapheme boundaries, and
+finite-width containment whenever wrapping or trimming is active.

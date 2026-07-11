@@ -347,7 +347,7 @@ versions of those APIs.
 - Create: `tests/SharpVision.Tests/Text/RandomizedLayoutTests.cs`
 - Modify: `docs/controls/display/text.md`
 
-- [ ] **Step 1: Write failing pure text-layout tests**
+- [x] **Step 1: Write failing pure text-layout tests**
 
   Cover empty text, CR/LF/CRLF logical lines, no/word/grapheme wrapping,
   no/clip/grapheme-ellipsis/word-ellipsis trimming, start/center/end alignment,
@@ -355,12 +355,12 @@ versions of those APIs.
   CJK, emoji ZWJ, invalid UTF-16 replacement, zero/one-cell widths, and resize
   reflow. Assert UTF-16 slice boundaries always coincide with grapheme edges.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `SharpVision.Tests.Text.LayoutTests`; expect compile failure for the text
   layout types.
 
-- [ ] **Step 3: Implement allocation-conscious layout**
+- [x] **Step 3: Implement allocation-conscious layout**
 
   `Layout` segments only through `Terminal.Unicode.Graphemes` and measures each
   cluster with the shared width policy. It produces immutable `Line` values
@@ -369,14 +369,14 @@ versions of those APIs.
   accepts caller-owned destination spans and reports required capacity without
   exposing pooled memory.
 
-- [ ] **Step 4: Add randomized model checks**
+- [x] **Step 4: Add randomized model checks**
 
   Use seed `0x7E875A` over at least 5,000 mixed Unicode inputs and widths.
   Compare layout source slices with independent grapheme enumeration; assert
   monotonic consumption, no split cluster, line width containment when width is
   positive, and deterministic results.
 
-- [ ] **Step 5: Verify GREEN and commit**
+- [x] **Step 5: Verify GREEN and commit**
 
   Run both text-layout test classes and commit as
   `feat: add grapheme-safe text layout`.
