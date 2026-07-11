@@ -36,10 +36,22 @@ are not falsely claimed by the protocol value.
 
 Mode restoration and disposal execute in `finally`. When cleanup also fails, the
 original exception remains primary and cleanup is attached diagnostically.
-Unhandled application exceptions raise the runtime event once, then follow the
-configured stop/continue policy at a safe dispatcher boundary.
+Unhandled application callbacks raise `Application.UnhandledException` at the
+dispatcher boundary. They force the idempotent shutdown path unless that exact
+event is marked handled; handling permits the dispatcher to continue but does
+not erase `Application.Failure`. Terminal session faults always drive shutdown
+after notification because transport ordering can no longer be guaranteed. The
+runtime exposes no separate global continue-after-unhandled policy.
 
 `Renderer.LastCleanupException` and `Runtime.Session.LastCleanupException`
 retain the first bounded recovery failure without replacing a primary write,
 flush, startup, read, resize, input-handler, or cancellation exception. Normal
 transport EOF is a typed closure callback, not a fabricated fault.
+`Application.LastCleanupException` exposes the first later renderer or session
+cleanup failure while preserving the primary application failure.
+
+Layout and rendering clear dirty state only around an attempted transaction. If
+a control extension point throws, the affected measure, arrange, or render bit
+is restored before the exception escapes, so a caught diagnostic never leaves a
+silently clean but incomplete tree. Routed handler snapshots are always returned
+to their pools from `finally` cleanup.

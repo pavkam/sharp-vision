@@ -85,6 +85,9 @@ so the final combined extent is exact.
 
 ## Panels
 
+The following concrete containers are Phase 5 specifications, not Phase 4 public
+types:
+
 - Stack measures along one axis and aligns on the cross axis.
 - Grid supports fixed, percent, auto, proportional tracks, spacing, and spans.
 - Dock consumes remaining edges in child order.

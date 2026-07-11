@@ -772,7 +772,7 @@ events only after their documented commit points.
 - Modify: `docs/testing/{controls-integration,correctness-model,performance}.md`
 - Modify: `docs/superpowers/plans/2026-07-11-phase-4-ui-infrastructure.md`
 
-- [ ] **Step 1: Audit exact API and ownership documentation**
+- [x] **Step 1: Audit exact API and ownership documentation**
 
   Name every public type and default; units, validation, affinity, ownership,
   invalidation, phase ordering, event routing, focus/capture cleanup, resize,
@@ -780,7 +780,7 @@ events only after their documented commit points.
   sections rather than duplicating them. Keep automatic scrolling and concrete
   standard controls assigned to Phase 5.
 
-- [ ] **Step 2: Run formatting and generated checks**
+- [x] **Step 2: Run formatting and generated checks**
 
   ```bash
   make format
@@ -791,7 +791,7 @@ events only after their documented commit points.
   Expected: no unintended diff; Unicode output current; analyzers, Prettier,
   Markdownlint, section links, skill links, and docs tests pass.
 
-- [ ] **Step 3: Run build and every test assembly**
+- [x] **Step 3: Run build and every test assembly**
 
   ```bash
   make build
@@ -802,7 +802,7 @@ events only after their documented commit points.
   Expected: all six projects build with 0 warnings/errors; all discovered tests
   pass and the UI assembly has a non-zero count.
 
-- [ ] **Step 4: Audit repository and placeholders**
+- [x] **Step 4: Audit repository and placeholders**
 
   ```bash
   git diff --check
@@ -815,10 +815,10 @@ events only after their documented commit points.
   limited to literal audit commands in historical plans, and Release build has 0
   warnings/errors.
 
-- [ ] **Step 5: Commit the verified phase**
+- [x] **Step 5: Commit the verified phase**
 
   ```bash
-  git add docs/superpowers/plans/2026-07-11-phase-4-ui-infrastructure.md
+  git add docs
   git commit -m "chore: complete UI infrastructure"
   ```
 

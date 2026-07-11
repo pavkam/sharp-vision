@@ -10,22 +10,22 @@ dispatcher.
 
 ## Core properties
 
-| Property                                   | Contract                                                |
-| ------------------------------------------ | ------------------------------------------------------- |
-| `Width`, `Height`                          | Fixed, percentage, automatic, or proportional `Length`. |
-| `MinWidth`, `MinHeight`                    | Non-negative cell minimums.                             |
-| `MaxWidth`, `MaxHeight`                    | Cell maximums not below the corresponding minimum.      |
-| `Margin`                                   | External non-negative `Thickness`.                      |
-| `Padding`                                  | Internal non-negative `Thickness`.                      |
-| `HorizontalAlignment`, `VerticalAlignment` | Placement within the arranged slot.                     |
-| `Visibility`                               | Visible, hidden, or collapsed.                          |
-| `IsEnabled`                                | Inherited effective input state.                        |
-| `CanFocus`, `TabIndex`                     | Focus participation and deterministic order.            |
-| `IsFocused`, `IsHovered`, `IsPressed`      | Read-only committed interaction state.                  |
-| `Style`                                    | Optional direct resource; null inherits from ancestors. |
-| `Appearance`                               | Read-only resolved current-state overlay.               |
-| `DesiredSize`                              | Read-only result of the last successful measure.        |
-| `Bounds`                                   | Read-only committed arranged rectangle.                 |
+| Property                                   | Default                | Contract                                                |
+| ------------------------------------------ | ---------------------- | ------------------------------------------------------- |
+| `Width`, `Height`                          | `Length.Auto`          | Fixed, percentage, automatic, or proportional `Length`. |
+| `MinWidth`, `MinHeight`                    | `0`                    | Non-negative cell minimums.                             |
+| `MaxWidth`, `MaxHeight`                    | `int.MaxValue`         | Cell maximums not below the corresponding minimum.      |
+| `Margin`                                   | Zero edges             | External non-negative `Thickness`.                      |
+| `Padding`                                  | Zero edges             | Internal non-negative `Thickness`.                      |
+| `HorizontalAlignment`, `VerticalAlignment` | `Stretch`              | Placement within the arranged slot.                     |
+| `Visibility`                               | `Visible`              | Visible, hidden, or collapsed.                          |
+| `IsEnabled`                                | `true`                 | Inherited effective input state.                        |
+| `CanFocus`, `TabIndex`                     | `false`, `0`           | Focus participation and deterministic order.            |
+| `IsFocused`, `IsHovered`, `IsPressed`      | `false`                | Read-only committed interaction state.                  |
+| `Style`                                    | `null`                 | Optional direct resource; null inherits from ancestors. |
+| `Appearance`                               | Empty resolved overlay | Read-only resolved current-state overlay.               |
+| `DesiredSize`                              | Empty                  | Read-only result of the last successful measure.        |
+| `Bounds`                                   | Empty                  | Read-only committed arranged rectangle.                 |
 
 Setters validate before mutation, verify dispatcher access while attached, and
 raise `PropertyChanged` once after the changed value is committed. Invalid
@@ -51,11 +51,8 @@ tree. Removal, inherited disable/hide, and disposal synchronously release
 manager state before clearing parent or dispatcher references.
 
 ```csharp
-var panel = new StackPanel();
-var button = new Button();
-
-panel.Children.Add(button);
-Debug.Assert(button.Parent == panel);
+container.Children.Add(control);
+Debug.Assert(control.Parent == container);
 ```
 
 ## Invalidation
@@ -74,13 +71,15 @@ root.
 ## Lifecycle and events
 
 Attachment assigns the same dispatcher recursively. Detachment clears it
-recursively. Later infrastructure adds focus/capture cleanup and rendering
-without changing this ownership contract.
+recursively. Focus and pointer capture are synchronously released when a control
+becomes unavailable or leaves the owned tree.
 
-Routed events will expose `OriginalSource`, `Source`, route phase, handled
-state, and typed payload. `PropertyChanged` is available now; layout, focus,
-pointer, key, text, and lifecycle notifications arrive with their corresponding
-phase.
+`AddHandler<TArgs>` registers a typed synchronous handler and returns an
+idempotent removal token. Routed arguments expose `OriginalSource`, retargetable
+`Source`, route `Phase`, and `Handled`; preview and bubble use stable ancestry
+and handler snapshots even when a callback mutates the tree. The standard
+[`Events`](../concepts/input-routing.md#routed-event-api) cover key, text,
+pointer, paste, and terminal focus payloads.
 
 ## Layout extension points
 
@@ -105,12 +104,13 @@ complete terminal cell style used by rendering.
 ## Example
 
 ```csharp
-var button = new Button
-{
-    Width = Length.Cells(14),
-    Margin = new Thickness(horizontal: 1, vertical: 0),
-    IsEnabled = true,
-};
+control.Width = Length.Cells(14);
+control.Margin = new Thickness(horizontal: 1, vertical: 0);
+control.IsEnabled = true;
+
+using var registration = control.AddHandler(
+    Events.Key,
+    (_, args) => args.Handled = true);
 ```
 
 ## Test obligations

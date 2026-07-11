@@ -25,10 +25,10 @@ sequenceDiagram
 
 ## Iteration order
 
-Each wake drains posted work, terminal input, due timers, and coalesced system
-events. It then performs required layout, renders at most one coalesced frame,
-raises frame-complete callbacks, and fires `Idle` once immediately before
-waiting. Work posted by `Idle` starts another drain without a polling delay.
+Each wake drains posted work, terminal input, and coalesced system events. It
+then performs required layout, renders at most one coalesced frame, raises
+frame-complete callbacks, and fires `Idle` once immediately before waiting. Work
+posted by `Idle` starts another drain without a polling delay.
 
 No application callback runs while an internal lock is held. Event dispatch uses
 a snapshot route so tree mutations affect later events, not the current

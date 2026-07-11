@@ -36,7 +36,7 @@ committed layout before its first positive frame.
 
 ## Controls with state machines
 
-Buttons, toggles, radio groups, text editing, selection, menus, popups, windows,
-scrollbars, and scroll views enumerate valid/invalid transitions and event
-order. Fake clocks drive hover/open delays, timers, idle, and repeated input
-without wall-clock sleeps.
+Phase 5 buttons, toggles, radio groups, text editing, selection, menus, popups,
+windows, scrollbars, and scroll views must enumerate valid/invalid transitions
+and event order. Fake clocks drive hover/open delays, timers, idle, and repeated
+input without wall-clock sleeps.

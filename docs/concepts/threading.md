@@ -2,8 +2,11 @@
 
 ## Threading contract
 
-The dispatcher thread exclusively owns the visual tree, control properties,
-styles, focus, pointer capture, layout, rendering, and user callbacks.
+The dispatcher thread exclusively owns the attached visual tree, control
+properties, style assignment, focus, pointer capture, layout, rendering, and
+user callbacks. A mutable `Style` resource may be changed from another thread;
+attached subscribers marshal its invalidation back to their dispatcher before
+touching control state.
 
 `CheckAccess` reports ownership; `VerifyAccess` throws before an invalid
 mutation. `Post` queues fire-and-observe work with diagnostic failure handling.

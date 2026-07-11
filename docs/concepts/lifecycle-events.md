@@ -2,11 +2,12 @@
 
 ## Lifecycle event contract
 
-Application events are starting, started, stopping, stopped, idle, unhandled
-exception, and frame rendered. Terminal events are resize, terminal focus,
-key/text/pointer/paste, protocol response, transport closed, and transport
-faulted. Window/control events include opening/opened, closing/closed, size and
-layout changes, focus, and routed input.
+The Phase 4 `Application` events are `Starting`, `Started`, `Stopping`,
+`Stopped`, `Idle`, `UnhandledException`, `FrameRendered`, `Resize`, and
+`Diagnostic`. Terminal key, text, pointer, paste, and focus values enter the
+control tree through typed routed events. Session closure and faults drive
+shutdown rather than leaking terminal callbacks through the UI API. Phase 5
+windows and popups add their own opening/opened and closing/closed events.
 
 ## Ordering
 
@@ -20,9 +21,10 @@ Resize follows the ordering in the
 Frame rendered reports only a completed transport write and its damage/byte
 metrics. Failed frames produce diagnostics and force invalidation instead.
 
-`Idle` fires once per transition into no ready work, after input, due timers,
-layout, and rendering, directly before waiting. Scheduled ticks are separate and
-never implemented by repeated idle callbacks.
+`Idle` fires once per transition into no ready or pending work, after input,
+layout, and rendering, directly before waiting. Phase 4 exposes no timer or tick
+API; a later scheduler must post ordinary dispatcher work and must never emulate
+ticks by repeatedly invoking idle callbacks.
 
 The dispatcher primitive enforces the empty ready/pending transition and
 handler-posted-work rule. `Application` now connects terminal input, layout, and

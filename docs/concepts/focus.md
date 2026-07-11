@@ -2,9 +2,9 @@
 
 ## Focus contract
 
-One control within an active focus scope may hold keyboard focus. A focusable
-control is attached, visible, enabled, and accepts focus according to its
-contract. Windows, menus, and popups establish scopes where documented.
+One control within a `FocusManager` root may hold keyboard focus. A focusable
+control is attached, visible, enabled, and has `CanFocus` set. Phase 5 windows,
+menus, and popups will compose manager roots into modal scopes.
 
 Focus changes are dispatcher-affine and transactional. Preview handlers may
 cancel a requested change. A committed change updates the manager before lost
@@ -18,17 +18,18 @@ detach, hide, disable, or disposal cannot be cancelled.
 
 ## Navigation
 
-Tab and Shift+Tab traverse deterministic tab order; arrows use control-specific
-spatial/group navigation for menus, radio groups, and lists. Explicit focus
-requests and pointer focus use the same validation path.
+`MoveNext()` and `MoveNext(reverse: true)` traverse deterministic tab order.
+Phase 5 controls map Tab/Shift+Tab to those calls and add control-specific arrow
+navigation for menus, radio groups, and lists. Explicit and pointer-triggered
+focus requests use the same `Focus(Control?)` validation path.
 
 `MoveNext(reverse)` sorts eligible members by `TabIndex` and then stable tree
 order, wraps at both ends, and uses the same cancellable transaction as an
 explicit request.
 
-Modal scopes prevent focus escaping. When a popup/menu closes, focus returns to
-the recorded valid owner or the nearest valid scope fallback. Detach, collapse,
-disable, or window deactivation releases invalid focus deterministically.
+Detach, hide/collapse, disable, disposal, or manager disposal releases invalid
+focus deterministically. Modal focus containment and popup/menu restoration are
+Phase 5 responsibilities built from these manager guarantees.
 
 Terminal focus from
 [mode 1004](../protocols/paste-focus.md#paste-and-focus-contract) is separate

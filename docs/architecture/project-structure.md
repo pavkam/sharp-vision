@@ -31,9 +31,22 @@ and `Renderer` for semantic output, `Transport.ITransport` for bounded I/O, and
 delivery. Internal pooled storage never becomes a cross-project contract.
 
 `SharpVision` owns the dispatcher, application lifecycle, traditional mutable
-controls, layout, styling, focus, routed input, scrolling, menus, popups, and
-windows. It draws to the terminal project's cell canvas and never emits escape
-bytes.
+controls, layout, styling, focus, and routed input. It draws to the terminal
+project's cell canvas and never emits escape bytes. Phase 4 provides these
+infrastructure namespaces:
+
+| Namespace               | Shipped responsibility                                      |
+| ----------------------- | ----------------------------------------------------------- |
+| `SharpVision.Threading` | Single-owner dispatcher, invocation, and idle transition.   |
+| `SharpVision.Controls`  | Mutable control tree, ownership, invalidation, and drawing. |
+| `SharpVision.Layout`    | Box geometry, measure/arrange, and track allocation.        |
+| `SharpVision.Input`     | Routed input, focus, hit testing, and pointer capture.      |
+| `SharpVision.Styling`   | Mutable style resources and visual-state resolution.        |
+| `SharpVision.Runtime`   | Terminal session ownership and application lifecycle.       |
+
+Concrete standard controls, scrolling, menus, popups, windows, and the gallery
+belong to Phase 5. They must build on these public boundaries rather than move
+terminal protocol or rendering behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.

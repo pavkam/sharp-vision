@@ -9,9 +9,14 @@ invalidates only dependent controls and only the required phase.
 ## Values and scope
 
 Styles can provide foreground/background, text attributes, border glyphs/colors,
-padding, and control-specific appearance. Inheritable values flow through
-documented resource scopes. Direct control values override scoped values. Unset
-and explicit default are distinct so inheritance can be restored.
+padding, and control-specific appearance. A null `Control.Style` inherits the
+nearest ancestor style; a non-null style replaces that resource scope. Unset
+appearance fields and explicit terminal defaults are distinct.
+
+The base control converts foreground, background, and attributes into terminal
+cell style. Concrete Phase 5 controls consume resolved border and style-padding
+fields according to their own drawing and box contracts; style padding does not
+silently replace the base `Control.Padding` property.
 
 `Appearance` represents every field as an optional value. Null is unset;
 `Color.Default`, `Attributes.None`, zero `Thickness`, and a concrete border Rune
@@ -35,10 +40,10 @@ disabled-looking brush alone does not disable a control.
 
 ## Invalidation and tests
 
-Color/attribute changes invalidate render. Border thickness, padding, font-cell
-metrics, or other size-affecting values invalidate measure. Tests cover direct
-versus inherited values, resource replacement, combined states, dependency
-cleanup, disabled semantics, and exact cell styles.
+Color, attribute, border Rune, and border-color changes invalidate render.
+Style-padding changes invalidate measure so consuming concrete controls can
+remeasure. Tests cover direct versus inherited values, resource replacement,
+combined states, dependency cleanup, disabled semantics, and exact cell styles.
 
 `Control.Style` is nullable: null inherits the nearest ancestor resource. A
 direct subscriber propagates changes only through descendants that still inherit

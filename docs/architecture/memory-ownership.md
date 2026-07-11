@@ -6,15 +6,19 @@ Borrowed spans are valid only for the duration of a synchronous call. Owned
 memory has an explicit owner and disposal point. Pooled storage is never exposed
 after return, frame completion, or disposal.
 
-| Data                    | Owner                        | Lifetime                        |
-| ----------------------- | ---------------------------- | ------------------------------- |
-| Transport read buffer   | Runtime session              | Until decoder call returns      |
-| Decoder state           | Decoder instance             | Until reset/disposal            |
-| Decoded immutable event | Event value or owned payload | Through dispatcher delivery     |
-| Front frame             | Renderer                     | Until a later successful commit |
-| Back frame              | Frame builder                | Until commit/abandon            |
-| Grapheme arena          | Frame/screen owner           | While referenced by owned cells |
-| Encoded write batch     | Renderer                     | Until write and flush complete  |
+| Data                    | Owner                        | Lifetime                         |
+| ----------------------- | ---------------------------- | -------------------------------- |
+| Transport read buffer   | Runtime session              | Until decoder call returns       |
+| Decoder state           | Decoder instance             | Until reset/disposal             |
+| Decoded immutable event | Event value or owned payload | Through dispatcher delivery      |
+| Front frame             | Renderer                     | Until a later successful commit  |
+| Back frame              | Frame builder                | Until commit/abandon             |
+| Grapheme arena          | Frame/screen owner           | While referenced by owned cells  |
+| Encoded write batch     | Renderer                     | Until write and flush complete   |
+| Child control           | Parent `Container`           | Until removal/parent disposal    |
+| Routed event snapshot   | Router                       | Until synchronous dispatch ends  |
+| UI input record         | `Application`                | Until dispatcher delivery        |
+| UI back frame           | `Application`                | Until render completion/disposal |
 
 The Phase 2 `Parser` invokes `ISequenceSink` synchronously. Every span supplied
 to a sink is borrowed only until that callback returns. A sink that queues or
@@ -51,6 +55,26 @@ before pool return. `IResizeSource` returns immutable `Dimensions` values and
 retains no caller memory. The session owns disposal of its transport and resize
 source; `StreamTransport` in turn owns its streams unless `leaveOpen` is true.
 
+`SharpVision.Controls.Container` owns every child in its ordered `Children`
+collection. Removal transfers the now-detached control back to the caller;
+container disposal recursively disposes children. Attachment borrows one
+dispatcher reference for the lifetime of the attachment. A control subscribes
+only to its direct `Style`; replacement, detachment where applicable, and
+disposal remove owned registrations deterministically.
+
+Routed input snapshots both ancestry and matching handler registrations before
+invocation. The router owns its rented arrays only through synchronous preview,
+target, and bubble delivery and clears them before pool return. Handlers must
+copy any data they retain. Terminal `Paste` payloads are already immutable owned
+values and may cross the dispatcher queue without borrowing decoder storage.
+
+`SharpVision.Runtime.Application` owns its dispatcher, terminal session,
+renderer, focus/capture managers, current UI back frame, transport, and resize
+source. Its bounded input queue stores immutable value records. Resize storms
+use one newest-value slot rather than one allocation per notification. A back
+frame remains application-owned until its asynchronous renderer lease completes;
+only then may it be disposed or replaced.
+
 ## Span and asynchronous boundaries
 
 Protocol encoders write synchronously to caller spans or `IBufferWriter<byte>`.
@@ -69,8 +93,10 @@ leases; public APIs still throw for caller misuse.
 
 ## Allocation contract
 
-Steady-state parsing, measuring, damage scanning, and frame encoding allocate no
-object per byte, Rune, grapheme, or cell. A warmed unchanged
+Steady-state parsing, unchanged measure/arrange, routed-event delivery, damage
+scanning, and frame encoding allocate no object per byte, Rune, grapheme, or
+cell. A warmed unchanged
 [`Renderer.RenderAsync`](rendering-pipeline.md#commit-and-invalidation) call
 allocates zero managed bytes. Performance tests measure allocation and peak
-retained memory for representative frames and bounded large payloads.
+retained memory for representative frames, control trees, routes, dispatcher
+posts, and bounded large payloads.
