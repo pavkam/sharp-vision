@@ -27,3 +27,13 @@ Shutdown, cancellation, transport failure, and exceptions attempt reverse-order
 restoration. Cleanup failure is diagnostic and never hides the original error.
 Tests cover nesting, duplicate enable/disable, partial initialization, missing
 responses, contradictory responses, and all failure exits.
+
+## Phase 2 implementation
+
+`Modes` provides exact DECSET/DECRST bytes for modes 25, 1004, 1049, 2004, 2026,
+and 5522. `Csi.QueryPrivateMode` emits DECRQM; `Responses.TryCsi` validates
+DECRPM and maps states 1/2 to supported while 0/4 remain unsupported.
+`QueryTracker` bounds in-flight queries, rejects ambiguous duplicate
+uncorrelated requests, correlates Kitty IDs, and distinguishes duplicate from
+late replies using an injected `TimeProvider`. Mode ownership and reverse-order
+terminal restoration are Phase 3 lifecycle work.

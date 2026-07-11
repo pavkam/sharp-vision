@@ -25,12 +25,25 @@ Default limits bound parameter count, parameter magnitude, intermediate bytes,
 and string payload length. Options may lower or raise limits but may not disable
 boundedness.
 
+The Phase 2 API is `SharpVision.Terminal.Protocols.Parser`. It reports borrowed
+spans synchronously through `ISequenceSink`; a sink must copy any value retained
+after its callback. `Complete` reports one truncated sequence and returns to
+ground, `Reset` discards partial state, and disposal returns cleared pooled
+storage. The warmed CSI path has a regression test requiring zero managed bytes
+per event.
+
+`Limits.Default` currently allows 256 parameter bytes, 16 intermediate bytes, 1
+MiB per terminal string, 16 MiB per clipboard transaction, 8 KiB of Kitty
+metadata, 32 concurrent queries, and a 750 ms query deadline. OSC accepts BEL by
+default. Eight-bit C1 controls are opt-in so UTF-8 continuation bytes are text
+unless the caller explicitly selects an eight-bit control stream.
+
 ## First milestone contract
 
-Phase 2 provides typed encoders for renderer-required functions and typed events
-for input/query responses. Unknown valid functions remain observable.
-Unsupported functions do not corrupt parser synchronization or throw in normal
-mode.
+Phase 2 implements raw bounded framing, typed renderer-required CSI/SGR/OSC
+encoders, typed DA/DSR/DECRPM and OSC color responses, and raw observation of
+unknown valid functions. Unsupported functions do not corrupt parser
+synchronization or throw in normal mode.
 
 ## Test obligations
 

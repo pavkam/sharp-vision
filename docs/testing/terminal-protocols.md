@@ -25,6 +25,15 @@ encode/decode round trips where canonical, and invariants such as “whole input
 equals every fragmentation.” Do not generate expected bytes with the production
 encoder.
 
+Randomized parser invariants use fixed seeds so failures reproduce exactly.
+Every generated valid sequence must produce the same events at every
+fragmentation, while hostile generated input must recover to a known trailing
+CSI event. Failure messages include seed, case, and input bytes.
+
+The warmed CSI parser path is measured at zero managed bytes per event. A
+hostile 2 MiB oversized OSC case proves retained/allocation behavior stays
+bounded and that the next valid sequence is still decoded.
+
 ## Integration
 
 At least one test per implemented protocol family traverses typed command,

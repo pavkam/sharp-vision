@@ -17,7 +17,7 @@ public sealed class CapabilitiesTests
     [Fact]
     public void Conservative_WhenRead_EnablesNoOptionalFeature()
     {
-        var capabilities = global::SharpVision.Terminal.Capabilities.Capabilities.Conservative;
+        var capabilities = Terminal.Capabilities.Capabilities.Conservative;
 
         capabilities.OptionalFeatures.ShouldAllBe(
             static feature => feature.State != CapabilitySupport.Supported);
@@ -31,7 +31,7 @@ public sealed class CapabilitiesTests
     [Fact]
     public void With_WhenProfileIsDerived_DoesNotMutateOriginal()
     {
-        var original = global::SharpVision.Terminal.Capabilities.Capabilities.Conservative;
+        var original = Terminal.Capabilities.Capabilities.Conservative;
 
         var derived = original with
         {

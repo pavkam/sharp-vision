@@ -28,3 +28,15 @@ override every detected value for SSH, tmux, GNU screen, CI, and known lies.
 Cover no response, partial/late/duplicate/conflicting responses, spoofed values,
 timeouts with a fake clock, multiplexer hints, explicit overrides, immutability,
 and conservative unknown-terminal defaults.
+
+## Phase 2 implementation
+
+`Responses.TryCsi` owns validated DA1, DA2, cursor-position DSR, and DECRPM
+values. `Responses.TryOsc` owns 16-bit-component foreground/background color
+replies. `QueryTracker` admits at most `Limits.MaxConcurrentQueries`, one active
+uncorrelated query per family, and distinct Kitty clipboard IDs. Completed,
+cancelled, and timed-out correlations remain in a bounded grace window so
+duplicates and late replies cannot mutate a published profile.
+
+Cell/pixel metrics and Kitty keyboard/graphics-specific probe decoders remain
+assigned to Phase 3 or their documented extension boundary.

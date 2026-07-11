@@ -23,10 +23,14 @@ transport stops the application after restoration attempts.
 
 ## Diagnostic model
 
-Diagnostics carry stable category, severity, operation, protocol/feature, offset
-or correlation identifier where safe, and an exception when one exists.
-Clipboard payloads, passwords, permission tokens, and terminal-provided secrets
-are never included by default. No logging framework dependency is required.
+The Phase 2 `Diagnostic` carries only a stable `DiagnosticCode`, sequence kind,
+stream offset, and discarded-byte count. Its invariant-culture text contains
+those structural fields and no input payload. Kitty packet values, clipboard
+bytes, passwords, names, and terminal-provided secrets are never included.
+Transaction state and sanitized correlation identifiers remain in their typed
+objects rather than being copied into diagnostics. Severity, runtime operation,
+and captured exceptions belong to later host-level diagnostic envelopes; they
+are not falsely claimed by the protocol value.
 
 ## Exception preservation
 

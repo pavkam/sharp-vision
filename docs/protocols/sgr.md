@@ -21,6 +21,15 @@ Provide deterministic full-style and transition encoders, semantic equality, and
 a conservative reset path. Colon and semicolon extended-color forms are decoded;
 output uses the profile's preferred form.
 
+## Phase 2 implementation
+
+`Sgr` currently emits reset, bold, dim, italic, underline, slow/rapid blink,
+reverse, hidden, strike, and their standard group resets. `Color` supports
+default, indexed 0-255, and RGB foreground/background output. Every shipped
+rendition and color form has an independent exact-byte test. Underline variants,
+overline, frame-to-frame transition minimization, 16-color semantic names, and
+palette degradation remain renderer work and are not yet implemented.
+
 ## Tests
 
 Exact bytes cover every attribute on/off pair, combined states, default/indexed

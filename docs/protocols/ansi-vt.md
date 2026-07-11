@@ -24,6 +24,14 @@ Typed output covers the VT100/VT220-compatible subset required by screen
 rendering and input. Conflicting DEC, ANSI, and xterm interpretations are named
 in the corresponding typed command rather than hidden behind a generic code.
 
+## Phase 2 implementation
+
+`Csi`, `Sgr`, `Osc`, and `Modes` provide the exact-byte output subset documented
+in their linked contracts. `Parser` preserves unknown valid ESC/CSI functions as
+borrowed events instead of guessing a terminal identity. Application cursor and
+keypad modes, scroll regions, tabulation, and a complete VT compatibility
+profile are not yet implemented.
+
 ## Fallback and tests
 
 Unknown terminals receive the conservative VT baseline. Tests pair each command

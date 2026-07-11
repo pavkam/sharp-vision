@@ -22,6 +22,19 @@ queries where capabilities allow, 8 for hyperlinks, 52 for clipboard text, and
 5522 through the dedicated
 [Kitty clipboard contract](kitty-clipboard.md#kitty-clipboard-contract).
 
+## Phase 2 implementation
+
+`Osc` implements selectors 0 and 2 for titles, selector 8 hyperlink open/close,
+selector 4 palette queries, and selectors 10 and 11 default-color queries. The
+raw `Writer` validates the complete payload before advancing an
+`IBufferWriter<byte>` and always emits ST. `Responses.TryOsc` decodes bounded
+`rgb:` replies for selectors 10 and 11.
+
+`Osc52` implements typed clipboard/primary/secondary/select/cut-buffer text,
+strict canonical Base64, UTF-8 validation, query payloads, owned decode results,
+and ST/BEL parser integration. OSC 5522 remains deliberately separate through
+`KittyPacket`, `KittyWriter`, and `KittyTransaction`.
+
 ## Security and tests
 
 Hyperlink targets and terminal replies are untrusted data. APIs do not execute

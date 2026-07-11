@@ -598,7 +598,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Modify: `docs/architecture/memory-ownership.md`
 - Modify: `docs/architecture/error-handling.md`
 
-- [ ] **Step 1: Write deterministic randomized invariants**
+- [x] **Step 1: Write deterministic randomized invariants**
 
   With fixed seeds, generate valid CSI/OSC/DCS sequences and hostile arbitrary
   bytes. Assert whole input equals every fragmentation for complete valid
@@ -606,14 +606,19 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   hangs, `Complete` returns to ground, and a known trailing CSI is observed
   after every malformed prefix. Print the seed on failure.
 
-- [ ] **Step 2: Run randomized tests and verify RED for uncovered cases**
+- [x] **Step 2: Run randomized tests and verify RED for uncovered cases**
 
-- [ ] **Step 3: Fix parser invariants without loosening bounds**
+  The existing bounded parser satisfied the new fixed-seed invariants; the
+  focused suite passed without exposing a production gap to minimize.
+
+- [x] **Step 3: Fix parser invariants without loosening bounds**
 
   Minimize any failing seed into a named regression test before changing
   production code. Preserve the randomized case after the named test passes.
 
-- [ ] **Step 4: Update normative docs and coverage states**
+  No production change was required, so configured bounds remained unchanged.
+
+- [x] **Step 4: Update normative docs and coverage states**
 
   Document exact public types, defaults, byte grammar, accepted terminators,
   eight-bit C1 policy, diagnostic recovery, memory lifetimes, query precedence,
@@ -621,14 +626,14 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   families. Change only genuinely implemented coverage rows to “typed” or
   “observed”; keep deferred graphics/image rows explicit.
 
-- [ ] **Step 5: Run documentation validation**
+- [x] **Step 5: Run documentation validation**
 
   Run: `make lint`
 
   Expected: .NET analyzers, Prettier, Markdownlint, skill validation, and local
   file/section link checks all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `docs: publish Phase 2 protocol guarantees`
 

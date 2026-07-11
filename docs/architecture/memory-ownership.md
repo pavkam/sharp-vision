@@ -16,6 +16,16 @@ after return, frame completion, or disposal.
 | Grapheme arena          | Frame/screen owner           | While referenced by owned cells    |
 | Encoded write batch     | Transport operation          | Until asynchronous write completes |
 
+The Phase 2 `Parser` invokes `ISequenceSink` synchronously. Every span supplied
+to a sink is borrowed only until that callback returns. A sink that queues or
+retains a value must copy it. Parser disposal clears and returns its pooled
+terminal-string storage.
+
+`Osc52.Decode` and `KittyPacket.Parse` copy successfully decoded payloads into
+owned arrays. A completed `KittyTransaction` transfers its accumulated MIME
+buffers into `KittyResult`; the result owner must dispose it, which clears every
+buffer. Temporary Base64 and transaction buffers are returned with clearing.
+
 ## Span and asynchronous boundaries
 
 Protocol encoders write synchronously to caller spans or `IBufferWriter<byte>`.

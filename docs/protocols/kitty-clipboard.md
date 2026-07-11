@@ -24,6 +24,15 @@ mode 5522 enables paste events. Transactions enforce documented ordering,
 total-size, metadata-size, timeout, and concurrency limits. Invalid Base64 or
 ordering aborts only that transaction and preserves outer parsing.
 
+`KittyPacket` validates colon-separated metadata, all documented statuses,
+Base64 MIME/password/name values, optional primary location, and correlation
+IDs. Unknown metadata remains observable by key name only. `KittyWriter` emits
+read/list/write/data/alias/end packets, DECRQM, and paste-mode controls.
+`KittyTransaction` enforces `OK -> DATA* -> DONE` reads, write `DONE`, one MIME
+type at a time, 4096-byte chunks, total-size limits, cancellation, and
+fake-clock deadlines. Successful data transfers into an owned `KittyResult`
+whose disposal clears every data buffer.
+
 ## First milestone contract
 
 Implement OSC 52 text plus typed OSC 5522 MIME reads/writes, aliases,
@@ -33,7 +42,8 @@ an unavailable result rather than an exception.
 
 ## Tests
 
-Exact bytes cover 0, 1, 4095, 4096, and 4097 bytes; reads, list, aliases,
-primary selection, permissions, every status, and terminators. Parser tests use
-all split points, malformed metadata/Base64/order, recovery, cancellation,
-limits, randomized binary data, and writer-to-parser integration.
+Exact bytes cover 0, 1, 4095, 4096, 4097, and 8192 bytes; reads, list, aliases,
+primary selection, credentials, permissions, every status, and terminators.
+Parser tests use all split points, malformed metadata/Base64/order, recovery,
+cancellation, limits, binary data, and writer-to-parser-to-transaction
+integration.

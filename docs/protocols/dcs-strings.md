@@ -18,6 +18,16 @@ multiplexer passthrough and future graphics. APC recognizes the Kitty graphics
 introducer diagnostically. SOS and PM are observable but have no public
 high-level behavior.
 
+## Phase 2 implementation
+
+`Parser` recognizes DCS, SOS, OSC, PM, and APC across arbitrary read
+fragmentation, including split `ESC \\` terminators. CAN/SUB cancel active
+sequences. Configurable limits bound payload storage; overflow discards until a
+valid terminator and then resumes ground-state parsing. `Complete` reports one
+truncation diagnostic for unfinished input. `Writer` emits validated DCS, APC,
+PM, and SOS commands with ST termination. Typed DCS consumers and multiplexer
+passthrough remain extension work.
+
 ## Security and tests
 
 No string payload is logged by default. Limits apply before buffering or Base64
