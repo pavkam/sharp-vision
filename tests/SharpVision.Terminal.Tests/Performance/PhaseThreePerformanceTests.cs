@@ -3,8 +3,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 
@@ -181,20 +179,4 @@ public sealed class PhaseThreePerformanceTests
             $"{RuntimeInformation.ProcessArchitecture}; {RuntimeInformation.OSDescription}");
     }
 
-    private sealed class CountingSink: IInputSink
-    {
-        internal int Count { get; private set; }
-
-        public void Input(in Stroke value) => Count++;
-
-        public void Input(in Text value) => Count++;
-
-        public void Input(in Pointer value) => Count++;
-
-        public void Input(Paste value) => Count++;
-
-        public void Input(in Focus value) => Count++;
-
-        public void Input(in Diagnostic value) => Count++;
-    }
 }

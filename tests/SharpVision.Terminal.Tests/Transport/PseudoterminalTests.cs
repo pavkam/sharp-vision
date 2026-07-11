@@ -1,8 +1,6 @@
 using System.Runtime.Versioning;
 
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Tests.Support;
 using SharpVision.Terminal.Transport;
@@ -131,7 +129,7 @@ public sealed class PseudoterminalTests
             transport,
             source,
             sink,
-            Terminal.Runtime.Options.Minimal);
+            Options.Minimal);
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
 
         terminal.SetWindowSize(expected);
@@ -144,49 +142,4 @@ public sealed class PseudoterminalTests
         sink.Faults.ShouldBeEmpty();
     }
 
-    private sealed class RuntimeSink(Dimensions expected): ISink
-    {
-        internal TaskCompletionSource<Dimensions> Expected { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        internal List<Exception> Faults { get; } = [];
-
-        public void Input(in Stroke value)
-        {
-        }
-
-        public void Input(in Text value)
-        {
-        }
-
-        public void Input(in Pointer value)
-        {
-        }
-
-        public void Input(Paste value)
-        {
-        }
-
-        public void Input(in Focus value)
-        {
-        }
-
-        public void Input(in Diagnostic value)
-        {
-        }
-
-        public void Resize(in Dimensions value)
-        {
-            if (value == expected)
-            {
-                _ = Expected.TrySetResult(value);
-            }
-        }
-
-        public void Closed()
-        {
-        }
-
-        public void Fault(Exception exception) => Faults.Add(exception);
-    }
 }

@@ -239,12 +239,4 @@ public sealed class KittyTransactionTests
     private static KittyPacket Packet(string wire) =>
         KittyPacket.Parse(System.Text.Encoding.ASCII.GetBytes(wire));
 
-    private sealed class ManualTimeProvider: TimeProvider
-    {
-        private DateTimeOffset _now = DateTimeOffset.UnixEpoch;
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan duration) => _now += duration;
-    }
 }

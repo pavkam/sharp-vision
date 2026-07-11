@@ -310,14 +310,4 @@ internal sealed class VirtualScreen: ISequenceSink
         return Encoding.UTF8.GetString(bytes);
     }
 
-    private readonly record struct ModelCell(
-        string Text,
-        Style Style,
-        int Width,
-        bool IsContinuation,
-        int LeadX)
-    {
-        /// <summary>Gets the default blank modeled cell.</summary>
-        internal static ModelCell Blank { get; } = new(" ", Style.Default, 1, false, 0);
-    }
 }

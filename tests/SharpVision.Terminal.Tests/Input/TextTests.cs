@@ -9,7 +9,6 @@ using Shouldly;
 using DiagnosticCode = SharpVision.Terminal.Protocols.DiagnosticCode;
 using InputAction = SharpVision.Terminal.Input.Action;
 using InputDecoder = SharpVision.Terminal.Input.Decoder;
-using InputDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
 using InputText = SharpVision.Terminal.Input.Text;
 
 namespace SharpVision.Terminal.Tests.Input;
@@ -268,29 +267,4 @@ public sealed class TextTests
             false));
     }
 
-    private sealed class CountingInputSink: IInputSink
-    {
-        public int Count { get; private set; }
-
-        public void Input(in Stroke value) => Count++;
-
-        public void Input(in InputText value) => Count++;
-
-        public void Input(in Pointer value) => Count++;
-
-        public void Input(Paste value) => Count++;
-
-        public void Input(in Focus value) => Count++;
-
-        public void Input(in InputDiagnostic value) => Count++;
-    }
-
-    private sealed class ManualTimeProvider: TimeProvider
-    {
-        private DateTimeOffset _utcNow = DateTimeOffset.UnixEpoch;
-
-        public override DateTimeOffset GetUtcNow() => _utcNow;
-
-        internal void Advance(TimeSpan value) => _utcNow += value;
-    }
 }

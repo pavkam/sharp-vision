@@ -73,5 +73,4 @@ public sealed class ConformanceTests
         return new Case(value.ToString(), [.. boundaries]);
     }
 
-    private sealed record Case(string Value, int[] Boundaries);
 }

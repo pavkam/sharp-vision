@@ -1,0 +1,29 @@
+using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
+
+namespace SharpVision.Terminal.Tests.Performance;
+
+/// <summary>Counts every input callback in allocation measurements.</summary>
+internal sealed class CountingSink: IInputSink
+{
+    /// <summary>Gets the total callback count.</summary>
+    internal int Count { get; private set; }
+
+    /// <inheritdoc/>
+    public void Input(in Stroke value) => Count++;
+
+    /// <inheritdoc/>
+    public void Input(in Text value) => Count++;
+
+    /// <inheritdoc/>
+    public void Input(in Pointer value) => Count++;
+
+    /// <inheritdoc/>
+    public void Input(Paste value) => Count++;
+
+    /// <inheritdoc/>
+    public void Input(in Focus value) => Count++;
+
+    /// <inheritdoc/>
+    public void Input(in Diagnostic value) => Count++;
+}

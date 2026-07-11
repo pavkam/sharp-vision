@@ -1,16 +1,10 @@
-using System.Threading.Channels;
-
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Tests.Support;
-using SharpVision.Terminal.Transport;
 
 using Shouldly;
 
 using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-using InputText = SharpVision.Terminal.Input.Text;
 using Rune = System.Text.Rune;
 using RuntimeOptions = SharpVision.Terminal.Runtime.Options;
 using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
@@ -204,133 +198,4 @@ public sealed class SessionTests
         };
     }
 
-    private sealed class RuntimeSink: ISink
-    {
-        public List<InputText> Text { get; } = [];
-
-        public List<Dimensions> Resizes { get; } = [];
-
-        public TaskCompletionSource ResizeReceived { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public int ClosedCount { get; private set; }
-
-        public Exception? TextFailure { get; init; }
-
-        public List<Exception> Faults { get; } = [];
-
-        public void Input(in Stroke value)
-        {
-        }
-
-        public void Input(in InputText value)
-        {
-            if (TextFailure is not null)
-            {
-                throw TextFailure;
-            }
-
-            Text.Add(value);
-        }
-
-        public void Input(in Pointer value)
-        {
-        }
-
-        public void Input(Paste value)
-        {
-        }
-
-        public void Input(in Focus value)
-        {
-        }
-
-        public void Input(in Diagnostic value)
-        {
-        }
-
-        public void Resize(in Dimensions value)
-        {
-            Resizes.Add(value);
-            _ = ResizeReceived.TrySetResult();
-        }
-
-        public void Closed() => ClosedCount++;
-
-        public void Fault(Exception exception) => Faults.Add(exception);
-    }
-
-    private sealed class SessionTransport: ITransport
-    {
-        private readonly Channel<byte[]> _input = Channel.CreateUnbounded<byte[]>();
-        private readonly List<byte[]> _writes = [];
-        private int _writeCount;
-
-        public int FailWriteAt { get; init; }
-
-        public IOException WriteFailure { get; } = new("write failed");
-
-        public IOException? ReadFailure { get; init; }
-
-        public TaskCompletionSource FirstRead { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public string JoinedWrites => string.Concat(
-            _writes.Select(System.Text.Encoding.ASCII.GetString));
-
-        public void Input(byte[] value) => _input.Writer.TryWrite(value);
-
-        public void Close() => _input.Writer.TryComplete();
-
-        public async ValueTask<int> ReadAsync(
-            Memory<byte> destination,
-            CancellationToken cancellationToken)
-        {
-            _ = FirstRead.TrySetResult();
-
-            if (ReadFailure is not null)
-            {
-                throw ReadFailure;
-            }
-
-            try
-            {
-                var value = await _input.Reader.ReadAsync(cancellationToken);
-                value.AsMemory().CopyTo(destination);
-                return value.Length;
-            }
-            catch (ChannelClosedException)
-            {
-                return 0;
-            }
-        }
-
-        public ValueTask WriteAsync(
-            ReadOnlyMemory<byte> source,
-            CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            _writeCount++;
-
-            if (_writeCount == FailWriteAt)
-            {
-                return ValueTask.FromException(WriteFailure);
-            }
-
-            _writes.Add(source.ToArray());
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask FlushAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            _ = _input.Writer.TryComplete();
-            return ValueTask.CompletedTask;
-        }
-    }
 }

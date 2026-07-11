@@ -116,5 +116,4 @@ internal sealed class FakeTransport: ITransport
         Writes.Add(source.ToArray());
     }
 
-    private sealed record Failure(Exception Exception, int PrefixBytes);
 }

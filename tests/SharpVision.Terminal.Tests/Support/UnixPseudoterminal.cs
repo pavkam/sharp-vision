@@ -364,13 +364,4 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
     [LibraryImport("libc", EntryPoint = "getpid")]
     private static partial int GetProcessId();
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WindowSize
-    {
-        internal ushort Rows;
-        internal ushort Columns;
-        internal ushort PixelWidth;
-        internal ushort PixelHeight;
-    }
-
 }

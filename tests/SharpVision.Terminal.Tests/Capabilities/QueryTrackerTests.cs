@@ -80,12 +80,4 @@ public sealed class QueryTrackerTests
         tracker.LastDiagnostic!.Value.Code.ShouldBe(DiagnosticCode.LateResponse);
     }
 
-    private sealed class ManualTimeProvider: TimeProvider
-    {
-        private DateTimeOffset _now = DateTimeOffset.UnixEpoch;
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan duration) => _now += duration;
-    }
 }

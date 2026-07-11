@@ -69,45 +69,4 @@ public sealed class ParserPerformanceTests
         sink.CsiCount.ShouldBe(10_100);
     }
 
-    private struct CountingSink: ISequenceSink
-    {
-        public int CsiCount { get; private set; }
-
-        public readonly void Text(ReadOnlySpan<byte> value)
-        {
-        }
-
-        public readonly void Control(byte value)
-        {
-        }
-
-        public readonly void Escape(ReadOnlySpan<byte> intermediates, byte final)
-        {
-        }
-
-        public void Csi(
-            ReadOnlySpan<byte> parameters,
-            ReadOnlySpan<byte> intermediates,
-            byte final) => CsiCount++;
-
-        public readonly void Sequence(
-            SequenceKind kind,
-            ReadOnlySpan<byte> value,
-            StringTerminator terminator)
-        {
-        }
-
-        public readonly void Dcs(
-            ReadOnlySpan<byte> parameters,
-            ReadOnlySpan<byte> intermediates,
-            byte final,
-            ReadOnlySpan<byte> value,
-            StringTerminator terminator)
-        {
-        }
-
-        public readonly void Report(in Diagnostic value)
-        {
-        }
-    }
 }
