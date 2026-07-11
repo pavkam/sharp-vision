@@ -18,6 +18,12 @@ cell style. Concrete Phase 5 controls consume resolved border and style-padding
 fields according to their own drawing and box contracts; style padding does not
 silently replace the base `Control.Padding` property.
 
+Text foreground/background/attribute values and Border
+border-color/background/attribute values are nullable direct overrides. Null
+inherits the fully resolved active appearance; explicit terminal defaults and
+`Attributes.None` replace inherited values. Geometry-affecting padding
+invalidates measure, while display-only overrides invalidate render.
+
 `Appearance` represents every field as an optional value. Null is unset;
 `Color.Default`, `Attributes.None`, zero `Thickness`, and a concrete border Rune
 are explicit overlays. `Resolver.ToTerminal` converts the final optional fields

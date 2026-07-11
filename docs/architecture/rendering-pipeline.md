@@ -98,6 +98,12 @@ always a full redraw.
 
 ## Correctness oracle
 
+Phase 5A panels commit geometry and child order only. Text and Border are the
+display leaves: Text draws committed grapheme-aligned slices and a typed
+ellipsis, while Border clears its clipped background and draws complete
+validated one-cell Runes. Neither layer emits escape bytes; frame differencing
+and terminal encoding remain below the canvas boundary.
+
 Tests apply incremental bytes for frame B to a virtual terminal initialized by
 frame A and compare the final screen, cursor, style, hyperlink, and mode state
 with a clean full render of B. Random frame pairs and targeted wide-cell

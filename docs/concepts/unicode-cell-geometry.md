@@ -38,6 +38,12 @@ normalized storage. Invalid UTF-16, combining-only clusters, private-use
 scalars, and unassigned Unicode 17 scalars occupy one conservative repairable
 cell.
 
+`SharpVision.Text.Layout` is the shipped UI consumer of this geometry. It emits
+only grapheme-boundary source slices, expands tabs at four-cell stops, and
+reserves ellipsis width under the same explicit ambiguous-width policy. Text
+caches those lines, and Border rejects control or wide glyph Runes before
+mutation.
+
 ## Width rules
 
 - Printable narrow clusters occupy one cell.

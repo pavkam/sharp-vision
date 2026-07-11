@@ -500,14 +500,14 @@ versions of those APIs.
 - Modify: `docs/controls/index.md`
 - Modify: `docs/superpowers/plans/2026-07-11-phase-5a-display-panels.md`
 
-- [ ] **Step 1: Audit documentation against exact public API**
+- [x] **Step 1: Audit documentation against exact public API**
 
   Record every default, unit, validation rule, exception, ownership boundary,
   invalidation phase, clipping/z-order rule, Unicode behavior, and example.
   Remove future-tense claims for shipped Phase 5A controls and keep later
   controls explicitly assigned to their later plans.
 
-- [ ] **Step 2: Audit one-type-per-file compliance for changed files**
+- [x] **Step 2: Audit one-type-per-file compliance for changed files**
 
   ```bash
   rg -n "^(public|internal|private|protected).*\\b(class|struct|record|interface|enum|delegate)\\b" src/SharpVision tests/SharpVision.Tests
@@ -516,7 +516,7 @@ versions of those APIs.
   Expected: every non-generated named type added or touched by this plan is the
   only type in its exactly named file; no nested named types were introduced.
 
-- [ ] **Step 3: Run all quality gates**
+- [x] **Step 3: Run all quality gates**
 
   ```bash
   make format
@@ -532,7 +532,7 @@ versions of those APIs.
   assembly passes with non-zero discovery; formatting, analyzers, docs links,
   Unicode generation, and placeholder audits are clean.
 
-- [ ] **Step 4: Commit the verified slice**
+- [x] **Step 4: Commit the verified slice**
 
   ```bash
   git add docs

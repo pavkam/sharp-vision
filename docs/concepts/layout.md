@@ -85,17 +85,16 @@ so the final combined extent is exact.
 
 ## Panels
 
-`Stack` is the first shipped concrete panel. It uses the common track allocator
-along its sequential axis and the base box model across it. Reverse order
-affects geometry, rendering, and default focus traversal together.
+`Stack` uses the common track allocator along its sequential axis and the base
+box model across it. Reverse order affects geometry, rendering, and default
+focus traversal together.
 
-The remaining concrete containers are Phase 5 specifications not yet public
-types:
-
-- Grid supports fixed, percent, auto, proportional tracks, spacing, and spans.
-- Dock consumes remaining edges in child order.
-- Overlay shares the content box and uses deterministic z-order.
-- Canvas positions children explicitly and clips by policy.
+`Grid` supports fixed, percent, auto, proportional tracks, spacing, spans, and
+an implicit automatic track when definitions are empty. `Dock` consumes
+remaining physical edges in child order. `Overlay` shares the content box and
+uses stable attached z-order for render and hit testing. `Canvas` positions
+children through cells or deferred percentages and clips by policy. `Border`
+adds validated zero-or-one physical edges around one atomically owned child.
 
 ## Test contract
 

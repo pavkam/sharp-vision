@@ -10,9 +10,14 @@ All controls derive from the
 
 ### Display
 
+Shipped in Phase 5A:
+
 - [Text](display/text.md#text-contract)
-- [RichText](display/rich-text.md#richtext-contract)
 - [Border](display/border.md#border-contract)
+
+Specified for a later Phase 5 slice:
+
+- [RichText](display/rich-text.md#richtext-contract)
 
 ### Input
 
@@ -23,11 +28,16 @@ All controls derive from the
 
 ### Layout and scrolling
 
+Shipped in Phase 5A:
+
 - [Stack](layout/stack.md#stack-contract)
 - [Grid](layout/grid.md#grid-contract)
 - [Dock](layout/dock.md#dock-contract)
 - [Overlay](layout/overlay.md#overlay-contract)
 - [Canvas](layout/canvas.md#canvas-contract)
+
+Specified for a later Phase 5 slice:
+
 - [ScrollView](layout/scroll-view.md#scrollview-contract)
 - [ScrollBar](layout/scroll-bar.md#scrollbar-contract)
 

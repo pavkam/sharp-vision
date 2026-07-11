@@ -44,9 +44,10 @@ infrastructure namespaces:
 | `SharpVision.Styling`   | Mutable style resources and visual-state resolution.        |
 | `SharpVision.Runtime`   | Terminal session ownership and application lifecycle.       |
 
-Concrete standard controls, scrolling, menus, popups, windows, and the gallery
-belong to Phase 5. They must build on these public boundaries rather than move
-terminal protocol or rendering behavior into the UI layer.
+Phase 5A adds public Stack, Grid, Dock, Overlay, Canvas, Text, and Border types
+on these boundaries. Remaining controls, scrolling, menus, popups, and windows
+stay assigned to later Phase 5 slices; none may move terminal protocol or
+rendering behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.
