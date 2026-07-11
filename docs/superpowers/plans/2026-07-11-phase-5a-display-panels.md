@@ -390,7 +390,7 @@ versions of those APIs.
 - Modify: `docs/controls/display/text.md`
 - Modify: `docs/testing/unicode-rendering.md`
 
-- [ ] **Step 1: Write failing Text control tests**
+- [x] **Step 1: Write failing Text control tests**
 
   Cover constructor and non-null `Content`, property defaults and validation,
   measure invalidation for content/wrapping/trimming, arrange invalidation for
@@ -398,11 +398,11 @@ versions of those APIs.
   unchanged layout, inherited style, hidden/collapsed behavior, tiny clipping,
   multiline/wrapped Unicode, ellipsis, and exact frame cells/styles.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*TextTests`; expect compile failure because `Controls.Text` is absent.
 
-- [ ] **Step 3: Implement Text**
+- [x] **Step 3: Implement Text**
 
   `Text : Control` stores a non-null string but performs measurement/rendering
   over borrowed spans. Content defaults empty; `Wrapping.None`, `Trimming.None`,
@@ -413,7 +413,7 @@ versions of those APIs.
   grapheme-safe line slices plus typed ellipsis cells through `Canvas.Draw`; it
   never emits protocol bytes.
 
-- [ ] **Step 4: Verify GREEN, allocation behavior, and commit**
+- [x] **Step 4: Verify GREEN, allocation behavior, and commit**
 
   Warm an unchanged 80-column Unicode Text measure/render loop and require a
   zero-allocation sample across five windows. Run `*TextTests` plus the Unicode

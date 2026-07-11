@@ -47,7 +47,7 @@ public sealed class RandomizedLayoutTests
                 boundaries.ShouldContain(line.Offset, context);
                 boundaries.ShouldContain(line.Offset + line.Length, context);
                 line.Cells.ShouldBe(Cells(content.AsSpan(line.Offset, line.Length), ambiguous) +
-                    (line.HasEllipsis ? 1 : 0), context);
+                    (line.HasEllipsis ? Width.Measure("…", ambiguous).Cells : 0), context);
                 line.Leading.ShouldBeGreaterThanOrEqualTo(0, context);
 
                 if (width > 0 && (wrapping != Wrapping.None || trimming != Trimming.None))

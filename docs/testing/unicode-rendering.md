@@ -47,6 +47,14 @@ cell, and idempotent disposal. A fixed-seed mutation suite checks every cell
 after each random draw/clear operation and prints the seed plus operation on
 failure.
 
+`Text` consumes only committed grapheme-aligned `Line` slices and draws them
+through the semantic canvas. Control coverage verifies combining sequences, CJK,
+emoji ZWJ, invalid UTF-16 replacement, multiline wrapping, clipping, and
+ellipsis under both narrow and wide ambiguous-width policies. U+2026 reserves
+the same one or two cells that the target frame owns; half-wide ellipsis output
+is forbidden. A warmed unchanged Unicode layout/render loop must allocate zero
+managed bytes across five measured windows.
+
 ## Allocation
 
 Hot measurement, canvas, damage, and encoding cases assert no object per

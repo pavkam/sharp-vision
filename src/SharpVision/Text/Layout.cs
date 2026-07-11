@@ -10,6 +10,7 @@ namespace SharpVision.Text;
 public static class Layout
 {
     private const int _tabSize = 4;
+    private const string _ellipsis = "…";
 
     /// <summary>Formats text into caller-owned line storage and reports required capacity.</summary>
     /// <param name="value">The UTF-16 text borrowed for this call.</param>
@@ -187,8 +188,10 @@ public static class Layout
             return;
         }
 
-        var ellipsis = trimming is Trimming.GraphemeEllipsis or Trimming.WordEllipsis && width > 0;
-        var limit = Math.Max(0, width - (ellipsis ? 1 : 0));
+        var ellipsisCells = Width.Measure(_ellipsis, ambiguous).Cells;
+        var ellipsis = trimming is Trimming.GraphemeEllipsis or Trimming.WordEllipsis &&
+            width >= ellipsisCells;
+        var limit = Math.Max(0, width - (ellipsis ? ellipsisCells : 0));
         var position = 0;
         var cells = 0;
         var wordEnd = 0;
@@ -224,7 +227,7 @@ public static class Layout
         Emit(
             sourceOffset,
             position,
-            cells + (ellipsis ? 1 : 0),
+            cells + (ellipsis ? ellipsisCells : 0),
             width,
             alignment,
             ellipsis,
