@@ -14,6 +14,8 @@ Shipped in Phase 5A:
 
 - [Text](display/text.md#text-contract)
 - [Border](display/border.md#border-contract)
+- [Shadow](display/shadow.md#shadow-contract)
+- [FigletText](display/figlet-text.md#figlettext-contract)
 
 Specified for a later Phase 5 slice:
 

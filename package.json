@@ -5,6 +5,7 @@
   "description": "Documentation quality tooling for SharpVision.",
   "scripts": {
     "check:unicode": "node scripts/generate-unicode-data.mjs --check",
+    "check:figlet": "node scripts/audit-figlet-fonts.mjs --source ${FIGLET_FONT_SOURCE} --commit 417429ef36ab039cbf192a4424c60aa23fc32de8 --output data/figlet/fonts.manifest.json --check",
     "format": "prettier --write \"**/*.md\"",
     "format:check": "prettier --check \"**/*.md\"",
     "generate:unicode": "node scripts/generate-unicode-data.mjs",

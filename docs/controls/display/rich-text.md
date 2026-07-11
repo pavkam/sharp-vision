@@ -4,40 +4,40 @@
 
 `RichText` displays a mutable `Inlines` collection of `Run`, `LineBreak`, and
 `Hyperlink` values. It uses typed styles rather than embedded ANSI and supports
-wrapping, alignment, selection, and link activation.
+grapheme wrapping, line alignment, and semantic terminal hyperlinks.
 
 ## API
 
 - `Inlines` rejects null values and prevents one inline from belonging to two
   documents.
 - `Wrapping` and `TextAlignment` match [Text](text.md#text-contract).
-- `IsSelectionEnabled`, `Selection`, and `SelectedText` operate on grapheme
-  boundaries.
-- `LinkInvoked` carries the hyperlink value and routed input source.
-- `SelectionChanged` fires after the committed selection changes.
+- Every inline has at most one document owner. Collections reject null,
+  duplicates, and cross-document insertion before mutation.
+- Inline content and style changes invalidate document measurement.
 
-`Run` has `Text`, optional foreground/background/attributes, and semantic
-emphasis. `Hyperlink` owns inline children, a non-null target value, enabled
-state, and optional command; it never opens a URL automatically.
+`Run` has `Content` and optional foreground, background, and attributes.
+`Hyperlink` has visible `Content`, the same optional style values, and a
+non-empty control-free `Target`. It writes semantic hyperlink metadata but never
+opens a URL automatically.
 
 ## Interaction and rendering
 
-Pointer drag and keyboard selection use shared hit testing. Tab navigation or a
-document-specific command moves among enabled links. Enter activates the focused
-link. Selection, link hover/focus, and disabled styles compose through normal
-visual-state precedence.
+Runs retain styles across line wrapping. Explicit breaks and embedded newlines
+advance the visual line. A wide grapheme that does not fit moves as a complete
+owner; it is never split across rows.
 
 ## Example
 
 ```csharp
 var description = new RichText();
-description.Inlines.Add(new Run("Press "));
-description.Inlines.Add(new Run("Enter") { Attributes = TextAttributes.Bold });
-description.Inlines.Add(new Run(" to activate."));
+description.Inlines.Add(new Run("Read the "));
+description.Inlines.Add(new Hyperlink("documentation", "https://example.test"));
+description.Inlines.Add(new LineBreak());
+description.Inlines.Add(new Run("Resize to see grapheme-safe wrapping."));
 ```
 
 ## Test obligations
 
-Cover inline ownership, style runs across wrapping, line breaks, link focus and
-activation, selection over combining/wide clusters, clipboard extraction, resize
-reflow, disabled links, clipping, events, and exact cells.
+Cover inline ownership, failed insertion atomicity, style runs across wrapping,
+line breaks, semantic link metadata, combining and wide clusters, resize reflow,
+clipping, mutation invalidation, and exact cells.

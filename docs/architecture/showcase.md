@@ -14,9 +14,11 @@ flowchart LR
     Page --> Log["Live event and state log"]
 ```
 
-Every shipped control registers one page containing purpose, properties, events,
-states, shortcuts, interactive variants, and a live event log. The catalog test
-fails when a public shipped control lacks a page.
+Every shipped control appears on a registered family page containing purpose,
+representative properties, states, and interactive variants. The current pages
+cover borders and shadows, typography, buttons and selection, inputs and lists,
+and layout and scrolling. The catalog test fails when a registered page lacks a
+typed `RichText` description.
 
 ## Responsive behavior
 

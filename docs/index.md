@@ -15,6 +15,11 @@ the [test map](testing/index.md#test-map) defines acceptable correctness
 evidence. The
 [approved foundation design](superpowers/specs/2026-07-11-sharpvision-foundation-design.md#1-purpose)
 defines the product boundary while the detailed specifications are built out.
+The
+[Canvas, border, and shadow design](superpowers/specs/2026-07-11-canvas-borders-shadows-design.md#purpose)
+defines Unicode drawing and visual overflow, while the
+[FIGlet engine and catalog design](superpowers/specs/2026-07-11-figlet-catalog-design.md#purpose)
+defines large-text rendering and the audited compressed font library.
 
 ## Documentation contract
 

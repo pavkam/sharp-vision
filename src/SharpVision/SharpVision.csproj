@@ -4,6 +4,11 @@
     <ProjectReference Include="..\SharpVision.Terminal\SharpVision.Terminal.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts/figlet-fonts.zip" LogicalName="SharpVision.Fonts.figlet-fonts.zip" />
+    <EmbeddedResource Include="../../data/figlet/fonts.manifest.json" Link="Fonts/fonts.manifest.json" LogicalName="SharpVision.Fonts.fonts.manifest.json" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

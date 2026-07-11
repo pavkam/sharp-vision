@@ -1,0 +1,36 @@
+namespace SharpVision.Fonts;
+
+/// <summary>Overrides optional FIGfont direction and layout metadata.</summary>
+public readonly record struct FigletOptions
+{
+    private const FigletLayout _all = (FigletLayout) 0x7fff;
+
+    /// <summary>Initializes validated optional rendering overrides.</summary>
+    /// <param name="direction">The optional scalar ordering override.</param>
+    /// <param name="layout">The optional layout-bit override.</param>
+    /// <exception cref="ArgumentOutOfRangeException">An enum value contains unknown data.</exception>
+    public FigletOptions(FigletDirection? direction = null, FigletLayout? layout = null)
+    {
+        if (direction.HasValue && !Enum.IsDefined(direction.Value))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(direction),
+                direction,
+                "The FIGlet direction is unknown.");
+        }
+
+        if (layout.HasValue && (layout.Value & ~_all) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(layout), layout, "The layout contains unknown bits.");
+        }
+
+        Direction = direction;
+        Layout = layout;
+    }
+
+    /// <summary>Gets the optional scalar ordering override.</summary>
+    public FigletDirection? Direction { get; }
+
+    /// <summary>Gets the optional layout-bit override.</summary>
+    public FigletLayout? Layout { get; }
+}

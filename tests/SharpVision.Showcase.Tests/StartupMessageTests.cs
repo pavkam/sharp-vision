@@ -11,11 +11,12 @@ public sealed class StartupMessageTests
     /// Verifies that the shell reports its honest implementation phase and docs entrypoint.
     /// </summary>
     [Fact]
-    public void Get_WhenFoundationIsRunning_DescribesCurrentPhase()
+    public void Get_WhenShowcaseIsRunning_DescribesGalleryAndDocs()
     {
         var message = StartupMessage.Get();
 
-        message.ShouldContain("foundation", Case.Insensitive);
+        message.ShouldContain("showcase", Case.Insensitive);
+        message.ShouldContain("sidebar", Case.Insensitive);
         message.ShouldContain("docs/index.md");
     }
 }

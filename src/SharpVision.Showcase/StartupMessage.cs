@@ -1,14 +1,15 @@
 namespace SharpVision.Showcase;
 
 /// <summary>
-/// Provides the startup text used until the interactive showcase runtime lands.
+/// Provides a concise startup description for non-interactive hosts.
 /// </summary>
 internal static class StartupMessage
 {
     /// <summary>
-    /// Gets a message that describes the repository's current implementation phase.
+    /// Gets a message that describes the interactive gallery.
     /// </summary>
     /// <returns>The message written by the showcase shell.</returns>
     internal static string Get() =>
-        "SharpVision repository foundation is ready. Product specifications start at docs/index.md.";
+        "SharpVision interactive showcase: use the sidebar to explore controls. " +
+        "Product specifications start at docs/index.md.";
 }
