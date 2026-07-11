@@ -64,3 +64,8 @@ performance gate repeats ASCII/mixed/emoji segmentation plus
 unchanged/sparse/dense 80×24 encodes in five warmed windows; at least one
 measured window must remain literally allocation-free so one-time tiered-runtime
 bookkeeping is not mistaken for a per-operation allocation.
+
+The interactive host proof additionally enters CJK followed by decomposed text
+through distinct UTF-8 and bracketed-paste paths, navigates across their shared
+grapheme boundaries, deletes the complete preceding wide cluster, and verifies
+the remaining combining cluster in a fresh semantic frame and terminal output.

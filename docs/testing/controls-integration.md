@@ -41,6 +41,19 @@ removal damage, text mutation, and resize reflow on the same dispatcher-owned
 tree. Fresh semantic frames confirm removed content does not survive, while
 later transport writes prove incremental output followed each mutation.
 
+`InteractiveControlTests` focuses a real `TextInput`, then sends UTF-8 CJK,
+owned bracketed paste containing a combining sequence, a legacy Left key, and
+Backspace through `Session`. Sequential checkpoints prove the decoder and
+dispatcher committed each exact grapheme transition; a fresh semantic frame and
+captured renderer bytes prove the final decomposed cluster without stale wide
+cells. A raw terminal focus-loss report is delivered while logical widget focus
+is intentionally retained and pointer capture is empty.
+
+`ScrollingTests` sends 20 raw SGR wheel reports into nested hidden-bar
+`ScrollView`s. It proves the inner range consumes its complete 12-line capacity,
+the exact remaining four lines propagate outward, and a later pixel-dimensioned
+resize clamps the outer offset before the committed frame callback.
+
 ## Controls with state machines
 
 Phase 5 buttons, toggles, radio groups, text editing, selection, menus, popups,
