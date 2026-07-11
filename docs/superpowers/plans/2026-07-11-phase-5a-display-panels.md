@@ -229,7 +229,7 @@ versions of those APIs.
 - Create: `tests/SharpVision.Tests/Controls/CanvasTests.cs`
 - Modify: `docs/controls/layout/canvas.md`
 
-- [ ] **Step 1: Write failing Canvas tests**
+- [x] **Step 1: Write failing Canvas tests**
 
   Cover left/top/right/bottom independently and in pairs, automatic stretch only
   for opposing offsets, explicit-size precedence, intrinsic union, deferred
@@ -237,11 +237,11 @@ versions of those APIs.
   origins caused by oversized right/bottom placement, clipping on/off, hit
   testing, z-order, resize, and Unicode-width children.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*CanvasTests`; expect compile failure for the positioned Canvas API.
 
-- [ ] **Step 3: Implement Canvas**
+- [x] **Step 3: Implement Canvas**
 
   Store four nullable attached `Length` values in weak `Position` records.
   Reject `Auto` and `Star` offsets before mutation; cells and percentage are
@@ -250,7 +250,7 @@ versions of those APIs.
   resolve only during arrange. Opposing offsets stretch an automatic child; an
   explicit child size keeps its size and uses the leading offset.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run the focused test and commit as `feat: add canvas panel`.
 

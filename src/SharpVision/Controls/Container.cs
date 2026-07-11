@@ -1,5 +1,6 @@
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
+
+using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
 namespace SharpVision.Controls;
 
@@ -69,7 +70,7 @@ public abstract class Container: Control
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(Canvas canvas)
+    internal override void RenderChildren(TerminalCanvas canvas)
     {
         foreach (var child in Children)
         {

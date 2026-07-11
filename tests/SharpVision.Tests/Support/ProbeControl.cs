@@ -3,7 +3,8 @@ using System.Text;
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
+
+using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
 namespace SharpVision.Tests.Support;
 
@@ -47,7 +48,7 @@ internal sealed class ProbeControl(Size intrinsic = default): Control
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(Canvas canvas)
+    protected override void RenderCore(TerminalCanvas canvas)
     {
         RenderCalls++;
         Rendering?.Invoke(this);
@@ -58,7 +59,7 @@ internal sealed class ProbeControl(Size intrinsic = default): Control
     }
 
     /// <summary>Draws one Rune using this control's resolved terminal style.</summary>
-    internal void Draw(Canvas canvas, Rune value)
+    internal void Draw(TerminalCanvas canvas, Rune value)
     {
         Span<char> buffer = stackalloc char[2];
         var length = value.EncodeToUtf16(buffer);
