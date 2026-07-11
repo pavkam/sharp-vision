@@ -10,6 +10,9 @@ what the current code actually proves. The
 [architecture map](architecture/index.md#architecture-map) defines ownership and
 runtime flow, while the [concept map](concepts/index.md#concept-map) defines
 shared UI and terminal behavior. The
+[control catalog](controls/index.md#control-catalog) defines public widgets, and
+the [test map](testing/index.md#test-map) defines acceptable correctness
+evidence. The
 [approved foundation design](superpowers/specs/2026-07-11-sharpvision-foundation-design.md#1-purpose)
 defines the product boundary while the detailed specifications are built out.
 
