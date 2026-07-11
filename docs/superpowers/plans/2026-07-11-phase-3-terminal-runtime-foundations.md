@@ -583,7 +583,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/protocols/mouse.md`
 - Modify: `docs/architecture/memory-ownership.md`
 
-- [ ] **Step 1: Write paste, focus, and mouse tests**
+- [x] **Step 1: Write paste, focus, and mouse tests**
 
   Paste cases cover empty/multiline/Unicode data, embedded ESC, every proper
   prefix of the end marker, marker-like payload, all split points, invalid
@@ -593,12 +593,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   wheel axes, motion, extra buttons, leave, zero/maximum coordinates, malformed
   values, metrics conversion, and fragmentation.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
   Run `--filter-class "*PasteTests" "*FocusTests" "*MouseTests"`. Expected:
   tests fail because the decoder reports these inputs only as raw sequences.
 
-- [ ] **Step 3: Implement raw paste mode with bounded ownership**
+- [x] **Step 3: Implement raw paste mode with bounded ownership**
 
   Once CSI 200~ is decoded, feed subsequent bytes to a streaming exact-marker
   matcher rather than the protocol parser until CSI 201~. Prefix bytes are held
@@ -607,7 +607,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   UTF-8, copies exact bytes into owned immutable memory, clears the pool, emits
   one `Paste`, and resumes protocol parsing.
 
-- [ ] **Step 4: Implement focus and pointer decoding**
+- [x] **Step 4: Implement focus and pointer decoding**
 
   Decode CSI I/O, X10 three-field input, SGR and urxvt decimal input. Convert
   wire one-based coordinates once. In pixel mode preserve raw pixels and derive
@@ -615,12 +615,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   `IsCellPositionInferred`. Cell mode leaves `Pixels` absent. Preserve wheel
   deltas, buttons, modifiers, action, motion, and leave distinctly.
 
-- [ ] **Step 5: Run every-split and hostile-limit tests**
+- [x] **Step 5: Run every-split and hostile-limit tests**
 
   Expected: all cases pass; a multi-megabyte unterminated paste remains within
   its configured allocation budget and a trailing arrow key is decoded.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `feat: decode paste focus and pointer input`
 

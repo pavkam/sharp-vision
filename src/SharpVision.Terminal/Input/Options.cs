@@ -55,4 +55,9 @@ public sealed record Options
 
     /// <summary>Gets optional positive cell-pixel dimensions for pixel mouse inference.</summary>
     public Metrics? CellMetrics { get; init; }
+
+    /// <summary>
+    /// Gets whether SGR pointer coordinates are pixels rather than cells.
+    /// </summary>
+    public bool PixelMouse { get; init; }
 }

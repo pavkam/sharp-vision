@@ -21,6 +21,13 @@ to a sink is borrowed only until that callback returns. A sink that queues or
 retains a value must copy it. Parser disposal clears and returns its pooled
 terminal-string storage.
 
+`Input.Decoder` borrows each transport span only until `Decode` returns. Key,
+text, pointer, and focus callbacks contain values only. During bracketed paste,
+the decoder owns one finite pooled buffer, clears it on overflow, completion,
+truncation, and disposal, and copies normalized UTF-8 into the delivered
+`Paste`. Its `ReadOnlyMemory<byte>` therefore remains owned and stable after
+later decoder calls; no pooled array or transport memory escapes.
+
 `Osc52.Decode` and `KittyPacket.Parse` copy successfully decoded payloads into
 owned arrays. A completed `KittyTransaction` transfers its accumulated MIME
 buffers into `KittyResult`; the result owner must dispose it, which clears every

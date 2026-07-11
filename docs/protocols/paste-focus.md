@@ -22,8 +22,27 @@ to UI policy but does not synthesize arbitrary key releases.
 Manage both modes through lifecycle leases, decode fragmented begin/end markers,
 emit immutable paste/focus events on the dispatcher, and restore modes at exit.
 
+`Input.Decoder` now recognizes CSI 200~/201~ and switches to raw paste mode
+after the begin marker. A six-byte exact matcher holds only a possible
+end-marker prefix; mismatches return the held bytes to payload, so embedded ESC
+and every proper marker prefix remain data. Parser callbacks are bypassed until
+the exact terminator, meaning paste content can never trigger keys, focus,
+mouse, OSC, or CSI handling.
+
+Payload retention is capped by `Input.Options.MaxPasteBytes`. Overflow clears
+retained bytes, discards through the terminator, reports one structural
+diagnostic, and resumes ordinary decoding at the following byte. Successful
+payloads are normalized to valid UTF-8 with U+FFFD for malformed subsequences,
+copied into an owned `Paste`, and remain stable when decoder storage is reused.
+End-of-stream drops partial payload and reports truncation.
+
+CSI I/O emit immutable gained/lost `Focus` values. They are terminal focus only;
+application routing applies the separate
+[UI focus policy](../concepts/input-routing.md#route-construction).
+
 ## Tests
 
-Cover empty, multiline, Unicode, embedded ESC, marker-prefix payloads,
-oversized/truncated paste, all split points, adjacent focus/mouse events,
-terminal focus transitions, and cleanup failures.
+Tests cover empty, multiline, Unicode, invalid UTF-8, embedded ESC, every proper
+marker prefix, owned retention, megabyte overflow, truncation, every byte split,
+adjacent focus/text events, and terminal focus transitions. Lifecycle cleanup
+proof follows with the mode-owning session.

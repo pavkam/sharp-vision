@@ -15,21 +15,32 @@ namespace SharpVision.Terminal.Input;
 /// The decoder is single-threaded. Input bytes and parser callback spans are
 /// borrowed only for each synchronous call; emitted values retain none of them.
 /// </remarks>
-public sealed class Decoder: IDisposable
+public sealed partial class Decoder: IDisposable
 {
+    private static readonly byte[] _pasteEnd = "\u001b[201~"u8.ToArray();
+
     private readonly IInputSink _sink;
     private readonly Options _options;
     private readonly Parser _parser;
     private readonly TimeProvider _timeProvider;
     private readonly byte[] _utf8 = new byte[4];
+    private readonly byte[] _x10 = new byte[12];
+    private byte[]? _paste;
     private DateTimeOffset _escapeDeadline;
     private Modifiers _nextTextModifiers;
     private int _utf8Length;
+    private int _pasteLength;
+    private int _pasteMatch;
+    private int _x10Length;
+    private long _pasteDiscarded;
     private long _skippedBytes;
     private bool _completed;
     private bool _disposed;
     private bool _escapePending;
+    private bool _pasteMode;
+    private bool _pasteOverflow;
     private bool _ss3Pending;
+    private bool _x10Pending;
 
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
     /// <param name="sink">The non-null event sink.</param>
@@ -67,6 +78,14 @@ public sealed class Decoder: IDisposable
         while (position < input.Length)
         {
             var value = input[position];
+
+            if (_pasteMode)
+            {
+                _skippedBytes = checked(_skippedBytes + 1);
+                ProcessPaste(value);
+                position++;
+                continue;
+            }
 
             if (_escapePending)
             {
@@ -160,6 +179,17 @@ public sealed class Decoder: IDisposable
             Report(DiagnosticCode.Truncated, SequenceKind.Escape);
         }
 
+        if (_x10Pending)
+        {
+            EndX10IfPending();
+        }
+
+        if (_pasteMode)
+        {
+            ResetPaste();
+            Report(DiagnosticCode.Truncated, SequenceKind.Csi);
+        }
+
         var adapter = new Adapter(this);
         _parser.Complete(ref adapter);
     }
@@ -174,7 +204,16 @@ public sealed class Decoder: IDisposable
 
         _disposed = true;
         _utf8.AsSpan().Clear();
+        _x10.AsSpan().Clear();
         _utf8Length = 0;
+        ResetPaste();
+
+        if (_paste is not null)
+        {
+            ArrayPool<byte>.Shared.Return(_paste, clearArray: true);
+            _paste = null;
+        }
+
         _parser.Dispose();
     }
 
@@ -271,6 +310,8 @@ public sealed class Decoder: IDisposable
 
     private void HandleControl(byte value)
     {
+        EndX10IfPending();
+
         if (_ss3Pending)
         {
             _ss3Pending = false;
@@ -322,6 +363,7 @@ public sealed class Decoder: IDisposable
     private void HandleEscape(ReadOnlySpan<byte> intermediates, byte final)
     {
         FlushUtf8();
+        EndX10IfPending();
         EndSs3IfPending();
 
         if (!intermediates.IsEmpty)
@@ -345,7 +387,28 @@ public sealed class Decoder: IDisposable
         byte final)
     {
         FlushUtf8();
+        EndX10IfPending();
         EndSs3IfPending();
+
+        if (intermediates.IsEmpty && parameters.IsEmpty && final is (byte) 'I' or (byte) 'O')
+        {
+            var focus = new Focus(final == (byte) 'I');
+            _sink.Input(in focus);
+            return;
+        }
+
+        if (intermediates.IsEmpty && final == (byte) '~' &&
+            TryReadSingle(parameters, out var native) && native == 200)
+        {
+            BeginPaste();
+            return;
+        }
+
+        if (intermediates.IsEmpty && final is (byte) 'M' or (byte) 'm' &&
+            TryHandleMouse(parameters, final == (byte) 'm'))
+        {
+            return;
+        }
 
         if (!intermediates.IsEmpty)
         {
@@ -456,6 +519,7 @@ public sealed class Decoder: IDisposable
     private void HandleSequence(SequenceKind kind)
     {
         FlushUtf8();
+        EndX10IfPending();
         EndSs3IfPending();
         Report(DiagnosticCode.Unsupported, kind);
     }
@@ -463,6 +527,7 @@ public sealed class Decoder: IDisposable
     private void HandleParserDiagnostic(in Diagnostic value)
     {
         FlushUtf8();
+        EndX10IfPending();
         EndSs3IfPending();
         var adjusted = new Diagnostic(
             value.Code,
@@ -510,6 +575,16 @@ public sealed class Decoder: IDisposable
 
         _ss3Pending = false;
         Report(DiagnosticCode.Malformed, SequenceKind.Escape);
+    }
+
+    private static bool TryReadSingle(ReadOnlySpan<byte> input, out int value)
+    {
+        var parameters = new Parameters(input, 2, int.MaxValue);
+        var status = parameters.Read(out value, out var separator);
+        return parameters.PrivateMarker == 0 &&
+            status == ParameterStatus.Value &&
+            separator == ParameterSeparator.None &&
+            parameters.Read(out _, out _) == ParameterStatus.End;
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
@@ -572,6 +647,11 @@ public sealed class Decoder: IDisposable
     {
         public void Text(ReadOnlySpan<byte> value)
         {
+            if (owner._x10Pending)
+            {
+                value = value[owner.ConsumeX10(value)..];
+            }
+
             if (owner._ss3Pending && !value.IsEmpty)
             {
                 owner.HandleSs3(value[0]);

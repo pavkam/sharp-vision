@@ -24,9 +24,24 @@ Decode X10 and VT200 compatibility, SGR cell/pixel, wheel, motion, extra
 buttons, modifiers, and Kitty's pixel-mode leave notification. Encode safe mode
 leases and restore previous tracking on shutdown.
 
+`Input.Decoder` now accepts three compatibility families: the three UTF-8 scalar
+fields following X10 `CSI M`, urxvt decimal reports, and SGR reports with `<`.
+All fragmented fields remain bounded. Button codes preserve primary, middle,
+secondary, back, and forward buttons; modifier bits, motion, release, four wheel
+directions, and the zero-coordinate leave sentinel remain distinct.
+
+Cell reports subtract the wire's one-based origin exactly once. With
+`Input.Options.PixelMouse`, SGR coordinates are retained as zero-based pixels;
+validated `Geometry.Metrics` derive cells by integer division and set
+`IsCellPositionInferred`. Without metrics, pixels remain available and inferred
+cells stay unset. Undefined extended buttons, negative/zero ordinary
+coordinates, overlong X10 fields, invalid UTF-8, and malformed decimal forms
+report once and recover at the next input.
+
 ## Tests
 
-Test every button/modifier/action, cell and pixel boundaries, malformed values,
-split sequences, mode combinations, pointer capture, wheel propagation, resize
-conversion, and cleanup. End-to-end tests route decoded pointer events through
-hit testing to final control output.
+Decoder tests cover every button/modifier/action family, vertical and horizontal
+wheel deltas, cell and pixel conversion, maximum coordinates, leave, malformed
+values, X10 UTF-8 coordinates, and every split. Mode combinations and cleanup
+are proved by the runtime session; Phase 4 routes these values through pointer
+capture and hit testing to final control output.
