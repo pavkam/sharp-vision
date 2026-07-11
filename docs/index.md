@@ -19,7 +19,11 @@ The
 [Canvas, border, and shadow design](superpowers/specs/2026-07-11-canvas-borders-shadows-design.md#purpose)
 defines Unicode drawing and visual overflow, while the
 [FIGlet engine and catalog design](superpowers/specs/2026-07-11-figlet-catalog-design.md#purpose)
-defines large-text rendering and the audited compressed font library.
+defines large-text rendering and the audited compressed font library. The
+[component showcase design](superpowers/specs/2026-07-11-component-showcase-design.md#goal)
+defines the runnable documentation gallery and external-resource boundary, and
+the [showcase architecture](architecture/showcase.md#showcase-contract) links
+its current live terminal capture.
 
 ## Documentation contract
 
