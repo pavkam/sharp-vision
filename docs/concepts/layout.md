@@ -17,6 +17,21 @@ for desired size. During arrange it resolves against the final containing
 content box after padding and reserved scrollbars. If the effective constraint
 changes, content such as wrapped text is remeasured before final arrangement.
 
+## Primitive API
+
+`Length.Auto`, `Length.Cells(int)`, `Length.Percent(double)`, and
+`Length.Star(double)` are immutable requests. Fixed cells are non-negative
+integers, percentages are finite values from 0 through 100, and proportional
+weights are finite and positive. The public `Length(Kind, double)` constructor
+applies the same validation, so callers cannot bypass factory invariants.
+
+`Constraint` represents each measure axis as a nullable non-negative integer;
+null is unbounded and zero is a real bound. `Thickness` stores physical
+left/top/right/bottom cell edges, rejects negative or overflowing opposing
+edges, and deflates `Size` or `Rect` with extents saturated at zero. Horizontal
+and vertical alignment and visible/hidden/collapsed participation use the
+corresponding enums in `SharpVision.Layout`.
+
 ## Passes and rounding
 
 Measure receives available size and returns desired size without assigning

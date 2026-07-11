@@ -112,7 +112,7 @@ events only after their documented commit points.
 - Create: `tests/SharpVision.Tests/Layout/PrimitiveTests.cs`
 - Modify: `docs/concepts/layout.md`
 
-- [ ] **Step 1: Write the failing primitive contract tests**
+- [x] **Step 1: Write the failing primitive contract tests**
 
   Test `Length.Auto`, `Cells(0)`, `Percent(0..100)`, and `Star(positive)`, both
   bounded and unbounded `Constraint` axes, asymmetric non-negative `Thickness`,
@@ -127,7 +127,7 @@ events only after their documented commit points.
   new Thickness(1, 2, 3, 4).Deflate(new Size(2, 3)).ShouldBe(default);
   ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --filter-class "*PrimitiveTests" --minimum-expected-tests 1 --timeout 60s
@@ -135,7 +135,7 @@ events only after their documented commit points.
 
   Expected: compile failure because `SharpVision.Layout` does not exist.
 
-- [ ] **Step 3: Implement immutable contextual primitives**
+- [x] **Step 3: Implement immutable contextual primitives**
 
   `Kind` is `Auto`, `Cells`, `Percent`, or `Star`. `Length` stores a finite
   `double` only for value-bearing kinds: cells and percent are non-negative,
@@ -147,12 +147,12 @@ events only after their documented commit points.
   public constructor validates enums and numeric ranges with documented
   exceptions.
 
-- [ ] **Step 4: Verify primitives and docs**
+- [x] **Step 4: Verify primitives and docs**
 
   Run the focused command from Step 2 and `make lint`. Expected: all discovered
   tests pass and XML/Markdown validation reports no error.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Layout tests/SharpVision.Tests/Layout docs/concepts/layout.md
