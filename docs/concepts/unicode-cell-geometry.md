@@ -29,6 +29,15 @@ is interpreted as U+FFFD. The enumerator applies UAX 29 GB3 through GB13 and
 GB999 directly, including regional-indicator parity, Indic conjunct state, and
 extended-pictographic ZWJ state; it does not allocate a normalized string.
 
+`Width.Measure(ReadOnlySpan<char>, Ambiguous)` returns printable cells,
+graphemes, and contextual-control counts in one allocation-free pass.
+`Ambiguous.Narrow` is the default; `Ambiguous.Wide` is applied only when
+selected explicitly in `Capabilities`. Generated canonical-decomposition bases
+preserve equal width for composed and decomposed text without allocating
+normalized storage. Invalid UTF-16, combining-only clusters, private-use
+scalars, and unassigned Unicode 17 scalars occupy one conservative repairable
+cell.
+
 ## Width rules
 
 - Printable narrow clusters occupy one cell.

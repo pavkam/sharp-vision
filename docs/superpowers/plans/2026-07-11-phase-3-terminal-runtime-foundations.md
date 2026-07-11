@@ -120,6 +120,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Create: `data/unicode/17.0.0/DerivedCoreProperties.txt`
 - Create: `data/unicode/17.0.0/EastAsianWidth.txt`
 - Create: `data/unicode/17.0.0/emoji-data.txt`
+- Create: `data/unicode/17.0.0/UnicodeData.txt`
 - Create: `data/unicode/17.0.0/ReadMe.txt`
 - Create: `src/SharpVision.Terminal/Unicode/Data.g.cs`
 - Create: `src/SharpVision.Terminal/Unicode/Info.cs`
@@ -269,7 +270,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `src/SharpVision.Terminal/Capabilities/Capabilities.cs`
 - Modify: `docs/concepts/unicode-cell-geometry.md`
 
-- [ ] **Step 1: Write width-policy tests and verify RED**
+- [x] **Step 1: Write width-policy tests and verify RED**
 
   Test ASCII, CJK, supplementary ideographs, half/full/ambiguous values under
   both policies, precomposed/decomposed equivalence, VS15/VS16, emoji modifiers,
@@ -283,7 +284,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
       Width.Measure("e\u0301".AsSpan(), Ambiguous.Narrow).Cells);
   ```
 
-- [ ] **Step 2: Implement explicit cluster-width rules**
+- [x] **Step 2: Implement explicit cluster-width rules**
 
   Add `Ambiguous` (`Narrow`, `Wide`), `CellWidth` (`Control`, `Narrow`, `Wide`),
   and `Measurement`. Width is assigned to a complete grapheme: W/F East Asian
@@ -296,13 +297,13 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   caller overrides applied last. Never infer wide ambiguous characters from a
   locale environment variable.
 
-- [ ] **Step 3: Run focused tests and allocation proof**
+- [x] **Step 3: Run focused tests and allocation proof**
 
   Run `--filter-class "*WidthTests" "*MeasurementTests"`. Add warmed mixed-text
   measurement requiring zero managed bytes per Rune/cluster. Expected: all tests
   pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   Commit message: `feat: measure terminal cell widths`
 

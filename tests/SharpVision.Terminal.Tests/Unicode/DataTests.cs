@@ -32,6 +32,8 @@ public sealed class DataTests
         AssertOrdered(Data.EastAsianWidthRanges);
         AssertOrdered(Data.EmojiPresentationRanges);
         AssertOrdered(Data.ExtendedPictographicRanges);
+        AssertOrdered(Data.CanonicalBaseRanges);
+        AssertOrdered(Data.AssignedRanges);
     }
 
     /// <summary>
@@ -47,6 +49,9 @@ public sealed class DataTests
         Data.GetEastAsianWidth(0x1100).ShouldBe(EastAsianWidth.Wide);
         Data.IsEmojiPresentation(0x1f600).ShouldBeTrue();
         Data.IsExtendedPictographic(0x1f469).ShouldBeTrue();
+        Data.GetCanonicalBase(0x00e9).ShouldBe(0x0065);
+        Data.IsAssigned(0x0061).ShouldBeTrue();
+        Data.IsAssigned(0x0378).ShouldBeFalse();
     }
 
     private static void AssertOrdered(ReadOnlySpan<PropertyRange> ranges)

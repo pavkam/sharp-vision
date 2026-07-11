@@ -1,3 +1,5 @@
+using SharpVision.Terminal.Unicode;
+
 namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>
@@ -7,6 +9,25 @@ public sealed record Settings
 {
     /// <summary>Gets an optional color-depth override.</summary>
     public ColorDepth? ColorDepth { get; init; }
+
+    /// <summary>Gets an optional East Asian Ambiguous width override.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The assigned policy is unknown.</exception>
+    public Ambiguous? AmbiguousWidth
+    {
+        get;
+        init
+        {
+            if (value.HasValue && !Enum.IsDefined(value.Value))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The ambiguous-width policy is unknown.");
+            }
+
+            field = value;
+        }
+    }
 
     /// <summary>Gets an optional synchronized-output override.</summary>
     public bool? SynchronizedOutput { get; init; }

@@ -14,6 +14,11 @@ enables a feature. `Origin` records default, environment, query, or override
 evidence. `ColorDepth` separately records monochrome, 16-color, indexed-256, or
 true-color fidelity and its origin.
 
+The profile reports `UnicodeVersion` as the library's pinned Unicode 17.0.0 data
+and carries an explicit `AmbiguousWidth` policy. It defaults to narrow, never
+changes from locale or terminal-name hints, and may be set to wide only by
+caller `Settings` applied at the final precedence step.
+
 ## Precedence
 
 1. Conservative built-in defaults establish safe behavior.

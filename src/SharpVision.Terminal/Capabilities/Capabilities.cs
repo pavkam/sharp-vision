@@ -1,3 +1,5 @@
+using SharpVision.Terminal.Unicode;
+
 namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>
@@ -81,6 +83,28 @@ public sealed record Capabilities
 
     /// <summary>Gets the color-depth evidence origin.</summary>
     public Origin ColorOrigin { get; init; } = Origin.Default;
+
+    /// <summary>Gets the pinned Unicode Character Database version.</summary>
+    public string UnicodeVersion { get; } = Info.Version;
+
+    /// <summary>Gets the East Asian Ambiguous cell-width policy.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The assigned policy is unknown.</exception>
+    public Ambiguous AmbiguousWidth
+    {
+        get;
+        init
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The ambiguous-width policy is unknown.");
+            }
+
+            field = value;
+        }
+    }
 
     /// <summary>Gets synchronized-output support.</summary>
     public Feature SynchronizedOutput { get; init; } = Feature.Unknown;

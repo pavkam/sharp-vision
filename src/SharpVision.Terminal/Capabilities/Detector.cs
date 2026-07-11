@@ -117,6 +117,7 @@ public static class Detector
             {
                 ColorDepth = overrides.ColorDepth ?? value.ColorDepth,
                 ColorOrigin = overrides.ColorDepth.HasValue ? Origin.Override : value.ColorOrigin,
+                AmbiguousWidth = overrides.AmbiguousWidth ?? value.AmbiguousWidth,
                 SynchronizedOutput = Apply(value.SynchronizedOutput, overrides.SynchronizedOutput, Origin.Override),
                 FocusReporting = Apply(value.FocusReporting, overrides.FocusReporting, Origin.Override),
                 BracketedPaste = Apply(value.BracketedPaste, overrides.BracketedPaste, Origin.Override),

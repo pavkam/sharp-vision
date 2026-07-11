@@ -12,6 +12,12 @@ markers and compared with `Graphemes.Enumerate`; curated cases separately name
 CR/LF, Hangul, Indic, flags, modifiers, keycaps, ZWJ families, and invalid
 UTF-16. A warmed mixed-text loop must allocate zero managed bytes.
 
+Width tests independently cover every East Asian width family, both ambiguous
+policies, canonical composed/decomposed pairs, text/emoji variation selectors,
+keycaps, flags, tags, modifiers, ZWJ sequences, private/unassigned values,
+orphan marks, controls, and invalid UTF-16. The warmed measurement loop must
+also allocate zero managed bytes.
+
 ## Curated cases
 
 Cover ASCII, CJK, supplementary ideographs, full/half/ambiguous widths under
