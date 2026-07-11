@@ -52,6 +52,8 @@ and a showcase page.
   shared mutable state.
 - Never use primary or positional constructors. Define constructors explicitly,
   validate before assignment, and document every rejected argument.
+- Use named regions at genuine responsibility boundaries in substantial source
+  files; avoid trivial nesting and split unrelated responsibilities instead.
 
 ## Example review
 

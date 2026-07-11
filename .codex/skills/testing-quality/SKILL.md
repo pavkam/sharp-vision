@@ -60,6 +60,8 @@ cross-layer paths. A mock-heavy green suite is not evidence of correctness.
   lifetime, or polymorphic behavior.
 - Never use primary or positional constructors in production or test code.
   Define constructors explicitly and test every argument-validation boundary.
+- Use named regions when a substantial test fixture has distinct setup, model,
+  interaction, and assertion responsibilities; do not region tiny fixtures.
 
 ## Example review
 

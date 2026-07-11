@@ -60,6 +60,11 @@ in the protocol document.
   every constructor explicitly, validate all arguments before assigning state,
   and document its validation and exceptions. Preserve explicit `Deconstruct`
   members when a value type intentionally offers tuple-style consumption.
+- Use named `#region` and `#endregion` blocks in substantial C# files that have
+  genuinely distinct responsibility areas, such as lifecycle, input handling,
+  layout, rendering, or protocol families. Name regions by responsibility, avoid
+  trivial or deeply nested regions, and split the file instead when a region
+  boundary reveals a separate type or unrelated responsibility.
 - Prefer `Rune`, `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>`,
   and `IBufferWriter<T>` in text, protocol, and rendering paths. Do not reduce
   Unicode input to `char` or allocate strings in hot loops.
