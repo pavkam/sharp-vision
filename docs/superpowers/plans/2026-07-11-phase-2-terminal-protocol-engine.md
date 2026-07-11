@@ -112,10 +112,10 @@ public interface ISequenceSink
     void Control(byte value);
     void Escape(ReadOnlySpan<byte> intermediates, byte final);
     void Csi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final);
-    void String(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator);
+    void Sequence(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator);
     void Dcs(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates,
         byte final, ReadOnlySpan<byte> value, StringTerminator terminator);
-    void Diagnostic(in Diagnostic value);
+    void Report(in Diagnostic value);
 }
 
 public sealed class Parser : IDisposable
@@ -309,7 +309,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/ParserControlTests.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/ParserCsiTests.cs`
 
-- [ ] **Step 1: Write whole-input parser tests**
+- [x] **Step 1: Write whole-input parser tests**
 
   Record UTF-8 text bytes, C0 controls, two-character ESC functions,
   intermediate ESC functions, empty CSI, private CSI, colon subparameters,
@@ -317,11 +317,11 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   option disabled/enabled. Assert UTF-8 continuation byte `0x9b` remains text by
   default.
 
-- [ ] **Step 2: Run parser tests and verify RED**
+- [x] **Step 2: Run parser tests and verify RED**
 
   Expected: compilation fails because `Parser` and `ISequenceSink` do not exist.
 
-- [ ] **Step 3: Implement ground, ESC, and CSI states**
+- [x] **Step 3: Implement ground, ESC, and CSI states**
 
   Parse by ECMA-48 byte classes. Keep one rented parameter buffer bounded by
   `MaxParameterBytes` and a fixed/rented intermediate buffer bounded by
@@ -329,9 +329,9 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   discarded bytes, emit one diagnostic at recovery, and do not retain caller
   memory. Text callbacks may borrow directly from the current input span.
 
-- [ ] **Step 4: Run whole-input tests and verify GREEN**
+- [x] **Step 4: Run whole-input tests and verify GREEN**
 
-- [ ] **Step 5: Add fragmentation and recovery tests**
+- [x] **Step 5: Add fragmentation and recovery tests**
 
   For every representative sequence compare observations from whole input, every
   two-part split, byte-at-a-time input, and adjacent known text. Cover split
@@ -339,19 +339,19 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   `Complete` while truncated, `Reset`, disposal, and a known CSI following
   malformed input.
 
-- [ ] **Step 6: Run fragmentation tests and verify RED where behavior is
+- [x] **Step 6: Run fragmentation tests and verify RED where behavior is
       absent**
 
-- [ ] **Step 7: Complete state preservation, recovery, and lifecycle**
+- [x] **Step 7: Complete state preservation, recovery, and lifecycle**
 
   Preserve only copied bounded state across calls. `Complete` emits exactly one
   truncation diagnostic for an incomplete sequence and returns to ground.
   `Reset` clears state without emitting. Return pooled arrays once and assert
   ownership in debug builds.
 
-- [ ] **Step 8: Run parser tests and verify GREEN**
+- [x] **Step 8: Run parser tests and verify GREEN**
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
   Commit message: `feat: parse streaming escape and CSI sequences`
 
