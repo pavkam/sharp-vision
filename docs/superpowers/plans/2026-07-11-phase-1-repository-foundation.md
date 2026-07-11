@@ -1,8 +1,8 @@
 # Phase 1 Repository Foundation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use
-> `superpowers:executing-plans` to implement this plan task-by-task. Steps use
-> checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans`
+> to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for
+> tracking.
 
 **Goal:** Establish the .NET 10 solution, strict quality gates, normative
 documentation, agent guardrails, domain skills, and verified project shells.
@@ -13,8 +13,8 @@ production project. Repository-wide configuration is installed before source
 implementation so later phases inherit the same warnings, docs, naming,
 formatting, and testing rules.
 
-**Tech Stack:** .NET SDK 10.0.203, C# 14, xUnit v3 3.2.2, Shouldly 4.3.0,
-Moq 4.20.72, Microsoft.NET.Test.Sdk 18.7.0, Prettier 3, Markdownlint CLI 2
+**Tech Stack:** .NET SDK 10.0.203, C# 14, xUnit v3 3.2.2, Shouldly 4.3.0, Moq
+4.20.72, Microsoft.NET.Test.Sdk 18.7.0, Prettier 3, Markdownlint CLI 2
 
 ---
 
@@ -69,8 +69,8 @@ dotnet add tests/SharpVision.Tests/SharpVision.Tests.csproj reference src/SharpV
 dotnet add tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj reference src/SharpVision.Showcase/SharpVision.Showcase.csproj
 ```
 
-Expected: the terminal library has no project reference and the showcase
-reaches it transitively through `SharpVision`.
+Expected: the terminal library has no project reference and the showcase reaches
+it transitively through `SharpVision`.
 
 - [ ] **Step 3: Replace template test packages**
 
@@ -170,8 +170,8 @@ projects may suppress missing XML diagnostics; libraries may not.
 
 Copy the complete C# formatting and naming discipline from
 `/Users/alex/Development/nostalgia-es-1841-emulator/.editorconfig`. Add XML
-documentation diagnostics while preserving `_camelCase`, file-scoped
-namespaces, collection expressions, `var`, pattern matching, and async suffixes.
+documentation diagnostics while preserving `_camelCase`, file-scoped namespaces,
+collection expressions, `var`, pattern matching, and async suffixes.
 
 - [ ] **Step 5: Adapt attributes and ignore rules**
 
@@ -217,8 +217,8 @@ the skill format.
 
 - [ ] **Step 2: Add deterministic Node tooling**
 
-Create private package `sharpvision-docs` with pinned Prettier and
-Markdownlint CLI 2 dependencies and these scripts:
+Create private package `sharpvision-docs` with pinned Prettier and Markdownlint
+CLI 2 dependencies and these scripts:
 
 ```json
 {
@@ -282,8 +282,8 @@ Expected: every formatter, Markdown rule, and local link check passes.
 Cover the repository map, dependency rule, docs-first workflow, argument
 validation, `Debug.Assert`, contextual naming, logical whitespace, important
 algorithm comments, Rune/span/memory preference, single-thread UI ownership,
-terminal cleanup, and XML docs for public and internal members with examples
-and exception contracts.
+terminal cleanup, and XML docs for public and internal members with examples and
+exception contracts.
 
 Mandate xUnit v3, Shouldly, Moq only at interaction boundaries,
 Arrange/Act/Assert, `MethodName_WhenThis_ThatIsExpected`, parser fragmentation,
@@ -292,8 +292,8 @@ final-byte renderer proof, randomized invariants, and hang-blame commands.
 - [ ] **Step 2: Write seven focused skills**
 
 Every skill has valid `name` and `description` frontmatter, a precise trigger,
-links to normative docs, domain invariants, focused verification commands, and
-a requirement to update docs with behavior. Skills route; they do not duplicate
+links to normative docs, domain invariants, focused verification commands, and a
+requirement to update docs with behavior. Skills route; they do not duplicate
 specifications.
 
 - [ ] **Step 3: Validate and commit skills**
@@ -328,22 +328,23 @@ Every matrix entry links inline to a protocol section.
 Create sourced files for ECMA-48, ANSI/VT, CSI, OSC, DCS/string commands, DEC
 private modes, xterm, SGR, mouse, paste/focus, Kitty keyboard, Kitty clipboard,
 Kitty graphics, iTerm2, sixel, tmux, and GNU screen. Each defines grammar,
-limits, detection, milestone behavior, fallback, security, and tests. Distinguish
-OSC 52 from Kitty OSC 5522.
+limits, detection, milestone behavior, fallback, security, and tests.
+Distinguish OSC 52 from Kitty OSC 5522.
 
 - [ ] **Step 3: Write architecture and concept specifications**
 
-Document project structure, event loop, rendering, capabilities, memory,
-errors, Unicode geometry, styling, layout, scrolling, focus, routing,
-threading, lifecycle, and degradation. Embed Mermaid diagrams where they make
-dependencies, sequences, states, or ownership clearer.
+Document project structure, event loop, rendering, capabilities, memory, errors,
+Unicode geometry, styling, layout, scrolling, focus, routing, threading,
+lifecycle, and degradation. Embed Mermaid diagrams where they make dependencies,
+sequences, states, or ownership clearer.
 
 - [ ] **Step 4: Write one contract per initial control**
 
 Group by display, input, layout, collections, menus, and windows. Every control
 documents purpose, inheritance, properties, events, validation, exceptions,
 input/focus behavior, visual states, layout/rendering, examples, and tests.
-Include `RichText`, every panel, scrollbars, scroll view, popup, menu, and window.
+Include `RichText`, every panel, scrollbars, scroll view, popup, menu, and
+window.
 
 - [ ] **Step 5: Write testing specifications**
 

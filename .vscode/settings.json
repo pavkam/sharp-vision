@@ -1,0 +1,22 @@
+{
+  "cSpell.words": [
+    "cellwise",
+    "codepoint",
+    "codepoints",
+    "ECMA",
+    "grapheme",
+    "graphemes",
+    "iTerm",
+    "markdownlint",
+    "pseudoterminal",
+    "sixel",
+    "tmux",
+    "xterm"
+  ],
+  "dotnet.defaultSolution": "SharpVision.slnx",
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.wordWrap": "on"
+  }
+}

@@ -23,11 +23,11 @@ known limitations must be documented alongside implementation changes.
 
 ### 2.1 Production projects
 
-| Project | Responsibility |
-| --- | --- |
+| Project                | Responsibility                                                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SharpVision.Terminal` | Protocol encoding and decoding, transport, capability detection, Unicode cell geometry, input events, cell buffers, and terminal diff emission. |
-| `SharpVision` | Dispatcher, application lifecycle, mutable controls, layout, focus, routed input, styling, scrolling, windows, menus, and popups. |
-| `SharpVision.Showcase` | Runnable control gallery with navigation, live examples, embedded documentation, and event/state inspection. |
+| `SharpVision`          | Dispatcher, application lifecycle, mutable controls, layout, focus, routed input, styling, scrolling, windows, menus, and popups.               |
+| `SharpVision.Showcase` | Runnable control gallery with navigation, live examples, embedded documentation, and event/state inspection.                                    |
 
 ### 2.2 Test projects
 
@@ -45,8 +45,8 @@ never point toward the showcase or test projects.
 ### 2.3 Dependency rule
 
 Controls render to a cell-oriented canvas. They never emit ANSI, CSI, OSC, or
-vendor-specific byte sequences. The terminal layer has no knowledge of
-buttons, windows, styles, or other UI concepts.
+vendor-specific byte sequences. The terminal layer has no knowledge of buttons,
+windows, styles, or other UI concepts.
 
 ```mermaid
 flowchart LR
@@ -73,8 +73,8 @@ flowchart LR
 - `Rune`, `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, and `ReadOnlyMemory<T>` are
   preferred in performance-sensitive and protocol-facing APIs. Strings remain
   acceptable at ergonomic application boundaries.
-- Important algorithms have short comments describing intent or invariants,
-  not line-by-line narration.
+- Important algorithms have short comments describing intent or invariants, not
+  line-by-line narration.
 - `Debug.Assert` records internal invariants that should be impossible to
   violate after public validation.
 - Logical blocks are separated by empty lines.
@@ -97,8 +97,8 @@ The documentation coverage matrix distinguishes four states:
 3. Documented with an extension API and safe fallback.
 4. Documented as unsupported with a specific reason.
 
-"All known protocols" means maintaining a deliberate, sourced inventory. It
-does not mean claiming that every private escape sequence ever shipped is
+"All known protocols" means maintaining a deliberate, sourced inventory. It does
+not mean claiming that every private escape sequence ever shipped is
 implemented. Undocumented or newly introduced sequences remain observable
 through diagnostics and a bounded raw-extension surface.
 
@@ -116,8 +116,8 @@ controls, ESC, CSI, OSC, DCS, APC, PM, and SOS. It must:
 - support cancellation and end-of-stream without inventing input; and
 - avoid unbounded allocation for hostile payloads.
 
-Parser limits are configurable through an immutable options value. Defaults
-must be conservative enough for interactive use while accepting the supported
+Parser limits are configurable through an immutable options value. Defaults must
+be conservative enough for interactive use while accepting the supported
 protocols.
 
 ### 4.3 Encoder
@@ -163,8 +163,8 @@ block application startup indefinitely.
 
 ## 5. Unicode and Cell Geometry
 
-Text is segmented into extended grapheme clusters. A `char` is never treated
-as a complete user-perceived character by default.
+Text is segmented into extended grapheme clusters. A `char` is never treated as
+a complete user-perceived character by default.
 
 The width engine accounts for combining marks, variation selectors, emoji ZWJ
 sequences, regional indicators, East Asian width, and a configurable ambiguous
@@ -200,8 +200,8 @@ screen. Cleanup failure is diagnostic and never masks the original exception.
 
 ## 7. Dispatcher and Runtime Events
 
-All control state is single-thread-affine. The dispatcher owns mutation,
-layout, input routing, and rendering. Background operations return through
+All control state is single-thread-affine. The dispatcher owns mutation, layout,
+input routing, and rendering. Background operations return through
 `InvokeAsync`; invalid cross-thread access fails with a documented exception.
 
 The runtime event flow is:
@@ -233,8 +233,8 @@ Terminal events include:
 - transport closure; and
 - transport faults.
 
-Application events include starting, started, stopping, stopped, idle,
-unhandled exception, and frame rendered. `Idle` fires only after queued work and
+Application events include starting, started, stopping, stopped, idle, unhandled
+exception, and frame rendered. `Idle` fires only after queued work and
 invalidations are drained, immediately before the dispatcher waits. Scheduled
 ticks are a separate facility for animations and time-based behavior.
 
@@ -255,10 +255,10 @@ Property changes invalidate only the required stage:
 - rendering when only visual output changes.
 
 A control has at most one parent. Child collections reject null entries,
-duplicates, cycles, and children already owned elsewhere. Input supports
-preview and bubble routing. Pointer capture supports pressed state, dragging,
-scrollbar thumbs, and popup interactions. Focus navigation works by keyboard,
-mouse, and explicit API.
+duplicates, cycles, and children already owned elsewhere. Input supports preview
+and bubble routing. Pointer capture supports pressed state, dragging, scrollbar
+thumbs, and popup interactions. Focus navigation works by keyboard, mouse, and
+explicit API.
 
 The initial control cohort includes:
 
@@ -319,10 +319,10 @@ follow documented clipping and z-order rules.
 
 ## 11. Scrolling
 
-Scroll views provide automatic, always-visible, and hidden policies independently
-for horizontal and vertical bars. Automatic bars appear only when arranged
-content exceeds the viewport, and the second bar is reconsidered after the
-first consumes space.
+Scroll views provide automatic, always-visible, and hidden policies
+independently for horizontal and vertical bars. Automatic bars appear only when
+arranged content exceeds the viewport, and the second bar is reconsidered after
+the first consumes space.
 
 Scrolling supports:
 
@@ -381,13 +381,12 @@ disposed-object use, and spans too small for APIs whose contract requires a
 fixed destination.
 
 Environmental failures use diagnostics and safe fallback where continued
-operation is possible. Examples include unsupported capabilities, missing
-query responses, malformed terminal input, denied clipboard permission, and
-transport disconnection.
+operation is possible. Examples include unsupported capabilities, missing query
+responses, malformed terminal input, denied clipboard permission, and transport
+disconnection.
 
-Diagnostics are structured and observable without requiring a logging
-framework. Sensitive clipboard payloads and terminal query data are redacted by
-default.
+Diagnostics are structured and observable without requiring a logging framework.
+Sensitive clipboard payloads and terminal query data are redacted by default.
 
 ## 15. Verification Strategy
 
@@ -421,17 +420,17 @@ The normative documentation root is `docs/index.md`.
 
 - `docs/protocols/` contains one focused file per protocol or extension and a
   coverage matrix.
-- `docs/architecture/` contains project structure, memory ownership, event
-  loop, rendering, capability detection, failure behavior, and diagrams.
-- `docs/controls/` contains one public API specification per control, grouped
-  by control category.
+- `docs/architecture/` contains project structure, memory ownership, event loop,
+  rendering, capability detection, failure behavior, and diagrams.
+- `docs/controls/` contains one public API specification per control, grouped by
+  control category.
 - `docs/concepts/` contains styling, layout, scrolling, focus, input routing,
   Unicode geometry, threading, lifecycle, and safe degradation.
-- `docs/testing/` contains the correctness model, terminal fixtures,
-  randomized testing, integration environments, and performance gates.
+- `docs/testing/` contains the correctness model, terminal fixtures, randomized
+  testing, integration environments, and performance gates.
 
-Links appear inline at the sentence and section where the dependency matters.
-CI validates Markdown style, formatting, local file links, and section anchors.
+Links appear inline at the sentence and section where the dependency matters. CI
+validates Markdown style, formatting, local file links, and section anchors.
 
 ## 17. Agent Guardrails
 
@@ -489,7 +488,7 @@ The milestone is complete only when:
 
 ## 20. Explicit Non-Goals
 
-The first milestone does not implement a general-purpose terminal emulator,
-full image rasterization, remote GUI transport, browser rendering, or a
-React-style virtual component tree. These exclusions do not prevent later
-additions behind the established terminal and canvas boundaries.
+The first milestone does not implement a general-purpose terminal emulator, full
+image rasterization, remote GUI transport, browser rendering, or a React-style
+virtual component tree. These exclusions do not prevent later additions behind
+the established terminal and canvas boundaries.

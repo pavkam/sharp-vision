@@ -1,0 +1,20 @@
+{
+  "name": "sharpvision-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentation quality tooling for SharpVision.",
+  "scripts": {
+    "format": "prettier --write \"**/*.md\"",
+    "format:check": "prettier --check \"**/*.md\"",
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.worktrees\"",
+    "lint:links": "node scripts/validate-doc-links.mjs",
+    "test:docs": "node --test scripts/*.test.mjs"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "0.23.0",
+    "prettier": "3.9.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

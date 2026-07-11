@@ -56,8 +56,8 @@ invariant tests pass through the terminal canvas boundary.
 
 ## Phase 5: Controls and scrolling
 
-Implement the initial display, input, selection, container, menu, popup,
-window, scrollbar, scroll view, and `RichText` controls with full public docs.
+Implement the initial display, input, selection, container, menu, popup, window,
+scrollbar, scroll view, and `RichText` controls with full public docs.
 
 **Exit:** Every control has keyboard, pointer, focus, disabled, style, render,
 and end-to-end interaction proof; automatic and nested scrolling pass.
@@ -65,8 +65,8 @@ and end-to-end interaction proof; automatic and nested scrolling pass.
 ## Phase 6: Showcase and hardening
 
 Build the navigable showcase, interactive variants, live event log, responsive
-sidebar behavior, integrated rich documentation, representative screen tests,
-CI matrix, packaging metadata, and final performance hardening.
+sidebar behavior, integrated rich documentation, representative screen tests, CI
+matrix, packaging metadata, and final performance hardening.
 
 **Exit:** Every shipped control is registered, documented, demonstrated, and
 tested in the showcase; all repository quality gates pass cleanly.
