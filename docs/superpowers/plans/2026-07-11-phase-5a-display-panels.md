@@ -196,19 +196,19 @@ versions of those APIs.
 - Create: `tests/SharpVision.Tests/Controls/DockTests.cs`
 - Modify: `docs/controls/layout/dock.md`
 
-- [ ] **Step 1: Write failing Dock tests**
+- [x] **Step 1: Write failing Dock tests**
 
   Cover every side, collection order, `LastChildFills` default true, spacing,
   fixed/percent/auto lengths, collapsed children, over-consumption saturation,
   margins, zero/tiny bounds, resize, clipping, navigation order, and exact
   semantic cells.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*DockTests`; expect compile failure for `Dock`, `Side`, and attached side
   methods.
 
-- [ ] **Step 3: Implement Dock**
+- [x] **Step 3: Implement Dock**
 
   `Dock : Container` exposes non-negative `Spacing`, `LastChildFills`, and
   static `GetSide`/`SetSide`. Each measure/arrange iteration uses the saturated
@@ -216,7 +216,7 @@ versions of those APIs.
   remaining axis. The last visible non-collapsed child fills only when enabled.
   Attached side changes invalidate the owning parent only when it is a Dock.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run the focused test and commit as `feat: add dock panel`.
 
