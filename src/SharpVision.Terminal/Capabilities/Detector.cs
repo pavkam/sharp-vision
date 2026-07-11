@@ -55,6 +55,7 @@ public static class Detector
                 FocusReporting = hint,
                 BracketedPaste = hint,
                 PixelMouse = hint,
+                CellMouse = hint,
                 KittyKeyboard = hint,
                 Osc52 = hint,
                 KittyClipboard = hint,
@@ -68,6 +69,7 @@ public static class Detector
             {
                 FocusReporting = hint,
                 BracketedPaste = hint,
+                CellMouse = hint,
                 Osc52 = hint,
             };
         }
@@ -122,6 +124,7 @@ public static class Detector
                 FocusReporting = Apply(value.FocusReporting, overrides.FocusReporting, Origin.Override),
                 BracketedPaste = Apply(value.BracketedPaste, overrides.BracketedPaste, Origin.Override),
                 PixelMouse = Apply(value.PixelMouse, overrides.PixelMouse, Origin.Override),
+                CellMouse = Apply(value.CellMouse, overrides.CellMouse, Origin.Override),
                 KittyKeyboard = Apply(value.KittyKeyboard, overrides.KittyKeyboard, Origin.Override),
                 Osc52 = Apply(value.Osc52, overrides.Osc52, Origin.Override),
                 KittyClipboard = Apply(value.KittyClipboard, overrides.KittyClipboard, Origin.Override),
@@ -139,6 +142,7 @@ public static class Detector
                 FocusReporting = Apply(value.FocusReporting, queries.FocusReporting, Origin.Query),
                 BracketedPaste = Apply(value.BracketedPaste, queries.BracketedPaste, Origin.Query),
                 PixelMouse = Apply(value.PixelMouse, queries.PixelMouse, Origin.Query),
+                CellMouse = Apply(value.CellMouse, queries.CellMouse, Origin.Query),
                 KittyKeyboard = Apply(value.KittyKeyboard, queries.KittyKeyboard, Origin.Query),
                 Osc52 = Apply(value.Osc52, queries.Osc52, Origin.Query),
                 KittyClipboard = Apply(value.KittyClipboard, queries.KittyClipboard, Origin.Query),

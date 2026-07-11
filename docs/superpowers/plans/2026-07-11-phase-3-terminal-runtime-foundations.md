@@ -698,7 +698,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/protocols/dec-private-modes.md`
 - Modify: `docs/protocols/mouse.md`
 
-- [ ] **Step 1: Write exact mode and lifecycle-order tests**
+- [x] **Step 1: Write exact mode and lifecycle-order tests**
 
   Test modes 9/1000/1002/1003/1005/1006/1015/1016, invalid combinations, startup
   bytes, partial startup failure, reverse cleanup, repeated disposal, read
@@ -706,12 +706,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   original, resize coalescing inputs, zero-cell suspension, pixel metrics, and
   no callback under the transport write gate.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
   Run `--filter-class "*ModesTests" "*ResizeTests" "*SessionTests"`. Expected:
   failures because mouse mode and runtime session APIs are absent.
 
-- [ ] **Step 3: Implement typed mode planning**
+- [x] **Step 3: Implement typed mode planning**
 
   Add `CellMouse` to `Capabilities`. `Modes` validates tracking and coordinate
   enums and emits exact private set/reset bytes. `Runtime.Options` selects
@@ -720,7 +720,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   only `Feature.IsSupported` optional modes and records every successful enable
   for reverse disable/pop.
 
-- [ ] **Step 4: Implement resize and session loops**
+- [x] **Step 4: Implement resize and session loops**
 
   `Dimensions` contains non-negative cells plus optional non-negative pixels and
   derives positive metrics only when both axes permit it. `UnixResizeSource`
@@ -736,13 +736,13 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   layout, application lifecycle, timers, and `Idle` remain explicit Phase 4
   responsibilities.
 
-- [ ] **Step 5: Run lifecycle and no-spin tests**
+- [x] **Step 5: Run lifecycle and no-spin tests**
 
   Use deterministic fake transport/resize source/clock. Expected: ordering and
   cleanup tests pass, waits remain blocked until fake input/resize/time
   advances, and terminal fault never hides restoration diagnostics.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `feat: add terminal runtime lifecycle`
 

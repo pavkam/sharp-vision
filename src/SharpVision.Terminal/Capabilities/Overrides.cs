@@ -41,6 +41,9 @@ public sealed record Settings
     /// <summary>Gets an optional pixel-mouse override.</summary>
     public bool? PixelMouse { get; init; }
 
+    /// <summary>Gets an optional cell-mouse override.</summary>
+    public bool? CellMouse { get; init; }
+
     /// <summary>Gets an optional Kitty keyboard override.</summary>
     public bool? KittyKeyboard { get; init; }
 
@@ -76,6 +79,9 @@ public sealed record Queries
 
     /// <summary>Gets a pixel-mouse query result.</summary>
     public bool? PixelMouse { get; init; }
+
+    /// <summary>Gets a cell-mouse query result.</summary>
+    public bool? CellMouse { get; init; }
 
     /// <summary>Gets a Kitty keyboard query result.</summary>
     public bool? KittyKeyboard { get; init; }

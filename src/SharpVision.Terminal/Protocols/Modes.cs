@@ -3,6 +3,41 @@ using System.Diagnostics;
 
 namespace SharpVision.Terminal.Protocols;
 
+/// <summary>Identifies xterm mouse event tracking levels.</summary>
+public enum MouseTracking
+{
+    /// <summary>Report X10 button presses through mode 9.</summary>
+    X10 = 9,
+
+    /// <summary>Report VT200 button transitions through mode 1000.</summary>
+    Press = 1000,
+
+    /// <summary>Report button transitions and drag motion through mode 1002.</summary>
+    Drag = 1002,
+
+    /// <summary>Report all pointer motion through mode 1003.</summary>
+    Any = 1003,
+}
+
+/// <summary>Identifies xterm mouse coordinate encodings.</summary>
+public enum MouseCoordinates
+{
+    /// <summary>Use the original three-byte X10 coordinate encoding.</summary>
+    Default = 0,
+
+    /// <summary>Use UTF-8 encoded X10 fields through mode 1005.</summary>
+    Utf8 = 1005,
+
+    /// <summary>Use SGR cell coordinates through mode 1006.</summary>
+    Sgr = 1006,
+
+    /// <summary>Use urxvt decimal coordinates through mode 1015.</summary>
+    Urxvt = 1015,
+
+    /// <summary>Use SGR pixel coordinates through mode 1016.</summary>
+    Pixel = 1016,
+}
+
 /// <summary>
 /// Encodes DEC private modes required by lifecycle, input, and output handling.
 /// </summary>
@@ -59,4 +94,52 @@ public static class Modes
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether clipboard paste events are active.</param>
     public static void ClipboardPasteEvents(Writer writer, bool enabled) => SetPrivate(writer, 5522, enabled);
+
+    /// <summary>Enables or disables one validated mouse tracking/coordinate pair.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="tracking">The event tracking level.</param>
+    /// <param name="coordinates">The coordinate encoding.</param>
+    /// <param name="enabled">Whether to enable rather than disable the pair.</param>
+    /// <exception cref="ArgumentOutOfRangeException">An enum value is unknown.</exception>
+    public static void Mouse(
+        Writer writer,
+        MouseTracking tracking,
+        MouseCoordinates coordinates,
+        bool enabled)
+    {
+        if (!Enum.IsDefined(tracking))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(tracking),
+                tracking,
+                "The mouse tracking mode is unknown.");
+        }
+
+        if (!Enum.IsDefined(coordinates))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(coordinates),
+                coordinates,
+                "The mouse coordinate mode is unknown.");
+        }
+
+        if (enabled)
+        {
+            SetPrivate(writer, (int) tracking, enabled: true);
+
+            if (coordinates != MouseCoordinates.Default)
+            {
+                SetPrivate(writer, (int) coordinates, enabled: true);
+            }
+
+            return;
+        }
+
+        if (coordinates != MouseCoordinates.Default)
+        {
+            SetPrivate(writer, (int) coordinates, enabled: false);
+        }
+
+        SetPrivate(writer, (int) tracking, enabled: false);
+    }
 }

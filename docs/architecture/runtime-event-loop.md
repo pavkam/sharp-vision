@@ -46,3 +46,31 @@ terminals remain valid suspended layouts.
 Stopping rejects new application work, cancels waits, drains required cleanup,
 restores terminal modes, raises stopped once, and completes pending invocations
 with documented cancellation or failure.
+
+## Terminal session implementation
+
+`SharpVision.Terminal.Runtime.Session` owns the terminal-side startup, read,
+resize, and cleanup boundary. Startup enables only requested modes whose
+optional `Feature.State` is `Supported`; environment-tentative evidence never
+enables a mode. Alternate screen and cursor policy are explicit non-detected
+options. Each attempted enable becomes a lease before transport I/O so even an
+uncertain partial write receives a conservative cleanup attempt.
+
+One event loop awaits one transport read and one resize read, then invokes
+exactly one sink callback at a time. Input and resize handlers therefore cannot
+race each other, and no callback runs while `StreamTransport` holds its write
+gate. Input closure completes the decoder before `ISink.Closed`; read, decoder,
+resize, and handler faults are reported through `ISink.Fault` and remain the
+primary exception.
+
+`ConsoleResizeSource` returns cell-only changes after a finite injected-clock
+delay. On Linux/macOS, `UnixResizeSource` uses a capacity-one channel to
+coalesce `SIGWINCH`; the signal callback only requests a wakeup, while ordinary
+async code reads the newest `winsize` cell and pixel dimensions through `ioctl`.
+Derived positive cell metrics update pixel-pointer inference before the ordered
+resize callback.
+
+Cleanup walks leases in exact reverse order under an independent finite timeout,
+continuing after individual failures. `LastCleanupException` exposes the first
+restoration failure but never replaces an earlier startup, read, resize,
+cancellation, or handler exception.

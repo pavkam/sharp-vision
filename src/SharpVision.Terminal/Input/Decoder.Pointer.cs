@@ -156,11 +156,11 @@ public sealed partial class Decoder
         Geometry.Point? pixels = null;
         var inferred = false;
 
-        if (_options.PixelMouse)
+        if (_pixelMouse)
         {
             pixels = source;
 
-            if (_options.CellMetrics is { } metrics)
+            if (_cellMetrics is { } metrics)
             {
                 cells = new Geometry.Point(source.X / metrics.Width, source.Y / metrics.Height);
                 inferred = true;

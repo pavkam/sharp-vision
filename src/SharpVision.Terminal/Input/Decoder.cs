@@ -27,6 +27,7 @@ public sealed partial class Decoder: IDisposable
     private readonly byte[] _x10 = new byte[12];
     private byte[]? _paste;
     private DateTimeOffset _escapeDeadline;
+    private Geometry.Metrics? _cellMetrics;
     private Modifiers _nextTextModifiers;
     private int _utf8Length;
     private int _pasteLength;
@@ -38,6 +39,7 @@ public sealed partial class Decoder: IDisposable
     private bool _disposed;
     private bool _escapePending;
     private bool _pasteMode;
+    private readonly bool _pixelMouse;
     private bool _pasteOverflow;
     private bool _ss3Pending;
     private bool _x10Pending;
@@ -57,6 +59,8 @@ public sealed partial class Decoder: IDisposable
         _options = options ?? Options.Default;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _parser = new Parser(_options.Limits);
+        _cellMetrics = _options.CellMetrics;
+        _pixelMouse = _options.PixelMouse;
     }
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
@@ -192,6 +196,14 @@ public sealed partial class Decoder: IDisposable
 
         var adapter = new Adapter(this);
         _parser.Complete(ref adapter);
+    }
+
+    /// <summary>Updates pixel-to-cell inference after an ordered resize event.</summary>
+    /// <param name="value">Positive cell metrics, or null when unavailable.</param>
+    internal void SetCellMetrics(Geometry.Metrics? value)
+    {
+        ThrowIfDisposed();
+        _cellMetrics = value;
     }
 
     /// <summary>Clears pending bytes and returns parser-owned pooled storage.</summary>

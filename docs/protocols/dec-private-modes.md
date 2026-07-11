@@ -30,10 +30,16 @@ responses, contradictory responses, and all failure exits.
 
 ## Phase 2 implementation
 
-`Modes` provides exact DECSET/DECRST bytes for modes 25, 1004, 1049, 2004, 2026,
-and 5522. `Csi.QueryPrivateMode` emits DECRQM; `Responses.TryCsi` validates
-DECRPM and maps states 1/2 to supported while 0/4 remain unsupported.
-`QueryTracker` bounds in-flight queries, rejects ambiguous duplicate
-uncorrelated requests, correlates Kitty IDs, and distinguishes duplicate from
-late replies using an injected `TimeProvider`. Mode ownership and reverse-order
-terminal restoration are Phase 3 lifecycle work.
+`Modes` provides exact DECSET/DECRST bytes for modes 9, 25, 1000, 1002, 1003,
+1004, 1005, 1006, 1015, 1016, 1049, 2004, 2026, and 5522. `Csi.QueryPrivateMode`
+emits DECRQM; `Responses.TryCsi` validates DECRPM and maps states 1/2 to
+supported while 0/4 remain unsupported. `QueryTracker` bounds in-flight queries,
+rejects ambiguous duplicate uncorrelated requests, correlates Kitty IDs, and
+distinguishes duplicate from late replies using an injected `TimeProvider`. Mode
+ownership and reverse-order terminal restoration are implemented by
+[`Runtime.Session`](../architecture/runtime-event-loop.md#terminal-session-implementation).
+
+`Modes.Mouse` validates the tracking and coordinate enums before writing. Enable
+order is tracking then coordinate encoding; disable order is coordinate then
+tracking. This makes each pair reversible and prevents partially written output
+for invalid combinations.

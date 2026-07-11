@@ -45,3 +45,9 @@ wheel deltas, cell and pixel conversion, maximum coordinates, leave, malformed
 values, X10 UTF-8 coordinates, and every split. Mode combinations and cleanup
 are proved by the runtime session; Phase 4 routes these values through pointer
 capture and hit testing to final control output.
+
+`Modes.Mouse` now owns exact mode 9/1000/1002/1003 tracking and
+1005/1006/1015/1016 coordinate commands. `Runtime.Options` selects the pair;
+`Runtime.Session` enables cell input only with proven `CellMouse` support and
+pixel input only with proven `PixelMouse` support, then restores coordinate and
+tracking modes in reverse. Tentative terminal-name hints never activate them.

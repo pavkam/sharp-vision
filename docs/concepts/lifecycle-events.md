@@ -24,6 +24,18 @@ metrics. Failed frames produce diagnostics and force invalidation instead.
 layout, and rendering, directly before waiting. Scheduled ticks are separate and
 never implemented by repeated idle callbacks.
 
+The terminal `Runtime.Session` now supplies ordered resize, input, closure, and
+fault records plus reversible mode ownership. It does not raise application
+starting/started/stopping/stopped, timers, frame-rendered, or `Idle`; those are
+dispatcher responsibilities in Phase 4. This separation prevents transport waits
+from masquerading as application idleness.
+
+Zero-cell dimensions are delivered as a valid suspended `Dimensions` value.
+Positive cell and pixel dimensions derive `Geometry.Metrics` only when both axes
+produce a positive cell size. The Phase 4 dispatcher coalesces those terminal
+records into committed layout and the public resize event ordering described
+above.
+
 ## Tests
 
 Record exact startup/shutdown, resize, frame, exception, and idle order. Cover

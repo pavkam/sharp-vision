@@ -118,6 +118,9 @@ public sealed record Capabilities
     /// <summary>Gets pixel-coordinate mouse support.</summary>
     public Feature PixelMouse { get; init; } = Feature.Unknown;
 
+    /// <summary>Gets cell-coordinate mouse support.</summary>
+    public Feature CellMouse { get; init; } = Feature.Unknown;
+
     /// <summary>Gets Kitty keyboard protocol support.</summary>
     public Feature KittyKeyboard { get; init; } = Feature.Unknown;
 
@@ -145,6 +148,7 @@ public sealed record Capabilities
         FocusReporting,
         BracketedPaste,
         PixelMouse,
+        CellMouse,
         KittyKeyboard,
         Osc52,
         KittyClipboard,
