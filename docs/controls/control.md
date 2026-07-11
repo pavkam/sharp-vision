@@ -22,6 +22,8 @@ dispatcher.
 | `IsEnabled`                                | Inherited effective input state.                        |
 | `CanFocus`, `TabIndex`                     | Focus participation and deterministic order.            |
 | `IsFocused`, `IsHovered`, `IsPressed`      | Read-only committed interaction state.                  |
+| `Style`                                    | Optional direct resource; null inherits from ancestors. |
+| `Appearance`                               | Read-only resolved current-state overlay.               |
 | `DesiredSize`                              | Read-only result of the last successful measure.        |
 | `Bounds`                                   | Read-only committed arranged rectangle.                 |
 
@@ -92,6 +94,13 @@ not repeat box-model arithmetic.
 If an extension point changes a layout property, that invalidation remains
 pending for a later transaction. If it throws, the active phase is marked dirty
 again before the exception escapes.
+
+## Styling extension point
+
+`GetVisualState()` derives normal, hovered, focused, pressed, and disabled flags
+from behavior. Controls with semantic selection override it to add checked
+state. `ResolvedStyle` converts the inherited current `Appearance` into the
+complete terminal cell style used by rendering.
 
 ## Example
 

@@ -538,7 +538,7 @@ events only after their documented commit points.
 - Modify: `docs/concepts/styling.md`
 - Modify: `docs/controls/control.md`
 
-- [ ] **Step 1: Write failing style precedence tests**
+- [x] **Step 1: Write failing style precedence tests**
 
   Cover normal, hovered, focused, checked, pressed, disabled, every pairwise
   combination, unset versus explicit terminal default, direct versus inherited
@@ -555,12 +555,12 @@ events only after their documented commit points.
       .ShouldBe(Color.Indexed(8));
   ```
 
-- [ ] **Step 2: Run style tests and verify RED**
+- [x] **Step 2: Run style tests and verify RED**
 
   Run `*StyleTests`. Expected: compile failure because `SharpVision.Styling`
   does not exist.
 
-- [ ] **Step 3: Implement mutable resources and deterministic overlays**
+- [x] **Step 3: Implement mutable resources and deterministic overlays**
 
   `State` is flags with normal represented by zero. `Appearance` has optional
   foreground/background, terminal text attributes, padding, and border values;
@@ -575,13 +575,13 @@ events only after their documented commit points.
   style. Effective state is derived from behavior flags; appearance never
   mutates behavior.
 
-- [ ] **Step 4: Verify styling through terminal cells**
+- [x] **Step 4: Verify styling through terminal cells**
 
   Extend `ProbeControl` to draw one Rune using its resolved terminal style.
   Render combined states into a `Frame` and assert exact `CellInfo` colors and
   attributes, not a private resolver call alone.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Styling src/SharpVision/Controls/Control.cs tests/SharpVision.Tests/Styling tests/SharpVision.Tests/Support/ProbeControl.cs docs/concepts/styling.md docs/controls/control.md

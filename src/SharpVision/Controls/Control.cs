@@ -4,8 +4,11 @@ using System.Runtime.CompilerServices;
 
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Threading;
+
+using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Controls;
 
@@ -246,6 +249,34 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         set => _ = Set(ref field, value, Invalidation.None);
     }
 
+    /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Style? Style
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (ReferenceEquals(field, value))
+            {
+                return;
+            }
+
+            UnsubscribeStyle(field);
+            field = value;
+            SubscribeStyle(field);
+            Invalidate(Invalidation.Measure);
+            InvalidateStyleDescendants(Impact.Measure);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Style)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Appearance)));
+        }
+    }
+
+    /// <summary>Gets the resolved inherited appearance for current behavior state.</summary>
+    public Appearance Appearance => Resolver.Resolve(EffectiveStyle, GetVisualState());
+
     /// <summary>Gets whether this control currently owns keyboard focus.</summary>
     public bool IsFocused { get; private set; }
 
@@ -282,6 +313,9 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Gets the inherited capture manager while one owns this subtree.</summary>
     internal CaptureManager? CaptureOwner { get; private set; }
+
+    /// <summary>Gets the complete terminal style for the resolved appearance.</summary>
+    internal TerminalStyle ResolvedStyle => Resolver.ToTerminal(Appearance);
 
     /// <summary>Adds one typed routed-event handler to this control.</summary>
     /// <typeparam name="TArgs">The exact event-argument type.</typeparam>
@@ -513,6 +547,7 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
         DisposeChildren();
         ClearHandlers();
+        UnsubscribeStyle(Style);
         Dispatcher = null;
         Pending = Invalidation.None;
         IsDisposed = true;
@@ -685,6 +720,35 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     protected virtual void OnEvent(RoutedEventArgs eventArgs) =>
         ArgumentNullException.ThrowIfNull(eventArgs);
 
+    /// <summary>Gets behavior-derived flags for appearance resolution.</summary>
+    /// <returns>The current defined visual-state flags.</returns>
+    protected virtual State GetVisualState()
+    {
+        var result = State.Normal;
+
+        if (IsHovered)
+        {
+            result |= State.Hovered;
+        }
+
+        if (IsFocused)
+        {
+            result |= State.Focused;
+        }
+
+        if (IsPressed)
+        {
+            result |= State.Pressed;
+        }
+
+        if (!EffectiveIsEnabled)
+        {
+            result |= State.Disabled;
+        }
+
+        return result;
+    }
+
     private static Invalidation Expand(Invalidation value) => value switch
     {
         Invalidation.None => Invalidation.None,
@@ -840,6 +904,49 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             child.InvalidateDescendants(value);
         });
 
+    private void InvalidateStyleDescendants(Impact impact) =>
+        VisitChildren(child =>
+        {
+            if (child.Style is not null)
+            {
+                return;
+            }
+
+            child.Invalidate(impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render);
+            child.PropertyChanged?.Invoke(
+                child,
+                new PropertyChangedEventArgs(nameof(Appearance)));
+            child.InvalidateStyleDescendants(impact);
+        });
+
+    private void OnStyleChanged(object? sender, ChangedEventArgs eventArgs)
+    {
+        var dispatcher = Dispatcher;
+
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            dispatcher.Post(() => ApplyStyleChanged(sender, eventArgs));
+            return;
+        }
+
+        ApplyStyleChanged(sender, eventArgs);
+    }
+
+    private void ApplyStyleChanged(object? sender, ChangedEventArgs eventArgs)
+    {
+        if (IsDisposed || !ReferenceEquals(sender, Style))
+        {
+            return;
+        }
+
+        var invalidation = eventArgs.Impact == Impact.Measure
+            ? Invalidation.Measure
+            : Invalidation.Render;
+        Invalidate(invalidation);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Appearance)));
+        InvalidateStyleDescendants(eventArgs.Impact);
+    }
+
     private void ClearHandlers()
     {
         if (Handlers is not { } handlers)
@@ -901,9 +1008,23 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     private void SetDispatcher(Dispatcher? value)
     {
+        UnsubscribeStyle(Style);
         Dispatcher = value;
+        SubscribeStyle(Style);
         VisitChildren(child => child.SetDispatcher(value));
     }
+
+    private void SubscribeStyle(Style? style)
+    {
+        if (Dispatcher is not null && style is not null)
+        {
+            style.Changed += OnStyleChanged;
+        }
+    }
+
+    private void UnsubscribeStyle(Style? style) => style?.Changed -= OnStyleChanged;
+
+    private Style? EffectiveStyle => Style ?? Parent?.EffectiveStyle;
 
     private void VerifyAccess() => Dispatcher?.VerifyAccess();
 

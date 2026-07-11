@@ -1,6 +1,9 @@
+using System.Text;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Rendering;
 
 namespace SharpVision.Tests.Support;
 
@@ -32,6 +35,14 @@ internal sealed class ProbeControl(Size intrinsic = default): Control
     {
         ArrangeBounds.Add(bounds);
         Arranging?.Invoke(this);
+    }
+
+    /// <summary>Draws one Rune using this control's resolved terminal style.</summary>
+    internal void Draw(Canvas canvas, Rune value)
+    {
+        Span<char> buffer = stackalloc char[2];
+        var length = value.EncodeToUtf16(buffer);
+        _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
     }
 }
 
