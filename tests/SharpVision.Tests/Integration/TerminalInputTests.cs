@@ -39,10 +39,19 @@ public sealed class TerminalInputTests
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         var handled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var expected = Encoding.UTF8.GetBytes("λ");
+        var written = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += value =>
+        {
+            if (value.Span.IndexOf(expected) >= 0)
+            {
+                _ = written.TrySetResult();
+            }
+        };
         application.FrameRendered += (_, _) =>
         {
-            if (handled.Task.IsCompleted)
+            if (written.Task.IsCompleted)
             {
                 _ = rendered.TrySetResult();
             }
@@ -68,7 +77,6 @@ public sealed class TerminalInputTests
         await rendered.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         child.Content.ToString().ShouldBe("λ");
-        var expected = Encoding.UTF8.GetBytes("λ");
         terminal.Writes.Any(value => value.AsSpan().IndexOf(expected) >= 0).ShouldBeTrue();
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
