@@ -158,7 +158,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/LimitsTests.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/DiagnosticTests.cs`
 
-- [ ] **Step 1: Write failing validation and redaction tests**
+- [x] **Step 1: Write failing validation and redaction tests**
 
   Add tests named
   `Constructor_WhenLimitIsNotPositive_ThrowsArgumentOutOfRangeException`,
@@ -167,7 +167,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   numeric limit is positive, `QueryTimeout` is finite and positive, and the
   diagnostic string contains code/kind/offset/discard count but no payload.
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
   Run:
 
@@ -177,7 +177,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 
   Expected: compilation fails because the protocol types do not exist.
 
-- [ ] **Step 3: Implement immutable validated values**
+- [x] **Step 3: Implement immutable validated values**
 
   Implement `Limits` as the public record above with a validating primary
   constructor or property initialization path that rejects zero, negatives,
@@ -188,11 +188,11 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   `QueryLimit`, and `Unsupported`. `Diagnostic` contains only code, kind,
   offset, and discarded-byte count.
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [x] **Step 4: Run focused tests and verify GREEN**
 
   Expected: all focused tests pass with zero warnings.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Commit message: `feat: define bounded protocol contracts`
 
