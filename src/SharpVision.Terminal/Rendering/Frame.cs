@@ -420,6 +420,37 @@ public sealed class Frame: IDisposable
         Cells[index] = Cell.Blank(style);
     }
 
+    /// <summary>Styles a complete cell owner when every occupied cell is inside a clip.</summary>
+    /// <param name="index">The validated lead, continuation, or blank index.</param>
+    /// <param name="clip">The effective frame clip.</param>
+    /// <param name="style">The replacement semantic style.</param>
+    /// <returns>Whether the complete owner was styled.</returns>
+    internal bool TrySetOwnerStyle(int index, Rect clip, Style style)
+    {
+        Debug.Assert((uint) index < (uint) Cells.Length, "Style indexes are validated by the canvas.");
+        var leadIndex = ResolveLead(index);
+        var lead = Cells[leadIndex];
+        var width = Math.Max(1, (int) lead.Width);
+        var point = new Point(leadIndex % Size.Width, leadIndex / Size.Width);
+
+        for (var offset = 0; offset < width; offset++)
+        {
+            if (!clip.Contains(new Point(point.X + offset, point.Y)))
+            {
+                return false;
+            }
+        }
+
+        for (var offset = 0; offset < width; offset++)
+        {
+            var cell = Cells[leadIndex + offset];
+            cell.Style = style;
+            Cells[leadIndex + offset] = cell;
+        }
+
+        return true;
+    }
+
     /// <summary>Counts UTF-8 bytes using the frame's replacement policy.</summary>
     /// <param name="value">The borrowed UTF-16 cluster.</param>
     /// <returns>The encoded byte count.</returns>

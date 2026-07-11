@@ -1,5 +1,3 @@
-using System.Text;
-
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
@@ -182,7 +180,7 @@ public sealed class Border: Container
                 glyph = top ? Glyphs.TopRight : Glyphs.BottomRight;
             }
 
-            Draw(canvas, glyph, new Point(x, y), style);
+            canvas.DrawRune(glyph, new Point(x, y), style);
         }
     }
 
@@ -200,15 +198,8 @@ public sealed class Border: Container
 
         for (var y = start; y < end; y++)
         {
-            Draw(canvas, left ? Glyphs.Left : Glyphs.Right, new Point(x, y), style);
+            canvas.DrawRune(left ? Glyphs.Left : Glyphs.Right, new Point(x, y), style);
         }
-    }
-
-    private static void Draw(TerminalCanvas canvas, Rune glyph, Point point, TerminalStyle style)
-    {
-        Span<char> buffer = stackalloc char[2];
-        var length = glyph.EncodeToUtf16(buffer);
-        _ = canvas.Draw(buffer[..length], point, style);
     }
 
     private static int? Subtract(int? value, int extent) => value.HasValue

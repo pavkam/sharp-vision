@@ -16,6 +16,40 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies Border ownership, layout, glyph validation, styling, and cells.</summary>
 public sealed class BorderTests
 {
+    #region Presets
+
+    /// <summary>Verifies every named family exposes exact corner and edge glyphs.</summary>
+    [Theory]
+    [MemberData(nameof(PresetCases))]
+    public void Glyphs_WhenPresetIsSelected_UsesExactRunes(
+        Glyphs glyphs,
+        char corner,
+        char horizontal,
+        char vertical)
+    {
+        glyphs.TopLeft.ShouldBe(new Rune(corner));
+        glyphs.Top.ShouldBe(new Rune(horizontal));
+        glyphs.Left.ShouldBe(new Rune(vertical));
+    }
+
+    /// <summary>Provides the supported Unicode and portable border families.</summary>
+    public static TheoryData<Glyphs, char, char, char> PresetCases => new()
+    {
+        { Glyphs.Light, '┌', '─', '│' },
+        { Glyphs.Heavy, '┏', '━', '┃' },
+        { Glyphs.Paired, '╔', '═', '║' },
+        { Glyphs.Rounded, '╭', '─', '│' },
+        { Glyphs.Ascii, '+', '-', '|' },
+        { Glyphs.Solid, '█', '█', '█' },
+        { Glyphs.LightShade, '░', '░', '░' },
+        { Glyphs.MediumShade, '▒', '▒', '▒' },
+        { Glyphs.DarkShade, '▓', '▓', '▓' },
+    };
+
+    #endregion
+
+    #region Ownership and layout
+
     /// <summary>Verifies documented defaults and capacity-one ownership.</summary>
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
@@ -97,6 +131,10 @@ public sealed class BorderTests
         child.Bounds.ShouldBe(new Rect(3, 3, 2, 1));
     }
 
+    #endregion
+
+    #region Rendering
+
     /// <summary>Verifies default glyphs and Unicode child content render exact cells.</summary>
     [Fact]
     public void Render_WhenBorderIsComplete_WritesCornersEdgesAndChild()
@@ -163,4 +201,6 @@ public sealed class BorderTests
 
         Should.NotThrow(() => border.Render(frame.Canvas));
     }
+
+    #endregion
 }

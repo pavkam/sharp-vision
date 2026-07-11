@@ -590,8 +590,9 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             // coordinate system remains absolute, so no transform can drift.
             // Panels may deliberately retain the ancestor clip for children,
             // while their own drawing always remains inside their bounds.
+            var visual = canvas.Clip(VisualBounds);
             var clipped = canvas.Clip(Bounds);
-            RenderCore(clipped);
+            RenderCore(visual);
             RenderChildren(ClipsChildren ? clipped : canvas);
         }
         catch
@@ -854,13 +855,20 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     protected virtual void OnUnavailable(ReleaseReason reason) =>
         Debug.Assert(Enum.IsDefined(reason), "Unavailable reasons are validated internally.");
 
-    /// <summary>Draws this control's own content into its clipped border box.</summary>
-    /// <param name="canvas">The frame-owned canvas clipped to <see cref="Bounds"/>.</param>
+    /// <summary>Draws this control's own content into its clipped visual bounds.</summary>
+    /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
     protected virtual void RenderCore(TerminalCanvas canvas)
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render content.");
     }
+
+    /// <summary>Gets the own-content drawing bounds, including deliberate visual overflow.</summary>
+    /// <remarks>
+    /// The default is <see cref="Bounds"/>. Overrides affect own drawing only;
+    /// descendant clipping and pointer hit testing continue to use the arranged box.
+    /// </remarks>
+    protected virtual Rect VisualBounds => Bounds;
 
     /// <summary>Renders owned descendants after this control's content.</summary>
     /// <param name="canvas">The canvas clipped to this control.</param>

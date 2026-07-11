@@ -29,8 +29,8 @@ public readonly record struct Glyphs
         Left = Validate(left, nameof(left));
     }
 
-    /// <summary>Gets the default Unicode box-drawing set.</summary>
-    public static Glyphs Default { get; } = new(
+    /// <summary>Gets the light Unicode box-drawing set.</summary>
+    public static Glyphs Light { get; } = new(
         new Rune('┌'),
         new Rune('─'),
         new Rune('┐'),
@@ -39,6 +39,65 @@ public readonly record struct Glyphs
         new Rune('─'),
         new Rune('└'),
         new Rune('│'));
+
+    /// <summary>Gets the heavy Unicode box-drawing set.</summary>
+    public static Glyphs Heavy { get; } = new(
+        new Rune('┏'),
+        new Rune('━'),
+        new Rune('┓'),
+        new Rune('┃'),
+        new Rune('┛'),
+        new Rune('━'),
+        new Rune('┗'),
+        new Rune('┃'));
+
+    /// <summary>Gets the paired-line Unicode box-drawing set.</summary>
+    public static Glyphs Paired { get; } = new(
+        new Rune('╔'),
+        new Rune('═'),
+        new Rune('╗'),
+        new Rune('║'),
+        new Rune('╝'),
+        new Rune('═'),
+        new Rune('╚'),
+        new Rune('║'));
+
+    /// <summary>Gets the rounded light Unicode box-drawing set.</summary>
+    public static Glyphs Rounded { get; } = new(
+        new Rune('╭'),
+        new Rune('─'),
+        new Rune('╮'),
+        new Rune('│'),
+        new Rune('╯'),
+        new Rune('─'),
+        new Rune('╰'),
+        new Rune('│'));
+
+    /// <summary>Gets the portable ASCII border set.</summary>
+    public static Glyphs Ascii { get; } = new(
+        new Rune('+'),
+        new Rune('-'),
+        new Rune('+'),
+        new Rune('|'),
+        new Rune('+'),
+        new Rune('-'),
+        new Rune('+'),
+        new Rune('|'));
+
+    /// <summary>Gets a full-block border set.</summary>
+    public static Glyphs Solid { get; } = Uniform(new Rune('█'));
+
+    /// <summary>Gets a light-shade border set.</summary>
+    public static Glyphs LightShade { get; } = Uniform(new Rune('░'));
+
+    /// <summary>Gets a medium-shade border set.</summary>
+    public static Glyphs MediumShade { get; } = Uniform(new Rune('▒'));
+
+    /// <summary>Gets a dark-shade border set.</summary>
+    public static Glyphs DarkShade { get; } = Uniform(new Rune('▓'));
+
+    /// <summary>Gets the default light Unicode box-drawing set.</summary>
+    public static Glyphs Default => Light;
 
     /// <summary>Gets the top-left glyph.</summary>
     public Rune TopLeft { get; }
@@ -76,4 +135,7 @@ public readonly record struct Glyphs
                 "A border glyph must be printable and one cell wide.",
                 name);
     }
+
+    private static Glyphs Uniform(Rune value) =>
+        new(value, value, value, value, value, value, value, value);
 }
