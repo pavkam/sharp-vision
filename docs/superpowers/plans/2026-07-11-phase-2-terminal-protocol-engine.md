@@ -363,25 +363,25 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/ParserStringTests.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/ParserDcsTests.cs`
 
-- [ ] **Step 1: Write string-family tests**
+- [x] **Step 1: Write string-family tests**
 
   Cover OSC terminated by ST and permitted BEL, DCS with parameters,
   intermediates and final byte, APC, PM, SOS, split `ESC \\`, ESC followed by a
   non-ST byte inside a string, CAN/SUB abort, adjacent strings, and ST across
   reads. Assert BEL terminates only OSC and only when enabled.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
-- [ ] **Step 3: Implement bounded string and DCS states**
+- [x] **Step 3: Implement bounded string and DCS states**
 
   Rent a payload buffer lazily. Grow only up to `MaxStringBytes`; on overflow
   clear sensitive data, enter string-ignore, and scan without further growth
   until ST (or permitted OSC BEL). Preserve a pending ESC at a read boundary; if
   its next byte is not `\\`, append both bytes if within bounds.
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [x] **Step 4: Run focused tests and verify GREEN**
 
-- [ ] **Step 5: Add hostile-input and allocation tests**
+- [x] **Step 5: Add hostile-input and allocation tests**
 
   Feed a multi-megabyte unterminated OSC with a 1 KiB configured limit and
   assert bounded retained capacity, one redacted diagnostic, recovery into text,
@@ -389,11 +389,11 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   CSI sequences, and assert zero thread allocations for the parse loop and a
   struct sink.
 
-- [ ] **Step 6: Run hostile/allocation tests and verify RED then GREEN**
+- [x] **Step 6: Run hostile/allocation tests and verify RED then GREEN**
 
   Fix only measured allocation and bound failures; do not weaken assertions.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   Commit message: `feat: parse bounded terminal strings`
 

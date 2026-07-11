@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace SharpVision.Terminal.Protocols;
 
@@ -21,17 +22,28 @@ namespace SharpVision.Terminal.Protocols;
 /// </example>
 public sealed class Parser: IDisposable
 {
+    private const byte _bell = 0x07;
     private const byte _cancel = 0x18;
     private const byte _escape = 0x1b;
     private const byte _substitute = 0x1a;
+    private const byte _eightBitDcs = 0x90;
+    private const byte _eightBitSos = 0x98;
     private const byte _eightBitCsi = 0x9b;
+    private const byte _eightBitSt = 0x9c;
+    private const byte _eightBitOsc = 0x9d;
+    private const byte _eightBitPm = 0x9e;
+    private const byte _eightBitApc = 0x9f;
 
     private readonly Limits _limits;
     private byte[]? _parameters;
     private byte[]? _intermediates;
+    private byte[]? _payload;
     private State _state;
     private int _parameterLength;
     private int _intermediateLength;
+    private int _payloadLength;
+    private byte _dcsFinal;
+    private SequenceKind _stringKind;
     private DiagnosticCode _pendingCode;
     private SequenceKind _pendingKind;
     private long _pendingOffset;
@@ -80,7 +92,7 @@ public sealed class Parser: IDisposable
         where TSink : ISequenceSink
     {
         ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(sink);
+        ThrowIfNull(ref sink);
 
         var position = 0;
 
@@ -121,7 +133,7 @@ public sealed class Parser: IDisposable
         where TSink : ISequenceSink
     {
         ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(sink);
+        ThrowIfNull(ref sink);
 
         if (_state != State.Ground)
         {
@@ -161,6 +173,7 @@ public sealed class Parser: IDisposable
     {
         var parameters = _parameters;
         var intermediates = _intermediates;
+        var payload = _payload;
 
         if (parameters is null || intermediates is null)
         {
@@ -169,25 +182,67 @@ public sealed class Parser: IDisposable
 
         _parameters = null;
         _intermediates = null;
+        _payload = null;
         ArrayPool<byte>.Shared.Return(parameters, clearArray: true);
         ArrayPool<byte>.Shared.Return(intermediates, clearArray: true);
+
+        if (payload is not null)
+        {
+            ArrayPool<byte>.Shared.Return(payload, clearArray: true);
+        }
     }
 
-    private bool IsIgnoring => _state is State.EscapeIgnore or State.CsiIgnore;
+    private bool IsIgnoring => _state is
+        State.EscapeIgnore or
+        State.CsiIgnore or
+        State.DcsHeaderIgnore or
+        State.StringIgnore or
+        State.StringIgnoreEscape;
+
+    private bool IsStringState => _state is
+        State.StringPayload or
+        State.StringEscape or
+        State.StringIgnore or
+        State.StringIgnoreEscape;
 
     private SequenceKind CurrentKind => _state switch
     {
         State.Escape or State.EscapeIntermediate or State.EscapeIgnore =>
             SequenceKind.Escape,
         State.Csi or State.CsiIntermediate or State.CsiIgnore => SequenceKind.Csi,
+        State.Dcs or State.DcsIntermediate or State.DcsHeaderIgnore => SequenceKind.Dcs,
+        State.StringPayload or State.StringEscape => _stringKind,
+        State.StringIgnore or State.StringIgnoreEscape => _pendingKind,
         State.Ground => SequenceKind.None,
         _ => throw new UnreachableException(),
     };
 
     private void BeginCsi()
     {
+        ClearPayload();
         ClearHeader();
         _state = State.Csi;
+    }
+
+    private void BeginDcs()
+    {
+        ClearPayload();
+        ClearHeader();
+        _stringKind = SequenceKind.Dcs;
+        _dcsFinal = 0;
+        _state = State.Dcs;
+    }
+
+    private void BeginString(SequenceKind kind)
+    {
+        Debug.Assert(
+            kind is SequenceKind.Osc or SequenceKind.Apc or SequenceKind.Pm or SequenceKind.Sos,
+            "Only terminal string families can enter string payload state.");
+
+        ClearPayload();
+        ClearHeader();
+        _stringKind = kind;
+        _state = State.StringPayload;
     }
 
     private void BeginIgnore(
@@ -207,12 +262,24 @@ public sealed class Parser: IDisposable
     {
         _parameterLength = 0;
         _intermediateLength = 0;
+        _dcsFinal = 0;
+    }
+
+    private void ClearPayload()
+    {
+        if (_payloadLength > 0)
+        {
+            _payload.AsSpan(0, _payloadLength).Clear();
+            _payloadLength = 0;
+        }
     }
 
     private void EnterGround()
     {
         _state = State.Ground;
+        ClearPayload();
         ClearHeader();
+        _stringKind = default;
         _pendingCode = default;
         _pendingKind = default;
         _pendingOffset = 0;
@@ -252,6 +319,80 @@ public sealed class Parser: IDisposable
         }
     }
 
+    private void EmitString<TSink>(StringTerminator terminator, ref TSink sink)
+        where TSink : ISequenceSink
+    {
+        var payload = _payload.AsSpan(0, _payloadLength);
+        var kind = _stringKind;
+        var parameters = _parameters.AsSpan(0, _parameterLength);
+        var intermediates = _intermediates.AsSpan(0, _intermediateLength);
+        var final = _dcsFinal;
+        _state = State.Ground;
+
+        try
+        {
+            if (kind == SequenceKind.Dcs)
+            {
+                sink.Dcs(parameters, intermediates, final, payload, terminator);
+            }
+            else
+            {
+                sink.Sequence(kind, payload, terminator);
+            }
+        }
+        finally
+        {
+            ClearPayload();
+            ClearHeader();
+            _stringKind = default;
+        }
+    }
+
+    private bool TryAppendPayload(byte value, long currentOffset)
+    {
+        if (_payloadLength == _limits.MaxStringBytes)
+        {
+            BeginStringIgnore(DiagnosticCode.StringLimit, currentOffset);
+
+            return false;
+        }
+
+        EnsurePayloadCapacity(_payloadLength + 1);
+        _payload![_payloadLength++] = value;
+
+        return true;
+    }
+
+    private void EnsurePayloadCapacity(int required)
+    {
+        Debug.Assert(required > 0 && required <= _limits.MaxStringBytes);
+
+        if (_payload is not null && required <= _payload.Length)
+        {
+            return;
+        }
+
+        var size = _payload is null
+            ? Math.Min(_limits.MaxStringBytes, Math.Max(256, required))
+            : Math.Min(_limits.MaxStringBytes, Math.Max(required, _payload.Length * 2));
+        var replacement = ArrayPool<byte>.Shared.Rent(size);
+
+        if (_payload is not null)
+        {
+            _payload.AsSpan(0, _payloadLength).CopyTo(replacement);
+            ArrayPool<byte>.Shared.Return(_payload, clearArray: true);
+        }
+
+        _payload = replacement;
+    }
+
+    private void BeginStringIgnore(DiagnosticCode code, long currentOffset)
+    {
+        var kind = _stringKind;
+        ClearPayload();
+        BeginIgnore(code, kind, currentOffset, State.StringIgnore);
+    }
+
     private bool IsText(byte value) =>
         value is > 0x1f and not 0x7f &&
         (!_limits.AcceptEightBitControls || value is < 0x80 or > 0x9f);
@@ -261,6 +402,12 @@ public sealed class Parser: IDisposable
     {
         if (value == 0x7f)
         {
+            return;
+        }
+
+        if (IsStringState)
+        {
+            ProcessString(value, currentOffset, ref sink);
             return;
         }
 
@@ -325,6 +472,21 @@ public sealed class Parser: IDisposable
             case State.CsiIgnore:
                 ProcessCsiIgnore(value, ref sink);
                 break;
+
+            case State.Dcs:
+            case State.DcsIntermediate:
+                ProcessDcs(value, currentOffset, ref sink);
+                break;
+
+            case State.DcsHeaderIgnore:
+                ProcessDcsHeaderIgnore(value);
+                break;
+
+            case State.StringPayload:
+            case State.StringEscape:
+            case State.StringIgnore:
+            case State.StringIgnoreEscape:
+                throw new UnreachableException("String states are processed before general controls.");
 
             default:
                 throw new UnreachableException();
@@ -404,13 +566,236 @@ public sealed class Parser: IDisposable
         }
     }
 
+    private void ProcessDcs<TSink>(byte value, long currentOffset, ref TSink sink)
+        where TSink : ISequenceSink
+    {
+        if (value is >= 0x30 and <= 0x3f)
+        {
+            if (_state == State.DcsIntermediate)
+            {
+                BeginIgnore(
+                    DiagnosticCode.Malformed,
+                    SequenceKind.Dcs,
+                    currentOffset,
+                    State.DcsHeaderIgnore);
+            }
+            else if (_parameterLength == _limits.MaxParameterBytes)
+            {
+                BeginIgnore(
+                    DiagnosticCode.ParameterLimit,
+                    SequenceKind.Dcs,
+                    currentOffset,
+                    State.DcsHeaderIgnore);
+            }
+            else
+            {
+                _parameters![_parameterLength++] = value;
+            }
+
+            return;
+        }
+
+        if (value is >= 0x20 and <= 0x2f)
+        {
+            if (_intermediateLength == _limits.MaxIntermediateBytes)
+            {
+                BeginIgnore(
+                    DiagnosticCode.IntermediateLimit,
+                    SequenceKind.Dcs,
+                    currentOffset,
+                    State.DcsHeaderIgnore);
+            }
+            else
+            {
+                _intermediates![_intermediateLength++] = value;
+                _state = State.DcsIntermediate;
+            }
+
+            return;
+        }
+
+        if (value is >= 0x40 and <= 0x7e)
+        {
+            _dcsFinal = value;
+            _state = State.StringPayload;
+            return;
+        }
+
+        var diagnostic = new Diagnostic(
+            DiagnosticCode.Malformed,
+            SequenceKind.Dcs,
+            currentOffset,
+            1);
+        sink.Report(in diagnostic);
+        EnterGround();
+    }
+
+    private void ProcessDcsHeaderIgnore(byte value)
+    {
+        if (value is >= 0x40 and <= 0x7e)
+        {
+            _dcsFinal = value;
+            _state = State.StringIgnore;
+        }
+        else
+        {
+            _discarded++;
+        }
+    }
+
+    private void ProcessString<TSink>(byte value, long currentOffset, ref TSink sink)
+        where TSink : ISequenceSink
+    {
+        if (value is _cancel or _substitute)
+        {
+            if (IsIgnoring)
+            {
+                ReportPending(ref sink);
+            }
+            else
+            {
+                var diagnostic = new Diagnostic(
+                    DiagnosticCode.Cancelled,
+                    CurrentKind,
+                    currentOffset,
+                    0);
+                sink.Report(in diagnostic);
+            }
+
+            EnterGround();
+            return;
+        }
+
+        if (_state is State.StringIgnore or State.StringIgnoreEscape)
+        {
+            ProcessStringIgnore(value, ref sink);
+            return;
+        }
+
+        if (_state == State.StringEscape)
+        {
+            if (value == (byte) '\\')
+            {
+                EmitString(StringTerminator.EscapeBackslash, ref sink);
+                return;
+            }
+
+            if (!TryAppendPayload(_escape, currentOffset))
+            {
+                ProcessStringIgnore(value, ref sink);
+                return;
+            }
+
+            if (value == _escape)
+            {
+                _state = State.StringEscape;
+                return;
+            }
+
+            _state = State.StringPayload;
+        }
+
+        if (value == _escape)
+        {
+            _state = State.StringEscape;
+            return;
+        }
+
+        if (_limits.AcceptEightBitControls && value == _eightBitSt)
+        {
+            EmitString(StringTerminator.EightBit, ref sink);
+            return;
+        }
+
+        if (_stringKind == SequenceKind.Osc && value == _bell)
+        {
+            if (_limits.AcceptBellTerminatedOsc)
+            {
+                EmitString(StringTerminator.Bell, ref sink);
+            }
+            else
+            {
+                BeginStringIgnore(DiagnosticCode.Malformed, currentOffset);
+            }
+
+            return;
+        }
+
+        _ = TryAppendPayload(value, currentOffset);
+    }
+
+    private void ProcessStringIgnore<TSink>(byte value, ref TSink sink)
+        where TSink : ISequenceSink
+    {
+        if (_state == State.StringIgnoreEscape)
+        {
+            if (value == (byte) '\\')
+            {
+                ReportPending(ref sink);
+                EnterGround();
+                return;
+            }
+
+            _state = value == _escape
+                ? State.StringIgnoreEscape
+                : State.StringIgnore;
+            _discarded++;
+            return;
+        }
+
+        if (value == _escape)
+        {
+            _state = State.StringIgnoreEscape;
+            return;
+        }
+
+        if ((_limits.AcceptEightBitControls && value == _eightBitSt) ||
+            (_pendingKind == SequenceKind.Osc &&
+             _limits.AcceptBellTerminatedOsc &&
+             value == _bell))
+        {
+            ReportPending(ref sink);
+            EnterGround();
+            return;
+        }
+
+        _discarded++;
+    }
+
     private void ProcessEscape<TSink>(byte value, long currentOffset, ref TSink sink)
         where TSink : ISequenceSink
     {
-        if (_state == State.Escape && value == (byte) '[')
+        if (_state == State.Escape)
         {
-            BeginCsi();
-            return;
+            switch (value)
+            {
+                case (byte) '[':
+                    BeginCsi();
+                    return;
+
+                case (byte) ']':
+                    BeginString(SequenceKind.Osc);
+                    return;
+
+                case (byte) 'P':
+                    BeginDcs();
+                    return;
+
+                case (byte) '_':
+                    BeginString(SequenceKind.Apc);
+                    return;
+
+                case (byte) '^':
+                    BeginString(SequenceKind.Pm);
+                    return;
+
+                case (byte) 'X':
+                    BeginString(SequenceKind.Sos);
+                    return;
+
+                default:
+                    break;
+            }
         }
 
         if (value is >= 0x20 and <= 0x2f)
@@ -466,13 +851,35 @@ public sealed class Parser: IDisposable
     {
         Debug.Assert(_limits.AcceptEightBitControls, "Only configured C1 bytes reach ground processing.");
 
-        if (value == _eightBitCsi)
+        switch (value)
         {
-            BeginCsi();
-        }
-        else
-        {
-            sink.Control(value);
+            case _eightBitCsi:
+                BeginCsi();
+                break;
+
+            case _eightBitDcs:
+                BeginDcs();
+                break;
+
+            case _eightBitOsc:
+                BeginString(SequenceKind.Osc);
+                break;
+
+            case _eightBitApc:
+                BeginString(SequenceKind.Apc);
+                break;
+
+            case _eightBitPm:
+                BeginString(SequenceKind.Pm);
+                break;
+
+            case _eightBitSos:
+                BeginString(SequenceKind.Sos);
+                break;
+
+            default:
+                sink.Control(value);
+                break;
         }
     }
 
@@ -492,6 +899,16 @@ public sealed class Parser: IDisposable
     private void ThrowIfDisposed() =>
         ObjectDisposedException.ThrowIf(_parameters is null, this);
 
+    private static void ThrowIfNull<TSink>(ref TSink sink)
+        where TSink : ISequenceSink
+    {
+        if (!typeof(TSink).IsValueType &&
+            Unsafe.As<TSink, object?>(ref sink) is null)
+        {
+            throw new ArgumentNullException(nameof(sink));
+        }
+    }
+
     private enum State
     {
         Ground,
@@ -501,5 +918,12 @@ public sealed class Parser: IDisposable
         Csi,
         CsiIntermediate,
         CsiIgnore,
+        Dcs,
+        DcsIntermediate,
+        DcsHeaderIgnore,
+        StringPayload,
+        StringEscape,
+        StringIgnore,
+        StringIgnoreEscape,
     }
 }

@@ -14,4 +14,9 @@ public enum StringTerminator
     /// The two-byte ESC backslash string terminator completed the string.
     /// </summary>
     EscapeBackslash,
+
+    /// <summary>
+    /// The single-byte C1 ST control completed the string.
+    /// </summary>
+    EightBit,
 }

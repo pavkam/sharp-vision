@@ -38,7 +38,7 @@ public sealed class RecordingSink: ISequenceSink
         ReadOnlySpan<byte> value,
         StringTerminator terminator) =>
         Observations.Add(
-            new Observation(kind.ToString(), value.ToArray(), [(byte) terminator], 0, null));
+            new Observation($"{kind}:{terminator}", value.ToArray(), [], 0, null));
 
     /// <inheritdoc/>
     public void Dcs(
@@ -49,9 +49,9 @@ public sealed class RecordingSink: ISequenceSink
         StringTerminator terminator) =>
         Observations.Add(
             new Observation(
-                "Dcs",
+                $"Dcs:{terminator}:{Convert.ToHexString(intermediates)}",
                 parameters.ToArray(),
-                [.. intermediates, final, .. value, (byte) terminator],
+                value.ToArray(),
                 final,
                 null));
 
