@@ -51,4 +51,8 @@ failure.
 
 Hot measurement, canvas, damage, and encoding cases assert no object per
 Rune/grapheme/cell after warm-up and record total allocation for representative
-ASCII, CJK, combining, emoji, sparse, and dense frames.
+ASCII, CJK, combining, emoji, sparse, and dense frames. The cross-domain Phase 3
+performance gate repeats ASCII/mixed/emoji segmentation plus
+unchanged/sparse/dense 80×24 encodes in five warmed windows; at least one
+measured window must remain literally allocation-free so one-time tiered-runtime
+bookkeeping is not mistaken for a per-operation allocation.

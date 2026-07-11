@@ -8,7 +8,7 @@ after return, frame completion, or disposal.
 
 | Data                    | Owner                        | Lifetime                        |
 | ----------------------- | ---------------------------- | ------------------------------- |
-| Transport read buffer   | Transport                    | Until decoder call returns      |
+| Transport read buffer   | Runtime session              | Until decoder call returns      |
 | Decoder state           | Decoder instance             | Until reset/disposal            |
 | Decoded immutable event | Event value or owned payload | Through dispatcher delivery     |
 | Front frame             | Renderer                     | Until a later successful commit |
@@ -45,6 +45,11 @@ frame memory is borrowed until `RenderAsync` completes; `ITransport.WriteAsync`
 borrows renderer memory until its returned operation completes and must either
 transfer the complete memory or throw. Renderer disposal never disposes a
 borrowed transport.
+
+`Runtime.Session` rents one finite read buffer for the event loop and clears it
+before pool return. `IResizeSource` returns immutable `Dimensions` values and
+retains no caller memory. The session owns disposal of its transport and resize
+source; `StreamTransport` in turn owns its streams unless `leaveOpen` is true.
 
 ## Span and asynchronous boundaries
 

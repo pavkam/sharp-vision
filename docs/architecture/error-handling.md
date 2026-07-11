@@ -23,7 +23,7 @@ transport stops the application after restoration attempts.
 
 ## Diagnostic model
 
-The Phase 2 `Diagnostic` carries only a stable `DiagnosticCode`, sequence kind,
+The protocol `Diagnostic` carries only a stable `DiagnosticCode`, sequence kind,
 stream offset, and discarded-byte count. Its invariant-culture text contains
 those structural fields and no input payload. Kitty packet values, clipboard
 bytes, passwords, names, and terminal-provided secrets are never included.
@@ -38,3 +38,8 @@ Mode restoration and disposal execute in `finally`. When cleanup also fails, the
 original exception remains primary and cleanup is attached diagnostically.
 Unhandled application exceptions raise the runtime event once, then follow the
 configured stop/continue policy at a safe dispatcher boundary.
+
+`Renderer.LastCleanupException` and `Runtime.Session.LastCleanupException`
+retain the first bounded recovery failure without replacing a primary write,
+flush, startup, read, resize, input-handler, or cancellation exception. Normal
+transport EOF is a typed closure callback, not a fabricated fault.

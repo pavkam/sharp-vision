@@ -25,7 +25,7 @@ Optimization is rejected when it breaks model equivalence, increases unbounded
 memory, or improves one synthetic case while materially regressing the common
 dense/sparse counterpart without an approved tradeoff.
 
-## Current renderer gates
+## Current Phase 3 gates
 
 The warmed unchanged-frame path performs 10,000 measured calls and requires zero
 thread-local managed allocation. Sparse and dense encodes reuse the
@@ -36,3 +36,11 @@ cancellation, and synchronized cleanup failures prove that only a complete
 write-and-flush commits front state. These guarantees implement the ownership
 rules in the
 [rendering pipeline](../architecture/rendering-pipeline.md#commit-and-invalidation).
+
+`PhaseThreePerformanceTests` warms and measures representative ASCII, mixed, and
+emoji segmentation; unchanged, sparse, and dense 80×24 encoding; and legacy
+text, SGR mouse, and Kitty keyboard decoding. Five 10,000-iteration allocation
+windows must include a zero-byte sample after tiered compilation has crossed its
+warm-up. Test output records elapsed time, .NET runtime, OS, and process
+architecture, but elapsed time is intentionally informational on local and
+ordinary CI machines.

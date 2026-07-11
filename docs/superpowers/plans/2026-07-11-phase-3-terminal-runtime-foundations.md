@@ -765,7 +765,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify:
   `docs/testing/{unicode-rendering,rendering,performance,pseudoterminals,terminal-protocols}.md`
 
-- [ ] **Step 1: Add actual Unix pseudoterminal transport proof**
+- [x] **Step 1: Add actual Unix pseudoterminal transport proof**
 
   On Linux/macOS, the test helper opens a PTY pair, owns both descriptors, and
   exposes a deterministic cleanup point. Drive `StreamTransport` through the
@@ -775,21 +775,21 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   use xUnit's explicit runtime skip with a reason; CI's Windows job supplies the
   console-specific counterpart in Phase 6.
 
-- [ ] **Step 2: Add fixed-seed hostile and equivalence suites**
+- [x] **Step 2: Add fixed-seed hostile and equivalence suites**
 
   Random input must terminate within the test deadline, remain bounded, and
   recover to a known key. Random frame transitions must equal a full render and
   preserve every ownership invariant. Print seed/case/input/frame on failure and
   promote any discovered issue to a named regression before changing code.
 
-- [ ] **Step 3: Add allocation and throughput regression checks**
+- [x] **Step 3: Add allocation and throughput regression checks**
 
   Measure warmed ASCII/mixed/emoji segmentation, frame no-op/sparse/dense scans,
   encoding, legacy text, mouse, and Kitty keys. Gate deterministic allocation
   budgets; record timing and architecture without making noisy wall-clock timing
   a local pass/fail criterion.
 
-- [ ] **Step 4: Publish exact support and ownership documentation**
+- [x] **Step 4: Publish exact support and ownership documentation**
 
   Change coverage rows only where typed implementation and tests exist. Name
   unsupported graphics/image/passthrough boundaries. Document public type names,
@@ -797,13 +797,13 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   limits, pixel inference, resize order, session cleanup, borrowed/owned memory,
   safe degradation, and the fact that application `Idle` starts in Phase 4.
 
-- [ ] **Step 5: Run focused documentation and Phase 3 tests**
+- [x] **Step 5: Run focused documentation and Phase 3 tests**
 
   Run `npm run check:unicode`, `make lint`, and terminal tests with
   `--minimum-expected-tests 1`. Expected: generator, analyzers, Markdown,
   section links, docs tests, and all terminal tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `docs: publish terminal runtime guarantees`
 

@@ -24,6 +24,12 @@ flowchart LR
 Unicode cell geometry, screen buffers, damage, and terminal output. It has no
 reference to the UI project.
 
+Its current public runtime boundaries are `Protocols` for exact encoders and
+streaming framing, `Input.Decoder` for typed values, `Rendering.Frame`/`Canvas`
+and `Renderer` for semantic output, `Transport.ITransport` for bounded I/O, and
+`Runtime.Session` for mode leases plus ordered input/resize/closure/fault
+delivery. Internal pooled storage never becomes a cross-project contract.
+
 `SharpVision` owns the dispatcher, application lifecycle, traditional mutable
 controls, layout, styling, focus, routed input, scrolling, menus, popups, and
 windows. It draws to the terminal project's cell canvas and never emits escape

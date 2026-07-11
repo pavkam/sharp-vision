@@ -44,5 +44,7 @@ application routing applies the separate
 
 Tests cover empty, multiline, Unicode, invalid UTF-8, embedded ESC, every proper
 marker prefix, owned retention, megabyte overflow, truncation, every byte split,
-adjacent focus/text events, and terminal focus transitions. Lifecycle cleanup
-proof follows with the mode-owning session.
+adjacent focus/text events, and terminal focus transitions. Lifecycle cleanup is
+proved by `Runtime.Session`, which enables only supported modes and restores
+them in reverse even after startup, input, handler, cancellation, or cleanup
+failure.

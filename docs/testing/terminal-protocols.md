@@ -30,6 +30,12 @@ Every generated valid sequence must produce the same events at every
 fragmentation, while hostile generated input must recover to a known trailing
 CSI event. Failure messages include seed, case, and input bytes.
 
+The typed input decoder has a separate fixed-seed hostile suite. Random bytes
+arrive in random 1–8 byte fragments under small paste/parser limits, followed by
+explicit paste termination/cancellation and a known text key. Every case must
+terminate, retain no oversized paste, and recover the known key; failures print
+seed, case, and hexadecimal input.
+
 The warmed CSI parser path is measured at zero managed bytes per event. A
 hostile 2 MiB oversized OSC case proves retained/allocation behavior stays
 bounded and that the next valid sequence is still decoded.

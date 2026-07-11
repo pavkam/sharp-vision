@@ -66,9 +66,17 @@ primary exception.
 `ConsoleResizeSource` returns cell-only changes after a finite injected-clock
 delay. On Linux/macOS, `UnixResizeSource` uses a capacity-one channel to
 coalesce `SIGWINCH`; the signal callback only requests a wakeup, while ordinary
-async code reads the newest `winsize` cell and pixel dimensions through `ioctl`.
-Derived positive cell metrics update pixel-pointer inference before the ordered
-resize callback.
+async code reads the newest `winsize` cell and pixel dimensions. Linux uses the
+native `ioctl` boundary; macOS uses the .NET runtime's fixed native window-size
+shim because Darwin ARM64 variadic arguments cannot safely cross a fabricated
+fixed managed `ioctl` signature. The shim is the same
+[`SystemNative_GetWindowSize`](https://github.com/dotnet/runtime/blob/main/src/native/libs/System.Native/pal_console.c#L23)
+boundary used by `System.Console`. Derived positive cell metrics update
+pixel-pointer inference before the ordered resize callback.
+
+Unix integration tests use an actual raw pseudoterminal pair. They prove exact
+bidirectional bytes, master-close EOF, kernel cell/pixel dimensions, SIGWINCH
+coalescing, and delivery of the newest dimensions through `Runtime.Session`.
 
 Cleanup walks leases in exact reverse order under an independent finite timeout,
 continuing after individual failures. `LastCleanupException` exposes the first

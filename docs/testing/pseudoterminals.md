@@ -2,9 +2,11 @@
 
 ## Pseudoterminal testing
 
-Unix tests spawn the showcase or a focused fixture under a pseudoterminal and
-control window size, input bytes, output bytes, signals, closure, and timing.
-Windows tests use the supported console/ConPTY facility in a Windows CI job.
+Unix tests open an owned raw master/slave pseudoterminal pair and control window
+size, input bytes, output bytes, signals, closure, and timing. The current
+fixture drives `StreamTransport`, `UnixResizeSource`, and `Runtime.Session`
+directly; later end-to-end phases also launch the showcase under a PTY. Windows
+tests use the supported console/ConPTY facility in a Windows CI job.
 
 ## Scenarios
 
@@ -17,6 +19,11 @@ must report an explicit skip reason otherwise.
 Tests use deterministic deadlines and condition-based waits, never arbitrary
 sleep as proof. Raw transcripts redact clipboard/credential payloads and are
 attached on failure.
+
+The macOS fixture initializes cell/pixel dimensions through fixed-signature
+`openpty`, changes cells through the platform utility, then sends a real
+SIGWINCH. Linux uses the corresponding PTY and ioctl path. Unsupported platforms
+use xUnit's runtime skip with an explicit reason.
 
 ## Separation
 

@@ -24,7 +24,7 @@ Typed output covers the VT100/VT220-compatible subset required by screen
 rendering and input. Conflicting DEC, ANSI, and xterm interpretations are named
 in the corresponding typed command rather than hidden behind a generic code.
 
-## Phase 2 implementation
+## Implemented output
 
 `Csi`, `Sgr`, `Osc`, and `Modes` provide the exact-byte output subset documented
 in their linked contracts. `Parser` preserves unknown valid ESC/CSI functions as
@@ -51,5 +51,7 @@ grammars report a redacted diagnostic and recover at the next sequence.
 ## Fallback and tests
 
 Unknown terminals receive the conservative VT baseline. Tests pair each command
-with its exact bytes and prove that capability fallback chooses a documented
-alternative or omission.
+with its exact bytes, repeat representative input at every split, and prove that
+capability fallback chooses a documented alternative or omission. The frame
+encoder is independently checked against a semantic virtual terminal in the
+[rendering oracle](../testing/rendering.md#correctness-oracle).

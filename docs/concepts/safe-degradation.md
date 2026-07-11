@@ -19,6 +19,12 @@ throw before mutation.
 Fallback never changes logical control state or silently reports success for an
 operation that did not occur.
 
+`Capabilities.Feature` distinguishes supported, unsupported, and tentative
+evidence plus its origin. `Runtime.Session` enables optional focus, paste,
+mouse, and Kitty keyboard modes only for supported evidence; terminal-name and
+environment hints alone remain tentative. Cleanup attempts every recorded mode
+lease in reverse even when its enabling write may have failed partway.
+
 ## Strict mode
 
 Strict mode promotes configured diagnostics—malformed input, unsupported

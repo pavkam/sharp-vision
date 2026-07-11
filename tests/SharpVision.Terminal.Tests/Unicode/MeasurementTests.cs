@@ -58,15 +58,24 @@ public sealed class MeasurementTests
             _ = Width.Measure(value.AsSpan(), Ambiguous.Narrow);
         }
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        var minimum = long.MaxValue;
 
-        for (var index = 0; index < 10_000; index++)
+        // Sample multiple windows so a one-time tiered-PGO bookkeeping
+        // allocation from another concurrently run test cannot become data.
+        for (var sample = 0; sample < 5; sample++)
         {
-            _ = Width.Measure(value.AsSpan(), Ambiguous.Narrow);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+
+            for (var index = 0; index < 10_000; index++)
+            {
+                _ = Width.Measure(value.AsSpan(), Ambiguous.Narrow);
+            }
+
+            minimum = Math.Min(
+                minimum,
+                GC.GetAllocatedBytesForCurrentThread() - before);
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        allocated.ShouldBe(0);
+        minimum.ShouldBe(0);
     }
 }

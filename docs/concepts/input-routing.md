@@ -27,6 +27,13 @@ and SS3 forms. Valid unknown keys retain `Code.Unknown` plus their native code;
 malformed and unsupported forms produce one structural diagnostic and leave the
 next input decodable.
 
+Enhanced Kitty events add optional shifted/base-layout Runes, all defined
+modifier bits, native F13-F35/lock identities, and press/repeat/release without
+changing the same `Stroke`/`Text` boundary. Pointer input preserves both cell
+and optional pixel coordinates, while resize-derived metrics mark inferred cell
+coordinates explicitly. These additions degrade to the legacy values above when
+support is not proven.
+
 A raw Escape remains ambiguous until another byte arrives. `ExpireEscape` emits
 it only after `Options.EscapeTimeout` on the injected `TimeProvider`, and
 `Complete` resolves it immediately at end-of-stream. The decoder accounts for
@@ -67,4 +74,6 @@ behavior.
 
 Terminal-layer tests repeat representative UTF-8, CSI, and SS3 inputs at every
 byte split, cover malformed recovery and completion, and require warmed ASCII
-and non-ASCII Rune decoding to allocate zero managed bytes per event.
+and non-ASCII Rune decoding to allocate zero managed bytes per event. The
+fixed-seed hostile-byte suite caps paste/parser retention, injects an explicit
+recovery boundary, and requires a known trailing Rune to survive every case.
