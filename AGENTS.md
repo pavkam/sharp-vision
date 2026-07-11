@@ -48,6 +48,10 @@ in the protocol document.
   classes, structs, records, interfaces, enums, delegates, production code,
   generated source, tests, and test helpers. Do not declare nested named types
   or place two types in one file. There are no generated-source exceptions.
+- Declare immutable value types as `readonly struct`, `readonly record struct`,
+  or `readonly ref struct`. Use a mutable struct only when mutation is intrinsic
+  to its role, such as an enumerator, parser cursor, accumulator, or native
+  interop buffer; keep that mutability internal where possible.
 - Prefer `Rune`, `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>`,
   and `IBufferWriter<T>` in text, protocol, and rendering paths. Do not reduce
   Unicode input to `char` or allocate strings in hot loops.

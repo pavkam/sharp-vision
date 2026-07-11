@@ -52,6 +52,9 @@ cross-layer paths. A mock-heavy green suite is not evidence of correctness.
 - Keep one named type per file, including generated files, tests, and test
   helpers; name the file exactly after the type, and never declare nested named
   types.
+- Make immutable value types readonly in production and test code. Retain
+  mutable structs only for intrinsically stateful cursors, accumulators, or
+  interop buffers.
 
 ## Example review
 

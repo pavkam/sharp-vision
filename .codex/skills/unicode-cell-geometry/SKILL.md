@@ -44,6 +44,8 @@ of Rune widths. Keep every consumer on one versioned geometry implementation.
 - Hot measurement and cell operations allocate no object per Rune or cell.
 - Keep one named type per file, including generated files, name the file exactly
   after the type, and never declare nested named types.
+- Make immutable value types readonly. Leave a struct mutable only when its role
+  intrinsically advances or accumulates state, and keep that mutability narrow.
 
 ## Example review
 
