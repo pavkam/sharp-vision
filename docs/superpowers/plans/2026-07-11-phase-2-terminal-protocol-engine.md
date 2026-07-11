@@ -129,13 +129,13 @@ public sealed class Parser : IDisposable
     public void Dispose();
 }
 
-public readonly ref struct Writer
+public readonly struct Writer
 {
     public Writer(IBufferWriter<byte> destination);
     public void Escape(ReadOnlySpan<byte> intermediates, byte final);
     public void Csi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final);
     public void Osc(int selector, ReadOnlySpan<byte> payload);
-    public void String(SequenceKind kind, ReadOnlySpan<byte> payload);
+    public void Command(SequenceKind kind, ReadOnlySpan<byte> payload);
     public void Dcs(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates,
         byte final, ReadOnlySpan<byte> payload);
 }
@@ -203,7 +203,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Create: `src/SharpVision.Terminal/Protocols/Writer.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/WriterTests.cs`
 
-- [ ] **Step 1: Write exact-byte and validation tests**
+- [x] **Step 1: Write exact-byte and validation tests**
 
   Use `ArrayBufferWriter<byte>` and literal expected bytes. Cover `ESC 7`,
   `CSI 12;4 H`, `OSC 2;title ST`, APC, PM, SOS, and DCS. Verify final bytes lie
@@ -211,7 +211,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   `0x30..0x3f`, payloads reject ESC/C0 terminators, and a failed call writes
   nothing.
 
-- [ ] **Step 2: Run focused test and verify RED**
+- [x] **Step 2: Run focused test and verify RED**
 
   Run:
 
@@ -221,18 +221,18 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 
   Expected: compilation fails because `Writer` does not exist.
 
-- [ ] **Step 3: Implement transactional writes**
+- [x] **Step 3: Implement transactional writes**
 
   Validate the complete command first, calculate its exact length with checked
   arithmetic, request one destination span, write introducer/body/ST, and call
   `Advance` once. Use short private helpers for byte-class checks and
   `Debug.Assert` for the post-validation length invariant.
 
-- [ ] **Step 4: Run focused and assembly tests and verify GREEN**
+- [x] **Step 4: Run focused and assembly tests and verify GREEN**
 
   Run the focused command, then the complete terminal test project.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Commit message: `feat: add bounded protocol writer`
 
