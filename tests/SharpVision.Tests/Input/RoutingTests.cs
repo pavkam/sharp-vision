@@ -247,9 +247,8 @@ public sealed class RoutingTests
 
         new TextEventArgs(text).Text.ShouldBe(text);
         new PointerEventArgs(pointer).Pointer.ShouldBe(pointer);
-        new PasteEventArgs(paste).Paste.ShouldBeSameAs(paste);
+        new PasteEventArgs(paste).Paste.Utf8.ShouldBe(paste.Utf8);
         new FocusEventArgs(focus).Focus.ShouldBe(focus);
-        _ = Should.Throw<ArgumentNullException>(() => new PasteEventArgs(null!));
     }
 
     /// <summary>Verifies source retargeting is controlled while original source is immutable.</summary>

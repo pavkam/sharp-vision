@@ -48,6 +48,9 @@ asynchrony. Layout never guesses final space during intrinsic measurement.
   after the type, and never declare nested named types.
 - Make immutable value types readonly. Leave a struct mutable only when its role
   intrinsically advances or accumulates state, and keep that mutability narrow.
+- Prefer readonly structs for small immutable wrappers with valid defaults and
+  cheap copies; preserve classes for identity, ownership, polymorphism, or
+  shared mutable state.
 
 ## Example review
 

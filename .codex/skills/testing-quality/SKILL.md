@@ -55,6 +55,9 @@ cross-layer paths. A mock-heavy green suite is not evidence of correctness.
 - Make immutable value types readonly in production and test code. Retain
   mutable structs only for intrinsically stateful cursors, accumulators, or
   interop buffers.
+- Prefer readonly structs for small immutable wrappers with valid defaults and
+  cheap copies; preserve classes when tests rely on real identity, ownership,
+  lifetime, or polymorphic behavior.
 
 ## Example review
 

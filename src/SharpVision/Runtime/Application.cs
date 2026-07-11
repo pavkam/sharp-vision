@@ -233,11 +233,7 @@ public sealed class Application: ISink, IAsyncDisposable
     public void Input(in Pointer value) => Enqueue(Record.From(value));
 
     /// <inheritdoc/>
-    public void Input(Paste value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        Enqueue(Record.From(value));
-    }
+    public void Input(Paste value) => Enqueue(Record.From(value));
 
     /// <inheritdoc/>
     public void Input(in TerminalFocus value) => Enqueue(Record.From(value));
@@ -366,7 +362,11 @@ public sealed class Application: ISink, IAsyncDisposable
             case RecordKind.Paste:
                 if (Focus.Focused is { } pasteTarget)
                 {
-                    Router.Route(pasteTarget, Events.Paste, new PasteEventArgs(record.Paste!));
+                    Debug.Assert(record.Paste.HasValue, "A paste record must carry its payload.");
+                    Router.Route(
+                        pasteTarget,
+                        Events.Paste,
+                        new PasteEventArgs(record.Paste.GetValueOrDefault()));
                 }
 
                 break;

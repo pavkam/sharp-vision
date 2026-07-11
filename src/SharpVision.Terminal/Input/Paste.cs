@@ -1,7 +1,7 @@
 namespace SharpVision.Terminal.Input;
 
 /// <summary>Owns an immutable copy of one bracketed-paste UTF-8 payload.</summary>
-public sealed class Paste
+public readonly struct Paste
 {
     /// <summary>Initializes a paste by copying caller-owned bytes.</summary>
     /// <param name="utf8">The exact UTF-8 payload to copy.</param>

@@ -18,7 +18,7 @@ public interface IInputSink
     public void Input(in Pointer value);
 
     /// <summary>Receives one owned paste payload.</summary>
-    /// <param name="value">The non-null owned paste.</param>
+    /// <param name="value">The immutable owned paste value.</param>
     public void Input(Paste value);
 
     /// <summary>Receives one focus transition.</summary>

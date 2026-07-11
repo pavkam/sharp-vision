@@ -151,7 +151,7 @@ public sealed class TerminalInputTests
         pointer!.Value.Pixels.ShouldBe(new Point(16, 32));
         pointer.Value.Cells.ShouldBe(new Point(2, 2));
         pointer.Value.IsCellPositionInferred.ShouldBeTrue();
-        Encoding.UTF8.GetString(paste!.Utf8.Span).ShouldBe("ok");
+        Encoding.UTF8.GetString(paste!.Value.Utf8.Span).ShouldBe("ok");
         stroke!.Value.Code.ShouldBe(Code.Character);
         stroke.Value.Character.ShouldBe(new Rune('a'));
         stroke.Value.Action.ShouldBe(KeyAction.Repeat);
@@ -159,7 +159,7 @@ public sealed class TerminalInputTests
 
         void CompleteIfReady()
         {
-            if (pointer.HasValue && paste is not null && focus.HasValue && stroke.HasValue)
+            if (pointer.HasValue && paste.HasValue && focus.HasValue && stroke.HasValue)
             {
                 _ = completed.TrySetResult();
             }

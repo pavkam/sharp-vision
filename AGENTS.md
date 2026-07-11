@@ -52,6 +52,10 @@ in the protocol document.
   or `readonly ref struct`. Use a mutable struct only when mutation is intrinsic
   to its role, such as an enumerator, parser cursor, accumulator, or native
   interop buffer; keep that mutability internal where possible.
+- Prefer readonly structs over classes for small immutable wrapper values when
+  copying is cheap and the default value is valid. Use a class when reference
+  identity, polymorphism, shared mutable state, disposal, weak-table storage, or
+  a large copy cost is part of the contract.
 - Prefer `Rune`, `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>`,
   and `IBufferWriter<T>` in text, protocol, and rendering paths. Do not reduce
   Unicode input to `char` or allocate strings in hot loops.

@@ -14,6 +14,28 @@ namespace SharpVision.Terminal.Tests.Input;
 /// </summary>
 public sealed class PasteTests
 {
+    /// <summary>Verifies the small immutable payload wrapper avoids reference allocation.</summary>
+    [Fact]
+    public void Type_WhenPasteIsInspected_IsValueType() =>
+        typeof(Paste).IsValueType.ShouldBeTrue();
+
+    /// <summary>Verifies the valid default wrapper represents an empty paste.</summary>
+    [Fact]
+    public void Utf8_WhenPasteIsDefault_IsEmpty() =>
+        default(Paste).Utf8.IsEmpty.ShouldBeTrue();
+
+    /// <summary>Verifies the wrapper isolates its payload from caller mutation.</summary>
+    [Fact]
+    public void Constructor_WhenSourceChanges_PreservesCopiedPayload()
+    {
+        var source = "abc"u8.ToArray();
+        var paste = new Paste(source);
+
+        source[0] = (byte) 'z';
+
+        paste.Utf8.ToArray().ShouldBe("abc"u8.ToArray());
+    }
+
     /// <summary>
     /// Verifies empty, multiline, Unicode, and marker-like payload at every split.
     /// </summary>
