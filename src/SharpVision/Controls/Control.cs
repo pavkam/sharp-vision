@@ -8,6 +8,7 @@ using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Threading;
 
+using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Controls;
@@ -306,6 +307,8 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     private bool IsArranging { get; set; }
 
+    private bool IsRendering { get; set; }
+
     private List<IHandler>? Handlers { get; set; }
 
     /// <summary>Gets the inherited focus manager while one owns this subtree.</summary>
@@ -510,6 +513,49 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         finally
         {
             IsArranging = false;
+        }
+    }
+
+    /// <summary>Renders this control and owned descendants into a clipped semantic canvas.</summary>
+    /// <param name="canvas">The frame-owned parent canvas.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The attached control is accessed off-dispatcher or render is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The control or canvas is disposed.</exception>
+    internal void Render(TerminalCanvas canvas)
+    {
+        VerifyMutable();
+        _ = canvas.Bounds;
+
+        if (IsRendering)
+        {
+            throw new InvalidOperationException("Render cannot be reentered.");
+        }
+
+        IsRendering = true;
+        Clear(Invalidation.Render);
+
+        try
+        {
+            if (!EffectiveIsVisible)
+            {
+                return;
+            }
+
+            // Every control receives a canvas clipped by every ancestor. The
+            // coordinate system remains absolute, so no transform can drift.
+            var clipped = canvas.Clip(Bounds);
+            RenderCore(clipped);
+            RenderChildren(clipped);
+        }
+        catch
+        {
+            Invalidate(Invalidation.Render);
+            throw;
+        }
+        finally
+        {
+            IsRendering = false;
         }
     }
 
@@ -720,6 +766,22 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     protected virtual void OnEvent(RoutedEventArgs eventArgs) =>
         ArgumentNullException.ThrowIfNull(eventArgs);
 
+    /// <summary>Draws this control's own content into its clipped border box.</summary>
+    /// <param name="canvas">The frame-owned canvas clipped to <see cref="Bounds"/>.</param>
+    protected virtual void RenderCore(TerminalCanvas canvas)
+    {
+        _ = canvas.Bounds;
+        Debug.Assert(!IsDisposed, "A disposed control cannot render content.");
+    }
+
+    /// <summary>Renders owned descendants after this control's content.</summary>
+    /// <param name="canvas">The canvas clipped to this control.</param>
+    internal virtual void RenderChildren(TerminalCanvas canvas)
+    {
+        _ = canvas.Bounds;
+        Debug.Assert(!IsDisposed, "A disposed control cannot render children.");
+    }
+
     /// <summary>Gets behavior-derived flags for appearance resolution.</summary>
     /// <returns>The current defined visual-state flags.</returns>
     protected virtual State GetVisualState()
@@ -748,6 +810,9 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
         return result;
     }
+
+    /// <summary>Gets the committed content rectangle after padding deflation.</summary>
+    protected Rect ContentBounds => Padding.Deflate(Bounds);
 
     private static Invalidation Expand(Invalidation value) => value switch
     {

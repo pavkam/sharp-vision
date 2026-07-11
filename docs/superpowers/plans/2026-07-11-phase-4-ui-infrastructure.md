@@ -599,7 +599,7 @@ events only after their documented commit points.
 - Modify: `docs/architecture/rendering-pipeline.md`
 - Modify: `docs/testing/controls-integration.md`
 
-- [ ] **Step 1: Write failing control-render tests**
+- [x] **Step 1: Write failing control-render tests**
 
   Test root and nested clips, hidden versus collapsed rendering, z-order,
   padding, Unicode combining/emoji/wide clusters, child overwrite, zero/tiny
@@ -607,12 +607,12 @@ events only after their documented commit points.
   `Canvas.Draw`; assert final `Frame` cells, lead/continuation ownership,
   styles, and cursor state.
 
-- [ ] **Step 2: Run rendering tests and verify RED**
+- [x] **Step 2: Run rendering tests and verify RED**
 
   Run `*RenderingTests`. Expected: failure because controls have no render
   phase.
 
-- [ ] **Step 3: Implement clipped semantic rendering**
+- [x] **Step 3: Implement clipped semantic rendering**
 
   Add internal `Render(Canvas)` and protected `RenderCore(Canvas)` to `Control`.
   The entry point verifies dispatcher access and committed layout, skips hidden
@@ -622,12 +622,12 @@ events only after their documented commit points.
   are higher z-order. A render invalidation raised during rendering remains set
   for the next frame.
 
-- [ ] **Step 4: Verify cell and UI tests**
+- [x] **Step 4: Verify cell and UI tests**
 
   Run control rendering plus terminal canvas/randomized rendering tests.
   Expected: both layers agree on wide-cell repair and clipping.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Controls tests/SharpVision.Tests/Controls tests/SharpVision.Tests/Support/FrameOracle.cs docs/architecture/rendering-pipeline.md docs/testing/controls-integration.md

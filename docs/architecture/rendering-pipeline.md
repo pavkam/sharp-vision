@@ -41,6 +41,24 @@ is known. When synchronized output is available, one complete frame is wrapped
 according to the
 [mode 2026 contract](../protocols/synchronized-output.md#synchronized-output-contract).
 
+## Control rendering
+
+`Control.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It clears
+render invalidation before extension code, clips the supplied canvas to
+committed `Bounds`, calls `RenderCore`, then renders owned children. An
+invalidation raised during either callback therefore remains pending for the
+next frame. An exception restores render dirtiness before propagating.
+
+Hidden, collapsed, and effectively hidden subtrees draw nothing. Containers
+render their own content before children in collection order, so later children
+have higher z-order. Every descendant canvas intersects all ancestor clips;
+coordinates remain absolute terminal cells, avoiding accumulated transform
+rounding.
+
+Derived controls draw only through semantic `Canvas` operations and use their
+padding-deflated content bounds. They never write ANSI, split graphemes, or
+touch pooled frame storage.
+
 ## Commit and invalidation
 
 `Renderer.RenderAsync` accepts a borrowed back `Frame`, `ITransport`, immutable

@@ -1,4 +1,5 @@
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Rendering;
 
 namespace SharpVision.Controls;
 
@@ -49,6 +50,15 @@ public abstract class Container: Control
         while (Children.Count > 0)
         {
             Children[^1].Dispose();
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderChildren(Canvas canvas)
+    {
+        foreach (var child in Children)
+        {
+            child.Render(canvas);
         }
     }
 }

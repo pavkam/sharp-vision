@@ -22,6 +22,15 @@ internal sealed class ProbeControl(Size intrinsic = default): Control
     /// <summary>Gets or sets work invoked from inside the next arrange pass.</summary>
     internal Action<ProbeControl>? Arranging { get; set; }
 
+    /// <summary>Gets or sets borrowed text drawn by the render extension point.</summary>
+    internal ReadOnlyMemory<char> Content { get; set; }
+
+    /// <summary>Gets the number of render extension-point invocations.</summary>
+    internal int RenderCalls { get; private set; }
+
+    /// <summary>Gets or sets work invoked from inside the next render pass.</summary>
+    internal Action<ProbeControl>? Rendering { get; set; }
+
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
@@ -35,6 +44,17 @@ internal sealed class ProbeControl(Size intrinsic = default): Control
     {
         ArrangeBounds.Add(bounds);
         Arranging?.Invoke(this);
+    }
+
+    /// <inheritdoc/>
+    protected override void RenderCore(Canvas canvas)
+    {
+        RenderCalls++;
+        Rendering?.Invoke(this);
+        _ = canvas.Draw(
+            Content.Span,
+            new Point(ContentBounds.X, ContentBounds.Y),
+            ResolvedStyle);
     }
 
     /// <summary>Draws one Rune using this control's resolved terminal style.</summary>

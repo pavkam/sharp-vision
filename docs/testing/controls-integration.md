@@ -12,6 +12,13 @@ arranged slots, call order, cache invalidation, non-reentrancy, rounding, and
 clipping. Routed-input tests record route, phase, source, handled state, local
 coordinates, mutation during dispatch, default behavior, and cleanup.
 
+Control-render tests inspect final `Frame` cells and copied grapheme bytes. They
+cover nested clips, later-child overwrite, padding, hidden/collapsed subtrees,
+zero bounds, combining sequences, wide CJK and emoji ZWJ ownership, resolved
+state styles, default cursor preservation, render-time invalidation, and
+exception recovery. Private draw-call recordings supplement these semantic
+oracles; they never replace them.
+
 ## End-to-end path
 
 Representative tests start with raw terminal key/mouse/paste/resize bytes and
