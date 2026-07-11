@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unicode Cell Geometry"
+  short_description: "Keep graphemes and terminal cells in agreement"
+  default_prompt: "Use $unicode-cell-geometry to implement or review SharpVision text measurement and cell behavior."
