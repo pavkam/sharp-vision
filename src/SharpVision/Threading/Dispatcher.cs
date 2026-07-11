@@ -349,7 +349,8 @@ public sealed class Dispatcher: IAsyncDisposable
         }
     }
 
-    private void ReleasePending()
+    /// <summary>Releases one active asynchronous pending-work lease.</summary>
+    internal void ReleasePending()
     {
         lock (_gate)
         {
@@ -362,87 +363,4 @@ public sealed class Dispatcher: IAsyncDisposable
     private void ThrowIfStopping() =>
         ObjectDisposedException.ThrowIf(_stopping || Volatile.Read(ref _disposed) != 0, this);
 
-    private abstract class Work
-    {
-        internal abstract void Execute();
-
-        internal virtual void Cancel()
-        {
-        }
-    }
-
-    private sealed class PostWork(Action action): Work
-    {
-        internal override void Execute() => action();
-    }
-
-    private sealed class ActionWork(
-        Action action,
-        CancellationToken cancellationToken): Work
-    {
-        private readonly TaskCompletionSource _completion =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        internal Task Completion => _completion.Task;
-
-        internal override void Execute()
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                _ = _completion.TrySetCanceled(cancellationToken);
-                return;
-            }
-
-            try
-            {
-                action();
-                _ = _completion.TrySetResult();
-            }
-            catch (Exception exception)
-            {
-                _ = _completion.TrySetException(exception);
-            }
-        }
-
-        internal override void Cancel() =>
-            _completion.TrySetCanceled(new CancellationToken(canceled: true));
-    }
-
-    private sealed class FunctionWork<T>(
-        Func<T> function,
-        CancellationToken cancellationToken): Work
-    {
-        private readonly TaskCompletionSource<T> _completion =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        internal Task<T> Completion => _completion.Task;
-
-        internal override void Execute()
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                _ = _completion.TrySetCanceled(cancellationToken);
-                return;
-            }
-
-            try
-            {
-                _ = _completion.TrySetResult(function());
-            }
-            catch (Exception exception)
-            {
-                _ = _completion.TrySetException(exception);
-            }
-        }
-
-        internal override void Cancel() =>
-            _completion.TrySetCanceled(new CancellationToken(canceled: true));
-    }
-
-    private sealed class PendingLease(Dispatcher owner): IDisposable
-    {
-        private Dispatcher? _owner = owner;
-
-        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.ReleasePending();
-    }
 }

@@ -1,0 +1,25 @@
+namespace SharpVision.Terminal.Clipboard;
+
+/// <summary>Contains one owned MIME value in a completed clipboard result.</summary>
+public sealed class KittyMimeData
+{
+    private readonly byte[] _data;
+
+    /// <summary>Initializes owned MIME data transferred from a transaction.</summary>
+    /// <param name="mime">The UTF-8 MIME type.</param>
+    /// <param name="data">The owned data buffer.</param>
+    internal KittyMimeData(string mime, byte[] data)
+    {
+        Mime = mime;
+        _data = data;
+    }
+
+    /// <summary>Gets the MIME type.</summary>
+    public string Mime { get; }
+
+    /// <summary>Gets owned data valid until the containing result is disposed.</summary>
+    public ReadOnlyMemory<byte> Data => _data;
+
+    /// <summary>Clears the owned data when its containing result is disposed.</summary>
+    internal void Clear() => _data.AsSpan().Clear();
+}

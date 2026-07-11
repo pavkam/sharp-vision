@@ -3,60 +3,6 @@ using SharpVision.Terminal.Protocols;
 namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>
-/// Identifies a bounded terminal query response family.
-/// </summary>
-public enum QueryKind
-{
-    /// <summary>Primary device attributes.</summary>
-    PrimaryAttributes,
-
-    /// <summary>Secondary device attributes.</summary>
-    SecondaryAttributes,
-
-    /// <summary>A cursor position report.</summary>
-    CursorPosition,
-
-    /// <summary>A DEC private mode report.</summary>
-    PrivateMode,
-
-    /// <summary>A default foreground color reply.</summary>
-    ForegroundColor,
-
-    /// <summary>A default background color reply.</summary>
-    BackgroundColor,
-
-    /// <summary>A correlated Kitty clipboard response.</summary>
-    KittyClipboard,
-
-    /// <summary>Current Kitty progressive keyboard flags.</summary>
-    Keyboard,
-}
-
-/// <summary>
-/// Identifies the outcome of matching an incoming response.
-/// </summary>
-public enum QueryMatch
-{
-    /// <summary>The response completed an active query.</summary>
-    Matched,
-
-    /// <summary>The response duplicated a recently completed query.</summary>
-    Duplicate,
-
-    /// <summary>The response followed timeout or cancellation.</summary>
-    Late,
-
-    /// <summary>No active or recent query matches the response.</summary>
-    Unknown,
-}
-
-/// <summary>
-/// Identifies one active query without exposing internal correlation state.
-/// </summary>
-/// <param name="Value">The positive tracker-local token.</param>
-public readonly record struct QueryToken(long Value);
-
-/// <summary>
 /// Tracks a finite number of correlated and uncorrelated terminal queries.
 /// </summary>
 /// <param name="limits">Optional immutable protocol limits.</param>
@@ -317,17 +263,4 @@ public sealed class QueryTracker(
         }
     }
 
-    private readonly record struct Key(QueryKind Kind, string? Id);
-
-    private readonly record struct Active(QueryToken Token, DateTimeOffset Deadline);
-
-    private readonly record struct History(Outcome Outcome, DateTimeOffset Until);
-
-    private enum Outcome
-    {
-        Completed,
-        Cancelled,
-        TimedOut,
-        Unsupported,
-    }
 }
