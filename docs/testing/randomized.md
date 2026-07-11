@@ -29,3 +29,11 @@ No random test uses time-based seeding without printing and persisting it.
 Phase 4 adds `0x51A47001` as the hostile mutable-tree seed. Its permanent corpus
 mixes zero through 240×80 viewports with layout, visibility, focus, capture, and
 render mutations; every failure includes the exact case and operation.
+
+Grid layout uses seed `0x051A475A` for 10,000 independently reconstructed pairs.
+Cases mix one through five tracks per axis, every length kind, min/max limits,
+spans, saturated spacing, collapsed children, and zero/tiny final sizes. The
+suite requires pairwise deterministic geometry, containment, non-negative
+extents, stable ordered edges, and exact final-axis consumption through an
+uncapped proportional track. Failures report the corpus seed, case index,
+derived case seed, and viewport.

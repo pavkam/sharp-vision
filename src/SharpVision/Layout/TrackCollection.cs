@@ -5,15 +5,17 @@ namespace SharpVision.Layout;
 /// <summary>Owns validated Grid track definitions and reports actual mutations.</summary>
 public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
 {
-    private readonly Action _changing;
+    private readonly Action<int> _changing;
     private readonly Action _changed;
     private readonly List<Track> _items = [];
 
     /// <summary>Initializes a collection with a non-null owner callback.</summary>
-    /// <param name="changing">The callback invoked before observable mutation.</param>
+    /// <param name="changing">
+    /// The callback invoked before observable mutation with the candidate count.
+    /// </param>
     /// <param name="changed">The callback invoked after actual mutation.</param>
     /// <exception cref="ArgumentNullException">A callback is null.</exception>
-    internal TrackCollection(Action changing, Action changed)
+    internal TrackCollection(Action<int> changing, Action changed)
     {
         ArgumentNullException.ThrowIfNull(changing);
         ArgumentNullException.ThrowIfNull(changed);
@@ -32,7 +34,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
                 return;
             }
 
-            _changing();
+            _changing(_items.Count);
             _items[index] = value;
             _changed();
         }
@@ -47,7 +49,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
     /// <inheritdoc/>
     public void Add(Track item)
     {
-        _changing();
+        _changing(_items.Count + 1);
         _items.Add(item);
         _changed();
     }
@@ -60,7 +62,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
             return;
         }
 
-        _changing();
+        _changing(0);
         _items.Clear();
         _changed();
     }
@@ -84,7 +86,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
     /// <inheritdoc/>
     public void Insert(int index, Track item)
     {
-        _changing();
+        _changing(_items.Count + 1);
         _items.Insert(index, item);
         _changed();
     }
@@ -99,7 +101,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
             return false;
         }
 
-        _changing();
+        _changing(_items.Count - 1);
         _items.RemoveAt(index);
         _changed();
         return true;
@@ -109,7 +111,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
     public void RemoveAt(int index)
     {
         _ = _items[index];
-        _changing();
+        _changing(_items.Count - 1);
         _items.RemoveAt(index);
         _changed();
     }

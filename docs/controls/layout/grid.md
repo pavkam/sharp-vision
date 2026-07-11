@@ -21,10 +21,28 @@ proportional row/column tracks with spacing and spans.
 Track collection and placement mutation validates dispatcher affinity before
 observable state changes, then invalidates measure once after a real change.
 
-Measure resolves fixed tracks, gathers intrinsic non-spanning requirements, then
-satisfies spanning requirements deterministically. Arrange resolves percent
-tracks against final inner size and distributes remaining cells to proportional
-tracks using cumulative rounding.
+Measure first asks each child for its unbounded intrinsic size. Non-spanning
+children contribute the maximum margin-inclusive request to their track;
+spanning children then expand their track range deterministically after
+subtracting only the gaps inside that span. Fixed, automatic, percentage, and
+proportional tracks are resolved with their limits against the bounded track
+area after saturated outer spacing is reserved.
+
+Every child is measured again with its resolved spanned slot. Grid rebuilds the
+intrinsic requests once from that result so wrapping on either axis can affect
+the other. Arrange repeats that bounded pass when the final viewport differs
+from measure, computes cumulative integer origins, and commits each child to the
+union of its tracks and the actual allocated internal gaps.
+
+Rounding uses the shared cumulative-edge allocator. If definitions and spacing
+cannot fit, spacing saturates first and tracks shrink deterministically until
+all slots remain within the Grid. Empty definitions behave exactly as one
+implicit automatic track. Collapsed children contribute no request and receive
+empty bounds.
+
+Shrinking a definition collection validates every owned child's candidate origin
+and span before mutation. A failure throws `InvalidOperationException` and
+preserves the definitions and placements unchanged.
 
 ## Example
 
@@ -41,4 +59,6 @@ var grid = new Grid
 Cover all track kinds/mixes, min/max, spacing, spans, competing intrinsic
 requirements, rounding/remainders, collapsed children, invalid attached values,
 zero/tiny/overflow sizes, wrapping remeasure, resize, ownership, and exact
-bounds/cells.
+bounds/cells. Seed `0x051A475A` runs 10,000 mixed valid grids twice and proves
+determinism, containment, non-negative geometry, ordered shared edges, and exact
+axis consumption when an uncapped proportional track absorbs the remainder.

@@ -301,18 +301,19 @@ versions of those APIs.
 - Modify: `docs/controls/layout/grid.md`
 - Modify: `docs/testing/randomized.md`
 
-- [ ] **Step 1: Write failing deterministic Grid tests**
+- [x] **Step 1: Write failing deterministic Grid tests**
 
   Cover all track kinds and mixes, spacing, min/max, non-spanning intrinsic
   requests, competing spans, collapsed children, origin/span range validation,
   wrapping remeasure, percentage final-size resolution, remainder rounding,
   zero/tiny overflow, resize, ownership, and exact child cells.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
-  Run `*GridTests`; expect compile failure because `Grid` is absent.
+  Run `*GridTests`; expect geometry assertions to fail because the Task 6 Grid
+  shell has no measure/arrange algorithm.
 
-- [ ] **Step 3: Implement Grid**
+- [x] **Step 3: Implement Grid**
 
   Measure fixed and intrinsic non-spanning requirements first, then satisfy
   spans deterministically with `Tracks.Satisfy`, excluding spacing from track
@@ -321,7 +322,7 @@ versions of those APIs.
   union of their spanned tracks plus internal spacing. A changed final span
   constraint remeasures wrapped content before committing bounds.
 
-- [ ] **Step 4: Add randomized independent invariants**
+- [x] **Step 4: Add randomized independent invariants**
 
   With fixed seed `0x51A475A`, generate at least 10,000 grids containing mixed
   tracks, limits, spans, spacing, visibility, and tiny/final sizes. Resolve each
@@ -329,7 +330,7 @@ versions of those APIs.
   shared edges, and exact final-axis consumption whenever a star track can
   absorb the remainder. Log seed and case on failure.
 
-- [ ] **Step 5: Verify GREEN and commit**
+- [x] **Step 5: Verify GREEN and commit**
 
   Run `*GridTests` and `*RandomizedGridTests`; commit as `feat: add grid panel`.
 
