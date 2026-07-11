@@ -74,6 +74,9 @@ public sealed class Frame: IDisposable
     /// <summary>Gets the explicit East Asian Ambiguous width policy.</summary>
     public Ambiguous AmbiguousWidth { get; }
 
+    /// <summary>Gets the desired cursor state committed with this frame.</summary>
+    public Cursor Cursor { get; private set; }
+
     /// <summary>Gets a full-frame canvas after validating ownership.</summary>
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
     public Canvas Canvas
@@ -154,6 +157,31 @@ public sealed class Frame: IDisposable
         FillBlank(style);
     }
 
+    /// <summary>Sets the desired cursor state after validating frame geometry.</summary>
+    /// <param name="position">The in-bounds cell coordinate.</param>
+    /// <param name="visible">Whether the terminal cursor is visible.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="position"/> is outside a non-empty frame, or a zero-sized
+    /// frame requests a non-default position or visible cursor.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
+    public void SetCursor(Point position, bool visible)
+    {
+        ThrowIfDisposed();
+        var suspended = Size.Width == 0 || Size.Height == 0;
+
+        if ((suspended && (position != default || visible)) ||
+            (!suspended && !Bounds.Contains(position)))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(position),
+                position,
+                "The cursor position is outside the frame.");
+        }
+
+        Cursor = new Cursor(position, visible);
+    }
+
     /// <summary>Clears and returns every rented array. Disposal is idempotent.</summary>
     public void Dispose()
     {
@@ -193,6 +221,68 @@ public sealed class Frame: IDisposable
             ThrowIfDisposed();
             return _text;
         }
+    }
+
+    /// <summary>Gets a copied internal cell by absolute row-major index.</summary>
+    /// <param name="index">The validated absolute index.</param>
+    /// <returns>The internal semantic cell.</returns>
+    internal Cell GetCell(int index)
+    {
+        Debug.Assert((uint) index < (uint) Cells.Length, "Internal cell indexes are bounded.");
+        return Cells[index];
+    }
+
+    /// <summary>Gets borrowed complete lead grapheme bytes by absolute index.</summary>
+    /// <param name="index">The validated lead or continuation index.</param>
+    /// <returns>Borrowed bytes valid until frame mutation or disposal.</returns>
+    internal ReadOnlySpan<byte> GetGrapheme(int index)
+    {
+        Debug.Assert((uint) index < (uint) Cells.Length, "Internal grapheme indexes are bounded.");
+        var lead = ResolveLead(index);
+        var cell = Cells[lead];
+        return Text.Slice(cell.Offset, cell.Length);
+    }
+
+    /// <summary>Gets the owning lead column for a row-local cell.</summary>
+    /// <param name="row">The validated row.</param>
+    /// <param name="column">The validated column.</param>
+    /// <returns>The lead column, or the input column for non-continuations.</returns>
+    internal int GetLeadColumn(int row, int column)
+    {
+        var index = checked((row * Size.Width) + column);
+        var cell = GetCell(index);
+        return cell.IsContinuation ? cell.LeadIndex % Size.Width : column;
+    }
+
+    /// <summary>Gets the exclusive owned-cell end for a row-local cell.</summary>
+    /// <param name="row">The validated row.</param>
+    /// <param name="column">The validated column.</param>
+    /// <returns>The exclusive column after the complete owner.</returns>
+    internal int GetOwnedEnd(int row, int column)
+    {
+        var leadColumn = GetLeadColumn(row, column);
+        var lead = GetCell(checked((row * Size.Width) + leadColumn));
+        return Math.Min(Size.Width, leadColumn + Math.Max(1, (int) lead.Width));
+    }
+
+    /// <summary>Compares one cell semantically with a same-sized frame.</summary>
+    /// <param name="other">The other active frame.</param>
+    /// <param name="index">The validated absolute index.</param>
+    /// <returns>Whether metadata and complete lead bytes are equal.</returns>
+    internal bool SemanticallyEquals(Frame other, int index)
+    {
+        Debug.Assert(Size == other.Size, "Semantic cell comparison requires equal dimensions.");
+        var left = GetCell(index);
+        var right = other.GetCell(index);
+
+        return left.Width == right.Width &&
+            left.LeadIndex == right.LeadIndex &&
+            left.Style == right.Style &&
+            left.IsContinuation == right.IsContinuation &&
+            (left.IsContinuation ||
+                (left.Hash == right.Hash &&
+                    left.Length == right.Length &&
+                    GetGrapheme(index).SequenceEqual(other.GetGrapheme(index))));
     }
 
     /// <summary>Gets a validated absolute index for an in-bounds point.</summary>

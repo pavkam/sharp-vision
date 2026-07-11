@@ -36,6 +36,10 @@ Targeted transitions include no-op, sparse/dense/style-only damage, deletion,
 narrow↔wide, combining changes, edge clipping/wrapping, bottom-right behavior,
 resize, failed/partial writes, and full invalidation.
 
+The concrete byte-application oracle and seeded transition matrix are specified
+in [rendering equivalence testing](rendering.md#correctness-oracle); snapshots
+do not replace semantic screen comparison.
+
 Before diff encoding exists, frame/canvas tests prove lead/continuation
 metadata, complete UTF-8 copying, two-pass arena-limit validation, clip
 intersection, right-edge policy, overwrite and clear repair from either occupied

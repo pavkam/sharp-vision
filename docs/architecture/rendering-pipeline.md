@@ -48,6 +48,14 @@ partial/interrupted write, resize, capability change, alternate-screen
 transition, clear, or out-of-band output marks terminal state unknown and forces
 the next frame to redraw completely.
 
+`Damage.Enumerate` compares semantic cells row-major and returns merged
+`DamageSpan` values expanded through ownership in both frames. A grapheme hash
+is only a mismatch prefilter; equal hashes still require exact UTF-8 comparison.
+`Encoder.Encode` positions each changed run, emits complete leads while skipping
+continuations, applies deterministic SGR/OSC 8 transitions, resets presentation,
+and restores the frame's cursor state. A size mismatch or missing front frame is
+always a full redraw.
+
 ## Correctness oracle
 
 Tests apply incremental bytes for frame B to a virtual terminal initialized by

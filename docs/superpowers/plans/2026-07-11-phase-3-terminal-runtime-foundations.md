@@ -399,7 +399,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/architecture/rendering-pipeline.md`
 - Modify: `docs/testing/unicode-rendering.md`
 
-- [ ] **Step 1: Write damage and terminal-model tests**
+- [x] **Step 1: Write damage and terminal-model tests**
 
   Cover no change, sparse/dense rows, style-only change, deletion, hyperlink
   change, narrow-to-wide, wide-to-narrow, changed combining sequence, right and
@@ -408,20 +408,21 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   output to an independent `VirtualScreen` and compare it with a clean full
   render of the same target frame.
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
   Run `--filter-class "*DamageTests" "*EncoderTests" "*EquivalenceTests"`.
   Expected: compile failure because damage and encoding types are absent.
 
-- [ ] **Step 3: Implement allocation-free damage enumeration**
+- [x] **Step 3: Implement allocation-free damage enumeration**
 
-  `Damage.Enumerate(front, back, full)` returns a `ref struct` enumerator. Equal
-  row hashes skip semantic comparison. Changed cells expand through lead and
-  continuation ownership in both frames; adjacent spans merge. Semantic equality
-  compares grapheme bytes, width, attributes, colors, hyperlink text, and
-  renderer metadata rather than raw struct bytes.
+  `Damage.Enumerate(front, back, full)` returns a `ref struct` enumerator.
+  Changed cells expand through lead and continuation ownership in both frames;
+  adjacent spans merge. Hashes reject mismatched graphemes quickly, but equal
+  hashes still compare complete bytes so collisions cannot hide damage. Semantic
+  equality includes width, attributes, colors, hyperlink text, and renderer
+  metadata rather than raw struct bytes.
 
-- [ ] **Step 4: Implement deterministic encoding**
+- [x] **Step 4: Implement deterministic encoding**
 
   `Encoder` writes absolute cursor positions, minimal required style and OSC 8
   transitions, grapheme UTF-8, explicit blanks, and the target cursor state to
@@ -429,14 +430,14 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   incremental render receives the committed cursor/style state. End state is
   always known. A changed continuation is never emitted independently.
 
-- [ ] **Step 5: Prove targeted and randomized equivalence**
+- [x] **Step 5: Prove targeted and randomized equivalence**
 
   Add fixed-seed random frame pairs with random styles, hyperlinks, ASCII, CJK,
   combining, and emoji clusters. For each pair compare incremental application
   with full-render application. Print seed, dimensions, and both semantic frames
   on failure. Expected: all focused tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `feat: encode equivalent frame diffs`
 
