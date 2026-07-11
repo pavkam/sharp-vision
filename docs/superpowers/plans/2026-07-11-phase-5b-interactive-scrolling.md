@@ -342,7 +342,7 @@ must not add partial placeholder versions of later controls.
 - Modify: `docs/controls/layout/scroll-view.md`
 - Modify: `docs/concepts/scrolling.md`
 
-- [ ] **Step 1: Write failing ScrollView tests**
+- [x] **Step 1: Write failing ScrollView tests**
 
   Cover no content, atomic replacement, Hidden/Auto/Always policies per axis,
   exact fit, one bar inducing the other, zero/tiny viewport, extent/viewport and
@@ -354,11 +354,11 @@ must not add partial placeholder versions of later controls.
   content/policy/ resize cases and assert stable visibility, containment, and
   valid offsets.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run both ScrollView classes; expect missing API.
 
-- [ ] **Step 3: Implement the convergent two-axis algorithm**
+- [x] **Step 3: Implement the convergent two-axis algorithm**
 
   ```csharp
   public sealed class ScrollView : Container
@@ -386,7 +386,7 @@ must not add partial placeholder versions of later controls.
   bars without recursive events. Bubble an immutable remaining delta only after
   local consumption.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run ScrollView, ScrollBar, randomized layout, pointer, and Unicode rendering
   tests; commit as `feat: add scroll view control`.

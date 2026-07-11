@@ -58,6 +58,12 @@ thumb dragging, and programmatic bring-into-view all use typed scroll commands.
 Unused delta propagates to the nearest scrollable ancestor. Pointer capture owns
 thumb dragging and is released on disable, detach, close, or cancellation.
 
+[`ScrollView`](../../src/SharpVision/Controls/ScrollView.cs) implements the
+automatic algorithm with private composed bars. Wheel input bubbles from
+content, each view consumes a clamped portion, and the exact remaining cell
+delta continues outward. Content and resize changes clamp offsets before the
+typed change event and before translated arrangement.
+
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after offset and never targets clipped content.
 
