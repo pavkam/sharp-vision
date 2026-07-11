@@ -428,7 +428,7 @@ versions of those APIs.
 - Create: `tests/SharpVision.Tests/Controls/BorderTests.cs`
 - Modify: `docs/controls/display/border.md`
 
-- [ ] **Step 1: Write failing Border tests**
+- [x] **Step 1: Write failing Border tests**
 
   Cover no child, atomic replacement, invalid already-parented/self/ancestor
   replacement, capacity-one collection enforcement, every zero/one thickness
@@ -437,11 +437,11 @@ versions of those APIs.
   combined visual states, clipping, Unicode content, resize, disposal, and exact
   corner/edge/interior cells.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*BorderTests`; expect compile failure for `Border` and `Glyphs`.
 
-- [ ] **Step 3: Implement Border**
+- [x] **Step 3: Implement Border**
 
   `Border : Container` uses capacity one and exposes atomic `Child`. Its
   `BorderThickness` accepts only zero or one per edge. Immutable `Glyphs`
@@ -451,7 +451,7 @@ versions of those APIs.
   arrange deflates active edges after base padding. Render fills background and
   draws only complete visible corners/edges through semantic cells.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run `*BorderTests`, then the shared rendering tests; commit as
   `feat: add border control`.

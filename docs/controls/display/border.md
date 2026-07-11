@@ -15,6 +15,19 @@ background, and padding around it.
 - `Glyphs` is a validated set of grapheme clusters, each exactly one cell wide.
 - Border/background style values may inherit from resources.
 
+`BorderThickness` defaults empty and validates every edge is zero or one before
+mutation. `Glyphs.Default` uses Unicode box drawing; custom `Rune` values must
+measure as one printable cell under the default narrow ambiguous-width policy.
+`BorderColor`, `Background`, and `Attributes` are nullable direct overrides over
+the resolved appearance.
+
+Measure reserves active border edges around the child's margin-inclusive
+request; base padding is then added by the shared box model. Arrange deflates
+padding and active edges before committing the capacity-one child slot. Render
+fills the clipped border box first, draws only active complete edges/corners,
+and then lets normal child rendering cover its interior. Zero and tiny bounds
+saturate without negative geometry or half glyphs.
+
 Thickness, padding, glyph width, and child changes invalidate measure. Color and
 attribute changes invalidate render.
 
