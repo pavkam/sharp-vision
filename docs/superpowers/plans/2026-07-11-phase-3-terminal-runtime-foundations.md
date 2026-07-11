@@ -527,7 +527,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `docs/concepts/input-routing.md`
 - Modify: `docs/protocols/ansi-vt.md`
 
-- [ ] **Step 1: Write typed text and legacy-key tests**
+- [x] **Step 1: Write typed text and legacy-key tests**
 
   Cover fragmented UTF-8, invalid UTF-8 replacement, plain/Alt text, Enter, Tab,
   Backspace, Escape expiration, arrows, Home/End, Insert/Delete, Page keys,
@@ -535,12 +535,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   malformed sequences, and end-of-stream. Repeat representative inputs at every
   byte split.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
   Run `--filter-class "*TextTests" "*LegacyKeyTests"`. Expected: compile failure
   because input values and `Input.Decoder` do not exist.
 
-- [ ] **Step 3: Implement value contracts and streaming UTF-8**
+- [x] **Step 3: Implement value contracts and streaming UTF-8**
 
   `Stroke` preserves logical `Code`, optional character `Rune`, native numeric
   code, `Modifiers`, and press/repeat/release `Action`. `Text` contains one
@@ -553,7 +553,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   expired without guessing private parser state. Decode with
   `Rune.DecodeFromUtf8`.
 
-- [ ] **Step 4: Implement legacy VT mapping and Escape policy**
+- [x] **Step 4: Implement legacy VT mapping and Escape policy**
 
   Map official CSI/SS3 functional forms and modifier value minus one. A lone
   Escape becomes `Code.Escape` only when `ExpireEscape` reaches the injected
@@ -561,12 +561,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   one Alt-modified stroke/text pair. Unknown valid sequences are reported and do
   not desynchronize later input.
 
-- [ ] **Step 5: Run focused fragmentation and allocation tests**
+- [x] **Step 5: Run focused fragmentation and allocation tests**
 
   Expected: every legacy representative matches at all split points, malformed
   input recovers, and warmed ASCII/Rune decoding allocates zero per event.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `feat: decode typed terminal keys and text`
 

@@ -1,0 +1,31 @@
+using SharpVision.Terminal.Protocols;
+
+namespace SharpVision.Terminal.Input;
+
+/// <summary>Receives stable typed terminal input synchronously and in order.</summary>
+public interface IInputSink
+{
+    /// <summary>Receives one keyboard transition.</summary>
+    /// <param name="value">The immutable transition.</param>
+    public void Input(in Stroke value);
+
+    /// <summary>Receives one Unicode text scalar.</summary>
+    /// <param name="value">The immutable text value.</param>
+    public void Input(in Text value);
+
+    /// <summary>Receives one pointer event.</summary>
+    /// <param name="value">The immutable pointer value.</param>
+    public void Input(in Pointer value);
+
+    /// <summary>Receives one owned paste payload.</summary>
+    /// <param name="value">The non-null owned paste.</param>
+    public void Input(Paste value);
+
+    /// <summary>Receives one focus transition.</summary>
+    /// <param name="value">The immutable focus value.</param>
+    public void Input(in Focus value);
+
+    /// <summary>Receives one non-sensitive structured diagnostic.</summary>
+    /// <param name="value">The immutable redacted diagnostic.</param>
+    public void Input(in Diagnostic value);
+}

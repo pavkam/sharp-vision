@@ -32,6 +32,22 @@ borrowed events instead of guessing a terminal identity. Application cursor and
 keypad modes, scroll regions, tabulation, and a complete VT compatibility
 profile are not yet implemented.
 
+## Legacy input implementation
+
+The terminal input decoder maps the VT/xterm keyboard subset required by the UI
+without treating `TERM` as a protocol identity. CSI A/B/C/D and H/F map cursor
+and Home/End keys; CSI tilde parameters map Insert/Delete, Page Up/Down,
+Home/End, and F1-F12; CSI Z maps Shift-Tab; CSI P/Q/R/S and SS3 A-D, H/F, and
+P-S map their functional equivalents. A second CSI parameter uses the xterm
+modifier convention of encoded value minus one.
+
+Plain UTF-8 is decoded as Unicode scalar values. A lone ESC is resolved by the
+documented timeout in the
+[input routing contract](../concepts/input-routing.md#terminal-input-values);
+ESC plus printable text represents Alt-modified text. Unknown valid tilde keys
+remain `Code.Unknown` with their numeric parameter, while malformed parameter
+grammars report a redacted diagnostic and recover at the next sequence.
+
 ## Fallback and tests
 
 Unknown terminals receive the conservative VT baseline. Tests pair each command

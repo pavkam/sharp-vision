@@ -1,0 +1,281 @@
+using System.Text;
+
+using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Tests.Support;
+
+using Shouldly;
+
+using DiagnosticCode = SharpVision.Terminal.Protocols.DiagnosticCode;
+using InputAction = SharpVision.Terminal.Input.Action;
+using InputDecoder = SharpVision.Terminal.Input.Decoder;
+using InputDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
+using InputText = SharpVision.Terminal.Input.Text;
+
+namespace SharpVision.Terminal.Tests.Input;
+
+/// <summary>
+/// Verifies streaming UTF-8, Alt text, Escape ambiguity, and allocation behavior.
+/// </summary>
+public sealed class TextTests
+{
+    /// <summary>
+    /// Verifies every input split preserves complete Unicode scalar values.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenUtf8IsFragmented_EmitsCompleteRunes()
+    {
+        var bytes = Encoding.UTF8.GetBytes("Aé👩");
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using var decoder = new InputDecoder(sink);
+
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Text.Select(static item => item.Value.Value)
+                .ShouldBe([0x41, 0xE9, 0x1F469], $"split {split}");
+            sink.Strokes.Select(static item => item.Code)
+                .ShouldAllBe(static item => item == Code.Character);
+        }
+    }
+
+    /// <summary>
+    /// Verifies malformed UTF-8 replaces minimally and preserves following input.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenUtf8IsInvalid_EmitsReplacementAndRecovers()
+    {
+        byte[] bytes = [0xF0, 0x28, 0x8C, 0x28, (byte) 'x'];
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using var decoder = new InputDecoder(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Text.Select(static item => item.Value.Value)
+                .ShouldBe(
+                    [Rune.ReplacementChar.Value, '(', Rune.ReplacementChar.Value, '(', 'x'],
+                    $"split {split}");
+        }
+    }
+
+    /// <summary>
+    /// Verifies plain and Escape-prefixed printable input emit stroke/text pairs.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenTextIsPlainOrAltModified_EmitsTypedPairs()
+    {
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode("x\u001by"u8);
+        decoder.Complete();
+
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, InputAction.Press),
+            new Stroke(Code.Character, new Rune('y'), 0, Modifiers.Alt, InputAction.Press),
+        ]);
+        sink.Text.ShouldBe([new InputText(new Rune('x')), new InputText(new Rune('y'))]);
+    }
+
+    /// <summary>
+    /// Verifies Escape-prefixed UTF-8 preserves Alt across every byte split.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenAltUtf8IsFragmented_PreservesOneScalar()
+    {
+        var bytes = Encoding.UTF8.GetBytes("\u001bé");
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using var decoder = new InputDecoder(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+            [
+                new Stroke(
+                    Code.Character,
+                    new Rune('é'),
+                    0,
+                    Modifiers.Alt,
+                    InputAction.Press),
+            ], $"split {split}");
+            sink.Text.ShouldBe([new InputText(new Rune('é'))], $"split {split}");
+        }
+    }
+
+    /// <summary>
+    /// Verifies a lone Escape is held until its deadline and then emitted once.
+    /// </summary>
+    [Fact]
+    public void ExpireEscape_WhenDeadlineIsReached_EmitsEscape()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using var decoder = new InputDecoder(
+            sink,
+            new Options { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+        decoder.Decode("\u001b"u8);
+
+        decoder.ExpireEscape().ShouldBeFalse();
+        clock.Advance(TimeSpan.FromMilliseconds(24));
+        decoder.ExpireEscape().ShouldBeFalse();
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        decoder.ExpireEscape().ShouldBeTrue();
+        decoder.ExpireEscape().ShouldBeFalse();
+
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Escape, null, 0, Modifiers.None, InputAction.Press),
+        ]);
+    }
+
+    /// <summary>
+    /// Verifies an expired raw Escape remains included in later diagnostic offsets.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenEscapeExpired_PreservesAbsoluteDiagnosticOffset()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using var decoder = new InputDecoder(
+            sink,
+            new Options { EscapeTimeout = TimeSpan.FromMilliseconds(1) },
+            clock);
+        decoder.Decode("\u001b"u8);
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        decoder.ExpireEscape().ShouldBeTrue();
+
+        decoder.Decode("\u001b[1:x"u8);
+        decoder.Complete();
+
+        sink.Diagnostics.Single().Offset.ShouldBe(6);
+    }
+
+    /// <summary>
+    /// Verifies completion resolves both raw Escape and incomplete UTF-8 input.
+    /// </summary>
+    [Fact]
+    public void Complete_WhenInputIsPending_ResolvesWithoutDroppingData()
+    {
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode([0xF0, 0x9F]);
+        decoder.Decode("\u001b"u8);
+        decoder.Complete();
+
+        sink.Text.ShouldBe([new InputText(Rune.ReplacementChar)]);
+        sink.Strokes[^1].Code.ShouldBe(Code.Escape);
+    }
+
+    /// <summary>
+    /// Verifies completion reports an unfinished CSI without inventing a key.
+    /// </summary>
+    [Fact]
+    public void Complete_WhenCsiIsTruncated_ReportsDiagnostic()
+    {
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(sink);
+
+        decoder.Decode("\u001b[1;"u8);
+        decoder.Complete();
+
+        sink.Strokes.ShouldBeEmpty();
+        sink.Diagnostics.Single().Code.ShouldBe(DiagnosticCode.Truncated);
+    }
+
+    /// <summary>
+    /// Verifies warmed ASCII decoding performs no managed allocation per event.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenAsciiPathIsWarm_AllocatesZeroBytes()
+    {
+        var sink = new CountingInputSink();
+        using var decoder = new InputDecoder(sink);
+
+        for (var index = 0; index < 10_000; index++)
+        {
+            decoder.Decode("a"u8);
+            decoder.Decode("é"u8);
+        }
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var index = 0; index < 10_000; index++)
+        {
+            decoder.Decode("a"u8);
+            decoder.Decode("é"u8);
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        allocated.ShouldBe(0);
+        sink.Count.ShouldBe(80_000);
+    }
+
+    /// <summary>
+    /// Verifies pointer values reject invalid public coordinates and enum values.
+    /// </summary>
+    [Fact]
+    public void Constructor_WhenPointerValueIsInvalid_ThrowsArgumentOutOfRangeException()
+    {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Pointer(
+            new Point(-1, 0),
+            null,
+            Buttons.None,
+            PointerAction.Move,
+            0,
+            0,
+            Modifiers.None,
+            false,
+            false));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new Pointer(
+            default,
+            null,
+            Buttons.None,
+            (PointerAction) int.MaxValue,
+            0,
+            0,
+            Modifiers.None,
+            false,
+            false));
+    }
+
+    private sealed class CountingInputSink: IInputSink
+    {
+        public int Count { get; private set; }
+
+        public void Input(in Stroke value) => Count++;
+
+        public void Input(in InputText value) => Count++;
+
+        public void Input(in Pointer value) => Count++;
+
+        public void Input(Paste value) => Count++;
+
+        public void Input(in Focus value) => Count++;
+
+        public void Input(in InputDiagnostic value) => Count++;
+    }
+
+    private sealed class ManualTimeProvider: TimeProvider
+    {
+        private DateTimeOffset _utcNow = DateTimeOffset.UnixEpoch;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        internal void Advance(TimeSpan value) => _utcNow += value;
+    }
+}

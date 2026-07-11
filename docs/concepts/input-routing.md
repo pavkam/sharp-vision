@@ -6,6 +6,35 @@ Terminal bytes decode into immutable key, text, pointer, paste, focus, resize,
 query, closure, or fault events before entering the UI project. Controls never
 parse terminal bytes.
 
+## Terminal input values
+
+`SharpVision.Terminal.Input.Decoder` incrementally consumes borrowed byte spans
+and synchronously calls `IInputSink`. The sink receives immutable `Stroke`,
+`Text`, `Pointer`, and `Focus` values, an owned `Paste`, or a redacted protocol
+`Diagnostic`; no parser callback span crosses that boundary.
+
+`Stroke` preserves a logical `Code`, an optional Unicode `Rune` for character
+keys, a non-negative native numeric code, composable `Modifiers`, and a
+press/repeat/release `Action`. `Text` contains exactly one valid Rune. Printable
+input emits a stroke/text pair so keyboard commands and text composition remain
+distinct. Legacy Escape-prefixed printable text sets Alt on the stroke while
+preserving the same text Rune.
+
+The decoder retains at most three incomplete UTF-8 bytes and replaces malformed
+subsequences minimally with U+FFFD. It maps Enter, Tab, Backspace, cursor keys,
+Home/End, Insert/Delete, Page Up/Down, F1-F12, Shift-Tab, xterm CSI modifiers,
+and SS3 forms. Valid unknown keys retain `Code.Unknown` plus their native code;
+malformed and unsupported forms produce one structural diagnostic and leave the
+next input decodable.
+
+A raw Escape remains ambiguous until another byte arrives. `ExpireEscape` emits
+it only after `Options.EscapeTimeout` on the injected `TimeProvider`, and
+`Complete` resolves it immediately at end-of-stream. The decoder accounts for
+bytes handled outside the protocol parser so later diagnostic offsets remain
+absolute. Bracketed paste, focus, and mouse decoding build on these values in
+the [paste/focus](../protocols/paste-focus.md#paste-and-focus-contract) and
+[mouse](../protocols/mouse.md#mouse-reporting-contract) milestones.
+
 ## Route construction
 
 Keyboard targets the focused control. Pointer input targets capture when active,
@@ -35,3 +64,7 @@ Use recording controls to assert route order, handled semantics, default action,
 capture, focus, coordinates, clipping, z-order, disabled/hidden targets,
 mutation/reparent during dispatch, nested scrolling, and final control/render
 behavior.
+
+Terminal-layer tests repeat representative UTF-8, CSI, and SS3 inputs at every
+byte split, cover malformed recovery and completion, and require warmed ASCII
+and non-ASCII Rune decoding to allocate zero managed bytes per event.

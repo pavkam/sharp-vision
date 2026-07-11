@@ -78,6 +78,17 @@ public sealed class Parser: IDisposable
     /// </summary>
     public long Offset { get; private set; }
 
+    /// <summary>Gets whether no terminal sequence is currently pending.</summary>
+    /// <exception cref="ObjectDisposedException">The parser is disposed.</exception>
+    public bool IsGround
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _state == State.Ground;
+        }
+    }
+
     /// <summary>
     /// Consumes one transport read and synchronously reports parsed events.
     /// </summary>
