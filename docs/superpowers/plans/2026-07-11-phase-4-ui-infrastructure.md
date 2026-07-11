@@ -300,7 +300,7 @@ events only after their documented commit points.
 - Modify: `docs/concepts/layout.md`
 - Modify: `docs/controls/control.md`
 
-- [ ] **Step 1: Write failing box-model tests**
+- [x] **Step 1: Write failing box-model tests**
 
   Test fixed/auto/percent/star width and height, bounded versus unbounded
   measure, min/max, margin/padding, every alignment, stretch with explicit
@@ -319,7 +319,7 @@ events only after their documented commit points.
   child.Bounds.Width.ShouldBe(10);
   ```
 
-- [ ] **Step 2: Run focused layout tests and verify RED**
+- [x] **Step 2: Run focused layout tests and verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --filter-class "*BoxLayoutTests" --minimum-expected-tests 1 --timeout 60s
@@ -327,7 +327,7 @@ events only after their documented commit points.
 
   Expected: tests fail because `Engine` and control phases do not exist.
 
-- [ ] **Step 3: Implement guarded two-phase layout**
+- [x] **Step 3: Implement guarded two-phase layout**
 
   Add internal `Measure(Constraint)` and `Arrange(Rect)` entry points with
   protected `MeasureCore(Constraint)` and `ArrangeCore(Rect)` extension points.
@@ -343,13 +343,13 @@ events only after their documented commit points.
   raised during a pass queued for one later transaction. Collapsed controls
   desire zero, clear committed bounds, and never invoke core methods.
 
-- [ ] **Step 4: Verify deterministic layout**
+- [x] **Step 4: Verify deterministic layout**
 
   Run Step 2 plus a 10,000-case fixed-seed test over valid lengths, margins,
   padding, alignment, and sizes. Assert bounds are non-negative, contained after
   saturated deflation, and identical for the same seed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Layout/Engine.cs src/SharpVision/Controls/Control.cs tests/SharpVision.Tests/Layout tests/SharpVision.Tests/Support/ProbeControl.cs docs/concepts/layout.md docs/controls/control.md

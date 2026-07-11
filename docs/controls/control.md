@@ -67,14 +67,26 @@ root.
 ## Lifecycle and events
 
 Attachment assigns the same dispatcher recursively. Detachment clears it
-recursively. Later infrastructure adds focus/capture cleanup and protected
-measure, arrange, and render extension points without changing this ownership
-contract.
+recursively. Later infrastructure adds focus/capture cleanup and rendering
+without changing this ownership contract.
 
 Routed events will expose `OriginalSource`, `Source`, route phase, handled
 state, and typed payload. `PropertyChanged` is available now; layout, focus,
 pointer, key, text, and lifecycle notifications arrive with their corresponding
 phase.
+
+## Layout extension points
+
+Derived controls implement `MeasureCore(Constraint)` to report intrinsic content
+size and `ArrangeCore(Rect)` to receive their committed content box. The base
+class owns margin, padding, explicit/deferred length resolution, min/max
+clamping, alignment, caching, collapse behavior, dispatcher checks, and
+reentrancy guards. Extension points therefore deal only with content; they do
+not repeat box-model arithmetic.
+
+If an extension point changes a layout property, that invalidation remains
+pending for a later transaction. If it throws, the active phase is marked dirty
+again before the exception escapes.
 
 ## Example
 

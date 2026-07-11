@@ -247,6 +247,14 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets dirty phases for the next root transaction.</summary>
     internal Invalidation Pending { get; private set; } = Invalidation.All;
 
+    private Constraint? LastMeasureConstraint { get; set; }
+
+    private Rect? LastArrangeSlot { get; set; }
+
+    private bool IsMeasuring { get; set; }
+
+    private bool IsArranging { get; set; }
+
     /// <summary>Attaches a root and its descendants to one dispatcher atomically.</summary>
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
     /// <exception cref="ArgumentNullException"><paramref name="dispatcher"/> is null.</exception>
@@ -278,6 +286,126 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Clears selected phases after a successful transaction.</summary>
     /// <param name="value">The completed phases.</param>
     internal void Clear(Invalidation value) => Pending &= ~value;
+
+    /// <summary>Measures the border box within a possibly unbounded slot.</summary>
+    /// <param name="constraint">The non-negative outer constraint.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The attached control is accessed off-dispatcher or measure is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void Measure(Constraint constraint)
+    {
+        VerifyMutable();
+
+        if (IsMeasuring)
+        {
+            throw new InvalidOperationException("Measure cannot be reentered.");
+        }
+
+        if ((Pending & Invalidation.Measure) == 0 && LastMeasureConstraint == constraint)
+        {
+            return;
+        }
+
+        IsMeasuring = true;
+        Clear(Invalidation.Measure);
+
+        try
+        {
+            if (Visibility == Visibility.Collapsed)
+            {
+                DesiredSize = default;
+                LastMeasureConstraint = constraint;
+                Invalidate(Invalidation.Arrange);
+                return;
+            }
+
+            var contentConstraint = CreateContentConstraint(constraint);
+            var content = MeasureCore(contentConstraint);
+            var desired = ResolveDesiredSize(constraint, content);
+
+            DesiredSize = desired;
+            LastMeasureConstraint = constraint;
+            Invalidate(Invalidation.Arrange);
+        }
+        catch
+        {
+            Invalidate(Invalidation.Measure);
+            throw;
+        }
+        finally
+        {
+            IsMeasuring = false;
+        }
+    }
+
+    /// <summary>Arranges and commits the border box within a final outer slot.</summary>
+    /// <param name="slot">The final non-negative outer rectangle.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The attached control is accessed off-dispatcher or arrange is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void Arrange(Rect slot)
+    {
+        VerifyMutable();
+
+        if (IsArranging)
+        {
+            throw new InvalidOperationException("Arrange cannot be reentered.");
+        }
+
+        if ((Pending & Invalidation.Arrange) == 0 && LastArrangeSlot == slot)
+        {
+            return;
+        }
+
+        IsArranging = true;
+        Clear(Invalidation.Arrange);
+
+        try
+        {
+            if (Visibility == Visibility.Collapsed)
+            {
+                Bounds = default;
+                LastArrangeSlot = slot;
+                return;
+            }
+
+            var available = Margin.Deflate(slot);
+            var width = ResolveArrangeAxis(
+                Width,
+                HorizontalAlignment == HorizontalAlignment.Stretch,
+                slot.Width,
+                available.Width,
+                DesiredSize.Width,
+                MinWidth,
+                MaxWidth);
+            var height = ResolveArrangeAxis(
+                Height,
+                VerticalAlignment == VerticalAlignment.Stretch,
+                slot.Height,
+                available.Height,
+                DesiredSize.Height,
+                MinHeight,
+                MaxHeight);
+            var x = Align(available.X, available.Width, width, HorizontalAlignment);
+            var y = Align(available.Y, available.Height, height, VerticalAlignment);
+            var bounds = new Rect(x, y, width, height);
+
+            Bounds = bounds;
+            LastArrangeSlot = slot;
+            ArrangeCore(Padding.Deflate(bounds));
+        }
+        catch
+        {
+            Invalidate(Invalidation.Arrange);
+            throw;
+        }
+        finally
+        {
+            IsArranging = false;
+        }
+    }
 
     /// <summary>Requests a phase and every dependent later phase.</summary>
     /// <param name="value">The earliest dirty phase.</param>
@@ -351,6 +479,20 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         VisitChildren(static child => child.ValidateAttachment());
     }
 
+    /// <summary>Measures content inside margin, border-size, and padding constraints.</summary>
+    /// <param name="constraint">The content-box constraint.</param>
+    /// <returns>The non-negative intrinsic content size.</returns>
+    protected virtual Size MeasureCore(Constraint constraint)
+    {
+        Debug.Assert(!IsDisposed, "A disposed control cannot measure content.");
+        return default;
+    }
+
+    /// <summary>Arranges content inside the committed padded border box.</summary>
+    /// <param name="bounds">The non-negative content-box rectangle.</param>
+    protected virtual void ArrangeCore(Rect bounds) =>
+        Debug.Assert(!IsDisposed, "A disposed control cannot arrange content.");
+
     private static Invalidation Expand(Invalidation value) => value switch
     {
         Invalidation.None => Invalidation.None,
@@ -360,6 +502,116 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         Invalidation.All => Invalidation.All,
         _ => value & Invalidation.All,
     };
+
+    private static int Align(
+        int origin,
+        int available,
+        int desired,
+        HorizontalAlignment alignment) => alignment switch
+        {
+            HorizontalAlignment.Left or HorizontalAlignment.Stretch => origin,
+            HorizontalAlignment.Center => SaturatingAdd(origin, (available - desired) / 2),
+            HorizontalAlignment.Right => SaturatingAdd(origin, available - desired),
+            _ => throw new UnreachableException(),
+        };
+
+    private static int Align(
+        int origin,
+        int available,
+        int desired,
+        VerticalAlignment alignment) => alignment switch
+        {
+            VerticalAlignment.Top or VerticalAlignment.Stretch => origin,
+            VerticalAlignment.Center => SaturatingAdd(origin, (available - desired) / 2),
+            VerticalAlignment.Bottom => SaturatingAdd(origin, available - desired),
+            _ => throw new UnreachableException(),
+        };
+
+    private static int ResolveArrangeAxis(
+        Length length,
+        bool stretch,
+        int slot,
+        int available,
+        int desired,
+        int minimum,
+        int maximum)
+    {
+        var requested = length.Kind switch
+        {
+            Kind.Auto when stretch => available,
+            Kind.Auto => desired,
+            Kind.Cells => (int) length.Value,
+            Kind.Percent => ResolvePercent(slot, length.Value),
+            Kind.Star => available,
+            _ => throw new UnreachableException(),
+        };
+
+        return Math.Min(available, Math.Clamp(requested, minimum, maximum));
+    }
+
+    private static int ResolveMeasureAxis(
+        Length length,
+        int? slot,
+        int margin,
+        int padding,
+        int intrinsic,
+        int minimum,
+        int maximum)
+    {
+        var requested = length.Kind switch
+        {
+            Kind.Auto => SaturatingAdd(intrinsic, padding),
+            Kind.Cells => (int) length.Value,
+            Kind.Percent => slot.HasValue
+                ? ResolvePercent(slot.Value, length.Value)
+                : SaturatingAdd(intrinsic, padding),
+            Kind.Star => slot.HasValue
+                ? Math.Max(0, slot.Value - margin)
+                : SaturatingAdd(intrinsic, padding),
+            _ => throw new UnreachableException(),
+        };
+        var clamped = Math.Clamp(requested, minimum, maximum);
+
+        return slot.HasValue
+            ? Math.Min(Math.Max(0, slot.Value - margin), clamped)
+            : clamped;
+    }
+
+    private static int? ResolveContentAxis(
+        Length length,
+        int? slot,
+        int margin,
+        int padding)
+    {
+        int? border = length.Kind switch
+        {
+            Kind.Auto => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
+            Kind.Cells => (int) length.Value,
+            Kind.Percent => slot.HasValue ? ResolvePercent(slot.Value, length.Value) : null,
+            Kind.Star => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
+            _ => throw new UnreachableException(),
+        };
+
+        if (!border.HasValue)
+        {
+            return null;
+        }
+
+        var available = slot.HasValue ? Math.Max(0, slot.Value - margin) : int.MaxValue;
+        return Math.Max(0, Math.Min(border.Value, available) - padding);
+    }
+
+    private static int ResolvePercent(int value, double percent)
+    {
+        var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
+        return result >= int.MaxValue ? int.MaxValue : (int) result;
+    }
+
+    private static int SaturatingAdd(int value, int extent)
+    {
+        var result = (long) value + extent;
+        return result > int.MaxValue ? int.MaxValue : (int) result;
+    }
 
     private static void Validate<T>(T value) where T : struct, Enum
     {
@@ -395,6 +647,28 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             child.Invalidate(value);
             child.InvalidateDescendants(value);
         });
+
+    private Constraint CreateContentConstraint(Constraint constraint) => new(
+        ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, Padding.Horizontal),
+        ResolveContentAxis(Height, constraint.Height, Margin.Vertical, Padding.Vertical));
+
+    private Size ResolveDesiredSize(Constraint constraint, Size content) => new(
+        ResolveMeasureAxis(
+            Width,
+            constraint.Width,
+            Margin.Horizontal,
+            Padding.Horizontal,
+            content.Width,
+            MinWidth,
+            MaxWidth),
+        ResolveMeasureAxis(
+            Height,
+            constraint.Height,
+            Margin.Vertical,
+            Padding.Vertical,
+            content.Height,
+            MinHeight,
+            MaxHeight));
 
     private void SetDispatcher(Dispatcher? value)
     {

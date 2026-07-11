@@ -39,6 +39,24 @@ coordinates. Arrange receives the final slot, resolves deferred/percentage and
 proportional lengths, and commits bounds. Invalidation during either pass queues
 another pass; it never recursively re-enters layout.
 
+`Engine.Layout(Control, Size)` runs both phases in a zero-origin viewport. It
+validates dispatcher affinity, caches unchanged constraints and slots, and
+rejects nested transactions. A changed viewport remeasures even when no property
+is dirty.
+
+`Control.MeasureCore(Constraint)` receives the content-box constraint after
+margin, the resolved border-box request, and padding are removed. It returns an
+intrinsic content size. `Control.ArrangeCore(Rect)` receives the final content
+rectangle after the border box is aligned and padding is removed. Both extension
+points run only for hidden or visible controls; collapsed controls desire zero,
+commit empty bounds, and skip both callbacks.
+
+Fixed and percentage dimensions override stretch. An automatic dimension with
+stretch consumes the available axis; otherwise automatic layout uses the
+measured desired size. Minimum and maximum constraints are applied before the
+result is capped to the margin-deflated slot, so tiny viewports always produce
+contained non-negative rectangles.
+
 Fractional percentage/proportional boundaries use cumulative edge rounding so
 adjacent tracks share one boundary and the final track receives the remainder.
 
@@ -55,3 +73,7 @@ adjacent tracks share one boundary and the final track receives the remainder.
 Cover every length combination, nested percentages, min/max, zero/tiny sizes,
 margins/padding, alignment, visibility, wrapping remeasure, rounding sums,
 spans, cache invalidation, resize, and overflow.
+
+The base box-model suite also runs 10,000 fixed-seed combinations twice and
+requires identical geometry, non-negative extents, and containment in the
+saturated margin-deflated viewport.
