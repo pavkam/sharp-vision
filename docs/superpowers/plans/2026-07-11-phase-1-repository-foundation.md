@@ -44,7 +44,7 @@ formatting, and testing rules.
 - Create: `tests/SharpVision.Tests/SharpVision.Tests.csproj`
 - Create: `tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj`
 
-- [ ] **Step 1: Generate projects and solution**
+- [x] **Step 1: Generate projects and solution**
 
 ```bash
 dotnet new sln --name SharpVision --format slnx
@@ -59,7 +59,7 @@ dotnet sln SharpVision.slnx add src tests
 
 Expected: the solution lists three production and three test projects.
 
-- [ ] **Step 2: Add one-way project references**
+- [x] **Step 2: Add one-way project references**
 
 ```bash
 dotnet add src/SharpVision/SharpVision.csproj reference src/SharpVision.Terminal/SharpVision.Terminal.csproj
@@ -72,7 +72,7 @@ dotnet add tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj re
 Expected: the terminal library has no project reference and the showcase reaches
 it transitively through `SharpVision`.
 
-- [ ] **Step 3: Replace template test packages**
+- [x] **Step 3: Replace template test packages**
 
 Each test project contains unversioned central references and no xUnit v2
 packages:
@@ -86,7 +86,7 @@ packages:
 </ItemGroup>
 ```
 
-- [ ] **Step 4: Add assembly smoke tests**
+- [x] **Step 4: Add assembly smoke tests**
 
 Delete template placeholder types. Add an internal `AssemblyMarker` per
 production project and one test per matching test project:
@@ -104,7 +104,7 @@ public void Assembly_WhenLoaded_HasExpectedName()
 Grant internal visibility only to the matching test assembly and adjust the
 expected name in the other two tests.
 
-- [ ] **Step 5: Restore and prove the test harness**
+- [x] **Step 5: Restore and prove the test harness**
 
 ```bash
 dotnet restore SharpVision.slnx
@@ -113,7 +113,7 @@ dotnet test --solution SharpVision.slnx --no-restore --verbosity minimal
 
 Expected: three tests pass without xUnit assembly collisions.
 
-- [ ] **Step 6: Commit the project graph**
+- [x] **Step 6: Commit the project graph**
 
 ```bash
 git add SharpVision.slnx src tests
@@ -131,7 +131,7 @@ git commit -m "build: create SharpVision solution structure"
 - Create: `.gitattributes`
 - Create: `.gitignore`
 
-- [ ] **Step 1: Pin the SDK feature band**
+- [x] **Step 1: Pin the SDK feature band**
 
 ```json
 {
@@ -143,7 +143,7 @@ git commit -m "build: create SharpVision solution structure"
 }
 ```
 
-- [ ] **Step 2: Add central package versions**
+- [x] **Step 2: Add central package versions**
 
 ```xml
 <Project>
@@ -159,27 +159,27 @@ git commit -m "build: create SharpVision solution structure"
 </Project>
 ```
 
-- [ ] **Step 3: Add shared build policy**
+- [x] **Step 3: Add shared build policy**
 
 `Directory.Build.props` sets `net10.0`, C# 14, nullable, implicit usings,
 deterministic builds, warnings as errors, XML documentation, latest stable
 analyzers, repository metadata, and package metadata. Test and executable
 projects may suppress missing XML diagnostics; libraries may not.
 
-- [ ] **Step 4: Adapt the exemplar style policy**
+- [x] **Step 4: Adapt the exemplar style policy**
 
 Copy the complete C# formatting and naming discipline from
 `/Users/alex/Development/nostalgia-es-1841-emulator/.editorconfig`. Add XML
 documentation diagnostics while preserving `_camelCase`, file-scoped namespaces,
 collection expressions, `var`, pattern matching, and async suffixes.
 
-- [ ] **Step 5: Adapt attributes and ignore rules**
+- [x] **Step 5: Adapt attributes and ignore rules**
 
 Copy `.gitattributes` and `.gitignore` from the exemplar. Preserve generated
 snapshot rules, ignore local caches and build output, and do not ignore
 `.codex/skills/`.
 
-- [ ] **Step 6: Verify strict policy**
+- [x] **Step 6: Verify strict policy**
 
 ```bash
 dotnet build SharpVision.slnx --configuration Release
@@ -188,7 +188,7 @@ dotnet format SharpVision.slnx --verify-no-changes --verbosity diagnostic
 
 Expected: zero warnings, zero errors, and no formatting changes.
 
-- [ ] **Step 7: Commit policy**
+- [x] **Step 7: Commit policy**
 
 ```bash
 git add global.json Directory.Build.props Directory.Packages.props .editorconfig .gitattributes .gitignore src tests
@@ -209,13 +209,13 @@ git commit -m "build: enforce strict repository policy"
 - Create: `.github/workflows/ci.yml`
 - Create: `.vscode/*.json`
 
-- [ ] **Step 1: Adapt Markdown configuration**
+- [x] **Step 1: Adapt Markdown configuration**
 
 Copy the exemplar Markdownlint and Prettier settings. Exclude
 `.codex/skills/**/SKILL.md` from Prettier because skill frontmatter is owned by
 the skill format.
 
-- [ ] **Step 2: Add deterministic Node tooling**
+- [x] **Step 2: Add deterministic Node tooling**
 
 Create private package `sharpvision-docs` with pinned Prettier and Markdownlint
 CLI 2 dependencies and these scripts:
@@ -231,7 +231,7 @@ CLI 2 dependencies and these scripts:
 
 Run `npm install` once to create `package-lock.json`.
 
-- [ ] **Step 3: Test-drive Markdown link validation**
+- [x] **Step 3: Test-drive Markdown link validation**
 
 Add one valid and one invalid local section link fixture. Verify the script
 fails for the invalid fragment. Implement the validator with Node built-ins,
@@ -239,20 +239,20 @@ covering URL decoding, GitHub-style heading anchors, external URL exclusion,
 code-fence exclusion, missing files, and missing fragments. Remove the invalid
 fixture and verify success.
 
-- [ ] **Step 4: Adapt root commands**
+- [x] **Step 4: Adapt root commands**
 
 Create `restore`, `build`, `run`, `test`, `test-ci`, `lint`, `format`,
 `format-check`, `clean`, `watch`, and `help` Make targets using
 `SharpVision.slnx` and `src/SharpVision.Showcase`. `lint` runs .NET formatting,
 Prettier, Markdownlint, and link validation.
 
-- [ ] **Step 5: Adapt CI and editor settings**
+- [x] **Step 5: Adapt CI and editor settings**
 
 Use .NET `10.0.x`, Node 24, `npm ci`, clean restore, all lint checks, Release
 build, and Release tests with hang blame and TRX output. Point VS Code launch
 and task paths at the new solution and showcase.
 
-- [ ] **Step 6: Run and commit the tooling gate**
+- [x] **Step 6: Run and commit the tooling gate**
 
 ```bash
 npm ci
@@ -277,7 +277,7 @@ Expected: every formatter, Markdown rule, and local link check passes.
 - Create: `.codex/skills/testing-quality/SKILL.md`
 - Create: `.codex/skills/docs-specifications/SKILL.md`
 
-- [ ] **Step 1: Write root `AGENTS.md`**
+- [x] **Step 1: Write root `AGENTS.md`**
 
 Cover the repository map, dependency rule, docs-first workflow, argument
 validation, `Debug.Assert`, contextual naming, logical whitespace, important
@@ -289,14 +289,14 @@ Mandate xUnit v3, Shouldly, Moq only at interaction boundaries,
 Arrange/Act/Assert, `MethodName_WhenThis_ThatIsExpected`, parser fragmentation,
 final-byte renderer proof, randomized invariants, and hang-blame commands.
 
-- [ ] **Step 2: Write seven focused skills**
+- [x] **Step 2: Write seven focused skills**
 
 Every skill has valid `name` and `description` frontmatter, a precise trigger,
 links to normative docs, domain invariants, focused verification commands, and a
 requirement to update docs with behavior. Skills route; they do not duplicate
 specifications.
 
-- [ ] **Step 3: Validate and commit skills**
+- [x] **Step 3: Validate and commit skills**
 
 Run the skill-authoring validation process plus Markdown and link checks.
 Confirm each approved domain has exactly one skill.
@@ -317,13 +317,13 @@ git commit -m "docs: add implementation guardrails and domain skills"
 - Create: `docs/controls/**/*.md`
 - Create: `docs/testing/*.md`
 
-- [ ] **Step 1: Write navigation and protocol coverage**
+- [x] **Step 1: Write navigation and protocol coverage**
 
 Create root/category indexes and a protocol matrix with explicit states:
 typed/implemented, decoded/observable, extension/fallback, and unsupported.
 Every matrix entry links inline to a protocol section.
 
-- [ ] **Step 2: Write protocol specifications**
+- [x] **Step 2: Write protocol specifications**
 
 Create sourced files for ECMA-48, ANSI/VT, CSI, OSC, DCS/string commands, DEC
 private modes, xterm, SGR, mouse, paste/focus, Kitty keyboard, Kitty clipboard,
@@ -331,14 +331,14 @@ Kitty graphics, iTerm2, sixel, tmux, and GNU screen. Each defines grammar,
 limits, detection, milestone behavior, fallback, security, and tests.
 Distinguish OSC 52 from Kitty OSC 5522.
 
-- [ ] **Step 3: Write architecture and concept specifications**
+- [x] **Step 3: Write architecture and concept specifications**
 
 Document project structure, event loop, rendering, capabilities, memory, errors,
 Unicode geometry, styling, layout, scrolling, focus, routing, threading,
 lifecycle, and degradation. Embed Mermaid diagrams where they make dependencies,
 sequences, states, or ownership clearer.
 
-- [ ] **Step 4: Write one contract per initial control**
+- [x] **Step 4: Write one contract per initial control**
 
 Group by display, input, layout, collections, menus, and windows. Every control
 documents purpose, inheritance, properties, events, validation, exceptions,
@@ -346,13 +346,13 @@ input/focus behavior, visual states, layout/rendering, examples, and tests.
 Include `RichText`, every panel, scrollbars, scroll view, popup, menu, and
 window.
 
-- [ ] **Step 5: Write testing specifications**
+- [x] **Step 5: Write testing specifications**
 
 Document fixtures, correctness levels, parser fragmentation, Unicode/render
 cases, randomized testing, pseudoterminals, performance gates, and showcase
 screen tests.
 
-- [ ] **Step 6: Validate and commit normative docs**
+- [x] **Step 6: Validate and commit normative docs**
 
 ```bash
 npm run format
@@ -372,14 +372,14 @@ Expected: no Markdown, file-link, or section-anchor errors.
 - Modify: `src/SharpVision.Showcase/Program.cs`
 - Modify: files reported by formatters
 
-- [ ] **Step 1: Add an honest showcase entrypoint and README**
+- [x] **Step 1: Add an honest showcase entrypoint and README**
 
 The entrypoint states that the repository foundation is installed and points to
 `docs/index.md`; it does not simulate unimplemented controls. The README lists
 the projects, current phase, SDK, root commands, documentation, and guardrails
 without claiming later-phase functionality.
 
-- [ ] **Step 2: Run workflow-equivalent verification**
+- [x] **Step 2: Run workflow-equivalent verification**
 
 ```bash
 make format
@@ -391,7 +391,7 @@ make test
 Expected: all commands exit zero; Release build has zero warnings and errors;
 all three smoke tests pass.
 
-- [ ] **Step 3: Inspect and commit Phase 1 completion**
+- [x] **Step 3: Inspect and commit Phase 1 completion**
 
 ```bash
 git status --short

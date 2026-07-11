@@ -33,7 +33,7 @@ build: restore
 run:
 	@dotnet run --project $(SHOWCASE)
 
-test:
+test: build
 	@echo "🧪 Running tests..."
 	@dotnet test --solution $(SOLUTION) --configuration Release --no-build --minimum-expected-tests 3 --timeout 60s
 	@echo "✅ Tests complete."
@@ -41,7 +41,7 @@ test:
 test-ci:
 	@dotnet test --solution $(SOLUTION) --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 60s --report-xunit-trx
 
-lint:
+lint: restore
 	@echo "🔍 Checking source and documentation..."
 	@dotnet format $(SOLUTION) --verify-no-changes --no-restore --verbosity diagnostic
 	@npm run format:check
@@ -50,13 +50,13 @@ lint:
 	@npm run test:docs
 	@echo "✅ All lint checks passed."
 
-format:
+format: restore
 	@echo "✨ Formatting source and documentation..."
 	@dotnet format $(SOLUTION) --no-restore
 	@npm run format
 	@echo "✅ Formatting complete."
 
-format-check:
+format-check: restore
 	@dotnet format $(SOLUTION) --verify-no-changes --no-restore
 	@npm run format:check
 
