@@ -813,28 +813,28 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 
 - Modify only files required by verified failures.
 
-- [ ] **Step 1: Run formatting**
+- [x] **Step 1: Run formatting**
 
   Run `make format`. Expected: exit 0 and no unintended diff.
 
-- [ ] **Step 2: Run lint and generated-data checks**
+- [x] **Step 2: Run lint and generated-data checks**
 
   Run `npm run check:unicode` and `make lint`. Expected: generated output is
   current; analyzers, Prettier, Markdownlint, skills, links, and docs tests
   pass.
 
-- [ ] **Step 3: Run release build**
+- [x] **Step 3: Run release build**
 
   Run `make build`. Expected: all six projects build with 0 warnings and 0
   errors.
 
-- [ ] **Step 4: Run all tests and inspect discovery**
+- [x] **Step 4: Run all tests and inspect discovery**
 
   Run `make test`, then each test project independently with
   `--minimum-expected-tests 1`. Expected: every test passes and each of the
   terminal, UI, and showcase assemblies reports a non-zero count.
 
-- [ ] **Step 5: Audit repository and public surface**
+- [x] **Step 5: Audit repository and public surface**
 
   Run:
 
@@ -848,11 +848,17 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   Expected: clean whitespace, only the final intended plan update before commit,
   no implementation placeholders, and 0 warnings/errors.
 
-- [ ] **Step 6: Commit the verified phase**
+- [x] **Step 6: Commit the verified phase**
 
   Commit message: `chore: complete terminal runtime foundations`
 
 ## Self-review record
+
+- **Verification result:** On 2026-07-11, formatting and Unicode generation were
+  clean; analyzers, Prettier, Markdownlint, section links, and docs tests
+  passed; all six projects built in Release with 0 warnings and 0 errors;
+  `make test` passed 419/419. Independent discovery passed 416 terminal tests, 1
+  UI test, and 2 showcase tests with `--minimum-expected-tests 1`.
 
 - **Spec coverage:** Tasks map every Phase 3 roadmap requirement: Unicode 17
   grapheme segmentation and width, cell/pixel geometry, wide-cell repair,
