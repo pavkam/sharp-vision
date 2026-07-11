@@ -424,7 +424,7 @@ events only after their documented commit points.
 - Modify: `src/SharpVision/Controls/Control.cs`
 - Modify: `docs/concepts/input-routing.md`
 
-- [ ] **Step 1: Write failing route and mutation tests**
+- [x] **Step 1: Write failing route and mutation tests**
 
   Test preview root-to-target, bubble target-to-root, `OriginalSource`, current
   `Source`, phase, handled suppression, handled-events-too, handler removal,
@@ -438,7 +438,7 @@ events only after their documented commit points.
   order.ShouldBe(["root-preview", "target-preview", "target", "root"]);
   ```
 
-- [ ] **Step 2: Run routing tests and verify RED**
+- [x] **Step 2: Run routing tests and verify RED**
 
   ```bash
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --filter-class "*RoutingTests" --minimum-expected-tests 1 --timeout 60s
@@ -446,7 +446,7 @@ events only after their documented commit points.
 
   Expected: compile failure because routed events do not exist.
 
-- [ ] **Step 3: Implement typed identifiers and snapshot dispatch**
+- [x] **Step 3: Implement typed identifiers and snapshot dispatch**
 
   `Event<TArgs>` is an immutable typed identifier with name and routing
   strategy. `Control.AddHandler` validates event/handler, dispatcher access, and
@@ -460,12 +460,12 @@ events only after their documented commit points.
   Tree mutation affects later routes only. Default control behavior runs after
   bubble only when unhandled.
 
-- [ ] **Step 4: Verify route behavior and leaks**
+- [x] **Step 4: Verify route behavior and leaks**
 
   Run Step 2, then dispose registrations and detach the tree; weak references to
   handlers and controls must become collectible after forced test GC.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/SharpVision/Input src/SharpVision/Controls/Control.cs tests/SharpVision.Tests/Input tests/SharpVision.Tests/Support/RecordingControl.cs docs/concepts/input-routing.md

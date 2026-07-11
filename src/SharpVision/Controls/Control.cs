@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
+using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Threading;
@@ -255,6 +256,44 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     private bool IsArranging { get; set; }
 
+    private List<IHandler>? Handlers { get; set; }
+
+    /// <summary>Adds one typed routed-event handler to this control.</summary>
+    /// <typeparam name="TArgs">The exact event-argument type.</typeparam>
+    /// <param name="routedEvent">The non-null typed event identifier.</param>
+    /// <param name="handler">The non-null synchronous handler.</param>
+    /// <param name="handledEventsToo">Whether to invoke after handled state is set.</param>
+    /// <returns>An idempotent registration that removes the handler on disposal.</returns>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="ArgumentException">The same event and delegate are registered.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public IDisposable AddHandler<TArgs>(
+        Event<TArgs> routedEvent,
+        EventHandler<TArgs> handler,
+        bool handledEventsToo = false) where TArgs : RoutedEventArgs
+    {
+        ArgumentNullException.ThrowIfNull(routedEvent);
+        ArgumentNullException.ThrowIfNull(handler);
+        VerifyMutable();
+
+        if (Handlers is not null && Handlers.Exists(item => item.Matches(routedEvent, handler)))
+        {
+            throw new ArgumentException(
+                "The same handler is already registered for this event.",
+                nameof(handler));
+        }
+
+        var registration = new Registration<TArgs>(
+            this,
+            routedEvent,
+            handler,
+            handledEventsToo,
+            Sequence.Next());
+        (Handlers ??= []).Add(registration);
+        return registration;
+    }
+
     /// <summary>Attaches a root and its descendants to one dispatcher atomically.</summary>
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
     /// <exception cref="ArgumentNullException"><paramref name="dispatcher"/> is null.</exception>
@@ -439,6 +478,7 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         }
 
         DisposeChildren();
+        ClearHandlers();
         Dispatcher = null;
         Pending = Invalidation.None;
         IsDisposed = true;
@@ -464,6 +504,55 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     {
         ThrowIfDisposed();
         VerifyAccess();
+    }
+
+    /// <summary>Invokes handlers that existed when the active route began.</summary>
+    internal void InvokeHandlers(IEvent routedEvent, RoutedEventArgs eventArgs, long sequence)
+    {
+        ArgumentNullException.ThrowIfNull(routedEvent);
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        var handlers = Handlers;
+
+        if (handlers is null || handlers.Count == 0)
+        {
+            return;
+        }
+
+        var snapshot = System.Buffers.ArrayPool<IHandler>.Shared.Rent(handlers.Count);
+        handlers.CopyTo(snapshot);
+        var count = handlers.Count;
+
+        try
+        {
+            for (var index = 0; index < count; index++)
+            {
+                snapshot[index].Invoke(this, routedEvent, eventArgs, sequence);
+            }
+        }
+        finally
+        {
+            Array.Clear(snapshot, 0, count);
+            System.Buffers.ArrayPool<IHandler>.Shared.Return(snapshot);
+        }
+    }
+
+    /// <summary>Runs target default behavior after an unhandled bubble.</summary>
+    internal void InvokeDefault(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        OnEvent(eventArgs);
+    }
+
+    /// <summary>Removes one live registration after dispatcher validation.</summary>
+    internal void RemoveHandler(IHandler handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        VerifyMutable();
+
+        if (Handlers?.Remove(handler) == true)
+        {
+            handler.Detach();
+        }
     }
 
     /// <summary>Validates that the complete subtree may receive a dispatcher.</summary>
@@ -492,6 +581,11 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <param name="bounds">The non-negative content-box rectangle.</param>
     protected virtual void ArrangeCore(Rect bounds) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot arrange content.");
+
+    /// <summary>Runs target-specific default behavior for one unhandled routed event.</summary>
+    /// <param name="eventArgs">The non-null event state and typed payload.</param>
+    protected virtual void OnEvent(RoutedEventArgs eventArgs) =>
+        ArgumentNullException.ThrowIfNull(eventArgs);
 
     private static Invalidation Expand(Invalidation value) => value switch
     {
@@ -647,6 +741,22 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             child.Invalidate(value);
             child.InvalidateDescendants(value);
         });
+
+    private void ClearHandlers()
+    {
+        if (Handlers is not { } handlers)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers)
+        {
+            handler.Detach();
+        }
+
+        handlers.Clear();
+        Handlers = null;
+    }
 
     private Constraint CreateContentConstraint(Constraint constraint) => new(
         ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, Padding.Horizontal),

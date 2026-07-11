@@ -54,6 +54,30 @@ Handlers explicitly registered for handled events still run. Tree mutation
 during dispatch does not alter the current route; invalidation waits until
 dispatch completes.
 
+## Routed-event API
+
+`Event<TArgs>` is an immutable typed identifier with a diagnostic name and a
+`TunnelBubble`, `Bubble`, or `Direct` strategy. The standard `Events` catalog
+provides key, text, pointer, paste, and terminal-focus identifiers paired with
+sealed argument classes over the immutable terminal input values.
+
+`Control.AddHandler` rejects null or duplicate event/delegate pairs and returns
+an idempotent registration. Attached registration and removal are
+dispatcher-affine. Setting `Handled` skips later ordinary handlers and target
+default behavior; `handledEventsToo: true` opts into observing handled routes.
+
+`Router.Route` snapshots both ancestry and the registration-order cutoff before
+preview begins. Reparenting and newly added handlers therefore affect the next
+route, never the current bubble. Disposed registrations stop immediately. Both
+ancestry and per-control handler snapshots use cleared pooled storage so they do
+not retain controls or delegates.
+
+`OriginalSource` remains the initiating target. `Source` begins at that target
+and can be changed through `Retarget` only while dispatch is active. The current
+route control is the handler's `sender`; `Phase` reports preview or bubble.
+After an unhandled bubble, only the target's protected default behavior runs.
+Exceptions propagate after route state and pooled storage are cleaned.
+
 ## Pointer capture and coordinates
 
 Capture is exclusive per pointer source and supports press, drag, scrollbar,
@@ -71,6 +95,10 @@ Use recording controls to assert route order, handled semantics, default action,
 capture, focus, coordinates, clipping, z-order, disabled/hidden targets,
 mutation/reparent during dispatch, nested scrolling, and final control/render
 behavior.
+
+Routing tests additionally force collection after registration disposal and tree
+detachment, proving pooled snapshots and registrations retain neither handler
+targets nor controls.
 
 Terminal-layer tests repeat representative UTF-8, CSI, and SS3 inputs at every
 byte split, cover malformed recovery and completion, and require warmed ASCII
