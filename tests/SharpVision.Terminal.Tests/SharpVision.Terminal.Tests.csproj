@@ -24,4 +24,10 @@
     <ProjectReference Include="..\..\src\SharpVision.Terminal\SharpVision.Terminal.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\data\unicode\17.0.0\GraphemeBreakTest.txt"
+          Link="Unicode\Data\GraphemeBreakTest-17.0.0.txt"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

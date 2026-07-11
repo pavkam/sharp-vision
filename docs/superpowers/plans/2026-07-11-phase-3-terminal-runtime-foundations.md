@@ -128,7 +128,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
 - Modify: `package.json`
 - Modify: `docs/concepts/unicode-cell-geometry.md`
 
-- [ ] **Step 1: Write the failing generated-data contract tests**
+- [x] **Step 1: Write the failing generated-data contract tests**
 
   Add `DataTests` proving `Info.Version == "17.0.0"`, annex revisions are 47 and
   44, every generated range is sorted and non-overlapping, boundary lookups
@@ -146,7 +146,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   }
   ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
   Run:
 
@@ -157,7 +157,7 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   Expected: compile failure because `SharpVision.Terminal.Unicode.Info` and the
   generated table do not exist.
 
-- [ ] **Step 3: Add the deterministic generator and checked-in output**
+- [x] **Step 3: Add the deterministic generator and checked-in output**
 
   Pin these official inputs under `https://www.unicode.org/Public/17.0.0/ucd/`:
 
@@ -187,12 +187,12 @@ incrementally into immutable values before Phase 4's dispatcher receives it.
   }
   ```
 
-- [ ] **Step 4: Verify generation is reproducible and tests are GREEN**
+- [x] **Step 4: Verify generation is reproducible and tests are GREEN**
 
   Run `npm run check:unicode`, then the focused command from Step 2. Expected:
   the generator reports no diff and every `DataTests` case passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Commit message: `feat: pin Unicode 17 terminal data`
 

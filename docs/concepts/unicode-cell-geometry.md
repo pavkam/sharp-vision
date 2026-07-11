@@ -9,6 +9,13 @@ SharpVision pins
 first generated tables. Source data and attribution are checked in with the
 generator output.
 
+The exact Unicode property and conformance inputs live under
+`data/unicode/17.0.0`. `npm run generate:unicode` reads those local files and
+deterministically emits the runtime lookup table; `npm run check:unicode`
+requires no network. Maintainers use the explicit `npm run refresh:unicode`
+command to redownload the pinned official files and verify their recorded
+SHA-256 values.
+
 Text is decoded as Rune values and segmented into extended grapheme clusters.
 Width is assigned to the cluster, never calculated by summing scalar East Asian
 Width values. The default ambiguous-width policy is narrow; callers may choose
