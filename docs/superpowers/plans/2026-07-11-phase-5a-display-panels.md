@@ -159,19 +159,19 @@ versions of those APIs.
 - Create: `tests/SharpVision.Tests/Controls/OverlayTests.cs`
 - Modify: `docs/controls/layout/overlay.md`
 
-- [ ] **Step 1: Write failing Overlay tests**
+- [x] **Step 1: Write failing Overlay tests**
 
   Cover maximum desired size, shared final slot, child length/alignment,
   percentage sizing, stable `ZIndex` ties, z-order mutation, render and hit-test
   order, `IsHitTestVisible`, clipping on/off, focus order remaining collection
   order, removal damage, and zero/tiny bounds.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*OverlayTests`; expect compile failure for `Overlay` and its attached
   z-order API.
 
-- [ ] **Step 3: Implement Overlay**
+- [x] **Step 3: Implement Overlay**
 
   `Overlay : Container` exposes `ClipToBounds` defaulting true and static
   `GetZIndex`/`SetZIndex`. Store attached values in a weak table through the
@@ -181,7 +181,7 @@ versions of those APIs.
   rectangle. Render/hit-test a stable `(ZIndex, child-order)` ordering without
   changing focus traversal.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run the focused test, then `git diff --check`; commit as
   `feat: add overlay panel`.
