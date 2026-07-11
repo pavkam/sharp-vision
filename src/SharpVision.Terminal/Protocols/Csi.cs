@@ -4,42 +4,6 @@ using System.Diagnostics;
 namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
-/// Identifies a relative cursor movement direction.
-/// </summary>
-public enum Movement
-{
-    /// <summary>Move toward the top of the display.</summary>
-    Up,
-
-    /// <summary>Move toward the bottom of the display.</summary>
-    Down,
-
-    /// <summary>Move toward increasing columns.</summary>
-    Forward,
-
-    /// <summary>Move toward decreasing columns.</summary>
-    Back,
-}
-
-/// <summary>
-/// Identifies the portion of a display or line erased by a command.
-/// </summary>
-public enum EraseArea
-{
-    /// <summary>Erase from the cursor through the end.</summary>
-    After,
-
-    /// <summary>Erase from the beginning through the cursor.</summary>
-    Before,
-
-    /// <summary>Erase the complete display or line.</summary>
-    All,
-
-    /// <summary>Erase saved scrollback; valid only for display erasure.</summary>
-    Scrollback,
-}
-
-/// <summary>
 /// Encodes typed control sequence commands used by the terminal runtime.
 /// </summary>
 /// <example>

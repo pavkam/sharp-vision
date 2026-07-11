@@ -1,0 +1,14 @@
+namespace SharpVision.Terminal.Protocols;
+
+/// <summary>Identifies the encoded color representation.</summary>
+public enum ColorKind
+{
+    /// <summary>Use the terminal default color.</summary>
+    Default,
+
+    /// <summary>Use one of the terminal's 256 indexed colors.</summary>
+    Indexed,
+
+    /// <summary>Use an explicit 24-bit RGB color.</summary>
+    Rgb,
+}

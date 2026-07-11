@@ -3,41 +3,6 @@ using System.Diagnostics;
 
 namespace SharpVision.Terminal.Protocols;
 
-/// <summary>Identifies xterm mouse event tracking levels.</summary>
-public enum MouseTracking
-{
-    /// <summary>Report X10 button presses through mode 9.</summary>
-    X10 = 9,
-
-    /// <summary>Report VT200 button transitions through mode 1000.</summary>
-    Press = 1000,
-
-    /// <summary>Report button transitions and drag motion through mode 1002.</summary>
-    Drag = 1002,
-
-    /// <summary>Report all pointer motion through mode 1003.</summary>
-    Any = 1003,
-}
-
-/// <summary>Identifies xterm mouse coordinate encodings.</summary>
-public enum MouseCoordinates
-{
-    /// <summary>Use the original three-byte X10 coordinate encoding.</summary>
-    Default = 0,
-
-    /// <summary>Use UTF-8 encoded X10 fields through mode 1005.</summary>
-    Utf8 = 1005,
-
-    /// <summary>Use SGR cell coordinates through mode 1006.</summary>
-    Sgr = 1006,
-
-    /// <summary>Use urxvt decimal coordinates through mode 1015.</summary>
-    Urxvt = 1015,
-
-    /// <summary>Use SGR pixel coordinates through mode 1016.</summary>
-    Pixel = 1016,
-}
-
 /// <summary>
 /// Encodes DEC private modes required by lifecycle, input, and output handling.
 /// </summary>

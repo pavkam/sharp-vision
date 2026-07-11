@@ -1,63 +1,6 @@
 namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
-/// Describes the delimiter following one CSI parameter field.
-/// </summary>
-public enum ParameterSeparator
-{
-    /// <summary>
-    /// The field is the final field.
-    /// </summary>
-    None,
-
-    /// <summary>
-    /// A semicolon begins the next independent parameter.
-    /// </summary>
-    Semicolon,
-
-    /// <summary>
-    /// A colon begins the next subparameter.
-    /// </summary>
-    Colon,
-}
-
-/// <summary>
-/// Describes the result of reading one CSI parameter field.
-/// </summary>
-public enum ParameterStatus
-{
-    /// <summary>
-    /// No field remains.
-    /// </summary>
-    End,
-
-    /// <summary>
-    /// An empty field requests the command-defined default.
-    /// </summary>
-    Default,
-
-    /// <summary>
-    /// A numeric field was read successfully.
-    /// </summary>
-    Value,
-
-    /// <summary>
-    /// A field contains a byte outside the decimal grammar.
-    /// </summary>
-    Invalid,
-
-    /// <summary>
-    /// A numeric field exceeds the configured magnitude.
-    /// </summary>
-    Overflow,
-
-    /// <summary>
-    /// Reading another field would exceed the configured count.
-    /// </summary>
-    Limit,
-}
-
-/// <summary>
 /// Enumerates raw CSI parameter and subparameter fields without allocation.
 /// </summary>
 /// <remarks>

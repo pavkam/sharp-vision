@@ -1,62 +1,6 @@
 namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
-/// Identifies a typed terminal query response.
-/// </summary>
-public enum ResponseKind
-{
-    /// <summary>No recognized response.</summary>
-    None,
-
-    /// <summary>Primary device attributes (DA1).</summary>
-    PrimaryAttributes,
-
-    /// <summary>Secondary device attributes (DA2).</summary>
-    SecondaryAttributes,
-
-    /// <summary>A one-based cursor position report.</summary>
-    CursorPosition,
-
-    /// <summary>A DEC private mode report (DECRPM).</summary>
-    PrivateMode,
-
-    /// <summary>An OSC 10 default foreground color reply.</summary>
-    ForegroundColor,
-
-    /// <summary>An OSC 11 default background color reply.</summary>
-    BackgroundColor,
-
-    /// <summary>Current Kitty progressive keyboard flags.</summary>
-    Keyboard,
-}
-
-/// <summary>
-/// Contains owned typed values from one terminal query response.
-/// </summary>
-public readonly record struct Response
-{
-    /// <summary>Initializes one recognized response.</summary>
-    /// <param name="kind">The response family.</param>
-    /// <param name="values">Owned numeric response values.</param>
-    /// <param name="isSupported">Whether a mode report proves support.</param>
-    internal Response(ResponseKind kind, int[] values, bool isSupported = false)
-    {
-        Kind = kind;
-        Values = values;
-        IsSupported = isSupported;
-    }
-
-    /// <summary>Gets the response family.</summary>
-    public ResponseKind Kind { get; }
-
-    /// <summary>Gets owned response values in wire order.</summary>
-    public ReadOnlyMemory<int> Values { get; }
-
-    /// <summary>Gets whether a private mode state 1 or 2 proves support.</summary>
-    public bool IsSupported { get; }
-}
-
-/// <summary>
 /// Decodes typed DA, DSR, DECRPM, and OSC color query responses.
 /// </summary>
 public static class Responses

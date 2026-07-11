@@ -5,41 +5,6 @@ using System.Text;
 namespace SharpVision.Terminal.Unicode;
 
 /// <summary>
-/// Selects the terminal width of Unicode East Asian Ambiguous scalars.
-/// </summary>
-public enum Ambiguous
-{
-    /// <summary>Measure ambiguous scalars as one terminal cell.</summary>
-    Narrow,
-
-    /// <summary>Measure ambiguous scalars as two terminal cells.</summary>
-    Wide,
-}
-
-/// <summary>
-/// Identifies the printable terminal width of one extended grapheme cluster.
-/// </summary>
-public enum CellWidth
-{
-    /// <summary>The cluster is a contextual control and consumes no cell.</summary>
-    Control,
-
-    /// <summary>The cluster occupies one terminal cell.</summary>
-    Narrow,
-
-    /// <summary>The cluster occupies two terminal cells.</summary>
-    Wide,
-}
-
-/// <summary>
-/// Reports whole-span terminal cell measurement.
-/// </summary>
-/// <param name="Cells">The printable terminal-cell count.</param>
-/// <param name="Graphemes">The extended-grapheme count.</param>
-/// <param name="Controls">The contextual control-cluster count.</param>
-public readonly record struct Measurement(int Cells, int Graphemes, int Controls);
-
-/// <summary>
 /// Measures Unicode 17 extended grapheme clusters in terminal cells.
 /// </summary>
 public static class Width
