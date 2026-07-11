@@ -405,7 +405,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Create: `src/SharpVision.Terminal/Clipboard/Osc52.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Clipboard/Osc52Tests.cs`
 
-- [ ] **Step 1: Write exact-byte and decode tests**
+- [x] **Step 1: Write exact-byte and decode tests**
 
   Cover clipboard, primary, selection, query (`?`), empty text, UTF-8 text,
   Base64 padding, configured maximum, ST/BEL replies, invalid selector,
@@ -413,18 +413,18 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   literal bytes and `Convert.ToBase64String` only for randomized oracle data,
   never the production writer.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
-- [ ] **Step 3: Implement OSC 52 text protocol**
+- [x] **Step 3: Implement OSC 52 text protocol**
 
   Encode UTF-8 into pooled bytes, validate decoded length before publishing,
   clear sensitive buffers before return, and expose a result union with
   `Success`, `Unavailable`, `Denied`, and `Malformed`. Diagnostics report only
   lengths and codes.
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [x] **Step 4: Run focused tests and verify GREEN**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Commit message: `feat: add OSC 52 clipboard support`
 
