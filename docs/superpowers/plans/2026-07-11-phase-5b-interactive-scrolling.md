@@ -200,7 +200,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Controls/RadioButtonTests.cs`
 - Modify: `docs/controls/input/radio-button.md`
 
-- [ ] **Step 1: Write failing group tests**
+- [x] **Step 1: Write failing group tests**
 
   Cover no initial selection, user/programmatic selection, activation of an
   already selected member, named and nearest-container groups, exclusivity
@@ -209,11 +209,11 @@ must not add partial placeholder versions of later controls.
   with wrapping, skipped unavailable members, Space/pointer parity, focus,
   styling, Unicode content, and final cells.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*RadioButtonTests`; expect missing radio types.
 
-- [ ] **Step 3: Implement transactional groups**
+- [x] **Step 3: Implement transactional groups**
 
   ```csharp
   public sealed class RadioButton : Pressable
@@ -234,7 +234,7 @@ must not add partial placeholder versions of later controls.
   before registering; no static strong reference may retain a detached tree.
   Arrow behavior uses stable sibling/tree order and `FocusOwner.Focus`.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run radio, tree, focus, and randomized tree tests; commit as
   `feat: add radio button control`.

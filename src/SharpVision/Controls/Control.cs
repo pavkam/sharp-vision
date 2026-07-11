@@ -656,7 +656,12 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Assigns the parent after collection validation.</summary>
     /// <param name="value">The new parent or null.</param>
-    internal void SetParent(Container? value) => Parent = value;
+    internal void SetParent(Container? value)
+    {
+        var previous = Parent;
+        Parent = value;
+        OnParentChanged(previous, value);
+    }
 
     /// <summary>Throws when mutation is not valid for this owner.</summary>
     internal void VerifyMutable()
@@ -815,6 +820,16 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <param name="focused">The newly committed focus state.</param>
     protected virtual void OnFocusChanged(bool focused) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot change focus state.");
+
+    /// <summary>Responds after this control's direct ownership changes.</summary>
+    /// <param name="previous">The previous owner, or null.</param>
+    /// <param name="current">The committed owner, or null.</param>
+    protected virtual void OnParentChanged(Container? previous, Container? current)
+    {
+        _ = previous;
+        _ = current;
+        Debug.Assert(!IsDisposed, "A disposed control cannot change parent.");
+    }
 
     /// <summary>Releases derived transient state when this control becomes unavailable.</summary>
     /// <param name="reason">The precise unavailability reason.</param>
