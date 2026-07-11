@@ -12,10 +12,22 @@ three-state behavior.
 - `IsThreeState` selects `false → true → null → false`; two-state cycles
   `false ↔ true`.
 - `Content` uses managed parent ownership.
-- `Checked`, `Unchecked`, `Indeterminate`, and `StateChanged` are routed events.
+- `Checked`, `Unchecked`, `Indeterminate`, and `StateChanged` are control
+  events.
 
 State setters validate before mutation, update visual state, invalidate render,
 then raise the specific event followed by `StateChanged`.
+
+The shipped events carry immutable `CheckChangedEventArgs` with previous/current
+state and Keyboard, Pointer, or Programmatic cause. `PerformToggle()` shares the
+same transition pipeline and ignores unavailable controls. Disabling three-state
+mode while null commits the mode and false value before `Unchecked` then
+`StateChanged`.
+
+`Marks` stores validated printable one-cell Runes for unchecked, checked, and
+indeterminate states. Layout reserves one mark cell and, only when content is
+present, one separator cell before the atomic capacity-one child. A true value
+adds `State.Checked` to the inherited visual-state flags.
 
 ## Interaction
 

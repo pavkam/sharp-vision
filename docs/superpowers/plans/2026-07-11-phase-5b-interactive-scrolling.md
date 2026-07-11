@@ -150,7 +150,7 @@ must not add partial placeholder versions of later controls.
 - Create: `tests/SharpVision.Tests/Controls/CheckBoxTests.cs`
 - Modify: `docs/controls/input/check-box.md`
 
-- [ ] **Step 1: Write failing CheckBox tests**
+- [x] **Step 1: Write failing CheckBox tests**
 
   Cover false/true and false/true/null cycles, invalid null in two-state mode,
   disabling three-state while null, programmatic/user causes, event order
@@ -159,11 +159,11 @@ must not add partial placeholder versions of later controls.
   combined checked/focused/pressed styling, custom narrow marks, invalid marks,
   Unicode content, resize, tiny bounds, and exact cells.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
   Run `*CheckBoxTests`; expect missing CheckBox/Marks/event arguments.
 
-- [ ] **Step 3: Implement CheckBox**
+- [x] **Step 3: Implement CheckBox**
 
   ```csharp
   public sealed class CheckBox : Pressable
@@ -186,7 +186,7 @@ must not add partial placeholder versions of later controls.
   committed state. Handler reentrancy starts a new complete transition, never a
   half transition.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   Run `*CheckBoxTests`; commit as `feat: add check box control`.
 
