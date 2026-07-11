@@ -488,7 +488,7 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
 - Test:
   `tests/SharpVision.Terminal.Tests/Clipboard/ClipboardIntegrationTests.cs`
 
-- [ ] **Step 1: Write transaction state tests**
+- [x] **Step 1: Write transaction state tests**
 
   Cover read `OK -> DATA* -> DONE`, list response, write `DONE`, every error
   status, same-MIME contiguous chunks, MIME transition, duplicate `OK`, data
@@ -496,9 +496,9 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   limit, cancellation, timeout, and ignored late response. Use a manual
   `TimeProvider` test double; do not wait on wall-clock time.
 
-- [ ] **Step 2: Run transaction tests and verify RED**
+- [x] **Step 2: Run transaction tests and verify RED**
 
-- [ ] **Step 3: Implement bounded correlated state machines**
+- [x] **Step 3: Implement bounded correlated state machines**
 
   Make states explicit (`Created`, `Accepted`, `Receiving`, `Completed`,
   `Failed`, `Cancelled`, `TimedOut`). Validate state before mutation. Accumulate
@@ -506,18 +506,18 @@ is ASCII and culture-independent. The canonical emitted string terminator is ST
   sensitive storage on all terminal states and disposal. An invalid packet fails
   only its transaction and never the outer parser.
 
-- [ ] **Step 4: Run transaction tests and verify GREEN**
+- [x] **Step 4: Run transaction tests and verify GREEN**
 
-- [ ] **Step 5: Write end-to-end packet tests**
+- [x] **Step 5: Write end-to-end packet tests**
 
   Traverse typed request -> `KittyWriter` -> bytes -> every parser split ->
   `KittyPacket` -> transaction result. Include arbitrary binary MIME data,
   aliases, permission denied, multiplexer correlation, and a malformed packet
   followed by a valid transaction.
 
-- [ ] **Step 6: Run integration tests and verify RED then GREEN**
+- [x] **Step 6: Run integration tests and verify RED then GREEN**
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   Commit message: `feat: add Kitty clipboard transactions`
 

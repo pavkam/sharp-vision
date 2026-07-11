@@ -1,0 +1,524 @@
+using System.Buffers;
+using System.Diagnostics;
+using System.Text;
+
+using SharpVision.Terminal.Protocols;
+
+namespace SharpVision.Terminal.Clipboard;
+
+/// <summary>
+/// Identifies the lifecycle state of a Kitty clipboard transaction.
+/// </summary>
+public enum KittyTransactionState
+{
+    /// <summary>The request has been created but no response was accepted.</summary>
+    Created,
+
+    /// <summary>A read request was accepted with status OK.</summary>
+    Accepted,
+
+    /// <summary>One or more read data packets were accepted.</summary>
+    Receiving,
+
+    /// <summary>The transaction completed successfully.</summary>
+    Completed,
+
+    /// <summary>The terminal or protocol failed the transaction.</summary>
+    Failed,
+
+    /// <summary>The caller cancelled the transaction.</summary>
+    Cancelled,
+
+    /// <summary>The configured response deadline elapsed.</summary>
+    TimedOut,
+
+    /// <summary>The transaction was disposed.</summary>
+    Disposed,
+}
+
+/// <summary>
+/// Describes how one packet affected a Kitty clipboard transaction.
+/// </summary>
+public enum KittyAcceptResult
+{
+    /// <summary>The matching packet advanced the transaction.</summary>
+    Accepted,
+
+    /// <summary>The matching packet completed the transaction.</summary>
+    Completed,
+
+    /// <summary>The matching packet failed the transaction.</summary>
+    Failed,
+
+    /// <summary>The packet was late, unrelated, or arrived after a terminal state.</summary>
+    Ignored,
+}
+
+/// <summary>
+/// Contains one owned MIME value in a completed clipboard result.
+/// </summary>
+public sealed class KittyMimeData
+{
+    private readonly byte[] _data;
+
+    /// <summary>
+    /// Initializes owned MIME data transferred from a transaction.
+    /// </summary>
+    /// <param name="mime">The UTF-8 MIME type.</param>
+    /// <param name="data">The owned data buffer.</param>
+    internal KittyMimeData(string mime, byte[] data)
+    {
+        Mime = mime;
+        _data = data;
+    }
+
+    /// <summary>Gets the MIME type.</summary>
+    public string Mime { get; }
+
+    /// <summary>
+    /// Gets owned data that remains valid until the containing result is disposed.
+    /// </summary>
+    public ReadOnlyMemory<byte> Data => _data;
+
+    /// <summary>Clears the owned data when its containing result is disposed.</summary>
+    internal void Clear() => _data.AsSpan().Clear();
+}
+
+/// <summary>
+/// Owns completed Kitty clipboard MIME data until disposal.
+/// </summary>
+public sealed class KittyResult: IDisposable
+{
+    private bool _disposed;
+
+    /// <summary>Initializes a result from transferred MIME data.</summary>
+    /// <param name="items">The owned result items.</param>
+    internal KittyResult(KittyMimeData[] items) => Items = items;
+
+    /// <summary>Gets MIME values in terminal delivery order.</summary>
+    public IReadOnlyList<KittyMimeData> Items { get; }
+
+    /// <summary>Clears every owned data buffer. Disposal is idempotent.</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        foreach (var item in Items)
+        {
+            item.Clear();
+        }
+
+        _disposed = true;
+    }
+}
+
+/// <summary>
+/// Enforces bounded Kitty OSC 5522 read or write response ordering.
+/// </summary>
+/// <remarks>
+/// Instances are single-threaded. Matching uses the optional sanitized ID;
+/// unrelated packets are ignored. A successful result transfers owned data to
+/// <see cref="KittyResult"/>, which the caller must dispose.
+/// </remarks>
+public sealed class KittyTransaction: IDisposable
+{
+    private const int _chunkBytes = 4_096;
+
+    private readonly Limits _limits;
+    private readonly KittyOperation _operation;
+    private readonly string? _id;
+    private readonly bool _listOnly;
+    private readonly TimeProvider _timeProvider;
+    private readonly Dictionary<string, Builder> _builders = [];
+    private readonly List<string> _mimeOrder = [];
+    private readonly HashSet<string> _closedMimes = [];
+    private string? _currentMime;
+    private int _totalBytes;
+
+    private KittyTransaction(
+        KittyOperation operation,
+        Limits? limits,
+        string? id,
+        bool listOnly,
+        TimeProvider? timeProvider)
+    {
+        if (operation is not (KittyOperation.Read or KittyOperation.Write))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(operation), operation, "A transaction must read or write.");
+        }
+
+        if (id is not null && !IsIdentifier(id))
+        {
+            throw new ArgumentException(
+                "A transaction ID contains a forbidden character.",
+                nameof(id));
+        }
+
+        _operation = operation;
+        _limits = limits ?? Limits.Default;
+        _id = id;
+        _listOnly = listOnly;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        Deadline = _timeProvider.GetUtcNow() + _limits.QueryTimeout;
+    }
+
+    /// <summary>Gets the current lifecycle state.</summary>
+    public KittyTransactionState State { get; private set; }
+
+    /// <summary>Gets the immutable deadline calculated at construction.</summary>
+    public DateTimeOffset Deadline { get; }
+
+    /// <summary>Gets the transferred result after successful completion.</summary>
+    public KittyResult? Result { get; private set; }
+
+    /// <summary>Gets a terminal error status after failure.</summary>
+    public KittyReplyStatus Failure { get; private set; }
+
+    /// <summary>Gets a redacted local protocol diagnostic after failure.</summary>
+    public Diagnostic? Diagnostic { get; private set; }
+
+    /// <summary>Creates a bounded clipboard read transaction.</summary>
+    /// <param name="limits">Optional immutable protocol limits.</param>
+    /// <param name="id">Optional sanitized correlation identifier.</param>
+    /// <param name="listOnly">Whether DATA without a MIME field contains a MIME list.</param>
+    /// <param name="timeProvider">Optional deterministic clock.</param>
+    /// <returns>The new read transaction.</returns>
+    /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
+    public static KittyTransaction Read(
+        Limits? limits = null,
+        string? id = null,
+        bool listOnly = false,
+        TimeProvider? timeProvider = null) =>
+        new(KittyOperation.Read, limits, id, listOnly, timeProvider);
+
+    /// <summary>Creates a bounded clipboard write transaction.</summary>
+    /// <param name="limits">Optional immutable protocol limits.</param>
+    /// <param name="id">Optional sanitized correlation identifier.</param>
+    /// <param name="timeProvider">Optional deterministic clock.</param>
+    /// <returns>The new write transaction.</returns>
+    /// <exception cref="ArgumentException"><paramref name="id"/> is invalid.</exception>
+    public static KittyTransaction Write(
+        Limits? limits = null,
+        string? id = null,
+        TimeProvider? timeProvider = null) =>
+        new(KittyOperation.Write, limits, id, listOnly: false, timeProvider);
+
+    /// <summary>Applies one decoded packet to this transaction.</summary>
+    /// <param name="packet">The immutable decoded packet.</param>
+    /// <returns>How the packet affected the transaction.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="packet"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
+    public KittyAcceptResult Accept(KittyPacket packet)
+    {
+        ObjectDisposedException.ThrowIf(State == KittyTransactionState.Disposed, this);
+        ArgumentNullException.ThrowIfNull(packet);
+
+        if (IsTerminal)
+        {
+            return KittyAcceptResult.Ignored;
+        }
+
+        if (CheckTimeout())
+        {
+            return KittyAcceptResult.Ignored;
+        }
+
+        if (!packet.IsValid)
+        {
+            return Fail(packet.Diagnostic ?? Unexpected());
+        }
+
+        if (!string.Equals(_id, packet.Id, StringComparison.Ordinal))
+        {
+            return KittyAcceptResult.Ignored;
+        }
+
+        if (packet.Operation != _operation)
+        {
+            return Fail(Unexpected());
+        }
+
+        if (IsError(packet.ReplyStatus))
+        {
+            Failure = packet.ReplyStatus;
+            return Fail(Unexpected());
+        }
+
+        return _operation == KittyOperation.Read
+            ? AcceptRead(packet)
+            : AcceptWrite(packet);
+    }
+
+    /// <summary>Cancels an active transaction and clears temporary data.</summary>
+    /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
+    public void Cancel()
+    {
+        ObjectDisposedException.ThrowIf(State == KittyTransactionState.Disposed, this);
+
+        if (IsTerminal)
+        {
+            return;
+        }
+
+        ClearBuilders();
+        State = KittyTransactionState.Cancelled;
+    }
+
+    /// <summary>Checks the injected clock and times out an expired transaction.</summary>
+    /// <returns><see langword="true"/> when this call caused timeout.</returns>
+    /// <exception cref="ObjectDisposedException">The transaction is disposed.</exception>
+    public bool CheckTimeout()
+    {
+        ObjectDisposedException.ThrowIf(State == KittyTransactionState.Disposed, this);
+
+        if (IsTerminal || _timeProvider.GetUtcNow() < Deadline)
+        {
+            return false;
+        }
+
+        ClearBuilders();
+        State = KittyTransactionState.TimedOut;
+        return true;
+    }
+
+    /// <summary>Clears temporary data and makes further use invalid.</summary>
+    public void Dispose()
+    {
+        if (State == KittyTransactionState.Disposed)
+        {
+            return;
+        }
+
+        ClearBuilders();
+        State = KittyTransactionState.Disposed;
+    }
+
+    /// <summary>Returns a structural description without ID, MIME, or data.</summary>
+    /// <returns>A redacted transaction description.</returns>
+    public override string ToString() =>
+        $"KittyTransaction operation={_operation} state={State} bytes={_totalBytes}";
+
+    private bool IsTerminal => State is
+        KittyTransactionState.Completed or
+        KittyTransactionState.Failed or
+        KittyTransactionState.Cancelled or
+        KittyTransactionState.TimedOut or
+        KittyTransactionState.Disposed;
+
+    private KittyAcceptResult AcceptData(KittyPacket packet)
+    {
+        if (packet.Data.Length > _chunkBytes)
+        {
+            return Fail(new Diagnostic(
+                DiagnosticCode.StringLimit,
+                SequenceKind.Osc,
+                0,
+                packet.Data.Length));
+        }
+
+        string mime;
+
+        if (packet.Mime.IsEmpty)
+        {
+            if (!_listOnly)
+            {
+                return Fail(Unexpected());
+            }
+
+            mime = string.Empty;
+        }
+        else
+        {
+            mime = Encoding.UTF8.GetString(packet.Mime.Span);
+        }
+
+        if (_currentMime is not null && !string.Equals(_currentMime, mime, StringComparison.Ordinal))
+        {
+            _ = _closedMimes.Add(_currentMime);
+        }
+
+        if (_closedMimes.Contains(mime))
+        {
+            return Fail(Unexpected());
+        }
+
+        if (packet.Data.Length > _limits.MaxClipboardBytes - _totalBytes)
+        {
+            return Fail(new Diagnostic(
+                DiagnosticCode.StringLimit,
+                SequenceKind.Osc,
+                0,
+                packet.Data.Length));
+        }
+
+        if (!_builders.TryGetValue(mime, out var builder))
+        {
+            builder = new Builder();
+            _builders.Add(mime, builder);
+            _mimeOrder.Add(mime);
+        }
+
+        builder.Append(packet.Data.Span);
+        _currentMime = mime;
+        _totalBytes += packet.Data.Length;
+        State = KittyTransactionState.Receiving;
+
+        return KittyAcceptResult.Accepted;
+    }
+
+    private KittyAcceptResult AcceptRead(KittyPacket packet)
+    {
+        if (packet.ReplyStatus == KittyReplyStatus.Ok)
+        {
+            if (State != KittyTransactionState.Created)
+            {
+                return Fail(Unexpected());
+            }
+
+            State = KittyTransactionState.Accepted;
+            return KittyAcceptResult.Accepted;
+        }
+
+        return packet.ReplyStatus == KittyReplyStatus.Data
+            ? State is KittyTransactionState.Accepted or KittyTransactionState.Receiving
+                ? AcceptData(packet)
+                : Fail(Unexpected())
+            : packet.ReplyStatus == KittyReplyStatus.Done &&
+              State is KittyTransactionState.Accepted or KittyTransactionState.Receiving
+                ? Complete()
+                : Fail(Unexpected());
+    }
+
+    private KittyAcceptResult AcceptWrite(KittyPacket packet) =>
+        packet.ReplyStatus == KittyReplyStatus.Done && State == KittyTransactionState.Created
+            ? Complete()
+            : Fail(Unexpected());
+
+    private void ClearBuilders()
+    {
+        foreach (var builder in _builders.Values)
+        {
+            builder.Dispose();
+        }
+
+        _builders.Clear();
+        _mimeOrder.Clear();
+        _closedMimes.Clear();
+        _currentMime = null;
+        _totalBytes = 0;
+    }
+
+    private KittyAcceptResult Complete()
+    {
+        Debug.Assert(!IsTerminal, "Only an active transaction can complete.");
+
+        var items = new KittyMimeData[_mimeOrder.Count];
+
+        for (var index = 0; index < _mimeOrder.Count; index++)
+        {
+            var mime = _mimeOrder[index];
+            items[index] = new KittyMimeData(mime, _builders[mime].ToArray());
+        }
+
+        ClearBuilders();
+        Result = new KittyResult(items);
+        State = KittyTransactionState.Completed;
+
+        return KittyAcceptResult.Completed;
+    }
+
+    private KittyAcceptResult Fail(Diagnostic diagnostic)
+    {
+        ClearBuilders();
+        Diagnostic = diagnostic;
+        State = KittyTransactionState.Failed;
+
+        return KittyAcceptResult.Failed;
+    }
+
+    private static bool IsError(KittyReplyStatus status) => status is
+        KittyReplyStatus.Io or
+        KittyReplyStatus.Invalid or
+        KittyReplyStatus.Unavailable or
+        KittyReplyStatus.Denied or
+        KittyReplyStatus.Busy;
+
+    private static bool IsIdentifier(string value)
+    {
+        if (value.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var item in value)
+        {
+            if (item is not (
+                (>= 'a' and <= 'z') or
+                (>= 'A' and <= 'Z') or
+                (>= '0' and <= '9') or
+                '-' or '_' or '+' or '.'))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static Diagnostic Unexpected() =>
+        new(DiagnosticCode.UnexpectedPacket, SequenceKind.Osc, 0, 0);
+
+    private sealed class Builder: IDisposable
+    {
+        private byte[]? _buffer;
+        private int _length;
+
+        public void Append(ReadOnlySpan<byte> value)
+        {
+            EnsureCapacity(checked(_length + value.Length));
+            value.CopyTo(_buffer.AsSpan(_length));
+            _length += value.Length;
+        }
+
+        public byte[] ToArray() => _buffer.AsSpan(0, _length).ToArray();
+
+        public void Dispose()
+        {
+            var buffer = _buffer;
+
+            if (buffer is null)
+            {
+                return;
+            }
+
+            _buffer = null;
+            _length = 0;
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+        }
+
+        private void EnsureCapacity(int required)
+        {
+            if (_buffer is not null && required <= _buffer.Length)
+            {
+                return;
+            }
+
+            var size = _buffer is null
+                ? Math.Max(256, required)
+                : Math.Max(required, checked(_buffer.Length * 2));
+            var replacement = ArrayPool<byte>.Shared.Rent(size);
+
+            if (_buffer is not null)
+            {
+                _buffer.AsSpan(0, _length).CopyTo(replacement);
+                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+            }
+
+            _buffer = replacement;
+        }
+    }
+}
