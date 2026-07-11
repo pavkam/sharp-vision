@@ -94,5 +94,20 @@ test("validateExtern rejects a package without licensing material", async () => 
         await assert.rejects(validateExtern(root), /license or notice/u);
     } finally {
         await rm(root, { recursive: true, force: true });
-    }
+  }
+});
+
+test("validateExtern rejects stale resource references with either slash style", async () => {
+  const root = await createRepository();
+
+  try {
+    await mkdir(path.join(root, "tests"));
+    await writeFile(
+      path.join(root, "tests", "Tests.csproj"),
+      '<None Include="..\\data\\unicode\\17.0.0\\UnicodeData.txt" />\n',
+    );
+    await assert.rejects(validateExtern(root), /legacy resource path/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

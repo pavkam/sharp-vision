@@ -234,6 +234,7 @@ public sealed class Frame: IDisposable
 
         try
         {
+            result.PrepareCopyFrom(this);
             result.CopyFrom(this);
             return result;
         }

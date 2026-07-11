@@ -15,6 +15,22 @@ namespace SharpVision.Terminal.Tests.Rendering;
 /// </summary>
 public sealed class FrameTests
 {
+    /// <summary>Verifies cloning grows its text arena before copying a large semantic frame.</summary>
+    [Fact]
+    public void Clone_WhenTextExceedsInitialArena_PreservesEveryGrapheme()
+    {
+        const int length = 300;
+        using var frame = new Frame(new Size(length, 1));
+        _ = frame.Canvas.Draw(new string('x', length), default, Style.Default);
+
+        using var clone = frame.Clone();
+
+        clone.Size.ShouldBe(frame.Size);
+        clone.GetGraphemeByteCount(new Point(0, 0)).ShouldBe(1);
+        clone.GetGraphemeByteCount(new Point(length - 1, 0)).ShouldBe(1);
+        GetText(clone, new Point(length - 1, 0)).ShouldBe("x");
+    }
+
     /// <summary>Verifies explicit rendering-value constructors reject impossible metrics.</summary>
     [Fact]
     public void Constructor_WhenRenderingValueIsInvalid_ThrowsDocumentedException()

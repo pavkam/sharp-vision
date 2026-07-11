@@ -1,4 +1,4 @@
-import { lstat, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -18,6 +18,17 @@ const resourceNames = new Set([
     "GraphemeBreakTest.txt",
     "ReadMe.txt",
     "UnicodeData.txt",
+]);
+const referenceExtensions = new Set([
+  ".csproj",
+  ".js",
+  ".json",
+  ".mjs",
+  ".props",
+  ".sh",
+  ".targets",
+  ".yaml",
+  ".yml",
 ]);
 
 const isResource = (file) =>
@@ -91,9 +102,17 @@ export const validateExtern = async (root) => {
         (file) => isResource(file) && !file.startsWith(`extern${path.sep}`),
     );
 
-    if (misplaced !== undefined) {
-        throw new Error(`External resource '${misplaced}' is outside extern.`);
+  if (misplaced !== undefined) {
+    throw new Error(`External resource '${misplaced}' is outside extern.`);
+  }
+
+  for (const file of files.filter((value) => referenceExtensions.has(path.extname(value)))) {
+    const content = await readFile(path.join(absoluteRoot, file), "utf8");
+
+    if (/data[\\/](?:figlet|unicode)[\\/]/u.test(content)) {
+      throw new Error(`File '${file}' contains a legacy resource path.`);
     }
+  }
 
     const packages = (await readdir(extern, { withFileTypes: true })).filter(
         (entry) => entry.isDirectory() && !entry.isSymbolicLink(),

@@ -175,6 +175,23 @@ public sealed class TextInputTests
         Encoding.UTF8.GetString(CopyOccupied(frame)).ShouldNotContain("A");
     }
 
+    /// <summary>Verifies a focused editor clipped above the viewport never requests an off-frame cursor.</summary>
+    [Fact]
+    public void Render_WhenFocusedCaretIsOutsideCanvas_LeavesCursorHidden()
+    {
+        var control = new TextInput
+        {
+            Bounds = new Rect(0, -1, 12, 1),
+            Text = "Scrolled out",
+        };
+        control.SetFocused(true);
+        using var frame = new Frame(new Size(12, 2));
+
+        Should.NotThrow(() => control.Render(frame.Canvas));
+
+        frame.Cursor.Visible.ShouldBeFalse();
+    }
+
     /// <summary>Verifies selected cells render reversed without splitting a wide grapheme.</summary>
     [Fact]
     public void Render_WhenSelectionContainsWideRune_StylesCompleteOwnedCells()

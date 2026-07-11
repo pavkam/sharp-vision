@@ -320,7 +320,7 @@ public sealed class TextInput: Control
                 bounds.X + caretX - HorizontalOffset,
                 bounds.Y + caretY - VerticalOffset);
 
-            if (bounds.Contains(position))
+            if (bounds.Contains(position) && canvas.Bounds.Contains(position))
             {
                 canvas.SetCursor(position, visible: true);
             }
