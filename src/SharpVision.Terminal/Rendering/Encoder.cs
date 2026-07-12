@@ -3,6 +3,8 @@ using System.Text;
 
 using SharpVision.Terminal.Protocols;
 
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
+
 namespace SharpVision.Terminal.Rendering;
 
 /// <summary>
@@ -12,28 +14,30 @@ public static class Encoder
 {
     private const int _stackLinkBytes = 512;
 
-    /// <summary>Encodes full or incremental target state to a byte writer.</summary>
+    /// <summary>Encodes full or incremental target state for one immutable capability snapshot.</summary>
     /// <param name="front">The committed frame, or null for a full redraw.</param>
     /// <param name="back">The target semantic frame.</param>
     /// <param name="destination">The synchronous byte destination.</param>
+    /// <param name="capabilities">The non-null terminal capability snapshot.</param>
     /// <param name="full">Whether to force a full redraw.</param>
     /// <returns>The number of spans and full/incremental classification.</returns>
-    /// <exception cref="ArgumentNullException">
-    /// <paramref name="back"/> or <paramref name="destination"/> is null.
-    /// </exception>
+    /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ObjectDisposedException">A supplied frame is disposed.</exception>
     public static EncodeResult Encode(
         Frame? front,
         Frame back,
         IBufferWriter<byte> destination,
+        TerminalCapabilities capabilities,
         bool full = false)
     {
         ArgumentNullException.ThrowIfNull(back);
         ArgumentNullException.ThrowIfNull(destination);
+        ArgumentNullException.ThrowIfNull(capabilities);
         back.ThrowIfDisposed();
         front?.ThrowIfDisposed();
         var redraw = full || front is null || front.Size != back.Size;
         var writer = new Writer(destination);
+        var semanticStyle = Style.Default;
         var style = Style.Default;
         var spanCount = 0;
 
@@ -53,8 +57,12 @@ public static class Encoder
                     continue;
                 }
 
-                ApplyStyle(writer, style, cell.Style);
-                style = cell.Style;
+                var projected = cell.Style == semanticStyle
+                    ? style
+                    : Project(cell.Style, capabilities);
+                ApplyStyle(writer, style, projected, capabilities);
+                semanticStyle = cell.Style;
+                style = projected;
                 var grapheme = back.GetGrapheme(index);
 
                 if (grapheme.IsEmpty)
@@ -87,7 +95,11 @@ public static class Encoder
         return new EncodeResult(spanCount, redraw);
     }
 
-    private static void ApplyStyle(Writer writer, Style current, Style target)
+    private static void ApplyStyle(
+        Writer writer,
+        Style current,
+        Style target,
+        TerminalCapabilities capabilities)
     {
         if (!string.Equals(current.Hyperlink, target.Hyperlink, StringComparison.Ordinal))
         {
@@ -118,12 +130,44 @@ public static class Encoder
 
         if (target.Foreground != Color.Default)
         {
-            Sgr.Foreground(writer, target.Foreground);
+            ApplyColor(writer, target.Foreground, capabilities, foreground: true);
         }
 
         if (target.Background != Color.Default)
         {
-            Sgr.Background(writer, target.Background);
+            ApplyColor(writer, target.Background, capabilities, foreground: false);
+        }
+    }
+
+    private static void ApplyColor(
+        Writer writer,
+        Color color,
+        TerminalCapabilities capabilities,
+        bool foreground)
+    {
+        if (capabilities.ColorDepth == Capabilities.ColorDepth.Basic16)
+        {
+            var basic = (BasicColor) color.Red;
+
+            if (foreground)
+            {
+                Sgr.Foreground(writer, basic);
+            }
+            else
+            {
+                Sgr.Background(writer, basic);
+            }
+
+            return;
+        }
+
+        if (foreground)
+        {
+            Sgr.Foreground(writer, color);
+        }
+        else
+        {
+            Sgr.Background(writer, color);
         }
     }
 
@@ -168,6 +212,12 @@ public static class Encoder
         style.Attributes == Attributes.None &&
         style.Foreground == Color.Default &&
         style.Background == Color.Default;
+
+    private static Style Project(Style value, TerminalCapabilities capabilities) => new(
+        Palette.Project(value.Foreground, capabilities.ColorDepth),
+        Palette.Project(value.Background, capabilities.ColorDepth),
+        value.Attributes,
+        value.Hyperlink);
 
     private static void OpenHyperlink(Writer writer, string hyperlink)
     {

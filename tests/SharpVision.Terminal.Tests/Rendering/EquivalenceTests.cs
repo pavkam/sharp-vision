@@ -1,8 +1,11 @@
 using System.Buffers;
 
+using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Tests.Support;
+
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
@@ -65,7 +68,11 @@ public sealed class EquivalenceTests
     private static byte[] Encode(Frame? front, Frame back)
     {
         var destination = new ArrayBufferWriter<byte>();
-        _ = Encoder.Encode(front, back, destination);
+        _ = Encoder.Encode(
+            front,
+            back,
+            destination,
+            TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
         return destination.WrittenSpan.ToArray();
     }
 

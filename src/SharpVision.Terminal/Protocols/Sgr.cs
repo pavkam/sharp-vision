@@ -48,6 +48,24 @@ public static class Sgr
     public static void Background(Writer writer, Color color) =>
         WriteColor(writer, color, foreground: false);
 
+    /// <summary>Applies one classic ANSI or aixterm foreground color.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="color">The typed 16-color palette entry.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="color"/> is unknown.
+    /// </exception>
+    public static void Foreground(Writer writer, BasicColor color) =>
+        WriteBasicColor(writer, color, foreground: true);
+
+    /// <summary>Applies one classic ANSI or aixterm background color.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="color">The typed 16-color palette entry.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="color"/> is unknown.
+    /// </exception>
+    public static void Background(Writer writer, BasicColor color) =>
+        WriteBasicColor(writer, color, foreground: false);
+
     private static int Append(int value, Span<byte> destination)
     {
         var formatted = Utf8Formatter.TryFormat(value, destination, out var written);
@@ -80,6 +98,20 @@ public static class Sgr
             throw new ArgumentOutOfRangeException(
                 nameof(rendition), rendition, "The rendition value is unknown.");
         }
+    }
+
+    private static void WriteBasicColor(Writer writer, BasicColor color, bool foreground)
+    {
+        if (!Enum.IsDefined(color))
+        {
+            throw new ArgumentOutOfRangeException(nameof(color), color, "The basic color is unknown.");
+        }
+
+        var index = (int) color;
+        var value = index < 8
+            ? (foreground ? 30 : 40) + index
+            : (foreground ? 90 : 100) + index - 8;
+        WriteNumber(writer, value);
     }
 
     private static void WriteColor(Writer writer, Color color, bool foreground)

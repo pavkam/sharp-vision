@@ -11,6 +11,27 @@ namespace SharpVision.Terminal.Tests.Protocols;
 /// </summary>
 public sealed class SgrTests
 {
+    /// <summary>Provides all typed basic-color foreground and background sequences.</summary>
+    public static TheoryData<BasicColor, string, string> BasicColorCases => new()
+    {
+        { BasicColor.Black, "\u001b[30m", "\u001b[40m" },
+        { BasicColor.Red, "\u001b[31m", "\u001b[41m" },
+        { BasicColor.Green, "\u001b[32m", "\u001b[42m" },
+        { BasicColor.Yellow, "\u001b[33m", "\u001b[43m" },
+        { BasicColor.Blue, "\u001b[34m", "\u001b[44m" },
+        { BasicColor.Magenta, "\u001b[35m", "\u001b[45m" },
+        { BasicColor.Cyan, "\u001b[36m", "\u001b[46m" },
+        { BasicColor.White, "\u001b[37m", "\u001b[47m" },
+        { BasicColor.BrightBlack, "\u001b[90m", "\u001b[100m" },
+        { BasicColor.BrightRed, "\u001b[91m", "\u001b[101m" },
+        { BasicColor.BrightGreen, "\u001b[92m", "\u001b[102m" },
+        { BasicColor.BrightYellow, "\u001b[93m", "\u001b[103m" },
+        { BasicColor.BrightBlue, "\u001b[94m", "\u001b[104m" },
+        { BasicColor.BrightMagenta, "\u001b[95m", "\u001b[105m" },
+        { BasicColor.BrightCyan, "\u001b[96m", "\u001b[106m" },
+        { BasicColor.BrightWhite, "\u001b[97m", "\u001b[107m" },
+    };
+
     /// <summary>
     /// Verifies every supported rendition code against its literal sequence.
     /// </summary>
@@ -98,6 +119,27 @@ public sealed class SgrTests
             "\u001b[49m\u001b[48;5;255m\u001b[48;2;254;253;252m"u8.ToArray());
     }
 
+    /// <summary>Verifies every basic color uses classic ANSI/aixterm SGR forms.</summary>
+    /// <param name="color">The typed basic color.</param>
+    /// <param name="foreground">The exact foreground sequence.</param>
+    /// <param name="background">The exact background sequence.</param>
+    [Theory]
+    [MemberData(nameof(BasicColorCases))]
+    public void BasicColor_WhenValueIsKnown_WritesExactForegroundAndBackground(
+        BasicColor color,
+        string foreground,
+        string background)
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
+
+        Sgr.Foreground(writer, color);
+        Sgr.Background(writer, color);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            System.Text.Encoding.ASCII.GetBytes(foreground + background));
+    }
+
     /// <summary>
     /// Verifies color and attribute validation before output.
     /// </summary>
@@ -115,6 +157,10 @@ public sealed class SgrTests
             static () => Color.Rgb(-1, 0, 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Sgr.Apply(writer, (Rendition) 999));
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => Sgr.Foreground(writer, (BasicColor) 999));
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => Sgr.Background(writer, (BasicColor) 999));
 
         destination.WrittenCount.ShouldBe(0);
     }

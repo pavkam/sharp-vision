@@ -11,7 +11,23 @@ public sealed record Capabilities
     public static Capabilities Conservative { get; } = new();
 
     /// <summary>Gets the safe color fidelity.</summary>
-    public ColorDepth ColorDepth { get; init; } = ColorDepth.Basic16;
+    /// <exception cref="ArgumentOutOfRangeException">The assigned color depth is unknown.</exception>
+    public ColorDepth ColorDepth
+    {
+        get;
+        init
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The color depth is unknown.");
+            }
+
+            field = value;
+        }
+    } = ColorDepth.Basic16;
 
     /// <summary>Gets the color-depth evidence origin.</summary>
     public Origin ColorOrigin { get; init; } = Origin.Default;

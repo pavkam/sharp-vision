@@ -1,5 +1,6 @@
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Tests.Support;
 
@@ -82,6 +83,38 @@ public sealed class RendererTests
 
         explicitResult.Full.ShouldBeTrue();
         capabilityResult.Full.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a color-tier change reprojects the complete semantic frame.</summary>
+    [Fact]
+    public async Task RenderAsync_WhenColorDepthChanges_WritesDifferentFullRepresentationAsync()
+    {
+        using var renderer = new Renderer();
+        await using var transport = new FakeTransport();
+        using var frame = new Frame(new Size(1, 1));
+        _ = frame.Canvas.Draw("x", default, new Style(Color.Rgb(255, 0, 0)));
+        var trueColor = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.TrueColor,
+        };
+
+        var first = await renderer.RenderAsync(
+            frame,
+            transport,
+            trueColor,
+            TestContext.Current.CancellationToken);
+        var second = await renderer.RenderAsync(
+            frame,
+            transport,
+            TerminalCapabilities.Conservative,
+            TestContext.Current.CancellationToken);
+
+        first.Full.ShouldBeTrue();
+        second.Full.ShouldBeTrue();
+        transport.Writes.Count.ShouldBe(2);
+        transport.Writes[0].AsSpan().IndexOf("\u001b[38;2;255;0;0m"u8).ShouldBeGreaterThanOrEqualTo(0);
+        transport.Writes[1].AsSpan().IndexOf("\u001b[91m"u8).ShouldBeGreaterThanOrEqualTo(0);
+        transport.Writes[1].AsSpan().IndexOf("38;2"u8).ShouldBe(-1);
     }
 
     /// <summary>

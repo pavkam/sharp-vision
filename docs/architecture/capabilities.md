@@ -82,6 +82,20 @@ change replaces the tree policy on the dispatcher and invalidates root measure
 once. A nullable control-local ambiguous-width override, where an API offers
 one, wins only for that control and remains explicit.
 
+### Output projection
+
+`Renderer` passes the exact immutable profile captured for a frame to `Encoder`.
+Semantic frame colors remain unchanged. The encoder projects only the emitted
+presentation: true color preserves RGB, indexed 256 uses the xterm-compatible
+reference palette, basic 16 uses typed ANSI/aixterm SGR, and monochrome emits no
+color selection. A capability change forces the existing full-redraw path, so
+one frame cannot mix color tiers.
+
+The reference palette is a deterministic degradation policy, not a claim about
+physical terminal colors. Terminals may configure their first sixteen entries.
+Equal-distance projection selects the lower palette index, and projected style
+equality suppresses redundant transitions.
+
 ## Safe degradation
 
 Feature fallback is deterministic: omit an unsupported visual attribute, reduce

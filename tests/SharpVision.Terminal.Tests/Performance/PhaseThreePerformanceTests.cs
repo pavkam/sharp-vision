@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
+using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
@@ -10,6 +11,7 @@ using Shouldly;
 
 using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
 using InputDecoder = SharpVision.Terminal.Input.Decoder;
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Tests.Performance;
 
@@ -18,6 +20,9 @@ namespace SharpVision.Terminal.Tests.Performance;
 /// </summary>
 public sealed class PhaseThreePerformanceTests
 {
+    private static TerminalCapabilities TrueColorCapabilities { get; } =
+        TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor };
+
     /// <summary>Verifies warmed ASCII, mixed, and emoji segmentation allocate nothing.</summary>
     [Fact]
     public void Enumerate_WhenRepresentativeTextIsWarm_AllocatesZeroBytes()
@@ -157,11 +162,11 @@ public sealed class PhaseThreePerformanceTests
         ArrayBufferWriter<byte> destination)
     {
         destination.Clear();
-        _ = FrameEncoder.Encode(front, front, destination);
+        _ = FrameEncoder.Encode(front, front, destination, TrueColorCapabilities);
         destination.Clear();
-        _ = FrameEncoder.Encode(front, sparse, destination);
+        _ = FrameEncoder.Encode(front, sparse, destination, TrueColorCapabilities);
         destination.Clear();
-        _ = FrameEncoder.Encode(front, dense, destination);
+        _ = FrameEncoder.Encode(front, dense, destination, TrueColorCapabilities);
     }
 
     private static void Decode(InputDecoder decoder)

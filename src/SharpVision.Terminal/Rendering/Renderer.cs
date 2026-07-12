@@ -123,7 +123,7 @@ public sealed class Renderer: IDisposable
             }
 
             _buffer.Reset();
-            var encoded = Encoder.Encode(_front, back, _buffer, forceFull);
+            var encoded = Encoder.Encode(_front, back, _buffer, capabilities, forceFull);
 
             if (_buffer.WrittenCount == 0)
             {
