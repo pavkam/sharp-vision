@@ -36,12 +36,7 @@ internal readonly struct Adapter: ISequenceSink
     public void Sequence(
         SequenceKind kind,
         ReadOnlySpan<byte> value,
-        StringTerminator terminator)
-    {
-        _ = value;
-        _ = terminator;
-        _owner.AcceptSequence(kind);
-    }
+        StringTerminator terminator) => _owner.AcceptSequence(kind, value, terminator);
 
     /// <inheritdoc/>
     public void Dcs(
@@ -49,15 +44,8 @@ internal readonly struct Adapter: ISequenceSink
         ReadOnlySpan<byte> intermediates,
         byte final,
         ReadOnlySpan<byte> value,
-        StringTerminator terminator)
-    {
-        _ = parameters;
-        _ = intermediates;
-        _ = final;
-        _ = value;
-        _ = terminator;
-        _owner.AcceptDcs();
-    }
+        StringTerminator terminator) =>
+        _owner.AcceptDcs(parameters, intermediates, final, value, terminator);
 
     /// <inheritdoc/>
     public void Report(in Diagnostic value) => _owner.AcceptDiagnostic(in value);

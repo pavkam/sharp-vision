@@ -7,6 +7,11 @@ and rejected parameter values. Each streaming decoder representative runs once
 whole and once for every possible split point, then with adjacent text and
 controls.
 
+`ProtocolRouter` tests apply the same whole-versus-every-split rule to each
+typed reply and to OSC, DCS, APC, PM, and SOS. They overwrite the source read
+after dispatch to prove owned payloads do not retain transport memory, and they
+follow hostile bounded strings with known input to prove outer-parser recovery.
+
 ## Parser matrix
 
 Cover empty input, byte-at-a-time input, multiple frames per read, split ESC/ST,

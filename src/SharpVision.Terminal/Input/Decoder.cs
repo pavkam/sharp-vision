@@ -20,6 +20,7 @@ public sealed class Decoder: IDisposable
     private static readonly byte[] _pasteEnd = "\u001b[201~"u8.ToArray();
 
     private readonly IInputSink _sink;
+    private readonly IProtocolSink? _protocolSink;
     private readonly Options _options;
     private readonly Parser _parser;
     private readonly TimeProvider _timeProvider;
@@ -56,6 +57,7 @@ public sealed class Decoder: IDisposable
     {
         ArgumentNullException.ThrowIfNull(sink);
         _sink = sink;
+        _protocolSink = sink as IProtocolSink;
         _options = options ?? Options.Default;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _parser = new Parser(_options.Limits);
@@ -402,13 +404,23 @@ public sealed class Decoder: IDisposable
         EndX10IfPending();
         EndSs3IfPending();
 
-        if (intermediates.IsEmpty && final == (byte) 'u')
+        if (Responses.TryCsi(parameters, intermediates, final, out var response))
         {
-            if (!Responses.TryCsi(parameters, intermediates, final, out _))
+            if (_protocolSink is { } protocolSink)
             {
-                HandleKitty(parameters);
+                protocolSink.Response(in response);
+            }
+            else
+            {
+                Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
             }
 
+            return;
+        }
+
+        if (intermediates.IsEmpty && final == (byte) 'u')
+        {
+            HandleKitty(parameters);
             return;
         }
 
@@ -538,12 +550,42 @@ public sealed class Decoder: IDisposable
         EmitStroke(code, null, code == Code.Unknown ? final : 0);
     }
 
-    private void HandleSequence(SequenceKind kind)
+    private void HandleSequence(
+        SequenceKind kind,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
     {
         FlushUtf8();
         EndX10IfPending();
         EndSs3IfPending();
-        Report(DiagnosticCode.Unsupported, kind);
+
+        if (kind == SequenceKind.Osc && Responses.TryOsc(value, out var response))
+        {
+            if (_protocolSink is { } protocolSink)
+            {
+                protocolSink.Response(in response);
+            }
+            else
+            {
+                Report(DiagnosticCode.Unsupported, kind);
+            }
+
+            return;
+        }
+
+        if (_protocolSink is null)
+        {
+            Report(DiagnosticCode.Unsupported, kind);
+            return;
+        }
+
+        _protocolSink.Sequence(new ProtocolSequence(
+            kind,
+            [],
+            [],
+            0,
+            value,
+            terminator));
     }
 
     private void HandleParserDiagnostic(in Diagnostic value)
@@ -1481,10 +1523,44 @@ public sealed class Decoder: IDisposable
 
     /// <summary>Accepts one parsed terminal string sequence.</summary>
     /// <param name="kind">The sequence family.</param>
-    internal void AcceptSequence(SequenceKind kind) => HandleSequence(kind);
+    /// <param name="value">The borrowed bounded payload.</param>
+    /// <param name="terminator">The observed string terminator.</param>
+    internal void AcceptSequence(
+        SequenceKind kind,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator) => HandleSequence(kind, value, terminator);
 
     /// <summary>Accepts one parsed DCS payload.</summary>
-    internal void AcceptDcs() => HandleSequence(SequenceKind.Dcs);
+    /// <param name="parameters">Borrowed parameter bytes.</param>
+    /// <param name="intermediates">Borrowed intermediate bytes.</param>
+    /// <param name="final">The DCS final byte.</param>
+    /// <param name="value">The borrowed payload.</param>
+    /// <param name="terminator">The observed terminator.</param>
+    internal void AcceptDcs(
+        ReadOnlySpan<byte> parameters,
+        ReadOnlySpan<byte> intermediates,
+        byte final,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
+    {
+        FlushUtf8();
+        EndX10IfPending();
+        EndSs3IfPending();
+
+        if (_protocolSink is null)
+        {
+            Report(DiagnosticCode.Unsupported, SequenceKind.Dcs);
+            return;
+        }
+
+        _protocolSink.Sequence(new ProtocolSequence(
+            SequenceKind.Dcs,
+            parameters,
+            intermediates,
+            final,
+            value,
+            terminator));
+    }
 
     /// <summary>Accepts one parser diagnostic.</summary>
     /// <param name="value">The structured non-sensitive diagnostic.</param>

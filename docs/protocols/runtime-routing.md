@@ -2,10 +2,11 @@
 
 ## Runtime routing contract
 
-[`Parser`](ecma-48.md#streaming-grammar) owns bounded ECMA-48 framing. `Router`
-owns the decision between typed input, typed terminal responses, and bounded raw
-extension strings. Parser callback spans are borrowed; every `ProtocolSequence`
-copies its header and payload before the callback returns.
+[`Parser`](ecma-48.md#streaming-grammar) owns bounded ECMA-48 framing.
+`ProtocolRouter` owns the decision between typed input, typed terminal
+responses, and bounded raw extension strings. Parser callback spans are
+borrowed; every `ProtocolSequence` copies its header and payload before the
+callback returns.
 
 `IProtocolSink.Response` receives recognized DA, DSR, DECRPM, Kitty keyboard,
 and OSC color replies. `IProtocolSink.Sequence` receives completed OSC, DCS,
@@ -55,4 +56,4 @@ Test each recognized reply and each string family whole and at every read split.
 Mutate the source buffer after routing to prove ownership. Test adjacent input
 and responses to prove ordering. Follow malformed, cancelled, truncated, and
 oversized strings with known input to prove recovery. Drive at least one reply
-through `Router`, `Session`, and the application dispatcher.
+through `ProtocolRouter`, `Session`, and the application dispatcher.
