@@ -15,6 +15,25 @@ namespace SharpVision.Terminal.Tests.Rendering;
 /// </summary>
 public sealed class EncoderTests
 {
+    /// <summary>Verifies an orphan component is emitted as an independent replacement cell.</summary>
+    [Fact]
+    public void Encode_WhenFrameContainsOrphanMark_WritesReplacementBytes()
+    {
+        // Arrange
+        using var back = new Frame(new Size(2, 1));
+        _ = back.Canvas.Draw("a".AsSpan(), new Point(0, 0));
+        _ = back.Canvas.Draw("\u0301".AsSpan(), new Point(1, 0));
+        var destination = new ArrayBufferWriter<byte>();
+
+        // Act
+        _ = FrameEncoder.Encode(null, back, destination);
+
+        // Assert
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b[1;1Ha�\u001b[1;1H\u001b[?25l"u8.ToArray());
+        destination.WrittenSpan.IndexOf("\u0301"u8).ShouldBe(-1);
+    }
+
     /// <summary>
     /// Verifies a complete default-style frame emits exact position/text/cursor bytes.
     /// </summary>

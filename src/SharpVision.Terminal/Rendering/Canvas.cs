@@ -348,21 +348,26 @@ public readonly struct Canvas
         foreach (var segment in Graphemes.Enumerate(value))
         {
             var cluster = value.Slice(segment.Offset, segment.Length);
-            var width = Width.GetCluster(
+            var classification = Width.AnalyzeCluster(
                 cluster,
                 _frame.AmbiguousWidth,
                 segment.HasInvalidData);
             graphemes = checked(graphemes + 1);
 
-            if (width == CellWidth.Control)
+            if (classification.Width == CellWidth.Control)
             {
                 AdvanceControl(cluster, origin.X, ref x, ref y);
                 continue;
             }
 
-            var cellWidth = (int) width;
+            var cellWidth = (int) classification.Width;
             cells = checked(cells + cellWidth);
-            var replacement = false;
+            var replacement = classification.RequiresReplacement;
+
+            if (replacement)
+            {
+                replaced = checked(replaced + 1);
+            }
 
             if (cellWidth == 2 && x + cellWidth > _frame.Size.Width)
             {
@@ -380,8 +385,13 @@ public readonly struct Canvas
 
                     case Edge.Replace:
                         cellWidth = 1;
+
+                        if (!replacement)
+                        {
+                            replaced = checked(replaced + 1);
+                        }
+
                         replacement = true;
-                        replaced = checked(replaced + 1);
                         break;
 
                     default:

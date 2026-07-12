@@ -19,7 +19,18 @@ public sealed class FrameRandomizedTests
     public void Mutate_WhenOperationsAreRandomized_PreservesOwnership()
     {
         var random = new Random(_seed);
-        var values = new[] { "a", "界", "e\u0301", "👩‍💻", "🇵🇹" };
+        var values = new[]
+        {
+            (Source: "a", Presentation: "a"),
+            (Source: "界", Presentation: "界"),
+            (Source: "e\u0301", Presentation: "e\u0301"),
+            (Source: "👩‍💻", Presentation: "👩‍💻"),
+            (Source: "🇵🇹", Presentation: "🇵🇹"),
+            (Source: "\u0301", Presentation: "�"),
+            (Source: "\u200d", Presentation: "�"),
+            (Source: "\ufe0f", Presentation: "�"),
+            (Source: "🏽", Presentation: "�"),
+        };
         using var frame = new Frame(new Size(20, 5));
 
         for (var operation = 0; operation < 1_000; operation++)
@@ -32,9 +43,16 @@ public sealed class FrameRandomizedTests
             }
             else
             {
-                var value = values[random.Next(values.Length)];
+                var (source, presentation) = values[random.Next(values.Length)];
                 var edge = (Edge) random.Next(3);
-                _ = frame.Canvas.Draw(value.AsSpan(), point, edge: edge);
+                _ = frame.Canvas.Draw(source.AsSpan(), point, edge: edge);
+
+                if (presentation == "�")
+                {
+                    FrameTests.GetText(frame, point).ShouldBe(
+                        presentation,
+                        $"Seed {_seed}, operation {operation}, orphan presentation.");
+                }
             }
 
             AssertOwnership(frame, operation);

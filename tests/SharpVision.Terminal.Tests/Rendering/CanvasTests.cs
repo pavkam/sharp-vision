@@ -11,6 +11,34 @@ namespace SharpVision.Terminal.Tests.Rendering;
 /// </summary>
 public sealed class CanvasTests
 {
+    /// <summary>Verifies a base-less cluster cannot alter its preceding cell.</summary>
+    /// <param name="value">The base-less source cluster.</param>
+    [Theory]
+    [InlineData("\u0301")]
+    [InlineData("\u0903")]
+    [InlineData("\u0600")]
+    [InlineData("\u200d")]
+    [InlineData("\ufe0f")]
+    [InlineData("🏽")]
+    [InlineData("\U000e0067")]
+    public void Draw_WhenClusterHasNoBase_StoresIndependentReplacement(
+        string value)
+    {
+        // Arrange
+        using var frame = new Frame(new Size(2, 1));
+        _ = frame.Canvas.Draw("a".AsSpan(), new Point(0, 0));
+
+        // Act
+        var result = frame.Canvas.Draw(value.AsSpan(), new Point(1, 0));
+
+        // Assert
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("�");
+        result.Final.ShouldBe(new Point(2, 0));
+        result.Cells.ShouldBe(1);
+        result.Replaced.ShouldBe(1);
+    }
+
     /// <summary>
     /// Verifies the frame's explicit ambiguous-width policy reaches drawing.
     /// </summary>
