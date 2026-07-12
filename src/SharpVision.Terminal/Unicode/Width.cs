@@ -27,19 +27,19 @@ public static class Width
 
         foreach (var segment in Graphemes.Enumerate(value))
         {
-            var width = GetCluster(
+            var cluster = AnalyzeCluster(
                 value.Slice(segment.Offset, segment.Length),
                 ambiguous,
                 segment.HasInvalidData);
             graphemes = checked(graphemes + 1);
 
-            if (width == CellWidth.Control)
+            if (cluster.Width == CellWidth.Control)
             {
                 controls = checked(controls + 1);
             }
             else
             {
-                cells = checked(cells + (int) width);
+                cells = checked(cells + (int) cluster.Width);
             }
         }
 
@@ -54,6 +54,17 @@ public static class Width
     internal static CellWidth GetCluster(
         ReadOnlySpan<char> value,
         Ambiguous ambiguous,
+        bool hasInvalidData = false) =>
+        AnalyzeCluster(value, ambiguous, hasInvalidData).Width;
+
+    /// <summary>Classifies one already-segmented cluster without allocation.</summary>
+    /// <param name="value">Exactly one borrowed extended grapheme cluster.</param>
+    /// <param name="ambiguous">The validated ambiguous-width policy.</param>
+    /// <param name="hasInvalidData">Whether the cluster contains replacement input.</param>
+    /// <returns>The cluster width and safe presentation classification.</returns>
+    internal static Cluster AnalyzeCluster(
+        ReadOnlySpan<char> value,
+        Ambiguous ambiguous,
         bool hasInvalidData = false)
     {
         Debug.Assert(!value.IsEmpty, "An enumerated grapheme cannot be empty.");
@@ -61,7 +72,7 @@ public static class Width
 
         if (hasInvalidData)
         {
-            return CellWidth.Narrow;
+            return new Cluster(CellWidth.Narrow, requiresReplacement: true);
         }
 
         var baseScalar = -1;
@@ -88,7 +99,7 @@ public static class Width
 
             if (graphemeBreak is GraphemeBreak.Control or GraphemeBreak.Cr or GraphemeBreak.Lf)
             {
-                return CellWidth.Control;
+                return new Cluster(CellWidth.Control, requiresReplacement: false);
             }
 
             hasTextSelector |= scalar == 0xfe0e;
@@ -110,14 +121,19 @@ public static class Width
             position += consumed;
         }
 
-        if (baseScalar < 0 || !Data.IsAssigned(baseScalar) || IsPrivateUse(baseScalar))
+        if (baseScalar < 0)
         {
-            return CellWidth.Narrow;
+            return new Cluster(CellWidth.Narrow, requiresReplacement: true);
+        }
+
+        if (!Data.IsAssigned(baseScalar) || IsPrivateUse(baseScalar))
+        {
+            return new Cluster(CellWidth.Narrow, requiresReplacement: false);
         }
 
         var eastAsianWidth = Data.GetEastAsianWidth(baseScalar);
 
-        return eastAsianWidth is EastAsianWidth.Wide or EastAsianWidth.Fullwidth
+        var width = eastAsianWidth is EastAsianWidth.Wide or EastAsianWidth.Fullwidth
             ? CellWidth.Wide
             : hasTextSelector
             ? CellWidth.Narrow
@@ -129,6 +145,7 @@ public static class Width
             : eastAsianWidth == EastAsianWidth.Ambiguous && ambiguous == Ambiguous.Wide
             ? CellWidth.Wide
             : CellWidth.Narrow;
+        return new Cluster(width, requiresReplacement: false);
     }
 
     private static bool IsKeycapBase(int scalar) => scalar is
