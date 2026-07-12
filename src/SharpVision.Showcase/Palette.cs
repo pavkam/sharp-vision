@@ -19,6 +19,9 @@ internal static class Palette
     /// <summary>Gets the raised card color.</summary>
     internal static Color Surface => Color.Indexed(238);
 
+    /// <summary>Gets the distinct editable-input surface color.</summary>
+    internal static Color InputSurface => Color.Indexed(240);
+
     /// <summary>Gets the primary cyan accent.</summary>
     internal static Color Accent => Color.Indexed(45);
 
@@ -76,6 +79,17 @@ internal static class Palette
     {
         var style = new Style();
         style.Set(State.Normal, new Appearance(Text, Surface));
+        return style;
+    }
+
+    /// <summary>Creates a full-surface style for editable text controls.</summary>
+    internal static Style Editor()
+    {
+        var style = new Style();
+        style.Set(State.Normal, new Appearance(Text, InputSurface));
+        style.Set(State.Hovered, new Appearance(background: Hover));
+        style.Set(State.Focused, new Appearance(Accent, Pressed, Attributes.Bold));
+        style.Set(State.Disabled, new Appearance(Muted, Surface, Attributes.Dim));
         return style;
     }
 

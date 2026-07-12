@@ -275,6 +275,10 @@ public sealed class TextInput: Control
             return;
         }
 
+        // An editor owns its complete visible surface so configured backgrounds
+        // remain continuous beyond short text, selection, and the caret.
+        canvas.Clear(bounds, ResolvedStyle);
+
         var x = 0;
         var y = 0;
 

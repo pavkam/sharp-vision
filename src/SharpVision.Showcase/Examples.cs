@@ -47,6 +47,7 @@ internal static class Examples
         {
             Width = Length.Cells(30),
             Text = "SharpVision",
+            Style = Palette.Editor(),
         };
         var fontLabel = new ControlText("Font: Standard ▼");
         var fontButton = new Button { Content = fontLabel };
@@ -311,24 +312,28 @@ internal static class Examples
         {
             Width = Length.Cells(28),
             Text = "Edit me: café 👩‍💻",
+            Style = Palette.Editor(),
         });
         examples.Children.Add(new TextInput
         {
             Width = Length.Cells(28),
             Text = "Read-only value",
             IsReadOnly = true,
+            Style = Palette.Editor(),
         });
         examples.Children.Add(new TextInput
         {
             Width = Length.Cells(28),
             Text = "secret",
             PasswordCharacter = new Rune('•'),
+            Style = Palette.Editor(),
         });
         examples.Children.Add(new TextInput
         {
             Width = Length.Cells(28),
             Text = "12 chars max",
             MaxLength = 12,
+            Style = Palette.Editor(),
         });
         examples.Children.Add(new TextInput
         {
@@ -337,6 +342,7 @@ internal static class Examples
             AcceptsReturn = true,
             AcceptsTab = true,
             Text = "Multiline\ninput",
+            Style = Palette.Editor(),
         });
         return examples;
     }

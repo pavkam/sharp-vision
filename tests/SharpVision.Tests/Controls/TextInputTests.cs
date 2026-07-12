@@ -3,8 +3,10 @@ using System.Text;
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
 using SharpVision.Text;
@@ -14,6 +16,7 @@ using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalText = SharpVision.Terminal.Input.Text;
+using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -208,6 +211,30 @@ public sealed class TextInputTests
         (frame.GetCell(new Point(2, 0)).Style.Attributes & Attributes.Reverse)
             .ShouldBe(Attributes.Reverse);
         frame.GetCell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a configured input background fills every arranged cell instead of only the rendered text.</summary>
+    [Fact]
+    public void Render_WhenBackgroundIsStyled_FillsEntireInputBox()
+    {
+        var background = Color.Indexed(24);
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(background: background));
+        var control = new TextInput
+        {
+            Width = Length.Cells(5),
+            Text = "A",
+            Style = style,
+        };
+        new Engine().Layout(control, new Size(5, 1));
+        using var frame = new Frame(new Size(5, 1));
+
+        control.Render(frame.Canvas);
+
+        for (var x = 0; x < 5; x++)
+        {
+            frame.GetCell(new Point(x, 0)).Style.Background.ShouldBe(background);
+        }
     }
 
     /// <summary>Verifies pointer press and inferred-pixel drag focus, capture, and select boundaries.</summary>

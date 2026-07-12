@@ -69,6 +69,12 @@ receives reverse rendition on both its lead and continuation cells. The terminal
 cursor is visible only while focused and its position is committed through the
 semantic frame, never by emitting terminal bytes from the control.
 
+`TextInput` clears its complete committed content box with its resolved style
+before drawing graphemes. Consequently, a configured background paints the full
+editable rectangle—including empty trailing cells, multiline slack, selection,
+and caret space—rather than only the cells occupied by text. Themes provide the
+actual colors through normal, hovered, focused, and disabled style overlays.
+
 ## Interaction
 
 Typed text, navigation, selection, Backspace/Delete, Home/End, word movement,

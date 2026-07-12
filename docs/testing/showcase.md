@@ -30,6 +30,11 @@ buffering. It also opens and selects the Figlet font dropdown, then drags the
 ScrollBar thumb with SGR press, motion, and release reports, asserting each
 visible committed value.
 
+The TextInput rendering suite additionally requires a configured background to
+fill every arranged cell, including the empty cells following short text. The
+showcase applies that full-surface editor style to every editable, read-only,
+password, limited, multiline, and Figlet text input.
+
 Showcase examples compile as production code and use no internal APIs,
 reflection shortcuts, fake controls, or rendering behavior unavailable to
 library consumers.

@@ -58,6 +58,9 @@ the preview as text changes, while a Button-disclosed, scrollable List exposes
 the 400 audited catalog names and loads only the font the user selects. The
 ScrollBar page includes an explicit live value label beside the draggable
 horizontal thumb so capture, drag geometry, and commit are directly observable.
+Every showcase `TextInput` applies the dedicated editor palette, and the control
+paints that resolved background across its entire committed box. Empty space is
+therefore visibly part of the input rather than blending into its card.
 
 On Unix the executable reads directly from `/dev/tty` through a one-byte
 asynchronous stream after acquiring its raw-input lease. This avoids the
