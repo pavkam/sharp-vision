@@ -2,9 +2,11 @@ using System.Buffers;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Tests.Support;
 
+using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
 using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Tests.Rendering;
@@ -65,14 +67,45 @@ public sealed class EquivalenceTests
         incremental.ShouldMatch(full);
     }
 
-    private static byte[] Encode(Frame? front, Frame back)
+    /// <summary>
+    /// Verifies modern decorations survive supported output and independent parsing.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenModernDecorationsAreSupported_AgreesWithFullRender()
+    {
+        using var frame = new Frame(new Size(2, 1));
+        var style = new Style(
+            attributes: Attributes.RapidBlink | Attributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: Color.Rgb(12, 34, 56));
+        _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
+        var screen = new VirtualScreen(frame.Size);
+
+        screen.Apply(Encode(null, frame, ModernDecorationCapabilities));
+
+        screen.ShouldMatch(frame);
+    }
+
+    private static TerminalCapabilities ModernDecorationCapabilities =>
+        TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.TrueColor,
+            StyledUnderlines = new Feature(CapabilitySupport.Supported, Origin.Override),
+            UnderlineColor = new Feature(CapabilitySupport.Supported, Origin.Override),
+            Overline = new Feature(CapabilitySupport.Supported, Origin.Override),
+        };
+
+    private static byte[] Encode(
+        Frame? front,
+        Frame back,
+        TerminalCapabilities? capabilities = null)
     {
         var destination = new ArrayBufferWriter<byte>();
         _ = Encoder.Encode(
             front,
             back,
             destination,
-            TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+            capabilities ?? TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
         return destination.WrittenSpan.ToArray();
     }
 

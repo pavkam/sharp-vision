@@ -109,6 +109,8 @@ public sealed class StyleTests
             style.Set((State) int.MaxValue, new Appearance()));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             new Appearance(attributes: (Attributes) int.MaxValue));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new Appearance(underline: (Underline) int.MaxValue));
 
         changed.ShouldBe(0);
         style.TryGet(State.Normal, out _).ShouldBeFalse();

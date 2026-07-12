@@ -6,7 +6,23 @@ namespace SharpVision.Terminal.Capabilities;
 public sealed record Settings
 {
     /// <summary>Gets an optional color-depth override.</summary>
-    public ColorDepth? ColorDepth { get; init; }
+    /// <exception cref="ArgumentOutOfRangeException">The assigned color depth is unknown.</exception>
+    public ColorDepth? ColorDepth
+    {
+        get;
+        init
+        {
+            if (value.HasValue && !Enum.IsDefined(value.Value))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The color depth is unknown.");
+            }
+
+            field = value;
+        }
+    }
 
     /// <summary>Gets an optional East Asian Ambiguous width override.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The assigned policy is unknown.</exception>

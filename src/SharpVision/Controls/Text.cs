@@ -298,11 +298,14 @@ public sealed class Text: Control
     private TerminalStyle ResolveStyle()
     {
         var inherited = ResolvedStyle;
+        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
         return new TerminalStyle(
             Foreground ?? inherited.Foreground,
             Background ?? inherited.Background,
-            Attributes ?? inherited.Attributes,
-            inherited.Hyperlink);
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
     }
 
     private BackgroundMode ResolveBackgroundMode() => Background.HasValue || Appearance.Background.HasValue

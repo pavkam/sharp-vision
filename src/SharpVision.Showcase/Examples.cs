@@ -125,8 +125,18 @@ internal static class Examples
         AddAttributeLine(attributes, "Italic", "slanted presentation", Attributes.Italic, Palette.Accent);
         AddAttributeLine(attributes, "Underline", "single underline", Attributes.Underline, Palette.Success);
         AddAttributeLine(attributes, "Blink", "blink requested; terminal policy may suppress it", Attributes.Blink, Palette.Warning);
+        AddAttributeLine(attributes, "Rapid blink", "rapid blink requested", Attributes.RapidBlink, Palette.Warning);
         AddAttributeLine(attributes, "Reverse", "foreground and background exchanged", Attributes.Reverse, Palette.Accent);
         AddAttributeLine(attributes, "Strike", "strikethrough presentation", Attributes.Strike, Palette.Warning);
+        AddAttributeLine(attributes, "Overline", "line above the text", Attributes.Overline, Palette.Accent);
+        attributes.Inlines.Add(new LineBreak());
+        attributes.Inlines.Add(new ControlRun("Curly underline: ") { Foreground = Palette.Muted });
+        attributes.Inlines.Add(new ControlRun("diagnostic emphasis")
+        {
+            Foreground = Palette.Text,
+            Underline = Underline.Curly,
+            UnderlineColor = Palette.Warning,
+        });
         AddAttributeLine(attributes, "Hidden", "concealed run follows", Attributes.Hidden, Palette.Muted);
         attributes.Inlines.Add(new ControlRun(" (the concealed sample is intentional)") { Foreground = Palette.Muted });
         AddAttributeLine(
@@ -137,7 +147,7 @@ internal static class Examples
             Palette.Success);
         examples.Children.Add(SampleSection(
             "Terminal text attributes",
-            "Every row below is a real RichText run. Bold, dim, italic, underline, blink, reverse, concealed, and strike are terminal cell attributes; blink and concealed output remain subject to terminal settings.",
+            "Every row below is a real RichText run. Modern underline shape/color and overline use proved terminal capabilities; unsupported underline shapes become straight and unsupported color or overline is omitted.",
             Card(attributes, Glyphs.Light)));
 
         var wrapped = new RichText { Width = Length.Cells(30), Wrapping = Wrapping.Word };

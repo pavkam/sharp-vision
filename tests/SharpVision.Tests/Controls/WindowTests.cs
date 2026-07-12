@@ -1,14 +1,17 @@
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
 
 using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
+using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -40,6 +43,33 @@ public sealed class WindowTests
         FrameOracle.Get(frame, new Point(9, 0)).ShouldBe("╮");
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("a");
         FrameOracle.Get(frame, new Point(0, 3)).ShouldBe("╰");
+    }
+
+    /// <summary>Verifies window body and border retain semantic resource decorations.</summary>
+    [Fact]
+    public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
+    {
+        var style = new UiStyle();
+        style.Set(
+            State.Normal,
+            new Appearance(
+                attributes: Attributes.Overline,
+                underline: Underline.Paired,
+                underlineColor: Color.Indexed(6)));
+        var window = new Window
+        {
+            Bounds = new Rect(0, 0, 4, 3),
+            Background = Color.Indexed(0),
+            Style = style,
+        };
+        using var frame = new Frame(new Size(4, 3));
+
+        window.Render(frame.Canvas);
+
+        var rendered = frame.GetCell(default).Style;
+        rendered.Attributes.ShouldBe(Attributes.Overline);
+        rendered.Underline.ShouldBe(Underline.Paired);
+        rendered.UnderlineColor.ShouldBe(Color.Indexed(6));
     }
 
     /// <summary>Verifies the Turbo Vision block shadow occupies only translated cells outside the window body.</summary>

@@ -1,6 +1,7 @@
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
@@ -11,6 +12,7 @@ using SharpVision.Threading;
 using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
+using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -65,6 +67,35 @@ public sealed class PopupTests
         FrameOracle.Get(frame, new Point(7, 3)).ShouldBe("╯");
         popup.HitTest(new Point(3, 2)).ShouldBeSameAs(child);
         popup.HitTest(new Point(2, 1)).ShouldBeSameAs(popup);
+    }
+
+    /// <summary>Verifies popup surface and frame retain semantic resource decorations.</summary>
+    [Fact]
+    public void Render_WhenStyleUsesModernDecorations_PreservesSurfaceStyle()
+    {
+        var style = new UiStyle();
+        style.Set(
+            State.Normal,
+            new Appearance(
+                attributes: Attributes.Overline,
+                underline: Underline.Dotted,
+                underlineColor: Color.Indexed(4)));
+        var popup = new Popup
+        {
+            Child = new ProbeControl(new Size(1, 1)),
+            IsOpen = true,
+            Style = style,
+        };
+        var size = new Size(6, 4);
+        new Engine().Layout(popup, size);
+        using var frame = new Frame(size);
+
+        popup.Render(frame.Canvas);
+
+        var rendered = frame.GetCell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Style;
+        rendered.Attributes.ShouldBe(Attributes.Overline);
+        rendered.Underline.ShouldBe(Underline.Dotted);
+        rendered.UnderlineColor.ShouldBe(Color.Indexed(4));
     }
 
     /// <summary>Verifies an open popup is painted and hit-tested above later ordinary siblings in its owning overlay.</summary>

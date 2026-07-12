@@ -8,6 +8,7 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
+using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
 using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Tests.Rendering;
@@ -60,20 +61,38 @@ public sealed class RandomizedRenderingTests
         for (var index = 0; index < 24; index++)
         {
             var point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
-            var attributes = random.Next(4) switch
+            var attributes = random.Next(8) switch
             {
                 0 => Attributes.None,
                 1 => Attributes.Bold,
                 2 => Attributes.Italic,
-                _ => Attributes.Underline | Attributes.Reverse,
+                3 => Attributes.Underline | Attributes.Reverse,
+                4 => Attributes.Blink,
+                5 => Attributes.RapidBlink,
+                6 => Attributes.Overline,
+                _ => Attributes.RapidBlink | Attributes.Overline,
             };
+            var underline = random.Next(6) == 0
+                ? (Underline) random.Next((int) Underline.Straight, (int) Underline.Dashed + 1)
+                : Underline.None;
+
+            if (underline != Underline.None)
+            {
+                attributes &= ~Attributes.Underline;
+            }
+
             var foreground = random.Next(3) == 0
                 ? Color.Indexed(random.Next(16))
+                : Color.Default;
+            var underlineColor = underline != Underline.None && random.Next(2) == 0
+                ? Color.Rgb(random.Next(256), random.Next(256), random.Next(256))
                 : Color.Default;
             var style = new Style(
                 foreground,
                 attributes: attributes,
-                hyperlink: links[random.Next(links.Length)]);
+                hyperlink: links[random.Next(links.Length)],
+                underline: underline,
+                underlineColor: underlineColor);
             _ = frame.Canvas.Draw(
                 values[random.Next(values.Length)].AsSpan(),
                 point,
@@ -94,7 +113,13 @@ public sealed class RandomizedRenderingTests
             front,
             back,
             destination,
-            TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
+            TerminalCapabilities.Conservative with
+            {
+                ColorDepth = ColorDepth.TrueColor,
+                StyledUnderlines = new Feature(CapabilitySupport.Supported, Origin.Override),
+                UnderlineColor = new Feature(CapabilitySupport.Supported, Origin.Override),
+                Overline = new Feature(CapabilitySupport.Supported, Origin.Override),
+            });
         return destination.WrittenSpan.ToArray();
     }
 }

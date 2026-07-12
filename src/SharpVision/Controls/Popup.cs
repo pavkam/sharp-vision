@@ -238,14 +238,23 @@ public sealed class Popup: Container
 
         var inherited = ResolvedStyle;
         var background = Background ?? Appearance.Background ?? inherited.Background;
-        var style = new TerminalStyle(inherited.Foreground, background, inherited.Attributes, inherited.Hyperlink);
+        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited);
+        var style = new TerminalStyle(
+            inherited.Foreground,
+            background,
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
         canvas.Clear(SurfaceBounds, style);
 
         var border = new TerminalStyle(
             BorderColor ?? Appearance.BorderColor ?? inherited.Foreground,
             background,
-            inherited.Attributes,
-            inherited.Hyperlink);
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
         DrawFrame(canvas, border);
     }
 

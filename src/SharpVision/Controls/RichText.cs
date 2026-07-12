@@ -381,25 +381,35 @@ public sealed class RichText: Control
     private TerminalStyle ResolveInlineStyle(Run run)
     {
         var inherited = ResolvedStyle;
+        var (attributes, underline, underlineColor) = Decoration.Resolve(
+            inherited,
+            run.Attributes,
+            run.Underline,
+            run.UnderlineColor);
         return new TerminalStyle(
             run.Foreground ?? inherited.Foreground,
             run.Background ?? inherited.Background,
-            run.Attributes ?? inherited.Attributes,
+            attributes,
             inherited.Hyperlink,
-            run.Underline ?? inherited.Underline,
-            run.UnderlineColor ?? inherited.UnderlineColor);
+            underline,
+            underlineColor);
     }
 
     private TerminalStyle ResolveInlineStyle(Hyperlink hyperlink)
     {
         var inherited = ResolvedStyle;
+        var (attributes, underline, underlineColor) = Decoration.Resolve(
+            inherited,
+            hyperlink.Attributes,
+            hyperlink.Underline,
+            hyperlink.UnderlineColor);
         return new TerminalStyle(
             hyperlink.Foreground ?? inherited.Foreground,
             hyperlink.Background ?? inherited.Background,
-            hyperlink.Attributes ?? inherited.Attributes,
+            attributes,
             hyperlink.Target,
-            hyperlink.Underline ?? inherited.Underline,
-            hyperlink.UnderlineColor ?? inherited.UnderlineColor);
+            underline,
+            underlineColor);
     }
 
     private BackgroundMode ResolveBackgroundMode(Run run) => run.Background.HasValue || Appearance.Background.HasValue

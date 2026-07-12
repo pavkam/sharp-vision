@@ -8,8 +8,8 @@ using SharpVision.Terminal.Rendering;
 
 using Shouldly;
 
-using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
 using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
+using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
 using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Tests.Rendering;

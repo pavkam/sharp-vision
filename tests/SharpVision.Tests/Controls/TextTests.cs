@@ -162,6 +162,55 @@ public sealed class TextTests
         cell.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
     }
 
+    /// <summary>Verifies resource decorations survive Text's direct-style composition.</summary>
+    [Fact]
+    public void Render_WhenStyleUsesModernDecorations_PreservesCompleteSemanticStyle()
+    {
+        var style = new UiStyle();
+        style.Set(
+            State.Normal,
+            new Appearance(
+                attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
+                underline: Underline.Dashed,
+                underlineColor: Color.Indexed(3)));
+        var text = new ControlText("A") { Style = style };
+        new Engine().Layout(text, new Size(1, 1));
+        using var frame = new Frame(new Size(1, 1));
+
+        text.Render(frame.Canvas);
+
+        var rendered = frame.GetCell(default).Style;
+        rendered.Attributes.ShouldBe(TerminalAttributes.RapidBlink | TerminalAttributes.Overline);
+        rendered.Underline.ShouldBe(Underline.Dashed);
+        rendered.UnderlineColor.ShouldBe(Color.Indexed(3));
+    }
+
+    /// <summary>Verifies a legacy underline override safely replaces an inherited typed underline.</summary>
+    [Fact]
+    public void Render_WhenLegacyUnderlineOverridesTypedUnderline_UsesLegacyDecoration()
+    {
+        var style = new UiStyle();
+        style.Set(
+            State.Normal,
+            new Appearance(
+                underline: Underline.Curly,
+                underlineColor: Color.Indexed(3)));
+        var text = new ControlText("A")
+        {
+            Style = style,
+            Attributes = TerminalAttributes.Underline,
+        };
+        new Engine().Layout(text, new Size(1, 1));
+        using var frame = new Frame(new Size(1, 1));
+
+        text.Render(frame.Canvas);
+
+        var rendered = frame.GetCell(default).Style;
+        rendered.Attributes.ShouldBe(TerminalAttributes.Underline);
+        rendered.Underline.ShouldBe(Underline.None);
+        rendered.UnderlineColor.ShouldBe(Color.Indexed(3));
+    }
+
     /// <summary>Verifies text without a declared background preserves the already-painted surface.</summary>
     [Fact]
     public void Render_WhenBackgroundIsUnset_PreservesDestinationSurface()

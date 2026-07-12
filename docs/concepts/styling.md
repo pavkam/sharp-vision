@@ -8,10 +8,11 @@ invalidates only dependent controls and only the required phase.
 
 ## Values and scope
 
-Styles can provide foreground/background, text attributes, border glyphs/colors,
-padding, and control-specific appearance. A null `Control.Style` inherits the
-nearest ancestor style; a non-null style replaces that resource scope. Unset
-appearance fields and explicit terminal defaults are distinct.
+Styles can provide foreground/background, text attributes, a typed underline,
+independent underline color, border glyphs/colors, padding, and control-specific
+appearance. A null `Control.Style` inherits the nearest ancestor style; a
+non-null style replaces that resource scope. Unset appearance fields and
+explicit terminal defaults are distinct.
 
 The base control converts foreground, background, and attributes into terminal
 cell style. Concrete Phase 5 controls consume resolved border and style-padding
@@ -25,9 +26,11 @@ inherits the fully resolved active appearance; explicit terminal defaults and
 invalidates measure, while display-only overrides invalidate render.
 
 `Appearance` represents every field as an optional value. Null is unset;
-`Color.Default`, `Attributes.None`, zero `Thickness`, and a concrete border Rune
-are explicit overlays. `Resolver.ToTerminal` converts the final optional fields
-to the complete semantic style stored in terminal cells.
+`Color.Default`, `Attributes.None`, `Underline.None`, zero `Thickness`, and a
+concrete border Rune are explicit overlays. Underline and underline color
+overlay independently, which allows one state to change the shape while keeping
+a lower-precedence color. `Resolver.ToTerminal` validates and converts the final
+combination to the complete semantic style stored in terminal cells.
 
 ## Visual states
 
@@ -46,10 +49,11 @@ disabled-looking brush alone does not disable a control.
 
 ## Invalidation and tests
 
-Color, attribute, border Rune, and border-color changes invalidate render.
-Style-padding changes invalidate measure so consuming concrete controls can
-remeasure. Tests cover direct versus inherited values, resource replacement,
-combined states, dependency cleanup, disabled semantics, and exact cell styles.
+Color, attribute, underline, underline-color, border Rune, and border-color
+changes invalidate render. Style-padding changes invalidate measure so consuming
+concrete controls can remeasure. Tests cover direct versus inherited values,
+resource replacement, combined states, dependency cleanup, disabled semantics,
+and exact cell styles.
 
 `Control.Style` is nullable: null inherits the nearest ancestor resource. A
 direct subscriber propagates changes only through descendants that still inherit

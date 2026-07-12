@@ -9,9 +9,11 @@ clean full render of B. Both models must equal B and each other in grapheme
 text, lead/continuation ownership, style, hyperlink, cursor position, and
 visibility.
 
-The model parses emitted ECMA-48 bytes and implements only terminal semantics;
-it does not call `Damage` or `Encoder`. Exact-byte tests remain separate so two
-implementations cannot agree on the same unnecessary or malformed sequence.
+The model parses emitted ECMA-48 bytes and implements only terminal semantics,
+including colon-form underline variants, underline color, overline, slow/rapid
+blink, and resets; it does not call `Damage` or `Encoder`. Exact-byte tests
+remain separate so two implementations cannot agree on the same unnecessary or
+malformed sequence.
 
 ## Damage proof
 
@@ -35,6 +37,6 @@ keeps collision behavior correct.
 
 Fixed seed `0xD1FF` generates 128 frame pairs containing ASCII, CJK, combining
 clusters, emoji ZWJ sequences, spaces, indexed colors, attributes, hyperlinks,
-edge policies, and cursor states. Every pair runs through the full/incremental
-oracle. A failure reports the seed and case before it becomes a named
-regression.
+typed underline variants/colors, overline, slow/rapid blink, edge policies, and
+cursor states. Every pair runs through the full/incremental oracle. A failure
+reports the seed and case before it becomes a named regression.

@@ -195,9 +195,15 @@ public sealed class Window: Container
     {
         var inherited = ResolvedStyle;
         var background = Background ?? inherited.Background;
-        var attributes = Attributes ?? inherited.Attributes;
+        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
         var opaque = Background.HasValue || Appearance.Background.HasValue;
-        var body = new TerminalStyle(inherited.Foreground, background, attributes);
+        var body = new TerminalStyle(
+            inherited.Foreground,
+            background,
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
 
         if (opaque)
         {
@@ -209,7 +215,13 @@ public sealed class Window: Container
             return;
         }
 
-        var border = new TerminalStyle(BorderColor ?? Appearance.BorderColor ?? inherited.Foreground, background, attributes);
+        var border = new TerminalStyle(
+            BorderColor ?? Appearance.BorderColor ?? inherited.Foreground,
+            background,
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
         var backgroundMode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         DrawFrame(canvas, border, backgroundMode);
 

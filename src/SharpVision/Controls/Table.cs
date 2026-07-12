@@ -178,16 +178,21 @@ public sealed class Table: Container
         }
 
         var inherited = ResolvedStyle;
+        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited);
         var header = new TerminalStyle(
             HeaderForeground ?? inherited.Foreground,
             HeaderBackground ?? inherited.Background,
-            inherited.Attributes,
-            inherited.Hyperlink);
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
         var grid = new TerminalStyle(
             GridLineColor ?? inherited.Foreground,
             inherited.Background,
-            inherited.Attributes,
-            inherited.Hyperlink);
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
         var headerHeight = ShowHeader ? Add(CellPadding.Vertical, 1) : 0;
 
         if (ShowHeader)

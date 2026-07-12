@@ -182,11 +182,14 @@ public sealed class Shadow: Container
     private TerminalStyle ResolveShadowStyle()
     {
         var inherited = ResolvedStyle;
+        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
         return new TerminalStyle(
             Foreground ?? inherited.Foreground,
             Background ?? inherited.Background,
-            Attributes ?? inherited.Attributes,
-            inherited.Hyperlink);
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
     }
 
     private static int Add(int left, int right)

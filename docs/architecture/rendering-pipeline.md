@@ -102,10 +102,13 @@ is only a mismatch prefilter; equal hashes still require exact UTF-8 comparison.
 `Encoder.Encode` requires the immutable capability snapshot for the frame. It
 positions each changed run, emits complete leads while skipping continuations,
 projects semantic colors to the profile's monochrome, basic-16, indexed-256, or
-true-color tier, applies deterministic SGR/OSC 8 transitions, resets
-presentation, and restores the frame's cursor state. Transition comparison uses
-the projected style, so richer semantic colors that share one terminal fallback
-do not produce redundant bytes. A size mismatch, missing front frame, or changed
+true-color tier, projects typed underline, underline color, and overline through
+proved feature support, applies deterministic SGR/OSC 8 transitions, resets
+presentation, and restores the frame's cursor state. Unsupported typed
+underlines become legacy straight underlines; unsupported underline color and
+overline are omitted. Transition comparison uses the complete projected style,
+so richer semantic colors or decorations that share one terminal fallback do not
+produce redundant bytes. A size mismatch, missing front frame, or changed
 capability snapshot is always a full redraw.
 
 ## Correctness oracle

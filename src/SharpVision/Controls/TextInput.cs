@@ -1008,7 +1008,9 @@ public sealed class TextInput: Container
             style.Foreground,
             style.Background,
             style.Attributes | TerminalAttributes.Reverse,
-            style.Hyperlink);
+            style.Hyperlink,
+            style.Underline,
+            style.UnderlineColor);
     }
 
     private static bool IsLineBreak(ReadOnlySpan<char> cluster) =>

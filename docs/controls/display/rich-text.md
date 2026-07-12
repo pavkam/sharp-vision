@@ -17,14 +17,18 @@ grapheme wrapping, line alignment, and semantic terminal hyperlinks.
   duplicates, and cross-document insertion before mutation.
 - Inline content and style changes invalidate document measurement.
 
-`Run` has `Content` and optional foreground, background, and attributes.
-`Hyperlink` has visible `Content`, the same optional style values, and a
-non-empty control-free `Target`. It writes semantic hyperlink metadata but never
-opens a URL automatically.
+`Run` has `Content` and optional foreground, background, attributes, typed
+underline, and underline color. `Hyperlink` has visible `Content`, the same
+optional style values, and a non-empty control-free `Target`. It writes semantic
+hyperlink metadata but never opens a URL automatically. Every setter validates
+the proposed complete decoration before mutation, so conflicting legacy/typed
+underlines, slow/rapid blink, and an orphan underline color fail atomically.
 
-The supported terminal attributes are bold, dim, italic, underline, blink,
-reverse, hidden/concealed, and strike. Attributes are stored semantically on
-cells; terminal policy may suppress blink or concealed presentation.
+The supported terminal attributes are bold, dim, italic, legacy underline, slow
+blink, rapid blink, reverse, hidden/concealed, strike, and overline. Typed
+underlines are straight, paired, curly, dotted, and dashed. Decorations are
+stored semantically on cells; terminal capabilities may degrade a typed
+underline to straight or suppress unsupported underline color and overline.
 
 ## Interaction and rendering
 

@@ -1,6 +1,7 @@
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 using Shouldly;
@@ -73,9 +74,9 @@ public sealed class GalleryRenderingTests
         screen.ValidateContinuations();
     }
 
-    /// <summary>Verifies the Button page demonstrates both quiet composite and visible block-glyph shadows.</summary>
+    /// <summary>Verifies the Button page demonstrates both shadow modes and a stationary flat variant.</summary>
     [Fact]
-    public void CreateExamples_WhenButtonPageIsSelected_ProvidesBothShadowModes()
+    public void CreateExamples_WhenButtonPageIsSelected_ProvidesShadowAndFlatVariants()
     {
         using var gallery = new Gallery();
         gallery.Select(IndexOf(gallery, "Button"));
@@ -83,6 +84,7 @@ public sealed class GalleryRenderingTests
         var buttons = FindAll<Button>(gallery.Content);
 
         buttons.ShouldContain(button => button.ShadowMode == ShadowMode.Composite);
+        buttons.ShouldContain(button => !button.HasShadow);
         buttons.ShouldContain(button =>
             button.ShadowMode == ShadowMode.BlockGlyph &&
             button.ShadowGlyph == new System.Text.Rune('░'));
@@ -188,6 +190,11 @@ public sealed class GalleryRenderingTests
         runs.ShouldContain(run => run.Attributes == Attributes.Reverse);
         runs.ShouldContain(run => run.Attributes == Attributes.Strike);
         runs.ShouldContain(run => run.Attributes == Attributes.Hidden);
+        runs.ShouldContain(run => run.Attributes == Attributes.RapidBlink);
+        runs.ShouldContain(run => run.Attributes == Attributes.Overline);
+        runs.ShouldContain(run =>
+            run.Underline == Underline.Curly &&
+            run.UnderlineColor == Color.Indexed(220));
         runs.ShouldContain(run => run.Attributes == (Attributes.Bold | Attributes.Underline | Attributes.Italic));
     }
 

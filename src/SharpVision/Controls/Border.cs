@@ -3,9 +3,9 @@ using System.Text;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 
 using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
+using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
@@ -79,7 +79,7 @@ public sealed class Border: Container
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
     /// <exception cref="InvalidOperationException">The attached Border is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Border is disposed.</exception>
-    public Attributes? Attributes
+    public TerminalAttributes? Attributes
     {
         get;
         set
@@ -128,12 +128,18 @@ public sealed class Border: Container
     {
         var inherited = ResolvedStyle;
         var background = Background ?? inherited.Background;
-        var attributes = Attributes ?? inherited.Attributes;
+        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
         var opaque = Background.HasValue || Appearance.Background.HasValue;
 
         if (opaque)
         {
-            canvas.Clear(Bounds, new TerminalStyle(inherited.Foreground, background, attributes));
+            canvas.Clear(Bounds, new TerminalStyle(
+                inherited.Foreground,
+                background,
+                attributes,
+                inherited.Hyperlink,
+                underline,
+                underlineColor));
         }
 
         if (Bounds.Width == 0 || Bounds.Height == 0)
@@ -142,7 +148,13 @@ public sealed class Border: Container
         }
 
         var color = BorderColor ?? Appearance.BorderColor ?? inherited.Foreground;
-        var style = new TerminalStyle(color, background, attributes);
+        var style = new TerminalStyle(
+            color,
+            background,
+            attributes,
+            inherited.Hyperlink,
+            underline,
+            underlineColor);
         var backgroundMode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         DrawHorizontal(canvas, Bounds.Y, top: true, style, backgroundMode);
 

@@ -96,6 +96,15 @@ physical terminal colors. Terminals may configure their first sixteen entries.
 Equal-distance projection selects the lower palette index, and projected style
 equality suppresses redundant transitions.
 
+Styled underlines, independent underline color, and overline are separate
+optional features. Terminal-name hints may mark them tentative for diagnostics,
+but only query evidence or an explicit nullable `Settings` override marks them
+supported. A supported styled-underline feature permits `4:1` through `4:5`;
+otherwise every typed variant degrades to legacy SGR 4. Unsupported underline
+color and overline are omitted. Rapid blink remains standard ECMA-48 SGR 6 and
+is not capability-gated. The encoder compares these projected decoration fields
+alongside projected colors before deciding whether a transition is redundant.
+
 ## Safe degradation
 
 Feature fallback is deterministic: omit an unsupported visual attribute, reduce

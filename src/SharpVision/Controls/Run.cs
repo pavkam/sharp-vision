@@ -1,7 +1,6 @@
 using SharpVision.Terminal.Protocols;
 
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Controls;
 

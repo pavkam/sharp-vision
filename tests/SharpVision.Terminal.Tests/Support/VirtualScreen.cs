@@ -21,7 +21,9 @@ internal sealed class VirtualScreen: ISequenceSink
     private Point _position;
     private TerminalColor _foreground;
     private TerminalColor _background;
+    private TerminalColor _underlineColor;
     private Attributes _attributes;
+    private Underline _underline;
     private string? _hyperlink;
 
     /// <summary>Initializes a blank virtual screen.</summary>
@@ -129,7 +131,7 @@ internal sealed class VirtualScreen: ISequenceSink
         }
         else if (final == (byte) 'm')
         {
-            ApplySgr(Parse(parameters));
+            ApplySgr(parameters);
         }
         else if (parameters.SequenceEqual("?25"u8) && final is (byte) 'h' or (byte) 'l')
         {
@@ -170,16 +172,29 @@ internal sealed class VirtualScreen: ISequenceSink
     /// <inheritdoc/>
     public void Report(in Diagnostic value) => throw new InvalidOperationException(value.ToString());
 
-    private void ApplySgr(int[] values)
+    private void ApplySgr(ReadOnlySpan<byte> parameters)
     {
+        var text = Encoding.ASCII.GetString(parameters);
+        var values = text.Length == 0 ? ["0"] : text.Split(';');
+
         for (var index = 0; index < values.Length; index++)
         {
-            switch (values[index])
+            if (values[index].StartsWith("4:", StringComparison.Ordinal))
+            {
+                ApplyTypedUnderline(values[index]);
+                continue;
+            }
+
+            var value = int.Parse(values[index], NumberStyles.None, CultureInfo.InvariantCulture);
+
+            switch (value)
             {
                 case 0:
                     _foreground = TerminalColor.Default;
                     _background = TerminalColor.Default;
+                    _underlineColor = TerminalColor.Default;
                     _attributes = Attributes.None;
+                    _underline = Underline.None;
                     break;
                 case 1:
                     _attributes |= Attributes.Bold;
@@ -192,10 +207,13 @@ internal sealed class VirtualScreen: ISequenceSink
                     break;
                 case 4:
                     _attributes |= Attributes.Underline;
+                    _underline = Underline.None;
                     break;
                 case 5:
-                case 6:
                     _attributes |= Attributes.Blink;
+                    break;
+                case 6:
+                    _attributes |= Attributes.RapidBlink;
                     break;
                 case 7:
                     _attributes |= Attributes.Reverse;
@@ -212,16 +230,48 @@ internal sealed class VirtualScreen: ISequenceSink
                 case 48:
                     _background = ParseColor(values, ref index);
                     break;
+                case 53:
+                    _attributes |= Attributes.Overline;
+                    break;
+                case 55:
+                    _attributes &= ~Attributes.Overline;
+                    break;
+                case 58:
+                    _underlineColor = ParseColor(values, ref index);
+                    break;
+                case 59:
+                    _underlineColor = TerminalColor.Default;
+                    break;
                 case 39:
                     _foreground = TerminalColor.Default;
                     break;
                 case 49:
                     _background = TerminalColor.Default;
                     break;
+                case 24:
+                    _attributes &= ~Attributes.Underline;
+                    _underline = Underline.None;
+                    break;
+                case 25:
+                    _attributes &= ~(Attributes.Blink | Attributes.RapidBlink);
+                    break;
                 default:
                     break;
             }
         }
+    }
+
+    private void ApplyTypedUnderline(string parameter)
+    {
+        var value = int.Parse(parameter.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture);
+
+        if (!Enum.IsDefined((Underline) value))
+        {
+            throw new InvalidOperationException("The virtual screen received an unknown underline variant.");
+        }
+
+        _attributes &= ~Attributes.Underline;
+        _underline = (Underline) value;
     }
 
     private void Write(string value, int width)
@@ -265,7 +315,13 @@ internal sealed class VirtualScreen: ISequenceSink
         }
     }
 
-    private Style CurrentStyle => new(_foreground, _background, _attributes, _hyperlink);
+    private Style CurrentStyle => new(
+        _foreground,
+        _background,
+        _attributes,
+        _hyperlink,
+        _underline,
+        _underlineColor);
 
     private bool IsPositionInBounds() =>
         _position.X >= 0 &&
@@ -282,19 +338,22 @@ internal sealed class VirtualScreen: ISequenceSink
             int.Parse(item, NumberStyles.None, CultureInfo.InvariantCulture))];
     }
 
-    private static TerminalColor ParseColor(int[] values, ref int index)
+    private static TerminalColor ParseColor(string[] values, ref int index)
     {
-        var mode = values[++index];
+        var mode = ParseNumber(values[++index]);
 
         return mode == 5
-            ? TerminalColor.Indexed(values[++index])
+            ? TerminalColor.Indexed(ParseNumber(values[++index]))
             : mode == 2
             ? TerminalColor.Rgb(
-                values[++index],
-                values[++index],
-                values[++index])
+                ParseNumber(values[++index]),
+                ParseNumber(values[++index]),
+                ParseNumber(values[++index]))
             : throw new InvalidOperationException("The virtual screen received an unknown color mode.");
     }
+
+    private static int ParseNumber(string value) =>
+        int.Parse(value, NumberStyles.None, CultureInfo.InvariantCulture);
 
     private static string FrameText(Frame frame, Point point)
     {

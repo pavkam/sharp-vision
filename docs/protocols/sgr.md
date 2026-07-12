@@ -50,15 +50,29 @@ squared sRGB distance and selects the lower index on a tie.
 Every shipped rendition and color form has independent exact-byte coverage. The
 low-level protocol API also emits typed underline variants through `4:0` to
 `4:5`, underline default/indexed/RGB color through 59 and 58, rapid blink
-through 6, and overline enable/disable through 53/55. The semantic frame model,
-capability projection, and report-backed optional-style evidence remain renderer
-work; low-level availability alone is not a support claim for controls.
+through 6, and overline enable/disable through 53/55.
+
+The semantic `Rendering.Style` stores rapid blink and overline attributes plus a
+typed `Underline` and independent `UnderlineColor`. Legacy
+`Attributes.Underline` continues to mean standard SGR 4. Slow and rapid blink
+are mutually exclusive; legacy and typed underline selections are mutually
+exclusive; an underline color requires an active legacy or typed underline.
+Public constructors reject an invalid combination before publishing state.
+
+Styled underline variants, underline color, and overline require a supported
+capability. Unknown, tentative, or unsupported styled underlines degrade to
+legacy straight underline. Unsupported underline color and overline are omitted.
+Rapid blink is standard ECMA-48 output and does not require extension evidence.
+Projection affects only emitted bytes: cells retain their richer semantic style
+so a later capability refresh and full redraw can improve presentation.
 
 ## Tests
 
-Exact bytes cover every attribute on/off pair, combined states, default/indexed
-/RGB colors, unsupported fallback, reset interactions, and transitions between
-frames. A virtual-terminal model proves the resulting style state.
+Exact bytes cover every attribute on/off pair, typed underline variant,
+default/indexed/RGB underline color, unsupported fallback, reset interaction,
+and frame transition. The independent virtual-terminal model parses `4:x`, 58,
+59, 53, 55, slow/rapid blink, and their resets. Targeted and fixed-seed random
+frame transitions prove the resulting complete semantic style state.
 
 ## Sources
 

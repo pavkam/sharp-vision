@@ -124,7 +124,13 @@ public readonly struct Canvas
             {
                 var point = new Point(x, y);
                 var applied = background == BackgroundMode.Transparent
-                    ? new Style(style.Foreground, _frame.GetCell(point).Style.Background, style.Attributes, style.Hyperlink)
+                    ? new Style(
+                        style.Foreground,
+                        _frame.GetCell(point).Style.Background,
+                        style.Attributes,
+                        style.Hyperlink,
+                        style.Underline,
+                        style.UnderlineColor)
                     : style;
                 _ = _frame.TrySetOwnerStyle(_frame.GetIndex(point), _clip, applied);
             }
@@ -446,7 +452,13 @@ public readonly struct Canvas
             if (write)
             {
                 var applied = background == BackgroundMode.Transparent
-                    ? new Style(style.Foreground, _frame.GetCell(point).Style.Background, style.Attributes, style.Hyperlink)
+                    ? new Style(
+                        style.Foreground,
+                        _frame.GetCell(point).Style.Background,
+                        style.Attributes,
+                        style.Hyperlink,
+                        style.Underline,
+                        style.UnderlineColor)
                     : style;
                 _frame.Write(point, stored, cellWidth, applied);
             }

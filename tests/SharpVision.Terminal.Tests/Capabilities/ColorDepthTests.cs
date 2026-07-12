@@ -20,5 +20,7 @@ public sealed class ColorDepthTests
     {
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             new TerminalCapabilities { ColorDepth = (ColorDepth) 999 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new Settings { ColorDepth = (ColorDepth) 999 });
     }
 }

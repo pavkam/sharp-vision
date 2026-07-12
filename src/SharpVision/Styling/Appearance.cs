@@ -25,7 +25,8 @@ public readonly record struct Appearance
     /// <param name="underline">The optional typed underline variant.</param>
     /// <param name="underlineColor">The optional underline color.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="attributes"/> contains unknown flags.
+    /// <paramref name="attributes"/> contains unknown flags or
+    /// <paramref name="underline"/> is unknown.
     /// </exception>
     public Appearance(
         Color? foreground = null,
@@ -40,6 +41,14 @@ public readonly record struct Appearance
         if (attributes.HasValue)
         {
             _ = new TerminalStyle(attributes: attributes.Value);
+        }
+
+        if (underline.HasValue && !Enum.IsDefined(underline.Value))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(underline),
+                underline,
+                "The underline style is unknown.");
         }
 
         Foreground = foreground;
