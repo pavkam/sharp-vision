@@ -21,7 +21,7 @@ public sealed class RouterTests
         { "\u001b]777;payload\u0007"u8.ToArray(), SequenceKind.Osc },
     };
 
-    /// <summary>Verifies recognized terminal replies cannot fall through as input.</summary>
+    /// <summary>Verifies every transport split of a recognized terminal reply cannot fall through as input.</summary>
     /// <param name="input">The complete terminal reply.</param>
     /// <param name="expected">The expected typed response family.</param>
     [Theory]
@@ -31,22 +31,26 @@ public sealed class RouterTests
     [InlineData("\u001b[?2026;1$y", ResponseKind.PrivateMode)]
     [InlineData("\u001b[?3u", ResponseKind.Keyboard)]
     [InlineData("\u001b]10;rgb:ffff/0000/8080\u001b\\", ResponseKind.ForegroundColor)]
-    public void Route_WhenReplyIsRecognized_DeliversTypedResponse(
+    public void Route_WhenReplyIsFragmented_DeliversTypedResponse(
         string input,
         ResponseKind expected)
     {
         // Arrange
-        var sink = new RecordingProtocolSink();
-        using var router = new ProtocolRouter(sink);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(input);
 
-        // Act
-        router.Route(System.Text.Encoding.UTF8.GetBytes(input));
+        // Act / Assert
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink);
+            router.Route(bytes.AsSpan(0, split));
+            router.Route(bytes.AsSpan(split));
 
-        // Assert
-        sink.Responses.ShouldHaveSingleItem().Kind.ShouldBe(expected);
-        sink.Sequences.ShouldBeEmpty();
-        sink.Strokes.ShouldBeEmpty();
-        sink.Text.ShouldBeEmpty();
+            sink.Responses.ShouldHaveSingleItem($"The reply differed at split {split}.").Kind.ShouldBe(expected);
+            sink.Sequences.ShouldBeEmpty();
+            sink.Strokes.ShouldBeEmpty();
+            sink.Text.ShouldBeEmpty();
+        }
     }
 
     /// <summary>Verifies DCS headers and payload outlive the source read.</summary>
@@ -168,6 +172,45 @@ public sealed class RouterTests
             value.Kind == SequenceKind.Osc);
         sink.Text.Select(value => value.Value.ToString()).ShouldBe(
             ["k", "n", "o", "w", "n"]);
+        sink.Sequences.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies CAN aborts a string and restores normal text routing.</summary>
+    [Fact]
+    public void Route_WhenStringIsCancelled_ReportsAndRecoversFollowingText()
+    {
+        // Arrange
+        var sink = new RecordingProtocolSink();
+        using var router = new ProtocolRouter(sink);
+
+        // Act
+        router.Route("\u001b]777;payload\u0018x"u8);
+
+        // Assert
+        sink.Diagnostics.ShouldContain(value =>
+            value.Code == DiagnosticCode.Cancelled &&
+            value.Kind == SequenceKind.Osc);
+        sink.Text.Select(value => value.Value.ToString()).ShouldBe(["x"]);
+        sink.Sequences.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies stream completion reports one unfinished string.</summary>
+    [Fact]
+    public void Complete_WhenStringIsTruncated_ReportsOnceAndRoutesNoSequence()
+    {
+        // Arrange
+        var sink = new RecordingProtocolSink();
+        using var router = new ProtocolRouter(sink);
+        router.Route("\u001bP1;2$qpartial"u8);
+
+        // Act
+        router.Complete();
+        router.Complete();
+
+        // Assert
+        sink.Diagnostics.Count(value =>
+            value.Code == DiagnosticCode.Truncated &&
+            value.Kind == SequenceKind.Dcs).ShouldBe(1);
         sink.Sequences.ShouldBeEmpty();
     }
 

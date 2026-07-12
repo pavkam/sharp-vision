@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use
-> checkbox (`- [ ]`) syntax for tracking.
+> checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Preserve and route typed terminal replies and bounded OSC/DCS/string
 events through the normal runtime without breaking the existing input decoder.
@@ -96,7 +96,7 @@ Completion requires:
 - Modify: `docs/protocols/device-attributes.md`
 - Modify: `docs/architecture/runtime-event-loop.md`
 
-- [ ] **Step 1: Write the normative contract**
+- [x] **Step 1: Write the normative contract**
 
 Create `runtime-routing.md` with this contract:
 
@@ -135,7 +135,7 @@ Mutate the source after routing to prove ownership. Follow hostile strings with
 known input to prove recovery.
 ```
 
-- [ ] **Step 2: Link the normative owner**
+- [x] **Step 2: Link the normative owner**
 
 Add this protocol-index entry and link it from the affected architecture and
 protocol sections:
@@ -145,7 +145,7 @@ protocol sections:
   defines typed dispatch, owned extension values, and runtime fallback.
 ```
 
-- [ ] **Step 3: Validate the documents**
+- [x] **Step 3: Validate the documents**
 
 Run:
 
@@ -157,7 +157,7 @@ npm run lint:links
 
 Expected: zero Markdown and local-link errors.
 
-- [ ] **Step 4: Commit the contract**
+- [x] **Step 4: Commit the contract**
 
 ```bash
 git add docs/protocols/runtime-routing.md docs/index.md docs/protocols/index.md docs/protocols/dcs-strings.md docs/protocols/device-attributes.md docs/architecture/runtime-event-loop.md
@@ -175,7 +175,7 @@ Expected: only these documentation paths are committed.
 - Create: `tests/SharpVision.Terminal.Tests/Support/RecordingProtocolSink.cs`
 - Create: `tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs`
 
-- [ ] **Step 1: Write the failing ownership test**
+- [x] **Step 1: Write the failing ownership test**
 
 ```csharp
 [Fact]
@@ -201,7 +201,7 @@ public void Route_WhenDcsCompletes_OwnsHeaderAndPayload()
 }
 ```
 
-- [ ] **Step 2: Witness the expected failure**
+- [x] **Step 2: Witness the expected failure**
 
 Run:
 
@@ -212,7 +212,7 @@ dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTe
 Expected: build failure naming `ProtocolRouter`, `IProtocolSink`, and
 `ProtocolSequence`.
 
-- [ ] **Step 3: Add `IProtocolSink`**
+- [x] **Step 3: Add `IProtocolSink`**
 
 ```csharp
 using SharpVision.Terminal.Input;
@@ -232,7 +232,7 @@ public interface IProtocolSink: IInputSink
 }
 ```
 
-- [ ] **Step 4: Add `ProtocolSequence`**
+- [x] **Step 4: Add `ProtocolSequence`**
 
 ```csharp
 namespace SharpVision.Terminal.Protocols;
@@ -291,7 +291,7 @@ public sealed class ProtocolSequence
 }
 ```
 
-- [ ] **Step 5: Add `RecordingProtocolSink`**
+- [x] **Step 5: Add `RecordingProtocolSink`**
 
 Implement every `IInputSink` callback and these full-protocol members. Each
 callback appends its stable family name to `Order`.
@@ -328,7 +328,7 @@ Expected: the owned types compile; the test still waits for `ProtocolRouter`.
 - Modify: `src/SharpVision.Terminal/Input/Decoder.cs`
 - Modify: `tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs`
 
-- [ ] **Step 1: Add failing typed-reply tests**
+- [x] **Step 1: Add failing typed-reply tests**
 
 ```csharp
 [Theory]
@@ -358,7 +358,7 @@ length of `ESC [ ? 2026 ; 1 $ y`. Create a fresh router per split, route the two
 slices in order, and assert one response and no text. Also route the sequence
 byte by byte in a fresh router.
 
-- [ ] **Step 2: Add the legacy fallback test**
+- [x] **Step 2: Add the legacy fallback test**
 
 ```csharp
 [Fact]
@@ -381,7 +381,7 @@ public void Decode_WhenSinkHandlesOnlyInput_ReportsUnsupportedReply()
 Run the focused test and expect failures because replies and strings are still
 swallowed.
 
-- [ ] **Step 3: Preserve parser callback data in `Adapter`**
+- [x] **Step 3: Preserve parser callback data in `Adapter`**
 
 ```csharp
 public void Sequence(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator) =>
@@ -396,7 +396,7 @@ public void Dcs(
     _owner.AcceptDcs(parameters, intermediates, final, value, terminator);
 ```
 
-- [ ] **Step 4: Route typed CSI before key interpretation**
+- [x] **Step 4: Route typed CSI before key interpretation**
 
 Add `private readonly IProtocolSink? _protocolSink;`, assign
 `_protocolSink = sink as IProtocolSink;`, and put this after pending
@@ -426,7 +426,7 @@ private void RouteResponse(in Response value, SequenceKind kind)
 }
 ```
 
-- [ ] **Step 5: Route OSC replies and raw strings**
+- [x] **Step 5: Route OSC replies and raw strings**
 
 ```csharp
 private void HandleSequence(SequenceKind kind, ReadOnlySpan<byte> payload, StringTerminator terminator)
@@ -474,7 +474,7 @@ private void HandleDcs(
 Update `AcceptSequence` and `AcceptDcs` to pass every borrowed field into these
 handlers.
 
-- [ ] **Step 6: Add the public full-stream facade**
+- [x] **Step 6: Add the public full-stream facade**
 
 ```csharp
 using SharpVision.Terminal.Input;
@@ -516,7 +516,7 @@ public sealed class ProtocolRouter: IDisposable
 }
 ```
 
-- [ ] **Step 7: Run router and regression tests**
+- [x] **Step 7: Run router and regression tests**
 
 ```bash
 dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests" "*LegacyKeyTests" "*KittyKeyboardTests" "*PasteTests" "*MouseTests" --timeout 60s
@@ -524,7 +524,7 @@ dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTe
 
 Expected: all selected tests pass and only recognized replies are reclassified.
 
-- [ ] **Step 8: Commit the low-level router**
+- [x] **Step 8: Commit the low-level router**
 
 ```bash
 git add src/SharpVision.Terminal/Protocols/IProtocolSink.cs src/SharpVision.Terminal/Protocols/ProtocolSequence.cs src/SharpVision.Terminal/Protocols/ProtocolRouter.cs src/SharpVision.Terminal/Input/Adapter.cs src/SharpVision.Terminal/Input/Decoder.cs tests/SharpVision.Terminal.Tests/Support/RecordingProtocolSink.cs tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs
@@ -538,7 +538,7 @@ git commit -m "feat(protocols): route replies and terminal strings"
 - Modify: `tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs`
 - Modify: `docs/testing/terminal-protocols.md`
 
-- [ ] **Step 1: Add representative string cases**
+- [x] **Step 1: Add representative string cases**
 
 ```csharp
 public static TheoryData<byte[], SequenceKind> StringCases => new()
@@ -555,7 +555,7 @@ Route every case whole and through every two-fragment split. Assert the same
 family, header, payload, terminator, and callback count. Add a BEL-terminated
 OSC row.
 
-- [ ] **Step 2: Add hostile recovery tests**
+- [x] **Step 2: Add hostile recovery tests**
 
 With `Limits.Default with { MaxStringBytes = 8 }`, route oversized OSC plus
 `known`. Assert:
@@ -569,7 +569,7 @@ sink.Sequences.ShouldBeEmpty();
 Add CAN cancellation, truncation through `Complete`, malformed OSC color, and a
 known following key.
 
-- [ ] **Step 3: Run focused proof**
+- [x] **Step 3: Run focused proof**
 
 ```bash
 dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests" "*ParserFragmentationTests" "*ResponsesTests" --timeout 60s
@@ -577,7 +577,7 @@ dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTe
 
 Expected: all selected cases pass, including every generated split.
 
-- [ ] **Step 4: Document and commit proof**
+- [x] **Step 4: Document and commit proof**
 
 Document source-buffer mutation, whole-versus-split equivalence, and
 known-trailing-input recovery in `docs/testing/terminal-protocols.md`.
@@ -597,7 +597,7 @@ git commit -m "test(protocols): prove routed sequence recovery"
 - Modify: `tests/SharpVision.Terminal.Tests/Transport/RuntimeSink.cs`
 - Modify: `tests/SharpVision.Terminal.Tests/Runtime/SessionTests.cs`
 
-- [ ] **Step 1: Write the failing runtime-path test**
+- [x] **Step 1: Write the failing runtime-path test**
 
 ```csharp
 [Fact]
@@ -623,7 +623,7 @@ public async Task RunAsync_WhenReplyPrecedesText_RoutesBothInOrderAsync()
 Expected failure: `Runtime.ISink` has no response callback and `Session` still
 constructs `Decoder`.
 
-- [ ] **Step 2: Expand the runtime sink**
+- [x] **Step 2: Expand the runtime sink**
 
 ```csharp
 public interface ISink: IProtocolSink
@@ -632,7 +632,7 @@ public interface ISink: IProtocolSink
 Update its summary and all deterministic sink implementations. Each test sink
 stores `Responses`, `Sequences`, and `Order`.
 
-- [ ] **Step 3: Use `ProtocolRouter` in `Session`**
+- [x] **Step 3: Use `ProtocolRouter` in `Session`**
 
 Replace the local decoder and corresponding calls:
 
@@ -646,7 +646,7 @@ router.Complete();
 Keep the current serialized read/resize loop, buffer ownership, closure, and
 cleanup unchanged.
 
-- [ ] **Step 4: Run runtime and PTY tests**
+- [x] **Step 4: Run runtime and PTY tests**
 
 ```bash
 dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*SessionTests" "*PseudoterminalTests" --timeout 60s
@@ -655,7 +655,7 @@ dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*SessionT
 Expected: routed reply order passes and existing mode/PTY bytes remain
 unchanged.
 
-- [ ] **Step 5: Commit runtime integration**
+- [x] **Step 5: Commit runtime integration**
 
 ```bash
 git add src/SharpVision.Terminal/Runtime/ISink.cs src/SharpVision.Terminal/Runtime/Session.cs tests/SharpVision.Terminal.Tests/Runtime/RuntimeSink.cs tests/SharpVision.Terminal.Tests/Transport/RuntimeSink.cs tests/SharpVision.Terminal.Tests/Runtime/SessionTests.cs
@@ -672,7 +672,7 @@ git commit -m "feat(runtime): preserve protocol replies in sessions"
 - Modify: `src/SharpVision/Runtime/Record.cs`
 - Modify: `src/SharpVision/Runtime/RecordKind.cs`
 
-- [ ] **Step 1: Write the failing application test**
+- [x] **Step 1: Write the failing application test**
 
 Feed DA followed by text before the first resize. Subscribe to
 `ProtocolResponse`, queue the resize, start, and assert:
@@ -689,7 +689,7 @@ application.ProtocolResponse += (_, eventArgs) =>
 
 Expected: compile failure naming the missing event and event args.
 
-- [ ] **Step 2: Add event args and response records**
+- [x] **Step 2: Add event args and response records**
 
 ```csharp
 using SharpVision.Terminal.Protocols;
@@ -715,7 +715,7 @@ internal Response Response { get; private init; }
 internal static Record From(Response value) => new(RecordKind.Response) { Response = value };
 ```
 
-- [ ] **Step 3: Implement typed application delivery**
+- [x] **Step 3: Implement typed application delivery**
 
 ```csharp
 /// <summary>Raised for one recognized terminal response on the dispatcher.</summary>
@@ -733,7 +733,7 @@ case RecordKind.Response:
     break;
 ```
 
-- [ ] **Step 4: Redact unregistered extension strings**
+- [x] **Step 4: Redact unregistered extension strings**
 
 ```csharp
 /// <inheritdoc/>
@@ -750,7 +750,7 @@ Test `ESC ] 777 ; secret ST`: the application raises `Unsupported`/`Osc` with a
 positive discarded count, and neither the event args nor `Diagnostic.ToString()`
 contains `secret`.
 
-- [ ] **Step 5: Run application integration tests**
+- [x] **Step 5: Run application integration tests**
 
 ```bash
 dotnet test --project tests/SharpVision.Tests --filter-class "*ProtocolRoutingTests" "*OrderingTests" "*ApplicationTests" "*TerminalInputTests" --timeout 60s
@@ -758,7 +758,7 @@ dotnet test --project tests/SharpVision.Tests --filter-class "*ProtocolRoutingTe
 
 Expected: all selected tests pass and response delivery is dispatcher-affine.
 
-- [ ] **Step 6: Commit application observability**
+- [x] **Step 6: Commit application observability**
 
 ```bash
 git add src/SharpVision/Runtime/ProtocolResponseEventArgs.cs src/SharpVision/Runtime/Application.cs src/SharpVision/Runtime/Record.cs src/SharpVision/Runtime/RecordKind.cs tests/SharpVision.Tests/Runtime/ProtocolRoutingTests.cs
@@ -773,7 +773,7 @@ git commit -m "feat(runtime): publish typed terminal responses"
 - Modify: `docs/protocols/runtime-routing.md`
 - Modify: `docs/testing/terminal-protocols.md`
 
-- [ ] **Step 1: Update only proven claims**
+- [x] **Step 1: Update only proven claims**
 
 State that DA1, DA2, CPR, DECRPM, Kitty keyboard status, and OSC color replies
 are observable through `ProtocolRouter`, `Session`, and dispatcher events. State
@@ -781,7 +781,7 @@ that bounded raw string families are observable through
 `IProtocolSink.Sequence`. Keep capability negotiation partial and keep Kitty
 graphics, Sixel, and iTerm2 unsupported.
 
-- [ ] **Step 2: Validate docs**
+- [x] **Step 2: Validate docs**
 
 ```bash
 npx prettier --write docs/protocols/coverage-matrix.md docs/protocols/runtime-routing.md docs/testing/terminal-protocols.md
@@ -792,7 +792,7 @@ npm run test:docs
 
 Expected: zero Markdown, link, anchor, and documentation-test failures.
 
-- [ ] **Step 3: Run focused suites**
+- [x] **Step 3: Run focused suites**
 
 ```bash
 dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests" "*ResponsesTests" "*SessionTests" "*PseudoterminalTests" --timeout 60s
