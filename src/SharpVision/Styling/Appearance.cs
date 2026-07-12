@@ -22,6 +22,8 @@ public readonly record struct Appearance
     /// <param name="padding">The optional appearance padding.</param>
     /// <param name="border">The optional border Rune.</param>
     /// <param name="borderColor">The optional border color.</param>
+    /// <param name="underline">The optional typed underline variant.</param>
+    /// <param name="underlineColor">The optional underline color.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="attributes"/> contains unknown flags.
     /// </exception>
@@ -31,7 +33,9 @@ public readonly record struct Appearance
         Attributes? attributes = null,
         Thickness? padding = null,
         Rune? border = null,
-        Color? borderColor = null)
+        Color? borderColor = null,
+        Underline? underline = null,
+        Color? underlineColor = null)
     {
         if (attributes.HasValue)
         {
@@ -44,6 +48,8 @@ public readonly record struct Appearance
         Padding = padding;
         Border = border;
         BorderColor = borderColor;
+        Underline = underline;
+        UnderlineColor = underlineColor;
     }
 
     /// <summary>Gets the optional terminal foreground.</summary>
@@ -64,6 +70,12 @@ public readonly record struct Appearance
     /// <summary>Gets the optional border color.</summary>
     public Color? BorderColor { get; }
 
+    /// <summary>Gets the optional typed underline variant.</summary>
+    public Underline? Underline { get; }
+
+    /// <summary>Gets the optional semantic underline color.</summary>
+    public Color? UnderlineColor { get; }
+
     /// <summary>Overlays only explicitly set fields over this appearance.</summary>
     internal Appearance Overlay(Appearance value) => new(
         value.Foreground ?? Foreground,
@@ -71,5 +83,7 @@ public readonly record struct Appearance
         value.Attributes ?? Attributes,
         value.Padding ?? Padding,
         value.Border ?? Border,
-        value.BorderColor ?? BorderColor);
+        value.BorderColor ?? BorderColor,
+        value.Underline ?? Underline,
+        value.UnderlineColor ?? UnderlineColor);
 }

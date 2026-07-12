@@ -104,11 +104,49 @@ public sealed class Hyperlink: Inline
         get;
         set
         {
-            if (value.HasValue)
+            Decoration.Validate(value, Underline, UnderlineColor);
+
+            VerifyMutable();
+
+            if (field == value)
             {
-                _ = new TerminalStyle(attributes: value.Value);
+                return;
             }
 
+            field = value;
+            Changed();
+        }
+    }
+
+    /// <summary>Gets or sets an optional typed underline variant.</summary>
+    /// <exception cref="ArgumentException">The resulting decoration fields conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    public Underline? Underline
+    {
+        get;
+        set
+        {
+            Decoration.Validate(Attributes, value, UnderlineColor);
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            Changed();
+        }
+    }
+
+    /// <summary>Gets or sets an optional semantic underline color.</summary>
+    /// <exception cref="ArgumentException">The resulting decoration fields conflict.</exception>
+    public Color? UnderlineColor
+    {
+        get;
+        set
+        {
+            Decoration.Validate(Attributes, Underline, value);
             VerifyMutable();
 
             if (field == value)

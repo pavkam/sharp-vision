@@ -42,7 +42,9 @@ public static class Resolver
     public static TerminalStyle ToTerminal(Appearance appearance) => new(
         appearance.Foreground ?? Color.Default,
         appearance.Background ?? Color.Default,
-        appearance.Attributes ?? Attributes.None);
+        appearance.Attributes ?? Attributes.None,
+        underline: appearance.Underline ?? Underline.None,
+        underlineColor: appearance.UnderlineColor ?? Color.Default);
 
     private static Appearance Apply(
         Style style,
