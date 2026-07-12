@@ -13,6 +13,12 @@ and OSC color replies. `IProtocolSink.Sequence` receives completed OSC, DCS,
 APC, PM, and SOS values without a registered typed consumer. A recognized
 response is never emitted again as input or a raw sequence.
 
+`Session` owns a `ProtocolRouter` and delivers the complete sink contract in
+transport order. `Application` queues typed replies as immutable records and
+raises `ResponseReceived` only on its dispatcher; an unregistered raw sequence
+becomes a `DiagnosticCode.Unsupported` record containing its family and byte
+count, never its payload.
+
 The first implementation routes already-decoded response families. It does not
 send capability queries or change the active capability profile. The
 [capability contract](../architecture/capabilities.md#queries-and-publication)
