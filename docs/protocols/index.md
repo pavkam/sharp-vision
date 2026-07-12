@@ -12,6 +12,8 @@ DEC, xterm, Kitty, iTerm2, sixel, tmux, and GNU screen extensions. The
 - [OSC](osc.md#osc-contract) defines operating-system command strings.
 - [DCS and string commands](dcs-strings.md#dcs-and-string-command-contract)
   defines bounded string parsing.
+- [Runtime protocol routing](runtime-routing.md#runtime-routing-contract)
+  defines typed dispatch, owned extension values, and runtime fallback.
 - [DEC private modes](dec-private-modes.md#dec-private-mode-contract) defines
   application modes and lifecycle restoration.
 - [xterm](xterm.md#xterm-contract) defines the modern compatibility baseline.

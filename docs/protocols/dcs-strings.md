@@ -25,8 +25,10 @@ fragmentation, including split `ESC \\` terminators. CAN/SUB cancel active
 sequences. Configurable limits bound payload storage; overflow discards until a
 valid terminator and then resumes ground-state parsing. `Complete` reports one
 truncation diagnostic for unfinished input. `Writer` emits validated DCS, APC,
-PM, and SOS commands with ST termination. Typed DCS consumers and multiplexer
-passthrough remain extension work.
+PM, and SOS commands with ST termination. The
+[runtime router](runtime-routing.md#runtime-routing-contract) owns copied
+observation after framing. Typed DCS consumers remain extension work;
+multiplexer framing is governed by the tmux and GNU screen contracts.
 
 ## Security and tests
 

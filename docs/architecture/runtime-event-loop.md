@@ -2,9 +2,11 @@
 
 ## Runtime event loop contract
 
-One dispatcher thread owns input delivery, control mutation, focus, pointer
-capture, layout, frame production, and application callbacks. Transport and OS
-watchers enqueue immutable records only.
+One dispatcher thread owns input delivery, terminal-response delivery, control
+mutation, focus, pointer capture, layout, frame production, and application
+callbacks. Transport and OS watchers enqueue immutable records only. The
+[runtime protocol router](../protocols/runtime-routing.md#runtime-routing-contract)
+separates typed replies from user input before either reaches the queue.
 
 ```mermaid
 sequenceDiagram
@@ -73,11 +75,11 @@ a later session or synchronized-output cleanup failure.
 ## Terminal session implementation
 
 `SharpVision.Terminal.Runtime.Session` owns the terminal-side startup, read,
-resize, and cleanup boundary. Startup enables only requested modes whose
-optional `Feature.State` is `Supported`; environment-tentative evidence never
-enables a mode. Alternate screen and cursor policy are explicit non-detected
-options. Each attempted enable becomes a lease before transport I/O so even an
-uncertain partial write receives a conservative cleanup attempt.
+resize, protocol-routing, and cleanup boundary. Startup enables only requested
+modes whose optional `Feature.State` is `Supported`; environment-tentative
+evidence never enables a mode. Alternate screen and cursor policy are explicit
+non-detected options. Each attempted enable becomes a lease before transport I/O
+so even an uncertain partial write receives a conservative cleanup attempt.
 
 One event loop awaits one transport read and one resize read, then invokes
 exactly one sink callback at a time. Input and resize handlers therefore cannot

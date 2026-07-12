@@ -33,7 +33,9 @@ and conservative unknown-terminal defaults.
 
 `Responses.TryCsi` owns validated DA1, DA2, cursor-position DSR, and DECRPM
 values. `Responses.TryOsc` owns 16-bit-component foreground/background color
-replies. `QueryTracker` admits at most `Limits.MaxConcurrentQueries`, one active
+replies. The [runtime router](runtime-routing.md#runtime-routing-contract)
+delivers those typed values without allowing them to fall through as keyboard
+input. `QueryTracker` admits at most `Limits.MaxConcurrentQueries`, one active
 uncorrelated query per family, and distinct Kitty clipboard IDs. Completed,
 cancelled, and timed-out correlations remain in a bounded grace window so
 duplicates and late replies cannot mutate a published profile.
