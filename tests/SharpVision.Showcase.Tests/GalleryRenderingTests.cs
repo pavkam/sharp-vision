@@ -27,11 +27,29 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
-        screen.Text.ShouldContain("Examples");
+        screen.Text.ShouldContain("Practical recipe");
         screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2);
         screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
         screen.ValidateContinuations();
+    }
+
+    /// <summary>Verifies responsive RichText receives the committed documentation-pane width instead of an unbounded horizontal measure.</summary>
+    [Fact]
+    public void Render_WhenDocumentationPaneIsNarrow_WrapsCompleteRichTextGuidance()
+    {
+        using var gallery = new Gallery();
+        gallery.Select(1);
+        var size = new Size(80, 40);
+        new Engine().Layout(gallery.Root, size);
+        using var frame = new Frame(size);
+
+        gallery.Root.Render(frame.Canvas);
+
+        var screen = new Screen(frame);
+        screen.Text.ShouldContain("command paths.");
+        gallery.Content.Parent.ShouldBeOfType<ScrollView>()
+            .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
     }
 
     /// <summary>Verifies every page renders safely at tiny, typical, and large terminal sizes.</summary>
@@ -62,7 +80,7 @@ public sealed class GalleryRenderingTests
             {
                 screen.Text.ShouldContain(gallery.SelectedPage);
                 screen.Text.ShouldContain("Overview");
-                screen.Text.ShouldContain("Examples");
+                screen.Text.ShouldContain("Practical recipe");
             }
         }
     }

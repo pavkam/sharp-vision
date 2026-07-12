@@ -243,6 +243,7 @@ public sealed class GalleryInteractionTests
             () => Find<ScrollBar>(gallery.Content, static value => value.Orientation == Orientation.Horizontal),
             TestContext.Current.CancellationToken);
         var activeScrollBar = scrollBar.ShouldNotBeNull();
+        await BringIntoViewAsync(activeScrollBar, gallery, application);
         var start = await application.Dispatcher.InvokeAsync(() =>
         {
             var trackLength = activeScrollBar.Bounds.Width - 2;
@@ -306,6 +307,7 @@ public sealed class GalleryInteractionTests
         var activeEditor = editor.ShouldNotBeNull();
         var activePreview = preview.ShouldNotBeNull();
         var activePicker = picker.ShouldNotBeNull();
+        await BringIntoViewAsync(activeEditor, gallery, application);
         await application.Dispatcher.InvokeAsync(
             () => application.Focus.Focus(activeEditor).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
@@ -315,12 +317,11 @@ public sealed class GalleryInteractionTests
             () => activePreview.Content.EndsWith('!'),
             application,
             "FIGlet text editing");
-        var pickerPoint = await application.Dispatcher.InvokeAsync(
-            () => new Point(activePicker.Bounds.X, activePicker.Bounds.Y),
+        await BringIntoViewAsync(activePicker, gallery, application);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(activePicker).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
-        terminal.QueueInput(Encoding.ASCII.GetBytes(
-            $"\u001b[<0;{pickerPoint.X + 1};{pickerPoint.Y + 1}M" +
-            $"\u001b[<0;{pickerPoint.X + 1};{pickerPoint.Y + 1}m"));
+        terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
             () => Find<List>(
                 gallery.Content,
@@ -333,6 +334,7 @@ public sealed class GalleryInteractionTests
                 static value => value.EffectiveIsVisible),
             TestContext.Current.CancellationToken);
         var activeFonts = fonts.ShouldNotBeNull();
+        await BringIntoViewAsync(activeFonts, gallery, application);
         var fontPoint = await application.Dispatcher.InvokeAsync(
             () => new Point(activeFonts.Bounds.X + 1, activeFonts.Bounds.Y),
             TestContext.Current.CancellationToken);
@@ -387,6 +389,23 @@ public sealed class GalleryInteractionTests
             application.FrameRendered -= Complete;
             _ = completion.TrySetResult();
         }
+    }
+
+    private static async Task BringIntoViewAsync(
+        Control control,
+        Gallery gallery,
+        Application application)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        ArgumentNullException.ThrowIfNull(gallery);
+        ArgumentNullException.ThrowIfNull(application);
+        var frame = NextFrame(application);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+            main.BringIntoView(control).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+        await frame.WaitAsync(TestContext.Current.CancellationToken);
     }
 
     private static async Task WaitUntilAsync(

@@ -27,7 +27,7 @@ public sealed class Gallery: IDisposable
         Pages = Catalog.Pages;
         _main = new ScrollView
         {
-            HorizontalBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
             VerticalBarVisibility = ScrollBarVisibility.Auto,
         };
         _navigation = new NavigationItem[Pages.Count];

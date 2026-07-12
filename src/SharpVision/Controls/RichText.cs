@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -7,6 +8,7 @@ using SharpVision.Text;
 
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
+using TextLayout = SharpVision.Text.Layout;
 
 namespace SharpVision.Controls;
 
@@ -21,7 +23,7 @@ public sealed class RichText: Control
     /// <summary>Gets the ordered single-owner inline collection.</summary>
     public Inlines Inlines { get; }
 
-    /// <summary>Gets or sets the grapheme wrapping policy.</summary>
+    /// <summary>Gets or sets the logical-line wrapping policy.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     public Wrapping Wrapping
     {
@@ -35,7 +37,7 @@ public sealed class RichText: Control
 
             _ = Set(ref field, value, Invalidation.Measure);
         }
-    }
+    } = Wrapping.Word;
 
     /// <summary>Gets or sets horizontal placement for each formatted line.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -61,6 +63,14 @@ public sealed class RichText: Control
     protected override Size MeasureCore(Constraint constraint)
     {
         var limit = Wrapping == Wrapping.None ? int.MaxValue : constraint.Width ?? int.MaxValue;
+
+        if (Wrapping == Wrapping.Word)
+        {
+            var wordLines = GetWordLines(limit);
+            var wordWidth = wordLines.Length == 0 ? 0 : wordLines.Max(static line => line.Cells);
+            return new Size(wordWidth, wordLines.Length);
+        }
+
         var widths = GetLineWidths(limit);
         var width = widths.Length == 0 ? 0 : widths.Max();
         return new Size(width, widths.Length);
@@ -70,6 +80,13 @@ public sealed class RichText: Control
     protected override void RenderCore(TerminalCanvas canvas)
     {
         var bounds = ContentBounds;
+
+        if (Wrapping == Wrapping.Word)
+        {
+            RenderWordWrapped(canvas, bounds);
+            return;
+        }
+
         var limit = Wrapping == Wrapping.None ? int.MaxValue : bounds.Width;
         var widths = GetLineWidths(limit);
         var line = 0;
@@ -152,6 +169,46 @@ public sealed class RichText: Control
         return [.. widths];
     }
 
+    private Line[] GetWordLines(int width)
+    {
+        // Format the whole inline sequence so a word can span styled Run and Hyperlink boundaries.
+        var document = GetDocument();
+
+        if (document.Length == 0)
+        {
+            return [];
+        }
+
+        var buffer = new Line[document.Length + 1];
+        var count = TextLayout.Format(
+            document,
+            width,
+            Wrapping.Word,
+            Trimming.None,
+            TextAlignment,
+            Ambiguous.Narrow,
+            buffer);
+        return buffer[..count];
+    }
+
+    private string GetDocument()
+    {
+        var builder = new StringBuilder();
+
+        foreach (var inline in Inlines)
+        {
+            _ = builder.Append(inline switch
+            {
+                LineBreak => "\n",
+                Run run => run.Content,
+                Hyperlink hyperlink => hyperlink.Content,
+                _ => throw new UnreachableException(),
+            });
+        }
+
+        return builder.ToString();
+    }
+
     private void MeasureText(string content, int limit, List<int> widths, ref int cells)
     {
         foreach (var segment in Graphemes.Enumerate(content))
@@ -215,6 +272,91 @@ public sealed class RichText: Control
             _ = canvas.Draw(cluster, new Point(bounds.X + leading + cells, bounds.Y + line), style);
             cells = Add(cells, width);
         }
+    }
+
+    private void RenderWordWrapped(TerminalCanvas canvas, Rect bounds)
+    {
+        // Reuse the shared source offsets from Text.Layout while applying each inline's own rendition.
+        var lines = GetWordLines(bounds.Width);
+        var sourceOffset = 0;
+        var line = 0;
+        var cells = 0;
+
+        foreach (var inline in Inlines)
+        {
+            switch (inline)
+            {
+                case LineBreak:
+                    sourceOffset++;
+                    break;
+                case Run run:
+                    RenderWordText(
+                        canvas,
+                        bounds,
+                        lines,
+                        run.Content,
+                        ResolveInlineStyle(run),
+                        ref sourceOffset,
+                        ref line,
+                        ref cells);
+                    break;
+                case Hyperlink hyperlink:
+                    RenderWordText(
+                        canvas,
+                        bounds,
+                        lines,
+                        hyperlink.Content,
+                        ResolveInlineStyle(hyperlink),
+                        ref sourceOffset,
+                        ref line,
+                        ref cells);
+                    break;
+                default:
+                    throw new UnreachableException();
+            }
+        }
+    }
+
+    private static void RenderWordText(
+        TerminalCanvas canvas,
+        Rect bounds,
+        Line[] lines,
+        string content,
+        TerminalStyle style,
+        ref int sourceOffset,
+        ref int line,
+        ref int cells)
+    {
+        foreach (var segment in Graphemes.Enumerate(content))
+        {
+            var cluster = content.AsSpan(segment.Offset, segment.Length);
+            var offset = sourceOffset + segment.Offset;
+
+            if (cluster.Contains('\r') || cluster.Contains('\n'))
+            {
+                continue;
+            }
+
+            while (line < lines.Length && offset >= lines[line].Offset + lines[line].Length)
+            {
+                line++;
+                cells = 0;
+            }
+
+            if (line >= lines.Length || line >= bounds.Height || offset < lines[line].Offset)
+            {
+                continue;
+            }
+
+            var width = Terminal.Unicode.Width.Measure(cluster).Cells;
+            _ = canvas.Draw(
+                cluster,
+                new Point(bounds.X + lines[line].Leading + cells, bounds.Y + line),
+                style);
+            cells = Add(cells, width);
+        }
+
+        sourceOffset += content.Length;
     }
 
     private TerminalStyle ResolveInlineStyle(Run run)

@@ -17,6 +17,28 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+send_sgr() {
+  local code="$1"
+  local x="$2"
+  local y="$3"
+  local suffix="$4"
+  local bytes
+  local arguments=()
+  bytes="$(printf '\033[<%s;%s;%s%s' "$code" "$x" "$y" "$suffix" | od -An -tx1 | tr -d ' \n')"
+
+  while [[ -n "$bytes" ]]; do
+    arguments+=("${bytes:0:2}")
+    bytes="${bytes:2}"
+  done
+
+  tmux send-keys -t "$session" -H "${arguments[@]}"
+}
+
+find_row() {
+  local text="$1"
+  awk -v text="$text" 'index($0, text) { print NR; exit }' "$plain"
+}
+
 for dependency in dotnet node playwright tmux; do
   if ! command -v "$dependency" >/dev/null 2>&1; then
     printf 'Required capture dependency is missing: %s\n' "$dependency" >&2
@@ -62,7 +84,7 @@ keyboard=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q 'Click or press Enter' "$plain"; then
+  if grep -q '› Button' "$plain"; then
     keyboard=true
     break
   fi
@@ -84,7 +106,7 @@ canvas=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q 'fixed or percentage offsets' "$plain"; then
+  if grep -q '› Canvas' "$plain"; then
     canvas=true
     break
   fi
@@ -104,7 +126,7 @@ button=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q 'Click or press Enter' "$plain"; then
+  if grep -q '› Button' "$plain"; then
     button=true
     break
   fi
@@ -140,7 +162,15 @@ if [[ "$figlet" != true ]]; then
   exit 1
 fi
 
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 34 3b 31 33 4d 1b 5b 3c 30 3b 33 34 3b 31 33 6d
+font_row="$(find_row 'Font: Standard')"
+
+if [[ -z "$font_row" ]]; then
+  printf 'The Figlet font selector is not visible.\n' >&2
+  exit 1
+fi
+
+send_sgr 0 34 "$font_row" M
+send_sgr 0 34 "$font_row" m
 
 dropdown=false
 
@@ -160,7 +190,15 @@ if [[ "$dropdown" != true ]]; then
   exit 1
 fi
 
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 34 3b 31 35 4d 1b 5b 3c 30 3b 33 34 3b 31 35 6d
+font_row="$(find_row '1Row')"
+
+if [[ -z "$font_row" ]]; then
+  printf 'The first Figlet font option is not visible.\n' >&2
+  exit 1
+fi
+
+send_sgr 0 34 "$font_row" M
+send_sgr 0 34 "$font_row" m
 
 font=false
 
@@ -203,7 +241,16 @@ if [[ "$scrollbar" != true ]]; then
   exit 1
 fi
 
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 34 31 3b 31 33 4d 1b 5b 3c 33 32 3b 35 39 3b 31 33 4d 1b 5b 3c 30 3b 35 39 3b 31 33 6d
+scrollbar_row="$(find_row '◀')"
+
+if [[ -z "$scrollbar_row" ]]; then
+  printf 'The horizontal ScrollBar thumb is not visible.\n' >&2
+  exit 1
+fi
+
+send_sgr 0 41 "$scrollbar_row" M
+send_sgr 32 59 "$scrollbar_row" M
+send_sgr 0 59 "$scrollbar_row" m
 
 dragged=false
 
@@ -236,7 +283,7 @@ for _ in {1..50}; do
   sleep 0.1
 done
 
-if ! grep -q 'Click or press Enter' "$plain"; then
+if ! grep -q '› Button' "$plain"; then
   printf 'The showcase did not return to the Button page for capture.\n' >&2
   exit 1
 fi

@@ -23,9 +23,13 @@ types and unimplemented specifications are not navigation entries.
 Each immutable catalog `Page` owns the exact name, purpose, interaction
 guidance, meaningful `PropertyDescription` values, and a factory for fresh live
 examples. Its page shell uses public Stack, RichText, Border, and layout APIs to
-render Overview, Examples, Properties, and Interaction sections. Examples use
-only behavior available to ordinary application code; reflection and private
-render paths are forbidden.
+render Overview, a Practical recipe, Examples, Properties, and Interaction
+sections. The recipe starts with a full-width “When to use it” card and follows
+with bordered “Live example” and “Responsive” columns. Its explanatory Text uses
+word-aware wrapping, while the heading, section labels, property cards, and
+interaction guidance use word-wrapped RichText. Examples use only behavior
+available to ordinary application code; reflection and private render paths are
+forbidden.
 
 ![Live colored dashboard captured from tmux](../images/showcase-dashboard.png)
 
@@ -44,14 +48,15 @@ an application-level capability override and owns a Unix raw-input lease while
 running, while the terminal library's default environment-hint policy remains
 conservative.
 
-The main pane reserves horizontal and vertical scrollbars automatically. At
-narrow widths geometry saturates and clips safely rather than throwing or
-creating negative extents. Selection survives resize, and keyboard, pointer,
-focus, editing, and scrolling continue through the public runtime path. The
-initial sidebar entry takes focus after the first frame; Up, Down, Left, Right,
-Tab, Shift+Tab, Home, End, Page Up, and Page Down move the selected page and
-keep its entry visible. Enter activates the focused entry using the same path as
-a primary pointer release.
+The main pane reserves a vertical scrollbar automatically and suppresses a
+horizontal scrollbar so documentation remains a readable column. At narrow
+widths geometry saturates and clips safely rather than throwing or creating
+negative extents. Selection survives resize, and keyboard, pointer, focus,
+editing, and scrolling continue through the public runtime path. The initial
+sidebar entry takes focus after the first frame; Up, Down, Left, Right, Tab,
+Shift+Tab, Home, End, Page Up, and Page Down move the selected page and keep its
+entry visible. Enter activates the focused entry using the same path as a
+primary pointer release.
 
 The FigletText page is an editor, not a static ornament: a `TextInput` updates
 the preview as text changes, while a Button-disclosed, scrollable List exposes

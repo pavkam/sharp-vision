@@ -4,8 +4,10 @@ using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Rendering;
 
+using ControlGrid = SharpVision.Controls.Grid;
 using ControlRun = SharpVision.Controls.Run;
 using ControlStack = SharpVision.Controls.Stack;
+using ControlText = SharpVision.Controls.Text;
 using Wrapping = SharpVision.Text.Wrapping;
 
 namespace SharpVision.Showcase;
@@ -104,6 +106,8 @@ internal sealed class Page
             Spacing = 1,
         };
         content.Children.Add(Heading(Name, Summary));
+        content.Children.Add(Section("Practical recipe"));
+        content.Children.Add(Recipe(Summary, Interaction));
         content.Children.Add(Section("Examples"));
         content.Children.Add(Card(CreateExamples()));
         content.Children.Add(Section("Properties"));
@@ -187,6 +191,62 @@ internal sealed class Page
             Background = Palette.Surface,
             Child = content,
         };
+    }
+
+    private static ControlStack Recipe(string summary, string interaction)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(summary);
+        ArgumentException.ThrowIfNullOrWhiteSpace(interaction);
+        var recipe = new ControlStack { Spacing = 1 };
+        recipe.Children.Add(RecipeCard("When to use it", summary, Palette.Success, width: 48));
+        var columns = new ControlGrid
+        {
+            Width = Length.Cells(48),
+            ColumnSpacing = 1,
+        };
+        columns.Columns.Add(Track.Star(1));
+        columns.Columns.Add(Track.Star(1));
+        columns.Children.Add(RecipeCard(
+            "Live example",
+            "Use the framed specimen below to inspect the control's real cells and behavior.",
+            Palette.Success,
+            width: 23));
+        var responsive = RecipeCard(
+            "Responsive",
+            "Resize the terminal; RichText and property cards reflow within their committed cells.",
+            Palette.Accent,
+            width: 23);
+        ControlGrid.SetColumn(responsive, 1);
+        columns.Children.Add(responsive);
+        recipe.Children.Add(columns);
+        return recipe;
+    }
+
+    private static Border RecipeCard(
+        string title,
+        string content,
+        Terminal.Protocols.Color color,
+        int width)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(content);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        var contentStack = new ControlStack
+        {
+            Padding = new Thickness(1, 0),
+        };
+        contentStack.Children.Add(new ControlText(title)
+        {
+            Foreground = color,
+            Attributes = Attributes.Bold,
+        });
+        contentStack.Children.Add(new ControlText(content)
+        {
+            Wrapping = Wrapping.Word,
+        });
+        var card = Card(contentStack);
+        card.Width = Length.Cells(width);
+        return card;
     }
 
     private static Border Property(PropertyDescription property)

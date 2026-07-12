@@ -115,6 +115,22 @@ public sealed class RichTextTests
         frame.GetCell(new Point(1, 1)).IsContinuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies word wrapping preserves a complete following word when a whitespace boundary fits.</summary>
+    [Fact]
+    public void Render_WhenWordWrappingFindsWhitespaceBoundary_MovesWholeWordToNextLine()
+    {
+        var control = new RichText { Wrapping = Wrapping.Word };
+        control.Inlines.Add(new Run("one two"));
+        new Engine().Layout(control, new Size(5, 2));
+        using var frame = new Frame(new Size(5, 2));
+
+        control.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("o");
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("t");
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("o");
+    }
+
     /// <summary>Verifies inline mutation invalidates and changes desired size.</summary>
     [Fact]
     public void Content_WhenRunChanges_RecomputesDocumentLayout()

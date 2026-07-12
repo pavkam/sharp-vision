@@ -60,7 +60,7 @@ internal static class Catalog
         "RichText is display-only. Mutating an owned inline updates layout; an inline cannot belong to two documents.",
         [
             P("Inlines", "Inlines", "empty", "Owns the ordered Run, Hyperlink, and LineBreak values that form the displayed document."),
-            P("Wrapping", "Wrapping", "None", "Controls whether grapheme clusters remain on one line or wrap within the available cell width."),
+            P("Wrapping", "Wrapping", "Word", "Defaults to word-aware wrapping; applications may preserve logical lines or choose grapheme wrapping explicitly."),
             P("TextAlignment", "Alignment", "Start", "Places every formatted document line at the start, center, or end of its content box."),
             P("Padding", "Thickness", "0", "Adds internal terminal-cell space around the formatted inline document."),
         ],

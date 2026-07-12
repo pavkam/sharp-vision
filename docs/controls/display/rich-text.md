@@ -10,7 +10,9 @@ grapheme wrapping, line alignment, and semantic terminal hyperlinks.
 
 - `Inlines` rejects null values and prevents one inline from belonging to two
   documents.
-- `Wrapping` and `TextAlignment` match [Text](text.md#text-contract).
+- `Wrapping` defaults to `Word` so documents reflow with their arranged cell
+  width; applications may select `None` or grapheme wrapping explicitly.
+  `TextAlignment` matches [Text](text.md#text-contract).
 - Every inline has at most one document owner. Collections reject null,
   duplicates, and cross-document insertion before mutation.
 - Inline content and style changes invalidate document measurement.

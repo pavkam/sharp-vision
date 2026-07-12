@@ -1,4 +1,5 @@
 using SharpVision.Controls;
+using SharpVision.Text;
 
 using Shouldly;
 
@@ -65,6 +66,32 @@ public sealed class GalleryTests
             gallery.Select(index);
 
             ContainsRichText(gallery.Content).ShouldBeTrue(gallery.SelectedPage);
+        }
+    }
+
+    /// <summary>Verifies a newly created RichText document wraps words by default for responsive documentation.</summary>
+    [Fact]
+    public void Constructor_WhenRichTextIsCreated_UsesWordWrapping()
+    {
+        var document = new RichText();
+
+        document.Wrapping.ShouldBe(Wrapping.Word);
+    }
+
+    /// <summary>Verifies every control page includes a wrapped bordered practical recipe alongside live examples.</summary>
+    [Fact]
+    public void CreatePage_WhenEachPageIsSelected_IncludesWrappedPracticalRecipe()
+    {
+        using var gallery = new Gallery();
+
+        for (var index = 0; index < gallery.Pages.Count; index++)
+        {
+            var page = gallery.Pages[index];
+            gallery.Select(index);
+            var recipe = FindRichText(gallery.Content, "Practical recipe");
+
+            _ = recipe.ShouldNotBeNull(page.Name);
+            recipe.Wrapping.ShouldBe(Wrapping.Word, page.Name);
         }
     }
 
@@ -147,6 +174,33 @@ public sealed class GalleryTests
         }
 
         return false;
+    }
+
+    private static RichText? FindRichText(Control control, string content)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        ArgumentException.ThrowIfNullOrWhiteSpace(content);
+
+        if (control is RichText richText && richText.Inlines.OfType<Run>().Any(inline =>
+                string.Equals(inline.Content, content, StringComparison.Ordinal)))
+        {
+            return richText;
+        }
+
+        if (control is not Container container)
+        {
+            return null;
+        }
+
+        foreach (var child in container.Children)
+        {
+            if (FindRichText(child, content) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static bool ContainsType(Control control, string name)

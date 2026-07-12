@@ -30,6 +30,13 @@ buffering. It also opens and selects the Figlet font dropdown, then drags the
 ScrollBar thumb with SGR press, motion, and release reports, asserting each
 visible committed value.
 
+Every page must also contain a Practical recipe: a full-width “When to use it”
+card followed by bordered “Live example” and “Responsive” columns. The compact
+card descriptions use word-aware Text wrapping; the surrounding headings,
+section labels, property documentation, and interaction guidance use RichText,
+which defaults to word wrapping. The page test protects that responsive default
+alongside the recipe structure.
+
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The
 showcase applies that full-surface editor style to every editable, read-only,
