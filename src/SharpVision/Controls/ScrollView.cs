@@ -79,6 +79,19 @@ public sealed class ScrollView: Container
         }
     } = ScrollBarVisibility.Auto;
 
+    /// <summary>Gets or sets whether content receives the finite viewport width while being measured.</summary>
+    /// <remarks>
+    /// The default preserves intrinsic horizontal extent and hidden-bar scrolling. Enable this for
+    /// reading panes whose word-wrapping content should reflow instead of growing a horizontal extent.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
+    public bool ConstrainContentToViewport
+    {
+        get;
+        set => _ = Set(ref field, value, Invalidation.Measure);
+    }
+
     /// <summary>Gets or sets the valid horizontal content offset.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
@@ -251,7 +264,11 @@ public sealed class ScrollView: Container
         }
         else
         {
-            content.Measure(new Constraint(width: null, height: null));
+            // Reading panes can opt into a finite width while the default
+            // preserves intrinsic extent for hidden-bar horizontal scrolling.
+            content.Measure(new Constraint(
+                ConstrainContentToViewport ? constraint.Width : null,
+                height: null));
             _measuredExtent = new Size(
                 Add(content.DesiredSize.Width, content.Margin.Horizontal),
                 Add(content.DesiredSize.Height, content.Margin.Vertical));

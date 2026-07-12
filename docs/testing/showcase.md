@@ -37,6 +37,11 @@ section labels, property documentation, and interaction guidance use RichText,
 which defaults to word wrapping. The page test protects that responsive default
 alongside the recipe structure.
 
+Canvas and Shadow have dedicated virtual-screen assertions: Canvas must retain
+its labeled fixed, percentage, edge-constraint, and clipping stages within the
+viewport, while Shadow must render separate composite and block-glyph stages
+with a readable light-shade footprint.
+
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The
 showcase applies that full-surface editor style to every editable, read-only,

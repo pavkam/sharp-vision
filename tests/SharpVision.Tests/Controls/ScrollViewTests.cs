@@ -168,6 +168,28 @@ public sealed class ScrollViewTests
         view.VerticalOffset.ShouldBe(3);
     }
 
+    /// <summary>Verifies a hidden horizontal bar gives word-wrapping content the committed width during measurement.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalBarIsHidden_ReflowsWordWrappedContentToViewportWidth()
+    {
+        var text = new SharpVision.Controls.Text("one two three")
+        {
+            Wrapping = SharpVision.Text.Wrapping.Word,
+        };
+        var view = new ScrollView
+        {
+            Content = text,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+            ConstrainContentToViewport = true,
+        };
+
+        new Engine().Layout(view, new Size(5, 3));
+
+        view.Extent.ShouldBe(new Size(5, 3));
+        view.Viewport.ShouldBe(new Size(5, 3));
+    }
+
     /// <summary>Verifies wheel, arrows, pages, and endpoint keys share the typed command path.</summary>
     [Fact]
     public void Dispatch_WhenCommandsArrive_UsesLinePageAndEndpointChanges()

@@ -29,6 +29,7 @@ public sealed class Gallery: IDisposable
         {
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
             VerticalBarVisibility = ScrollBarVisibility.Auto,
+            ConstrainContentToViewport = true,
         };
         _navigation = new NavigationItem[Pages.Count];
         var entries = new Stack { Padding = new Thickness(1, 0) };

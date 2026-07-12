@@ -119,20 +119,33 @@ internal static class Examples
     /// <summary>Creates composite and block-glyph Turbo Vision shadows.</summary>
     internal static Control Shadow()
     {
-        var examples = Horizontal();
-        examples.Children.Add(new Shadow
+        var examples = Vertical();
+        examples.Children.Add(new ControlText("Composite stage")
         {
-            Child = Card(new ControlText("Composite"), Glyphs.Rounded),
+            Foreground = Palette.Success,
+            Attributes = Attributes.Bold,
+        });
+        examples.Children.Add(ShadowStage(new Shadow
+        {
+            Child = DemoCard("Composite", Glyphs.Rounded),
+            Foreground = Palette.Muted,
             Background = Palette.Canvas,
             Offset = new Point(2, 1),
-        });
-        examples.Children.Add(new Shadow
+        }));
+        examples.Children.Add(new ControlText("Block glyph stage")
         {
-            Child = Card(new ControlText("Block glyph"), Glyphs.Paired),
-            Mode = ShadowMode.BlockGlyph,
-            Glyph = new Rune('▓'),
-            Offset = new Point(2, 1),
+            Foreground = Palette.Accent,
+            Attributes = Attributes.Bold,
         });
+        examples.Children.Add(ShadowStage(new Shadow
+        {
+            Child = DemoCard("Block glyph", Glyphs.Paired),
+            Mode = ShadowMode.BlockGlyph,
+            Glyph = new Rune('░'),
+            Foreground = Palette.Muted,
+            Background = Palette.Canvas,
+            Offset = new Point(2, 1),
+        }));
         return examples;
     }
 
@@ -351,26 +364,67 @@ internal static class Examples
 
     #region Layout controls
 
-    /// <summary>Creates fixed and percentage-positioned children plus Unicode drawing primitives.</summary>
+    /// <summary>Creates fixed, percentage, constrained, layered, clipped, and primitive Canvas specimens.</summary>
     internal static Control Canvas()
     {
         var examples = Vertical();
-        var canvas = new ControlCanvas
-        {
-            Width = Length.Cells(36),
-            Height = Length.Cells(7),
-            ClipToBounds = true,
-        };
-        var fixedLabel = Card(new ControlText("fixed 2,1"), Glyphs.Light);
+        var fixedPlacement = CanvasStage();
+        var fixedLabel = DemoCard("fixed 2,1", Glyphs.Light);
         ControlCanvas.SetLeft(fixedLabel, Length.Cells(2));
         ControlCanvas.SetTop(fixedLabel, Length.Cells(1));
-        canvas.Children.Add(fixedLabel);
-        var percentLabel = Card(new ControlText("50%,50%"), Glyphs.Heavy);
+        fixedPlacement.Children.Add(fixedLabel);
+        examples.Children.Add(CanvasSection(
+            "Fixed placement",
+            "Cell offsets place this bordered child two cells from the left and one from the top.",
+            fixedPlacement));
+
+        var percentagePlacement = CanvasStage();
+        var percentLabel = DemoCard("50%,50%", Glyphs.Heavy);
         ControlCanvas.SetLeft(percentLabel, Length.Percent(50));
         ControlCanvas.SetTop(percentLabel, Length.Percent(50));
-        canvas.Children.Add(percentLabel);
-        examples.Children.Add(canvas);
-        examples.Children.Add(new CanvasSample());
+        percentagePlacement.Children.Add(percentLabel);
+        examples.Children.Add(CanvasSection(
+            "Percentage placement",
+            "Percentage offsets resolve against the final Canvas box, so this specimen moves when the available width changes.",
+            percentagePlacement));
+
+        var constrained = CanvasStage();
+        var edgeLabel = DemoCard("Right 2 / Bottom 1", Glyphs.Paired);
+        ControlCanvas.SetRight(edgeLabel, Length.Cells(2));
+        ControlCanvas.SetBottom(edgeLabel, Length.Cells(1));
+        constrained.Children.Add(edgeLabel);
+        var sizedLabel = DemoCard("40% wide", Glyphs.Rounded);
+        sizedLabel.Width = Length.Percent(40);
+        ControlCanvas.SetLeft(sizedLabel, Length.Cells(1));
+        ControlCanvas.SetTop(sizedLabel, Length.Cells(1));
+        constrained.Children.Add(sizedLabel);
+        examples.Children.Add(CanvasSection(
+            "Edge constraints",
+            "Right and bottom offsets anchor one child, while a second child requests a percentage width from the same canvas.",
+            constrained));
+
+        var layered = CanvasStage();
+        var back = DemoCard("Back", Glyphs.Light);
+        ControlCanvas.SetLeft(back, Length.Cells(2));
+        ControlCanvas.SetTop(back, Length.Cells(1));
+        layered.Children.Add(back);
+        var front = DemoCard("Front", Glyphs.Heavy);
+        ControlCanvas.SetLeft(front, Length.Cells(6));
+        ControlCanvas.SetTop(front, Length.Cells(2));
+        layered.Children.Add(front);
+        var clipped = DemoCard("clipped", Glyphs.Ascii);
+        ControlCanvas.SetLeft(clipped, Length.Cells(29));
+        ControlCanvas.SetTop(clipped, Length.Cells(5));
+        layered.Children.Add(clipped);
+        examples.Children.Add(CanvasSection(
+            "Layering and clipping",
+            "Later children paint above earlier ones; the final child deliberately crosses the edge and is clipped by the canvas.",
+            layered));
+
+        examples.Children.Add(CanvasSection(
+            "Drawing primitives",
+            "Canvas drawing APIs add box, line, shade, and quadrant glyphs without creating a control per terminal cell.",
+            new CanvasSample()));
         return examples;
     }
 
@@ -528,6 +582,76 @@ internal static class Examples
         Glyphs = glyphs,
         Padding = new Thickness(1, 0),
     };
+
+    private static Border DemoCard(string content, Glyphs glyphs)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(content);
+
+        return new Border
+        {
+            Child = new ControlText(content),
+            BorderThickness = new Thickness(1),
+            Glyphs = glyphs,
+            BorderColor = Palette.Accent,
+            Background = Palette.Surface,
+            Padding = new Thickness(1, 0),
+        };
+    }
+
+    private static ControlCanvas CanvasStage() => new()
+    {
+        Width = Length.Cells(36),
+        Height = Length.Cells(7),
+        ClipToBounds = true,
+    };
+
+    private static ControlStack CanvasSection(string heading, string description, Control sample)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(heading);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentNullException.ThrowIfNull(sample);
+        var section = Vertical();
+        var text = new RichText { Wrapping = Wrapping.Word };
+        text.Inlines.Add(new ControlRun(heading)
+        {
+            Foreground = Palette.Warning,
+            Attributes = Attributes.Bold,
+        });
+        text.Inlines.Add(new LineBreak());
+        text.Inlines.Add(new ControlRun(description) { Foreground = Palette.Muted });
+        section.Children.Add(text);
+        section.Children.Add(new Border
+        {
+            BorderThickness = new Thickness(1),
+            Glyphs = Glyphs.Light,
+            BorderColor = Palette.Border,
+            Background = Palette.Panel,
+            Child = sample,
+        });
+        return section;
+    }
+
+    private static Border ShadowStage(Shadow shadow)
+    {
+        ArgumentNullException.ThrowIfNull(shadow);
+        var stage = new ControlCanvas
+        {
+            Width = Length.Cells(28),
+            Height = Length.Cells(5),
+            ClipToBounds = true,
+        };
+        ControlCanvas.SetLeft(shadow, Length.Cells(2));
+        ControlCanvas.SetTop(shadow, Length.Cells(1));
+        stage.Children.Add(shadow);
+        return new Border
+        {
+            BorderThickness = new Thickness(1),
+            Glyphs = Glyphs.Light,
+            BorderColor = Palette.Border,
+            Background = Palette.Panel,
+            Child = stage,
+        };
+    }
 
     private static void AddBorder(ControlStack examples, string name, Glyphs glyphs) =>
         examples.Children.Add(Card(new ControlText(name), glyphs));

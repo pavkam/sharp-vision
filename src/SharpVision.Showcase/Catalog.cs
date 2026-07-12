@@ -237,6 +237,7 @@ internal static class Catalog
             P("Content", "Control?", "null", "Owns the single scrollable child measured against the enabled unbounded axes."),
             P("HorizontalBarVisibility", "ScrollBarVisibility", "Auto", "Shows, hides, disables, or automatically reserves the horizontal bar."),
             P("VerticalBarVisibility", "ScrollBarVisibility", "Auto", "Shows, hides, disables, or automatically reserves the vertical bar."),
+            P("ConstrainContentToViewport", "bool", "false", "Supplies the finite viewport width during measure so word-wrapping reading content reflows instead of expanding horizontally."),
             P("HorizontalOffset / VerticalOffset", "int", "0", "Store validated cell offsets clamped whenever extent or viewport changes."),
             P("LineSize / PageOverlap", "int", "1 / 1", "Control keyboard line movement and retained overlap between page movements."),
         ],

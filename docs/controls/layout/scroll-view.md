@@ -16,6 +16,9 @@ is the only public child.
 - `Content` atomically transfers managed parent ownership and accepts null.
 - `HorizontalBarVisibility` and `VerticalBarVisibility` default to `Auto` and
   accept `Hidden`, `Auto`, or `Always`.
+- `ConstrainContentToViewport` defaults to `false`. When enabled, the child
+  receives the finite available width during measure so word-wrapping reading
+  content reflows rather than growing an intrinsic horizontal extent.
 - `Extent` is the measured margin-inclusive content size. `Viewport` is the
   final visible size after stable bar reservation.
 - Direct `HorizontalOffset` and `VerticalOffset` assignments must fall inside
@@ -31,11 +34,13 @@ is the only public child.
 
 Layout follows the
 [two-axis automatic algorithm](../../concepts/scrolling.md#automatic-scrollbar-algorithm).
-Content is measured intrinsically on both scrollable axes. The probe begins with
-`Always` bars, adds overflowing `Auto` bars monotonically, and recomputes after
-each addition because one consumed row or column can induce the other bar. At
-most two additions are possible. Exact fit does not overflow; zero and tiny
-viewports remain non-negative.
+Content is measured intrinsically on both scrollable axes unless
+`ConstrainContentToViewport` supplies its finite available width to
+reflow-capable content. The probe begins with `Always` bars, adds overflowing
+`Auto` bars monotonically, and recomputes after each addition because one
+consumed row or column can induce the other bar. At most two additions are
+possible. Exact fit does not overflow; zero and tiny viewports remain
+non-negative.
 
 Offsets clamp after every content or viewport change before child arrangement,
 events, bar synchronization, hit testing, or rendering. Content is translated by
