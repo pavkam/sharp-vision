@@ -33,9 +33,11 @@ content by `ShadowOffset`; that face covers the shadow footprint and makes the
 control read as physically pressed. Releasing restores the original face before
 raising `Click`.
 
-When `HasShadow` is false, the Button still tracks `IsPressed` and preserves the
-same activation and cancellation semantics, but it does not apply a pressed
-appearance or translate its face because there is no shadow footprint to cover.
+When `HasShadow` is false, the Button remains in its arranged box throughout a
+press: there is no absent shadow to cover. It still resolves the full
+[`State.Pressed`](../../concepts/styling.md#visual-states) appearance over its
+face and border, so a pressed background, foreground, or attribute provides the
+visual acknowledgement without pretending to have physical depth.
 
 The shipped control exposes `Click` as a conventional CLR event carrying
 `ActivationEventArgs`; it uses the same committed activation pipeline as routed

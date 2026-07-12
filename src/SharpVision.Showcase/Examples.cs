@@ -61,7 +61,7 @@ internal static class Examples
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             ScrollBarChrome = ScrollBarStyle.Thin,
             ScrollBarFill = ScrollBarFill.Line,
-            Style = Palette.Interactive(),
+            Style = Palette.List(),
         };
         var preview = new FigletText(catalog.Load("Standard"))
         {
@@ -317,6 +317,16 @@ internal static class Examples
             })));
 
         examples.Children.Add(SampleSection(
+            "Flat action",
+            "A shadowless button stays in place while pressed. Its pressed palette covers the full face and border instead of simulating depth that is not there.",
+            ButtonSpecimen(new Button
+            {
+                Content = new ControlText("Flat action"),
+                HasShadow = false,
+                Style = Palette.Interactive(),
+            })));
+
+        examples.Children.Add(SampleSection(
             "Disabled action",
             "Unavailable actions remain readable but do not accept focus, pointer capture, or activation.",
             ButtonSpecimen(new Button
@@ -382,7 +392,7 @@ internal static class Examples
             Items = ["Compact", "Comfortable", "Spacious"],
             SelectedIndex = 1,
             DropDownHeight = 4,
-            Style = Palette.Interactive(),
+            Style = Palette.List(),
         };
         comboBox.SelectionChanged += (_, _) =>
         {

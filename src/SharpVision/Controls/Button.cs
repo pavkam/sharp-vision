@@ -195,13 +195,6 @@ public sealed class Button: Pressable
     }
 
     /// <inheritdoc/>
-    protected override State GetVisualState()
-    {
-        var state = base.GetVisualState();
-        return HasShadow ? state : state & ~State.Pressed;
-    }
-
-    /// <inheritdoc/>
     protected override void ArrangeCore(Rect bounds) =>
         Content?.Arrange(FaceContentBounds(bounds), widthResolved: true, heightResolved: true);
 

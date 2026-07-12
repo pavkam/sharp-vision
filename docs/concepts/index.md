@@ -3,6 +3,7 @@
 ## Concept map
 
 - [Unicode cell geometry](unicode-cell-geometry.md#unicode-cell-geometry-contract)
+- [Images](images.md#image-ownership-contract)
 - [Styling](styling.md#styling-contract)
 - [Layout](layout.md#layout-contract)
 - [Scrolling](scrolling.md#scrolling-contract)

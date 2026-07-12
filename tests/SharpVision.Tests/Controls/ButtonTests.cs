@@ -117,9 +117,9 @@ public sealed class ButtonTests
         pressed.GetCell(new Point(6, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
     }
 
-    /// <summary>Verifies a shadowless Button keeps its normal face while Space is held.</summary>
+    /// <summary>Verifies a shadowless Button keeps its position while Space resolves the pressed face appearance.</summary>
     [Fact]
-    public void Render_WhenPressedWithoutShadow_KeepsNormalAppearance()
+    public void Render_WhenPressedWithoutShadow_UsesPressedAppearanceWithoutTranslation()
     {
         var style = new UiStyle();
         style.Set(State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240)));
@@ -147,7 +147,11 @@ public sealed class ButtonTests
         button.Render(frame.Canvas);
 
         button.IsPressed.ShouldBeTrue();
-        frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(Color.Indexed(240));
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╭");
+        frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(Color.Indexed(24));
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("G");
+        FrameOracle.Get(frame, new Point(5, 2)).ShouldBe("╯");
+        FrameOracle.Get(frame, new Point(6, 3)).ShouldBeEmpty();
     }
 
     /// <summary>Verifies hover appearance brightens the interactive face while the detached shadow retains its normal dim treatment.</summary>

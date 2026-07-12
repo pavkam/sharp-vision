@@ -14,6 +14,7 @@ after return, frame completion, or disposal.
 | Front frame             | Renderer                     | Until a later successful commit  |
 | Back frame              | Frame builder                | Until commit/abandon             |
 | Grapheme arena          | Frame/screen owner           | While referenced by owned cells  |
+| Image source bytes      | Immutable graphics image     | Image value lifetime             |
 | Encoded write batch     | Renderer                     | Until write and flush complete   |
 | Child control           | Parent `Container`           | Until removal/parent disposal    |
 | Routed event snapshot   | Router                       | Until synchronous dispatch ends  |
@@ -49,6 +50,12 @@ frame memory is borrowed until `RenderAsync` completes; `ITransport.WriteAsync`
 borrows renderer memory until its returned operation completes and must either
 transfer the complete memory or throw. Renderer disposal never disposes a
 borrowed transport.
+
+`Terminal.Graphics.Image` copies RGBA or structurally validated PNG bytes into
+private immutable storage. Public callers recover bytes only through a complete
+copy into caller-owned memory. Synchronous terminal encoders may borrow the
+internal source span only until they return; a renderer must copy encoded output
+into its owned finite batch before awaiting transport I/O.
 
 `Runtime.Session` rents one finite read buffer for the event loop and clears it
 before pool return. `IResizeSource` returns immutable `Dimensions` values and

@@ -101,6 +101,36 @@ public sealed class ComboBoxTests
         FrameOracle.Get(frame, new Point(list.Bounds.X + 2, list.Bounds.Y + 1)).ShouldBe("D");
     }
 
+    /// <summary>Verifies a selected popup choice fills every trailing cell in its realized row.</summary>
+    [Fact]
+    public void Render_WhenOpenWithSelectedChoice_FillsTheCompleteListRow()
+    {
+        var style = new StylingStyle();
+        style.Set(
+            State.Normal,
+            new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240)));
+        style.Set(
+            State.Checked,
+            new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(99)));
+        var box = new ComboBox
+        {
+            Width = Length.Cells(20),
+            Items = ["Compact", "Comfortable", "Spacious"],
+            SelectedIndex = 0,
+            IsOpen = true,
+            Style = style,
+        };
+        var size = new Size(24, 8);
+        new Engine().Layout(box, size);
+        using var frame = new Frame(size);
+
+        box.Render(frame.Canvas);
+
+        var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y)).Style.Background.ShouldBe(Color.Indexed(99));
+        frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y + 1)).Style.Background.ShouldBe(Color.Indexed(240));
+    }
+
     /// <summary>Verifies long popup choices expose the same configured canonical scrollbar as a standalone List.</summary>
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardPolicyToOpenDropDown()
