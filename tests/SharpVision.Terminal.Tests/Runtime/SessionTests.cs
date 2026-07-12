@@ -1,6 +1,7 @@
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
+using SharpVision.Terminal.Tests.Capabilities;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
@@ -54,9 +55,10 @@ public sealed class SessionTests
         await using var transport = new SessionTransport();
         await using var resize = new FakeResizeSource();
         var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
         var limits = Limits.Default with
         {
-            QueryTimeout = TimeSpan.FromMilliseconds(20),
+            QueryTimeout = TimeSpan.FromSeconds(1),
         };
         var options = RuntimeOptions.Minimal with
         {
@@ -64,13 +66,19 @@ public sealed class SessionTests
                 new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
                 limits: limits),
         };
-        await using var session = new Session(transport, resize, sink, options);
+        await using var session = new Session(
+            transport,
+            resize,
+            sink,
+            options,
+            clock);
         var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
         var dimensions = new Dimensions(new Geometry.Size(80, 24));
 
         // Act
         resize.Resize(dimensions);
+        clock.Advance(limits.QueryTimeout);
         await sink.ProfileReceived.Task.WaitAsync(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken);
@@ -81,6 +89,70 @@ public sealed class SessionTests
         sink.Profiles.ShouldHaveSingleItem().KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
         sink.Resizes.ShouldBe([dimensions]);
+        sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
+    }
+
+    /// <summary>Verifies capacity one sends only DA and can complete startup early.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationCapacityIsOne_CompletesFromDeviceAttributesAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: Limits.Default with { MaxConcurrentQueries = 1 }),
+        };
+        transport.Input("\u001b[?1;2c"u8.ToArray());
+        transport.Close();
+        await using var session = new Session(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        transport.JoinedWrites.ShouldBe("\u001b[c");
+        _ = sink.Profiles.ShouldHaveSingleItem();
+        sink.Order.ShouldBe(["response", "profile", "closed"]);
+    }
+
+    /// <summary>Verifies a pre-publication resize storm retains only its newest value.</summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeStormPrecedesDeadline_ForwardsOnlyNewestAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource { SignalAfterReads = 3 };
+        var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
+        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var options = RuntimeOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                limits: limits),
+        };
+        var first = new Dimensions(new Geometry.Size(80, 24));
+        var second = new Dimensions(new Geometry.Size(100, 30));
+        var newest = new Dimensions(new Geometry.Size(120, 40));
+        resize.Resize(first);
+        resize.Resize(second);
+        resize.Resize(newest);
+        await using var session = new Session(transport, resize, sink, options, clock);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await resize.ReadsObserved.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        clock.Advance(limits.QueryTimeout);
+        await sink.ProfileReceived.Task.WaitAsync(TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        // Assert
+        sink.Resizes.ShouldBe([newest]);
         sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
     }
 
@@ -208,6 +280,36 @@ public sealed class SessionTests
         thrown.ShouldBeSameAs(transport.WriteFailure);
         _ = sink.Profiles.ShouldHaveSingleItem();
         transport.JoinedWrites.ShouldEndWith("\u001b[?1004l");
+    }
+
+    /// <summary>Verifies cancellation during negotiation restores only acquired base leases.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationIsCancelled_RestoresBaseModesWithoutProfileAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            AlternateScreen = true,
+            HideCursor = true,
+            Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
+        };
+        await using var session = new Session(transport, resize, sink, options);
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        cancellation.Cancel();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+
+        // Assert
+        sink.Profiles.ShouldBeEmpty();
+        transport.JoinedWrites.ShouldStartWith(
+            "\u001b[?1049h\u001b[?25l\u001b[?u\u001b[c");
+        transport.JoinedWrites.ShouldEndWith("\u001b[?25h\u001b[?1049l");
     }
 
     /// <summary>Verifies replies and adjacent text retain transport order.</summary>
