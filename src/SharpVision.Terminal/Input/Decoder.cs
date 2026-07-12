@@ -1323,7 +1323,7 @@ public sealed class Decoder: IDisposable
         if (wireX == 0 && wireY == 0 && motion && low == 3)
         {
             var leave = new Pointer(
-                default,
+                null,
                 null,
                 Buttons.None,
                 PointerAction.Leave,
@@ -1343,22 +1343,19 @@ public sealed class Decoder: IDisposable
         }
 
         var source = new Geometry.Point(wireX - 1, wireY - 1);
-        var cells = source;
+        Geometry.Point? cells = source;
         Geometry.Point? pixels = null;
         var inferred = false;
 
         if (_pixelMouse)
         {
             pixels = source;
+            cells = null;
 
             if (_cellMetrics is { } metrics && metrics.TryMap(source, out var mapped))
             {
                 cells = mapped;
                 inferred = true;
-            }
-            else
-            {
-                cells = default;
             }
         }
 

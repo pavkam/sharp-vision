@@ -267,4 +267,65 @@ public sealed class TextTests
             false));
     }
 
+    /// <summary>Verifies pointer coordinates distinguish cell, pixel-only, and leave values.</summary>
+    [Fact]
+    public void Constructor_WhenPointerCoordinateFamiliesVary_PreservesAvailability()
+    {
+        // Arrange / Act
+        var cell = new Pointer(
+            new Point(2, 3),
+            null,
+            Buttons.None,
+            PointerAction.Move,
+            0,
+            0,
+            Modifiers.None,
+            true,
+            false);
+        var pixel = new Pointer(
+            null,
+            new Point(20, 30),
+            Buttons.None,
+            PointerAction.Move,
+            0,
+            0,
+            Modifiers.None,
+            true,
+            false);
+        var leave = new Pointer(
+            null,
+            null,
+            Buttons.None,
+            PointerAction.Leave,
+            0,
+            0,
+            Modifiers.None,
+            true,
+            false);
+
+        // Assert
+        cell.Cells.ShouldBe(new Point(2, 3));
+        cell.Pixels.ShouldBeNull();
+        pixel.Cells.ShouldBeNull();
+        pixel.Pixels.ShouldBe(new Point(20, 30));
+        leave.Cells.ShouldBeNull();
+        leave.Pixels.ShouldBeNull();
+    }
+
+    /// <summary>Verifies absent coordinates are reserved for pointer leave.</summary>
+    [Fact]
+    public void Constructor_WhenCoordinatesAreMissingForOrdinaryAction_Throws()
+    {
+        _ = Should.Throw<ArgumentException>(() => new Pointer(
+            null,
+            null,
+            Buttons.None,
+            PointerAction.Move,
+            0,
+            0,
+            Modifiers.None,
+            true,
+            false));
+    }
+
 }

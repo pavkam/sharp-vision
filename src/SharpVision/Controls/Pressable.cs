@@ -127,7 +127,9 @@ public abstract class Pressable: Container
             return;
         }
 
-        if (pointer.Action == PointerAction.Press && Bounds.Contains(pointer.Cells))
+        var inside = pointer.Cells is { } cells && Bounds.Contains(cells);
+
+        if (pointer.Action == PointerAction.Press && inside)
         {
             var capture = CaptureOwner;
 
@@ -149,7 +151,6 @@ public abstract class Pressable: Container
             return;
         }
 
-        var inside = Bounds.Contains(pointer.Cells);
         SetPressed(inside);
         eventArgs.Handled = true;
 

@@ -101,6 +101,52 @@ public sealed class MouseTests
         pointer.IsCellPositionInferred.ShouldBeTrue();
     }
 
+    /// <summary>Verifies pixel input without geometry does not fabricate top-left cells.</summary>
+    [Fact]
+    public void Decode_WhenPixelMetricsAreMissing_PreservesOnlyPixels()
+    {
+        // Arrange
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(
+            sink,
+            new Options { PixelMouse = true });
+
+        // Act
+        decoder.Decode("\u001b[<0;17;33M"u8);
+
+        // Assert
+        var pointer = sink.Pointers.Single();
+        pointer.Pixels.ShouldBe(new Point(16, 32));
+        pointer.Cells.ShouldBeNull();
+        pointer.IsCellPositionInferred.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies pixels outside exact totals remain unmapped.</summary>
+    [Fact]
+    public void Decode_WhenPixelIsOutsideExactGrid_PreservesOnlyPixels()
+    {
+        // Arrange
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(
+            sink,
+            new Options
+            {
+                PixelMouse = true,
+                CellMetrics = new CellMetrics(
+                    new Size(10, 3),
+                    new Size(101, 31)),
+            });
+
+        // Act
+        decoder.Decode("\u001b[<0;102;31M"u8);
+
+        // Assert
+        var pointer = sink.Pointers.Single();
+        pointer.Pixels.ShouldBe(new Point(101, 30));
+        pointer.Cells.ShouldBeNull();
+        pointer.IsCellPositionInferred.ShouldBeFalse();
+    }
+
     /// <summary>
     /// Verifies the mouse-leave sentinel remains distinct from invalid zero coordinates.
     /// </summary>

@@ -388,14 +388,15 @@ public sealed class ScrollBar: Control
 
         if (pointer.Action != PointerAction.Press ||
             (pointer.Buttons & Buttons.Primary) == 0 ||
-            !Bounds.Contains(pointer.Cells))
+            pointer.Cells is not { } cells ||
+            !Bounds.Contains(cells))
         {
             return;
         }
 
         var bounds = ContentBounds;
         var length = AxisLength(bounds);
-        var position = Axis(pointer.Cells) - AxisOrigin(bounds);
+        var position = Axis(cells) - AxisOrigin(bounds);
 
         if (length == 0 || position < 0 || position >= length)
         {
@@ -482,9 +483,22 @@ public sealed class ScrollBar: Control
     private void Drag(PointerEventArgs eventArgs)
     {
         var pointer = eventArgs.Pointer;
+
+        if (pointer.Cells is not { } cells)
+        {
+            eventArgs.Handled = true;
+
+            if (pointer.Action is PointerAction.Release or PointerAction.Leave)
+            {
+                CancelDrag(releaseCapture: true);
+            }
+
+            return;
+        }
+
         var bounds = ContentBounds;
         var buttons = ButtonCount(AxisLength(bounds));
-        var position = Axis(pointer.Cells) - AxisOrigin(bounds) - buttons;
+        var position = Axis(cells) - AxisOrigin(bounds) - buttons;
         var delta = Difference(position, _dragPointerStart);
 
         if (_dragPixelStart.HasValue && pointer.Pixels is { } pixels)

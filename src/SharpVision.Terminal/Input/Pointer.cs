@@ -28,7 +28,7 @@ public readonly record struct Pointer
         Modifiers.NumLock;
 
     /// <summary>Initializes a validated pointer value.</summary>
-    /// <param name="cells">The non-negative zero-based cell position.</param>
+    /// <param name="cells">The optional non-negative zero-based cell position.</param>
     /// <param name="pixels">The optional non-negative zero-based pixel position.</param>
     /// <param name="buttons">The active or transitioning buttons.</param>
     /// <param name="action">The pointer action.</param>
@@ -41,10 +41,11 @@ public readonly record struct Pointer
     /// A coordinate, enum, button, or modifier value is invalid.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Inferred cells are requested without a pixel position.
+    /// Coordinates are missing outside leave, leave carries coordinates, or
+    /// inferred cells are requested without both coordinate families.
     /// </exception>
     public Pointer(
-        Point cells,
+        Point? cells,
         Point? pixels,
         Buttons buttons,
         PointerAction action,
@@ -54,7 +55,10 @@ public readonly record struct Pointer
         bool isMotion,
         bool isCellPositionInferred)
     {
-        ValidatePoint(cells, nameof(cells));
+        if (cells is { } cellPosition)
+        {
+            ValidatePoint(cellPosition, nameof(cells));
+        }
 
         if (pixels is { } pixelPosition)
         {
@@ -85,10 +89,26 @@ public readonly record struct Pointer
                 "The modifier set contains unknown flags.");
         }
 
-        if (isCellPositionInferred && pixels is null)
+        if (action == PointerAction.Leave && (cells is not null || pixels is not null))
         {
             throw new ArgumentException(
-                "Inferred cell coordinates require a pixel position.",
+                "Pointer leave cannot carry cell or pixel coordinates.",
+                nameof(action));
+        }
+
+        if (action is PointerAction.Press or PointerAction.Release or PointerAction.Move &&
+            cells is null &&
+            pixels is null)
+        {
+            throw new ArgumentException(
+                "Press, release, and move input require cells, pixels, or both.",
+                nameof(cells));
+        }
+
+        if (isCellPositionInferred && (cells is null || pixels is null))
+        {
+            throw new ArgumentException(
+                "Inferred cell coordinates require cell and pixel positions.",
                 nameof(isCellPositionInferred));
         }
 
@@ -103,8 +123,8 @@ public readonly record struct Pointer
         IsCellPositionInferred = isCellPositionInferred;
     }
 
-    /// <summary>Gets the zero-based cell position.</summary>
-    public Point Cells { get; }
+    /// <summary>Gets the optional zero-based cell position.</summary>
+    public Point? Cells { get; }
 
     /// <summary>Gets the optional zero-based pixel position.</summary>
     public Point? Pixels { get; }

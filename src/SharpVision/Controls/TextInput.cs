@@ -595,7 +595,8 @@ public sealed class TextInput: Control
 
         if (pointer.Action == PointerAction.Press &&
             (pointer.Buttons & Buttons.Primary) != 0 &&
-            Bounds.Contains(pointer.Cells))
+            pointer.Cells is { } pressedCells &&
+            Bounds.Contains(pressedCells))
         {
             var capture = CaptureOwner;
 
@@ -605,7 +606,7 @@ public sealed class TextInput: Control
             }
 
             _ = FocusOwner?.Focus(this);
-            _pointerAnchor = IndexAt(pointer.Cells);
+            _pointerAnchor = IndexAt(pressedCells);
             _pointerSelecting = true;
             SubscribeCapture(capture);
             SetSelection(new Selection(_pointerAnchor, _pointerAnchor));
@@ -618,7 +619,19 @@ public sealed class TextInput: Control
             return;
         }
 
-        SetSelection(new Selection(_pointerAnchor, IndexAt(pointer.Cells)));
+        if (pointer.Cells is not { } cells)
+        {
+            eventArgs.Handled = true;
+
+            if (pointer.Action is PointerAction.Release or PointerAction.Leave)
+            {
+                CancelPointer(releaseCapture: true);
+            }
+
+            return;
+        }
+
+        SetSelection(new Selection(_pointerAnchor, IndexAt(cells)));
         eventArgs.Handled = true;
 
         if (pointer.Action is PointerAction.Release or PointerAction.Leave)

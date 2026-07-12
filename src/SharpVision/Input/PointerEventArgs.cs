@@ -24,16 +24,18 @@ public sealed class PointerEventArgs: RoutedEventArgs
     /// <summary>Gets the decoded pointer value.</summary>
     public Pointer Pointer { get; }
 
-    /// <summary>Gets current screen cells relative to the active handler control.</summary>
-    public Point LocalCells { get; private set; }
+    /// <summary>Gets available screen cells relative to the active handler control.</summary>
+    public Point? LocalCells { get; private set; }
 
     /// <summary>Updates local coordinates for one route element.</summary>
     internal void SetLocal(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        LocalCells = new Point(
-            Difference(Pointer.Cells.X, control.Bounds.X),
-            Difference(Pointer.Cells.Y, control.Bounds.Y));
+        LocalCells = Pointer.Cells is { } cells
+            ? new Point(
+                Difference(cells.X, control.Bounds.X),
+                Difference(cells.Y, control.Bounds.Y))
+            : null;
     }
 
     private static int Difference(int left, int right)

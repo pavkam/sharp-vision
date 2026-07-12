@@ -12,6 +12,78 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies hit testing, local coordinates, capture, and pointer state cleanup.</summary>
 public sealed class PointerTests
 {
+    /// <summary>Verifies pixel-only input cannot hit the top-left control.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerHasNoCells_DoesNotFabricateHitAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 5) };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            var pointer = new Pointer(
+                null,
+                new Point(5, 5),
+                Buttons.None,
+                PointerAction.Move,
+                0,
+                0,
+                Modifiers.None,
+                true,
+                false);
+
+            manager.Dispatch(pointer).ShouldBeNull();
+            manager.Hovered.ShouldBeNull();
+            child.IsHovered.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies capture receives pixel-only input with unavailable local cells.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPixelOnlyPointerIsCaptured_RoutesWithoutLocalCellsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 5) };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            Point? local = default;
+            var routed = false;
+            _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == Phase.Bubble)
+                {
+                    local = eventArgs.LocalCells;
+                    routed = true;
+                }
+            });
+            manager.Capture(child).ShouldBeTrue();
+            var pointer = new Pointer(
+                null,
+                new Point(15, 8),
+                Buttons.Primary,
+                PointerAction.Move,
+                0,
+                0,
+                Modifiers.None,
+                true,
+                false);
+
+            manager.Dispatch(pointer).ShouldBeSameAs(child);
+            routed.ShouldBeTrue();
+            local.ShouldBeNull();
+            manager.Hovered.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies reverse child order, parent clipping, and disabled exclusion.</summary>
     [Fact]
     public void HitTest_WhenChildrenOverlap_ReturnsHighestEligibleClippedControl()
@@ -41,7 +113,7 @@ public sealed class PointerTests
             root.Children.Add(child);
             root.Attach(dispatcher);
             using var manager = new CaptureManager(root);
-            var observed = new List<(Control Sender, Point Local)>();
+            var observed = new List<(Control Sender, Point? Local)>();
             _ = root.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
                 if (eventArgs.Phase == Phase.Bubble)

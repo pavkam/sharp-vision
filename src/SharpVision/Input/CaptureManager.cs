@@ -99,16 +99,16 @@ public sealed class CaptureManager: IDisposable
     public Control? Dispatch(Pointer pointer)
     {
         VerifyAccess();
-        var physical = pointer.Action == PointerAction.Leave
+        var physical = pointer.Action == PointerAction.Leave || pointer.Cells is not { } cells
             ? null
-            : Root.HitTest(pointer.Cells);
+            : Root.HitTest(cells);
         var target = IsEligible(Captured) ? Captured : physical;
 
         // Capture governs routed input, while hover tracks the physical pointer
         // position so a drag never leaves stale visual feedback behind.
         SetHovered(ResolveHover(physical));
 
-        if (pointer.Action == PointerAction.Press)
+        if (pointer.Action == PointerAction.Press && pointer.Cells is not null)
         {
             SetPressed(target);
         }
