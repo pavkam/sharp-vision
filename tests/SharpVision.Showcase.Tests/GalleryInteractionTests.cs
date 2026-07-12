@@ -1,13 +1,16 @@
 using System.Text;
 
 using SharpVision.Controls;
+using SharpVision.Layout;
 using SharpVision.Runtime;
+using SharpVision.Scrolling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
 
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
+using ScrollRange = SharpVision.Scrolling.Range;
 using TerminalOptions = SharpVision.Terminal.Runtime.Options;
 
 namespace SharpVision.Showcase.Tests;
@@ -217,6 +220,130 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(
             () => gallery.Navigation[1].IsFocused.ShouldBeTrue(),
             TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies raw captured pointer drag moves the showcased horizontal scrollbar thumb and its live value label.</summary>
+    [Fact]
+    public async Task Input_WhenShowcaseScrollBarThumbIsDragged_UpdatesValueAndStatusAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(100, 30)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(11),
+            TestContext.Current.CancellationToken);
+        var scrollBar = await application.Dispatcher.InvokeAsync(
+            () => Find<ScrollBar>(gallery.Content, static value => value.Orientation == Orientation.Horizontal),
+            TestContext.Current.CancellationToken);
+        var activeScrollBar = scrollBar.ShouldNotBeNull();
+        var start = await application.Dispatcher.InvokeAsync(() =>
+        {
+            var trackLength = activeScrollBar.Bounds.Width - 2;
+            var thumb = Thumb.Resolve(
+                new ScrollRange(
+                    activeScrollBar.Minimum,
+                    activeScrollBar.Maximum,
+                    activeScrollBar.Value,
+                    activeScrollBar.ViewportSize),
+                trackLength);
+            return new Point(activeScrollBar.Bounds.X + 1 + thumb.Start, activeScrollBar.Bounds.Y);
+        }, TestContext.Current.CancellationToken);
+        var end = await application.Dispatcher.InvokeAsync(
+            () => new Point(activeScrollBar.Bounds.X + activeScrollBar.Bounds.Width - 2, activeScrollBar.Bounds.Y),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes(
+            $"\u001b[<0;{start.X + 1};{start.Y + 1}M" +
+            $"\u001b[<32;{end.X + 1};{end.Y + 1}M" +
+            $"\u001b[<0;{end.X + 1};{end.Y + 1}m"));
+        await WaitUntilAsync(
+            () => activeScrollBar.Value == activeScrollBar.Maximum,
+            application,
+            "showcase scrollbar thumb drag");
+        await WaitUntilAsync(
+            () => Find<ControlText>(
+                gallery.Content,
+                static value => value.Content == "Thumb value: 100") is not null,
+            application,
+            "showcase scrollbar value status");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the showcased FIGlet editor updates text and selects a catalog font through its dropdown list.</summary>
+    [Fact]
+    public async Task Input_WhenFigletEditorTextAndFontChange_UpdatesPreviewAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(100, 30)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(5),
+            TestContext.Current.CancellationToken);
+        var editor = await application.Dispatcher.InvokeAsync(
+            () => Find<TextInput>(gallery.Content, static value => value.Text == "SharpVision"),
+            TestContext.Current.CancellationToken);
+        var preview = await application.Dispatcher.InvokeAsync(
+            () => Find<FigletText>(gallery.Content, static value => value.Content == "SharpVision"),
+            TestContext.Current.CancellationToken);
+        var picker = await application.Dispatcher.InvokeAsync(
+            () => Find<Button>(
+                gallery.Content,
+                static value => value.Content is ControlText { Content: "Font: Standard ▼" }),
+            TestContext.Current.CancellationToken);
+        var activeEditor = editor.ShouldNotBeNull();
+        var activePreview = preview.ShouldNotBeNull();
+        var activePicker = picker.ShouldNotBeNull();
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(activeEditor).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("!"u8);
+        await WaitUntilAsync(
+            () => activePreview.Content.EndsWith('!'),
+            application,
+            "FIGlet text editing");
+        var pickerPoint = await application.Dispatcher.InvokeAsync(
+            () => new Point(activePicker.Bounds.X, activePicker.Bounds.Y),
+            TestContext.Current.CancellationToken);
+        terminal.QueueInput(Encoding.ASCII.GetBytes(
+            $"\u001b[<0;{pickerPoint.X + 1};{pickerPoint.Y + 1}M" +
+            $"\u001b[<0;{pickerPoint.X + 1};{pickerPoint.Y + 1}m"));
+        await WaitUntilAsync(
+            () => Find<List>(
+                gallery.Content,
+                static value => value.EffectiveIsVisible) is not null,
+            application,
+            "FIGlet dropdown open");
+        var fonts = await application.Dispatcher.InvokeAsync(
+            () => Find<List>(
+                gallery.Content,
+                static value => value.EffectiveIsVisible),
+            TestContext.Current.CancellationToken);
+        var activeFonts = fonts.ShouldNotBeNull();
+        var fontPoint = await application.Dispatcher.InvokeAsync(
+            () => new Point(activeFonts.Bounds.X + 1, activeFonts.Bounds.Y),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes(
+            $"\u001b[<0;{fontPoint.X + 1};{fontPoint.Y + 1}M" +
+            $"\u001b[<0;{fontPoint.X + 1};{fontPoint.Y + 1}m"));
+        await WaitUntilAsync(
+            () => activePreview.Font.Name != "Standard",
+            application,
+            "FIGlet font selection");
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 

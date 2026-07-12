@@ -39,12 +39,61 @@ internal static class Examples
         return examples;
     }
 
-    /// <summary>Creates a bounded FIGlet heading backed by the audited catalog.</summary>
-    internal static Control FigletText() => new FigletText(FigletCatalog.Default.Load("Standard"))
+    /// <summary>Creates an editable FIGlet preview with a scrollable dropdown of audited catalog fonts.</summary>
+    internal static Control FigletText()
     {
-        Content = "SV",
-        Foreground = Palette.Accent,
-    };
+        var catalog = FigletCatalog.Default;
+        var text = new TextInput
+        {
+            Width = Length.Cells(30),
+            Text = "SharpVision",
+        };
+        var fontLabel = new ControlText("Font: Standard ▼");
+        var fontButton = new Button { Content = fontLabel };
+        var fontNames = catalog.Names.ToArray();
+        var fontList = new ControlList
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(8),
+            Items = fontNames,
+            SelectedIndex = Array.IndexOf(fontNames, "Standard"),
+            Visibility = Visibility.Collapsed,
+        };
+        var preview = new FigletText(catalog.Load("Standard"))
+        {
+            Content = text.Text,
+            Foreground = Palette.Accent,
+        };
+        var status = new ControlText("Type text, then choose a font from the dropdown.")
+        {
+            Foreground = Palette.Muted,
+        };
+        text.TextChanged += (_, eventArgs) => preview.Content = eventArgs.Text;
+        fontButton.Click += (_, _) =>
+            fontList.Visibility = fontList.Visibility == Visibility.Visible
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        fontList.ItemInvoked += (_, eventArgs) =>
+        {
+            if (eventArgs.Item is not string name)
+            {
+                return;
+            }
+
+            // Load only the selected audited font; the archive is never expanded wholesale.
+            preview.Font = catalog.Load(name);
+            fontLabel.Content = $"Font: {name} ▼";
+            status.Content = $"Previewing {name}. Choose another font to compare it.";
+            fontList.Visibility = Visibility.Collapsed;
+        };
+        var examples = Vertical();
+        examples.Children.Add(text);
+        examples.Children.Add(fontButton);
+        examples.Children.Add(fontList);
+        examples.Children.Add(status);
+        examples.Children.Add(preview);
+        return examples;
+    }
 
     /// <summary>Creates styled, linked, wrapped Unicode inline content.</summary>
     internal static Control RichText()
@@ -216,7 +265,7 @@ internal static class Examples
     internal static Control ScrollBar()
     {
         var examples = Vertical();
-        examples.Children.Add(new ScrollBar
+        var horizontal = new ScrollBar
         {
             Width = Length.Cells(28),
             Orientation = Orientation.Horizontal,
@@ -227,7 +276,19 @@ internal static class Examples
             IncrementGlyph = new Rune('▶'),
             TrackGlyph = new Rune('─'),
             ThumbGlyph = new Rune('█'),
+        };
+        var status = new ControlText($"Thumb value: {horizontal.Value}")
+        {
+            Foreground = Palette.Muted,
+        };
+        horizontal.ValueChanged += (_, eventArgs) =>
+            status.Content = $"Thumb value: {eventArgs.Value}";
+        examples.Children.Add(new ControlText("Drag the solid thumb, or use the track and arrow buttons.")
+        {
+            Foreground = Palette.Accent,
         });
+        examples.Children.Add(horizontal);
+        examples.Children.Add(status);
         examples.Children.Add(new ScrollBar
         {
             Height = Length.Cells(8),

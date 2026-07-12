@@ -117,6 +117,130 @@ if [[ "$button" != true ]]; then
   exit 1
 fi
 
+# Button is catalog index 1. Four ordinary arrows reach the FigletText editor,
+# where a real pointer press opens the 400-font dropdown and another selects
+# the first visible catalog entry.
+tmux send-keys -t "$session" Down Down Down Down
+
+figlet=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'Type text, then choose a font' "$plain"; then
+    figlet=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$figlet" != true ]]; then
+  printf 'The showcase did not navigate to the FigletText editor.\n' >&2
+  exit 1
+fi
+
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 34 3b 31 33 4d 1b 5b 3c 30 3b 33 34 3b 31 33 6d
+
+dropdown=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q '1Row' "$plain"; then
+    dropdown=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$dropdown" != true ]]; then
+  printf 'The showcase did not open the Figlet font dropdown.\n' >&2
+  exit 1
+fi
+
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 34 3b 31 35 4d 1b 5b 3c 30 3b 33 34 3b 31 35 6d
+
+font=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'Previewing 1Row' "$plain"; then
+    font=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$font" != true ]]; then
+  printf 'The showcase did not select the Figlet font from the dropdown.\n' >&2
+  exit 1
+fi
+
+# The sidebar remains a pointer target even after the dropdown returns focus.
+# Select ScrollBar, then drag its horizontal thumb from its initial geometry to
+# the right edge with a complete SGR press/move/release sequence.
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 31 38 4d 1b 5b 3c 30 3b 33 3b 31 38 6d
+
+scrollbar=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'Drag the solid thumb' "$plain"; then
+    scrollbar=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$scrollbar" != true ]]; then
+  printf 'The showcase did not select the ScrollBar page.\n' >&2
+  exit 1
+fi
+
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 34 31 3b 31 33 4d 1b 5b 3c 33 32 3b 35 39 3b 31 33 4d 1b 5b 3c 30 3b 35 39 3b 31 33 6d
+
+dragged=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'Thumb value: 100' "$plain"; then
+    dragged=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$dragged" != true ]]; then
+  printf 'The showcase did not handle the injected ScrollBar thumb drag.\n' >&2
+  exit 1
+fi
+
+# Keep the checked-in dashboard image centered on the concise Button example.
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 38 4d 1b 5b 3c 30 3b 33 3b 38 6d
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'Click or press Enter' "$plain"; then
+    break
+  fi
+
+  sleep 0.1
+done
+
+if ! grep -q 'Click or press Enter' "$plain"; then
+  printf 'The showcase did not return to the Button page for capture.\n' >&2
+  exit 1
+fi
+
 tmux capture-pane -t "$session" -p -e >"$ansi"
 node "$root/scripts/render-terminal-capture.mjs" "$ansi" "$html"
 playwright screenshot \

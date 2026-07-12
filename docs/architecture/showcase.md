@@ -53,6 +53,12 @@ Tab, Shift+Tab, Home, End, Page Up, and Page Down move the selected page and
 keep its entry visible. Enter activates the focused entry using the same path as
 a primary pointer release.
 
+The FigletText page is an editor, not a static ornament: a `TextInput` updates
+the preview as text changes, while a Button-disclosed, scrollable List exposes
+the 400 audited catalog names and loads only the font the user selects. The
+ScrollBar page includes an explicit live value label beside the draggable
+horizontal thumb so capture, drag geometry, and commit are directly observable.
+
 On Unix the executable reads directly from `/dev/tty` through a one-byte
 asynchronous stream after acquiring its raw-input lease. This avoids the
 line-buffered standard-input behavior that can otherwise defer escape-prefixed
@@ -72,6 +78,7 @@ structure, and prove automatic scrolling. A full Application test drives SGR
 pointer selection, keyboard sidebar navigation and button activation, wheel
 scrolling, text editing, and pixel-aware resize through terminal bytes. Startup
 coverage requires the exact SGR mouse-mode lease before the first frame. The
-live tmux smoke test then proves a normal Down key and separate complete SGR
-clicks for Canvas and Button, each without a trailing flushing key. The live
-image supplements these assertions; it cannot replace them.
+live tmux smoke test then proves a normal Down key, separate complete SGR clicks
+for Canvas and Button, Figlet dropdown opening and font selection, and a
+captured ScrollBar thumb drag. Each completes without a trailing flushing key.
+The live image supplements these assertions; it cannot replace them.

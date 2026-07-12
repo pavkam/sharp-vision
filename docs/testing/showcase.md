@@ -26,7 +26,9 @@ reviewed but does not replace cell, event, focus, resize, or scrolling
 assertions. It is also a required live interaction smoke test: it sends Down,
 then independent complete SGR clicks for Canvas and Button, waiting for each
 visible page change without adding a trailing key that could mask input
-buffering.
+buffering. It also opens and selects the Figlet font dropdown, then drags the
+ScrollBar thumb with SGR press, motion, and release reports, asserting each
+visible committed value.
 
 Showcase examples compile as production code and use no internal APIs,
 reflection shortcuts, fake controls, or rendering behavior unavailable to

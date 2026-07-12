@@ -45,7 +45,7 @@ internal static class Catalog
     private static Page FigletText() => new(
         "FigletText",
         "Renders text through a bounded immutable FIGfont while preserving the ordinary control box model.",
-        "FigletText is display-only. Choose a font before construction, then change Content or Options to remeasure safely.",
+        "FigletText is display-only. The showcase editor lets you type a preview and choose an audited catalog font; normal applications set Content, Font, or Options to remeasure safely.",
         [
             P("Content", "string", "empty", "Provides the non-null Unicode source text expanded through the selected FIGfont glyphs."),
             P("Font", "FigletFont", "required", "Selects the immutable parsed font and invalidates measurement whenever it changes."),
