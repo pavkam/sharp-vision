@@ -10,6 +10,7 @@ using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
 using SharpVision.Threading;
 
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 using TerminalDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
 using TerminalDiagnosticCode = SharpVision.Terminal.Protocols.DiagnosticCode;
 using TerminalFocus = SharpVision.Terminal.Input.Focus;
@@ -38,9 +39,11 @@ public sealed class Application: ISink, IAsyncDisposable
     private readonly TaskCompletionSource _completion =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Dimensions _latestResize;
+    private TerminalCapabilities? _pendingProfile;
     private Task _sessionTask = Task.CompletedTask;
     private Task _renderTask = Task.CompletedTask;
     private bool _inputWake;
+    private bool _profileWake;
     private bool _resizeWake;
     private bool _initialized;
     private bool _rendering;
@@ -82,6 +85,7 @@ public sealed class Application: ISink, IAsyncDisposable
         Root = root;
         _transport = transport;
         _options = options ?? new TerminalOptions();
+        Capabilities = _options.Capabilities;
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI");
         _session = new Session(transport, resize, this, _options);
         Dispatcher.Idle += OnIdle;
@@ -118,6 +122,9 @@ public sealed class Application: ISink, IAsyncDisposable
     /// <summary>Raised on the dispatcher after the runtime receives one typed terminal protocol response.</summary>
     public event EventHandler<ProtocolResponseEventArgs>? ResponseReceived;
 
+    /// <summary>Raised on the dispatcher after one capability profile becomes active.</summary>
+    public event EventHandler<CapabilitiesChangedEventArgs>? CapabilitiesChanged;
+
     /// <summary>Gets the application-owned UI dispatcher.</summary>
     public Dispatcher Dispatcher { get; }
 
@@ -134,6 +141,9 @@ public sealed class Application: ISink, IAsyncDisposable
 
     /// <summary>Gets the latest committed terminal size.</summary>
     public Terminal.Geometry.Size Size { get; private set; }
+
+    /// <summary>Gets the immutable capability profile used by layout and rendering.</summary>
+    public TerminalCapabilities Capabilities { get; private set; }
 
     /// <summary>Gets the first primary runtime failure.</summary>
     public Exception? Failure { get; private set; }
@@ -265,6 +275,31 @@ public sealed class Application: ISink, IAsyncDisposable
             value.Kind,
             offset: 0,
             discardedBytes));
+    }
+
+    /// <inheritdoc/>
+    public void Profile(TerminalCapabilities value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        lock (_gate)
+        {
+            if (_stopping)
+            {
+                return;
+            }
+
+            _pendingProfile = value;
+
+            if (_profileWake)
+            {
+                return;
+            }
+
+            _profileWake = true;
+        }
+
+        Dispatcher.Post(DrainProfile);
     }
 
     /// <inheritdoc/>
@@ -460,20 +495,53 @@ public sealed class Application: ISink, IAsyncDisposable
         ProcessInvalidation();
     }
 
+    private void DrainProfile()
+    {
+        Dispatcher.VerifyAccess();
+        TerminalCapabilities? value;
+
+        lock (_gate)
+        {
+            _profileWake = false;
+
+            if (!_initialized)
+            {
+                return;
+            }
+
+            value = _pendingProfile;
+            _pendingProfile = null;
+        }
+
+        if (!_stopping && value is not null)
+        {
+            ApplyCapabilities(value);
+        }
+    }
+
     private void DrainResize()
     {
         Dispatcher.VerifyAccess();
         Dimensions value;
+        TerminalCapabilities? profile;
 
         lock (_gate)
         {
             value = _latestResize;
             _resizeWake = false;
+            profile = _pendingProfile;
+            _pendingProfile = null;
+            _profileWake = false;
         }
 
         if (_stopping)
         {
             return;
+        }
+
+        if (profile is not null)
+        {
+            ApplyCapabilities(profile);
         }
 
         if (!_initialized)
@@ -523,6 +591,31 @@ public sealed class Application: ISink, IAsyncDisposable
         }
 
         Dispatcher.Post(DrainInput);
+    }
+
+    private void ApplyCapabilities(TerminalCapabilities value)
+    {
+        Dispatcher.VerifyAccess();
+
+        if (ReferenceEquals(Capabilities, value))
+        {
+            return;
+        }
+
+        var previous = Capabilities;
+        var measure = previous.AmbiguousWidth != value.AmbiguousWidth;
+        Capabilities = value;
+        CapabilitiesChanged?.Invoke(
+            this,
+            new CapabilitiesChangedEventArgs(previous, value));
+
+        if (!_initialized)
+        {
+            return;
+        }
+
+        Root.Invalidate(measure ? Invalidation.Measure : Invalidation.Render);
+        ProcessInvalidation();
     }
 
     private async Task FinishWithoutSessionAsync()
@@ -689,7 +782,7 @@ public sealed class Application: ISink, IAsyncDisposable
             return;
         }
 
-        var frame = new Frame(Size);
+        var frame = new Frame(Size, ambiguousWidth: Capabilities.AmbiguousWidth);
 
         try
         {
@@ -709,7 +802,7 @@ public sealed class Application: ISink, IAsyncDisposable
         var operation = _renderer.RenderAsync(
             frame,
             _transport,
-            _options.Capabilities,
+            Capabilities,
             _lifetime.Token);
         _ = ObserveRenderAsync(operation, frame, hold, completion);
     }
