@@ -51,6 +51,22 @@ concurrent Kitty clipboard queries. It retains a bounded grace record after
 completion, cancellation, or timeout so duplicate and late replies are
 classified without reopening a transaction.
 
+### Runtime negotiator
+
+`Negotiator` snapshots caller-supplied environment values and emits one bounded
+startup batch. DA1 is highest priority. Kitty keyboard status precedes DA1 only
+when two query slots are available. Remaining slots query private modes 2026,
+1004, 2004, 1006, and 1016 in that order.
+
+All emitted queries share `Limits.QueryTimeout`. Validated responses may
+complete negotiation early. At the deadline, absent replies remain absent query
+evidence; they do not become unsupported values and therefore cannot erase
+environment hints or explicit overrides.
+
+The runtime publishes exactly one immutable startup profile before forwarding
+the first resize. Explicit overrides are applied last. Matched, duplicate, late,
+and unsolicited replies remain observable through runtime response events.
+
 ## Safe degradation
 
 Feature fallback is deterministic: omit an unsupported visual attribute, reduce

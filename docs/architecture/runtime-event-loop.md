@@ -48,6 +48,19 @@ ownership, commits layout, raises `Resize`, and starts frame rendering.
 `Started` follows the first flushed frame; a zero-cell suspended layout starts
 without a frame.
 
+When bounded capability negotiation is enabled, startup order is:
+
+```text
+Starting callback -> base terminal leases -> query batch
+-> input/reply/resize collection -> profile publication
+-> optional mode leases -> first resize/layout/frame -> Started callback
+```
+
+User input remains live during the query window. The session retains only the
+newest pre-publication resize and forwards it after the immutable profile and
+optional leases commit. Cancellation, terminal closure, and query-write failure
+use the same reverse-cleanup path as ordinary runtime failure.
+
 ## Resize ordering
 
 Resize storms coalesce to the newest valid size. The dispatcher commits the

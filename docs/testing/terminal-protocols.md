@@ -23,6 +23,13 @@ Transaction protocols additionally cover correlation, duplicate/late replies,
 invalid state order, timeouts with a fake clock, concurrency limits, permission
 errors, cancellation, and payload redaction.
 
+Capability-negotiation tests assert the complete startup batch byte for byte at
+every supported query capacity. They deliver responses out of order and across
+every split, advance an injected clock to the shared deadline, and prove that
+unanswered queries preserve tentative hints. Runtime tests deliver input and
+resize before publication, then prove profile, optional-mode, resize, layout,
+and first-frame ordering through the real session and application path.
+
 ## Independent oracles
 
 Use primary-standard byte examples, a small parser state reference,

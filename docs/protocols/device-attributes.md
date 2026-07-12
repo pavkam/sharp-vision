@@ -53,3 +53,17 @@ sends the keyboard status query followed by DA1, as required by the
 keyboard reply before DA matches both queries and proves support; DA arriving
 while keyboard status is still pending closes that query as unsupported. A later
 status reply is therefore late evidence and cannot silently enable the mode.
+
+## Runtime startup batch
+
+The runtime may emit one bounded batch containing Kitty keyboard status, DA1,
+and DECRQM for modes 2026, 1004, 2004, 1006, and 1016. DA1 is always the
+highest-priority query. Kitty status appears immediately before DA1 only when
+the concurrency limit has at least two slots. Later slots add private modes in
+the listed order.
+
+All emitted queries share one finite deadline. Out-of-order replies match their
+typed family or private-mode number. Missing replies leave query evidence
+absent; explicit false evidence requires a validated reply. The runtime
+publishes through the existing default, environment, query, and override
+precedence without mutating an earlier profile.
