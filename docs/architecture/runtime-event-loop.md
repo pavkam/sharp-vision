@@ -61,6 +61,13 @@ newest pre-publication resize and forwards it after the immutable profile and
 optional leases commit. Cancellation, terminal closure, and query-write failure
 use the same reverse-cleanup path as ordinary runtime failure.
 
+The application applies `ISink.Profile` on its dispatcher before the retained
+resize attaches the tree. `CapabilitiesChanged` therefore precedes `Resize`,
+layout, and the first frame. The renderer receives the active profile rather
+than the original static options. Later profiles coalesce through a newest-value
+slot; an update received during a frame requests one following frame without
+swapping the profile borrowed by the current write.
+
 ## Resize ordering
 
 Resize storms coalesce to the newest valid size. The dispatcher commits the

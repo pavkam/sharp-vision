@@ -67,6 +67,14 @@ The runtime publishes exactly one immutable startup profile before forwarding
 the first resize. Explicit overrides are applied last. Matched, duplicate, late,
 and unsolicited replies remain observable through runtime response events.
 
+`Application` initializes its active `Capabilities` from static session options,
+then applies a negotiated profile on the UI dispatcher before attaching the root
+or processing the retained first resize. It raises `CapabilitiesChanged` after
+the immutable reference changes and before invalidation. An ambiguous-width
+change invalidates measure; every other profile change invalidates rendering.
+Each frame captures one profile, so a refresh arriving during terminal output is
+used only by the next frame and cannot alter an in-flight encoding.
+
 ## Safe degradation
 
 Feature fallback is deterministic: omit an unsupported visual attribute, reduce

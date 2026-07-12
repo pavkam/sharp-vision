@@ -16,6 +16,14 @@ batching, shutdown restoration, child exit, transport disconnect, and signal/
 cancellation paths. tmux and GNU screen smoke tests run only when installed and
 must report an explicit skip reason otherwise.
 
+Capability-negotiation proof requires the exact bounded query batch, ordinary
+input delivery while replies are pending, one finite shared deadline, profile
+publication before the first resize, capability-gated mode activation, and
+reverse cleanup after closure or cancellation. A disposable tmux server smoke
+may run the executable showcase and wait on visible frame content; it proves the
+real host reaches either validated replies or the conservative deadline without
+hanging. It does not by itself claim outer-terminal passthrough support.
+
 Tests use deterministic deadlines and condition-based waits, never arbitrary
 sleep as proof. Raw transcripts redact clipboard/credential payloads and are
 attached on failure.
