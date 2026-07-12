@@ -53,4 +53,10 @@ public enum Rendition
 
     /// <summary>Disable strike-through.</summary>
     NotStrike = 29,
+
+    /// <summary>Request overlined text.</summary>
+    Overline = 53,
+
+    /// <summary>Disable overline.</summary>
+    NotOverline = 55,
 }

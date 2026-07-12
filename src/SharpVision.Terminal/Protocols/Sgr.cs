@@ -37,7 +37,7 @@ public static class Sgr
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
     public static void Foreground(Writer writer, Color color) =>
-        WriteColor(writer, color, foreground: true);
+        WriteColor(writer, color, selector: 38, reset: 39);
 
     /// <summary>Applies a background color.</summary>
     /// <param name="writer">The validated protocol writer.</param>
@@ -46,7 +46,33 @@ public static class Sgr
     /// <paramref name="color"/> has an unknown representation.
     /// </exception>
     public static void Background(Writer writer, Color color) =>
-        WriteColor(writer, color, foreground: false);
+        WriteColor(writer, color, selector: 48, reset: 49);
+
+    /// <summary>Applies or resets the underline color.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="color">The default, indexed, or RGB underline color.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="color"/> has an unknown representation.
+    /// </exception>
+    public static void UnderlineColor(Writer writer, Color color) =>
+        WriteColor(writer, color, selector: 58, reset: 59);
+
+    /// <summary>Applies one xterm-compatible underline variant.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="underline">The typed underline presentation.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="underline"/> is unknown.
+    /// </exception>
+    public static void Apply(Writer writer, Underline underline)
+    {
+        if (!Enum.IsDefined(underline))
+        {
+            throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style is unknown.");
+        }
+
+        Span<byte> parameters = [(byte) '4', (byte) ':', (byte) ('0' + (int) underline)];
+        writer.Csi(parameters, [], (byte) 'm');
+    }
 
     /// <summary>Applies one classic ANSI or aixterm foreground color.</summary>
     /// <param name="writer">The validated protocol writer.</param>
@@ -93,7 +119,9 @@ public static class Sgr
             Rendition.NotBlink or
             Rendition.NotReverse or
             Rendition.NotHidden or
-            Rendition.NotStrike))
+            Rendition.NotStrike or
+            Rendition.Overline or
+            Rendition.NotOverline))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(rendition), rendition, "The rendition value is unknown.");
@@ -114,7 +142,7 @@ public static class Sgr
         WriteNumber(writer, value);
     }
 
-    private static void WriteColor(Writer writer, Color color, bool foreground)
+    private static void WriteColor(Writer writer, Color color, int selector, int reset)
     {
         Span<byte> parameters = stackalloc byte[32];
         var length = 0;
@@ -122,11 +150,11 @@ public static class Sgr
         switch (color.Kind)
         {
             case ColorKind.Default:
-                length += Append(foreground ? 39 : 49, parameters);
+                length += Append(reset, parameters);
                 break;
 
             case ColorKind.Indexed:
-                length += Append(foreground ? 38 : 48, parameters);
+                length += Append(selector, parameters);
                 parameters[length++] = (byte) ';';
                 parameters[length++] = (byte) '5';
                 parameters[length++] = (byte) ';';
@@ -134,7 +162,7 @@ public static class Sgr
                 break;
 
             case ColorKind.Rgb:
-                length += Append(foreground ? 38 : 48, parameters);
+                length += Append(selector, parameters);
                 parameters[length++] = (byte) ';';
                 parameters[length++] = (byte) '2';
                 parameters[length++] = (byte) ';';

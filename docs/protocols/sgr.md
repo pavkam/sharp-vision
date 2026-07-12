@@ -47,9 +47,12 @@ The degradation reference entries for indices 0-15 are, in order: `#000000`,
 6x6x6 cube. Indices 232-255 use `8 + 10n` grayscale levels. Projection compares
 squared sRGB distance and selects the lower index on a tie.
 
-Every shipped rendition and color form has independent exact-byte coverage.
-Underline variants/color, overline, and report-backed optional-style evidence
-remain renderer work.
+Every shipped rendition and color form has independent exact-byte coverage. The
+low-level protocol API also emits typed underline variants through `4:0` to
+`4:5`, underline default/indexed/RGB color through 59 and 58, rapid blink
+through 6, and overline enable/disable through 53/55. The semantic frame model,
+capability projection, and report-backed optional-style evidence remain renderer
+work; low-level availability alone is not a support claim for controls.
 
 ## Tests
 

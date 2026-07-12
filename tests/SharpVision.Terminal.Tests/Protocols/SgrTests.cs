@@ -11,6 +11,17 @@ namespace SharpVision.Terminal.Tests.Protocols;
 /// </summary>
 public sealed class SgrTests
 {
+    /// <summary>Provides every xterm underline variant and exact subparameter form.</summary>
+    public static TheoryData<Underline, string> UnderlineCases => new()
+    {
+        { Underline.None, "\u001b[4:0m" },
+        { Underline.Straight, "\u001b[4:1m" },
+        { Underline.Paired, "\u001b[4:2m" },
+        { Underline.Curly, "\u001b[4:3m" },
+        { Underline.Dotted, "\u001b[4:4m" },
+        { Underline.Dashed, "\u001b[4:5m" },
+    };
+
     /// <summary>Provides all typed basic-color foreground and background sequences.</summary>
     public static TheoryData<BasicColor, string, string> BasicColorCases => new()
     {
@@ -55,6 +66,8 @@ public sealed class SgrTests
     [InlineData(Rendition.NotReverse, "\u001b[27m")]
     [InlineData(Rendition.NotHidden, "\u001b[28m")]
     [InlineData(Rendition.NotStrike, "\u001b[29m")]
+    [InlineData(Rendition.Overline, "\u001b[53m")]
+    [InlineData(Rendition.NotOverline, "\u001b[55m")]
     public void Apply_WhenRenditionIsKnown_WritesLiteralSequence(
         Rendition rendition,
         string expected)
@@ -140,6 +153,38 @@ public sealed class SgrTests
             System.Text.Encoding.ASCII.GetBytes(foreground + background));
     }
 
+    /// <summary>Verifies every underline variant uses xterm's typed 4:x form.</summary>
+    /// <param name="underline">The typed underline variant.</param>
+    /// <param name="expected">The exact expected sequence.</param>
+    [Theory]
+    [MemberData(nameof(UnderlineCases))]
+    public void Underline_WhenVariantIsKnown_WritesExactSubparameter(
+        Underline underline,
+        string expected)
+    {
+        var destination = new ArrayBufferWriter<byte>();
+
+        Sgr.Apply(new Writer(destination), underline);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            System.Text.Encoding.ASCII.GetBytes(expected));
+    }
+
+    /// <summary>Verifies default, indexed, and RGB underline-color output.</summary>
+    [Fact]
+    public void UnderlineColor_WhenColorIsValid_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
+
+        Sgr.UnderlineColor(writer, Color.Default);
+        Sgr.UnderlineColor(writer, Color.Indexed(123));
+        Sgr.UnderlineColor(writer, Color.Rgb(1, 2, 3));
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b[59m\u001b[58;5;123m\u001b[58;2;1;2;3m"u8.ToArray());
+    }
+
     /// <summary>
     /// Verifies color and attribute validation before output.
     /// </summary>
@@ -161,6 +206,8 @@ public sealed class SgrTests
             () => Sgr.Foreground(writer, (BasicColor) 999));
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Sgr.Background(writer, (BasicColor) 999));
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => Sgr.Apply(writer, (Underline) 999));
 
         destination.WrittenCount.ShouldBe(0);
     }
