@@ -14,8 +14,13 @@ is the only public child.
 ## API
 
 - `Content` atomically transfers managed parent ownership and accepts null.
-- `HorizontalBarVisibility` and `VerticalBarVisibility` default to `Auto` and
-  accept `Hidden`, `Auto`, or `Always`.
+- `ScrollBars` defaults to `Both` and selects the enabled scroll axes.
+- `ShowScrollBars` defaults to `WhenNeeded`; `Never` hides chrome without
+  disabling enabled-axis scrolling, while `Always` reserves both enabled rails.
+- `ScrollBarChrome` selects `Thin` track-only or `Full` button-and-track chrome;
+  `ScrollBarFill` selects generated `Line` or shaded `Block` glyph treatment.
+- `HorizontalBarVisibility` and `VerticalBarVisibility` remain compatibility
+  properties for callers that need different policies on each axis.
 - `ConstrainContentToViewport` defaults to `false`. When enabled, the child
   receives the finite available width during measure so word-wrapping reading
   content reflows rather than growing an intrinsic horizontal extent.
@@ -72,7 +77,8 @@ ancestor controls can apply their own behavior without a viewport exception.
 var page = new ScrollView
 {
     Content = form,
-    VerticalBarVisibility = ScrollBarVisibility.Auto,
+    ScrollBars = ScrollBars.Vertical,
+    ShowScrollBars = ShowScrollBars.WhenNeeded,
 };
 ```
 

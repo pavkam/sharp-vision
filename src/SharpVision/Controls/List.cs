@@ -41,8 +41,8 @@ public sealed class List: Container
         _scroll = new ScrollView
         {
             Content = _stack,
-            HorizontalBarVisibility = ScrollBarVisibility.Auto,
-            VerticalBarVisibility = ScrollBarVisibility.Auto,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
         };
         _chrome = new Children(this, capacity: 1)
         {

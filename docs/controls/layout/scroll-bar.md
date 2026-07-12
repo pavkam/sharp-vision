@@ -2,7 +2,7 @@
 
 ## ScrollBar contract
 
-`ScrollBar` is a focusable range control used independently or by `ScrollView`.
+`ScrollBar` is a focusable range control used independently or by an overflow host.
 It supports vertical/horizontal orientation, decrement/increment buttons, track,
 and draggable thumb. The implementation uses the allocation-free
 [`Range` and `Thumb` geometry](../../concepts/scrolling.md#thumb-geometry) for

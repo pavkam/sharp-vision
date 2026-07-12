@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text;
 
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -33,18 +32,14 @@ public sealed class ScrollView: Container
         _horizontal = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
-            DecrementGlyph = new Rune('◀'),
-            IncrementGlyph = new Rune('▶'),
-            TrackGlyph = new Rune('░'),
-            ThumbGlyph = new Rune('▓'),
+            Chrome = ScrollBarStyle.Full,
+            Fill = ScrollBarFill.Block,
         };
         _vertical = new ScrollBar
         {
             Orientation = Orientation.Vertical,
-            DecrementGlyph = new Rune('▲'),
-            IncrementGlyph = new Rune('▼'),
-            TrackGlyph = new Rune('░'),
-            ThumbGlyph = new Rune('▓'),
+            Chrome = ScrollBarStyle.Full,
+            Fill = ScrollBarFill.Block,
         };
         _horizontal.ValueChanged += OnHorizontalChanged;
         _vertical.ValueChanged += OnVerticalChanged;
@@ -93,6 +88,90 @@ public sealed class ScrollView: Container
             _ = Set(ref field, value, Invalidation.Measure);
         }
     } = ScrollBarVisibility.Auto;
+
+    /// <summary>Gets or sets the axes that may scroll within this viewport.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
+    /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
+    public ScrollBars ScrollBars
+    {
+        get;
+        set
+        {
+            if ((value & ~ScrollBars.Both) != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar axes contain unknown flags.");
+            }
+
+            _ = Set(ref field, value, Invalidation.Measure);
+        }
+    } = ScrollBars.Both;
+
+    /// <summary>Gets or sets the common chrome reservation policy for enabled scroll axes.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
+    public ShowScrollBars ShowScrollBars
+    {
+        get;
+        set
+        {
+            Validate(value);
+
+            if (!Set(ref field, value, Invalidation.Measure))
+            {
+                return;
+            }
+
+            var visibility = value switch
+            {
+                ShowScrollBars.Never => ScrollBarVisibility.Hidden,
+                ShowScrollBars.WhenNeeded => ScrollBarVisibility.Auto,
+                ShowScrollBars.Always => ScrollBarVisibility.Always,
+                _ => throw new UnreachableException(),
+            };
+            HorizontalBarVisibility = visibility;
+            VerticalBarVisibility = visibility;
+        }
+    } = ShowScrollBars.WhenNeeded;
+
+    /// <summary>Gets or sets the shared chrome form used by both owned bars.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
+    public ScrollBarStyle ScrollBarChrome
+    {
+        get;
+        set
+        {
+            Validate(value);
+
+            if (Set(ref field, value, Invalidation.Measure))
+            {
+                _horizontal.Chrome = value;
+                _vertical.Chrome = value;
+            }
+        }
+    } = ScrollBarStyle.Full;
+
+    /// <summary>Gets or sets the shared generated glyph treatment used by both owned bars.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
+    public ScrollBarFill ScrollBarFill
+    {
+        get;
+        set
+        {
+            Validate(value);
+
+            if (Set(ref field, value, Invalidation.Render))
+            {
+                _horizontal.Fill = value;
+                _vertical.Fill = value;
+            }
+        }
+    } = ScrollBarFill.Block;
 
     /// <summary>Gets or sets whether content receives the finite viewport width while being measured.</summary>
     /// <remarks>
@@ -551,9 +630,13 @@ public sealed class ScrollView: Container
         return false;
     }
 
-    private int MaximumX() => Math.Max(0, Extent.Width - Viewport.Width);
+    private int MaximumX() => (ScrollBars & ScrollBars.Horizontal) != 0
+        ? Math.Max(0, Extent.Width - Viewport.Width)
+        : 0;
 
-    private int MaximumY() => Math.Max(0, Extent.Height - Viewport.Height);
+    private int MaximumY() => (ScrollBars & ScrollBars.Vertical) != 0
+        ? Math.Max(0, Extent.Height - Viewport.Height)
+        : 0;
 
     private static int Reveal(int current, int viewport, int start, int length)
     {
@@ -573,8 +656,10 @@ public sealed class ScrollView: Container
         out bool vertical,
         out Size viewport)
     {
-        horizontal = HorizontalBarVisibility == ScrollBarVisibility.Always;
-        vertical = VerticalBarVisibility == ScrollBarVisibility.Always;
+        horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
+            HorizontalBarVisibility == ScrollBarVisibility.Always;
+        vertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
+            VerticalBarVisibility == ScrollBarVisibility.Always;
 
         // Automatic bars are added monotonically because one reserved axis can
         // induce overflow on the other. Two additions are the finite maximum.
@@ -583,9 +668,11 @@ public sealed class ScrollView: Container
             viewport = new Size(
                 Math.Max(0, available.Width - (vertical ? 1 : 0)),
                 Math.Max(0, available.Height - (horizontal ? 1 : 0)));
-            var addHorizontal = HorizontalBarVisibility == ScrollBarVisibility.Auto &&
+            var addHorizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
+                HorizontalBarVisibility == ScrollBarVisibility.Auto &&
                 extent.Width > viewport.Width;
-            var addVertical = VerticalBarVisibility == ScrollBarVisibility.Auto &&
+            var addVertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
+                VerticalBarVisibility == ScrollBarVisibility.Auto &&
                 extent.Height > viewport.Height;
             var nextHorizontal = horizontal || addHorizontal;
             var nextVertical = vertical || addVertical;

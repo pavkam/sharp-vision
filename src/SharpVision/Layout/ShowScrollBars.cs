@@ -1,0 +1,14 @@
+namespace SharpVision.Layout;
+
+/// <summary>Selects when enabled overflow axes reserve and render scrollbar chrome.</summary>
+public enum ShowScrollBars
+{
+    /// <summary>Never renders scrollbar chrome while retaining enabled-axis scrolling.</summary>
+    Never,
+
+    /// <summary>Renders chrome only when content exceeds the viewport.</summary>
+    WhenNeeded,
+
+    /// <summary>Always reserves and renders chrome for enabled axes.</summary>
+    Always,
+}

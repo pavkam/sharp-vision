@@ -540,8 +540,8 @@ internal static class Examples
             Width = Length.Cells(34),
             Height = Length.Cells(8),
             Content = content,
-            HorizontalBarVisibility = ScrollBarVisibility.Auto,
-            VerticalBarVisibility = ScrollBarVisibility.Auto,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
         };
     }
 

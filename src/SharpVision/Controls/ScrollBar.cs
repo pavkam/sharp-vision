@@ -155,6 +155,34 @@ public sealed class ScrollBar: Control
         }
     }
 
+    /// <summary>Gets or sets compact or full scrollbar chrome.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ScrollBarStyle Chrome
+    {
+        get;
+        set
+        {
+            Validate(value);
+            _ = Set(ref field, value, Invalidation.Measure);
+        }
+    } = ScrollBarStyle.Full;
+
+    /// <summary>Gets or sets the generated line or block glyph treatment.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ScrollBarFill Fill
+    {
+        get;
+        set
+        {
+            Validate(value);
+            _ = Set(ref field, value, Invalidation.Render);
+        }
+    } = ScrollBarFill.Block;
+
     /// <summary>Gets or sets the printable narrow decrement-button glyph.</summary>
     /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -215,7 +243,8 @@ public sealed class ScrollBar: Control
     {
         _ = constraint.Width;
         Debug.Assert(Enum.IsDefined(Orientation), "Orientation is validated before assignment.");
-        return Orientation == Orientation.Vertical ? new Size(1, 3) : new Size(3, 1);
+        var extent = Chrome == ScrollBarStyle.Thin ? 1 : 3;
+        return Orientation == Orientation.Vertical ? new Size(1, extent) : new Size(extent, 1);
     }
 
     /// <inheritdoc/>
@@ -272,7 +301,7 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        var buttons = length >= 2 ? 1 : 0;
+        var buttons = ButtonCount(length);
         var trackLength = Math.Max(0, length - (buttons * 2));
         var thumb = Thumb.Resolve(CurrentRange(), trackLength);
 
@@ -376,19 +405,20 @@ public sealed class ScrollBar: Control
         _ = FocusOwner?.Focus(this);
         eventArgs.Handled = true;
 
-        if (length >= 2 && position == 0)
+        var buttons = ButtonCount(length);
+
+        if (buttons != 0 && position == 0)
         {
             _ = ScrollBy(Negate(SmallChange), Cause.Pointer);
             return;
         }
 
-        if (length >= 2 && position == length - 1)
+        if (buttons != 0 && position == length - 1)
         {
             _ = ScrollBy(SmallChange, Cause.Pointer);
             return;
         }
 
-        var buttons = length >= 2 ? 1 : 0;
         var trackLength = Math.Max(0, length - (buttons * 2));
         var trackPosition = position - buttons;
         var range = CurrentRange();
@@ -453,7 +483,7 @@ public sealed class ScrollBar: Control
     {
         var pointer = eventArgs.Pointer;
         var bounds = ContentBounds;
-        var buttons = AxisLength(bounds) >= 2 ? 1 : 0;
+        var buttons = ButtonCount(AxisLength(bounds));
         var position = Axis(pointer.Cells) - AxisOrigin(bounds) - buttons;
         var delta = Difference(position, _dragPointerStart);
 
@@ -518,26 +548,42 @@ public sealed class ScrollBar: Control
 
     private Rune ResolveGlyph(int position, int length, int buttons, Thumb thumb)
     {
-        if (buttons == 0)
-        {
-            return ThumbGlyph;
-        }
-
-        if (position == 0)
-        {
-            return DecrementGlyph;
-        }
-
-        if (position == length - 1)
-        {
-            return IncrementGlyph;
-        }
-
         var trackPosition = position - buttons;
-        return trackPosition >= thumb.Start && trackPosition < thumb.Start + thumb.Length
-            ? ThumbGlyph
-            : TrackGlyph;
+
+        return buttons == 0
+            ? trackPosition >= thumb.Start && trackPosition < thumb.Start + thumb.Length
+                ? ThumbRune()
+                : TrackRune()
+            : position == 0
+            ? DecrementRune()
+            : position == length - 1
+            ? IncrementRune()
+            : trackPosition >= thumb.Start && trackPosition < thumb.Start + thumb.Length
+            ? ThumbRune()
+            : TrackRune();
     }
+
+    private int ButtonCount(int length) => Chrome == ScrollBarStyle.Full && length >= 2 ? 1 : 0;
+
+    private Rune DecrementRune() => DecrementGlyph.Value != '-'
+        ? DecrementGlyph
+        : Orientation == Orientation.Vertical ? new Rune('▲') : new Rune('◀');
+
+    private Rune IncrementRune() => IncrementGlyph.Value != '+'
+        ? IncrementGlyph
+        : Orientation == Orientation.Vertical ? new Rune('▼') : new Rune('▶');
+
+    private Rune TrackRune() => TrackGlyph.Value != '.'
+        ? TrackGlyph
+        : Fill == ScrollBarFill.Line
+            ? Orientation == Orientation.Vertical ? new Rune('│') : new Rune('─')
+            : new Rune('░');
+
+    private Rune ThumbRune() => ThumbGlyph.Value != '#'
+        ? ThumbGlyph
+        : Fill == ScrollBarFill.Line
+            ? Orientation == Orientation.Vertical ? new Rune('┃') : new Rune('━')
+            : new Rune('▓');
 
     private void Draw(TerminalCanvas canvas, Point point, Rune glyph)
     {

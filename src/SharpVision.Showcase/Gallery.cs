@@ -27,8 +27,9 @@ public sealed class Gallery: IDisposable
         Pages = Catalog.Pages;
         _main = new ScrollView
         {
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
-            VerticalBarVisibility = ScrollBarVisibility.Auto,
             ConstrainContentToViewport = true,
         };
         _navigation = new NavigationItem[Pages.Count];
@@ -51,8 +52,8 @@ public sealed class Gallery: IDisposable
         _navigationScroll = new ScrollView
         {
             Content = entries,
-            HorizontalBarVisibility = ScrollBarVisibility.Auto,
-            VerticalBarVisibility = ScrollBarVisibility.Auto,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
         };
         var sidebarLayout = new Dock();
         var header = CreateSidebarHeader();

@@ -141,7 +141,7 @@ public sealed class ScrollBarTests
         control.Render(frame.Canvas);
 
         control.DesiredSize.ShouldBe(new Size(3, 1));
-        Cells(frame, width: 10, y: 0).ShouldBe("-...##...+");
+        Cells(frame, width: 10, y: 0).ShouldBe("◀░░░▓▓░░░▶");
     }
 
     /// <summary>Verifies vertical and horizontal keyboard mappings consume only press transitions.</summary>
@@ -343,12 +343,12 @@ public sealed class ScrollBarTests
         using var one = new Frame(new Size(1, 1));
 
         control.Render(one.Canvas);
-        FrameOracle.Get(one, default).ShouldBe("#");
+        FrameOracle.Get(one, default).ShouldBe("▓");
 
         control.Bounds = new Rect(0, 0, 2, 1);
         using var two = new Frame(new Size(2, 1));
         control.Render(two.Canvas);
-        Cells(two, width: 2, y: 0).ShouldBe("-+");
+        Cells(two, width: 2, y: 0).ShouldBe("◀▶");
 
         _ = Should.Throw<ArgumentException>(() => control.TrackGlyph = new Rune('界'));
         control.TrackGlyph.ShouldBe(new Rune('.'));
