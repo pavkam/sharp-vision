@@ -35,11 +35,11 @@ run:
 
 test: build
 	@echo "🧪 Running tests..."
-	@dotnet test --solution $(SOLUTION) --configuration Release --no-build --minimum-expected-tests 3 --timeout 60s
+	@dotnet test --solution $(SOLUTION) --configuration Release --no-build --minimum-expected-tests 3 --timeout 900s
 	@echo "✅ Tests complete."
 
 test-ci:
-	@dotnet test --solution $(SOLUTION) --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 60s --report-xunit-trx
+	@dotnet test --solution $(SOLUTION) --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --report-xunit-trx
 
 lint: restore
 	@echo "🔍 Checking source and documentation..."

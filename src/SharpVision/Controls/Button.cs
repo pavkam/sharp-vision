@@ -4,25 +4,35 @@ using System.Windows.Input;
 
 using SharpVision.Input;
 using SharpVision.Layout;
-using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 
 using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
+using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Controls;
 
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
-public sealed class Button: Pressable
+public sealed partial class Button: Pressable
 {
+    static Button()
+    {
+        _ = BorderThicknessProperty.RegisterClassDefault<Button>(new Thickness(1));
+        _ = PaddingProperty.RegisterClassDefault<Button>(new Thickness(1));
+        _ = HasShadowProperty.RegisterClassDefault<Button>(true);
+        _ = ShadowOffsetProperty.RegisterClassDefault<Button>(new Point(1, 1));
+        _ = BorderStyleProperty.RegisterClassDefault<Button>(Glyphs.Rounded);
+    }
+
     private ICommand? _command;
 
     #region Construction and command properties
 
     /// <summary>Initializes an empty focusable Button with rounded border, internal padding, and compact shadow.</summary>
-    public Button() : base(capacity: 1) => Padding = new Thickness(1);
+    public Button() : base(capacity: 1)
+    {
+    }
 
     /// <summary>Raised after released state commits and before command execution.</summary>
     public event EventHandler<ActivationEventArgs>? Click;
@@ -90,59 +100,9 @@ public sealed class Button: Pressable
     /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
     public Glyphs Glyphs
     {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    } = Glyphs.Rounded;
-
-    /// <summary>Gets or sets whether the compact translated shadow is rendered outside the button body.</summary>
-    /// <exception cref="InvalidOperationException">The attached button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
-    public bool HasShadow
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    } = true;
-
-    /// <summary>Gets or sets the signed terminal-cell translation applied to the compact button shadow.</summary>
-    /// <exception cref="InvalidOperationException">The attached button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
-    public Point ShadowOffset
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    } = new(1, 1);
-
-    /// <summary>Gets or sets how the button's visual shadow changes overflow cells.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not a known shadow mode.</exception>
-    /// <exception cref="InvalidOperationException">The attached button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
-    public ShadowMode ShadowMode
-    {
-        get;
-        set
-        {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The shadow mode is unknown.");
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    } = ShadowMode.Composite;
-
-    /// <summary>Gets or sets the visible one-cell Rune drawn for a block-glyph button shadow.</summary>
-    /// <exception cref="ArgumentException">The Rune is a control or is not one terminal cell wide.</exception>
-    /// <exception cref="InvalidOperationException">The attached button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
-    public Rune ShadowGlyph
-    {
-        get;
-        set
-        {
-            ValidateShadowGlyph(value);
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    } = new('▓');
+        get => BorderStyle;
+        set => BorderStyle = value;
+    }
 
     #endregion
 
@@ -207,7 +167,7 @@ public sealed class Button: Pressable
         var style = ResolvedStyle;
         var face = FaceBounds;
 
-        var opaque = Appearance.Background.HasValue;
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
 
         if (HasShadow)
         {
@@ -276,8 +236,8 @@ public sealed class Button: Pressable
 
         for (var x = bounds.X; x < bounds.Right; x++)
         {
-            var top = x == bounds.X ? Glyphs.TopLeft : x == bounds.Right - 1 ? Glyphs.TopRight : Glyphs.Top;
-            var bottom = x == bounds.X ? Glyphs.BottomLeft : x == bounds.Right - 1 ? Glyphs.BottomRight : Glyphs.Bottom;
+            var top = x == bounds.X ? BorderStyle.TopLeft : x == bounds.Right - 1 ? BorderStyle.TopRight : BorderStyle.Top;
+            var bottom = x == bounds.X ? BorderStyle.BottomLeft : x == bounds.Right - 1 ? BorderStyle.BottomRight : BorderStyle.Bottom;
             canvas.DrawRune(top, new Point(x, bounds.Y), style, background);
 
             if (bounds.Height > 1)
@@ -288,11 +248,11 @@ public sealed class Button: Pressable
 
         for (var y = bounds.Y + 1; y < bounds.Bottom - 1; y++)
         {
-            canvas.DrawRune(Glyphs.Left, new Point(bounds.X, y), style, background);
+            canvas.DrawRune(BorderStyle.Left, new Point(bounds.X, y), style, background);
 
             if (bounds.Width > 1)
             {
-                canvas.DrawRune(Glyphs.Right, new Point(bounds.Right - 1, y), style, background);
+                canvas.DrawRune(BorderStyle.Right, new Point(bounds.Right - 1, y), style, background);
             }
         }
     }
@@ -303,7 +263,7 @@ public sealed class Button: Pressable
         var style = new TerminalStyle(
             source.Foreground,
             source.Background,
-            Attributes.Dim,
+            TerminalAttributes.Dim,
             source.Hyperlink);
 
         for (var y = target.Y; y < target.Bottom; y++)

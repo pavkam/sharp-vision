@@ -30,6 +30,7 @@ internal static class Catalog
         Text(),
         TextInput(),
         Window(),
+        Theming(),
     ]);
 
     #region Display controls
@@ -107,6 +108,7 @@ internal static class Catalog
             I("Content edit", "Change Unicode text", "The control measures extended grapheme clusters and preserves combining and wide-cell ownership."),
             I("Resize", "Change the available width", "Wrapping or trimming recomputes while keeping complete grapheme clusters intact."),
             I("Alignment", "Choose Start, Center, or End", "Each formatted line moves within its committed content box."),
+            I("Pointer probe", "Move the pointer over the uneven grid readout", "Pixel coordinates stay exact; mapped cells appear only when exact grid metrics are available."),
         ],
         [
             P("Content", "string", "empty", "Provides the non-null UTF-16 content measured as extended grapheme clusters."),
@@ -442,6 +444,22 @@ internal static class Catalog
             P("ShowGridLines", "bool", "true", "Draws light Unicode lines in available table gaps using the configurable grid-line foreground."),
         ],
         Examples.Table);
+
+    private static Page Theming() => new(
+        "Theming",
+        "Demonstrates application themes, type-keyed styles, local overrides, and third-party style properties.",
+        [
+            I("Theme switch", "Activate Light or Dark in the sidebar", "Application.Theme republishes a frozen theme to every attached control."),
+            I("Local override", "Set Foreground on a specimen control", "The explicit local value survives later theme changes until cleared."),
+            I("Third-party property", "Change ShowcasePanel label placement", "Custom StyleProperty metadata resolves through the same cascade as built-in chrome."),
+        ],
+        [
+            P("Application.Theme", "Theme", "Themes.Dark", "Owns the active frozen theme snapshot published to the attached tree."),
+            P("Control.Style", "IControlStyle?", "null", "Applies a per-instance overlay only to the owning control."),
+            P("Control.Foreground", "Color?", "themed", "Reads and writes the foreground style property through the typed cascade."),
+            P("ShowcasePanel.LabelPlacement", "LabelPlacement", "Left", "Demonstrates a third-party style property registered outside SharpVision."),
+        ],
+        Examples.Theming);
 
     #endregion
 

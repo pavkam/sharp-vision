@@ -5,7 +5,6 @@ using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 
 using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using KeyAction = SharpVision.Terminal.Input.Action;
@@ -16,9 +15,15 @@ using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 namespace SharpVision.Controls;
 
 /// <summary>Frames one owned child as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
-public sealed class Window: Container
+public sealed partial class Window: Container
 {
     #region Construction and properties
+
+    static Window()
+    {
+        _ = HasShadowProperty.RegisterClassDefault<Window>(true);
+        _ = ShadowOffsetProperty.RegisterClassDefault<Window>(new Point(2, 1));
+    }
 
     /// <summary>Initializes an empty window with a rounded border and composite shadow.</summary>
     public Window() : base(capacity: 1)
@@ -76,92 +81,6 @@ public sealed class Window: Container
         set => _ = Set(ref field, value, Invalidation.Render);
     } = Glyphs.Rounded;
 
-    /// <summary>Gets or sets an optional direct foreground override for frame cells.</summary>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
-    public Color? BorderColor
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets an optional direct background used by the complete window body.</summary>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
-    public Color? Background
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets optional attributes applied to frame and title cells.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
-    public TerminalAttributes? Attributes
-    {
-        get;
-        set
-        {
-            if (value.HasValue)
-            {
-                _ = new TerminalStyle(attributes: value.Value);
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    }
-
-    /// <summary>Gets or sets whether the translated shadow is rendered outside the framed body.</summary>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
-    public bool HasShadow
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    } = true;
-
-    /// <summary>Gets or sets the composite or block-glyph shadow behavior.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
-    public ShadowMode ShadowMode
-    {
-        get;
-        set
-        {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The shadow mode is unknown.");
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    } = ShadowMode.Composite;
-
-    /// <summary>Gets or sets the signed terminal-cell translation applied to the optional shadow.</summary>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
-    public Point ShadowOffset
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    } = new(2, 1);
-
-    /// <summary>Gets or sets the printable one-cell Rune used by a block-glyph shadow.</summary>
-    /// <exception cref="ArgumentException">The value is a control or does not occupy exactly one cell.</exception>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
-    public Rune ShadowGlyph
-    {
-        get;
-        set
-        {
-            ValidateGlyph(value);
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    } = new('▓');
-
     #endregion
 
     #region Layout and rendering
@@ -194,20 +113,10 @@ public sealed class Window: Container
     protected override void RenderCore(TerminalCanvas canvas)
     {
         var inherited = ResolvedStyle;
-        var background = Background ?? inherited.Background;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
-        var opaque = Background.HasValue || Appearance.Background.HasValue;
-        var body = new TerminalStyle(
-            inherited.Foreground,
-            background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
         if (opaque)
         {
-            canvas.Clear(Bounds, body);
+            canvas.Clear(Bounds, inherited);
         }
 
         if (Bounds.Width == 0 || Bounds.Height == 0)
@@ -215,13 +124,7 @@ public sealed class Window: Container
             return;
         }
 
-        var border = new TerminalStyle(
-            BorderColor ?? Appearance.BorderColor ?? inherited.Foreground,
-            background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
+        var border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
         var backgroundMode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         DrawFrame(canvas, border, backgroundMode);
 

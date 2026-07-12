@@ -9,17 +9,15 @@ public sealed class Theme
     private readonly Dictionary<Type, IControlStyle> _styles = [];
     private readonly Dictionary<Type, IReadOnlyList<IControlStyle>> _styleChains = [];
     private readonly List<(IControlStyle Style, EventHandler<ThemeChangedEventArgs> Handler)> _subscriptions = [];
-    private int _version;
-    private bool _isFrozen;
 
     /// <summary>Raised after one committed theme mutation publishes a new version.</summary>
     public event EventHandler<ThemeChangedEventArgs>? Changed;
 
     /// <summary>Gets whether this theme rejects further mutation.</summary>
-    public bool IsFrozen => _isFrozen;
+    public bool IsFrozen { get; private set; }
 
     /// <summary>Gets the monotonically increasing published version.</summary>
-    public int Version => _version;
+    public int Version { get; private set; }
 
     /// <summary>Adds or replaces the style for one control type.</summary>
     /// <typeparam name="TControl">The targeted control type.</typeparam>
@@ -126,7 +124,7 @@ public sealed class Theme
                 clone.Subscribe(cloned);
             }
 
-            clone._version = _version;
+            clone.Version = Version;
             return clone;
         }
     }
@@ -145,9 +143,9 @@ public sealed class Theme
                 _styles[entry.Key] = FreezeStyle(entry.Value);
             }
 
-            _isFrozen = true;
+            IsFrozen = true;
             InvalidateCaches();
-            _version++;
+            Version++;
         }
     }
 
@@ -155,7 +153,7 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            return new ThemeSnapshot(_version, new Dictionary<Type, IControlStyle>(_styles));
+            return new ThemeSnapshot(Version, new Dictionary<Type, IControlStyle>(_styles));
         }
     }
 
@@ -174,7 +172,7 @@ public sealed class Theme
         }
     }
 
-    private IReadOnlyList<IControlStyle> BuildChain(Type controlType)
+    private List<IControlStyle> BuildChain(Type controlType)
     {
         var chain = new List<IControlStyle>();
 
@@ -197,7 +195,7 @@ public sealed class Theme
 
     private void EnsureMutable()
     {
-        if (_isFrozen)
+        if (IsFrozen)
         {
             throw new InvalidOperationException("A frozen theme cannot be changed.");
         }
@@ -205,14 +203,14 @@ public sealed class Theme
 
     private void Subscribe(IControlStyle style)
     {
-        EventHandler<ThemeChangedEventArgs> handler = (_, args) =>
+        void handler(object? _, ThemeChangedEventArgs args)
         {
             lock (_gate)
             {
                 InvalidateCaches();
                 Publish(args.Impact, args.TargetType);
             }
-        };
+        }
 
         style.Changed += handler;
         _subscriptions.Add((style, handler));
@@ -234,7 +232,7 @@ public sealed class Theme
 
     private void Publish(Impact impact, Type targetType)
     {
-        _version++;
+        Version++;
         Changed?.Invoke(this, new ThemeChangedEventArgs(targetType, impact));
     }
 

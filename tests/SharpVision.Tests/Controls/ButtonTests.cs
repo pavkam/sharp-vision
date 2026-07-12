@@ -15,7 +15,6 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = SharpVision.Terminal.Input.Action;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -121,9 +120,9 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenPressedWithoutShadow_UsesPressedAppearanceWithoutTranslation()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240)));
-        style.Set(State.Pressed, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(24)));
+        var style = ThemeTestSupport.OverlayStyle<Button>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240))),
+            (State.Pressed, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(24))));
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -158,9 +157,9 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenHovered_StylesFrameButNotShadow()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(attributes: Attributes.None));
-        style.Set(State.Hovered, new Appearance(attributes: Attributes.Bold));
+        var style = ThemeTestSupport.OverlayStyle<Button>(
+            (State.Normal, new Appearance(attributes: Attributes.None)),
+            (State.Hovered, new Appearance(attributes: Attributes.Bold)));
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -344,8 +343,8 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenStyleDefinesBackground_FillsButtonBounds()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(Color.Indexed(255), Color.Indexed(24)));
+        var style = ThemeTestSupport.OverlayStyle<Button>(
+            (State.Normal, new Appearance(Color.Indexed(255), Color.Indexed(24))));
         var button = new Button
         {
             Content = new ControlText("Run"),

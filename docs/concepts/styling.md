@@ -2,66 +2,63 @@
 
 ## Styling contract
 
-Styles are mutable resources with change notification; controls are ordinary
-mutable objects and no virtual-tree reconciliation is involved. A style change
+SharpVision uses typed style properties, type-keyed themes, and per-instance
+style overlays. Controls are ordinary mutable objects; a style or theme change
 invalidates only dependent controls and only the required phase.
 
-## Values and scope
+## Style properties
 
-Styles can provide foreground/background, text attributes, a typed underline,
-independent underline color, border glyphs/colors, padding, and control-specific
-appearance. A null `Control.Style` inherits the nearest ancestor style; a
-non-null style replaces that resource scope. Unset appearance fields and
-explicit terminal defaults are distinct.
+Each styleable value is registered as immutable `StyleProperty<T>` metadata on
+its declaring control type. Controls expose conventional CLR properties backed
+by protected `GetValue`, `SetValue`, and public `ClearValue` operations. Local
+values win over every themed, per-instance, class-default, and visual-state
+layer.
 
-The base control converts foreground, background, and attributes into terminal
-cell style. Concrete Phase 5 controls consume resolved border and style-padding
-fields according to their own drawing and box contracts; style padding does not
-silently replace the base `Control.Padding` property.
+Base `Control` registers margin, padding, foreground, background, attributes,
+underline, underline color, fill mode, border chrome, and shadow chrome. Derived
+controls register additional properties and may publish class defaults (for
+example, `Button` rounded border and compact shadow).
 
-Text foreground/background/attribute values and Border
-border-color/background/attribute values are nullable direct overrides. Null
-inherits the fully resolved active appearance; explicit terminal defaults and
-`Attributes.None` replace inherited values. Geometry-affecting padding
-invalidates measure, while display-only overrides invalidate render.
+## Themes and resolution
 
-`Appearance` represents every field as an optional value. Null is unset;
-`Color.Default`, `Attributes.None`, `Underline.None`, zero `Thickness`, and a
-concrete border Rune are explicit overlays. Underline and underline color
-overlay independently, which allows one state to change the shape while keeping
-a lower-precedence color. `Resolver.ToTerminal` validates and converts the final
-combination to the complete semantic style stored in terminal cells.
+`Theme` owns at most one `IControlStyle` per control type. `Application.Theme`
+(default `Themes.Dark`) publishes an internal theme context to every attached
+control. Resolution order for each property and visual state is:
+
+1. registered default;
+2. most-derived class default;
+3. theme chain from `Control` through the runtime type;
+4. per-instance `Control.Style` overlay (that control only);
+5. active visual-state overlays (hovered, focused, checked, pressed, disabled);
+6. explicit local value.
+
+`Themes.White` and `Themes.Dark` are frozen standard themes built from the
+public `Theme` and `ControlStyle<TControl>` API using the portable 16-color
+palette.
+
+## Per-instance styles
+
+`Control.Style` is a nullable `IControlStyle` overlay. It applies only to the
+owning control and does not flow to descendants. List-owned items resolve
+`ControlStyle<List>` theme and owner-instance values in addition to their own
+theme chain so row selection styling remains coherent.
 
 ## Visual states
 
 Standard states are normal, hovered, pressed, focused, checked, and disabled.
-Resolution applies base values, then state overlays in deterministic precedence:
-disabled, pressed, checked, focused, hovered, normal for conflicting properties.
-Independent properties from combined states remain combined.
-
-`Style.Set` accepts only `State.Normal` or one overlay flag. `Resolver.Resolve`
-applies normal, hovered, focused, checked, pressed, then disabled, yielding the
-conflict precedence disabled > pressed > checked > focused > hovered > normal.
-Fields not set by a higher state remain supplied by lower states.
-
-Appearance never controls behavior: `IsEnabled` determines input acceptance; a
-disabled-looking brush alone does not disable a control.
+Measure-impact properties are normal-state values only. Render-impact properties
+may vary by overlay state. Appearance never controls behavior: `IsEnabled`
+determines input acceptance.
 
 ## Invalidation and tests
 
-Color, attribute, underline, underline-color, border Rune, and border-color
-changes invalidate render. Style-padding changes invalidate measure so consuming
-concrete controls can remeasure. Tests cover direct versus inherited values,
-resource replacement, combined states, dependency cleanup, disabled semantics,
-and exact cell styles.
+Property metadata declares the earliest affected phase: measure, arrange, or
+render. Tests cover registration, theme precedence, local override/clear,
+application theme switching, standard theme cells, third-party style properties,
+showcase theme toggling, and exact terminal cell output.
 
-`Control.Style` is nullable: null inherits the nearest ancestor resource. A
-direct subscriber propagates changes only through descendants that still inherit
-it and stops at another direct style. Replacement, detach, and disposal
-unsubscribe explicitly; reattachment subscribes once. Resource replacement is
-measure-conservative, while committed resource changes carry precise render or
-measure impact.
+## Legacy resources
 
-Behavior state produces `IsHovered`, `IsFocused`, `IsPressed`, and disabled
-overlays. Checked controls extend the protected state calculation with
-`State.Checked`. Appearance never writes those behavior values.
+The older ancestor-inheriting `Style` and `Appearance` resources remain for
+compatibility tests of the legacy resolver. New code and showcase styling use
+`ControlStyle<TControl>`, `Theme`, and typed style properties exclusively.

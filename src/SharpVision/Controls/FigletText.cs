@@ -1,9 +1,7 @@
 using SharpVision.Fonts;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
@@ -65,42 +63,6 @@ public sealed class FigletText: Control
         set => _ = Set(ref field, value, Invalidation.Measure);
     }
 
-    /// <summary>Gets or sets an optional direct foreground.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Color? Foreground
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets an optional direct background.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Color? Background
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets optional direct rendition attributes.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public TerminalAttributes? Attributes
-    {
-        get;
-        set
-        {
-            if (value.HasValue)
-            {
-                _ = new TerminalStyle(attributes: value.Value);
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    }
-
     #endregion
 
     #region Layout and rendering
@@ -154,16 +116,5 @@ public sealed class FigletText: Control
         _cachedOptions = Options;
     }
 
-    private TerminalStyle ResolveTextStyle()
-    {
-        var inherited = ResolvedStyle;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
-        return new TerminalStyle(
-            Foreground ?? inherited.Foreground,
-            Background ?? inherited.Background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-    }
+    private TerminalStyle ResolveTextStyle() => ResolvedStyle;
 }

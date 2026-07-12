@@ -12,7 +12,6 @@ using SharpVision.Threading;
 using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -73,13 +72,11 @@ public sealed class PopupTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesSurfaceStyle()
     {
-        var style = new UiStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(
+        var style = ThemeTestSupport.OverlayStyle<Popup>(
+            (State.Normal, new Appearance(
                 attributes: Attributes.Overline,
                 underline: Underline.Dotted,
-                underlineColor: Color.Indexed(4)));
+                underlineColor: Color.Indexed(4))));
         var popup = new Popup
         {
             Child = new ProbeControl(new Size(1, 1)),

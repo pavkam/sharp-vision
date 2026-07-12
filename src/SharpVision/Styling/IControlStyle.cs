@@ -4,16 +4,16 @@ namespace SharpVision.Styling;
 public interface IControlStyle
 {
     /// <summary>Raised after one committed style mutation publishes a new snapshot.</summary>
-    event EventHandler<ThemeChangedEventArgs>? Changed;
+    public event EventHandler<ThemeChangedEventArgs>? Changed;
 
     /// <summary>Gets the concrete control type targeted by this style.</summary>
-    Type TargetType { get; }
+    public Type TargetType { get; }
 
     /// <summary>Gets whether this style rejects further mutation.</summary>
-    bool IsFrozen { get; }
+    public bool IsFrozen { get; }
 
     /// <summary>Gets the earliest impact of the current style contents.</summary>
-    Impact AggregateImpact { get; }
+    public Impact AggregateImpact { get; }
 
     /// <summary>Creates an independent unfrozen copy of this style.</summary>
     /// <returns>A mutable style with the same values.</returns>

@@ -17,7 +17,6 @@ using KeyAction = SharpVision.Terminal.Input.Action;
 using Label = SharpVision.Controls.Text;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 using UiList = SharpVision.Controls.List;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -55,9 +54,9 @@ public sealed class ListTests
     [Fact]
     public void Render_WhenStyledAndSelected_PaintsSurfaceAndSelectedRow()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240)));
-        style.Set(State.Checked, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(99)));
+        var style = ThemeTestSupport.OverlayStyle<UiList>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240))),
+            (State.Checked, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(99))));
         var control = new UiList
         {
             Items = new object?[] { "One", "Two" },
@@ -306,10 +305,8 @@ public sealed class ListTests
     [Fact]
     public void Render_WhenItemIsSelected_UsesCheckedStyleWithoutChangingTemplateContent()
     {
-        var style = new UiStyle();
-        style.Set(
-            State.Checked,
-            new Appearance(attributes: Attributes.Reverse));
+        var style = ThemeTestSupport.OverlayStyle<UiList>(
+            (State.Checked, new Appearance(attributes: Attributes.Reverse)));
         var control = Create("界", "B");
         control.Style = style;
         control.SelectedIndex = 0;

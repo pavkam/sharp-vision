@@ -244,7 +244,7 @@ public sealed class ComboBox: Pressable
     {
         var style = ResolvedStyle;
 
-        if (Appearance.Background.HasValue)
+        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
             canvas.Clear(Bounds, style);
         }

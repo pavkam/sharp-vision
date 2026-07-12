@@ -51,8 +51,8 @@ internal sealed class NavigationItem: Pressable
             return;
         }
 
-        Style = Palette.Navigation();
         IsSelected = value;
+        Invalidate(Invalidation.Render);
     }
 
     #endregion
@@ -66,7 +66,7 @@ internal sealed class NavigationItem: Pressable
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var style = Resolver.ToTerminal(Appearance);
+        var style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         var marker = IsSelected || IsHovered ? "›" : "·";
         _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);

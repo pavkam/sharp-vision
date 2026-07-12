@@ -135,7 +135,7 @@ public sealed class RadioButton: Pressable
         var length = glyph.EncodeToUtf16(buffer);
         var style = ResolvedStyle;
 
-        if (Appearance.Background.HasValue)
+        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
             canvas.Clear(Bounds, style);
         }

@@ -16,7 +16,6 @@ using Shouldly;
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -198,8 +197,8 @@ public sealed class RadioButtonTests
     [Fact]
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(45)));
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
         var radio = new RadioButton { Style = style };
         new Engine().Layout(radio, new Size(2, 1));
         using var frame = new Frame(new Size(2, 1));

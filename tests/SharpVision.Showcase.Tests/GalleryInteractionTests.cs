@@ -274,7 +274,7 @@ public sealed class GalleryInteractionTests
         {
             button.IsHovered.ShouldBeTrue();
             button.IsFocused.ShouldBeTrue();
-            button.Appearance.Background.ShouldBe(Palette.Pressed);
+            button.Background.ShouldBe(Palette.Pressed);
         }, TestContext.Current.CancellationToken);
 
         terminal.QueueInput(Encoding.ASCII.GetBytes(
@@ -287,7 +287,7 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(() =>
         {
             button.IsSelected.ShouldBeTrue();
-            button.Appearance.Background.ShouldBe(Palette.Highlight);
+            button.Background.ShouldBe(Palette.Highlight);
         }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -317,7 +317,7 @@ public sealed class GalleryInteractionTests
             "sidebar passive hover");
 
         await application.Dispatcher.InvokeAsync(() =>
-            entry.Appearance.Background.ShouldBe(Palette.Hover),
+            entry.Background.ShouldBe(Palette.Hover),
             TestContext.Current.CancellationToken);
 
         terminal.QueueInput("\u001b[<35;0;0M"u8);
@@ -357,7 +357,7 @@ public sealed class GalleryInteractionTests
             "sample button passive hover");
 
         await application.Dispatcher.InvokeAsync(() =>
-            active.Appearance.Background.ShouldBe(Palette.Hover),
+            active.Background.ShouldBe(Palette.Hover),
             TestContext.Current.CancellationToken);
 
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -395,8 +395,8 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(() =>
         {
             active.IsFocused.ShouldBeTrue();
-            active.Appearance.Foreground.ShouldBe(Palette.Accent);
-            active.Appearance.Background.ShouldBe(Palette.Surface);
+            active.Foreground.ShouldBe(Palette.Accent);
+            active.Background.ShouldBe(Palette.Surface);
         }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }

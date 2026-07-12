@@ -1,3 +1,4 @@
+using SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
@@ -54,75 +55,125 @@ internal static class Palette
     #region Styles
 
     /// <summary>Creates a style for a self-rendering navigation entry.</summary>
-    internal static Style Navigation()
+    internal static ControlStyle<Control> Navigation()
     {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(Text, Panel));
-        style.Set(State.Hovered, new Appearance(background: Hover));
-        style.Set(State.Focused, new Appearance(foreground: Accent, attributes: Attributes.Bold));
-        style.Set(State.Checked, new Appearance(Text, Highlight, Attributes.Bold));
-        style.Set(State.Pressed, new Appearance(Text, Pressed, Attributes.Bold));
-        style.Set(State.Disabled, new Appearance(Muted, Panel, Attributes.Dim));
+        var style = new ControlStyle<Control>();
+        style.Set(Control.ForegroundProperty, State.Normal, Text);
+        style.Set(Control.BackgroundProperty, State.Normal, Panel);
+        style.Set(Control.BackgroundProperty, State.Hovered, Hover);
+        style.Set(Control.ForegroundProperty, State.Focused, Accent);
+        style.Set(Control.AttributesProperty, State.Focused, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Checked, Text);
+        style.Set(Control.BackgroundProperty, State.Checked, Highlight);
+        style.Set(Control.AttributesProperty, State.Checked, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Pressed, Text);
+        style.Set(Control.BackgroundProperty, State.Pressed, Pressed);
+        style.Set(Control.AttributesProperty, State.Pressed, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Disabled, Muted);
+        style.Set(Control.BackgroundProperty, State.Disabled, Panel);
+        style.Set(Control.AttributesProperty, State.Disabled, Attributes.Dim);
         return style;
     }
 
     /// <summary>Creates a style for text that lives inside the page heading surface.</summary>
-    internal static Style HeaderText()
+    internal static ControlStyle<Control> HeaderText()
     {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(Text, Canvas));
+        var style = new ControlStyle<Control>();
+        style.Set(Control.ForegroundProperty, State.Normal, Text);
+        style.Set(Control.BackgroundProperty, State.Normal, Canvas);
         return style;
     }
 
     /// <summary>Creates a style for text that lives inside a raised card surface.</summary>
-    internal static Style CardText()
+    internal static ControlStyle<Control> CardText()
     {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(Text, Surface));
+        var style = new ControlStyle<Control>();
+        style.Set(Control.ForegroundProperty, State.Normal, Text);
+        style.Set(Control.BackgroundProperty, State.Normal, Surface);
         return style;
     }
 
     /// <summary>Creates a full-surface style for editable text controls.</summary>
-    internal static Style Editor()
+    internal static ControlStyle<Control> Editor()
     {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(Text, InputSurface));
-        style.Set(State.Hovered, new Appearance(background: Hover));
-        style.Set(State.Focused, new Appearance(Accent, Pressed, Attributes.Bold));
-        style.Set(State.Disabled, new Appearance(Muted, Surface, Attributes.Dim));
+        var style = new ControlStyle<Control>();
+        style.Set(Control.ForegroundProperty, State.Normal, Text);
+        style.Set(Control.BackgroundProperty, State.Normal, InputSurface);
+        style.Set(Control.BackgroundProperty, State.Hovered, Hover);
+        style.Set(Control.ForegroundProperty, State.Focused, Accent);
+        style.Set(Control.BackgroundProperty, State.Focused, Pressed);
+        style.Set(Control.AttributesProperty, State.Focused, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Disabled, Muted);
+        style.Set(Control.BackgroundProperty, State.Disabled, Surface);
+        style.Set(Control.AttributesProperty, State.Disabled, Attributes.Dim);
         return style;
     }
 
     /// <summary>Creates a visibly stateful style for interactive live samples.</summary>
-    internal static Style Interactive()
+    internal static ControlStyle<Control> Interactive()
     {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(Text, Surface));
-        style.Set(State.Hovered, new Appearance(Text, Hover, Attributes.Bold));
-        style.Set(State.Focused, new Appearance(Accent, Surface, Attributes.Bold));
-        style.Set(State.Pressed, new Appearance(Text, Pressed, Attributes.Bold));
-        style.Set(State.Disabled, new Appearance(Muted, Panel, Attributes.Dim));
+        var style = new ControlStyle<Control>();
+        style.Set(Control.ForegroundProperty, State.Normal, Text);
+        style.Set(Control.BackgroundProperty, State.Normal, Surface);
+        style.Set(Control.ForegroundProperty, State.Hovered, Text);
+        style.Set(Control.BackgroundProperty, State.Hovered, Hover);
+        style.Set(Control.AttributesProperty, State.Hovered, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Focused, Accent);
+        style.Set(Control.BackgroundProperty, State.Focused, Surface);
+        style.Set(Control.AttributesProperty, State.Focused, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Pressed, Text);
+        style.Set(Control.BackgroundProperty, State.Pressed, Pressed);
+        style.Set(Control.AttributesProperty, State.Pressed, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Disabled, Muted);
+        style.Set(Control.BackgroundProperty, State.Disabled, Panel);
+        style.Set(Control.AttributesProperty, State.Disabled, Attributes.Dim);
         return style;
     }
 
     /// <summary>Creates the contrasting surface and selected-row treatment used by list controls.</summary>
-    internal static Style List()
+    internal static ControlStyle<Control> List()
     {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(Text, InputSurface));
-        style.Set(State.Hovered, new Appearance(Text, Hover, Attributes.Bold));
-        style.Set(State.Focused, new Appearance(Accent, InputSurface, Attributes.Bold));
-        style.Set(State.Checked, new Appearance(Text, Highlight, Attributes.Bold));
-        style.Set(State.Pressed, new Appearance(Text, Pressed, Attributes.Bold));
-        style.Set(State.Disabled, new Appearance(Muted, Panel, Attributes.Dim));
+        var style = new ControlStyle<Control>();
+        ApplyListStyle(style);
         return style;
     }
 
-    /// <summary>Creates a style for a low-emphasis dashboard label.</summary>
-    internal static Style MutedText()
+    /// <summary>Creates a list-targeted style for application theme publication.</summary>
+    internal static ControlStyle<List> ListForTheme()
     {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(Muted, Panel));
+        var style = new ControlStyle<List>();
+        ApplyListStyle(style);
+        return style;
+    }
+
+    private static void ApplyListStyle<TControl>(ControlStyle<TControl> style)
+        where TControl : Control
+    {
+        style.Set(Control.ForegroundProperty, State.Normal, Text);
+        style.Set(Control.BackgroundProperty, State.Normal, InputSurface);
+        style.Set(Control.ForegroundProperty, State.Hovered, Text);
+        style.Set(Control.BackgroundProperty, State.Hovered, Hover);
+        style.Set(Control.AttributesProperty, State.Hovered, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Focused, Accent);
+        style.Set(Control.BackgroundProperty, State.Focused, InputSurface);
+        style.Set(Control.AttributesProperty, State.Focused, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Checked, Text);
+        style.Set(Control.BackgroundProperty, State.Checked, Highlight);
+        style.Set(Control.AttributesProperty, State.Checked, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Pressed, Text);
+        style.Set(Control.BackgroundProperty, State.Pressed, Pressed);
+        style.Set(Control.AttributesProperty, State.Pressed, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Disabled, Muted);
+        style.Set(Control.BackgroundProperty, State.Disabled, Panel);
+        style.Set(Control.AttributesProperty, State.Disabled, Attributes.Dim);
+    }
+
+    /// <summary>Creates a style for a low-emphasis dashboard label.</summary>
+    internal static ControlStyle<Control> MutedText()
+    {
+        var style = new ControlStyle<Control>();
+        style.Set(Control.ForegroundProperty, State.Normal, Muted);
+        style.Set(Control.BackgroundProperty, State.Normal, Panel);
         return style;
     }
 

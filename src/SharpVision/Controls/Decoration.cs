@@ -23,13 +23,13 @@ internal static class Decoration
         var resolvedAttributes = attributes ?? inherited.Attributes;
         var resolvedUnderline = underline ?? inherited.Underline;
 
-        if (underline.HasValue)
-        {
-            resolvedAttributes &= ~TerminalAttributes.Underline;
-        }
-        else if ((resolvedAttributes & TerminalAttributes.Underline) != 0)
+        if ((resolvedAttributes & TerminalAttributes.Underline) != 0)
         {
             resolvedUnderline = Underline.None;
+        }
+        else if (underline.HasValue)
+        {
+            resolvedAttributes &= ~TerminalAttributes.Underline;
         }
 
         var resolvedColor = underlineColor ?? inherited.UnderlineColor;

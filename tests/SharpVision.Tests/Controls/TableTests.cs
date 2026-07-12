@@ -12,7 +12,6 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -66,8 +65,8 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenTableStyleHasForegroundOnly_PreservesSurfaceBackgroundOnDividers()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(45)));
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
         var table = new Table { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
@@ -87,13 +86,11 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
-        var style = new UiStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(
+        var style = ThemeTestSupport.OverlayStyle<Table>(
+            (State.Normal, new Appearance(
                 attributes: Attributes.RapidBlink,
                 underline: Underline.Dashed,
-                underlineColor: Color.Indexed(5)));
+                underlineColor: Color.Indexed(5))));
         var table = new Table { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Rows.Add(new TableRow([new ControlText("A")]));

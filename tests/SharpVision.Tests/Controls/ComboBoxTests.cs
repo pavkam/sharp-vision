@@ -12,7 +12,6 @@ using SharpVision.Threading;
 using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
-using StylingStyle = SharpVision.Styling.Style;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Tests.Controls;
@@ -45,17 +44,18 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpen_UsesOpaqueFramedDropDownSurface()
     {
-        var style = new StylingStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(42)));
+        var theme = new Theme();
+        var controlStyle = ThemeTestSupport.CreateControlStyle();
+        controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
+        controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(42));
+        theme.SetStyle(controlStyle);
         var box = new ComboBox
         {
             Height = Length.Cells(1),
             Items = ["Small", "Large"],
             IsOpen = true,
-            Style = style,
         };
+        ThemeTestSupport.ApplyTheme(box, theme);
         var size = new Size(12, 6);
         new Engine().Layout(box, size);
         using var frame = new Frame(size);
@@ -105,21 +105,21 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpenWithSelectedChoice_FillsTheCompleteListRow()
     {
-        var style = new StylingStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240)));
-        style.Set(
-            State.Checked,
-            new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(99)));
+        var theme = new Theme();
+        var controlStyle = ThemeTestSupport.CreateControlStyle();
+        controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
+        controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(240));
+        controlStyle.Set(Control.ForegroundProperty, State.Checked, Color.Indexed(255));
+        controlStyle.Set(Control.BackgroundProperty, State.Checked, Color.Indexed(99));
+        theme.SetStyle(controlStyle);
         var box = new ComboBox
         {
             Width = Length.Cells(20),
             Items = ["Compact", "Comfortable", "Spacious"],
             SelectedIndex = 0,
             IsOpen = true,
-            Style = style,
         };
+        ThemeTestSupport.ApplyTheme(box, theme);
         var size = new Size(24, 8);
         new Engine().Layout(box, size);
         using var frame = new Frame(size);

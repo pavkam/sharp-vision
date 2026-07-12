@@ -116,7 +116,7 @@ public sealed class StyleTests
         style.TryGet(State.Normal, out _).ShouldBeFalse();
     }
 
-    /// <summary>Verifies inherited dependencies stop at direct styles and replacement unsubscribes.</summary>
+    /// <summary>Verifies theme and instance-style dependencies invalidate only current dependents.</summary>
     [Fact]
     public async Task Style_WhenResourcesChange_InvalidatesOnlyCurrentDependentsAsync()
     {
@@ -124,40 +124,48 @@ public sealed class StyleTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var inherited = new UiStyle();
-            var direct = new UiStyle();
-            var replacement = new UiStyle();
-            inherited.Set(State.Normal, new Appearance(foreground: Color.Indexed(1)));
-            direct.Set(State.Normal, new Appearance(foreground: Color.Indexed(2)));
-            replacement.Set(State.Normal, new Appearance(foreground: Color.Indexed(3)));
-            var root = new ProbeContainer { Style = inherited };
+            var theme = new Theme();
+            var inherited = ThemeTestSupport.CreateControlStyle();
+            inherited.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
+            theme.SetStyle(inherited);
+            var direct = ThemeTestSupport.OverlayStyle<Control>(
+                (State.Normal, new Appearance(foreground: Color.Indexed(2))));
+            var replacement = ThemeTestSupport.OverlayStyle<Control>(
+                (State.Normal, new Appearance(foreground: Color.Indexed(3))));
+            var root = new ProbeContainer();
+            ThemeTestSupport.ApplyTheme(root, theme);
+            theme.Changed += (_, args) =>
+            {
+                ThemeTestSupport.RefreshTheme(root, theme);
+                InvalidateThemeDependents(root, args.Impact);
+            };
             var child = new ProbeControl();
             root.Children.Add(child);
             root.Attach(dispatcher);
             root.Clear(Invalidation.All);
             child.Clear(Invalidation.All);
 
-            inherited.Set(State.Normal, new Appearance(foreground: Color.Indexed(4)));
+            inherited.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
             child.Pending.ShouldBe(Invalidation.Render);
-            child.Appearance.Foreground.ShouldBe(Color.Indexed(4));
+            child.Foreground.ShouldBe(Color.Indexed(4));
             child.Style = direct;
             root.Clear(Invalidation.All);
             child.Clear(Invalidation.All);
-            inherited.Set(State.Normal, new Appearance(foreground: Color.Indexed(5)));
+            inherited.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(5));
             child.Pending.ShouldBe(Invalidation.None);
             child.Style = replacement;
             child.Clear(Invalidation.All);
-            direct.Set(State.Normal, new Appearance(foreground: Color.Indexed(6)));
+            direct.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(6));
             child.Pending.ShouldBe(Invalidation.None);
-            replacement.Set(State.Normal, new Appearance(foreground: Color.Indexed(7)));
+            replacement.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(7));
             child.Pending.ShouldBe(Invalidation.Render);
             _ = root.Children.Remove(child);
             child.Clear(Invalidation.All);
-            replacement.Set(State.Normal, new Appearance(foreground: Color.Indexed(8)));
+            replacement.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(8));
             child.Pending.ShouldBe(Invalidation.None);
             root.Children.Add(child);
             child.Clear(Invalidation.All);
-            replacement.Set(State.Normal, new Appearance(foreground: Color.Indexed(9)));
+            replacement.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(9));
             child.Pending.ShouldBe(Invalidation.Render);
         }, TestContext.Current.CancellationToken);
     }
@@ -170,31 +178,31 @@ public sealed class StyleTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var style = new UiStyle();
+            var style = ThemeTestSupport.CreateStyle<Control>();
             var control = new ProbeControl { Style = style };
             control.Attach(dispatcher);
             control.Clear(Invalidation.All);
 
-            style.Set(State.Normal, new Appearance(foreground: Color.Indexed(2)));
+            style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
             control.Pending.ShouldBe(Invalidation.Render);
             control.Clear(Invalidation.All);
-            style.Set(State.Normal, new Appearance(padding: new Thickness(1)));
+            style.Set(Control.PaddingProperty, State.Normal, new Thickness(1));
             control.Pending.ShouldBe(Invalidation.All);
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies appearance reads behavior but never mutates enabled state.</summary>
+    /// <summary>Verifies foreground reads behavior but never mutates enabled state.</summary>
     [Fact]
-    public void Appearance_WhenDisabledOverlayExists_DoesNotControlBehavior()
+    public void Foreground_WhenDisabledOverlayExists_DoesNotControlBehavior()
     {
-        var style = new UiStyle();
-        style.Set(State.Disabled, new Appearance(foreground: Color.Indexed(8)));
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Disabled, new Appearance(foreground: Color.Indexed(8))));
         var control = new ProbeControl { Style = style };
 
         control.IsEnabled.ShouldBeTrue();
-        control.Appearance.Foreground.ShouldBeNull();
+        control.Foreground.ShouldBeNull();
         control.IsEnabled = false;
-        control.Appearance.Foreground.ShouldBe(Color.Indexed(8));
+        control.Foreground.ShouldBe(Color.Indexed(8));
         control.IsEnabled.ShouldBeFalse();
     }
 
@@ -202,10 +210,10 @@ public sealed class StyleTests
     [Fact]
     public void Draw_WhenStatesCombine_WritesResolvedCellStyle()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(2)));
-        style.Set(State.Focused, new Appearance(attributes: Attributes.Underline));
-        style.Set(State.Disabled, new Appearance(foreground: Color.Indexed(8)));
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(2))),
+            (State.Focused, new Appearance(attributes: Attributes.Underline)),
+            (State.Disabled, new Appearance(foreground: Color.Indexed(8))));
         var control = new ProbeControl
         {
             Bounds = new Rect(0, 0, 1, 1),
@@ -220,6 +228,18 @@ public sealed class StyleTests
         var cell = frame.GetCell(default);
         cell.Style.Foreground.ShouldBe(Color.Indexed(8));
         cell.Style.Attributes.ShouldBe(Attributes.Underline);
+    }
+
+    private static void InvalidateThemeDependents(Control control, Impact impact)
+    {
+        var invalidation = impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
+
+        if (control.InstanceStyle is null)
+        {
+            control.Invalidate(invalidation);
+        }
+
+        control.VisitChildren(child => InvalidateThemeDependents(child, impact));
     }
 
     private static UiStyle CreatePrecedenceStyle()

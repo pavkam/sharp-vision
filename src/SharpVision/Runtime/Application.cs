@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Runtime;
@@ -55,6 +56,9 @@ public sealed class Application: ISink, IAsyncDisposable
     private int _startState;
     private int _disposeState;
 
+    private Theme _theme = Themes.Dark;
+    private ThemeContext? _themeContext;
+
     private FocusManager? FocusValue { get; set; }
 
     private CaptureManager? CaptureValue { get; set; }
@@ -94,6 +98,7 @@ public sealed class Application: ISink, IAsyncDisposable
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI");
         _session = new Session(transport, resize, this, _options);
+        SubscribeTheme(_theme);
         Dispatcher.Idle += OnIdle;
         Dispatcher.UnhandledException += OnDispatcherUnhandled;
     }
@@ -136,6 +141,56 @@ public sealed class Application: ISink, IAsyncDisposable
 
     /// <summary>Gets the application-owned root control.</summary>
     public Control Root { get; }
+
+    /// <summary>Gets or sets the application-wide theme published to attached controls.</summary>
+    /// <exception cref="ArgumentNullException">The assigned theme is null.</exception>
+    /// <exception cref="InvalidOperationException">The application is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The application is disposed.</exception>
+    public Theme Theme
+    {
+        get => _theme;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (ReferenceEquals(_theme, value))
+            {
+                return;
+            }
+
+            var dispatcher = Dispatcher;
+
+            if (dispatcher is not null && !dispatcher.CheckAccess())
+            {
+                dispatcher.Post(() => ApplyThemeChange(value));
+                return;
+            }
+
+            ApplyThemeChange(value);
+        }
+    }
+
+    private void ApplyThemeChange(Theme value)
+    {
+        if (ReferenceEquals(_theme, value))
+        {
+            return;
+        }
+
+        ObjectDisposedException.ThrowIf(_stopping, this);
+        UnsubscribeTheme(_theme);
+        _theme = value;
+        SubscribeTheme(_theme);
+        PublishThemeContext();
+
+        if (!_initialized)
+        {
+            return;
+        }
+
+        Root.Invalidate(Invalidation.Measure);
+        ProcessInvalidation();
+    }
 
     /// <summary>Gets focus ownership after the first resize attaches the tree.</summary>
     public FocusManager Focus => FocusValue ??
@@ -556,6 +611,7 @@ public sealed class Application: ISink, IAsyncDisposable
         if (!_initialized)
         {
             Root.Attach(Dispatcher, CellPolicy);
+            ApplyThemeContext();
             FocusValue = new FocusManager(Root);
             CaptureValue = new CaptureManager(Root);
             _initialized = true;
@@ -640,6 +696,52 @@ public sealed class Application: ISink, IAsyncDisposable
         await Dispatcher.InvokeAsync(FinalizeStopped);
     }
 
+    private void SubscribeTheme(Theme theme) => theme.Changed += OnThemeChanged;
+
+    private void UnsubscribeTheme(Theme theme) => theme.Changed -= OnThemeChanged;
+
+    private void OnThemeChanged(object? sender, ThemeChangedEventArgs eventArgs)
+    {
+        var dispatcher = Dispatcher;
+
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            dispatcher.Post(() => OnThemeChanged(sender, eventArgs));
+            return;
+        }
+
+        if (_stopping || !ReferenceEquals(sender, _theme))
+        {
+            return;
+        }
+
+        PublishThemeContext();
+        Root.Invalidate(eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render);
+        ProcessInvalidation();
+    }
+
+    private void PublishThemeContext()
+    {
+        _themeContext = ThemeContext.Create(_theme);
+        ApplyThemeContext();
+    }
+
+    private void ApplyThemeContext()
+    {
+        if (_themeContext is null)
+        {
+            return;
+        }
+
+        ApplyThemeContext(Root, _themeContext);
+    }
+
+    private static void ApplyThemeContext(Control control, ThemeContext context)
+    {
+        control.SetThemeContext(context);
+        control.VisitChildren(child => ApplyThemeContext(child, context));
+    }
+
     private void FinalizeStopped()
     {
         Dispatcher.VerifyAccess();
@@ -655,6 +757,7 @@ public sealed class Application: ISink, IAsyncDisposable
             FocusValue?.Dispose();
         }
 
+        UnsubscribeTheme(_theme);
         _renderer.Dispose();
         Root.Dispose();
         LastCleanupException = _session.LastCleanupException ?? _renderer.LastCleanupException;

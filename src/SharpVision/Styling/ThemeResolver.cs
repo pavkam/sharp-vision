@@ -53,6 +53,8 @@ public static class ThemeResolver
                     value = (T) themed!;
                 }
             }
+
+            ApplyOwnerListTheme(context, control, property, State.Normal, ref value);
         }
 
         if (control.InstanceStyle is { } instanceStyle)
@@ -62,6 +64,8 @@ public static class ThemeResolver
                 value = (T) instance!;
             }
         }
+
+        ApplyOwnerListInstanceStyle(control, property, State.Normal, ref value);
 
         foreach (var overlay in _overlayOrder)
         {
@@ -79,16 +83,71 @@ public static class ThemeResolver
                         value = (T) themed!;
                     }
                 }
+
+                ApplyOwnerListTheme(context, control, property, overlay, ref value);
             }
 
-            if (control.InstanceStyle is { } instanceStyle &&
-                TryGetSnapshotValue(instanceStyle, property, overlay, out var instance))
+            if (control.InstanceStyle is { } overlayStyle &&
+                TryGetSnapshotValue(overlayStyle, property, overlay, out var overlayValue))
             {
-                value = (T) instance!;
+                value = (T) overlayValue!;
             }
+
+            ApplyOwnerListInstanceStyle(control, property, overlay, ref value);
         }
 
         return value;
+    }
+
+    private static void ApplyOwnerListTheme<T>(
+        ThemeContext context,
+        Control control,
+        StyleProperty<T> property,
+        State state,
+        ref T value)
+    {
+        if (TryFindOwningList(control) is null)
+        {
+            return;
+        }
+
+        foreach (var style in context.GetStyleChain(typeof(List)))
+        {
+            if (TryGetSnapshotValue(style, property, state, out var themed))
+            {
+                value = (T) themed!;
+            }
+        }
+    }
+
+    private static void ApplyOwnerListInstanceStyle<T>(
+        Control control,
+        StyleProperty<T> property,
+        State state,
+        ref T value)
+    {
+        if (TryFindOwningList(control)?.InstanceStyle is not { } ownerStyle)
+        {
+            return;
+        }
+
+        if (TryGetSnapshotValue(ownerStyle, property, state, out var owner))
+        {
+            value = (T) owner!;
+        }
+    }
+
+    private static List? TryFindOwningList(Control control)
+    {
+        for (var current = control.Parent; current is not null; current = current.Parent)
+        {
+            if (current is List list)
+            {
+                return list;
+            }
+        }
+
+        return null;
     }
 
     private static void EnsureApplies<T>(Control control, StyleProperty<T> property)

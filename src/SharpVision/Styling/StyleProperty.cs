@@ -1,10 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
+
 using SharpVision.Controls;
 
 namespace SharpVision.Styling;
 
 /// <summary>Identifies one typed style property declared by a control type.</summary>
 /// <typeparam name="T">The validated property value type.</typeparam>
-public sealed class StyleProperty<T> : IStyleProperty
+public sealed class StyleProperty<T>: IStyleProperty
 {
     private readonly Action<T>? _validate;
     private readonly Dictionary<Type, T> _classDefaults = [];
@@ -49,6 +51,7 @@ public sealed class StyleProperty<T> : IStyleProperty
     /// <paramref name="name"/> is empty, <typeparamref name="TControl"/> does not derive from
     /// <see cref="Control"/>, or the name is already registered on the declaring type.
     /// </exception>
+    [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Typed registration is the public style-property contract.")]
     public static StyleProperty<T> Register<TControl>(
         string name,
         T defaultValue,

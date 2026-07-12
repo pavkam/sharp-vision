@@ -16,7 +16,6 @@ using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -173,8 +172,8 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(45)));
+        var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
         var control = new ScrollBar
         {
             Bounds = new Rect(0, 0, 3, 1),
@@ -439,10 +438,10 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenBehaviorStateChanges_UsesResolvedVisualStyle()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(2)));
-        style.Set(State.Focused, new Appearance(attributes: Attributes.Underline));
-        style.Set(State.Pressed, new Appearance(foreground: Color.Indexed(5)));
+        var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(2))),
+            (State.Focused, new Appearance(attributes: Attributes.Underline)),
+            (State.Pressed, new Appearance(foreground: Color.Indexed(5))));
         var control = new ScrollBar
         {
             Bounds = new Rect(0, 0, 1, 3),

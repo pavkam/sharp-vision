@@ -15,17 +15,17 @@ defines ownership and runtime flow, while the
 behavior. The [control catalog](controls/index.md#control-catalog) defines
 public widgets, and the [test map](testing/index.md#test-map) defines acceptable
 correctness evidence. The
-[approved foundation design](superpowers/specs/2026-07-11-sharpvision-foundation-design.md#1-purpose)
+[project structure contract](architecture/project-structure.md#project-structure-contract)
 defines the product boundary while the detailed specifications are built out.
 The
-[Canvas, border, and shadow design](superpowers/specs/2026-07-11-canvas-borders-shadows-design.md#purpose)
+[rendering pipeline contract](architecture/rendering-pipeline.md#rendering-pipeline-contract)
 defines Unicode drawing and visual overflow, while the
-[FIGlet engine and catalog design](superpowers/specs/2026-07-11-figlet-catalog-design.md#purpose)
+[FigletText contract](controls/display/figlet-text.md#figlettext-contract)
 defines large-text rendering and the audited compressed font library. The
-[component showcase design](superpowers/specs/2026-07-11-component-showcase-design.md#goal)
-defines the runnable documentation gallery and external-resource boundary, and
-the [showcase architecture](architecture/showcase.md#showcase-contract) links
-its current live terminal capture.
+[showcase contract](architecture/showcase.md#showcase-contract) defines the
+runnable documentation gallery and external-resource boundary, and the
+[showcase architecture](architecture/showcase.md#showcase-contract) links its
+current live terminal capture.
 
 ## Documentation contract
 

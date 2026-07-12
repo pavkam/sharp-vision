@@ -234,6 +234,17 @@ internal static class Examples
     {
         var examples = Vertical();
         examples.Children.Add(SampleSection(
+            "Cell geometry specimen",
+            "Composed and decomposed text share width. Orphan combining marks render as replacement cells without changing editable source text.",
+            new ControlText("é vs e\u0301 · orphan \u0301 · ambiguous · · 你好 · 👩‍💻 · 🇺🇸")
+            {
+                Foreground = Palette.Accent,
+            }));
+        examples.Children.Add(SampleSection(
+            "Uneven pixel pointer grid",
+            "Pixel coordinates stay exact. Mapped cells appear only when exact grid metrics are available; unavailable cells are not shown as (0,0).",
+            new PointerProbe()));
+        examples.Children.Add(SampleSection(
             "Unicode-safe wrapping",
             "Word wrapping leaves complete grapheme clusters together, including combining marks and wide emoji.",
             new ControlText("Plain Unicode: café · 你好 · 👩‍💻\nA narrow reading column wraps words without splitting clusters.")
@@ -1226,6 +1237,40 @@ internal static class Examples
         ControlGrid.SetRow(child, row);
         ControlGrid.SetColumn(child, column);
         grid.Children.Add(child);
+    }
+
+    /// <summary>Creates theme inheritance, local overrides, and third-party style-property specimens.</summary>
+    internal static Control Theming()
+    {
+        var panel = new ShowcasePanel
+        {
+            Foreground = Palette.Text,
+            Background = Palette.Surface,
+            BorderColor = Palette.Border,
+        };
+        var placement = new ControlStack { Spacing = 1 };
+        placement.Children.Add(new ControlText("Label placement") { Foreground = Palette.Muted });
+        var left = new Button { Content = new ControlText("Left") };
+        var right = new Button { Content = new ControlText("Right") };
+        left.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Left;
+        right.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Right;
+        placement.Children.Add(new ControlStack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 1,
+            Children = { left, right },
+        });
+
+        var examples = Vertical();
+        examples.Children.Add(SampleSection(
+            "Application theme",
+            "Use the Light and Dark buttons in the sidebar footer. Application.Theme publishes a frozen snapshot to every attached control without ancestor-style inheritance.",
+            panel));
+        examples.Children.Add(SampleSection(
+            "Third-party style property",
+            "ShowcasePanel registers LabelPlacement through StyleProperty metadata. Themes and local values resolve it with the same cascade as built-in chrome.",
+            placement));
+        return examples;
     }
 
     #endregion

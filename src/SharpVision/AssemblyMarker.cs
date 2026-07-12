@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("SharpVision.Tests")]
+[assembly: InternalsVisibleTo("SharpVision.Showcase")]
 [assembly: InternalsVisibleTo("SharpVision.Showcase.Tests")]
 
 namespace SharpVision;

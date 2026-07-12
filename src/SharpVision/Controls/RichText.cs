@@ -412,12 +412,12 @@ public sealed class RichText: Control
             underlineColor);
     }
 
-    private BackgroundMode ResolveBackgroundMode(Run run) => run.Background.HasValue || Appearance.Background.HasValue
+    private BackgroundMode ResolveBackgroundMode(Run run) => run.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
         ? BackgroundMode.Opaque
         : BackgroundMode.Transparent;
 
     private BackgroundMode ResolveBackgroundMode(Hyperlink hyperlink) =>
-        hyperlink.Background.HasValue || Appearance.Background.HasValue
+        hyperlink.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
             ? BackgroundMode.Opaque
             : BackgroundMode.Transparent;
 

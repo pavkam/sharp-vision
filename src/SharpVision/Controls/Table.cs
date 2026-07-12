@@ -197,7 +197,7 @@ public sealed class Table: Container
 
         if (ShowHeader)
         {
-            if (HeaderBackground.HasValue || Appearance.Background.HasValue)
+            if (HeaderBackground.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState()))
             {
                 canvas.Clear(new Rect(Bounds.X, Bounds.Y, Bounds.Width, headerHeight), header);
             }

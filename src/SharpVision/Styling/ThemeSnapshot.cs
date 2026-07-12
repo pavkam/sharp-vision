@@ -8,6 +8,7 @@ internal sealed class ThemeSnapshot
     internal static ThemeSnapshot Empty { get; } = new(0, []);
 
     private readonly Dictionary<Type, IControlStyle> _styles;
+    private readonly Dictionary<Type, IReadOnlyList<IControlStyle>> _styleChains = [];
 
     internal ThemeSnapshot(int version, Dictionary<Type, IControlStyle> styles)
     {
@@ -19,6 +20,11 @@ internal sealed class ThemeSnapshot
 
     internal IReadOnlyList<IControlStyle> GetStyleChain(Type controlType)
     {
+        if (_styleChains.TryGetValue(controlType, out var cached))
+        {
+            return cached;
+        }
+
         var chain = new List<IControlStyle>();
 
         for (var current = controlType; current is not null; current = current.BaseType)
@@ -35,6 +41,7 @@ internal sealed class ThemeSnapshot
         }
 
         chain.Reverse();
+        _styleChains[controlType] = chain;
         return chain;
     }
 }

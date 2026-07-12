@@ -228,8 +228,13 @@ export async function validateCSharpTypes(root) {
 
     if (types.length === 1) {
       const expected = `${types[0]}.cs`;
+      const fileName = basename(path);
+      const isPartialCompanion =
+        fileName.startsWith(`${types[0]}.`) &&
+        fileName.endsWith(".cs") &&
+        !fileName.endsWith(".g.cs");
 
-      if (basename(path) !== expected) {
+      if (fileName !== expected && !isPartialCompanion) {
         errors.push(`${displayPath} declares ${types[0]} and must be named ${expected}.`);
       }
     }

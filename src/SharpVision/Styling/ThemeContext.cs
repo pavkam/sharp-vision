@@ -1,5 +1,3 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Styling;
 
 /// <summary>Provides immutable theme snapshots to attached controls.</summary>
@@ -7,10 +5,7 @@ internal sealed class ThemeContext
 {
     private readonly ThemeSnapshot _snapshot;
 
-    internal ThemeContext(ThemeSnapshot snapshot)
-    {
-        _snapshot = snapshot;
-    }
+    internal ThemeContext(ThemeSnapshot snapshot) => _snapshot = snapshot;
 
     internal int Version => _snapshot.Version;
 

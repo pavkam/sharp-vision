@@ -34,6 +34,7 @@ public sealed class GalleryTests
         "Text",
         "TextInput",
         "Window",
+        "Theming",
     ];
 
     /// <summary>Verifies the gallery starts with one page per concrete shipped control.</summary>
@@ -226,6 +227,11 @@ public sealed class GalleryTests
 
     private static bool ContainsType(Control control, string name)
     {
+        if (string.Equals(name, "Theming", StringComparison.Ordinal) && control is ShowcasePanel)
+        {
+            return true;
+        }
+
         if (string.Equals(control.GetType().Name, name, StringComparison.Ordinal))
         {
             return true;

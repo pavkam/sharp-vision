@@ -16,7 +16,6 @@ using Shouldly;
 using ControlText = SharpVision.Controls.Text;
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -138,13 +137,11 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenOverridesAreSet_ComposesExactCellStyle()
     {
-        var style = new UiStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(
+        var style = ThemeTestSupport.OverlayStyle<ControlText>(
+            (State.Normal, new Appearance(
                 foreground: Color.Indexed(1),
                 background: Color.Indexed(2),
-                attributes: TerminalAttributes.Bold));
+                attributes: TerminalAttributes.Bold)));
         var text = new ControlText("A")
         {
             Style = style,
@@ -166,13 +163,11 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesCompleteSemanticStyle()
     {
-        var style = new UiStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(
+        var style = ThemeTestSupport.OverlayStyle<ControlText>(
+            (State.Normal, new Appearance(
                 attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
                 underline: Underline.Dashed,
-                underlineColor: Color.Indexed(3)));
+                underlineColor: Color.Indexed(3))));
         var text = new ControlText("A") { Style = style };
         new Engine().Layout(text, new Size(1, 1));
         using var frame = new Frame(new Size(1, 1));
@@ -189,12 +184,10 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenLegacyUnderlineOverridesTypedUnderline_UsesLegacyDecoration()
     {
-        var style = new UiStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(
+        var style = ThemeTestSupport.OverlayStyle<ControlText>(
+            (State.Normal, new Appearance(
                 underline: Underline.Curly,
-                underlineColor: Color.Indexed(3)));
+                underlineColor: Color.Indexed(3))));
         var text = new ControlText("A")
         {
             Style = style,

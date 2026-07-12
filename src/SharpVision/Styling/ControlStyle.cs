@@ -4,7 +4,7 @@ namespace SharpVision.Styling;
 
 /// <summary>Stores typed style values for one specific control type.</summary>
 /// <typeparam name="TControl">The targeted control type.</typeparam>
-public sealed class ControlStyle<TControl> : IControlStyle
+public sealed class ControlStyle<TControl>: IControlStyle
     where TControl : Control
 {
     private const State _overlayStates =
@@ -12,19 +12,14 @@ public sealed class ControlStyle<TControl> : IControlStyle
 
     private readonly Lock _gate = new();
     private readonly Dictionary<(IStyleProperty Property, State State), object> _values = [];
-    private Snapshot _snapshot;
-    private bool _isFrozen;
 
     /// <summary>Initializes an empty style for <typeparamref name="TControl"/>.</summary>
-    public ControlStyle()
-    {
-        _snapshot = Snapshot.Empty;
-    }
+    public ControlStyle() => CurrentSnapshot = ControlStyleSnapshot.Empty;
 
-    private ControlStyle(Snapshot snapshot, bool isFrozen)
+    private ControlStyle(ControlStyleSnapshot snapshot, bool isFrozen)
     {
-        _snapshot = snapshot;
-        _isFrozen = isFrozen;
+        CurrentSnapshot = snapshot;
+        IsFrozen = isFrozen;
     }
 
     /// <inheritdoc/>
@@ -34,10 +29,10 @@ public sealed class ControlStyle<TControl> : IControlStyle
     public Type TargetType => typeof(TControl);
 
     /// <inheritdoc/>
-    public bool IsFrozen => _isFrozen;
+    public bool IsFrozen { get; }
 
     /// <inheritdoc/>
-    public Impact AggregateImpact => _snapshot.AggregateImpact;
+    public Impact AggregateImpact => CurrentSnapshot.AggregateImpact;
 
     /// <summary>Adds or replaces one property value for a visual state.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
@@ -116,7 +111,7 @@ public sealed class ControlStyle<TControl> : IControlStyle
         ArgumentNullException.ThrowIfNull(property);
         ValidateState(state);
 
-        if (_snapshot.TryGet(property, state, out var stored))
+        if (CurrentSnapshot.TryGet(property, state, out var stored))
         {
             value = (T) stored!;
             return true;
@@ -139,12 +134,12 @@ public sealed class ControlStyle<TControl> : IControlStyle
                 clone._values[entry.Key] = entry.Value;
             }
 
-            clone._snapshot = clone.BuildSnapshot();
+            clone.CurrentSnapshot = clone.BuildSnapshot();
             return clone;
         }
     }
 
-    internal Snapshot CurrentSnapshot => _snapshot;
+    internal ControlStyleSnapshot CurrentSnapshot { get; private set; }
 
     internal ControlStyle<TControl> FreezeCopy()
     {
@@ -165,17 +160,17 @@ public sealed class ControlStyle<TControl> : IControlStyle
         TryGetSnapshotValue(property, state, out value);
 
     internal bool TryGetSnapshotValue(IStyleProperty property, State state, out object? value) =>
-        _snapshot.TryGet(property, state, out value);
+        CurrentSnapshot.TryGet(property, state, out value);
 
     private void EnsureMutable()
     {
-        if (_isFrozen)
+        if (IsFrozen)
         {
             throw new InvalidOperationException("A frozen control style cannot be changed.");
         }
     }
 
-    private void EnsureProperty<T>(StyleProperty<T> property)
+    private static void EnsureProperty<T>(StyleProperty<T> property)
     {
         if (!property.DeclaringType.IsAssignableFrom(typeof(TControl)))
         {
@@ -214,11 +209,11 @@ public sealed class ControlStyle<TControl> : IControlStyle
 
     private void Publish(Impact impact)
     {
-        _snapshot = BuildSnapshot();
+        CurrentSnapshot = BuildSnapshot();
         Changed?.Invoke(this, new ThemeChangedEventArgs(typeof(TControl), impact));
     }
 
-    private Snapshot BuildSnapshot()
+    private ControlStyleSnapshot BuildSnapshot()
     {
         var copy = new Dictionary<(IStyleProperty Property, State State), object>(_values);
         var aggregate = Impact.Render;
@@ -232,30 +227,6 @@ public sealed class ControlStyle<TControl> : IControlStyle
             }
         }
 
-        return new Snapshot(copy, aggregate);
-    }
-
-    /// <summary>Immutable style contents read by theme resolution.</summary>
-    internal sealed class Snapshot
-    {
-        internal static Snapshot Empty { get; } = new([], Impact.Render);
-
-        private readonly Dictionary<(IStyleProperty Property, State State), object> _values;
-
-        internal Snapshot(
-            Dictionary<(IStyleProperty Property, State State), object> values,
-            Impact aggregateImpact)
-        {
-            _values = values;
-            AggregateImpact = aggregateImpact;
-        }
-
-        internal Impact AggregateImpact { get; }
-
-        internal bool TryGet(IStyleProperty property, State state, out object? value) =>
-            _values.TryGetValue((property, state), out value);
-
-        internal bool TryGet<T>(StyleProperty<T> property, State state, out object? value) =>
-            _values.TryGetValue((property, state), out value);
+        return new ControlStyleSnapshot(copy, aggregate);
     }
 }

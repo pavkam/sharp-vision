@@ -3,7 +3,6 @@ using SharpVision.Terminal.Geometry;
 
 using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using Code = SharpVision.Terminal.Input.Code;
-using Color = SharpVision.Terminal.Protocols.Color;
 using KeyAction = SharpVision.Terminal.Input.Action;
 using KeyEventArgs = SharpVision.Input.KeyEventArgs;
 using ReleaseReason = SharpVision.Input.ReleaseReason;
@@ -84,24 +83,6 @@ public sealed class Popup: Container
         get;
         set => _ = Set(ref field, value, Invalidation.Render);
     } = Glyphs.Rounded;
-
-    /// <summary>Gets or sets an optional direct foreground override for frame cells.</summary>
-    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
-    public Color? BorderColor
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets an optional direct background for the complete opaque popup surface.</summary>
-    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
-    public Color? Background
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
 
     /// <summary>Gets the committed visible surface rectangle, or an empty rectangle while closed.</summary>
     public Rect SurfaceBounds { get; private set; }
@@ -237,25 +218,8 @@ public sealed class Popup: Container
         }
 
         var inherited = ResolvedStyle;
-        var background = Background ?? Appearance.Background ?? inherited.Background;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited);
-        var style = new TerminalStyle(
-            inherited.Foreground,
-            background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-        canvas.Clear(SurfaceBounds, style);
-
-        var border = new TerminalStyle(
-            BorderColor ?? Appearance.BorderColor ?? inherited.Foreground,
-            background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-        DrawFrame(canvas, border);
+        canvas.Clear(SurfaceBounds, inherited);
+        DrawFrame(canvas, ControlAppearance.ResolveBorderStyle(this, GetVisualState()));
     }
 
     /// <inheritdoc/>

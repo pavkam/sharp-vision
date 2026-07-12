@@ -43,7 +43,7 @@ internal static class StylePropertyRegistry
         ArgumentNullException.ThrowIfNull(controlType);
 
         var chain = new List<Type>();
-        for (var current = controlType; current != typeof(object); current = current.BaseType!)
+        for (var current = controlType; current != typeof(object); current = current.BaseType)
         {
             if (!typeof(Control).IsAssignableFrom(current))
             {

@@ -392,7 +392,7 @@ public sealed class ScrollBar: Control
         var thumb = Thumb.Resolve(CurrentRange(), trackLength);
         var style = ResolvedStyle;
 
-        if (Appearance.Background.HasValue)
+        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
             canvas.Clear(bounds, style);
         }

@@ -2,10 +2,8 @@ using System.Text;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 
 using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
@@ -27,70 +25,13 @@ public sealed class Border: Container
         set => Children.SetOnly(value);
     }
 
-    /// <summary>Gets or sets zero-or-one physical edge thicknesses.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">An edge exceeds one cell.</exception>
-    /// <exception cref="InvalidOperationException">The attached Border is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Border is disposed.</exception>
-    public Thickness BorderThickness
-    {
-        get;
-        set
-        {
-            if (value.Left > 1 || value.Top > 1 || value.Right > 1 || value.Bottom > 1)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    "Every border edge must be zero or one cell.");
-            }
-
-            _ = Set(ref field, value, Invalidation.Measure);
-        }
-    }
-
-    /// <summary>Gets or sets the validated physical border glyph set.</summary>
-    /// <exception cref="InvalidOperationException">The attached Border is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Border is disposed.</exception>
+    /// <summary>Gets or sets the validated physical glyph family used by the border edges.</summary>
+    /// <exception cref="InvalidOperationException">The attached border is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The border is disposed.</exception>
     public Glyphs Glyphs
     {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    } = Glyphs.Default;
-
-    /// <summary>Gets or sets an optional direct border-color override.</summary>
-    /// <exception cref="InvalidOperationException">The attached Border is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Border is disposed.</exception>
-    public Color? BorderColor
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets an optional direct background override.</summary>
-    /// <exception cref="InvalidOperationException">The attached Border is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Border is disposed.</exception>
-    public Color? Background
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets optional direct border rendition attributes.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached Border is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Border is disposed.</exception>
-    public TerminalAttributes? Attributes
-    {
-        get;
-        set
-        {
-            if (value.HasValue)
-            {
-                _ = new TerminalStyle(attributes: value.Value);
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
+        get => BorderStyle;
+        set => BorderStyle = value;
     }
 
     /// <inheritdoc/>
@@ -127,19 +68,11 @@ public sealed class Border: Container
     protected override void RenderCore(TerminalCanvas canvas)
     {
         var inherited = ResolvedStyle;
-        var background = Background ?? inherited.Background;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
-        var opaque = Background.HasValue || Appearance.Background.HasValue;
-
+        var borderStyle = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
         if (opaque)
         {
-            canvas.Clear(Bounds, new TerminalStyle(
-                inherited.Foreground,
-                background,
-                attributes,
-                inherited.Hyperlink,
-                underline,
-                underlineColor));
+            canvas.Clear(Bounds, inherited);
         }
 
         if (Bounds.Width == 0 || Bounds.Height == 0)
@@ -147,27 +80,17 @@ public sealed class Border: Container
             return;
         }
 
-        var color = BorderColor ?? Appearance.BorderColor ?? inherited.Foreground;
-        var style = new TerminalStyle(
-            color,
-            background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-        var backgroundMode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
-        DrawHorizontal(canvas, Bounds.Y, top: true, style, backgroundMode);
-
+        var mode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        DrawHorizontal(canvas, Bounds.Y, true, borderStyle, mode);
         if (Bounds.Height > 1)
         {
-            DrawHorizontal(canvas, Bounds.Bottom - 1, top: false, style, backgroundMode);
+            DrawHorizontal(canvas, Bounds.Bottom - 1, false, borderStyle, mode);
         }
 
-        DrawVertical(canvas, Bounds.X, left: true, style, backgroundMode);
-
+        DrawVertical(canvas, Bounds.X, true, borderStyle, mode);
         if (Bounds.Width > 1)
         {
-            DrawVertical(canvas, Bounds.Right - 1, left: false, style, backgroundMode);
+            DrawVertical(canvas, Bounds.Right - 1, false, borderStyle, mode);
         }
     }
 
@@ -193,15 +116,15 @@ public sealed class Border: Container
 
         for (var x = Bounds.X; x < Bounds.Right; x++)
         {
-            var glyph = top ? Glyphs.Top : Glyphs.Bottom;
+            var glyph = top ? BorderStyle.Top : BorderStyle.Bottom;
 
             if (x == Bounds.X && BorderThickness.Left != 0)
             {
-                glyph = top ? Glyphs.TopLeft : Glyphs.BottomLeft;
+                glyph = top ? BorderStyle.TopLeft : BorderStyle.BottomLeft;
             }
             else if (x == Bounds.Right - 1 && BorderThickness.Right != 0)
             {
-                glyph = top ? Glyphs.TopRight : Glyphs.BottomRight;
+                glyph = top ? BorderStyle.TopRight : BorderStyle.BottomRight;
             }
 
             var fallback = x == Bounds.X || x == Bounds.Right - 1
@@ -234,7 +157,7 @@ public sealed class Border: Container
 
         for (var y = start; y < end; y++)
         {
-            var glyph = left ? Glyphs.Left : Glyphs.Right;
+            var glyph = left ? BorderStyle.Left : BorderStyle.Right;
             canvas.DrawRune(
                 CellGlyph.Resolve(glyph, new Rune('|'), CellPolicy.AmbiguousWidth),
                 new Point(x, y),

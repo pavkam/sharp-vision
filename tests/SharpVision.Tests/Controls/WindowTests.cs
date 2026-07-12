@@ -11,7 +11,6 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -49,13 +48,11 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
-        var style = new UiStyle();
-        style.Set(
-            State.Normal,
-            new Appearance(
+        var style = ThemeTestSupport.OverlayStyle<Window>(
+            (State.Normal, new Appearance(
                 attributes: Attributes.Overline,
                 underline: Underline.Paired,
-                underlineColor: Color.Indexed(6)));
+                underlineColor: Color.Indexed(6))));
         var window = new Window
         {
             Bounds = new Rect(0, 0, 4, 3),

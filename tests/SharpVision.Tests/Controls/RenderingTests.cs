@@ -8,8 +8,6 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using UiStyle = SharpVision.Styling.Style;
-
 namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies clipped, ordered, grapheme-safe control rendering into semantic cells.</summary>
@@ -155,10 +153,10 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenControlStateChanges_WritesResolvedStyle()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(2)));
-        style.Set(State.Hovered, new Appearance(attributes: Attributes.Underline));
-        style.Set(State.Pressed, new Appearance(foreground: Color.Indexed(5)));
+        var style = ThemeTestSupport.OverlayStyle<ProbeControl>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(2))),
+            (State.Hovered, new Appearance(attributes: Attributes.Underline)),
+            (State.Pressed, new Appearance(foreground: Color.Indexed(5))));
         var control = new ProbeControl
         {
             Bounds = new Rect(0, 0, 1, 1),

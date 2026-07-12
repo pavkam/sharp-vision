@@ -112,12 +112,27 @@ test("validateCSharpTypes_WhenFileNameDiffers_ReportsExpectedName", async () => 
   const root = await createRoot();
 
   try {
-    await writeFile(join(root, "Widget.Part.cs"), "public partial class Widget {}\n");
+    await writeFile(join(root, "WidgetPart.cs"), "public partial class Widget {}\n");
 
     const errors = await validateCSharpTypes(root);
 
     assert.equal(errors.length, 1);
-    assert.match(errors[0], /Widget\.Part\.cs.*Widget\.cs/iu);
+    assert.match(errors[0], /WidgetPart\.cs.*Widget\.cs/iu);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateCSharpTypes_WhenPartialCompanionMatchesType_ReturnsNoErrors", async () => {
+  const root = await createRoot();
+
+  try {
+    await writeFile(join(root, "Widget.cs"), "public partial class Widget {}\n");
+    await writeFile(join(root, "Widget.ThemeValues.cs"), "public partial class Widget {}\n");
+
+    const errors = await validateCSharpTypes(root);
+
+    assert.deepEqual(errors, []);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -16,7 +16,6 @@ using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalText = SharpVision.Terminal.Input.Text;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -219,8 +218,8 @@ public sealed class TextInputTests
     public void Render_WhenBackgroundIsStyled_FillsEntireInputBox()
     {
         var background = Color.Indexed(24);
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(background: background));
+        var style = ThemeTestSupport.OverlayStyle<TextInput>(
+            (State.Normal, new Appearance(background: background)));
         var control = new TextInput
         {
             Width = Length.Cells(5),

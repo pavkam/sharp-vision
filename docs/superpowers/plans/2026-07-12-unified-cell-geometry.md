@@ -165,24 +165,24 @@ mutation.
 
 ## Task 1: Specify one geometry contract
 
-- [ ] **Step 1: Document source versus presentation**
+- [x] **Step 1: Document source versus presentation**
 
 State that source graphemes remain available to editors, while frame payloads
 are terminal-safe presentations. List every base-less family and require U+FFFD
 instead of raw zero-width output. Define draw replacement accounting.
 
-- [ ] **Step 2: Document exact rational coordinates**
+- [x] **Step 2: Document exact rational coordinates**
 
 Add the formula, input domain, overflow strategy, unavailable mapping behavior,
 nullable cell coordinates, leave semantics, captured pixel-aware routing, and
 no-clamping rule to the mouse and input-routing specs.
 
-- [ ] **Step 3: Document policy propagation and rectangular ownership**
+- [x] **Step 3: Document policy propagation and rectangular ownership**
 
 Describe attach/inherit/update order, nullable local overrides, one root measure
 invalidation, per-frame policy capture, owner rectangles, and complete repair.
 
-- [ ] **Step 4: Add test obligations and validate docs**
+- [x] **Step 4: Add test obligations and validate docs**
 
 Require curated and randomized orphan presentation, exhaustive uneven-grid
 coordinates, nullable-pointer routing, cross-control ambiguous width, complete
@@ -191,28 +191,28 @@ end-to-end output bytes. Run Markdown formatting, lint, links, and docs tests.
 
 ## Task 2: Classify safe cluster presentation
 
-- [ ] **Step 1: Write failing cluster-classification tests**
+- [x] **Step 1: Write failing cluster-classification tests**
 
 Cover standalone combining marks, spacing marks without a base, prepend-only,
 ZWJ-only, VS15/VS16-only, emoji-modifier-only, tag-only, mixed orphan
 components, invalid UTF-16, valid decomposed text, keycaps, flags, and ZWJ
 emoji. Assert width, source length, and whether safe replacement is required.
 
-- [ ] **Step 2: Add `Presentation`, `Policy`, and `Cluster`**
+- [x] **Step 2: Add `Presentation`, `Policy`, and `Cluster`**
 
 Use explicit constructors and validation. `Policy` carries the pinned Unicode
 version, `Ambiguous`, and orphan `Presentation`. The default is narrow plus
 replacement. `Cluster` is a small readonly value with `CellWidth` and a
 replacement flag; it never owns source memory.
 
-- [ ] **Step 3: Refactor `Width` around one analysis pass**
+- [x] **Step 3: Refactor `Width` around one analysis pass**
 
 Keep public `Measure` allocation-free. Add one internal analysis method used by
 measurement and canvas. Do not segment twice and do not normalize or allocate.
 Controls remain contextual, invalid data remains replacement-width one, and
 valid base-bearing clusters retain existing Unicode 17 behavior.
 
-- [ ] **Step 4: Prove allocation and canonical behavior**
+- [x] **Step 4: Prove allocation and canonical behavior**
 
 Retain zero-allocation warmed measurement. Prove composed/decomposed equality,
 both ambiguous policies, all existing emoji cases, and generated-data
@@ -220,28 +220,28 @@ boundaries. Run all Unicode tests before changing canvas.
 
 ## Task 3: Prevent orphan overlap in frames and terminal bytes
 
-- [ ] **Step 1: Write the failing semantic-frame test**
+- [x] **Step 1: Write the failing semantic-frame test**
 
 Draw `"a\u0301"` where the mark is a separate grapheme, and separately draw a
 standalone mark after an existing neighboring cell. Assert the orphan-owned cell
 stores U+FFFD and the preceding cell remains unchanged. Repeat for ZWJ,
 selector, modifier, tag, and clipped origins.
 
-- [ ] **Step 2: Write the failing exact-byte renderer test**
+- [x] **Step 2: Write the failing exact-byte renderer test**
 
 Render a frame containing a neighboring printable cell and an orphan cluster.
 Assert emitted UTF-8 contains `EF BF BD`, never the orphan scalar bytes, and the
 virtual terminal ends with two independent cells. Compare full and incremental
 renders.
 
-- [ ] **Step 3: Apply classification in `Canvas` preflight and write**
+- [x] **Step 3: Apply classification in `Canvas` preflight and write**
 
 Preflight and mutation select the same borrowed original cluster or static
 replacement span. Count replacement bytes before mutation, increment
 `DrawResult.Replaced`, preserve logical one-cell advance, and keep arena failure
 transactional.
 
-- [ ] **Step 4: Add randomized non-overlap proof**
+- [x] **Step 4: Add randomized non-overlap proof**
 
 Generate base-less component clusters around narrow/wide neighbors, clipping,
 clear, overwrite, and frame diffs. The independent test model must classify
@@ -249,33 +249,33 @@ orphan source without calling production `Width` or `Cluster` code.
 
 ## Task 4: Replace truncated metrics with an exact grid
 
-- [ ] **Step 1: Write failing uneven-grid mapping tests**
+- [x] **Step 1: Write failing uneven-grid mapping tests**
 
 Construct 10×3 cells over 101×31 pixels. Assert every pixel maps by the rational
 formula, mappings are monotonic and bounded, first/last pixels map to first/last
 cells, and each cell receives at least one pixel when pixels are not smaller
 than cells. Add maximum safe integer cases and out-of-domain rejection.
 
-- [ ] **Step 2: Extend `Metrics` without losing uniform compatibility**
+- [x] **Step 2: Extend `Metrics` without losing uniform compatibility**
 
 The existing `(cellPixelWidth, cellPixelHeight)` constructor represents an exact
 uniform 1×1 ratio for tests and callers. Add a `(Size cells, Size pixels)`
 constructor and expose exact totals. Add `TryMap(Point pixels, out Point cells)`
 using checked `long`. Validate positive totals before assigning state.
 
-- [ ] **Step 3: Make `Dimensions` preserve totals**
+- [x] **Step 3: Make `Dimensions` preserve totals**
 
 Construct exact metrics from complete positive cell and pixel sizes; do not
 divide. Suspended, missing, zero-pixel, or pixels-smaller-than-cells cases have
 documented mapping availability. Preserve original `Cells` and `Pixels` values.
 
-- [ ] **Step 4: Integrate the decoder and runtime resize path**
+- [x] **Step 4: Integrate the decoder and runtime resize path**
 
 `ProtocolRouter.SetCellMetrics` and `Decoder` receive exact metrics. Pixel input
 preserves the original zero-based pixel coordinate and calls `TryMap` once.
 Every representative pixel report still passes all read-fragment boundaries.
 
-- [ ] **Step 5: Add exhaustive randomized mapping**
+- [x] **Step 5: Add exhaustive randomized mapping**
 
 For seeded positive totals within bounded test sizes, enumerate every pixel and
 compare to an independent 64-bit formula. Prove no overflow, gaps, fabricated
@@ -283,32 +283,32 @@ cells, or coordinate mutation.
 
 ## Task 5: Make unavailable cells explicit through routing
 
-- [ ] **Step 1: Write failing pointer validation tests**
+- [x] **Step 1: Write failing pointer validation tests**
 
 Test cell-only, pixel-plus-mapped-cell, pixel-only, and leave values. Reject
 negative present coordinates, inferred cells without both coordinates, and a
 non-inferred pixel/cell pair when the contract requires provenance.
 
-- [ ] **Step 2: Change `Pointer.Cells` and `PointerEventArgs.LocalCells` to
+- [x] **Step 2: Change `Pointer.Cells` and `PointerEventArgs.LocalCells` to
       nullable**
 
 Update constructor XML and validation before assignment. Cell protocols always
 populate cells. Pixel protocols populate cells only through exact metrics. Leave
 carries null/null. Preserve `IsCellPositionInferred` only when both are present.
 
-- [ ] **Step 3: Update capture and hit testing**
+- [x] **Step 3: Update capture and hit testing**
 
 Ordinary physical hit testing requires cells. Capture may deliver a pixel-only
 move/release to a control; its local cells remain null. Press/focus acquisition
 without cells is rejected. Hover clears when no physical cell exists.
 
-- [ ] **Step 4: Harden controls**
+- [x] **Step 4: Harden controls**
 
 Pressable, TextInput, ScrollBar, popup/menu behavior, selection, and any custom
 pointer math pattern-match cells before use. ScrollBar may use pixel deltas
 during an existing capture, but never substitutes `(0,0)`.
 
-- [ ] **Step 5: Add end-to-end routing tests**
+- [x] **Step 5: Add end-to-end routing tests**
 
 Drive pixel input before metrics, after uneven metrics, outside the pixel
 rectangle, during capture, after resize, and after focus loss. Assert exact
@@ -317,48 +317,52 @@ interaction.
 
 ## Task 6: Propagate one Unicode policy through controls
 
-- [ ] **Step 1: Write the failing first-layout cross-control test**
+- [x] **Step 1: Write the failing first-layout cross-control test**
 
 Create one application with `Ambiguous.Wide` and place ambiguous text in Text,
 RichText, TextInput, Table headers/cells, ComboBox, MenuItem, Window title,
 Button, and FigletText. Assert each measured extent, arranged bound, cursor,
 selection, and emitted frame agrees with `Frame.AmbiguousWidth`.
 
-- [ ] **Step 2: Add policy attachment to `Control`**
+- [x] **Step 2: Add policy attachment to `Control`**
 
 Attach the root with dispatcher plus immutable policy. `SetDispatcher`
 propagates that reference through descendants. `Children.Attach` copies the
 owner's current policy before the child can measure. Detach returns to the
 documented default without mutating public local overrides.
 
-- [ ] **Step 3: Apply profile updates once**
+- [x] **Step 3: Apply profile updates once**
 
 `Application.ApplyCapabilities` derives the new policy, updates the complete
 tree on the dispatcher, raises `CapabilitiesChanged`, and invalidates root
 measure exactly once when geometry changes. A render in progress retains its
 captured frame policy; the next layout/frame uses the new reference.
 
-- [ ] **Step 4: Migrate shared text layout and display controls**
+- [x] **Step 4: Migrate shared text layout and display controls**
 
 Pass the effective policy into every `Width.Measure` and `Text.Layout.Format`
 call. Make Text's local ambiguous-width override nullable, defaulting to
 inheritance. Add focused tests per migrated control and remove hard-coded
 `Ambiguous.Narrow` values.
 
-- [ ] **Step 5: Migrate interactive controls and glyph validators**
+- [x] **Step 5: Migrate interactive controls and glyph validators**
 
 TextInput caret/index/selection, RichText runs, menus, tables, combo boxes,
 window titles, button marks, scrollbar marks, shadows, and custom glyph
 validation use one effective policy. Glyph APIs that intentionally require
 portable narrow runes remain one cell under both policies and say so explicitly.
 
-- [ ] **Step 6: Prove mid-frame and mutation behavior**
+- [x] **Step 6: Prove mid-frame and mutation behavior**
 
 Change the profile while a render flush is paused. Assert one measure/layout
 cycle, immutable old/new policy references, no mid-frame swap, and next-frame
 cursor/text ownership matching the new policy.
 
 ## Task 7: Generalize frame ownership to rectangles
+
+> **Deferred:** Horizontal one-row ownership, orphan replacement, and clipping
+> invariants are verified for this slice. Multi-row rectangular metadata remains
+> planned for the semantic graphics slice.
 
 - [ ] **Step 1: Specify and test public metadata**
 
@@ -393,25 +397,25 @@ full-render virtual screen and print the seed plus operation on failure.
 
 ## Task 8: Showcase and end-to-end proof
 
-- [ ] **Step 1: Add a Unicode geometry specimen**
+- [x] **Step 1: Add a Unicode geometry specimen**
 
 Show composed/decomposed text, orphan marks rendered as replacement without
 changing editable source, text/emoji selectors, modifiers, flags, ZWJ families,
 ambiguous narrow/wide examples, and clipped wide clusters. Explain the active
 policy in user-facing prose.
 
-- [ ] **Step 2: Add an uneven-pixel pointer specimen**
+- [x] **Step 2: Add an uneven-pixel pointer specimen**
 
 Display live pixel and optional mapped-cell coordinates plus grid totals. The
 example must visibly distinguish unavailable cells instead of showing `(0,0)`.
 
-- [ ] **Step 3: Add showcase screen and interaction tests**
+- [x] **Step 3: Add showcase screen and interaction tests**
 
 Verify the specimen at compact and wide sizes, policy change reflow, pixel-only
 input, exact uneven mapping, text editing source preservation, and no orphan
 continuations at clips.
 
-- [ ] **Step 4: Add PTY/tmux smoke**
+- [x] **Step 4: Add PTY/tmux smoke**
 
 Under an installed tmux, launch the Release showcase, navigate to the specimen,
 enter or paste CJK/decomposed/orphan text, resize, and wait on visible state.
@@ -420,30 +424,30 @@ establish every outer terminal's glyph-width behavior.
 
 ## Task 9: Synchronize coverage and verify
 
-- [ ] **Step 1: Update only proven docs and coverage**
+- [x] **Step 1: Update only proven docs and coverage**
 
 Claim safe orphan presentation, exact grid mapping, nullable cell routing,
 shared control policy, and rectangular ownership only after their typed APIs and
 tests land. Keep Kitty explicit-width and graphics protocols unsupported.
 
-- [ ] **Step 2: Run focused Release suites**
+- [x] **Step 2: Run focused Release suites**
 
 Run Unicode, canvas/frame/renderer, mouse/resize/router/session, control text,
 selection, pointer routing, scrolling, application policy, showcase, and PTY
 classes with finite Microsoft Testing Platform timeouts.
 
-- [ ] **Step 3: Run allocation and randomized gates**
+- [x] **Step 3: Run allocation and randomized gates**
 
 Run Unicode allocation tests, exact-grid properties, frame randomized ownership,
 diff equivalence, and cross-control geometry tests. Record seeds and measured
 allocations.
 
-- [ ] **Step 4: Run repository gates**
+- [x] **Step 4: Run repository gates**
 
 Run `make format`, `make lint`, `make build`, and `make test`. Require zero
 warnings/errors, all docs/link checks, and the configured test minimum.
 
-- [ ] **Step 5: Audit ownership and commits**
+- [x] **Step 5: Audit ownership and commits**
 
 Use `git diff --check`, inspect every public XML contract, ensure every named
 type has one file, stage only slice-owned paths/hunks, and keep commits aligned

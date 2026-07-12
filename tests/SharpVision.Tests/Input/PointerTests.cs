@@ -168,7 +168,7 @@ public sealed class PointerTests
 
             focus.Focused.ShouldBeSameAs(child);
             child.IsFocused.ShouldBeTrue();
-            child.Appearance.Background.ShouldBe(Color.Indexed(11));
+            child.Background.ShouldBe(Color.Indexed(11));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -359,11 +359,8 @@ public sealed class PointerTests
         isMotion: action == PointerAction.Move,
         isCellPositionInferred: false);
 
-    private static Style FocusStyle()
-    {
-        var style = new Style();
-        style.Set(State.Normal, new Appearance(background: Color.Indexed(10)));
-        style.Set(State.Focused, new Appearance(background: Color.Indexed(11)));
-        return style;
-    }
+    private static ControlStyle<ProbeControl> FocusStyle() =>
+        ThemeTestSupport.OverlayStyle<ProbeControl>(
+            (State.Normal, new Appearance(background: Color.Indexed(10))),
+            (State.Focused, new Appearance(background: Color.Indexed(11))));
 }

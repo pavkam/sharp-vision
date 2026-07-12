@@ -1,5 +1,6 @@
 using SharpVision.Controls;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
@@ -159,6 +160,9 @@ public sealed class GalleryRenderingTests
     {
         using var gallery = new Gallery();
         gallery.Select(IndexOf(gallery, "List"));
+        var theme = Themes.Dark.Clone();
+        theme.SetStyle(Palette.ListForTheme());
+        ApplyTheme(gallery.Root, theme);
         var size = new Size(120, 80);
         new Engine().Layout(gallery.Root, size);
         using var frame = new Frame(size);
@@ -166,7 +170,7 @@ public sealed class GalleryRenderingTests
         gallery.Root.Render(frame.Canvas);
 
         var active = FindAll<List>(gallery.Content).Single(list => list.IsEnabled);
-        active.Appearance.Background.ShouldBe(Palette.InputSurface);
+        active.Background.ShouldBe(Palette.InputSurface);
         frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
             .ShouldBe(Palette.Highlight);
     }
@@ -302,5 +306,17 @@ public sealed class GalleryRenderingTests
                 screen.Text.ShouldContain("Practical recipe");
             }
         }
+    }
+
+    private static void ApplyTheme(Control control, Theme theme)
+    {
+        var context = ThemeContext.Create(theme);
+        ApplyThemeContext(control, context);
+    }
+
+    private static void ApplyThemeContext(Control control, ThemeContext context)
+    {
+        control.SetThemeContext(context);
+        control.VisitChildren(child => ApplyThemeContext(child, context));
     }
 }

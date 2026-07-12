@@ -15,7 +15,6 @@ using Shouldly;
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -119,14 +118,14 @@ public sealed class CheckBoxTests
 
     /// <summary>Verifies checked state participates in resolved style composition.</summary>
     [Fact]
-    public void Appearance_WhenChecked_IncludesCheckedOverlay()
+    public void Foreground_WhenChecked_IncludesCheckedOverlay()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(1)));
-        style.Set(State.Checked, new Appearance(foreground: Color.Indexed(5)));
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(1))),
+            (State.Checked, new Appearance(foreground: Color.Indexed(5))));
         var checkBox = new CheckBox { Style = style, IsChecked = true };
 
-        checkBox.Appearance.Foreground.ShouldBe(Color.Indexed(5));
+        checkBox.Foreground.ShouldBe(Color.Indexed(5));
     }
 
     /// <summary>Verifies mark, separator, Unicode content, layout, and cells.</summary>
@@ -150,8 +149,8 @@ public sealed class CheckBoxTests
     [Fact]
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
-        var style = new UiStyle();
-        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(45)));
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
         var checkBox = new CheckBox { Style = style };
         new Engine().Layout(checkBox, new Size(1, 1));
         using var frame = new Frame(new Size(1, 1));

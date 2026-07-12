@@ -2,7 +2,6 @@ using System.Diagnostics;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
@@ -135,42 +134,6 @@ public sealed class Text: Control
 
     private Ambiguous AmbiguousWidthValue { get; set; }
 
-    /// <summary>Gets or sets an optional direct foreground override.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Color? Foreground
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets an optional direct background override.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Color? Background
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets optional direct rendition attributes.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Attributes? Attributes
-    {
-        get;
-        set
-        {
-            if (value.HasValue)
-            {
-                _ = new TerminalStyle(attributes: value.Value);
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    }
-
     /// <summary>Gets the committed line metrics until the next successful layout.</summary>
     public ReadOnlyMemory<Line> Lines => _lines.AsMemory(0, _lineCount);
 
@@ -295,22 +258,9 @@ public sealed class Text: Control
         _cachedAlignment = TextAlignment;
     }
 
-    private TerminalStyle ResolveStyle()
-    {
-        var inherited = ResolvedStyle;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
-        return new TerminalStyle(
-            Foreground ?? inherited.Foreground,
-            Background ?? inherited.Background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-    }
+    private TerminalStyle ResolveStyle() => ResolvedStyle;
 
-    private BackgroundMode ResolveBackgroundMode() => Background.HasValue || Appearance.Background.HasValue
-        ? BackgroundMode.Opaque
-        : BackgroundMode.Transparent;
+    private BackgroundMode ResolveBackgroundMode() => ControlAppearance.HasOpaqueFill(this, GetVisualState()) ? BackgroundMode.Opaque : BackgroundMode.Transparent;
 
     private static void Validate<T>(T value) where T : struct, Enum
     {

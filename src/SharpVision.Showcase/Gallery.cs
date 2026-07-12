@@ -3,6 +3,8 @@ using System.Diagnostics;
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Runtime;
+using SharpVision.Styling;
 using SharpVision.Terminal.Input;
 
 using Attributes = SharpVision.Terminal.Rendering.Attributes;
@@ -17,6 +19,9 @@ public sealed class Gallery: IDisposable
     private readonly ScrollView _main;
     private readonly ScrollView _navigationScroll;
     private readonly NavigationItem[] _navigation;
+    private readonly Button _lightTheme;
+    private readonly Button _darkTheme;
+    private Application? _application;
     private FocusManager? _focus;
 
     #region Construction and navigation
@@ -64,7 +69,11 @@ public sealed class Gallery: IDisposable
         };
         var sidebarLayout = new Dock();
         var header = CreateSidebarHeader();
-        var footer = CreateSidebarFooter();
+        _lightTheme = new Button { Content = new ControlText("Light") };
+        _darkTheme = new Button { Content = new ControlText("Dark") };
+        _lightTheme.Click += (_, _) => SetTheme(Themes.White);
+        _darkTheme.Click += (_, _) => SetTheme(Themes.Dark);
+        var footer = CreateSidebarFooter(_lightTheme, _darkTheme);
         Dock.SetSide(header, Side.Top);
         Dock.SetSide(footer, Side.Bottom);
         sidebarLayout.Children.Add(header);
@@ -116,6 +125,19 @@ public sealed class Gallery: IDisposable
 
     /// <summary>Gets the currently selected immutable page definition.</summary>
     internal Page Selected { get; private set; }
+
+    /// <summary>Binds the running application so theme controls can publish <see cref="Application.Theme"/>.</summary>
+    /// <param name="application">The non-null gallery application.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="application"/> is null.</exception>
+    public void BindApplication(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        _application = application;
+
+        var theme = Themes.Dark.Clone();
+        theme.SetStyle(Palette.ListForTheme());
+        application.Theme = theme;
+    }
 
     /// <summary>Focuses the selected sidebar entry after the application has attached the gallery tree.</summary>
     /// <param name="focus">The non-null attached root focus manager.</param>
@@ -191,14 +213,36 @@ public sealed class Gallery: IDisposable
         return header;
     }
 
-    private static ControlText CreateSidebarFooter() => new("Enter select · Click")
+    private static Stack CreateSidebarFooter(Button lightTheme, Button darkTheme)
     {
-        Height = Length.Cells(2),
-        Padding = new Thickness(1, 0),
-        Foreground = Palette.Muted,
-        Background = Palette.Panel,
-        Attributes = Attributes.Dim,
-    };
+        var footer = new Stack
+        {
+            Height = Length.Cells(4),
+            Padding = new Thickness(1, 0),
+            Spacing = 0,
+        };
+        footer.Children.Add(new ControlText("Theme")
+        {
+            Foreground = Palette.Muted,
+            Background = Palette.Panel,
+            Attributes = Attributes.Dim,
+        });
+        footer.Children.Add(new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 1,
+            Children = { lightTheme, darkTheme },
+        });
+        footer.Children.Add(new ControlText("Enter select · Click")
+        {
+            Foreground = Palette.Muted,
+            Background = Palette.Panel,
+            Attributes = Attributes.Dim,
+        });
+        return footer;
+    }
+
+    private void SetTheme(Theme theme) => _application?.Theme = theme;
 
     private void OnNavigationInvoked(object? sender, ActivationEventArgs eventArgs)
     {

@@ -3,7 +3,6 @@ using System.Text;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 
 using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
@@ -13,9 +12,15 @@ using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 namespace SharpVision.Controls;
 
 /// <summary>Decorates one child with composite or block-glyph visual overflow.</summary>
-public sealed class Shadow: Container
+public sealed partial class Shadow: Container
 {
     #region Construction and properties
+
+    static Shadow()
+    {
+        _ = ShadowAttributesProperty.RegisterClassDefault<Shadow>(TerminalAttributes.Dim);
+        _ = ShadowOffsetProperty.RegisterClassDefault<Shadow>(new Point(2, 1));
+    }
 
     /// <summary>Initializes an empty capacity-one shadow with Turbo Vision geometry.</summary>
     public Shadow() : base(1)
@@ -38,16 +43,8 @@ public sealed class Shadow: Container
     /// <exception cref="ObjectDisposedException">The Shadow is disposed.</exception>
     public ShadowMode Mode
     {
-        get;
-        set
-        {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The shadow mode is unknown.");
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
+        get => ShadowMode;
+        set => ShadowMode = value;
     }
 
     /// <summary>Gets or sets the signed visual offset in terminal cells.</summary>
@@ -55,9 +52,9 @@ public sealed class Shadow: Container
     /// <exception cref="ObjectDisposedException">The Shadow is disposed.</exception>
     public Point Offset
     {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    } = new(2, 1);
+        get => ShadowOffset;
+        set => ShadowOffset = value;
+    }
 
     /// <summary>Gets or sets the printable narrow block-mode Rune.</summary>
     /// <exception cref="ArgumentException">The value is a control or is not one cell wide.</exception>
@@ -65,56 +62,16 @@ public sealed class Shadow: Container
     /// <exception cref="ObjectDisposedException">The Shadow is disposed.</exception>
     public Rune Glyph
     {
-        get;
-        set
-        {
-            ValidateGlyph(value);
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    } = new('▓');
-
-    /// <summary>Gets or sets an optional direct shadow foreground.</summary>
-    /// <exception cref="InvalidOperationException">The attached Shadow is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Shadow is disposed.</exception>
-    public Color? Foreground
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        get => ShadowGlyph;
+        set => ShadowGlyph = value;
     }
-
-    /// <summary>Gets or sets an optional direct shadow background.</summary>
-    /// <exception cref="InvalidOperationException">The attached Shadow is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Shadow is disposed.</exception>
-    public Color? Background
-    {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
-    }
-
-    /// <summary>Gets or sets optional direct shadow rendition attributes.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached Shadow is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Shadow is disposed.</exception>
-    public TerminalAttributes? Attributes
-    {
-        get;
-        set
-        {
-            if (value.HasValue)
-            {
-                _ = new TerminalStyle(attributes: value.Value);
-            }
-
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    } = TerminalAttributes.Dim;
 
     #endregion
 
     #region Layout and rendering
 
     /// <inheritdoc/>
-    protected override Rect VisualBounds => Union(Bounds, Shift(Bounds, Offset));
+    protected override Rect VisualBounds => Union(Bounds, Shift(Bounds, ShadowOffset));
 
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
@@ -139,10 +96,10 @@ public sealed class Shadow: Container
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var shifted = Shift(Bounds, Offset);
+        var shifted = Shift(Bounds, ShadowOffset);
         var target = shifted.Intersect(canvas.Bounds);
         var style = ResolveShadowStyle();
-        var background = Background.HasValue || Appearance.Background.HasValue
+        var background = ControlAppearance.HasOpaqueFill(this, GetVisualState())
             ? BackgroundMode.Opaque
             : BackgroundMode.Transparent;
 
@@ -160,15 +117,15 @@ public sealed class Shadow: Container
                     continue;
                 }
 
-                if (Mode == ShadowMode.Composite)
+                if (ShadowMode == ShadowMode.Composite)
                 {
                     canvas.ApplyStyle(new Rect(x, y, 1, 1), style, background);
                 }
                 else
                 {
-                    Debug.Assert(Mode == ShadowMode.BlockGlyph, "Public validation limits shadow modes.");
+                    Debug.Assert(ShadowMode == ShadowMode.BlockGlyph, "Public validation limits shadow modes.");
                     canvas.DrawRune(
-                        CellGlyph.Resolve(Glyph, new Rune('#'), CellPolicy.AmbiguousWidth),
+                        CellGlyph.Resolve(ShadowGlyph, new Rune('#'), CellPolicy.AmbiguousWidth),
                         point,
                         style,
                         background);
@@ -182,14 +139,8 @@ public sealed class Shadow: Container
     private TerminalStyle ResolveShadowStyle()
     {
         var inherited = ResolvedStyle;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, Attributes);
-        return new TerminalStyle(
-            Foreground ?? inherited.Foreground,
-            Background ?? inherited.Background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
+        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited, ShadowAttributes);
+        return new TerminalStyle(ShadowForeground ?? inherited.Foreground, ShadowBackground ?? inherited.Background, attributes, inherited.Hyperlink, underline, underlineColor);
     }
 
     private static int Add(int left, int right)
@@ -218,18 +169,4 @@ public sealed class Shadow: Container
 
     private static int SaturatingAdd(int left, int right) =>
         (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
-
-    private static void ValidateGlyph(Rune value)
-    {
-        Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
-        var measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
-
-        if (measurement.Cells != 1 || measurement.Controls != 0)
-        {
-            throw new ArgumentException(
-                "A shadow glyph must be printable and exactly one cell wide.",
-                nameof(value));
-        }
-    }
 }
