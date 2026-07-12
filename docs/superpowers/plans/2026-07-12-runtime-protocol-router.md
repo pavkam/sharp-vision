@@ -9,12 +9,12 @@
 events through the normal runtime without breaking the existing input decoder.
 
 **Architecture:** Add an owned protocol-sequence value and a protocol sink that
-extends the existing input sink. `Router` is the full-stream entry point and
-uses the proven incremental `Decoder`; the decoder recognizes query replies at
-the parser callback boundary and routes other bounded terminal strings as owned
-values. `Session` requires the full sink, while `Application` publishes typed
-replies on its dispatcher and converts unregistered raw extensions into redacted
-diagnostics.
+extends the existing input sink. `ProtocolRouter` is the full-stream entry point
+and uses the proven incremental `Decoder`; the decoder recognizes query replies
+at the parser callback boundary and routes other bounded terminal strings as
+owned values. `Session` requires the full sink, while `Application` publishes
+typed replies on its dispatcher and converts unregistered raw extensions into
+redacted diagnostics.
 
 **Tech Stack:** .NET 10, C# 14, xUnit v3, Shouldly, Microsoft Testing Platform,
 ECMA-48 parser callbacks, `ReadOnlySpan<byte>`, and owned
@@ -38,7 +38,7 @@ Completion requires:
 - OSC, DCS, APC, PM, and SOS reach a bounded owned callback;
 - legacy `Decoder` consumers receive an `Unsupported` diagnostic instead of
   silent loss;
-- `Session` uses `Router` and preserves transport order;
+- `Session` uses `ProtocolRouter` and preserves transport order;
 - `Application` raises typed response events on its dispatcher;
 - unregistered raw extension payloads are redacted before application queuing;
 - representative replies and string families pass every read-fragment boundary;
@@ -53,7 +53,8 @@ Completion requires:
   terminal event contract.
 - `src/SharpVision.Terminal/Protocols/ProtocolSequence.cs` — immutable owned
   OSC/DCS/APC/PM/SOS value.
-- `src/SharpVision.Terminal/Protocols/Router.cs` — public full-stream facade.
+- `src/SharpVision.Terminal/Protocols/ProtocolRouter.cs` — public full-stream
+  facade.
 - `tests/SharpVision.Terminal.Tests/Support/RecordingProtocolSink.cs` —
   deterministic routed-event sink.
 - `tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs` — replies,
@@ -104,10 +105,10 @@ Create `runtime-routing.md` with this contract:
 
 ## Runtime routing contract
 
-`Parser` owns bounded ECMA-48 framing. `Router` owns the decision between typed
-input, typed terminal responses, and bounded raw extension strings. Parser
-callback spans are borrowed; every `ProtocolSequence` copies its header and
-payload before the callback returns.
+`Parser` owns bounded ECMA-48 framing. `ProtocolRouter` owns the decision
+between typed input, typed terminal responses, and bounded raw extension
+strings. Parser callback spans are borrowed; every `ProtocolSequence` copies its
+header and payload before the callback returns.
 
 `IProtocolSink.Response` receives recognized DA, DSR, DECRPM, Kitty keyboard,
 and OSC color replies. `IProtocolSink.Sequence` receives completed OSC, DCS,
@@ -182,7 +183,7 @@ public void Route_WhenDcsCompletes_OwnsHeaderAndPayload()
 {
     // Arrange
     var sink = new RecordingProtocolSink();
-    using var router = new Router(sink);
+    using var router = new ProtocolRouter(sink);
     var input = "\u001bP1;2$qpayload\u001b\\"u8.ToArray();
 
     // Act
@@ -208,7 +209,7 @@ Run:
 dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests" --timeout 60s
 ```
 
-Expected: build failure naming `Router`, `IProtocolSink`, and
+Expected: build failure naming `ProtocolRouter`, `IProtocolSink`, and
 `ProtocolSequence`.
 
 - [ ] **Step 3: Add `IProtocolSink`**
@@ -316,13 +317,13 @@ public void Sequence(ProtocolSequence value)
 }
 ```
 
-Expected: the owned types compile; the test still waits for `Router`.
+Expected: the owned types compile; the test still waits for `ProtocolRouter`.
 
 ## Task 3: Route replies and strings at the decoder boundary
 
 **Files:**
 
-- Create: `src/SharpVision.Terminal/Protocols/Router.cs`
+- Create: `src/SharpVision.Terminal/Protocols/ProtocolRouter.cs`
 - Modify: `src/SharpVision.Terminal/Input/Adapter.cs`
 - Modify: `src/SharpVision.Terminal/Input/Decoder.cs`
 - Modify: `tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs`
@@ -341,7 +342,7 @@ public void Route_WhenReplyIsRecognized_DeliversTypedResponse(string input, Resp
 {
     // Arrange
     var sink = new RecordingProtocolSink();
-    using var router = new Router(sink);
+    using var router = new ProtocolRouter(sink);
 
     // Act
     router.Route(System.Text.Encoding.UTF8.GetBytes(input));
@@ -481,7 +482,7 @@ using SharpVision.Terminal.Input;
 namespace SharpVision.Terminal.Protocols;
 
 /// <summary>Routes one terminal byte stream into typed input and protocol events.</summary>
-public sealed class Router: IDisposable
+public sealed class ProtocolRouter: IDisposable
 {
     private readonly Decoder _decoder;
 
@@ -490,7 +491,7 @@ public sealed class Router: IDisposable
     /// <param name="options">Finite input policy, or null for defaults.</param>
     /// <param name="timeProvider">The Escape deadline clock, or null.</param>
     /// <exception cref="ArgumentNullException"><paramref name="sink"/> is null.</exception>
-    public Router(IProtocolSink sink, Options? options = null, TimeProvider? timeProvider = null)
+    public ProtocolRouter(IProtocolSink sink, Options? options = null, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(sink);
         _decoder = new Decoder(sink, options, timeProvider);
@@ -526,7 +527,7 @@ Expected: all selected tests pass and only recognized replies are reclassified.
 - [ ] **Step 8: Commit the low-level router**
 
 ```bash
-git add src/SharpVision.Terminal/Protocols/IProtocolSink.cs src/SharpVision.Terminal/Protocols/ProtocolSequence.cs src/SharpVision.Terminal/Protocols/Router.cs src/SharpVision.Terminal/Input/Adapter.cs src/SharpVision.Terminal/Input/Decoder.cs tests/SharpVision.Terminal.Tests/Support/RecordingProtocolSink.cs tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs
+git add src/SharpVision.Terminal/Protocols/IProtocolSink.cs src/SharpVision.Terminal/Protocols/ProtocolSequence.cs src/SharpVision.Terminal/Protocols/ProtocolRouter.cs src/SharpVision.Terminal/Input/Adapter.cs src/SharpVision.Terminal/Input/Decoder.cs tests/SharpVision.Terminal.Tests/Support/RecordingProtocolSink.cs tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs
 git commit -m "feat(protocols): route replies and terminal strings"
 ```
 
@@ -586,7 +587,7 @@ git add tests/SharpVision.Terminal.Tests/Protocols/RouterTests.cs docs/testing/t
 git commit -m "test(protocols): prove routed sequence recovery"
 ```
 
-## Task 5: Replace the runtime decoder with `Router`
+## Task 5: Replace the runtime decoder with `ProtocolRouter`
 
 **Files:**
 
@@ -631,12 +632,12 @@ public interface ISink: IProtocolSink
 Update its summary and all deterministic sink implementations. Each test sink
 stores `Responses`, `Sequences`, and `Order`.
 
-- [ ] **Step 3: Use `Router` in `Session`**
+- [ ] **Step 3: Use `ProtocolRouter` in `Session`**
 
 Replace the local decoder and corresponding calls:
 
 ```csharp
-using var router = new Router(_sink, inputOptions, _timeProvider);
+using var router = new ProtocolRouter(_sink, inputOptions, _timeProvider);
 router.SetCellMetrics(dimensions.CellMetrics);
 router.Route(buffer.AsSpan(0, count));
 router.Complete();
@@ -775,10 +776,10 @@ git commit -m "feat(runtime): publish typed terminal responses"
 - [ ] **Step 1: Update only proven claims**
 
 State that DA1, DA2, CPR, DECRPM, Kitty keyboard status, and OSC color replies
-are observable through `Router`, `Session`, and dispatcher events. State that
-bounded raw string families are observable through `IProtocolSink.Sequence`.
-Keep capability negotiation partial and keep Kitty graphics, Sixel, and iTerm2
-unsupported.
+are observable through `ProtocolRouter`, `Session`, and dispatcher events. State
+that bounded raw string families are observable through
+`IProtocolSink.Sequence`. Keep capability negotiation partial and keep Kitty
+graphics, Sixel, and iTerm2 unsupported.
 
 - [ ] **Step 2: Validate docs**
 
@@ -829,8 +830,8 @@ files from this plan and preserve unrelated user work.
 ## Self-review checklist
 
 - Every protocol-router requirement in design slice 1 maps to a task.
-- `Response`, `ProtocolSequence`, `IProtocolSink`, and `Router` signatures are
-  consistent.
+- `Response`, `ProtocolSequence`, `IProtocolSink`, and `ProtocolRouter`
+  signatures are consistent.
 - Typed replies cannot fall through into keyboard handling.
 - Raw payloads are copied only for opted-in protocol sinks and redacted before
   application queuing.
