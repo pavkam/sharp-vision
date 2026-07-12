@@ -39,6 +39,23 @@ public sealed class CanvasPrimitiveTests
         frame.GetCell(new Point(0, 0)).Style.ShouldBe(style);
     }
 
+    /// <summary>Verifies transparent single-glyph drawing preserves the destination background.</summary>
+    [Fact]
+    public void DrawRune_WhenBackgroundIsTransparent_PreservesDestinationBackground()
+    {
+        using var frame = new Frame(new Size(1, 1));
+        var surface = new Style(Color.Indexed(255), Color.Indexed(238));
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
+
+        frame.Canvas.DrawRune(
+            new Rune('│'),
+            default,
+            new Style(Color.Indexed(45), Color.Default),
+            BackgroundMode.Transparent);
+
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new Style(Color.Indexed(45), Color.Indexed(238)));
+    }
+
     #endregion
 
     #region Region operations
@@ -71,6 +88,21 @@ public sealed class CanvasPrimitiveTests
         FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("界");
         frame.GetCell(new Point(0, 0)).Style.ShouldBe(style);
         frame.GetCell(new Point(1, 0)).Style.ShouldBe(style);
+    }
+
+    /// <summary>Verifies transparent style overlays preserve destination backgrounds.</summary>
+    [Fact]
+    public void ApplyStyle_WhenBackgroundIsTransparent_PreservesDestinationBackground()
+    {
+        using var frame = new Frame(new Size(1, 1));
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new Style(Color.Indexed(255), Color.Indexed(238)));
+
+        frame.Canvas.ApplyStyle(
+            frame.Canvas.Bounds,
+            new Style(Color.Indexed(45), Color.Default),
+            BackgroundMode.Transparent);
+
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new Style(Color.Indexed(45), Color.Indexed(238)));
     }
 
     /// <summary>Verifies a clipped partial wide owner is not half-restyled.</summary>

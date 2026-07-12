@@ -14,6 +14,7 @@ public sealed class Grid: Container
     /// <summary>Initializes permanent row and column definition collections.</summary>
     public Grid()
     {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
         Rows = new TrackCollection(
             count => DefinitionsChanging(count, rows: true),
             DefinitionsChanged);
@@ -181,10 +182,15 @@ public sealed class Grid: Container
             columnExtents,
             constraint.Height,
             constraint.Width);
-        rowRequests = Requests(rows.Length, rows: true);
         columnRequests = Requests(columns.Length, rows: false);
-        rowExtents = Resolve(constraint.Height, RowSpacing, rows, rowRequests);
         columnExtents = Resolve(constraint.Width, ColumnSpacing, columns, columnRequests);
+
+        // Automatic rows must let wrapped children report their newly expanded
+        // height after finite column widths are known. The initial row extent is
+        // only a probe and would otherwise cap the remeasure to one old line.
+        MeasureAutomaticRows(rows, columnExtents, constraint.Width);
+        rowRequests = Requests(rows.Length, rows: true);
+        rowExtents = Resolve(constraint.Height, RowSpacing, rows, rowRequests);
 
         return new Size(
             Add(Sum(columnExtents), Spacing(ColumnSpacing, columns.Length, constraint.Width)),
@@ -205,10 +211,11 @@ public sealed class Grid: Container
         // Final viewport dimensions can differ from measure. Re-measuring the
         // exact spanned slots keeps wrapped content deterministic after resize.
         MeasureChildren(rowExtents, columnExtents, bounds.Height, bounds.Width);
-        rowRequests = Requests(rows.Length, rows: true);
         columnRequests = Requests(columns.Length, rows: false);
-        rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
         columnExtents = Resolve(bounds.Width, ColumnSpacing, columns, columnRequests);
+        MeasureAutomaticRows(rows, columnExtents, bounds.Width);
+        rowRequests = Requests(rows.Length, rows: true);
+        rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
         ArrangeChildren(bounds, rowExtents, columnExtents);
     }
 
@@ -465,6 +472,42 @@ public sealed class Grid: Container
                     RowSpacing,
                     availableHeight)));
         }
+    }
+
+    private void MeasureAutomaticRows(
+        ReadOnlySpan<Track> rows,
+        ReadOnlySpan<int> columnExtents,
+        int? availableWidth)
+    {
+        foreach (var child in Children)
+        {
+            if (child.Visibility == Visibility.Collapsed ||
+                !IsAutomaticSpan(rows, GetRow(child), GetRowSpan(child)))
+            {
+                continue;
+            }
+
+            var width = SpanExtent(
+                columnExtents,
+                GetColumn(child),
+                GetColumnSpan(child),
+                ColumnSpacing,
+                availableWidth);
+            child.Measure(new Constraint(width, height: null));
+        }
+    }
+
+    private static bool IsAutomaticSpan(ReadOnlySpan<Track> definitions, int origin, int span)
+    {
+        for (var index = origin; index < origin + span; index++)
+        {
+            if (definitions[index].Length.Kind != Kind.Auto)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static int SpanExtent(

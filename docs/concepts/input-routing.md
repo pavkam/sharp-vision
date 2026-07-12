@@ -78,8 +78,12 @@ route control is the handler's `sender`; `Phase` reports preview or bubble.
 After an unhandled bubble, protected default behavior runs from the target
 toward the root until one route member handles the event. Composite controls
 therefore retain their traditional behavior when semantic child content is the
-pointer target. Exceptions propagate after route state and pooled storage are
-cleaned.
+pointer target. For an unhandled pressed Tab with no modifiers, or with only
+Shift, the shared control default moves the owning `FocusManager` forward or
+backward through its eligible tab order and marks the key handled. A control
+that owns Tab semantics, such as a `TextInput` with `AcceptsTab`, handles it
+before this fallback. Exceptions propagate after route state and pooled storage
+are cleaned.
 
 ## Pointer capture and coordinates
 
@@ -96,6 +100,12 @@ derived from committed transforms at each route element.
 at each parent, and searches `Container.Children` from last to first so the
 highest z-order wins. A pointer handler receives `LocalCells` relative to its
 current sender's committed bounds.
+
+On a primary press, `CaptureManager` resolves the nearest eligible focusable
+member from the routed target toward the root and commits focus before routing
+the pointer event. This shared rule applies to every focusable control;
+specialized controls may repeat the same idempotent focus request. A cancelled
+focus transaction does not suppress pointer routing.
 
 `CaptureManager.Dispatch` routes to exclusive capture when present and otherwise
 uses root hit testing. Hover always resolves from the physical hit-test target,

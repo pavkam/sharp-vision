@@ -165,6 +165,7 @@ public sealed class TextInputTests
         {
             Text = "Ae\u0301👩‍💻",
             PasswordCharacter = new Rune('*'),
+            Width = Length.Cells(6),
         };
         control.SetFocused(true);
         new Engine().Layout(control, new Size(6, 1));
@@ -274,19 +275,106 @@ public sealed class TextInputTests
         {
             AcceptsReturn = true,
             Text = "123456\nabcdef\nXYZ",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var engine = new Engine();
 
         engine.Layout(control, new Size(3, 2));
-        control.HorizontalOffset.ShouldBe(1);
-        control.VerticalOffset.ShouldBe(1);
+        control.HorizontalOffset.ShouldBe(2);
+        control.VerticalOffset.ShouldBe(2);
 
         control.CaretIndex = 6;
         engine.Layout(control, new Size(3, 2));
-        control.HorizontalOffset.ShouldBe(4);
+        control.HorizontalOffset.ShouldBe(5);
         control.VerticalOffset.ShouldBe(0);
         engine.Layout(control, new Size(10, 5));
         control.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a wheel scroll moves the editor while movement remains and bubbles at its endpoint.</summary>
+    [Fact]
+    public void Dispatch_WhenWheelTargetsOverflowingEditor_ScrollsAndBubblesAtEndpoint()
+    {
+        var control = new TextInput
+        {
+            AcceptsReturn = true,
+            Text = "abcdef\none\ntwo\nthree",
+            CaretIndex = 0,
+        };
+        new Engine().Layout(control, new Size(4, 2));
+
+        var first = Wheel(wheelX: -1, wheelY: -1);
+        Route(control, first, Events.Pointer);
+
+        control.HorizontalOffset.ShouldBe(1);
+        control.VerticalOffset.ShouldBe(1);
+        first.Handled.ShouldBeTrue();
+
+        Route(control, Wheel(wheelX: -100, wheelY: -100), Events.Pointer);
+        control.HorizontalOffset.ShouldBe(4);
+        control.VerticalOffset.ShouldBe(4);
+
+        var endpoint = Wheel(wheelX: -1, wheelY: -1);
+        Route(control, endpoint, Events.Pointer);
+
+        endpoint.Handled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies overflowing multiline input exposes a configured canonical vertical scrollbar.</summary>
+    [Fact]
+    public void ScrollBars_WhenMultilineContentOverflows_ExposesCanonicalVerticalRail()
+    {
+        var control = new TextInput
+        {
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            AcceptsReturn = true,
+            Text = "one\ntwo\nthree\nfour\nfive",
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarFill = ScrollBarFill.Line,
+        };
+        new Engine().Layout(control, new Size(8, 3));
+
+        var rail = control.HitTest(new Point(7, 0)).ShouldBeOfType<ScrollBar>();
+        rail.Orientation.ShouldBe(Orientation.Vertical);
+        rail.Chrome.ShouldBe(ScrollBarStyle.Thin);
+        rail.Fill.ShouldBe(ScrollBarFill.Line);
+    }
+
+    /// <summary>Verifies an editor at its wheel endpoint leaves the routed delta for its enclosing viewport.</summary>
+    [Fact]
+    public void Dispatch_WhenEditorWheelReachesEndpoint_OffersNextDeltaToEnclosingViewport()
+    {
+        var input = new TextInput
+        {
+            Width = Length.Cells(5),
+            Height = Length.Cells(2),
+            AcceptsReturn = true,
+            Text = "one\ntwo\nthree\nfour",
+            CaretIndex = 0,
+        };
+        var content = new Stack();
+        content.Children.Add(input);
+        content.Children.Add(new ProbeControl(new Size(5, 8)));
+        var outer = new ScrollView
+        {
+            Content = content,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never,
+        };
+        new Engine().Layout(outer, new Size(5, 3));
+
+        Route(input, Wheel(wheelX: 0, wheelY: -100), Events.Pointer);
+        input.VerticalOffset.ShouldBe(4);
+        outer.VerticalOffset.ShouldBe(0);
+
+        var endpoint = Wheel(wheelX: 0, wheelY: -1);
+        Route(input, endpoint, Events.Pointer);
+
+        outer.VerticalOffset.ShouldBe(1);
+        endpoint.Handled.ShouldBeTrue();
     }
 
     /// <summary>Verifies a notification exception preserves the committed atomic state.</summary>
@@ -449,6 +537,17 @@ public sealed class TextInputTests
         Modifiers.None,
         isMotion: action == PointerAction.Move,
         isCellPositionInferred: true);
+
+    private static PointerEventArgs Wheel(int wheelX, int wheelY) => new(new Pointer(
+        cells: default,
+        pixels: null,
+        Buttons.None,
+        PointerAction.Wheel,
+        wheelX,
+        wheelY,
+        Modifiers.None,
+        isMotion: false,
+        isCellPositionInferred: false));
 
     private static string Cells(Frame frame, int count)
     {

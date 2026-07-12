@@ -11,8 +11,31 @@ completed activation raises `Click` and invokes its command once.
 - `Command` and `CommandParameter` provide optional command activation.
 - `IsDefault` and `IsCancel` participate in window-level Enter/Escape handling
   only when no focused control consumes the key.
+- `Glyphs`, `HasShadow`, and `ShadowOffset` configure the default button chrome.
+- `ShadowMode` chooses the quiet composite lift or a visible block-glyph shadow;
+  `ShadowGlyph` supplies the validated printable, one-cell block Rune.
 - `Click` is a control event raised after pressed state is released and before
   command execution; command failure follows runtime exception policy.
+
+Buttons render a rounded one-cell border, internal padding, and a compact
+composite shadow by default. `Glyphs`, `HasShadow`, `ShadowOffset`,
+`ShadowMode`, and `ShadowGlyph` expose the chrome choices when an application
+needs a different surface. A composite shadow preserves the graphemes beneath
+its translated footprint and dims their style; block-glyph mode replaces that
+footprint outside the button body with the configured shade Rune. The shared
+[Shadow contract](../display/shadow.md#shadow-contract) defines the same two
+footprint semantics for controls that need to decorate an arbitrary child.
+
+Hover and focus appearance apply to the complete Button face, including its
+physical border, while the detached shadow retains normal dim styling. During a
+held pointer or Space press, a shadowed Button translates its face and owned
+content by `ShadowOffset`; that face covers the shadow footprint and makes the
+control read as physically pressed. Releasing restores the original face before
+raising `Click`.
+
+When `HasShadow` is false, the Button still tracks `IsPressed` and preserves the
+same activation and cancellation semantics, but it does not apply a pressed
+appearance or translate its face because there is no shadow footprint to cover.
 
 The shipped control exposes `Click` as a conventional CLR event carrying
 `ActivationEventArgs`; it uses the same committed activation pipeline as routed
@@ -32,9 +55,11 @@ so padding remains part of the visible interactive target. `IsDefault` and
 ## Interaction
 
 Space presses on key down and activates on matching key up while focused. Enter
-activates directly. Pointer press captures and sets pressed only while the
-pointer remains inside; release inside activates once. Disable, detach, focus
-loss policy, or capture cancellation clears pressed without activation.
+activates directly. A primary pointer press focuses the Button, captures it, and
+sets pressed only while the pointer remains inside; release inside activates
+once. The committed focus state resolves the Button's `Focused` visual style
+until another control receives focus. Disable, detach, focus loss policy, or
+capture cancellation clears pressed without activation.
 
 ## Example
 
@@ -45,6 +70,8 @@ save.Click += (_, _) => Save();
 
 ## Test obligations
 
-Cover Space/Enter/pointer parity, capture movement, cancellation, default/cancel
-routing, command ordering/failure, disabled/hidden state, focus, content
-ownership, combined visual states, Unicode/tiny layout, and final cells/events.
+Cover Space/Enter/pointer parity, capture movement, cancellation,
+hover-frame-versus-normal-shadow styling, pressed face translation and shadow
+occlusion, default/cancel routing, command ordering/failure, disabled/hidden
+state, focus, content ownership, combined visual states, Unicode/tiny layout,
+and final cells/events.

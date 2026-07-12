@@ -116,7 +116,9 @@ public static class Encoder
 
         if (current.Attributes == target.Attributes &&
             current.Foreground == target.Foreground &&
-            current.Background == target.Background)
+            current.Background == target.Background &&
+            current.Underline == target.Underline &&
+            current.UnderlineColor == target.UnderlineColor)
         {
             return;
         }
@@ -127,6 +129,7 @@ public static class Encoder
         }
 
         ApplyAttributes(writer, target.Attributes);
+        ApplyUnderline(writer, target);
 
         if (target.Foreground != Color.Default)
         {
@@ -136,6 +139,11 @@ public static class Encoder
         if (target.Background != Color.Default)
         {
             ApplyColor(writer, target.Background, capabilities, foreground: false);
+        }
+
+        if (target.UnderlineColor != Color.Default)
+        {
+            Sgr.UnderlineColor(writer, target.UnderlineColor);
         }
     }
 
@@ -176,11 +184,24 @@ public static class Encoder
         ApplyAttribute(writer, attributes, Attributes.Bold, Rendition.Bold);
         ApplyAttribute(writer, attributes, Attributes.Dim, Rendition.Dim);
         ApplyAttribute(writer, attributes, Attributes.Italic, Rendition.Italic);
-        ApplyAttribute(writer, attributes, Attributes.Underline, Rendition.Underline);
         ApplyAttribute(writer, attributes, Attributes.Blink, Rendition.SlowBlink);
+        ApplyAttribute(writer, attributes, Attributes.RapidBlink, Rendition.RapidBlink);
         ApplyAttribute(writer, attributes, Attributes.Reverse, Rendition.Reverse);
         ApplyAttribute(writer, attributes, Attributes.Hidden, Rendition.Hidden);
         ApplyAttribute(writer, attributes, Attributes.Strike, Rendition.Strike);
+        ApplyAttribute(writer, attributes, Attributes.Overline, Rendition.Overline);
+    }
+
+    private static void ApplyUnderline(Writer writer, Style style)
+    {
+        if ((style.Attributes & Attributes.Underline) != 0)
+        {
+            Sgr.Apply(writer, Rendition.Underline);
+        }
+        else if (style.Underline != Underline.None)
+        {
+            Sgr.Apply(writer, style.Underline);
+        }
     }
 
     private static void ApplyAttribute(
@@ -211,13 +232,34 @@ public static class Encoder
     private static bool IsVisualDefault(Style style) =>
         style.Attributes == Attributes.None &&
         style.Foreground == Color.Default &&
-        style.Background == Color.Default;
+        style.Background == Color.Default &&
+        style.Underline == Underline.None &&
+        style.UnderlineColor == Color.Default;
 
-    private static Style Project(Style value, TerminalCapabilities capabilities) => new(
-        Palette.Project(value.Foreground, capabilities.ColorDepth),
-        Palette.Project(value.Background, capabilities.ColorDepth),
-        value.Attributes,
-        value.Hyperlink);
+    private static Style Project(Style value, TerminalCapabilities capabilities)
+    {
+        var attributes = capabilities.Overline.IsSupported
+            ? value.Attributes
+            : value.Attributes & ~Attributes.Overline;
+        var underline = value.Underline;
+
+        if (underline != Underline.None && !capabilities.StyledUnderlines.IsSupported)
+        {
+            attributes |= Attributes.Underline;
+            underline = Underline.None;
+        }
+
+        var underlineColor = capabilities.UnderlineColor.IsSupported
+            ? Palette.Project(value.UnderlineColor, capabilities.ColorDepth)
+            : Color.Default;
+        return new Style(
+            Palette.Project(value.Foreground, capabilities.ColorDepth),
+            Palette.Project(value.Background, capabilities.ColorDepth),
+            attributes,
+            value.Hyperlink,
+            underline,
+            underlineColor);
+    }
 
     private static void OpenHyperlink(Writer writer, string hyperlink)
     {

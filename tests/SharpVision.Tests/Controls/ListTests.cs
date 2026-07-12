@@ -3,8 +3,10 @@ using System.Text;
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
@@ -13,7 +15,9 @@ using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
 using Label = SharpVision.Controls.Text;
+using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 using UiList = SharpVision.Controls.List;
+using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -45,6 +49,81 @@ public sealed class ListTests
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
         FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("界");
         FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("n");
+    }
+
+    /// <summary>Verifies the List paints its surface and uses the checked state for the selected row.</summary>
+    [Fact]
+    public void Render_WhenStyledAndSelected_PaintsSurfaceAndSelectedRow()
+    {
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240)));
+        style.Set(State.Checked, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(99)));
+        var control = new UiList
+        {
+            Items = new object?[] { "One", "Two" },
+            SelectedIndex = 1,
+            ScrollBars = ScrollBars.None,
+            Style = style,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var size = new Size(8, 2);
+        new Engine().Layout(control, size);
+        using var frame = new Frame(size);
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(234)));
+
+        control.Render(frame.Canvas);
+
+        frame.GetCell(new Point(7, 0)).Style.Background.ShouldBe(Color.Indexed(240));
+        frame.GetCell(new Point(7, 1)).Style.Background.ShouldBe(Color.Indexed(99));
+    }
+
+    /// <summary>Verifies List exposes the canonical overflow policy and its actual composed scrollbar.</summary>
+    [Fact]
+    public void ScrollBars_WhenConfigured_ForwardCommonPolicyToComposedViewport()
+    {
+        var control = Create("one", "two", "three", "four", "five", "six");
+        control.HorizontalAlignment = HorizontalAlignment.Stretch;
+        control.ScrollBars = ScrollBars.Vertical;
+        control.ShowScrollBars = ShowScrollBars.Always;
+        control.ScrollBarChrome = ScrollBarStyle.Thin;
+        control.ScrollBarFill = ScrollBarFill.Line;
+        new Engine().Layout(control, new Size(6, 3));
+
+        control.ScrollBars.ShouldBe(ScrollBars.Vertical);
+        control.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
+        control.ScrollBarChrome.ShouldBe(ScrollBarStyle.Thin);
+        control.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
+        var rail = control.HitTest(new Point(5, 0)).ShouldBeOfType<ScrollBar>();
+        rail.Orientation.ShouldBe(Orientation.Vertical);
+        rail.Chrome.ShouldBe(ScrollBarStyle.Thin);
+        rail.Fill.ShouldBe(ScrollBarFill.Line);
+
+        control.ShowScrollBars = ShowScrollBars.Never;
+        new Engine().Layout(control, new Size(6, 3));
+
+        control.HitTest(new Point(5, 0)).ShouldNotBeOfType<ScrollBar>();
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBars = (ScrollBars) 99);
+    }
+
+    /// <summary>Verifies unchanged overflow policy assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void ShowScrollBars_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var control = new UiList();
+        var notifications = 0;
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiList.ShowScrollBars))
+            {
+                notifications++;
+            }
+        };
+
+        control.ShowScrollBars = ShowScrollBars.WhenNeeded;
+        control.ShowScrollBars = ShowScrollBars.Always;
+        control.ShowScrollBars = ShowScrollBars.Always;
+
+        notifications.ShouldBe(1);
     }
 
     /// <summary>Verifies failed item or template replacement leaves the complete old tree untouched.</summary>
@@ -227,10 +306,10 @@ public sealed class ListTests
     [Fact]
     public void Render_WhenItemIsSelected_UsesCheckedStyleWithoutChangingTemplateContent()
     {
-        var style = new SharpVision.Styling.Style();
+        var style = new UiStyle();
         style.Set(
-            SharpVision.Styling.State.Checked,
-            new SharpVision.Styling.Appearance(attributes: Attributes.Reverse));
+            State.Checked,
+            new Appearance(attributes: Attributes.Reverse));
         var control = Create("界", "B");
         control.Style = style;
         control.SelectedIndex = 0;

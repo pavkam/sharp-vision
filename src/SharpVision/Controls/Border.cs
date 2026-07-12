@@ -5,6 +5,7 @@ using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
+using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
@@ -14,9 +15,7 @@ namespace SharpVision.Controls;
 public sealed class Border: Container
 {
     /// <summary>Initializes an empty capacity-one Border.</summary>
-    public Border() : base(1)
-    {
-    }
+    public Border() : base(1) => HorizontalAlignment = HorizontalAlignment.Stretch;
 
     /// <summary>Gets or atomically sets the only managed child.</summary>
     /// <exception cref="ArgumentException">The value cannot be owned by this Border.</exception>
@@ -130,7 +129,12 @@ public sealed class Border: Container
         var inherited = ResolvedStyle;
         var background = Background ?? inherited.Background;
         var attributes = Attributes ?? inherited.Attributes;
-        canvas.Clear(Bounds, new TerminalStyle(inherited.Foreground, background, attributes));
+        var opaque = Background.HasValue || Appearance.Background.HasValue;
+
+        if (opaque)
+        {
+            canvas.Clear(Bounds, new TerminalStyle(inherited.Foreground, background, attributes));
+        }
 
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
@@ -139,18 +143,19 @@ public sealed class Border: Container
 
         var color = BorderColor ?? Appearance.BorderColor ?? inherited.Foreground;
         var style = new TerminalStyle(color, background, attributes);
-        DrawHorizontal(canvas, Bounds.Y, top: true, style);
+        var backgroundMode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        DrawHorizontal(canvas, Bounds.Y, top: true, style, backgroundMode);
 
         if (Bounds.Height > 1)
         {
-            DrawHorizontal(canvas, Bounds.Bottom - 1, top: false, style);
+            DrawHorizontal(canvas, Bounds.Bottom - 1, top: false, style, backgroundMode);
         }
 
-        DrawVertical(canvas, Bounds.X, left: true, style);
+        DrawVertical(canvas, Bounds.X, left: true, style, backgroundMode);
 
         if (Bounds.Width > 1)
         {
-            DrawVertical(canvas, Bounds.Right - 1, left: false, style);
+            DrawVertical(canvas, Bounds.Right - 1, left: false, style, backgroundMode);
         }
     }
 
@@ -160,7 +165,12 @@ public sealed class Border: Container
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
-    private void DrawHorizontal(TerminalCanvas canvas, int y, bool top, TerminalStyle style)
+    private void DrawHorizontal(
+        TerminalCanvas canvas,
+        int y,
+        bool top,
+        TerminalStyle style,
+        BackgroundMode background)
     {
         var active = top ? BorderThickness.Top != 0 : BorderThickness.Bottom != 0;
 
@@ -188,11 +198,17 @@ public sealed class Border: Container
             canvas.DrawRune(
                 CellGlyph.Resolve(glyph, fallback, CellPolicy.AmbiguousWidth),
                 new Point(x, y),
-                style);
+                style,
+                background);
         }
     }
 
-    private void DrawVertical(TerminalCanvas canvas, int x, bool left, TerminalStyle style)
+    private void DrawVertical(
+        TerminalCanvas canvas,
+        int x,
+        bool left,
+        TerminalStyle style,
+        BackgroundMode background)
     {
         var active = left ? BorderThickness.Left != 0 : BorderThickness.Right != 0;
 
@@ -210,7 +226,8 @@ public sealed class Border: Container
             canvas.DrawRune(
                 CellGlyph.Resolve(glyph, new Rune('|'), CellPolicy.AmbiguousWidth),
                 new Point(x, y),
-                style);
+                style,
+                background);
         }
     }
 

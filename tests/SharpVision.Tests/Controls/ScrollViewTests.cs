@@ -134,6 +134,27 @@ public sealed class ScrollViewTests
         view.Viewport.ShouldBe(new Size(4, 2));
     }
 
+    /// <summary>Verifies the common policy suppresses chrome without disabling the allowed overflow axis.</summary>
+    [Fact]
+    public void Layout_WhenScrollBarsAreVerticalAndNever_ShowsNoChromeButRetainsVerticalRange()
+    {
+        var view = new ScrollView
+        {
+            Content = new ProbeControl(new Size(8, 10)),
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never,
+        };
+
+        new Engine().Layout(view, new Size(4, 3));
+
+        view.Viewport.ShouldBe(new Size(4, 3));
+        view.HorizontalOffset.ShouldBe(0);
+        view.VerticalOffset.ShouldBe(0);
+        view.ScrollBy(4, 4).ShouldBeTrue();
+        view.HorizontalOffset.ShouldBe(0);
+        view.VerticalOffset.ShouldBe(4);
+    }
+
     /// <summary>Verifies direct offsets reject overflow while commands clamp and report after commit.</summary>
     [Fact]
     public void ScrollBy_WhenDeltaExceedsExtent_ClampsAndRaisesOneEvent()

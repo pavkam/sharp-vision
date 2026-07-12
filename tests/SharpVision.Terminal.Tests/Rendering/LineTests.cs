@@ -1,4 +1,7 @@
+using System.Text;
+
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 using Shouldly;
@@ -70,6 +73,24 @@ public sealed class LineTests
 
         FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("┇");
         FrameTests.GetText(frame, new Point(0, 1)).ShouldBe("┇");
+    }
+
+    /// <summary>Verifies structural line glyphs preserve the destination cell background.</summary>
+    [Fact]
+    public void DrawHorizontalLine_WhenSurfaceIsPainted_PreservesDestinationBackground()
+    {
+        using var frame = new Frame(new Size(3, 1));
+        var surface = new Style(Color.Indexed(255), Color.Indexed(238));
+        var line = new Style(Color.Indexed(45), Color.Default);
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
+
+        frame.Canvas.DrawHorizontalLine(default, 3, LineStyle.Light, line);
+
+        for (var x = 0; x < 3; x++)
+        {
+            frame.GetCell(new Point(x, 0)).Style.ShouldBe(
+                new Style(Color.Indexed(45), Color.Indexed(238)));
+        }
     }
 
     #endregion

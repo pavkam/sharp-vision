@@ -1,4 +1,6 @@
 using SharpVision.Controls;
+using SharpVision.Layout;
+using SharpVision.Terminal.Geometry;
 using SharpVision.Text;
 
 using Shouldly;
@@ -14,19 +16,24 @@ public sealed class GalleryTests
         "Button",
         "Canvas",
         "CheckBox",
+        "ComboBox",
         "Dock",
         "FigletText",
         "Grid",
         "List",
+        "Menu",
         "Overlay",
+        "Popup",
         "RadioButton",
         "RichText",
         "ScrollBar",
         "ScrollView",
         "Shadow",
         "Stack",
+        "Table",
         "Text",
         "TextInput",
+        "Window",
     ];
 
     /// <summary>Verifies the gallery starts with one page per concrete shipped control.</summary>
@@ -53,6 +60,20 @@ public sealed class GalleryTests
 
         gallery.SelectedPage.ShouldBe("Button");
         gallery.Content.ShouldNotBeSameAs(previous);
+    }
+
+    /// <summary>Verifies changing components resets the retained documentation viewport to the new page header.</summary>
+    [Fact]
+    public void Select_WhenDocumentationWasScrolled_ResetsTheNewPageToTop()
+    {
+        using var gallery = new Gallery();
+        new Engine().Layout(gallery.Root, new Size(80, 24));
+        var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
+
+        gallery.Select(1);
+
+        main.VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies every registered page includes typed RichText documentation.</summary>

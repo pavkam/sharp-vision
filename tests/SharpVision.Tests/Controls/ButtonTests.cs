@@ -1,3 +1,5 @@
+using System.Text;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -32,9 +34,145 @@ public sealed class ButtonTests
         button.IsDefault.ShouldBeFalse();
         button.IsCancel.ShouldBeFalse();
         button.CanFocus.ShouldBeTrue();
+        button.Padding.ShouldBe(new Thickness(1));
+        button.Glyphs.ShouldBe(Glyphs.Rounded);
+        button.HasShadow.ShouldBeTrue();
+        button.ShadowOffset.ShouldBe(new Point(1, 1));
         button.Children.Add(new ProbeControl());
         _ = Should.Throw<InvalidOperationException>(() =>
             button.Children.Add(new ProbeControl()));
+    }
+
+    /// <summary>Verifies the default Button draws its own border and shadow without showcase wrappers.</summary>
+    [Fact]
+    public void Render_WhenDefaultStyleIsUsed_DrawsBorderAndShadow()
+    {
+        var button = new Button { Content = new ControlText("Apply") };
+        var size = new Size(9, 5);
+        button.Width = Length.Cells(size.Width);
+        button.Height = Length.Cells(size.Height);
+        new Engine().Layout(button, size);
+        using var frame = new Frame(new Size(10, 6));
+
+        button.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╭");
+        FrameOracle.Get(frame, new Point(8, 4)).ShouldBe("╯");
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("A");
+        frame.GetCell(new Point(9, 4)).Style.Attributes.ShouldBe(Attributes.Dim);
+    }
+
+    /// <summary>Verifies a Button can opt into the visible Turbo Vision block shadow mode.</summary>
+    [Fact]
+    public void Render_WhenBlockShadowIsSelected_DrawsConfiguredShadowGlyphOutsideTheBody()
+    {
+        var button = new Button
+        {
+            Content = new ControlText("Apply"),
+            ShadowMode = ShadowMode.BlockGlyph,
+            ShadowGlyph = new Rune('▓'),
+            Width = Length.Cells(9),
+            Height = Length.Cells(5),
+        };
+        var size = new Size(9, 5);
+        new Engine().Layout(button, size);
+        using var frame = new Frame(new Size(10, 6));
+
+        button.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(9, 4)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(8, 4)).ShouldBe("╯");
+    }
+
+    /// <summary>Verifies a held Button shifts its complete face over its own shadow without styling that shadow as hovered or pressed.</summary>
+    [Fact]
+    public void Render_WhenPressed_MovesFaceIntoShadow()
+    {
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Content = new ControlText("Go"),
+        };
+        var size = new Size(10, 6);
+        new Engine().Layout(button, size);
+        using var released = new Frame(size);
+        button.Render(released.Canvas);
+
+        Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune(' '),
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press)));
+        using var pressed = new Frame(size);
+        button.Render(pressed.Canvas);
+
+        button.IsPressed.ShouldBeTrue();
+        FrameOracle.Get(released, new Point(0, 0)).ShouldBe("╭");
+        FrameOracle.Get(pressed, new Point(0, 0)).ShouldBeEmpty();
+        FrameOracle.Get(pressed, new Point(1, 1)).ShouldBe("╭");
+        pressed.GetCell(new Point(6, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
+    }
+
+    /// <summary>Verifies a shadowless Button keeps its normal face while Space is held.</summary>
+    [Fact]
+    public void Render_WhenPressedWithoutShadow_KeepsNormalAppearance()
+    {
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240)));
+        style.Set(State.Pressed, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(24)));
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            HasShadow = false,
+            Style = style,
+            Content = new ControlText("Go"),
+        };
+        var size = new Size(10, 6);
+        new Engine().Layout(button, size);
+
+        Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune(' '),
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press)));
+        using var frame = new Frame(size);
+        button.Render(frame.Canvas);
+
+        button.IsPressed.ShouldBeTrue();
+        frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(Color.Indexed(240));
+    }
+
+    /// <summary>Verifies hover appearance brightens the interactive face while the detached shadow retains its normal dim treatment.</summary>
+    [Fact]
+    public void Render_WhenHovered_StylesFrameButNotShadow()
+    {
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(attributes: Attributes.None));
+        style.Set(State.Hovered, new Appearance(attributes: Attributes.Bold));
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Style = style,
+        };
+        new Engine().Layout(button, new Size(10, 6));
+        button.SetHovered(true);
+        using var frame = new Frame(new Size(10, 6));
+
+        button.Render(frame.Canvas);
+
+        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldBe(Attributes.Bold);
+        frame.GetCell(new Point(6, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
     /// <summary>Verifies invalid replacement preserves the previous child and its parent.</summary>
@@ -209,6 +347,8 @@ public sealed class ButtonTests
             Content = new ControlText("Run"),
             Padding = new Thickness(1),
             Style = style,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
         };
         var size = new Size(8, 3);
         new Engine().Layout(button, size);

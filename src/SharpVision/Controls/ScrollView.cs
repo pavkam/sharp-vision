@@ -28,6 +28,7 @@ public sealed class ScrollView: Container
     /// <summary>Initializes an empty viewport with automatic bars on both axes.</summary>
     public ScrollView() : base(capacity: 1)
     {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
         _chrome = new Children(this, capacity: 2);
         _horizontal = new ScrollBar
         {
@@ -45,7 +46,6 @@ public sealed class ScrollView: Container
         _vertical.ValueChanged += OnVerticalChanged;
         _chrome.Add(_horizontal);
         _chrome.Add(_vertical);
-        _ = AddHandler(Events.Pointer, OnPointerRouted);
     }
 
     /// <summary>Raised after one or both offsets commit.</summary>
@@ -293,7 +293,8 @@ public sealed class ScrollView: Container
         return IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled ||
             !Bounds.Contains(point)
             ? null
-            : _vertical.HitTest(point) ??
+            : HitTestPopup(point) ??
+            _vertical.HitTest(point) ??
             _horizontal.HitTest(point) ??
             (_viewportBounds.Contains(point) ? Content?.HitTest(point) : null) ??
             this;
@@ -345,7 +346,17 @@ public sealed class ScrollView: Container
         Content?.Render(canvas.Clip(_viewportBounds));
         _horizontal.Render(canvas);
         _vertical.Render(canvas);
+        if (Parent is null)
+        {
+            RenderPopupLayer(canvas);
+        }
     }
+
+    /// <inheritdoc/>
+    internal override Control? HitTestPopup(Point point) => Content?.HitTestPopup(point);
+
+    /// <inheritdoc/>
+    internal override void RenderPopupLayer(TerminalCanvas canvas) => Content?.RenderPopupLayer(canvas);
 
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
@@ -407,8 +418,14 @@ public sealed class ScrollView: Container
 
         SetVisibility(_horizontal, horizontal);
         SetVisibility(_vertical, vertical);
-        _horizontal.Arrange(new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, horizontal ? 1 : 0));
-        _vertical.Arrange(new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height));
+        _horizontal.Arrange(
+            new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, horizontal ? 1 : 0),
+            widthResolved: true,
+            heightResolved: true);
+        _vertical.Arrange(
+            new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height),
+            widthResolved: true,
+            heightResolved: true);
         Synchronize();
         Debug.Assert(!viewportChanged || Viewport == viewport, "Arranged viewport commits atomically.");
     }
@@ -592,16 +609,6 @@ public sealed class ScrollView: Container
         }
 
         eventArgs.Handled = x != 0 || y != 0;
-    }
-
-    private void OnPointerRouted(object? sender, PointerEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.Phase == Phase.Bubble)
-        {
-            Handle(eventArgs);
-        }
     }
 
     private static ScrollView? Ancestor(Control control)

@@ -5,6 +5,7 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 
+using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
@@ -141,6 +142,9 @@ public sealed class Shadow: Container
         var shifted = Shift(Bounds, Offset);
         var target = shifted.Intersect(canvas.Bounds);
         var style = ResolveShadowStyle();
+        var background = Background.HasValue || Appearance.Background.HasValue
+            ? BackgroundMode.Opaque
+            : BackgroundMode.Transparent;
 
         // The visual shadow is the translated rectangle minus the opaque body.
         // This yields Turbo Vision's right and bottom strips for offset (2, 1)
@@ -158,7 +162,7 @@ public sealed class Shadow: Container
 
                 if (Mode == ShadowMode.Composite)
                 {
-                    canvas.ApplyStyle(new Rect(x, y, 1, 1), style);
+                    canvas.ApplyStyle(new Rect(x, y, 1, 1), style, background);
                 }
                 else
                 {
@@ -166,7 +170,8 @@ public sealed class Shadow: Container
                     canvas.DrawRune(
                         CellGlyph.Resolve(Glyph, new Rune('#'), CellPolicy.AmbiguousWidth),
                         point,
-                        style);
+                        style,
+                        background);
                 }
             }
         }

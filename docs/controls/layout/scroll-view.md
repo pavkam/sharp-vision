@@ -6,10 +6,12 @@
 always, or hidden horizontal and vertical
 [ScrollBar](scroll-bar.md#scrollbar-contract) controls.
 
-The bars are private owned controls: they participate in dispatcher, focus,
-capture, rendering, hit testing, navigation, and disposal exactly like public
-children, but callers cannot detach them or violate synchronization. `Content`
-is the only public child.
+The owned rails are ordinary public `ScrollBar` controls configured through
+their documented `Orientation`, `Chrome`, and `Fill` APIs. They participate in
+dispatcher, focus, capture, rendering, hit testing, navigation, and disposal
+exactly like any other control, while `ScrollView` retains their ownership so
+callers cannot detach them or violate range synchronization. `Content` is the
+only public child.
 
 ## API
 
@@ -51,18 +53,19 @@ Offsets clamp after every content or viewport change before child arrangement,
 events, bar synchronization, hit testing, or rendering. Content is translated by
 the committed offsets and rendered through a canvas clipped to the viewport.
 Bars render afterward along the bottom and right edges; their shared corner is
-left blank. The owned viewport chrome uses directional Unicode arrow buttons, a
-light-shade track, and a medium-shade thumb so scrolling state remains legible
-without the raw ASCII punctuation used by a standalone `ScrollBar` default.
+left blank. `ScrollBarChrome` and `ScrollBarFill` use the same public glyph
+generation and interaction behavior as a standalone `ScrollBar`, so a thin line
+rail or full block rail does not silently become a different component inside a
+viewport.
 
 ## Interaction
 
 Wheel deltas, arrows, PageUp/Down, Home/End, composed bars, bring-into-view, and
-programmatic commands share one scroll pipeline. Pointer wheel routing listens
-on the bubble path, so wheel input targeting content still reaches its viewport.
-An inner view consumes what it can and passes exact unused cell delta to each
-nearest scrollable ancestor until exhausted. Home and End address the vertical
-range; Left/Right address horizontal movement.
+programmatic commands share one scroll pipeline. Wheel routing runs normal leaf
+default behavior before the owning viewport's default behavior, so a nested
+editor or inner viewport gets first refusal. A child that cannot move leaves the
+event unhandled; the nearest enclosing viewport then consumes it. Home and End
+address the vertical range; Left/Right address horizontal movement.
 
 `Hidden` consumes no layout cells but keeps programmatic and input scrolling
 enabled. `Auto` uses strict `extent > viewport`; `Always` reserves one cell even

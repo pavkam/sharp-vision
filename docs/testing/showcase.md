@@ -4,9 +4,9 @@
 
 The showcase catalog test contains the exact concrete shipped-control inventory
 and fails when a control lacks its own page, typed RichText documentation,
-meaningful property descriptions, interaction guidance, or fresh live example.
-Each example tree must contain the control named by its sidebar entry and must
-be detached and independently owned.
+meaningful property descriptions, structured interaction rows, or fresh live
+example. Each example tree must contain the control named by its sidebar entry
+and must be detached and independently owned.
 
 Navigation tests require the executable showcase policy to emit xterm any-event
 tracking (`1003`) and SGR cell-mouse mode enables before its first frame. They
@@ -18,6 +18,11 @@ selection after pixel-aware resize. Its ScrollBar proof requires an intermediate
 SGR move to commit a value before the release reaches the endpoint. A separate
 startup test requires the first frame to commit, the initial sidebar entry to
 take focus, and shutdown to complete without runtime failure.
+
+The same runtime suite targets an SGR wheel report at the overflowing multiline
+`TextInput` specimen. It proves decoded terminal input advances the editor's own
+`VerticalOffset` while the enclosing documentation `ScrollView` retains its
+previous offset, protecting leaf-first wheel routing from future regressions.
 
 Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
@@ -33,12 +38,13 @@ without adding a trailing key that could mask input buffering. It also opens and
 selects the Figlet font dropdown, then drags the ScrollBar thumb with SGR press,
 motion, and release reports, asserting each visible committed value.
 
-Every page must also contain a Practical recipe: a full-width “When to use it”
-card followed by bordered “Live example” and “Responsive” columns. The compact
-card descriptions use word-aware Text wrapping; the surrounding headings,
-section labels, property documentation, and interaction guidance use RichText,
-which defaults to word wrapping. The page test protects that responsive default
-alongside the recipe structure.
+Every page must also contain a Practical recipe: one borderless, full-width,
+word-wrapped RichText narrative that explains when to use the control, describes
+each supported interaction path, and explains how resizing affects the page.
+Examples remain the place for bordered live specimens. The Interaction section
+is a standalone Table with Input, Behavior, and Result columns rather than
+another prose card. The page test protects the narrative's borderless structure
+alongside its responsive wrapping.
 
 Canvas and Shadow have dedicated virtual-screen assertions: Canvas must retain
 its labeled fixed, percentage, edge-constraint, and clipping stages within the

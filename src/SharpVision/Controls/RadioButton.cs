@@ -6,6 +6,7 @@ using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
+using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
@@ -132,7 +133,18 @@ public sealed class RadioButton: Pressable
         var glyph = new Rune(IsChecked ? '◉' : '○');
         Span<char> buffer = stackalloc char[2];
         var length = glyph.EncodeToUtf16(buffer);
-        _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
+        var style = ResolvedStyle;
+
+        if (Appearance.Background.HasValue)
+        {
+            canvas.Clear(Bounds, style);
+        }
+
+        _ = canvas.Draw(
+            buffer[..length],
+            new Point(Bounds.X, Bounds.Y),
+            style,
+            background: BackgroundMode.Transparent);
     }
 
     /// <inheritdoc/>

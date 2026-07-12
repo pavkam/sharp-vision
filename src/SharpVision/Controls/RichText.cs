@@ -6,6 +6,7 @@ using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
+using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 using TextLayout = SharpVision.Text.Layout;
@@ -107,6 +108,7 @@ public sealed class RichText: Control
                         widths,
                         run.Content,
                         ResolveInlineStyle(run),
+                        ResolveBackgroundMode(run),
                         ref line,
                         ref cells);
                     break;
@@ -117,6 +119,7 @@ public sealed class RichText: Control
                         widths,
                         hyperlink.Content,
                         ResolveInlineStyle(hyperlink),
+                        ResolveBackgroundMode(hyperlink),
                         ref line,
                         ref cells);
                     break;
@@ -242,6 +245,7 @@ public sealed class RichText: Control
         int[] widths,
         string content,
         TerminalStyle style,
+        BackgroundMode background,
         ref int line,
         ref int cells)
     {
@@ -273,7 +277,11 @@ public sealed class RichText: Control
             }
 
             var leading = Align(bounds.Width, widths[line]);
-            _ = canvas.Draw(cluster, new Point(bounds.X + leading + cells, bounds.Y + line), style);
+            _ = canvas.Draw(
+                cluster,
+                new Point(bounds.X + leading + cells, bounds.Y + line),
+                style,
+                background: background);
             cells = Add(cells, width);
         }
     }
@@ -300,6 +308,8 @@ public sealed class RichText: Control
                         lines,
                         run.Content,
                         ResolveInlineStyle(run),
+                        ResolveBackgroundMode(run),
+                        CellPolicy.AmbiguousWidth,
                         ref sourceOffset,
                         ref line,
                         ref cells);
@@ -311,6 +321,8 @@ public sealed class RichText: Control
                         lines,
                         hyperlink.Content,
                         ResolveInlineStyle(hyperlink),
+                        ResolveBackgroundMode(hyperlink),
+                        CellPolicy.AmbiguousWidth,
                         ref sourceOffset,
                         ref line,
                         ref cells);
@@ -321,12 +333,14 @@ public sealed class RichText: Control
         }
     }
 
-    private void RenderWordText(
+    private static void RenderWordText(
         TerminalCanvas canvas,
         Rect bounds,
         Line[] lines,
         string content,
         TerminalStyle style,
+        BackgroundMode background,
+        Ambiguous ambiguous,
         ref int sourceOffset,
         ref int line,
         ref int cells)
@@ -352,11 +366,12 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var width = Terminal.Unicode.Width.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
+            var width = Terminal.Unicode.Width.Measure(cluster, ambiguous).Cells;
             _ = canvas.Draw(
                 cluster,
                 new Point(bounds.X + lines[line].Leading + cells, bounds.Y + line),
-                style);
+                style,
+                background: background);
             cells = Add(cells, width);
         }
 
@@ -370,7 +385,9 @@ public sealed class RichText: Control
             run.Foreground ?? inherited.Foreground,
             run.Background ?? inherited.Background,
             run.Attributes ?? inherited.Attributes,
-            inherited.Hyperlink);
+            inherited.Hyperlink,
+            run.Underline ?? inherited.Underline,
+            run.UnderlineColor ?? inherited.UnderlineColor);
     }
 
     private TerminalStyle ResolveInlineStyle(Hyperlink hyperlink)
@@ -380,8 +397,19 @@ public sealed class RichText: Control
             hyperlink.Foreground ?? inherited.Foreground,
             hyperlink.Background ?? inherited.Background,
             hyperlink.Attributes ?? inherited.Attributes,
-            hyperlink.Target);
+            hyperlink.Target,
+            hyperlink.Underline ?? inherited.Underline,
+            hyperlink.UnderlineColor ?? inherited.UnderlineColor);
     }
+
+    private BackgroundMode ResolveBackgroundMode(Run run) => run.Background.HasValue || Appearance.Background.HasValue
+        ? BackgroundMode.Opaque
+        : BackgroundMode.Transparent;
+
+    private BackgroundMode ResolveBackgroundMode(Hyperlink hyperlink) =>
+        hyperlink.Background.HasValue || Appearance.Background.HasValue
+            ? BackgroundMode.Opaque
+            : BackgroundMode.Transparent;
 
     private int Align(int width, int cells)
     {

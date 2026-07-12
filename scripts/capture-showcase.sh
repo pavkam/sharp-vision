@@ -39,6 +39,16 @@ find_row() {
   awk -v text="$text" 'index($0, text) { print NR; exit }' "$plain"
 }
 
+find_column() {
+  local row="$1"
+  local text="$2"
+  node - "$plain" "$row" "$text" <<'NODE'
+const [file, row, text] = process.argv.slice(2);
+const line = require("node:fs").readFileSync(file, "utf8").split(/\r?\n/u)[Number(row) - 1] ?? "";
+process.stdout.write(String(line.indexOf(text) + 1));
+NODE
+}
+
 for dependency in dotnet node playwright tmux; do
   if ! command -v "$dependency" >/dev/null 2>&1; then
     printf 'Required capture dependency is missing: %s\n' "$dependency" >&2
@@ -178,10 +188,17 @@ if [[ "$button" != true ]]; then
   exit 1
 fi
 
-# Button is catalog index 1. Four ordinary arrows reach the FigletText editor,
-# where a real pointer press opens the 400-font dropdown and another selects
-# the first visible catalog entry.
-tmux send-keys -t "$session" Down Down Down Down
+# Select FigletText by its visible sidebar label rather than a catalog position,
+# then use real pointer reports to open the ComboBox and choose a font.
+figlet_navigation_row="$(find_row 'FigletText')"
+
+if [[ -z "$figlet_navigation_row" ]]; then
+  printf 'The FigletText sidebar entry is not visible.\n' >&2
+  exit 1
+fi
+
+send_sgr 0 10 "$figlet_navigation_row" M
+send_sgr 0 10 "$figlet_navigation_row" m
 
 figlet=false
 
@@ -201,10 +218,37 @@ if [[ "$figlet" != true ]]; then
   exit 1
 fi
 
-font_row="$(find_row 'Font: Standard')"
+# The documentation headline precedes the interactive editor. Scroll the main
+# reading pane using a real wheel report until the ComboBox field is visible.
+for _ in {1..12}; do
+  send_sgr 65 40 12 M
+done
+
+font_row=""
+previous_font_row=""
+stable_font_row=0
+
+for _ in {1..100}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+  candidate_font_row="$(find_row 'Standard')"
+
+  if [[ -n "$candidate_font_row" && "$candidate_font_row" == "$previous_font_row" ]]; then
+    stable_font_row=$((stable_font_row + 1))
+  else
+    stable_font_row=0
+  fi
+
+  if [[ "$stable_font_row" -ge 2 ]]; then
+    font_row="$candidate_font_row"
+    break
+  fi
+
+  previous_font_row="$candidate_font_row"
+  sleep 0.05
+done
 
 if [[ -z "$font_row" ]]; then
-  printf 'The Figlet font selector is not visible.\n' >&2
+  printf 'The Figlet font selector did not settle into a stable row.\n' >&2
   exit 1
 fi
 
@@ -260,7 +304,15 @@ fi
 # The sidebar remains a pointer target even after the dropdown returns focus.
 # Select ScrollBar, then drag its horizontal thumb from its initial geometry to
 # the right edge with a complete SGR press/move/release sequence.
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 31 38 4d 1b 5b 3c 30 3b 33 3b 31 38 6d
+scrollbar_navigation_row="$(find_row 'ScrollBar')"
+
+if [[ -z "$scrollbar_navigation_row" ]]; then
+  printf 'The ScrollBar sidebar entry is not visible.\n' >&2
+  exit 1
+fi
+
+send_sgr 0 10 "$scrollbar_navigation_row" M
+send_sgr 0 10 "$scrollbar_navigation_row" m
 
 scrollbar=false
 
@@ -287,8 +339,24 @@ if [[ -z "$scrollbar_row" ]]; then
   exit 1
 fi
 
-send_sgr 0 41 "$scrollbar_row" M
-send_sgr 32 50 "$scrollbar_row" M
+thumb_column="$(find_column "$scrollbar_row" '█')"
+
+if [[ "$thumb_column" == 0 ]]; then
+  thumb_column="$(find_column "$scrollbar_row" '▓')"
+fi
+
+end_column="$(find_column "$scrollbar_row" '▶')"
+
+if [[ -z "$thumb_column" || "$thumb_column" == 0 || -z "$end_column" || "$end_column" == 0 ]]; then
+  printf 'The rendered ScrollBar thumb geometry is incomplete.\n' >&2
+  exit 1
+fi
+
+middle_column=$(((thumb_column + end_column) / 2))
+final_column=$((end_column - 1))
+
+send_sgr 0 "$thumb_column" "$scrollbar_row" M
+send_sgr 32 "$middle_column" "$scrollbar_row" M
 
 intermediate=false
 
@@ -308,8 +376,8 @@ if [[ "$intermediate" != true ]]; then
   exit 1
 fi
 
-send_sgr 32 59 "$scrollbar_row" M
-send_sgr 0 59 "$scrollbar_row" m
+send_sgr 32 "$final_column" "$scrollbar_row" M
+send_sgr 0 "$final_column" "$scrollbar_row" m
 
 dragged=false
 
@@ -330,7 +398,15 @@ if [[ "$dragged" != true ]]; then
 fi
 
 # Keep the checked-in dashboard image centered on the concise Button example.
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 38 4d 1b 5b 3c 30 3b 33 3b 38 6d
+button_navigation_row="$(find_row 'Button')"
+
+if [[ -z "$button_navigation_row" ]]; then
+  printf 'The Button sidebar entry is not visible.\n' >&2
+  exit 1
+fi
+
+send_sgr 0 10 "$button_navigation_row" M
+send_sgr 0 10 "$button_navigation_row" m
 
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"

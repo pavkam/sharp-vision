@@ -11,6 +11,9 @@ public sealed class Dock: Container
 {
     private static readonly ConditionalWeakTable<Control, DockPlacement> _placements = [];
 
+    /// <summary>Initializes a dock that fills its parent layout slot.</summary>
+    public Dock() => HorizontalAlignment = HorizontalAlignment.Stretch;
+
     /// <summary>Gets or sets whether the last non-collapsed child fills remaining space.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -164,7 +167,9 @@ public sealed class Dock: Container
                 Side.Bottom => new Rect(remaining.X, remaining.Bottom - outer, remaining.Width, outer),
                 _ => throw new UnreachableException(),
             };
-            child.Arrange(slot, widthResolved: horizontal, heightResolved: !horizontal);
+            // Dock resolves both axes: one from the requested edge length and
+            // the other from the perpendicular space owned by the dock.
+            child.Arrange(slot, widthResolved: true, heightResolved: true);
             remaining = Consume(remaining, side, outer);
 
             if (index != last)

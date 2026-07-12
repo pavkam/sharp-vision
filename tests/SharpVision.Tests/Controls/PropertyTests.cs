@@ -11,7 +11,7 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies validated mutable control properties and invalidation.</summary>
 public sealed class PropertyTests
 {
-    /// <summary>Verifies control defaults are conservative and initially dirty.</summary>
+    /// <summary>Verifies control defaults are content-sized and initially dirty.</summary>
     [Fact]
     public void Constructor_WhenCreated_HasDocumentedDefaults()
     {
@@ -25,7 +25,7 @@ public sealed class PropertyTests
         control.MaxHeight.ShouldBe(int.MaxValue);
         control.Margin.ShouldBe(default);
         control.Padding.ShouldBe(default);
-        control.HorizontalAlignment.ShouldBe(HorizontalAlignment.Stretch);
+        control.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
         control.VerticalAlignment.ShouldBe(VerticalAlignment.Stretch);
         control.Visibility.ShouldBe(Visibility.Visible);
         control.IsEnabled.ShouldBeTrue();
@@ -34,6 +34,17 @@ public sealed class PropertyTests
         control.CanFocus.ShouldBeFalse();
         control.TabIndex.ShouldBe(0);
         control.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies an automatic-width control defaults to its intrinsic content width.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalAlignmentIsDefault_UsesIntrinsicContentWidth()
+    {
+        var control = new ProbeControl(new Size(3, 2));
+
+        new Engine().Layout(control, new Size(10, 6));
+
+        control.Bounds.ShouldBe(new Rect(0, 0, 3, 6));
     }
 
     /// <summary>Verifies hit-test transparency does not suppress rendering or focus eligibility.</summary>

@@ -2,28 +2,26 @@
 
 ## MenuItem contract
 
-`MenuItem` represents a command, check/radio choice, separator, or submenu entry
-inside a [Menu](menu.md#menu-contract).
+`MenuItem` represents a command, check/radio choice, or separator inside a
+[Menu](menu.md#menu-contract).
 
 ## API
 
-- `Header` and optional `Icon` use managed control ownership.
-- `Command`, `CommandParameter`, and `InputGestureText` describe activation.
+- `Header` is non-null UTF-16 text measured and drawn by grapheme-safe terminal
+  cells.
 - `Kind` is command, check, radio, or separator.
-- `IsChecked` is valid for check/radio kinds; `GroupName` applies to radio kind.
-- `Items` contains submenu items; separators reject commands/content that would
-  make them interactive.
-- `Invoked`, checked-state events, and submenu events follow committed state.
+- `IsChecked` is valid only for check/radio kinds; `GroupName` scopes radio
+  selection within its containing menu.
+- `Invoked` reports the committed activation after check/radio state updates.
 
 ## Interaction and rendering
 
-Disabled/separator items cannot focus or invoke. Check toggles once; radio
-selects one effective group member; submenu activation opens rather than running
-a command unless explicitly configured. Header, shortcut, check mark, submenu
-indicator, and state styling align through grid-like columns.
+Separators cannot focus, hit test, or invoke. Check toggles once; radio selects
+one matching group member. Check entries reserve `[ ]`/`[x]` marker cells; radio
+entries reserve `○`/`◉`, so state changes do not move the header.
 
 ## Test obligations
 
-Cover every kind, invalid property combinations, command/event order, check and
-radio transitions, disabled/separator behavior, submenu ownership, keyboard and
-pointer activation, Unicode headers, narrow clipping, style states, and cells.
+Cover every kind, invalid checked-state assignment, check/radio event order,
+separator behavior, keyboard and pointer activation, Unicode headers, narrow
+clipping, styles, and cells.

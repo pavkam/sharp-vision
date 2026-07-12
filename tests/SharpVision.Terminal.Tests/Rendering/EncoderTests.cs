@@ -9,6 +9,7 @@ using SharpVision.Terminal.Rendering;
 using Shouldly;
 
 using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
+using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
 using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Tests.Rendering;
@@ -92,6 +93,55 @@ public sealed class EncoderTests
             FrameEncoder.Encode(null, back, destination, null!));
 
         destination.WrittenCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies unknown optional decoration support uses conservative fallbacks.</summary>
+    [Fact]
+    public void Encode_WhenModernDecorationsAreUnknown_DegradesWithoutUnsupportedBytes()
+    {
+        using var back = new Frame(new Size(1, 1));
+        var style = new Style(
+            attributes: Attributes.RapidBlink | Attributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: Color.Rgb(1, 2, 3));
+        _ = back.Canvas.Draw("x", default, style);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(
+            null,
+            back,
+            destination,
+            TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b[1;1H\u001b[6m\u001b[4mx\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
+    }
+
+    /// <summary>Verifies proven optional decoration support emits exact modern SGR.</summary>
+    [Fact]
+    public void Encode_WhenModernDecorationsAreSupported_WritesExactBytes()
+    {
+        using var back = new Frame(new Size(1, 1));
+        var style = new Style(
+            attributes: Attributes.RapidBlink | Attributes.Overline,
+            underline: Underline.Curly,
+            underlineColor: Color.Rgb(1, 2, 3));
+        _ = back.Canvas.Draw("x", default, style);
+        var destination = new ArrayBufferWriter<byte>();
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        var capabilities = TrueColorCapabilities with
+        {
+            StyledUnderlines = supported,
+            UnderlineColor = supported,
+            Overline = supported,
+        };
+
+        _ = FrameEncoder.Encode(null, back, destination, capabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b[1;1H\u001b[6m\u001b[53m\u001b[4:3m\u001b[58;2;1;2;3mx"u8.ToArray()
+                .Concat("\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray())
+                .ToArray());
     }
 
     /// <summary>Verifies an orphan component is emitted as an independent replacement cell.</summary>

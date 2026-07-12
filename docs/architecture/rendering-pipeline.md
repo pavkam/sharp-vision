@@ -30,6 +30,14 @@ with the frame's explicit ambiguous-width policy, preflights the complete arena
 cost, then mutates in a second pass. A failed capacity check therefore leaves
 the frame unchanged.
 
+`Canvas.Draw` and `Canvas.DrawRune` use an opaque background by default. Passing
+`BackgroundMode.Transparent` keeps the destination cell's existing background
+while replacing its grapheme, foreground, attributes, and hyperlink. The same
+option is available to `Canvas.ApplyStyle`; structural lines, borders, shadows,
+and partial-glyph controls use it whenever they do not own an explicit surface
+background. This keeps controls visually aligned with painted panels instead of
+resetting isolated cells to the terminal default.
+
 Wide leads own exactly one continuation in the current implementation.
 Overwriting or clearing either cell first repairs the complete previous owner.
 `Edge.Clip`, `Edge.Wrap`, and `Edge.Replace` skip, move, or replace the whole

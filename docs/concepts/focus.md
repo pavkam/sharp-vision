@@ -19,13 +19,22 @@ detach, hide, disable, or disposal cannot be cancelled.
 ## Navigation
 
 `MoveNext()` and `MoveNext(reverse: true)` traverse deterministic tab order.
-Phase 5 controls map Tab/Shift+Tab to those calls and add control-specific arrow
-navigation for menus, radio groups, and lists. Explicit and pointer-triggered
-focus requests use the same `Focus(Control?)` validation path.
+After an unhandled key route, the shared control default maps a pressed Tab to
+`MoveNext()` and Shift+Tab to `MoveNext(reverse: true)`. A control-specific
+behavior may handle the key first; for example, `TextInput.AcceptsTab` inserts a
+tab instead of moving focus. Other modifiers remain available to explicit
+control behavior. Explicit and pointer-triggered focus requests use the same
+`Focus(Control?)` validation path.
 
 `MoveNext(reverse)` sorts eligible members by `TabIndex` and then stable tree
 order, wraps at both ends, and uses the same cancellable transaction as an
 explicit request.
+
+A primary pointer press focuses the nearest eligible `CanFocus` member from the
+hit target toward the owned root before routed pointer behavior runs. Clicking
+content inside a focusable composite therefore focuses the composite; clicking a
+focusable leaf focuses that leaf. The committed focus state drives the control's
+`Focused` visual-state overlay.
 
 Detach, hide/collapse, disable, disposal, or manager disposal releases invalid
 focus deterministically. Modal focus containment and popup/menu restoration are

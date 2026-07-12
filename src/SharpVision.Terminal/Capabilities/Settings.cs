@@ -59,4 +59,13 @@ public sealed record Settings
 
     /// <summary>Gets an optional iTerm2 image override.</summary>
     public bool? ItermImages { get; init; }
+
+    /// <summary>Gets an optional styled-underline override.</summary>
+    public bool? StyledUnderlines { get; init; }
+
+    /// <summary>Gets an optional underline-color override.</summary>
+    public bool? UnderlineColor { get; init; }
+
+    /// <summary>Gets an optional overline override.</summary>
+    public bool? Overline { get; init; }
 }

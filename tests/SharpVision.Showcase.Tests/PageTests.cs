@@ -1,4 +1,6 @@
 using SharpVision.Controls;
+using SharpVision.Layout;
+using SharpVision.Terminal.Geometry;
 
 using Shouldly;
 
@@ -21,12 +23,60 @@ public sealed class PageTests
         first.ShouldNotBeSameAs(second);
         FindText(first).ShouldContain("Sample");
         FindText(first).ShouldContain("Overview");
+        FindText(first).ShouldContain("Use this control when");
+        FindText(first).ShouldContain("Explore it in the live example");
         FindText(first).ShouldContain("Examples");
-        FindText(first).ShouldContain("Properties");
+        FindText(first).ShouldContain("Technical details");
         FindText(first).ShouldContain("Interaction");
         FindText(first).ShouldContain("Content");
         FindText(first).ShouldContain("Control?");
         FindText(first).ShouldContain("null");
+        FindAll<Table>(first).Count.ShouldBe(2);
+        FindAll<Table>(first)[1].Columns.Select(static column => column.Header)
+            .ShouldBe(["Input", "Behavior", "Result"]);
+
+        var narrative = FindAll<RichText>(first)
+            .Single(value => InlineText(value).StartsWith("Use this control when", StringComparison.Ordinal));
+        narrative.Parent.ShouldNotBeOfType<Border>();
+    }
+
+    /// <summary>Verifies interaction metadata renders as a standalone table without a prose card.</summary>
+    [Fact]
+    public void CreateContent_WhenInteractionsAreStructured_RendersDedicatedInteractionTable()
+    {
+        var page = new Page(
+            "Sample",
+            "Summary",
+            [new InteractionDescription("Keyboard", "Press Enter", "Activates the command.")],
+            [new PropertyDescription("Content", "Control?", "null", "Description")],
+            () => new ControlText("Example"));
+
+        using var content = page.CreateContent();
+
+        FindText(content).ShouldContain("Keyboard");
+        FindText(content).ShouldContain("Press Enter");
+        FindText(content).ShouldContain("Activates the command.");
+        var tables = FindAll<Table>(content);
+        tables.Count.ShouldBe(2);
+        tables[1].Rows.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the borderless narrative remeasures and wraps at the committed page width.</summary>
+    [Fact]
+    public void CreateContent_WhenNarrativeIsNarrow_WrapsRichTextBeyondOneContentLine()
+    {
+        var page = new Page(
+            "Sample",
+            "Use this control when a long explanation needs to remain readable in a narrow terminal page.",
+            "Open the live example, resize the terminal, and confirm that the guidance stays readable.",
+            [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")],
+            () => new ControlText("Example"));
+        using var content = page.CreateContent();
+        new Engine().Layout(content, new Size(72, 40));
+        var recipe = FindAll<RichText>(content).Single(value => InlineText(value).StartsWith("Use this control when", StringComparison.Ordinal));
+
+        recipe.Bounds.Height.ShouldBeGreaterThan(2);
+        recipe.Parent.ShouldNotBeOfType<Border>();
     }
 
     /// <summary>Verifies page identity and documentation values reject blanks and missing content.</summary>
@@ -78,11 +128,57 @@ public sealed class PageTests
         [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")],
         () => new ControlText("Example"));
 
+    private static List<T> FindAll<T>(Control control) where T : Control
+    {
+        var matches = new List<T>();
+        Visit(control, matches);
+        return matches;
+    }
+
+    private static void Visit<T>(Control control, List<T> matches) where T : Control
+    {
+        if (control is T match)
+        {
+            matches.Add(match);
+        }
+
+        if (control is Container container)
+        {
+            foreach (var child in container.Children)
+            {
+                Visit(child, matches);
+            }
+        }
+    }
+
     private static string FindText(Control control)
     {
         var text = new List<string>();
         Visit(control, text);
         return string.Join('\n', text);
+    }
+
+    private static string InlineText(RichText text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var values = new List<string>();
+
+        foreach (var inline in text.Inlines)
+        {
+            switch (inline)
+            {
+                case Run run:
+                    values.Add(run.Content);
+                    break;
+                case Hyperlink hyperlink:
+                    values.Add(hyperlink.Content);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return string.Join('\n', values);
     }
 
     private static void Visit(Control control, List<string> text)
@@ -103,6 +199,10 @@ public sealed class PageTests
                         break;
                 }
             }
+        }
+        else if (control is ControlText controlText)
+        {
+            text.Add(controlText.Content);
         }
 
         if (control is not Container container)

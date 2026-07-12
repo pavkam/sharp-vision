@@ -5,9 +5,9 @@
 The SharpVision showcase is the product's runnable documentation gallery. Each
 page must teach a control through several focused examples rather than showing
 one composite specimen followed by a detached property dump. This design
-introduces a reusable public `Table` control and changes the showcase page
-model so every example explains its own configuration while a final technical
-section records the complete API contract and interaction behavior.
+introduces a reusable public `Table` control and changes the showcase page model
+so every example explains its own configuration while a final technical section
+records the complete API contract and interaction behavior.
 
 The design preserves the existing traditional mutable control model, dispatcher
 affinity, cell-based layout, and public-control-only showcase rule. It does not
@@ -44,8 +44,8 @@ shortcuts.
 
 ### 3.1 Surface
 
-`SharpVision.Controls.Table` is a `Container` that owns a composed `Grid`.
-Its public model consists of:
+`SharpVision.Controls.Table` is a `Container` that owns a composed `Grid`. Its
+public model consists of:
 
 - `Table.Columns`, a dispatcher-aware `TableColumnCollection`.
 - `Table.Rows`, a dispatcher-aware `TableRowCollection`.
@@ -95,15 +95,16 @@ The table exposes the following visual and layout properties:
   changing child control styles.
 
 The internal grid uses one column track per `TableColumn.Width`. It creates one
-automatic row track for the optional header and one automatic row track per
-data row. Header labels are ordinary `Text` controls. Data cells remain the
+automatic row track for the optional header and one automatic row track per data
+row. Header labels are ordinary `Text` controls. Data cells remain the
 caller-provided controls, so `Text`, `RichText`, `Button`, or any other detached
 control can appear in a cell.
 
 The table delegates fixed, automatic, percentage, proportional, spacing,
 rounding, tiny-bounds, clipping, and resize behavior to the existing `Grid`
-contract in [the Grid specification](../../controls/layout/grid.md#grid-contract)
-and [the shared layout concept](../../concepts/layout.md#panels). It never emits
+contract in
+[the Grid specification](../../controls/layout/grid.md#grid-contract) and
+[the shared layout concept](../../concepts/layout.md#panels). It never emits
 terminal control bytes. Grid-line borders are ordinary controls that render to
 the cell canvas.
 
@@ -111,8 +112,7 @@ the cell canvas.
 
 The table showcase page demonstrates:
 
-1. Fixed, percentage, and fill columns together, with headers and multiple
-   rows.
+1. Fixed, percentage, and fill columns together, with headers and multiple rows.
 2. Automatic sizing and rich cell content, including a `RichText` cell.
 3. Header and grid-line styling, cell padding, and a table large enough to
    exercise the surrounding `ScrollView`.
@@ -173,11 +173,11 @@ examples; the only page-global reference is the final technical block.
 ### 4.3 Catalog coverage
 
 All current concrete control pages receive multiple sections where the control
-has distinct documented states. Controls with a single coherent display mode
-may use one focused section, but their page still has the full title, usage
+has distinct documented states. Controls with a single coherent display mode may
+use one focused section, but their page still has the full title, usage
 explanation, preview-plus-properties section, technical table, and interaction
-description. Existing grouped `Examples` factories are split or supplemented
-so state variants are discoverable rather than hidden in one undifferentiated
+description. Existing grouped `Examples` factories are split or supplemented so
+state variants are discoverable rather than hidden in one undifferentiated
 stack.
 
 The catalog adds `Table` in layout-control order. The showcase's own property
@@ -212,8 +212,8 @@ Focused checks must prove:
   values to the expected `Length` kinds and reject invalid input.
 - `TableRow` and both table collections reject invalid ownership and preserve
   prior state when a mutation fails.
-- Headers, arbitrary cell controls, grid lines, cell padding, spacing, and
-  each column sizing mode render expected cells at normal and tiny widths.
+- Headers, arbitrary cell controls, grid lines, cell padding, spacing, and each
+  column sizing mode render expected cells at normal and tiny widths.
 - Resizing recomputes column and row geometry without escaped children or
   invalid wide-cell continuations.
 - Every page has the required title, usage explanation, one or more example
@@ -228,4 +228,3 @@ Focused checks must prove:
 The final repository gates remain `make format`, `make lint`, `make build`, and
 `make test`, followed by `git diff --check` and an inspection of the rendered
 showcase capture when the capture tooling is available.
-

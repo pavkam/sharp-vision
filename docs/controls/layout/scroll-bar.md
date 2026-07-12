@@ -2,9 +2,9 @@
 
 ## ScrollBar contract
 
-`ScrollBar` is a focusable range control used independently or by an overflow host.
-It supports vertical/horizontal orientation, decrement/increment buttons, track,
-and draggable thumb. The implementation uses the allocation-free
+`ScrollBar` is a focusable range control used independently or by an overflow
+host. It supports vertical/horizontal orientation, decrement/increment buttons,
+track, and draggable thumb. The implementation uses the allocation-free
 [`Range` and `Thumb` geometry](../../concepts/scrolling.md#thumb-geometry) for
 every rendered and interactive mapping.
 
@@ -36,6 +36,11 @@ render nothing. This deterministic fallback never writes outside the arranged
 bounds.
 
 ## Interaction
+
+Wheel input is handled only when the range value changes. At either endpoint an
+unchanged wheel event remains available to normal routed-event bubbling, so a
+scrollbar embedded in a nested overflow surface does not trap the user's next
+scroll gesture.
 
 Axis arrows and buttons apply `SmallChange`; Page keys and track presses apply
 `LargeChange`; Home and End reach the bounds. Wheel deltas use `SmallChange` on

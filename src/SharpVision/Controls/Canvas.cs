@@ -11,6 +11,9 @@ public sealed class Canvas: Container
 {
     private static readonly ConditionalWeakTable<Control, Position> _positions = [];
 
+    /// <summary>Initializes a canvas that fills its parent layout slot.</summary>
+    public Canvas() => HorizontalAlignment = HorizontalAlignment.Stretch;
+
     /// <summary>Gets or sets whether descendants are clipped to Canvas bounds.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -133,6 +136,11 @@ public sealed class Canvas: Container
             (ClipToBounds && !Bounds.Contains(point)))
         {
             return null;
+        }
+
+        if (HitTestPopup(point) is { } popup)
+        {
+            return popup;
         }
 
         for (var index = Children.Count - 1; index >= 0; index--)

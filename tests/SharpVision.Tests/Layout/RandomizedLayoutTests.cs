@@ -28,7 +28,11 @@ public sealed class RandomizedLayoutTests
     private static void Run(Dispatcher dispatcher)
     {
         var random = new Random(_seed);
-        var root = new ProbeContainer();
+        var root = new ProbeContainer
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
         root.Attach(dispatcher);
         using var focus = new FocusManager(root);
         using var capture = new CaptureManager(root);

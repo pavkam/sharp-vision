@@ -4,9 +4,9 @@ using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Rendering;
 
-using ControlGrid = SharpVision.Controls.Grid;
 using ControlRun = SharpVision.Controls.Run;
 using ControlStack = SharpVision.Controls.Stack;
+using ControlTable = SharpVision.Controls.Table;
 using ControlText = SharpVision.Controls.Text;
 using Wrapping = SharpVision.Text.Wrapping;
 
@@ -17,6 +17,7 @@ internal sealed class Page
 {
     private readonly Func<Control> _examples;
     private readonly PropertyDescription[] _properties;
+    private readonly InteractionDescription[] _interactions;
 
     #region Construction and metadata
 
@@ -36,13 +37,47 @@ internal sealed class Page
         string interaction,
         IEnumerable<PropertyDescription> properties,
         Func<Control> examples)
+        : this(
+            name,
+            summary,
+            [new InteractionDescription("General", "Use the documented control interaction.", interaction)],
+            properties,
+            examples)
+    {
+    }
+
+    /// <summary>Initializes one complete catalog entry with structured interaction metadata.</summary>
+    /// <param name="name">The non-empty concrete control type name.</param>
+    /// <param name="summary">The non-empty purpose and usage summary.</param>
+    /// <param name="interactions">The non-empty supported interaction descriptions.</param>
+    /// <param name="properties">The non-empty property documentation sequence.</param>
+    /// <param name="examples">A non-null factory returning a fresh detached example tree.</param>
+    /// <exception cref="ArgumentException">Text is blank or required metadata is empty.</exception>
+    /// <exception cref="ArgumentNullException">A sequence or factory is null.</exception>
+    internal Page(
+        string name,
+        string summary,
+        IEnumerable<InteractionDescription> interactions,
+        IEnumerable<PropertyDescription> properties,
+        Func<Control> examples)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(summary);
-        ArgumentException.ThrowIfNullOrWhiteSpace(interaction);
+        ArgumentNullException.ThrowIfNull(interactions);
         ArgumentNullException.ThrowIfNull(properties);
         ArgumentNullException.ThrowIfNull(examples);
+        var copiedInteractions = interactions.ToArray();
         var copied = properties.ToArray();
+
+        if (copiedInteractions.Length == 0 || copiedInteractions.Any(static interaction =>
+                string.IsNullOrWhiteSpace(interaction.Input) ||
+                string.IsNullOrWhiteSpace(interaction.Behavior) ||
+                string.IsNullOrWhiteSpace(interaction.Result)))
+        {
+            throw new ArgumentException(
+                "Every showcase page requires at least one complete interaction description.",
+                nameof(interactions));
+        }
 
         if (copied.Length == 0)
         {
@@ -60,7 +95,8 @@ internal sealed class Page
 
         Name = name;
         Summary = summary;
-        Interaction = interaction;
+        _interactions = copiedInteractions;
+        Interaction = string.Join(' ', copiedInteractions.Select(static item => item.Result));
         _properties = copied;
         _examples = examples;
     }
@@ -73,6 +109,9 @@ internal sealed class Page
 
     /// <summary>Gets keyboard, pointer, focus, or display-only behavior guidance.</summary>
     internal string Interaction { get; }
+
+    /// <summary>Gets immutable structured interaction descriptions.</summary>
+    internal IReadOnlyList<InteractionDescription> Interactions => _interactions;
 
     /// <summary>Gets immutable documentation for the control's meaningful properties.</summary>
     internal IReadOnlyList<PropertyDescription> Properties => _properties;
@@ -107,18 +146,14 @@ internal sealed class Page
         };
         content.Children.Add(Heading(Name, Summary));
         content.Children.Add(Section("Practical recipe"));
-        content.Children.Add(Recipe(Summary, Interaction));
+        content.Children.Add(Narrative(Summary, _interactions));
         content.Children.Add(Section("Examples"));
         content.Children.Add(Card(CreateExamples()));
-        content.Children.Add(Section("Properties"));
-
-        foreach (var property in _properties)
-        {
-            content.Children.Add(Property(property));
-        }
+        content.Children.Add(Section("Technical details"));
+        content.Children.Add(TechnicalDetails());
 
         content.Children.Add(Section("Interaction"));
-        content.Children.Add(Card(Paragraph(Interaction)));
+        content.Children.Add(InteractionTable());
         return content;
     }
 
@@ -167,17 +202,6 @@ internal sealed class Page
         return text;
     }
 
-    private static RichText Paragraph(string content)
-    {
-        var text = new RichText
-        {
-            Style = Palette.CardText(),
-            Wrapping = Wrapping.Word,
-        };
-        text.Inlines.Add(new ControlRun(content));
-        return text;
-    }
-
     private static Border Card(Control content)
     {
         ArgumentNullException.ThrowIfNull(content);
@@ -193,89 +217,106 @@ internal sealed class Page
         };
     }
 
-    private static ControlStack Recipe(string summary, string interaction)
+    private static RichText Narrative(string summary, InteractionDescription[] interactions)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(summary);
-        ArgumentException.ThrowIfNullOrWhiteSpace(interaction);
-        var recipe = new ControlStack { Spacing = 1 };
-        recipe.Children.Add(RecipeCard("When to use it", summary, Palette.Success, width: 48));
-        var columns = new ControlGrid
-        {
-            Width = Length.Cells(48),
-            ColumnSpacing = 1,
-        };
-        columns.Columns.Add(Track.Star(1));
-        columns.Columns.Add(Track.Star(1));
-        columns.Children.Add(RecipeCard(
-            "Live example",
-            "Use the framed specimen below to inspect the control's real cells and behavior.",
-            Palette.Success,
-            width: 23));
-        var responsive = RecipeCard(
-            "Responsive",
-            "Resize the terminal; RichText and property cards reflow within their committed cells.",
-            Palette.Accent,
-            width: 23);
-        ControlGrid.SetColumn(responsive, 1);
-        columns.Children.Add(responsive);
-        recipe.Children.Add(columns);
-        return recipe;
-    }
+        ArgumentNullException.ThrowIfNull(interactions);
 
-    private static Border RecipeCard(
-        string title,
-        string content,
-        Terminal.Protocols.Color color,
-        int width)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        ArgumentException.ThrowIfNullOrWhiteSpace(content);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
-        var contentStack = new ControlStack
-        {
-            Padding = new Thickness(1, 0),
-        };
-        contentStack.Children.Add(new ControlText(title)
-        {
-            Foreground = color,
-            Attributes = Attributes.Bold,
-        });
-        contentStack.Children.Add(new ControlText(content)
-        {
-            Wrapping = Wrapping.Word,
-        });
-        var card = Card(contentStack);
-        card.Width = Length.Cells(width);
-        return card;
-    }
-
-    private static Border Property(PropertyDescription property)
-    {
         var text = new RichText
         {
             Padding = new Thickness(1, 0),
-            Style = Palette.CardText(),
+            Style = Palette.HeaderText(),
             Wrapping = Wrapping.Word,
         };
-        text.Inlines.Add(new ControlRun(property.Name)
+
+        text.Inlines.Add(new ControlRun("Use this control when ")
+        {
+            Foreground = Palette.Success,
+            Attributes = Attributes.Bold,
+        });
+        text.Inlines.Add(new ControlRun(summary));
+        text.Inlines.Add(new ControlRun(" Explore it in the live example below: ")
         {
             Foreground = Palette.Accent,
             Attributes = Attributes.Bold,
         });
-        text.Inlines.Add(new ControlRun($"  {property.Type}  ·  default: {property.Default}")
+
+        for (var index = 0; index < interactions.Length; index++)
+        {
+            var interaction = interactions[index];
+            if (index > 0)
+            {
+                text.Inlines.Add(new ControlRun(" "));
+            }
+
+            text.Inlines.Add(new ControlRun($"{interaction.Input} — ")
+            {
+                Foreground = Palette.Warning,
+                Attributes = Attributes.Bold,
+            });
+            text.Inlines.Add(new ControlRun($"{interaction.Behavior}; {interaction.Result}"));
+        }
+
+        text.Inlines.Add(new ControlRun(
+            " Resize the terminal as you explore: this narrative, the live specimens, and the tables below reflow together so the control's behavior stays readable at every width.")
         {
             Foreground = Palette.Muted,
         });
-        text.Inlines.Add(new LineBreak());
-        text.Inlines.Add(new ControlRun(property.Description));
-        return new Border
+        return text;
+    }
+
+    private ControlTable TechnicalDetails()
+    {
+        var table = new ControlTable
         {
-            BorderThickness = new Thickness(1),
-            Child = text,
-            Glyphs = Glyphs.Rounded,
-            BorderColor = Palette.Border,
-            Background = Palette.Surface,
+            ShowGridLines = true,
+            GridLineColor = Palette.Border,
+            HeaderForeground = Palette.Text,
+            HeaderBackground = Palette.Highlight,
+            CellPadding = new Thickness(1, 0),
         };
+        table.Columns.Add(TableColumn.Fixed("Property", 18));
+        table.Columns.Add(TableColumn.Fixed("Type", 16));
+        table.Columns.Add(TableColumn.Fixed("Default", 18));
+        table.Columns.Add(TableColumn.Fill("Meaning"));
+
+        foreach (var property in _properties)
+        {
+            table.Rows.Add(new TableRow([
+                new ControlText(property.Name) { Foreground = Palette.Accent, Attributes = Attributes.Bold },
+                new ControlText(property.Type) { Foreground = Palette.Muted },
+                new ControlText(property.Default) { Foreground = Palette.Muted },
+                new ControlText(property.Description) { Wrapping = Wrapping.Word },
+            ]));
+        }
+
+        return table;
+    }
+
+    private ControlTable InteractionTable()
+    {
+        var table = new ControlTable
+        {
+            ShowGridLines = true,
+            GridLineColor = Palette.Border,
+            HeaderForeground = Palette.Text,
+            HeaderBackground = Palette.Highlight,
+            CellPadding = new Thickness(1, 0),
+        };
+        table.Columns.Add(TableColumn.Fixed("Input", 18));
+        table.Columns.Add(TableColumn.Fixed("Behavior", 28));
+        table.Columns.Add(TableColumn.Fill("Result"));
+
+        foreach (var interaction in _interactions)
+        {
+            table.Rows.Add(new TableRow([
+                new ControlText(interaction.Input) { Foreground = Palette.Accent, Attributes = Attributes.Bold },
+                new ControlText(interaction.Behavior) { Foreground = Palette.Warning, Wrapping = Wrapping.Word },
+                new ControlText(interaction.Result) { Wrapping = Wrapping.Word },
+            ]));
+        }
+
+        return table;
     }
 
     #endregion

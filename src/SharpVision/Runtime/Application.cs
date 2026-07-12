@@ -83,6 +83,10 @@ public sealed class Application: ISink, IAsyncDisposable
             throw new ArgumentException("The application root must be detached.", nameof(root));
         }
 
+        // The application owns the terminal viewport. Ordinary descendants
+        // remain content-sized unless their parent or caller opts into stretch.
+        root.HorizontalAlignment = HorizontalAlignment.Stretch;
+        root.VerticalAlignment = VerticalAlignment.Stretch;
         Root = root;
         _transport = transport;
         _options = options ?? new TerminalOptions();

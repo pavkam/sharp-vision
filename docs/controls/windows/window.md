@@ -2,27 +2,34 @@
 
 ## Window contract
 
-`Window` is a top-level focus scope with optional title, border, content,
-commands, activation, z-order, modal ownership, and move/resize behavior.
+`Window` frames one owned child as a titled terminal application surface. It
+renders its own border and optional Turbo Vision-style shadow without changing
+the child's ordinary box-model or input routing.
 
 ## API
 
-- `Content` uses managed ownership; `Title` is non-null text content.
-- `State` is normal, maximized, or minimized when the host supports it.
-- `Left`, `Top`, `Width`, and `Height` validate against sizing policy;
-  `MinWidth/Height` and `MaxWidth/Height` apply during interactive resize.
-- `CanMove`, `CanResize`, `IsModal`, and `Owner` define interaction/ownership.
-- `Opening`/`Closing` are cancellable; `Opened`, `Closed`, `Activated`,
-  `Deactivated`, `Moved`, and `Resized` report committed state.
+- `Child` uses managed capacity-one ownership and is arranged inside the
+  one-cell physical frame.
+- `Title` is non-null content written on the top edge and clipped before either
+  corner can be overwritten; `TitlePlacement` aligns it left, center, or right
+  inside those corners.
+- `Glyphs`, `BorderColor`, `Background`, and `Attributes` define the frame
+  chrome and its body surface.
+- `HasShadow`, `ShadowMode`, `ShadowOffset`, and `ShadowGlyph` select composite
+  darkening or a block-glyph shadow outside the window body.
 
 ## Lifecycle and interaction
 
-Open attaches the subtree, establishes scope, measures/arranges, activates, then
-renders before `Opened`. Close validates modal/owner rules, releases capture and
-focus, detaches, activates the next eligible window, and raises `Closed`.
+Windows do not introduce a special activation, modality, move, or resize model:
+their child remains in the surrounding control tree and receives normal focus,
+keyboard, pointer, resize, and clipping behavior. This makes `Window` useful as
+a composable visual surface inside an `Overlay` or `Canvas`. If an unhandled
+Enter or Escape bubbles through the window, its first available `Button` with
+`IsDefault` or `IsCancel` respectively receives the conventional fallback
+activation.
 
-Move/resize use keyboard or pixel/cell pointer capture, remain within documented
-viewport policy, respect min/max, and coalesce events per committed frame.
+The showcase includes rounded, paired-line, and portable ASCII frames with left,
+centered, and right titles so the chrome choices are visible side by side.
 
 ## Example
 
@@ -30,7 +37,7 @@ viewport policy, respect min/max, and coalesce events per committed frame.
 var window = new Window
 {
     Title = "SharpVision Showcase",
-    Content = root,
+    Child = root,
     Width = Length.Percent(100),
     Height = Length.Percent(100),
 };
@@ -38,6 +45,6 @@ var window = new Window
 
 ## Test obligations
 
-Cover open/close order/cancellation, owner/modal behavior, activation/z-order,
-focus restore, default/cancel buttons, move/resize/capture/min/max, terminal
-resize, maximize/minimize fallback, tiny bounds, content ownership, and frames.
+Cover title clipping, child measurement and arrangement, each glyph family,
+surface color, composite and block shadow placement, tiny bounds, ownership,
+terminal resize, and final semantic frame cells.

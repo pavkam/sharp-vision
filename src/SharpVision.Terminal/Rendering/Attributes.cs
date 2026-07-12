@@ -32,4 +32,10 @@ public enum Attributes
 
     /// <summary>Struck-through presentation.</summary>
     Strike = 1 << 7,
+
+    /// <summary>Rapidly blinking presentation.</summary>
+    RapidBlink = 1 << 8,
+
+    /// <summary>Overlined presentation.</summary>
+    Overline = 1 << 9,
 }

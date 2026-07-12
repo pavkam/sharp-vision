@@ -59,10 +59,14 @@ Unused delta propagates to the nearest scrollable ancestor. Pointer capture owns
 thumb dragging and is released on disable, detach, close, or cancellation.
 
 [`ScrollView`](../../src/SharpVision/Controls/ScrollView.cs) implements the
-automatic algorithm with private composed bars. Wheel input bubbles from
-content, each view consumes a clamped portion, and the exact remaining cell
-delta continues outward. Content and resize changes clamp offsets before the
-typed change event and before translated arrangement.
+automatic algorithm with two ordinary owned
+[`ScrollBar`](../../src/SharpVision/Controls/ScrollBar.cs) controls configured
+through their public orientation, chrome, and fill APIs. Wheel input first
+offers the leaf control its normal default behavior; a child that moves handles
+the event. Once that child reaches an endpoint, it leaves the next unchanged
+wheel event unhandled and the enclosing view consumes the clamped delta. Content
+and resize changes clamp offsets before the typed change event and before
+translated arrangement.
 
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after offset and never targets clipped content.

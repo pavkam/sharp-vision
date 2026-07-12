@@ -203,11 +203,15 @@ public sealed class Text: Control
         {
             var line = lines[index];
             var origin = new Point(bounds.X + line.Leading, bounds.Y + index);
-            var result = canvas.Draw(Content.AsSpan(line.Offset, line.Length), origin, style);
+            var result = canvas.Draw(
+                Content.AsSpan(line.Offset, line.Length),
+                origin,
+                style,
+                background: ResolveBackgroundMode());
 
             if (line.HasEllipsis)
             {
-                _ = canvas.Draw(_ellipsis, result.Final, style);
+                _ = canvas.Draw(_ellipsis, result.Final, style, background: ResolveBackgroundMode());
             }
         }
     }
@@ -300,6 +304,10 @@ public sealed class Text: Control
             Attributes ?? inherited.Attributes,
             inherited.Hyperlink);
     }
+
+    private BackgroundMode ResolveBackgroundMode() => Background.HasValue || Appearance.Background.HasValue
+        ? BackgroundMode.Opaque
+        : BackgroundMode.Transparent;
 
     private static void Validate<T>(T value) where T : struct, Enum
     {

@@ -22,6 +22,10 @@ grapheme wrapping, line alignment, and semantic terminal hyperlinks.
 non-empty control-free `Target`. It writes semantic hyperlink metadata but never
 opens a URL automatically.
 
+The supported terminal attributes are bold, dim, italic, underline, blink,
+reverse, hidden/concealed, and strike. Attributes are stored semantically on
+cells; terminal policy may suppress blink or concealed presentation.
+
 ## Interaction and rendering
 
 Runs retain styles across line wrapping. Explicit breaks and embedded newlines

@@ -7,9 +7,11 @@ using SharpVision.Scrolling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
+using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using KeyAction = SharpVision.Terminal.Input.Action;
 using ScrollRange = SharpVision.Scrolling.Range;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
+using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 using UnicodeWidth = SharpVision.Terminal.Unicode.Width;
 
 namespace SharpVision.Controls;
@@ -25,6 +27,14 @@ public sealed class ScrollBar: Control
     private int _dragTrackLength;
     private ScrollRange _dragRange;
     private CaptureManager? _subscribedCapture;
+    private bool _hasDecrementGlyph;
+    private bool _hasIncrementGlyph;
+    private bool _hasTrackGlyph;
+    private bool _hasThumbGlyph;
+    private Rune DefaultDecrementGlyph { get; set; } = new('-');
+    private Rune DefaultIncrementGlyph { get; set; } = new('+');
+    private Rune DefaultTrackGlyph { get; set; } = new('.');
+    private Rune DefaultThumbGlyph { get; set; } = new('#');
 
     /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
     public ScrollBar() => CanFocus = true;
@@ -189,9 +199,28 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune DecrementGlyph
     {
-        get;
-        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
-    } = new('-');
+        get => DefaultDecrementGlyph;
+        set
+        {
+            var glyph = Validate(value, nameof(value));
+            VerifyMutable();
+            var wasCustom = _hasDecrementGlyph;
+            _hasDecrementGlyph = true;
+
+            if (DefaultDecrementGlyph == glyph)
+            {
+                if (!wasCustom)
+                {
+                    NotifyChanged(nameof(DecrementGlyph), Invalidation.Render);
+                }
+
+                return;
+            }
+
+            DefaultDecrementGlyph = glyph;
+            NotifyChanged(nameof(DecrementGlyph), Invalidation.Render);
+        }
+    }
 
     /// <summary>Gets or sets the printable narrow increment-button glyph.</summary>
     /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
@@ -199,9 +228,28 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune IncrementGlyph
     {
-        get;
-        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
-    } = new('+');
+        get => DefaultIncrementGlyph;
+        set
+        {
+            var glyph = Validate(value, nameof(value));
+            VerifyMutable();
+            var wasCustom = _hasIncrementGlyph;
+            _hasIncrementGlyph = true;
+
+            if (DefaultIncrementGlyph == glyph)
+            {
+                if (!wasCustom)
+                {
+                    NotifyChanged(nameof(IncrementGlyph), Invalidation.Render);
+                }
+
+                return;
+            }
+
+            DefaultIncrementGlyph = glyph;
+            NotifyChanged(nameof(IncrementGlyph), Invalidation.Render);
+        }
+    }
 
     /// <summary>Gets or sets the printable narrow unoccupied-track glyph.</summary>
     /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
@@ -209,9 +257,28 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune TrackGlyph
     {
-        get;
-        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
-    } = new('.');
+        get => DefaultTrackGlyph;
+        set
+        {
+            var glyph = Validate(value, nameof(value));
+            VerifyMutable();
+            var wasCustom = _hasTrackGlyph;
+            _hasTrackGlyph = true;
+
+            if (DefaultTrackGlyph == glyph)
+            {
+                if (!wasCustom)
+                {
+                    NotifyChanged(nameof(TrackGlyph), Invalidation.Render);
+                }
+
+                return;
+            }
+
+            DefaultTrackGlyph = glyph;
+            NotifyChanged(nameof(TrackGlyph), Invalidation.Render);
+        }
+    }
 
     /// <summary>Gets or sets the printable narrow thumb glyph.</summary>
     /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
@@ -219,9 +286,28 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune ThumbGlyph
     {
-        get;
-        set => _ = Set(ref field, Validate(value, nameof(value)), Invalidation.Render);
-    } = new('#');
+        get => DefaultThumbGlyph;
+        set
+        {
+            var glyph = Validate(value, nameof(value));
+            VerifyMutable();
+            var wasCustom = _hasThumbGlyph;
+            _hasThumbGlyph = true;
+
+            if (DefaultThumbGlyph == glyph)
+            {
+                if (!wasCustom)
+                {
+                    NotifyChanged(nameof(ThumbGlyph), Invalidation.Render);
+                }
+
+                return;
+            }
+
+            DefaultThumbGlyph = glyph;
+            NotifyChanged(nameof(ThumbGlyph), Invalidation.Render);
+        }
+    }
 
     /// <summary>Adds a signed command delta with saturation and endpoint clamping.</summary>
     /// <param name="delta">The signed requested change.</param>
@@ -304,11 +390,17 @@ public sealed class ScrollBar: Control
         var buttons = ButtonCount(length);
         var trackLength = Math.Max(0, length - (buttons * 2));
         var thumb = Thumb.Resolve(CurrentRange(), trackLength);
+        var style = ResolvedStyle;
+
+        if (Appearance.Background.HasValue)
+        {
+            canvas.Clear(bounds, style);
+        }
 
         for (var position = 0; position < length; position++)
         {
             var glyph = ResolveGlyph(position, length, buttons, thumb);
-            Draw(canvas, PointAt(bounds, position), glyph);
+            Draw(canvas, PointAt(bounds, position), glyph, style);
         }
     }
 
@@ -452,8 +544,10 @@ public sealed class ScrollBar: Control
 
         var requested = -(long) wheel * SmallChange;
         var delta = (int) Math.Clamp(requested, int.MinValue, int.MaxValue);
-        _ = ScrollBy(delta, Cause.Wheel);
-        eventArgs.Handled = true;
+
+        // A pinned rail must not swallow the next viewport's wheel gesture.
+        // The unchanged routed event can continue to an enclosing scroll host.
+        eventArgs.Handled = ScrollBy(delta, Cause.Wheel);
     }
 
     private void BeginDrag(
@@ -580,21 +674,21 @@ public sealed class ScrollBar: Control
     private int ButtonCount(int length) => Chrome == ScrollBarStyle.Full && length >= 2 ? 1 : 0;
 
     private Rune DecrementRune() => CellGlyph.Resolve(
-        DecrementGlyph.Value != '-'
+        _hasDecrementGlyph
             ? DecrementGlyph
             : Orientation == Orientation.Vertical ? new Rune('▲') : new Rune('◀'),
         new Rune('-'),
         CellPolicy.AmbiguousWidth);
 
     private Rune IncrementRune() => CellGlyph.Resolve(
-        IncrementGlyph.Value != '+'
+        _hasIncrementGlyph
             ? IncrementGlyph
             : Orientation == Orientation.Vertical ? new Rune('▼') : new Rune('▶'),
         new Rune('+'),
         CellPolicy.AmbiguousWidth);
 
     private Rune TrackRune() => CellGlyph.Resolve(
-        TrackGlyph.Value != '.'
+        _hasTrackGlyph
             ? TrackGlyph
             : Fill == ScrollBarFill.Line
                 ? Orientation == Orientation.Vertical ? new Rune('│') : new Rune('─')
@@ -603,7 +697,7 @@ public sealed class ScrollBar: Control
         CellPolicy.AmbiguousWidth);
 
     private Rune ThumbRune() => CellGlyph.Resolve(
-        ThumbGlyph.Value != '#'
+        _hasThumbGlyph
             ? ThumbGlyph
             : Fill == ScrollBarFill.Line
                 ? Orientation == Orientation.Vertical ? new Rune('┃') : new Rune('━')
@@ -611,11 +705,11 @@ public sealed class ScrollBar: Control
         new Rune('#'),
         CellPolicy.AmbiguousWidth);
 
-    private void Draw(TerminalCanvas canvas, Point point, Rune glyph)
+    private static void Draw(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style)
     {
         Span<char> buffer = stackalloc char[2];
         var length = glyph.EncodeToUtf16(buffer);
-        _ = canvas.Draw(buffer[..length], point, ResolvedStyle);
+        _ = canvas.Draw(buffer[..length], point, style, background: BackgroundMode.Transparent);
     }
 
     private int Axis(Point point) => Orientation == Orientation.Vertical ? point.Y : point.X;

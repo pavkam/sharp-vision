@@ -15,24 +15,31 @@ public readonly record struct Style
         Attributes.Blink |
         Attributes.Reverse |
         Attributes.Hidden |
-        Attributes.Strike;
+        Attributes.Strike |
+        Attributes.RapidBlink |
+        Attributes.Overline;
 
     /// <summary>Initializes a validated semantic style.</summary>
     /// <param name="foreground">The terminal foreground color.</param>
     /// <param name="background">The terminal background color.</param>
     /// <param name="attributes">The semantic rendition flags.</param>
     /// <param name="hyperlink">An optional immutable hyperlink target.</param>
+    /// <param name="underline">An optional typed underline variant.</param>
+    /// <param name="underlineColor">The semantic underline color.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="attributes"/> contains unknown flags.
     /// </exception>
     /// <exception cref="ArgumentException">
+    /// Rendition fields conflict, underline color has no underline, or
     /// <paramref name="hyperlink"/> is empty or contains a control code unit.
     /// </exception>
     public Style(
         Color foreground = default,
         Color background = default,
         Attributes attributes = Attributes.None,
-        string? hyperlink = null)
+        string? hyperlink = null,
+        Underline underline = Underline.None,
+        Color underlineColor = default)
     {
         if ((attributes & ~_allAttributes) != 0)
         {
@@ -40,6 +47,35 @@ public readonly record struct Style
                 nameof(attributes),
                 attributes,
                 "The style contains an unknown attribute flag.");
+        }
+
+        if (!Enum.IsDefined(underline))
+        {
+            throw new ArgumentOutOfRangeException(nameof(underline), underline, "The underline style is unknown.");
+        }
+
+        if ((attributes & Attributes.Underline) != 0 && underline != Underline.None)
+        {
+            throw new ArgumentException(
+                "Legacy straight underline and a typed underline variant cannot both be selected.",
+                nameof(underline));
+        }
+
+        if ((attributes & (Attributes.Blink | Attributes.RapidBlink)) ==
+            (Attributes.Blink | Attributes.RapidBlink))
+        {
+            throw new ArgumentException(
+                "Slow and rapid blink cannot both be selected.",
+                nameof(attributes));
+        }
+
+        if (underlineColor != Color.Default &&
+            underline == Underline.None &&
+            (attributes & Attributes.Underline) == 0)
+        {
+            throw new ArgumentException(
+                "Underline color requires a straight or typed underline.",
+                nameof(underlineColor));
         }
 
         if (hyperlink is not null)
@@ -64,6 +100,8 @@ public readonly record struct Style
         Background = background;
         Attributes = attributes;
         Hyperlink = hyperlink;
+        Underline = underline;
+        UnderlineColor = underlineColor;
     }
 
     /// <summary>Gets the default terminal style.</summary>
@@ -80,4 +118,10 @@ public readonly record struct Style
 
     /// <summary>Gets the optional immutable hyperlink target.</summary>
     public string? Hyperlink { get; }
+
+    /// <summary>Gets the typed underline variant, or none when legacy attributes own it.</summary>
+    public Underline Underline { get; }
+
+    /// <summary>Gets the semantic underline color.</summary>
+    public Color UnderlineColor { get; }
 }

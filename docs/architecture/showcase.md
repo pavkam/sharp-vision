@@ -16,20 +16,23 @@ flowchart LR
 ```
 
 The sidebar contains one entry for each concrete shipped control: Border,
-Button, Canvas, CheckBox, Dock, FigletText, Grid, List, Overlay, RadioButton,
-RichText, ScrollBar, ScrollView, Shadow, Stack, Text, and TextInput. Foundation
-types and unimplemented specifications are not navigation entries.
+Button, Canvas, CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu, Overlay,
+Popup, RadioButton, RichText, ScrollBar, ScrollView, Shadow, Stack, Table, Text,
+TextInput, and Window. Foundation types and unimplemented specifications are not
+navigation entries.
 
-Each immutable catalog `Page` owns the exact name, purpose, interaction
-guidance, meaningful `PropertyDescription` values, and a factory for fresh live
-examples. Its page shell uses public Stack, RichText, Border, and layout APIs to
-render Overview, a Practical recipe, Examples, Properties, and Interaction
-sections. The recipe starts with a full-width “When to use it” card and follows
-with bordered “Live example” and “Responsive” columns. Its explanatory Text uses
-word-aware wrapping, while the heading, section labels, property cards, and
-interaction guidance use word-wrapped RichText. Examples use only behavior
-available to ordinary application code; reflection and private render paths are
-forbidden.
+Each immutable catalog `Page` owns the exact name, purpose, structured
+interaction rows, meaningful `PropertyDescription` values, and a factory for
+fresh live examples. Its page shell uses public Stack, RichText, Table, Border,
+and layout APIs to render Overview, a Practical recipe, Examples, Properties,
+and a standalone Interaction table. Every interaction row records the input
+path, the control behavior, and the observable result; interaction prose is not
+hidden inside a decorative card. The recipe is one borderless, word-wrapped
+RichText narrative that combines the control's purpose, every supported
+interaction path, and responsive exploration guidance. Its text reflows as the
+page narrows, as do the heading, section labels, property table, and interaction
+table. Examples use only behavior available to ordinary application code;
+reflection and private render paths are forbidden.
 
 Canvas and Shadow demonstrate visual behavior as several labeled, framed live
 specimens rather than a single crowded sample. Each stage keeps the control's
@@ -57,12 +60,13 @@ environment-hint policy remains conservative.
 The main pane reserves a vertical scrollbar automatically and suppresses a
 horizontal scrollbar so documentation remains a readable column. At narrow
 widths geometry saturates and clips safely rather than throwing or creating
-negative extents. Selection survives resize, and keyboard, pointer, focus,
-editing, and scrolling continue through the public runtime path. The initial
-sidebar entry takes focus after the first frame; Up, Down, Left, Right, Tab,
-Shift+Tab, Home, End, Page Up, and Page Down move the selected page and keep its
-entry visible. Enter activates the focused entry using the same path as a
-primary pointer release.
+negative extents. Selecting a different sidebar component retains sidebar state
+but resets the main viewport to that page's header. Selection survives resize,
+and keyboard, pointer, focus, editing, and scrolling continue through the public
+runtime path. The initial sidebar entry takes focus after the first frame; Up,
+Down, Left, Right, Tab, Shift+Tab, Home, End, Page Up, and Page Down move the
+selected page and keep its entry visible. Enter activates the focused entry
+using the same path as a primary pointer release.
 
 The FigletText page is an editor, not a static ornament: a `TextInput` updates
 the preview as text changes, while a Button-disclosed, scrollable List exposes

@@ -90,7 +90,8 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
     }
 
     /// <inheritdoc/>
-    public IEnumerator<Control> GetEnumerator() => _items.GetEnumerator();
+    /// <summary>Gets the allocation-free value enumerator used by direct iteration.</summary>
+    public List<Control>.Enumerator GetEnumerator() => _items.GetEnumerator();
 
     /// <inheritdoc/>
     public int IndexOf(Control item)
@@ -198,7 +199,9 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
     }
 
     /// <inheritdoc/>
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    IEnumerator<Control> IEnumerable<Control>.GetEnumerator() => _items.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
 
     private void Validate(Control item)
     {

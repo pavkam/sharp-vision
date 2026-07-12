@@ -14,6 +14,7 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = SharpVision.Terminal.Input.Action;
+using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
@@ -143,6 +144,48 @@ public sealed class CheckBoxTests
         FrameOracle.Get(frame, default).ShouldBe("☑");
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("界");
         frame.GetCell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a foreground-only CheckBox style preserves the parent surface background.</summary>
+    [Fact]
+    public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
+    {
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(45)));
+        var checkBox = new CheckBox { Style = style };
+        new Engine().Layout(checkBox, new Size(1, 1));
+        using var frame = new Frame(new Size(1, 1));
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
+
+        checkBox.Render(frame.Canvas);
+
+        frame.GetCell(default).Style.Background.ShouldBe(Color.Indexed(238));
+    }
+
+    /// <summary>Verifies bracket and tick mark styles reserve stable documented cell widths.</summary>
+    [Theory]
+    [InlineData(CheckBoxStyle.Brackets, "[x]", 5)]
+    [InlineData(CheckBoxStyle.Tick, "✓", 3)]
+    public void Render_WhenMarkStyleChanges_UsesExpectedMarkAndStableContentOffset(
+        CheckBoxStyle style,
+        string mark,
+        int width)
+    {
+        var content = new ControlText("Go");
+        var checkBox = new CheckBox
+        {
+            Content = content,
+            IsChecked = true,
+            MarkStyle = style,
+        };
+        var size = new Size(width, 1);
+        new Engine().Layout(checkBox, size);
+        using var frame = new Frame(size);
+
+        checkBox.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, default).ShouldBe(mark[..1]);
+        FrameOracle.Get(frame, new Point(style == CheckBoxStyle.Brackets ? 4 : 2, 0)).ShouldBe("G");
     }
 
     /// <summary>Verifies wide and control marks are rejected during construction.</summary>

@@ -14,18 +14,17 @@ tree with explicit provenance and licensing information.
 ## Component catalog
 
 The first version registers one page for every concrete control currently
-shipped by `SharpVision`: Border, Button, Canvas, CheckBox, Dock, FigletText,
-Grid, List, Overlay, RadioButton, RichText, ScrollBar, ScrollView, Shadow,
-Stack, Text, and TextInput.
+shipped by `SharpVision`: Border, Button, Canvas, CheckBox, ComboBox, Dock,
+FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar,
+ScrollView, Shadow, Stack, Table, Text, TextInput, and Window.
 
 Foundation abstractions and content primitives such as Control, Container,
 Pressable, Children, Inline, Run, Hyperlink, and LineBreak do not receive
 sidebar entries. They may be used inside examples and described where they are
 part of a concrete control's public authoring model.
 
-Unimplemented specifications such as Menu, Popup, and Window are not presented
-as shipped controls. Their pages are added only when their implementations and
-behavioral tests exist.
+New concrete controls are added to the sidebar only after their implementation,
+public contract, representative showcase page, and behavioral tests exist.
 
 ## Page structure
 

@@ -82,7 +82,7 @@ public sealed class GalleryInteractionTests
             "main page scrolling");
 
         await application.Dispatcher.InvokeAsync(
-            () => gallery.Select(16),
+            () => gallery.Select(IndexOf(gallery, "TextInput")),
             TestContext.Current.CancellationToken);
         await WaitUntilAsync(
             () => gallery.SelectedPage == "TextInput",
@@ -108,6 +108,140 @@ public sealed class GalleryInteractionTests
         gallery.SelectedPage.ShouldBe("TextInput");
         application.Failure.ShouldBeNull();
         terminal.Writes.Count.ShouldBeGreaterThan(0);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies decoded terminal wheel input scrolls the showcased multiline editor before its documentation viewport.</summary>
+    [Fact]
+    public async Task Input_WhenWheelTargetsShowcaseMultilineEditor_ScrollsEditorBeforePageAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(100, 40)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "TextInput")),
+            TestContext.Current.CancellationToken);
+        var editor = await application.Dispatcher.InvokeAsync(
+            () => Find<TextInput>(
+                gallery.Content,
+                static value => value.AcceptsReturn && value.Height == Length.Cells(3)),
+            TestContext.Current.CancellationToken);
+        var activeEditor = editor.ShouldNotBeNull();
+        await BringIntoViewAsync(activeEditor, gallery, application);
+        var target = await application.Dispatcher.InvokeAsync(
+            () => new Point(activeEditor.Bounds.X + 1, activeEditor.Bounds.Y + 1),
+            TestContext.Current.CancellationToken);
+        var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        var previousPageOffset = await application.Dispatcher.InvokeAsync(
+            () => main.VerticalOffset,
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<65;{target.X};{target.Y}M"));
+        await WaitUntilAsync(
+            () => activeEditor.VerticalOffset > 0,
+            application,
+            "showcase multiline editor wheel scrolling");
+
+        await application.Dispatcher.InvokeAsync(
+            () => main.VerticalOffset.ShouldBe(previousPageOffset),
+            TestContext.Current.CancellationToken);
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the RichText sample appends a Run and records the activation path in its visible activity log.</summary>
+    [Fact]
+    public async Task Input_WhenRichTextMutationButtonIsActivated_UpdatesActivityLogAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(100, 40)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "RichText")),
+            TestContext.Current.CancellationToken);
+        await WaitUntilAsync(
+            () => gallery.SelectedPage == "RichText",
+            application,
+            "RichText page selection");
+
+        var append = await application.Dispatcher.InvokeAsync(
+            () => Find<Button>(
+                gallery.Content,
+                static value => value.Content is ControlText { Content: "Append a Run" }),
+            TestContext.Current.CancellationToken);
+        var activeAppend = append.ShouldNotBeNull();
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(activeAppend).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\r"u8);
+        await WaitUntilAsync(
+            () => Find<ControlText>(
+                gallery.Content,
+                static value => value.Content.StartsWith("Activity log: Keyboard", StringComparison.Ordinal)) is not null,
+            application,
+            "RichText inline mutation");
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the List example reports a changed selection through its public selection API.</summary>
+    [Fact]
+    public async Task Input_WhenListSelectionChanges_UpdatesSelectionStatusAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(100, 40)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "List")),
+            TestContext.Current.CancellationToken);
+        await WaitUntilAsync(
+            () => gallery.SelectedPage == "List",
+            application,
+            "List page selection");
+
+        var active = await application.Dispatcher.InvokeAsync(
+            () => Find<List>(
+                gallery.Content,
+                static value => value.IsEnabled),
+            TestContext.Current.CancellationToken);
+        var selected = active.ShouldNotBeNull();
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                selected.SelectedIndex = 2;
+            },
+            TestContext.Current.CancellationToken);
+
+        await WaitUntilAsync(
+            () => Find<ControlText>(
+                gallery.Content,
+                static value => value.Content.StartsWith("Selected item: Gamma", StringComparison.Ordinal)) is not null,
+            application,
+            "List selection status");
+
+        application.Failure.ShouldBeNull();
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -229,6 +363,44 @@ public sealed class GalleryInteractionTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a primary click leaves the showcased Button focused with its focused appearance.</summary>
+    [Fact]
+    public async Task Input_WhenPrimaryPointerClicksButton_LeavesFocusedAppearanceAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(80, 24)));
+        var root = Examples.Button();
+        await using var application = new Application(
+            root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var button = await application.Dispatcher.InvokeAsync(
+            () => Find<Button>(root, static value => value.IsEnabled),
+            TestContext.Current.CancellationToken);
+        var active = button.ShouldNotBeNull();
+        var point = await application.Dispatcher.InvokeAsync(
+            () => new Point(active.Bounds.X + 1, active.Bounds.Y),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes(
+            $"\u001b[<0;{point.X + 1};{point.Y + 1}M" +
+            $"\u001b[<0;{point.X + 1};{point.Y + 1}m"));
+        await WaitUntilAsync(
+            () => active.IsFocused,
+            application,
+            "button focused appearance");
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            active.IsFocused.ShouldBeTrue();
+            active.Appearance.Foreground.ShouldBe(Palette.Accent);
+            active.Appearance.Background.ShouldBe(Palette.Surface);
+        }, TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies arrow navigation starts focused and selects the next sidebar page through decoded input.</summary>
     [Fact]
     public async Task Input_WhenArrowDownIsPressed_SelectsAndFocusesNextSidebarPageAsync()
@@ -308,7 +480,7 @@ public sealed class GalleryInteractionTests
             StartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
-            () => gallery.Select(11),
+            () => gallery.Select(IndexOf(gallery, "ScrollBar")),
             TestContext.Current.CancellationToken);
         var scrollBar = await application.Dispatcher.InvokeAsync(
             () => Find<ScrollBar>(gallery.Content, static value => value.Orientation == Orientation.Horizontal),
@@ -371,7 +543,7 @@ public sealed class GalleryInteractionTests
             StartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
-            () => gallery.Select(5),
+            () => gallery.Select(IndexOf(gallery, "FigletText")),
             TestContext.Current.CancellationToken);
         var editor = await application.Dispatcher.InvokeAsync(
             () => Find<TextInput>(gallery.Content, static value => value.Text == "SharpVision"),
@@ -380,9 +552,9 @@ public sealed class GalleryInteractionTests
             () => Find<FigletText>(gallery.Content, static value => value.Content == "SharpVision"),
             TestContext.Current.CancellationToken);
         var picker = await application.Dispatcher.InvokeAsync(
-            () => Find<Button>(
+            () => Find<ComboBox>(
                 gallery.Content,
-                static value => value.Content is ControlText { Content: "Font: Standard ▼" }),
+                static value => value.SelectedIndex >= 0 && value.Items[value.SelectedIndex] is "Standard"),
             TestContext.Current.CancellationToken);
         var activeEditor = editor.ShouldNotBeNull();
         var activePreview = preview.ShouldNotBeNull();
@@ -403,9 +575,9 @@ public sealed class GalleryInteractionTests
             TestContext.Current.CancellationToken);
         terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
-            () => Find<List>(
+            () => Find<ComboBox>(
                 gallery.Content,
-                static value => value.EffectiveIsVisible) is not null,
+                static value => value.IsOpen) is not null,
             application,
             "FIGlet dropdown open");
         var fonts = await application.Dispatcher.InvokeAsync(
@@ -414,18 +586,85 @@ public sealed class GalleryInteractionTests
                 static value => value.EffectiveIsVisible),
             TestContext.Current.CancellationToken);
         var activeFonts = fonts.ShouldNotBeNull();
+        var invoked = false;
+        await application.Dispatcher.InvokeAsync(
+            () => activeFonts.ItemInvoked += (_, _) => invoked = true,
+            TestContext.Current.CancellationToken);
         await BringIntoViewAsync(activeFonts, gallery, application);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                activeFonts.VerticalOffset.ShouldBe(0);
+                activeFonts.Bounds.Height.ShouldBeGreaterThan(1);
+            },
+            TestContext.Current.CancellationToken);
         var fontPoint = await application.Dispatcher.InvokeAsync(
-            () => new Point(activeFonts.Bounds.X + 1, activeFonts.Bounds.Y),
+            () => new Point(activeFonts.Bounds.X + 1, activeFonts.Bounds.Y + 1),
+            TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                _ = activeFonts.HitTest(fontPoint).ShouldBeOfType<ListItem>();
+                _ = application.Capture.Root.HitTest(fontPoint).ShouldBeOfType<ListItem>();
+            },
             TestContext.Current.CancellationToken);
 
-        terminal.QueueInput(Encoding.ASCII.GetBytes(
-            $"\u001b[<0;{fontPoint.X + 1};{fontPoint.Y + 1}M" +
-            $"\u001b[<0;{fontPoint.X + 1};{fontPoint.Y + 1}m"));
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<0;{fontPoint.X + 1};{fontPoint.Y + 1}M"));
+        await WaitUntilAsync(
+            () => application.Capture.Captured is ListItem,
+            application,
+            "FIGlet font pointer press");
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<0;{fontPoint.X + 1};{fontPoint.Y + 1}m"));
+        await WaitUntilAsync(
+            () => invoked,
+            application,
+            "FIGlet font item invocation");
+        await WaitUntilAsync(
+            () => !activePicker.IsOpen,
+            application,
+            "FIGlet dropdown dismissal");
+        await application.Dispatcher.InvokeAsync(
+            () => activePicker.SelectedIndex.ShouldNotBe(0),
+            TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the FIGlet popup picker accepts keyboard selection after its trigger opens it.</summary>
+    [Fact]
+    public async Task Input_WhenFigletPickerOpens_KeyboardSelectionChangesPreviewAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(100, 30)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "FigletText")),
+            TestContext.Current.CancellationToken);
+        var picker = await application.Dispatcher.InvokeAsync(
+            () => Find<ComboBox>(
+                gallery.Content,
+                static value => value.SelectedIndex >= 0 && value.Items[value.SelectedIndex] is "Standard"),
+            TestContext.Current.CancellationToken);
+        var preview = await application.Dispatcher.InvokeAsync(
+            () => Find<FigletText>(gallery.Content, static value => value.Content == "SharpVision"),
+            TestContext.Current.CancellationToken);
+        var activePicker = picker.ShouldNotBeNull();
+        var activePreview = preview.ShouldNotBeNull();
+        await BringIntoViewAsync(activePicker, gallery, application);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(activePicker).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\r\u001b[B\r"u8);
         await WaitUntilAsync(
             () => activePreview.Font.Name != "Standard",
             application,
-            "FIGlet font selection");
+            "FIGlet keyboard font selection");
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -455,6 +694,14 @@ public sealed class GalleryInteractionTests
         return null;
     }
 
+    private static int IndexOf(Gallery gallery, string page)
+    {
+        ArgumentNullException.ThrowIfNull(gallery);
+        ArgumentException.ThrowIfNullOrWhiteSpace(page);
+        var index = gallery.Pages.Select(static value => value.Name).ToList().IndexOf(page);
+        return index >= 0 ? index : throw new InvalidOperationException($"The {page} page is not registered.");
+    }
+
     private static Task NextFrame(Application application)
     {
         ArgumentNullException.ThrowIfNull(application);
@@ -479,13 +726,32 @@ public sealed class GalleryInteractionTests
         ArgumentNullException.ThrowIfNull(control);
         ArgumentNullException.ThrowIfNull(gallery);
         ArgumentNullException.ThrowIfNull(application);
-        var frame = NextFrame(application);
-        await application.Dispatcher.InvokeAsync(() =>
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += Complete;
+        var moved = await application.Dispatcher.InvokeAsync(() =>
         {
             var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
-            main.BringIntoView(control).ShouldBeTrue();
+            return main.BringIntoView(control);
         }, TestContext.Current.CancellationToken);
-        await frame.WaitAsync(TestContext.Current.CancellationToken);
+
+        if (moved)
+        {
+            await completion.Task.WaitAsync(TestContext.Current.CancellationToken);
+        }
+        else
+        {
+            application.FrameRendered -= Complete;
+        }
+
+        return;
+
+        void Complete(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            application.FrameRendered -= Complete;
+            _ = completion.TrySetResult();
+        }
     }
 
     private static async Task WaitUntilAsync(

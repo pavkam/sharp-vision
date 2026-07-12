@@ -99,6 +99,49 @@ public sealed class RichTextTests
         frame.GetCell(new Point(0, 1)).Style.Hyperlink.ShouldBe("https://example.test");
     }
 
+    /// <summary>Verifies inline modern decorations reach exact semantic cells.</summary>
+    [Fact]
+    public void Render_WhenRunHasModernDecorations_WritesCompleteStyle()
+    {
+        var run = new Run("x")
+        {
+            Attributes = Attributes.RapidBlink | Attributes.Overline,
+            Underline = Underline.Curly,
+            UnderlineColor = Color.Rgb(1, 2, 3),
+        };
+        var control = new RichText();
+        control.Inlines.Add(run);
+        new Engine().Layout(control, new Size(1, 1));
+        using var frame = new Frame(new Size(1, 1));
+
+        control.Render(frame.Canvas);
+
+        var style = frame.GetCell(default).Style;
+        style.Attributes.ShouldBe(Attributes.RapidBlink | Attributes.Overline);
+        style.Underline.ShouldBe(Underline.Curly);
+        style.UnderlineColor.ShouldBe(Color.Rgb(1, 2, 3));
+    }
+
+    /// <summary>Verifies invalid inline decoration changes preserve previous state.</summary>
+    [Fact]
+    public void Decorations_WhenCombinationIsInvalid_ThrowBeforeMutation()
+    {
+        var run = new Run("x");
+
+        _ = Should.Throw<ArgumentException>(() =>
+            run.UnderlineColor = Color.Indexed(1));
+        run.UnderlineColor.ShouldBeNull();
+        run.Underline = Underline.Curly;
+        run.UnderlineColor = Color.Indexed(1);
+
+        _ = Should.Throw<ArgumentException>(() =>
+            run.Attributes = Attributes.Underline);
+
+        run.Attributes.ShouldBeNull();
+        run.Underline.ShouldBe(Underline.Curly);
+        run.UnderlineColor.ShouldBe(Color.Indexed(1));
+    }
+
     /// <summary>Verifies wrapping never splits a wide grapheme owner.</summary>
     [Fact]
     public void Render_WhenWideGraphemeWraps_MovesCompleteOwnerToNextLine()

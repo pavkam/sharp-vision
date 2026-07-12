@@ -1,3 +1,5 @@
+using System.Text;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Styling;
@@ -13,6 +15,7 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
+using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
@@ -84,6 +87,7 @@ public sealed class TextTests
         {
             Wrapping = Wrapping.Grapheme,
             TextAlignment = Alignment.End,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var engine = new Engine();
 
@@ -156,6 +160,23 @@ public sealed class TextTests
         cell.Style.Foreground.ShouldBe(Color.Indexed(7));
         cell.Style.Background.ShouldBe(Color.Indexed(2));
         cell.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
+    }
+
+    /// <summary>Verifies text without a declared background preserves the already-painted surface.</summary>
+    [Fact]
+    public void Render_WhenBackgroundIsUnset_PreservesDestinationSurface()
+    {
+        var text = new ControlText("A") { Foreground = Color.Indexed(45) };
+        new Engine().Layout(text, new Size(1, 1));
+        using var frame = new Frame(new Size(1, 1));
+        frame.Canvas.Fill(
+            new Rect(0, 0, 1, 1),
+            new Rune(' '),
+            new TerminalStyle(Color.Indexed(255), Color.Indexed(238)));
+
+        text.Render(frame.Canvas);
+
+        frame.GetCell(default).Style.ShouldBe(new TerminalStyle(Color.Indexed(45), Color.Indexed(238)));
     }
 
     /// <summary>Verifies hidden and collapsed text do not draw stale cells.</summary>

@@ -185,6 +185,90 @@ public sealed class List: Container
     /// <summary>Gets the composed vertical scroll offset.</summary>
     public int VerticalOffset => _scroll.VerticalOffset;
 
+    /// <summary>Gets or sets the axes available to the composed overflow host.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
+    /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
+    public ScrollBars ScrollBars
+    {
+        get => _scroll.ScrollBars;
+        set
+        {
+            VerifyMutable();
+
+            if (_scroll.ScrollBars == value)
+            {
+                return;
+            }
+
+            _scroll.ScrollBars = value;
+            NotifyChanged(nameof(ScrollBars), Invalidation.None);
+        }
+    }
+
+    /// <summary>Gets or sets the common scrollbar reservation policy for enabled axes.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
+    public ShowScrollBars ShowScrollBars
+    {
+        get => _scroll.ShowScrollBars;
+        set
+        {
+            VerifyMutable();
+
+            if (_scroll.ShowScrollBars == value)
+            {
+                return;
+            }
+
+            _scroll.ShowScrollBars = value;
+            NotifyChanged(nameof(ShowScrollBars), Invalidation.None);
+        }
+    }
+
+    /// <summary>Gets or sets the shared compact or full scrollbar chrome form.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
+    public ScrollBarStyle ScrollBarChrome
+    {
+        get => _scroll.ScrollBarChrome;
+        set
+        {
+            VerifyMutable();
+
+            if (_scroll.ScrollBarChrome == value)
+            {
+                return;
+            }
+
+            _scroll.ScrollBarChrome = value;
+            NotifyChanged(nameof(ScrollBarChrome), Invalidation.None);
+        }
+    }
+
+    /// <summary>Gets or sets the generated line or block glyph treatment for composed rails.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
+    public ScrollBarFill ScrollBarFill
+    {
+        get => _scroll.ScrollBarFill;
+        set
+        {
+            VerifyMutable();
+
+            if (_scroll.ScrollBarFill == value)
+            {
+                return;
+            }
+
+            _scroll.ScrollBarFill = value;
+            NotifyChanged(nameof(ScrollBarFill), Invalidation.None);
+        }
+    }
+
     /// <summary>Changes one programmatic index without replacing other Multiple selections.</summary>
     /// <param name="index">The contained item index.</param>
     /// <param name="selected">Whether the index should be selected.</param>
@@ -234,7 +318,7 @@ public sealed class List: Container
     {
         var self = base.HitTest(point);
 
-        return self is null ? null : _scroll.HitTest(point) ?? this;
+        return self is null ? null : _scroll.HitTestPopup(point) ?? _scroll.HitTest(point) ?? this;
     }
 
     /// <inheritdoc/>
@@ -269,10 +353,27 @@ public sealed class List: Container
     internal override void RenderChildren(TerminalCanvas canvas) => _scroll.Render(canvas);
 
     /// <inheritdoc/>
+    internal override Control? HitTestPopup(Point point) => _scroll.HitTestPopup(point);
+
+    /// <inheritdoc/>
+    internal override void RenderPopupLayer(TerminalCanvas canvas) => _scroll.RenderPopupLayer(canvas);
+
+    /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
         _scroll.Measure(constraint);
         return _scroll.DesiredSize;
+    }
+
+    /// <inheritdoc/>
+    protected override void RenderCore(TerminalCanvas canvas)
+    {
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !Appearance.Background.HasValue)
+        {
+            return;
+        }
+
+        canvas.Clear(Bounds, ResolvedStyle);
     }
 
     /// <inheritdoc/>

@@ -29,6 +29,8 @@ public sealed class Gallery: IDisposable
         {
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
+            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarFill = ScrollBarFill.Line,
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
             ConstrainContentToViewport = true,
         };
@@ -43,7 +45,10 @@ public sealed class Gallery: IDisposable
 
         for (var index = 0; index < Pages.Count; index++)
         {
-            var item = new NavigationItem(index, Pages[index].Name);
+            var item = new NavigationItem(index, Pages[index].Name)
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
             item.Invoked += OnNavigationInvoked;
             _navigation[index] = item;
             entries.Children.Add(item);
@@ -54,6 +59,8 @@ public sealed class Gallery: IDisposable
             Content = entries,
             ScrollBars = ScrollBars.Both,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
+            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarFill = ScrollBarFill.Line,
         };
         var sidebarLayout = new Dock();
         var header = CreateSidebarHeader();
@@ -135,6 +142,19 @@ public sealed class Gallery: IDisposable
         var previous = _main.Content;
         Selected = Pages[index];
         SelectedIndex = index;
+
+        // A catalog selection changes subject, not just content. Preserve the
+        // sidebar state but start the newly created documentation page at its header.
+        if (_main.HorizontalOffset != 0)
+        {
+            _main.HorizontalOffset = 0;
+        }
+
+        if (_main.VerticalOffset != 0)
+        {
+            _main.VerticalOffset = 0;
+        }
+
         _main.Content = Selected.CreateContent();
 
         for (var navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)

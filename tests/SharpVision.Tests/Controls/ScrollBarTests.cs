@@ -15,6 +15,7 @@ using SharpVision.Threading;
 using Shouldly;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
+using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
@@ -134,6 +135,7 @@ public sealed class ScrollBarTests
             Maximum = 80,
             Value = 40,
             ViewportSize = 20,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         new Engine().Layout(control, new Size(10, 1));
         using var frame = new Frame(new Size(10, 1));
@@ -142,6 +144,72 @@ public sealed class ScrollBarTests
 
         control.DesiredSize.ShouldBe(new Size(3, 1));
         Cells(frame, width: 10, y: 0).ShouldBe("◀░░░▓▓░░░▶");
+    }
+
+    /// <summary>Verifies thin line chrome removes arrow buttons and retains a high-contrast draggable thumb.</summary>
+    [Fact]
+    public void Render_WhenThinLineChromeIsSelected_UsesCanonicalTrackAndThumb()
+    {
+        var control = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Chrome = ScrollBarStyle.Thin,
+            Fill = ScrollBarFill.Line,
+            Maximum = 80,
+            Value = 40,
+            ViewportSize = 20,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        new Engine().Layout(control, new Size(10, 1));
+        using var frame = new Frame(new Size(10, 1));
+
+        control.Render(frame.Canvas);
+
+        control.DesiredSize.ShouldBe(new Size(1, 1));
+        Cells(frame, width: 10, y: 0).ShouldBe("────━━────");
+    }
+
+    /// <summary>Verifies a foreground-only ScrollBar style preserves the parent surface background.</summary>
+    [Fact]
+    public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
+    {
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(45)));
+        var control = new ScrollBar
+        {
+            Bounds = new Rect(0, 0, 3, 1),
+            Orientation = Orientation.Horizontal,
+            Chrome = ScrollBarStyle.Thin,
+            Fill = ScrollBarFill.Line,
+            Style = style,
+        };
+        using var frame = new Frame(new Size(3, 1));
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
+
+        control.Render(frame.Canvas);
+
+        frame.GetCell(default).Style.Background.ShouldBe(Color.Indexed(238));
+    }
+
+    /// <summary>Verifies explicitly assigning a legacy glyph remains an intentional custom override.</summary>
+    [Fact]
+    public void Render_WhenLegacyTrackGlyphIsAssigned_UsesAssignedGlyph()
+    {
+        var control = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Maximum = 80,
+            Value = 40,
+            ViewportSize = 20,
+            TrackGlyph = new Rune('.'),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        new Engine().Layout(control, new Size(10, 1));
+        using var frame = new Frame(new Size(10, 1));
+
+        control.Render(frame.Canvas);
+
+        Cells(frame, width: 10, y: 0).ShouldBe("◀...▓▓...▶");
     }
 
     /// <summary>Verifies vertical and horizontal keyboard mappings consume only press transitions.</summary>
@@ -293,6 +361,19 @@ public sealed class ScrollBarTests
 
         control.Value.ShouldBe(52);
         causes.ShouldBe([Cause.Wheel, Cause.Wheel]);
+    }
+
+    /// <summary>Verifies a wheel at an endpoint remains available to an enclosing overflow host.</summary>
+    [Fact]
+    public void Dispatch_WhenWheelCannotMoveRange_LeavesEventUnhandled()
+    {
+        var control = new ScrollBar { Maximum = 10, Value = 10 };
+        var eventArgs = new PointerEventArgs(Wheel(wheelX: 0, wheelY: -1));
+
+        Router.Route(control, Events.Pointer, eventArgs);
+
+        control.Value.ShouldBe(10);
+        eventArgs.Handled.ShouldBeFalse();
     }
 
     /// <summary>Verifies terminal focus loss and detach both cancel active thumb ownership.</summary>

@@ -6,8 +6,11 @@ using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Threading;
+
+using KeyAction = SharpVision.Terminal.Input.Action;
 
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 using TerminalStyle = SharpVision.Terminal.Rendering.Style;
@@ -167,7 +170,7 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
             Validate(value);
             _ = Set(ref field, value, Invalidation.Arrange);
         }
-    } = HorizontalAlignment.Stretch;
+    } = HorizontalAlignment.Left;
 
     /// <summary>Gets or sets vertical placement within the arranged slot.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -323,7 +326,9 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets dirty phases for the next root transaction.</summary>
     internal Invalidation Pending { get; private set; } = Invalidation.All;
 
-    private Constraint? LastMeasureConstraint { get; set; }
+    /// <summary>Gets the last outer constraint committed by the measure transaction, or null before initial measurement.</summary>
+    /// <remarks>Derived overlay-owned controls use this viewport record when their own resolved box is intentionally smaller than the host.</remarks>
+    internal Constraint? LastMeasureConstraint { get; private set; }
 
     private Rect? LastArrangeSlot { get; set; }
 
@@ -352,6 +357,9 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Gets the complete terminal style for the resolved appearance.</summary>
     internal TerminalStyle ResolvedStyle => Resolver.ToTerminal(Appearance);
+
+    /// <summary>Gets the inherited normal-state terminal style for passive visual overflow.</summary>
+    internal TerminalStyle NormalStyle => Resolver.ToTerminal(Resolver.Resolve(EffectiveStyle, State.Normal));
 
     /// <summary>Adds one typed routed-event handler to this control.</summary>
     /// <typeparam name="TArgs">The exact event-argument type.</typeparam>
@@ -697,6 +705,19 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     internal virtual void VisitChildren(Action<Control> visitor) =>
         ArgumentNullException.ThrowIfNull(visitor);
 
+    /// <summary>Returns the topmost open popup descendant containing one screen-cell point.</summary>
+    /// <param name="point">The absolute terminal-cell point.</param>
+    /// <returns>An open popup target, or null when this subtree has none.</returns>
+    internal virtual Control? HitTestPopup(Point point)
+    {
+        _ = point;
+        return null;
+    }
+
+    /// <summary>Renders open popup descendants after ordinary sibling content.</summary>
+    /// <param name="canvas">The non-null root-relative canvas used by the current frame.</param>
+    internal virtual void RenderPopupLayer(TerminalCanvas canvas) => _ = canvas.Bounds;
+
     /// <summary>Assigns the parent after collection validation.</summary>
     /// <param name="value">The new parent or null.</param>
     internal void SetParent(Container? value)
@@ -753,6 +774,22 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         OnEvent(eventArgs);
+
+        if (!eventArgs.Handled &&
+            eventArgs is KeyEventArgs
+            {
+                Stroke:
+                {
+                    Code: Code.Tab,
+                    Action: KeyAction.Press,
+                    Modifiers: var modifiers,
+                },
+            } &&
+            (modifiers & ~Modifiers.Shift) == 0 &&
+            FocusOwner?.MoveNext((modifiers & Modifiers.Shift) != 0) == true)
+        {
+            eventArgs.Handled = true;
+        }
     }
 
     /// <summary>Removes one live registration after dispatcher validation.</summary>
@@ -825,6 +862,7 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
         IsPressed = value;
         Invalidate(Invalidation.Render);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed)));
+        OnPressedChanged(value);
     }
 
     /// <summary>Propagates semantic selected visual state through one realized item subtree.</summary>
@@ -879,6 +917,11 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <param name="focused">The newly committed focus state.</param>
     protected virtual void OnFocusChanged(bool focused) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot change focus state.");
+
+    /// <summary>Responds after this control's pressed visual state commits.</summary>
+    /// <param name="pressed">The newly committed pressed state.</param>
+    protected virtual void OnPressedChanged(bool pressed) =>
+        Debug.Assert(!IsDisposed, "A disposed control cannot change pressed state.");
 
     /// <summary>Responds after this control's direct ownership changes.</summary>
     /// <param name="previous">The previous owner, or null.</param>

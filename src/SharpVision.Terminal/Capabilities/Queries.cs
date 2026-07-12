@@ -35,4 +35,13 @@ public sealed record Queries
 
     /// <summary>Gets an iTerm2 image query result.</summary>
     public bool? ItermImages { get; init; }
+
+    /// <summary>Gets a styled-underline query result.</summary>
+    public bool? StyledUnderlines { get; init; }
+
+    /// <summary>Gets an underline-color query result.</summary>
+    public bool? UnderlineColor { get; init; }
+
+    /// <summary>Gets an overline query result.</summary>
+    public bool? Overline { get; init; }
 }

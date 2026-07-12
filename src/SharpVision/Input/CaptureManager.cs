@@ -111,6 +111,11 @@ public sealed class CaptureManager: IDisposable
         if (pointer.Action == PointerAction.Press && pointer.Cells is not null)
         {
             SetPressed(target);
+
+            if ((pointer.Buttons & Buttons.Primary) != 0)
+            {
+                FocusTarget(target);
+            }
         }
 
         if (target is not null)
@@ -251,6 +256,18 @@ public sealed class CaptureManager: IDisposable
         }
 
         return physical;
+    }
+
+    private static void FocusTarget(Control? target)
+    {
+        for (var current = target; current is not null; current = current.Parent)
+        {
+            if (current.CanFocus)
+            {
+                _ = current.FocusOwner?.Focus(current);
+                return;
+            }
+        }
     }
 
     private void SetPressed(Control? control)

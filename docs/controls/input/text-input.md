@@ -28,10 +28,10 @@ direction.
   cluster. `Replace` validates the complete proposal before allocation, enforces
   return/tab policy, and truncates maximum-length input only at a grapheme
   boundary. `MaxLength` zero means unlimited.
-- `ProjectPassword` validates a printable one-cell mask and returns exactly one
-  mask `Rune` per source grapheme. Invalid UTF-16 source units count as their
-  own conservative replacement clusters but are never normalized or copied into
-  the projection.
+- `ProjectPassword` validates a printable one-cell mask under the default narrow
+  policy and returns exactly one mask `Rune` per source grapheme. Invalid UTF-16
+  source units count as their own conservative replacement clusters but are
+  never normalized or copied into the projection.
 - `EditResult` owns the resulting immutable `Text`, directional `Selection`, and
   a `Changed` flag. Callers own undo/redo history by retaining these snapshots;
   the pure model retains no hidden mutable history.
@@ -48,6 +48,11 @@ direction.
   grapheme boundaries before committing a forward range.
 - `SelectedText` returns a caller-owned copy. `HorizontalOffset` and
   `VerticalOffset` expose automatic caret scrolling in cells and logical lines.
+- `ScrollBars`, `ShowScrollBars`, `ScrollBarChrome`, and `ScrollBarFill` use the
+  common overflow policy. When rails reserve cells, the editor's Unicode text,
+  caret, selection, pointer mapping, and wheel offsets use the remaining
+  viewport while the owned canonical `ScrollBar` controls retain their normal
+  keyboard, track, thumb-drag, and focus behavior.
 - `CopySelection()` returns owned selected text and `CutSelection()` deletes it
   when mutable. Password mode returns empty and performs no cut, while read-only
   mode permits copying but never deletes.
@@ -81,8 +86,11 @@ actual colors through normal, hovered, focused, and disabled style overlays.
 
 Typed text, navigation, selection, Backspace/Delete, Home/End, word movement,
 undo/redo policy, paste, copy/cut, mouse placement/drag, and scrolling operate
-on grapheme boundaries. IME composition is represented separately from committed
-text when the terminal protocol supplies it.
+on grapheme boundaries. An unhandled Tab moves focus through the owning
+manager's tab order, while `AcceptsTab` handles Tab locally and inserts it.
+Shift+Tab moves backward when the editor does not accept tabs. IME composition
+is represented separately from committed text when the terminal protocol
+supplies it.
 
 Space-independent text events insert decoded `Rune` values. Bracketed paste
 decodes its owned UTF-8 payload once and applies one atomic proposal; policy
@@ -98,6 +106,13 @@ inferred from pixel protocols—map through the same grapheme widths used for
 rendering, so wide and combining clusters cannot yield interior indices. Drag
 release, focus/capture cancellation, disable, hide, detach, and disposal release
 transient ownership without changing text.
+
+Wheel deltas scroll the editor's existing horizontal and vertical content
+offsets in cell and logical-line units. The editor handles a wheel event only
+when at least one enabled offset changes. At either endpoint it leaves an
+otherwise unmoved event unhandled, so normal bubble routing can offer it to an
+enclosing [`ScrollView`](../layout/scroll-view.md) instead of swallowing nested
+scrolling.
 
 ## Example
 

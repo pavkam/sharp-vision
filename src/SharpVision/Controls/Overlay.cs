@@ -13,6 +13,9 @@ public sealed class Overlay: Container
 {
     private static readonly ConditionalWeakTable<Control, ZOrder> _orders = [];
 
+    /// <summary>Initializes an overlay that fills its parent shared box.</summary>
+    public Overlay() => HorizontalAlignment = HorizontalAlignment.Stretch;
+
     /// <summary>Gets or sets whether descendants are clipped to overlay bounds.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -70,6 +73,11 @@ public sealed class Overlay: Container
             (ClipToBounds && !Bounds.Contains(point)))
         {
             return null;
+        }
+
+        if (HitTestPopup(point) is { } popup)
+        {
+            return popup;
         }
 
         var rented = RentOrdered();
@@ -138,6 +146,11 @@ public sealed class Overlay: Container
         finally
         {
             ArrayPool<Control>.Shared.Return(rented, clearArray: true);
+        }
+
+        if (Parent is null)
+        {
+            RenderPopupLayer(canvas);
         }
     }
 

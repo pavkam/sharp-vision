@@ -51,16 +51,21 @@ public readonly struct Canvas
     /// <param name="value">The Rune to draw.</param>
     /// <param name="origin">The absolute frame cell.</param>
     /// <param name="style">The semantic cell style.</param>
+    /// <param name="background">Whether the supplied background replaces or preserves the destination cell.</param>
     /// <exception cref="ArgumentException">
     /// <paramref name="value"/> is a control or does not occupy exactly one cell.
     /// </exception>
     /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void DrawRune(Rune value, Point origin, Style style = default)
+    public void DrawRune(
+        Rune value,
+        Point origin,
+        Style style = default,
+        BackgroundMode background = BackgroundMode.Opaque)
     {
         Span<char> buffer = stackalloc char[2];
         var length = ValidateRune(value, buffer);
-        _ = Draw(buffer[..length], origin, style);
+        _ = Draw(buffer[..length], origin, style, background: background);
     }
 
     /// <summary>Fills a clipped region with one validated printable narrow Rune.</summary>
@@ -92,22 +97,36 @@ public readonly struct Canvas
     /// <summary>Applies a style while preserving complete stored graphemes.</summary>
     /// <param name="region">The requested half-open frame region.</param>
     /// <param name="style">The replacement semantic style.</param>
+    /// <param name="background">Whether the supplied background replaces or preserves destination cells.</param>
     /// <remarks>
     /// Touching any cell of a wide owner styles the complete owner when all of
     /// its cells are inside this canvas clip. A partially clipped owner is
     /// skipped so lead and continuation styles cannot disagree.
     /// </remarks>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void ApplyStyle(Rect region, Style style)
+    public void ApplyStyle(
+        Rect region,
+        Style style,
+        BackgroundMode background = BackgroundMode.Opaque)
     {
         _frame.ThrowIfDisposed();
+
+        if (!Enum.IsDefined(background))
+        {
+            throw new ArgumentOutOfRangeException(nameof(background), background, "The background mode is unknown.");
+        }
+
         var target = _clip.Intersect(region).Intersect(_frame.Bounds);
 
         for (var y = target.Y; y < target.Bottom; y++)
         {
             for (var x = target.X; x < target.Right; x++)
             {
-                _ = _frame.TrySetOwnerStyle(_frame.GetIndex(new Point(x, y)), _clip, style);
+                var point = new Point(x, y);
+                var applied = background == BackgroundMode.Transparent
+                    ? new Style(style.Foreground, _frame.GetCell(point).Style.Background, style.Attributes, style.Hyperlink)
+                    : style;
+                _ = _frame.TrySetOwnerStyle(_frame.GetIndex(point), _clip, applied);
             }
         }
     }
@@ -270,6 +289,7 @@ public readonly struct Canvas
     /// <param name="origin">The logical starting cell coordinate.</param>
     /// <param name="style">The semantic style.</param>
     /// <param name="edge">The wide-cluster right-edge behavior.</param>
+    /// <param name="background">Whether the supplied background replaces or preserves destination cells.</param>
     /// <returns>Logical advance and clipping metrics.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="edge"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
@@ -278,7 +298,8 @@ public readonly struct Canvas
         ReadOnlySpan<char> value,
         Point origin,
         Style style = default,
-        Edge edge = Edge.Clip)
+        Edge edge = Edge.Clip,
+        BackgroundMode background = BackgroundMode.Opaque)
     {
         _frame.ThrowIfDisposed();
 
@@ -287,9 +308,14 @@ public readonly struct Canvas
             throw new ArgumentOutOfRangeException(nameof(edge), edge, "The edge policy is unknown.");
         }
 
-        var preflight = Process(value, origin, style, edge, write: false, out var bytes);
+        if (!Enum.IsDefined(background))
+        {
+            throw new ArgumentOutOfRangeException(nameof(background), background, "The background mode is unknown.");
+        }
+
+        var preflight = Process(value, origin, style, edge, background, write: false, out var bytes);
         _frame.EnsureAppendable(bytes);
-        var result = Process(value, origin, style, edge, write: true, out var written);
+        var result = Process(value, origin, style, edge, background, write: true, out var written);
         Debug.Assert(preflight == result, "Canvas preflight and mutation passes must agree.");
         Debug.Assert(bytes == written, "Canvas UTF-8 preflight and mutation must agree.");
 
@@ -334,6 +360,7 @@ public readonly struct Canvas
         Point origin,
         Style style,
         Edge edge,
+        BackgroundMode background,
         bool write,
         out int bytes)
     {
@@ -418,7 +445,10 @@ public readonly struct Canvas
 
             if (write)
             {
-                _frame.Write(point, stored, cellWidth, style);
+                var applied = background == BackgroundMode.Transparent
+                    ? new Style(style.Foreground, _frame.GetCell(point).Style.Background, style.Attributes, style.Hyperlink)
+                    : style;
+                _frame.Write(point, stored, cellWidth, applied);
             }
 
             x = checked(x + cellWidth);
@@ -478,6 +508,10 @@ public readonly struct Canvas
             topology = LineResolver.Merge(previous, topology);
         }
 
-        DrawRune(LineResolver.Resolve(topology, _frame.AmbiguousWidth), point, style);
+        DrawRune(
+            LineResolver.Resolve(topology, _frame.AmbiguousWidth),
+            point,
+            style,
+            BackgroundMode.Transparent);
     }
 }

@@ -1,8 +1,12 @@
+using System.Text;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
@@ -11,6 +15,8 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = SharpVision.Terminal.Input.Action;
+using TerminalStyle = SharpVision.Terminal.Rendering.Style;
+using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -186,6 +192,22 @@ public sealed class RadioButtonTests
         FrameOracle.Get(frame, default).ShouldBe("◉");
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("界");
         frame.GetCell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a foreground-only RadioButton style preserves the parent surface background.</summary>
+    [Fact]
+    public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
+    {
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(foreground: Color.Indexed(45)));
+        var radio = new RadioButton { Style = style };
+        new Engine().Layout(radio, new Size(2, 1));
+        using var frame = new Frame(new Size(2, 1));
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
+
+        radio.Render(frame.Canvas);
+
+        frame.GetCell(default).Style.Background.ShouldBe(Color.Indexed(238));
     }
 
     /// <summary>Verifies programmatic false leaves a valid empty group.</summary>

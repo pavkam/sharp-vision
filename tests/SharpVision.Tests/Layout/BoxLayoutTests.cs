@@ -120,6 +120,7 @@ public sealed class BoxLayoutTests
         var control = new ProbeControl(new Size(2, 2))
         {
             Width = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
         new Engine().Layout(control, new Size(10, 6));
@@ -166,6 +167,7 @@ public sealed class BoxLayoutTests
         var control = new ProbeControl(new Size(4, 2))
         {
             Measuring = current => current.Width = Length.Cells(5),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             Arranging = current => current.HorizontalAlignment = HorizontalAlignment.Left,
         };
 

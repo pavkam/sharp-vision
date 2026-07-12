@@ -21,6 +21,12 @@ Every run is half-open, row-major, and expanded through complete ownership in
 both frames. Dimension changes and explicit invalidation return every target
 row.
 
+Canvas primitive tests also paint a non-default surface, then draw lines, single
+glyphs, and transparent style overlays over it. Foreground and attributes may
+change, but the destination background must remain identical; this catches
+isolated table dividers, borders, shadows, and indicator glyphs that
+accidentally fall back to the terminal default.
+
 Cell hashes may reject unequal graphemes quickly, but hash equality never proves
 semantic equality: complete UTF-8 bytes and renderer metadata are compared. This
 keeps collision behavior correct.

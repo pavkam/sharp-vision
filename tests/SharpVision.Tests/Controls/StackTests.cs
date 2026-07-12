@@ -31,7 +31,7 @@ public sealed class StackTests
         panel.Orientation.ShouldBe(Orientation.Vertical);
     }
 
-    /// <summary>Verifies vertical automatic children use intrinsic height and stretched width.</summary>
+    /// <summary>Verifies vertical automatic children use intrinsic height and width.</summary>
     [Fact]
     public void Layout_WhenVerticalChildrenAreAutomatic_ArrangesSequentialIntrinsicHeights()
     {
@@ -43,8 +43,8 @@ public sealed class StackTests
 
         new Engine().Layout(panel, new Size(10, 6));
 
-        first.Bounds.ShouldBe(new Rect(0, 0, 10, 2));
-        second.Bounds.ShouldBe(new Rect(0, 3, 10, 1));
+        first.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
+        second.Bounds.ShouldBe(new Rect(0, 3, 4, 1));
         panel.DesiredSize.ShouldBe(new Size(4, 4));
     }
 
@@ -56,6 +56,7 @@ public sealed class StackTests
         {
             Orientation = Orientation.Horizontal,
             Spacing = 2,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var fixedChild = new ProbeControl { Width = Length.Cells(3) };
         var percentChild = new ProbeControl { Width = Length.Percent(25) };
@@ -88,9 +89,9 @@ public sealed class StackTests
 
         new Engine().Layout(panel, new Size(2, 5));
 
-        first.Bounds.ShouldBe(new Rect(0, 0, 2, 1));
+        first.Bounds.ShouldBe(new Rect(0, 0, 1, 1));
         collapsed.Bounds.ShouldBe(default);
-        last.Bounds.ShouldBe(new Rect(0, 2, 2, 1));
+        last.Bounds.ShouldBe(new Rect(0, 2, 1, 1));
         panel.DesiredSize.Height.ShouldBe(3);
     }
 
@@ -106,8 +107,8 @@ public sealed class StackTests
 
         new Engine().Layout(panel, new Size(5, 6));
 
-        first.Bounds.ShouldBe(new Rect(1, 1, 3, 1));
-        second.Bounds.ShouldBe(new Rect(0, 4, 5, 1));
+        first.Bounds.ShouldBe(new Rect(1, 1, 1, 1));
+        second.Bounds.ShouldBe(new Rect(0, 4, 1, 1));
     }
 
     /// <summary>Verifies reverse order changes geometry, cells, and default focus traversal.</summary>
@@ -152,7 +153,11 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenViewportChanges_ReallocatesDeferredLengths()
     {
-        var panel = new Panel { Orientation = Orientation.Horizontal };
+        var panel = new Panel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
         var percent = new ProbeControl { Width = Length.Percent(50) };
         var star = new ProbeControl { Width = Length.Star(1) };
         panel.Children.Add(percent);

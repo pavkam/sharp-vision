@@ -74,6 +74,27 @@ public sealed class StyleTests
         resolved.Attributes.ShouldBe(Attributes.Underline);
     }
 
+    /// <summary>Verifies decoration fields overlay independently into semantic terminal style.</summary>
+    [Fact]
+    public void Resolve_WhenDecorationsAreDefined_PreservesTypedUnderlineAndColor()
+    {
+        var style = new UiStyle();
+        style.Set(
+            State.Normal,
+            new Appearance(
+                attributes: Attributes.RapidBlink,
+                underline: Underline.Curly,
+                underlineColor: Color.Rgb(1, 2, 3)));
+        style.Set(State.Focused, new Appearance(underline: Underline.Paired));
+
+        var appearance = Resolver.Resolve(style, State.Focused);
+        var terminal = Resolver.ToTerminal(appearance);
+
+        terminal.Attributes.ShouldBe(Attributes.RapidBlink);
+        terminal.Underline.ShouldBe(Underline.Paired);
+        terminal.UnderlineColor.ShouldBe(Color.Rgb(1, 2, 3));
+    }
+
     /// <summary>Verifies invalid state keys and attributes fail before resource mutation.</summary>
     [Fact]
     public void Set_WhenDefinitionIsInvalid_ThrowsBeforeChange()

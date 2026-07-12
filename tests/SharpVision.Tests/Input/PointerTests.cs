@@ -1,7 +1,9 @@
 using SharpVision.Controls;
 using SharpVision.Input;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
@@ -138,6 +140,35 @@ public sealed class PointerTests
             ]);
             manager.Hovered.ShouldBeSameAs(child);
             child.IsHovered.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a primary click focuses any eligible focusable hit target.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPrimaryPointerPressesFocusableControl_FocusesItAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl
+            {
+                Bounds = new Rect(4, 3, 8, 4),
+                CanFocus = true,
+                Style = FocusStyle(),
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var capture = new CaptureManager(root);
+
+            capture.Dispatch(CreatePointer(new Point(6, 5), PointerAction.Press))
+                .ShouldBeSameAs(child);
+
+            focus.Focused.ShouldBeSameAs(child);
+            child.IsFocused.ShouldBeTrue();
+            child.Appearance.Background.ShouldBe(Color.Indexed(11));
         }, TestContext.Current.CancellationToken);
     }
 
@@ -327,4 +358,12 @@ public sealed class PointerTests
         Modifiers.None,
         isMotion: action == PointerAction.Move,
         isCellPositionInferred: false);
+
+    private static Style FocusStyle()
+    {
+        var style = new Style();
+        style.Set(State.Normal, new Appearance(background: Color.Indexed(10)));
+        style.Set(State.Focused, new Appearance(background: Color.Indexed(11)));
+        return style;
+    }
 }

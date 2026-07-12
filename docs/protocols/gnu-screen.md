@@ -11,6 +11,16 @@ Screen may filter, reinterpret, or limit modern mouse, OSC, color, and graphics
 features. A `TERM` value associated with screen selects a conservative profile;
 outer-terminal behavior requires explicit override or verified passthrough.
 
+## Current implementation
+
+[`Screen.WritePassthrough`](../../src/SharpVision.Terminal/Protocols/Screen.cs)
+writes a typed DCS envelope around one already-validated outer-terminal
+sequence. GNU screen forwards this payload directly, so the implementation
+preserves embedded ESC bytes rather than applying tmux's doubling rule. The
+caller remains responsible for approving the tunneled sequence; reply policy,
+nested depth management, and capability integration retain the conservative
+fallback described below.
+
 ## First milestone contract
 
 Support the documented VT/ANSI subset, bounded DCS passthrough for approved

@@ -85,9 +85,9 @@ values, and non-positive fill weights through the underlying `Length` errors.
 Write tests proving a row copies its input list, rejects null and duplicate
 controls, rejects an already attached or disposed control, and exposes the
 original order through `Cells`. Use a real `Stack` or `Border` to create an
-attached control and `using` to create a disposed control. Add a test that a
-row with two controls can be added to a table with two columns and a row with
-one control throws before `Rows.Count` changes.
+attached control and `using` to create a disposed control. Add a test that a row
+with two controls can be added to a table with two columns and a row with one
+control throws before `Rows.Count` changes.
 
 - [ ] **Step 3: Add collection atomicity and reuse tests**
 
@@ -129,12 +129,12 @@ table.Rows.Add(new TableRow([
 ]));
 ```
 
-Layout at `new Size(20, 4)` and assert the three cell bounds are contained,
-the fixed column is five cells, the percentage column is five cells, and the
-fill column receives the remainder. Render a header and row into `Frame` and
-assert exact header and cell text with `FrameOracle`. Add tests for hidden
-headers, grid-line color, cell padding, zero/tiny bounds, and a second layout
-at a different width to prove percentage/fill recomputation.
+Layout at `new Size(20, 4)` and assert the three cell bounds are contained, the
+fixed column is five cells, the percentage column is five cells, and the fill
+column receives the remainder. Render a header and row into `Frame` and assert
+exact header and cell text with `FrameOracle`. Add tests for hidden headers,
+grid-line color, cell padding, zero/tiny bounds, and a second layout at a
+different width to prove percentage/fill recomputation.
 
 - [ ] **Step 5: Run the focused tests and confirm the expected failure**
 
@@ -145,8 +145,8 @@ dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
   --filter-class "*Table*Tests" --timeout 60s
 ```
 
-Expected: compilation fails because `Table`, `TableColumn`, and `TableRow`
-do not exist. Do not weaken the tests to make the missing implementation pass.
+Expected: compilation fails because `Table`, `TableColumn`, and `TableRow` do
+not exist. Do not weaken the tests to make the missing implementation pass.
 
 ## Task 2: Implement the public Table model and owner-aware collections
 
@@ -190,17 +190,17 @@ public int Count { get; }
 Copy the enumerable before assigning state. Reject null, duplicate, attached,
 dispatcher-bound, or disposed controls. Keep an internal owner marker used by
 `TableRowCollection`; removing a row clears the marker after detaching its
-cells. Document that the row transfers cell ownership while attached and can
-be reused after removal.
+cells. Document that the row transfers cell ownership while attached and can be
+reused after removal.
 
 - [ ] **Step 3: Implement TableColumnCollection**
 
 Follow `TrackCollection`'s `IList<T>`/`IReadOnlyList<T>` shape, but retain a
-`Table` owner callback. Before every add, insert, replace, remove, or clear,
-ask the owner to validate the candidate column count against every existing
-row. Reject duplicate column values by header identity and preserve the
-collection when validation fails. Call the owner once after a real mutation so
-the internal grid is rebuilt and measure is invalidated once.
+`Table` owner callback. Before every add, insert, replace, remove, or clear, ask
+the owner to validate the candidate column count against every existing row.
+Reject duplicate column values by header identity and preserve the collection
+when validation fails. Call the owner once after a real mutation so the internal
+grid is rebuilt and measure is invalidated once.
 
 - [ ] **Step 4: Implement TableRowCollection**
 
@@ -262,8 +262,8 @@ Expected: all Table unit, layout, and rendering tests pass with zero warnings.
 
 - [ ] **Step 1: Write the Table contract**
 
-Document purpose, inheritance, columns, rows, header generation, arbitrary
-cell controls, ownership transfer, collection atomicity, dispatcher affinity,
+Document purpose, inheritance, columns, rows, header generation, arbitrary cell
+controls, ownership transfer, collection atomicity, dispatcher affinity,
 disposal, and invalid argument exceptions. Explain the exact meaning and units
 of `Auto`, fixed cells, percentage, and proportional fill widths.
 
@@ -311,10 +311,11 @@ headers.
 - [ ] **Step 3: Implement immutable metadata and section composition**
 
 Implement `PropertySetting` as a `readonly record struct`. Implement
-`ExampleSection` as a sealed reference type owning copied settings and factories.
-Its content builder must create a bordered card containing a spanning title and
-rich explanation, then a two-column `Grid`: the preview card in a percentage
-column and a `Table` in a fill column. The settings table has these columns:
+`ExampleSection` as a sealed reference type owning copied settings and
+factories. Its content builder must create a bordered card containing a spanning
+title and rich explanation, then a two-column `Grid`: the preview card in a
+percentage column and a `Table` in a fill column. The settings table has these
+columns:
 
 ```csharp
 TableColumn.Fixed("Property", 18),
@@ -389,30 +390,30 @@ and move it to the technical block rather than shortening it.
 Give each page the meaningful sections below, using existing public factories
 and adding small focused factories where necessary:
 
-| Page | Sections |
-| --- | --- |
-| Border | Glyph families; edge/background styling |
-| Button | Enabled/default/cancel states; activation feedback |
-| Canvas | Fixed and percentage placement; constraints/clipping |
-| CheckBox | Two-state and three-state values; marks and disabled state |
-| Dock | Four edge assignments; fill and spacing |
-| FigletText | Font and direction; editable/catalog preview |
-| Grid | Mixed tracks; spans, spacing, and rounding |
-| List | Selection and activation; scrolling and disabled item |
-| Overlay | Z-order; clipping and hit-test layers |
-| RadioButton | Named group selection; disabled navigation |
-| RichText | Styled runs and line breaks; links and wrapping |
-| ScrollBar | Keyboard/track changes; pointer thumb and orientation |
-| ScrollView | Automatic bars; nested content and bring-into-view |
-| Shadow | Composite mode; block-glyph mode and clipping |
-| Stack | Orientation/spacing; reverse and proportional sizing |
-| Table | Fixed/percentage/fill columns; rich cells and styling; long rows |
-| Text | Wrapping/trimming; alignment and Unicode width |
-| TextInput | Editable/read-only/password; limits and multiline |
+| Page        | Sections                                                         |
+| ----------- | ---------------------------------------------------------------- |
+| Border      | Glyph families; edge/background styling                          |
+| Button      | Enabled/default/cancel states; activation feedback               |
+| Canvas      | Fixed and percentage placement; constraints/clipping             |
+| CheckBox    | Two-state and three-state values; marks and disabled state       |
+| Dock        | Four edge assignments; fill and spacing                          |
+| FigletText  | Font and direction; editable/catalog preview                     |
+| Grid        | Mixed tracks; spans, spacing, and rounding                       |
+| List        | Selection and activation; scrolling and disabled item            |
+| Overlay     | Z-order; clipping and hit-test layers                            |
+| RadioButton | Named group selection; disabled navigation                       |
+| RichText    | Styled runs and line breaks; links and wrapping                  |
+| ScrollBar   | Keyboard/track changes; pointer thumb and orientation            |
+| ScrollView  | Automatic bars; nested content and bring-into-view               |
+| Shadow      | Composite mode; block-glyph mode and clipping                    |
+| Stack       | Orientation/spacing; reverse and proportional sizing             |
+| Table       | Fixed/percentage/fill columns; rich cells and styling; long rows |
+| Text        | Wrapping/trimming; alignment and Unicode width                   |
+| TextInput   | Editable/read-only/password; limits and multiline                |
 
 For every section, record each non-default property actually set in a
-`PropertySetting` with its exact display value and a user-facing explanation.
-Do not put a page-global property list under the examples.
+`PropertySetting` with its exact display value and a user-facing explanation. Do
+not put a page-global property list under the examples.
 
 - [ ] **Step 4: Add the Table showcase examples**
 
@@ -540,7 +541,8 @@ git diff --check
 git status --short
 ```
 
-Preserve the pre-existing user changes in `src/SharpVision/Controls/ScrollBar.cs`,
+Preserve the pre-existing user changes in
+`src/SharpVision/Controls/ScrollBar.cs`,
 `src/SharpVision/Controls/ScrollView.cs`, and the four untracked scroll layout
 files. Do not stage or rewrite them as part of this task.
 
@@ -554,8 +556,8 @@ make build
 make test
 ```
 
-Require zero format, lint, Markdown, link, documentation, build warnings,
-build errors, and test failures. Record the discovered test count.
+Require zero format, lint, Markdown, link, documentation, build warnings, build
+errors, and test failures. Record the discovered test count.
 
 - [ ] **Step 3: Audit the requested end state against evidence**
 
@@ -563,7 +565,8 @@ Check the current source and test output for every requirement: all pages have
 the requested hierarchy; each meaningful example has a preview-plus-property
 table; the technical block is last; interaction text is complete; Table is a
 public component with headers, arbitrary rows/cells, fixed/percentage/fill
-sizing, styling, resize, and tests; and the Table page is navigable and rendered.
+sizing, styling, resize, and tests; and the Table page is navigable and
+rendered.
 
 - [ ] **Step 4: Commit only the verified task files**
 
@@ -579,4 +582,3 @@ git commit -m "docs: specify table and showcase sections"
 
 If the repository convention prefers one final commit, combine only these
 intentional files into that commit; never include unrelated worktree changes.
-

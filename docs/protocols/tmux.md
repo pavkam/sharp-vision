@@ -13,6 +13,19 @@ Capabilities use conservative filtering unless explicit queries survive or the
 caller overrides the outer profile. Correlated replies must return to the
 requesting pane.
 
+## Current implementation
+
+[`Tmux.WritePassthrough`](../../src/SharpVision.Terminal/Protocols/Tmux.cs)
+provides the typed output boundary for one already-validated terminal sequence.
+It writes `DCS tmux ;`, doubles every embedded ESC byte, and terminates the
+outer envelope with ST in one synchronous `IBufferWriter<byte>` advance. The
+matching `TryUnwrap` operation accepts only parser-delivered `tmux;` payloads
+with valid ESC pairs and rejects malformed input before destination mutation.
+The caller keeps approval of what may be tunneled; controls never invoke this
+raw protocol layer. Capability-policy integration and nested-depth management
+remain outside the implemented boundary, so callers retain the documented
+conservative fallback.
+
 ## First milestone contract
 
 Provide typed passthrough wrapping for approved query/clipboard sequences,

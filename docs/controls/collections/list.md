@@ -13,6 +13,12 @@ wrapper owns focus, activation, selected visual state, and exactly one template
 control; selection state propagates through that realized subtree so inherited
 `State.Checked` styling reaches the cells that actually render.
 
+When the resolved style supplies a background, the List paints its complete
+arranged surface with that normal or disabled appearance. Each realized item
+paints its complete row with the resolved item state, so a `State.Checked`
+overlay visibly highlights selected rows instead of changing only the label
+cells.
+
 ## API
 
 - `Items` rejects null collection replacement and copies the complete
@@ -34,7 +40,10 @@ control; selection state propagates through that realized subtree so inherited
   selections. `SelectedItem` and the stable owner-backed `SelectedItems` view
   always reflect committed ascending index order.
 - `ActiveIndex` is independent navigation state and `VerticalOffset` exposes the
-  composed viewport offset.
+  composed viewport offset. `ScrollBars`, `ShowScrollBars`, `ScrollBarChrome`,
+  and `ScrollBarFill` forward the common overflow policy to the owned viewport,
+  so a List uses the same canonical rail behavior as `ScrollView` rather than a
+  private scrolling dialect.
 - `SelectionChanging` receives owned sorted added/removed index memories and may
   cancel before commit. `SelectionChanged` reports the same committed delta
   after all selected views and visual states update. Reentrant changes advance a

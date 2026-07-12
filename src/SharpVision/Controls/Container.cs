@@ -31,6 +31,11 @@ public abstract class Container: Control
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
     {
+        if (HitTestPopup(point) is { } popup)
+        {
+            return popup;
+        }
+
         var hit = base.HitTest(point);
 
         if (hit is null)
@@ -61,6 +66,20 @@ public abstract class Container: Control
     }
 
     /// <inheritdoc/>
+    internal override Control? HitTestPopup(Point point)
+    {
+        for (var index = Children.Count - 1; index >= 0; index--)
+        {
+            if (Children[index].HitTestPopup(point) is { } popup)
+            {
+                return popup;
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
     internal override void DisposeChildren()
     {
         while (Children.Count > 0)
@@ -75,6 +94,23 @@ public abstract class Container: Control
         foreach (var child in Children)
         {
             child.Render(canvas);
+        }
+
+        if (Parent is null)
+        {
+            RenderOwnedPopupLayer(canvas);
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderPopupLayer(TerminalCanvas canvas)
+        => RenderOwnedPopupLayer(canvas);
+
+    private void RenderOwnedPopupLayer(TerminalCanvas canvas)
+    {
+        foreach (var child in Children)
+        {
+            child.RenderPopupLayer(canvas);
         }
     }
 }

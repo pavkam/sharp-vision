@@ -6,6 +6,9 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
+using ControlText = SharpVision.Controls.Text;
+using Wrapping = SharpVision.Text.Wrapping;
+
 namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies Grid track resolution, spacing, spans, resize, and semantic cells.</summary>
@@ -139,6 +142,21 @@ public sealed class GridTests
 
         child.MeasureConstraints.ShouldContain(new Constraint(12, 1));
         child.Bounds.Width.ShouldBe(12);
+    }
+
+    /// <summary>Verifies automatic rows remeasure wrapped content with finite width and unbounded height.</summary>
+    [Fact]
+    public void Layout_WhenStarColumnNarrowsWrappedText_GrowsAutoRowForEveryLine()
+    {
+        var grid = new Grid();
+        grid.Columns.Add(Track.Star(1));
+        var text = new ControlText("One two three four five six") { Wrapping = Wrapping.Word };
+        grid.Children.Add(text);
+
+        new Engine().Layout(grid, new Size(10, 10));
+
+        text.Bounds.Height.ShouldBeGreaterThan(1);
+        grid.DesiredSize.Height.ShouldBeGreaterThan(1);
     }
 
     /// <summary>Verifies resize recomputes percentage edges and star remainder.</summary>

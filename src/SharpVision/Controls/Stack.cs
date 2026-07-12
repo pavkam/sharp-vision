@@ -16,6 +16,9 @@ namespace SharpVision.Controls;
     Justification = "Stack is the approved concise terminal control name, not a collection type.")]
 public sealed class Stack: Container
 {
+    /// <summary>Initializes a stack that fills its parent cross-axis slot.</summary>
+    public Stack() => HorizontalAlignment = HorizontalAlignment.Stretch;
+
     /// <summary>Gets or sets the sequential layout axis.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -170,6 +173,11 @@ public sealed class Stack: Container
         for (var index = Children.Count - 1; index >= 0; index--)
         {
             Children[index].Render(canvas);
+        }
+
+        if (Parent is null)
+        {
+            RenderPopupLayer(canvas);
         }
     }
 

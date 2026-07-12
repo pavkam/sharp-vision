@@ -4,6 +4,7 @@ using SharpVision.Controls;
 using SharpVision.Fonts;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Text;
 
@@ -49,16 +50,18 @@ internal static class Examples
             Text = "SharpVision",
             Style = Palette.Editor(),
         };
-        var fontLabel = new ControlText("Font: Standard ▼");
-        var fontButton = new Button { Content = fontLabel };
         var fontNames = catalog.Names.ToArray();
-        var fontList = new ControlList
+        var picker = new ComboBox
         {
             Width = Length.Cells(30),
-            Height = Length.Cells(8),
             Items = fontNames,
             SelectedIndex = Array.IndexOf(fontNames, "Standard"),
-            Visibility = Visibility.Collapsed,
+            DropDownHeight = 8,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
+            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarFill = ScrollBarFill.Line,
+            Style = Palette.Interactive(),
         };
         var preview = new FigletText(catalog.Load("Standard"))
         {
@@ -70,27 +73,20 @@ internal static class Examples
             Foreground = Palette.Muted,
         };
         text.TextChanged += (_, eventArgs) => preview.Content = eventArgs.Text;
-        fontButton.Click += (_, _) =>
-            fontList.Visibility = fontList.Visibility == Visibility.Visible
-                ? Visibility.Collapsed
-                : Visibility.Visible;
-        fontList.ItemInvoked += (_, eventArgs) =>
+        picker.SelectionChanged += (_, _) =>
         {
-            if (eventArgs.Item is not string name)
+            if (picker.SelectedIndex < 0 || picker.Items[picker.SelectedIndex] is not string name)
             {
                 return;
             }
 
             // Load only the selected audited font; the archive is never expanded wholesale.
             preview.Font = catalog.Load(name);
-            fontLabel.Content = $"Font: {name} ▼";
             status.Content = $"Previewing {name}. Choose another font to compare it.";
-            fontList.Visibility = Visibility.Collapsed;
         };
         var examples = Vertical();
         examples.Children.Add(text);
-        examples.Children.Add(fontButton);
-        examples.Children.Add(fontList);
+        examples.Children.Add(picker);
         examples.Children.Add(status);
         examples.Children.Add(preview);
         return examples;
@@ -99,21 +95,95 @@ internal static class Examples
     /// <summary>Creates styled, linked, wrapped Unicode inline content.</summary>
     internal static Control RichText()
     {
-        var richText = new RichText
+        var examples = Vertical();
+        var introductory = new RichText
         {
             Wrapping = Wrapping.Word,
             TextAlignment = Alignment.Start,
         };
-        richText.Inlines.Add(new ControlRun("Rich ")
+        introductory.Inlines.Add(new ControlRun("Rich ")
         {
             Attributes = Attributes.Bold,
             Foreground = Palette.Success,
         });
-        richText.Inlines.Add(new ControlRun("terminal text") { Attributes = Attributes.Italic });
-        richText.Inlines.Add(new LineBreak());
-        richText.Inlines.Add(new ControlRun("Unicode: café · 你好 · 👩‍💻 · "));
-        richText.Inlines.Add(new Hyperlink("project source", "https://github.com/pavkam"));
-        return Card(richText, Glyphs.Rounded);
+        introductory.Inlines.Add(new ControlRun("terminal text") { Attributes = Attributes.Italic });
+        introductory.Inlines.Add(new LineBreak());
+        introductory.Inlines.Add(new ControlRun("Unicode: café · 你好 · 👩‍💻 · "));
+        introductory.Inlines.Add(new Hyperlink("project source", "https://github.com/pavkam")
+        {
+            Attributes = Attributes.Underline,
+            Foreground = Palette.Accent,
+        });
+        examples.Children.Add(SampleSection(
+            "Styled document and OSC 8 link",
+            "Runs carry independent foreground, attributes, and hyperlink metadata. The link is explicitly underlined as well as semantic; compatible terminals expose it on hover or open it with their configured gesture.",
+            Card(introductory, Glyphs.Rounded)));
+
+        var attributes = new RichText { Wrapping = Wrapping.Word };
+        AddAttributeLine(attributes, "Bold", "increased intensity", Attributes.Bold, Palette.Text);
+        AddAttributeLine(attributes, "Dim", "reduced intensity", Attributes.Dim, Palette.Muted);
+        AddAttributeLine(attributes, "Italic", "slanted presentation", Attributes.Italic, Palette.Accent);
+        AddAttributeLine(attributes, "Underline", "single underline", Attributes.Underline, Palette.Success);
+        AddAttributeLine(attributes, "Blink", "blink requested; terminal policy may suppress it", Attributes.Blink, Palette.Warning);
+        AddAttributeLine(attributes, "Reverse", "foreground and background exchanged", Attributes.Reverse, Palette.Accent);
+        AddAttributeLine(attributes, "Strike", "strikethrough presentation", Attributes.Strike, Palette.Warning);
+        AddAttributeLine(attributes, "Hidden", "concealed run follows", Attributes.Hidden, Palette.Muted);
+        attributes.Inlines.Add(new ControlRun(" (the concealed sample is intentional)") { Foreground = Palette.Muted });
+        AddAttributeLine(
+            attributes,
+            "Combined",
+            "bold + underline + italic",
+            Attributes.Bold | Attributes.Underline | Attributes.Italic,
+            Palette.Success);
+        examples.Children.Add(SampleSection(
+            "Terminal text attributes",
+            "Every row below is a real RichText run. Bold, dim, italic, underline, blink, reverse, concealed, and strike are terminal cell attributes; blink and concealed output remain subject to terminal settings.",
+            Card(attributes, Glyphs.Light)));
+
+        var wrapped = new RichText { Width = Length.Cells(30), Wrapping = Wrapping.Word };
+        wrapped.Inlines.Add(new ControlRun("Resize this narrow reading column. RichText wraps between words while keeping Unicode graphemes intact. "));
+        wrapped.Inlines.Add(new Hyperlink("Read the protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
+
+        var activity = new ControlText("Activity log: waiting for an inline mutation.")
+        {
+            Foreground = Palette.Muted,
+        };
+        var append = new Button
+        {
+            Content = new ControlText("Append a Run"),
+            Style = Palette.Interactive(),
+        };
+        var mutation = 0;
+        var mutationStyles = new[]
+        {
+            (Name: "underline", Value: Attributes.Underline, Color: Palette.Success),
+            (Name: "strikethrough", Value: Attributes.Strike, Color: Palette.Warning),
+            (Name: "reverse", Value: Attributes.Reverse, Color: Palette.Accent),
+            (Name: "bold + italic", Value: Attributes.Bold | Attributes.Italic, Color: Palette.Text),
+        };
+        append.Click += (_, eventArgs) =>
+        {
+            var selectedStyle = mutationStyles[mutation % mutationStyles.Length];
+            mutation++;
+            wrapped.Inlines.Add(new LineBreak());
+            wrapped.Inlines.Add(new ControlRun(
+                $"Mutation {mutation}: {selectedStyle.Name} Run appended through the {eventArgs.Cause} path.")
+            {
+                Attributes = selectedStyle.Value,
+                Foreground = selectedStyle.Color,
+            });
+            activity.Content = $"Activity log: {eventArgs.Cause} appended {selectedStyle.Name} Run {mutation}.";
+        };
+
+        var readingExample = Vertical();
+        readingExample.Children.Add(wrapped);
+        readingExample.Children.Add(ButtonSpecimen(append));
+        readingExample.Children.Add(activity);
+        examples.Children.Add(SampleSection(
+            "Responsive reading column",
+            "A constrained document is useful for help panes, release notes, and inline documentation. Activate the button to append a differently styled run and watch the log.",
+            Card(readingExample, Glyphs.Light)));
+        return examples;
     }
 
     /// <summary>Creates composite and block-glyph Turbo Vision shadows.</summary>
@@ -153,20 +223,33 @@ internal static class Examples
     internal static Control Text()
     {
         var examples = Vertical();
-        examples.Children.Add(new ControlText("Plain Unicode: café · 你好 · 👩‍💻"));
-        examples.Children.Add(new ControlText("Word wrapping keeps complete grapheme clusters together.")
-        {
-            Width = Length.Cells(24),
-            Wrapping = Wrapping.Word,
-        });
-        examples.Children.Add(new ControlText("Centered and trimmed terminal text")
-        {
-            Width = Length.Cells(20),
-            TextAlignment = Alignment.Center,
-            Trimming = Trimming.GraphemeEllipsis,
-            Foreground = Palette.Warning,
-            Attributes = Attributes.Bold,
-        });
+        examples.Children.Add(SampleSection(
+            "Unicode-safe wrapping",
+            "Word wrapping leaves complete grapheme clusters together, including combining marks and wide emoji.",
+            new ControlText("Plain Unicode: café · 你好 · 👩‍💻\nA narrow reading column wraps words without splitting clusters.")
+            {
+                Width = Length.Cells(28),
+                Wrapping = Wrapping.Word,
+            }));
+        examples.Children.Add(SampleSection(
+            "Centered label",
+            "Centering is for compact labels and status messages; it is deliberately shown without trimming.",
+            new ControlText("Centered status")
+            {
+                Width = Length.Cells(28),
+                TextAlignment = Alignment.Center,
+                Foreground = Palette.Warning,
+                Attributes = Attributes.Bold,
+            }));
+        examples.Children.Add(SampleSection(
+            "Single-line truncation",
+            "Ellipsis is for one-line labels where the remaining space matters more than wrapping.",
+            new ControlText("This deliberately long one-line label trims safely")
+            {
+                Width = Length.Cells(28),
+                Trimming = Trimming.GraphemeEllipsis,
+                Foreground = Palette.Accent,
+            }));
         return examples;
     }
 
@@ -186,26 +269,52 @@ internal static class Examples
         };
         active.Click += (_, eventArgs) =>
             status.Content = $"Activation log: {eventArgs.Cause}";
-        examples.Children.Add(ButtonSpecimen(active));
-        examples.Children.Add(ButtonSpecimen(new Button
-        {
-            Content = new ControlText("Disabled"),
-            IsEnabled = false,
-            Style = Palette.Interactive(),
-        }));
-        examples.Children.Add(ButtonSpecimen(new Button
+        var primary = Vertical();
+        primary.Children.Add(ButtonSpecimen(active));
+        primary.Children.Add(status);
+        examples.Children.Add(SampleSection(
+            "Primary action",
+            "A raised, bordered action surface responds to hover, focus, press, Enter, Space, and a primary pointer click.",
+            primary));
+
+        var roles = Horizontal();
+        roles.Children.Add(ButtonSpecimen(new Button
         {
             Content = new ControlText("Default action"),
             IsDefault = true,
             Style = Palette.Interactive(),
         }));
-        examples.Children.Add(ButtonSpecimen(new Button
+        roles.Children.Add(ButtonSpecimen(new Button
         {
             Content = new ControlText("Cancel action"),
             IsCancel = true,
             Style = Palette.Interactive(),
         }));
-        examples.Children.Add(status);
+        examples.Children.Add(SampleSection(
+            "Dialog command roles",
+            "Default and cancel roles let an owning dialog map Enter and Escape to conventional actions.",
+            roles));
+
+        examples.Children.Add(SampleSection(
+            "Turbo Vision block shadow",
+            "Composite is a quiet surface lift. Block glyph mode deliberately draws a visible shade footprint when the control needs old-school terminal depth.",
+            ButtonSpecimen(new Button
+            {
+                Content = new ControlText("Block glyph shadow"),
+                ShadowMode = ShadowMode.BlockGlyph,
+                ShadowGlyph = new Rune('░'),
+                Style = Palette.Interactive(),
+            })));
+
+        examples.Children.Add(SampleSection(
+            "Disabled action",
+            "Unavailable actions remain readable but do not accept focus, pointer capture, or activation.",
+            ButtonSpecimen(new Button
+            {
+                Content = new ControlText("Disabled"),
+                IsEnabled = false,
+                Style = Palette.Interactive(),
+            })));
         return examples;
     }
 
@@ -213,48 +322,163 @@ internal static class Examples
     internal static Control CheckBox()
     {
         var examples = Vertical();
-        examples.Children.Add(new CheckBox { Content = new ControlText("Unchecked") });
-        examples.Children.Add(new CheckBox
+        var brackets = Vertical();
+        brackets.Children.Add(new CheckBox
         {
-            Content = new ControlText("Checked"),
-            IsChecked = true,
+            Content = new ControlText("Unchecked brackets"),
+            MarkStyle = CheckBoxStyle.Brackets,
+            Style = Palette.Interactive(),
         });
-        examples.Children.Add(new CheckBox
+        brackets.Children.Add(new CheckBox
         {
-            Content = new ControlText("Indeterminate"),
+            Content = new ControlText("Checked brackets"),
+            IsChecked = true,
+            MarkStyle = CheckBoxStyle.Brackets,
+            Style = Palette.Interactive(),
+        });
+        brackets.Children.Add(new CheckBox
+        {
+            Content = new ControlText("Indeterminate brackets"),
             IsThreeState = true,
             IsChecked = null,
+            MarkStyle = CheckBoxStyle.Brackets,
+            Style = Palette.Interactive(),
         });
-        examples.Children.Add(new CheckBox
-        {
-            Content = new ControlText("Disabled checked"),
-            IsChecked = true,
-            IsEnabled = false,
-        });
+        examples.Children.Add(SampleSection(
+            "Bracket marks",
+            "Classic [ ] / [x] marks reserve three cells, so toggling and indeterminate state never shift the label.",
+            Card(brackets, Glyphs.Rounded)));
+        examples.Children.Add(SampleSection(
+            "Disabled bracket state",
+            "The familiar [x] mark stays structurally recognizable while the disabled palette deliberately recedes from interactive choices.",
+            Card(new CheckBox
+            {
+                Content = new ControlText("Disabled bracket"),
+                IsChecked = true,
+                IsEnabled = false,
+                MarkStyle = CheckBoxStyle.Brackets,
+                Style = Palette.Interactive(),
+            }, Glyphs.Light)));
         return examples;
     }
 
-    /// <summary>Creates a scrollable selectable item list with one disabled comparison.</summary>
+    /// <summary>Creates a real popup-style combo box with pointer and keyboard selection feedback.</summary>
+    internal static Control ComboBox()
+    {
+        var status = new ControlText("Selected: Comfortable") { Foreground = Palette.Muted };
+        var comboBox = new ComboBox
+        {
+            Width = Length.Cells(28),
+            Items = ["Compact", "Comfortable", "Spacious"],
+            SelectedIndex = 1,
+            DropDownHeight = 4,
+            Style = Palette.Interactive(),
+        };
+        comboBox.SelectionChanged += (_, _) =>
+        {
+            status.Content = comboBox.SelectedIndex >= 0
+                ? $"Selected: {comboBox.Items[comboBox.SelectedIndex]}."
+                : "No selection.";
+        };
+        var stage = new ControlCanvas
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(6),
+            ClipToBounds = false,
+        };
+        stage.Children.Add(comboBox);
+        var examples = Vertical();
+        examples.Children.Add(SampleSection(
+            "Popup choice field",
+            "Click or press Enter/Space to open. The popup list owns arrow navigation; Enter chooses and closes it, while Escape dismisses it.",
+            stage));
+        examples.Children.Add(status);
+        return examples;
+    }
+
+    /// <summary>Creates a scrollable selectable list beside an explicitly explained disabled list.</summary>
     internal static Control List()
     {
-        var examples = Horizontal();
-        examples.Children.Add(new ControlList
+        var status = new ControlText("Selected item: Beta. Use Up or Down to move the selection.")
+        {
+            Foreground = Palette.Muted,
+        };
+        var active = new ControlList
         {
             Width = Length.Cells(18),
             Height = Length.Cells(6),
+            Style = Palette.List(),
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarFill = ScrollBarFill.Line,
             Items = new object?[]
             {
                 "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta",
             },
             SelectedIndex = 1,
-        });
-        examples.Children.Add(new ControlList
+        };
+        active.SelectionChanged += (_, _) =>
+        {
+            status.Content = active.SelectedIndex >= 0
+                ? $"Selected item: {active.Items[active.SelectedIndex]}. Use Up or Down to move the selection."
+                : "No item selected.";
+        };
+        active.ItemInvoked += (_, eventArgs) =>
+            status.Content = $"Activated {eventArgs.Item} via {eventArgs.Cause}.";
+
+        var disabled = new ControlList
         {
             Width = Length.Cells(18),
             Height = Length.Cells(4),
             IsEnabled = false,
-            Items = new object?[] { "Disabled", "Still visible", "Not selectable" },
-        });
+            Style = Palette.List(),
+            Items = new object?[] { "Alpha", "Beta", "Gamma" },
+        };
+
+        var examples = Vertical();
+        examples.Children.Add(SampleSection(
+            "Selectable list",
+            "The focused list accepts Up, Down, paging, Enter, and pointer clicks. The status line reports the current selection or activation.",
+            active));
+        examples.Children.Add(SampleSection(
+            "Disabled list",
+            "These rows stay visible so the data context is clear, but IsEnabled is false: the list cannot receive focus, change selection, or invoke an item.",
+            disabled));
+        examples.Children.Add(status);
+        return examples;
+    }
+
+    /// <summary>Creates a keyboard and pointer navigable vertical command menu with check and radio choices.</summary>
+    internal static Control Menu()
+    {
+        var examples = Vertical();
+        var status = new ControlText("Choose an action.") { Foreground = Palette.Muted };
+        var menu = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0,
+            Style = Palette.Interactive(),
+        };
+        menu.Items.Add(new MenuItem { Header = "New project" });
+        menu.Items.Add(new MenuItem { Header = "Open recent" });
+        menu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });
+        menu.Items.Add(new MenuItem { Header = "Auto save", Kind = MenuItemKind.Check, IsChecked = true });
+        menu.Items.Add(new MenuItem { Header = "Compact mode", Kind = MenuItemKind.Radio, GroupName = "density", IsChecked = true });
+        menu.Items.Add(new MenuItem { Header = "Comfortable mode", Kind = MenuItemKind.Radio, GroupName = "density" });
+        menu.ItemInvoked += (_, eventArgs) => status.Content = $"Invoked {eventArgs.Item.Header}.";
+        examples.Children.Add(SampleSection(
+            "Command menu",
+            "Use arrow keys to skip the separator, Enter or Space to invoke, or click an item. Check and radio states commit before the invocation message.",
+            new Border
+            {
+                BorderThickness = new Thickness(1),
+                Glyphs = Glyphs.Rounded,
+                BorderColor = Palette.Border,
+                Background = Palette.Surface,
+                Child = menu,
+            }));
+        examples.Children.Add(status);
         return examples;
     }
 
@@ -262,23 +486,43 @@ internal static class Examples
     internal static Control RadioButton()
     {
         var examples = Vertical();
-        examples.Children.Add(new RadioButton
+        var group = Vertical();
+        group.Children.Add(new RadioButton
         {
             Content = new ControlText("Fast"),
             GroupName = "quality",
             IsChecked = true,
+            Style = Palette.Interactive(),
         });
-        examples.Children.Add(new RadioButton
+        group.Children.Add(new RadioButton
         {
             Content = new ControlText("Balanced"),
             GroupName = "quality",
+            Style = Palette.Interactive(),
         });
-        examples.Children.Add(new RadioButton
+        group.Children.Add(new RadioButton
         {
             Content = new ControlText("Unavailable"),
             GroupName = "quality",
             IsEnabled = false,
+            Style = Palette.Interactive(),
         });
+        examples.Children.Add(SampleSection(
+            "Named quality group",
+            "Pick one mode. Arrow keys move selection between available members; the disabled member remains visibly unavailable.",
+            Card(group, Glyphs.Rounded)));
+
+        var independent = new RadioButton
+        {
+            Content = new ControlText("Independent selection group"),
+            GroupName = "delivery",
+            IsChecked = true,
+            Style = Palette.Interactive(),
+        };
+        examples.Children.Add(SampleSection(
+            "Separate group",
+            "A different GroupName scopes selection independently, so this choice does not disturb the quality group.",
+            Card(independent, Glyphs.Light)));
         return examples;
     }
 
@@ -304,13 +548,15 @@ internal static class Examples
         };
         horizontal.ValueChanged += (_, eventArgs) =>
             status.Content = $"Thumb value: {eventArgs.Value}";
-        examples.Children.Add(new ControlText("Drag the solid thumb, or use the track and arrow buttons.")
-        {
-            Foreground = Palette.Accent,
-        });
-        examples.Children.Add(horizontal);
-        examples.Children.Add(status);
-        examples.Children.Add(new ScrollBar
+        var full = Vertical();
+        full.Children.Add(horizontal);
+        full.Children.Add(status);
+        examples.Children.Add(SampleSection(
+            "Full horizontal rail",
+            "Drag the solid thumb, click the shaded track for page movement, or use the arrow buttons for line movement.",
+            Card(full, Glyphs.Rounded)));
+
+        var vertical = new ScrollBar
         {
             Height = Length.Cells(8),
             Maximum = 40,
@@ -320,7 +566,25 @@ internal static class Examples
             IncrementGlyph = new Rune('▼'),
             TrackGlyph = new Rune('│'),
             ThumbGlyph = new Rune('█'),
-        });
+        };
+        examples.Children.Add(SampleSection(
+            "Vertical rail",
+            "The same canonical ScrollBar changes orientation while retaining keyboard, wheel, track, and live drag behavior.",
+            Card(vertical, Glyphs.Light)));
+
+        examples.Children.Add(SampleSection(
+            "Thin line chrome",
+            "Thin rails omit buttons to conserve cells; a heavy line thumb remains distinct from the passive track.",
+            Card(new ScrollBar
+            {
+                Width = Length.Cells(28),
+                Orientation = Orientation.Horizontal,
+                Chrome = ScrollBarStyle.Thin,
+                Fill = ScrollBarFill.Line,
+                Maximum = 100,
+                Value = 62,
+                ViewportSize = 30,
+            }, Glyphs.Paired)));
         return examples;
     }
 
@@ -361,7 +625,11 @@ internal static class Examples
             Height = Length.Cells(3),
             AcceptsReturn = true,
             AcceptsTab = true,
-            Text = "Multiline\ninput",
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarFill = ScrollBarFill.Line,
+            Text = "Multiline editor\nWheel here to scroll\nwithout losing focus\nAt the edge, the page scrolls",
             Style = Palette.Editor(),
         });
         return examples;
@@ -524,6 +792,155 @@ internal static class Examples
         return overlay;
     }
 
+    /// <summary>Creates an anchored popup menu with pointer and keyboard selection feedback.</summary>
+    internal static Control Popup()
+    {
+        var status = new ControlText("Choose an item with the mouse, arrows, or Enter.")
+        {
+            Foreground = Palette.Muted,
+        };
+        var trigger = new Button
+        {
+            Content = new ControlText("Actions ▼"),
+            Style = Palette.Interactive(),
+        };
+        var choices = new ControlList
+        {
+            Width = Length.Cells(24),
+            Height = Length.Cells(5),
+            Items = ["Duplicate", "Rename", "Archive", "Delete"],
+            SelectedIndex = 0,
+            Style = Palette.Interactive(),
+        };
+        var popup = new Popup
+        {
+            Anchor = trigger,
+            Placement = PopupPlacement.Below,
+            Glyphs = Glyphs.Rounded,
+            BorderColor = Palette.Accent,
+            Background = Palette.Surface,
+            Child = choices,
+        };
+        trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
+        choices.ItemInvoked += (_, eventArgs) =>
+        {
+            status.Content = eventArgs.Item is string choice
+                ? $"Selected {choice}."
+                : "No action selected.";
+            popup.IsOpen = false;
+        };
+        var content = Vertical();
+        content.Children.Add(SampleSection(
+            "Anchored action menu",
+            "Open the compact menu, then select with the mouse or keyboard. Escape closes it without selecting anything.",
+            ButtonSpecimen(trigger)));
+        content.Children.Add(status);
+        var overlay = new ControlOverlay { ClipToBounds = false };
+        overlay.Children.Add(content);
+        ControlOverlay.SetZIndex(popup, 10);
+        overlay.Children.Add(popup);
+        return overlay;
+    }
+
+    /// <summary>Creates a framed application window with an owned settings form and block shadow.</summary>
+    internal static Control Window()
+    {
+        var chromeOptions = Horizontal();
+        chromeOptions.Children.Add(WindowVariant("Left", Glyphs.Rounded, WindowTitlePlacement.Left));
+        chromeOptions.Children.Add(WindowVariant("Center", Glyphs.Paired, WindowTitlePlacement.Center));
+        chromeOptions.Children.Add(WindowVariant("Right", Glyphs.Ascii, WindowTitlePlacement.Right));
+
+        var form = Vertical();
+        form.Children.Add(new ControlText("Choose how this project opens.")
+        {
+            Foreground = Palette.Text,
+        });
+        form.Children.Add(new CheckBox
+        {
+            Content = new ControlText("Restore last session"),
+            IsChecked = true,
+            MarkStyle = CheckBoxStyle.Tick,
+            Style = Palette.Interactive(),
+        });
+        form.Children.Add(new CheckBox
+        {
+            Content = new ControlText("Start in safe mode"),
+            MarkStyle = CheckBoxStyle.Brackets,
+            Style = Palette.Interactive(),
+        });
+        var actions = Horizontal();
+        actions.HorizontalAlignment = HorizontalAlignment.Center;
+        actions.Children.Add(ButtonSpecimen(new Button
+        {
+            Content = new ControlText("Apply"),
+            IsDefault = true,
+            Style = Palette.Interactive(),
+        }));
+        actions.Children.Add(ButtonSpecimen(new Button
+        {
+            Content = new ControlText("Cancel"),
+            IsCancel = true,
+            Style = Palette.Interactive(),
+        }));
+        form.Children.Add(actions);
+        var window = new Window
+        {
+            Width = Length.Cells(42),
+            Height = Length.Auto,
+            Title = "Project settings",
+            BorderColor = Palette.Accent,
+            Background = Palette.Surface,
+            HasShadow = true,
+            ShadowMode = ShadowMode.BlockGlyph,
+            ShadowOffset = new Point(2, 1),
+            Child = form,
+        };
+        var stage = new ControlCanvas
+        {
+            Width = Length.Cells(48),
+            Height = Length.Cells(13),
+            ClipToBounds = true,
+        };
+        ControlCanvas.SetLeft(window, Length.Cells(1));
+        ControlCanvas.SetTop(window, Length.Cells(1));
+        stage.Children.Add(window);
+        var examples = Vertical();
+        examples.Children.Add(SampleSection(
+            "Border and title options",
+            "Each Window uses the same child contract with a different Glyphs family and title placement: rounded left, paired center, and portable ASCII right.",
+            chromeOptions));
+        examples.Children.Add(SampleSection(
+            "Titled application surface",
+            "A Window owns its interior while title chrome, frame, and shadow render as one terminal-safe surface. Try Enter for Apply or Escape for Cancel.",
+            new Border
+            {
+                BorderThickness = new Thickness(1),
+                Glyphs = Glyphs.Light,
+                BorderColor = Palette.Border,
+                Background = Palette.Panel,
+                Child = stage,
+            }));
+        return examples;
+    }
+
+    private static Window WindowVariant(string title, Glyphs glyphs, WindowTitlePlacement placement) => new()
+    {
+        Width = Length.Cells(14),
+        Height = Length.Cells(5),
+        Title = title,
+        TitlePlacement = placement,
+        Glyphs = glyphs,
+        BorderColor = Palette.Accent,
+        Background = Palette.Surface,
+        ShadowOffset = new Point(1, 1),
+        Child = new ControlText("Preview")
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = Palette.Text,
+        },
+    };
+
     /// <summary>Creates content large enough to require both automatic scrollbars.</summary>
     internal static Control ScrollView()
     {
@@ -560,13 +977,82 @@ internal static class Examples
         starCard.Width = Length.Star(1);
         horizontal.Children.Add(starCard);
         horizontal.Width = Length.Cells(40);
-        examples.Children.Add(horizontal);
+        examples.Children.Add(SampleSection(
+            "Mixed horizontal tracks",
+            "Fixed cells, percentage sizing, and proportional remainder can coexist in one horizontal Stack.",
+            horizontal));
         var reversed = Horizontal();
         reversed.Reverse = true;
-        reversed.Children.Add(new ControlText("First"));
-        reversed.Children.Add(new ControlText("Second"));
-        reversed.Children.Add(new ControlText("Third"));
-        examples.Children.Add(reversed);
+        reversed.Children.Add(Card(new ControlText("First"), Glyphs.Light));
+        reversed.Children.Add(Card(new ControlText("Second"), Glyphs.Heavy));
+        reversed.Children.Add(Card(new ControlText("Third"), Glyphs.Paired));
+        examples.Children.Add(SampleSection(
+            "Reverse order",
+            "Reverse changes visual and keyboard-navigation order without changing the source child collection.",
+            reversed));
+
+        var vertical = Vertical();
+        vertical.Children.Add(Card(new ControlText("Top"), Glyphs.Rounded));
+        vertical.Children.Add(Card(new ControlText("Spacing = 1"), Glyphs.Light));
+        vertical.Children.Add(Card(new ControlText("Bottom"), Glyphs.Heavy));
+        examples.Children.Add(SampleSection(
+            "Vertical spacing",
+            "Vertical is the default orientation; explicit spacing is applied only between participating children.",
+            vertical));
+        return examples;
+    }
+
+    /// <summary>Creates styled fixed, percentage, fill, headerless, and rich-cell table specimens.</summary>
+    internal static Control Table()
+    {
+        var primary = new Table
+        {
+            Width = Length.Cells(58),
+            HeaderForeground = Palette.Text,
+            HeaderBackground = Palette.Highlight,
+            GridLineColor = Palette.Border,
+            CellPadding = new Thickness(1, 0),
+            RowSpacing = 1,
+        };
+        primary.Columns.Add(TableColumn.Fixed("Name", 12));
+        primary.Columns.Add(TableColumn.Percent("Status", 25));
+        primary.Columns.Add(TableColumn.Fill("Details"));
+        primary.Rows.Add(new TableRow([
+            new ControlText("Terminal core"),
+            new ControlText("Stable") { Foreground = Palette.Success },
+            new ControlText("ANSI, OSC, CSI, and input decoding."),
+        ]));
+        var linked = new RichText { Wrapping = Wrapping.Word };
+        linked.Inlines.Add(new ControlRun("Open "));
+        linked.Inlines.Add(new Hyperlink("protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
+        primary.Rows.Add(new TableRow([
+            new ControlText("UI toolkit"),
+            new ControlText("Preview") { Foreground = Palette.Warning },
+            linked,
+        ]));
+
+        var compact = new Table
+        {
+            Width = Length.Cells(42),
+            ShowHeader = false,
+            ShowGridLines = false,
+            CellPadding = new Thickness(1, 0),
+            ColumnSpacing = 2,
+        };
+        compact.Columns.Add(TableColumn.Auto("Key"));
+        compact.Columns.Add(TableColumn.Fill("Meaning"));
+        compact.Rows.Add(new TableRow([new ControlText("Enter"), new ControlText("Apply the default action")]));
+        compact.Rows.Add(new TableRow([new ControlText("Escape"), new ControlText("Dismiss a popup or cancel a window")]));
+
+        var examples = Vertical();
+        examples.Children.Add(SampleSection(
+            "Mixed column sizing",
+            "Fixed identity, percentage status, and fill details stay contained while the rich detail cell wraps and preserves its OSC 8 link.",
+            primary));
+        examples.Children.Add(SampleSection(
+            "Headerless key/value table",
+            "A compact table can omit headers and grid lines when spacing and cell padding carry the structure.",
+            compact));
         return examples;
     }
 
@@ -582,6 +1068,30 @@ internal static class Examples
         Spacing = 2,
     };
 
+    private static void AddAttributeLine(
+        RichText document,
+        string label,
+        string sample,
+        Attributes attributes,
+        Color foreground)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sample);
+
+        if (document.Inlines.Count > 0)
+        {
+            document.Inlines.Add(new LineBreak());
+        }
+
+        document.Inlines.Add(new ControlRun($"{label}: ") { Foreground = Palette.Muted });
+        document.Inlines.Add(new ControlRun(sample)
+        {
+            Attributes = attributes,
+            Foreground = foreground,
+        });
+    }
+
     private static Border Card(Control child, Glyphs glyphs) => new()
     {
         Child = child,
@@ -590,26 +1100,12 @@ internal static class Examples
         Padding = new Thickness(1, 0),
     };
 
-    private static Shadow ButtonSpecimen(Button button)
+    private static Button ButtonSpecimen(Button button)
     {
         ArgumentNullException.ThrowIfNull(button);
-        button.Padding = new Thickness(1, 0);
-        var border = new Border
-        {
-            BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            BorderColor = Palette.Border,
-            Background = Palette.Surface,
-            Child = button,
-        };
-        return new Shadow
-        {
-            Child = border,
-            Mode = ShadowMode.Composite,
-            Offset = new Point(1, 1),
-            Background = Palette.Canvas,
-            Margin = new Thickness(0, 0, 1, 1),
-        };
+        button.HorizontalAlignment = HorizontalAlignment.Left;
+        button.Margin = new Thickness(0, 0, 1, 1);
+        return button;
     }
 
     private static Border DemoCard(string content, Glyphs glyphs)
@@ -657,6 +1153,25 @@ internal static class Examples
             Background = Palette.Panel,
             Child = sample,
         });
+        return section;
+    }
+
+    private static ControlStack SampleSection(string heading, string description, Control sample)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(heading);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentNullException.ThrowIfNull(sample);
+        var section = Vertical();
+        var text = new RichText { Wrapping = Wrapping.Word };
+        text.Inlines.Add(new ControlRun(heading)
+        {
+            Foreground = Palette.Success,
+            Attributes = Attributes.Bold,
+        });
+        text.Inlines.Add(new LineBreak());
+        text.Inlines.Add(new ControlRun(description) { Foreground = Palette.Muted });
+        section.Children.Add(text);
+        section.Children.Add(sample);
         return section;
     }
 

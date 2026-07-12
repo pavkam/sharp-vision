@@ -1,4 +1,7 @@
+using System.Text;
+
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 
@@ -37,6 +40,20 @@ public sealed class CanvasTests
         result.Final.ShouldBe(new Point(2, 0));
         result.Cells.ShouldBe(1);
         result.Replaced.ShouldBe(1);
+    }
+
+    /// <summary>Verifies transparent drawing preserves the destination background while replacing text semantics.</summary>
+    [Fact]
+    public void Draw_WhenBackgroundIsTransparent_PreservesDestinationBackground()
+    {
+        using var frame = new Frame(new Size(1, 1));
+        var surface = new Style(Color.Indexed(255), Color.Indexed(238));
+        var text = new Style(Color.Indexed(45), Color.Default, Attributes.Bold);
+        frame.Canvas.Fill(new Rect(0, 0, 1, 1), new Rune(' '), surface);
+
+        _ = frame.Canvas.Draw("X".AsSpan(), new Point(0, 0), text, background: BackgroundMode.Transparent);
+
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new Style(Color.Indexed(45), Color.Indexed(238), Attributes.Bold));
     }
 
     /// <summary>

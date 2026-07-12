@@ -5,6 +5,8 @@ using SharpVision.Terminal.Rendering;
 
 using Shouldly;
 
+using ControlText = SharpVision.Controls.Text;
+
 namespace SharpVision.Showcase.Tests;
 
 /// <summary>Proves every showcase page lays out and renders into semantic terminal cells.</summary>
@@ -57,7 +59,7 @@ public sealed class GalleryRenderingTests
     public void Render_WhenShadowPageIsSelected_ShowsSeparatedCompositeAndBlockGlyphStages()
     {
         using var gallery = new Gallery();
-        gallery.Select(13);
+        gallery.Select(IndexOf(gallery, "Shadow"));
         var size = new Size(100, 60);
         new Engine().Layout(gallery.Root, size);
         using var frame = new Frame(size);
@@ -69,6 +71,21 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("Block glyph stage");
         screen.Text.ShouldContain("░");
         screen.ValidateContinuations();
+    }
+
+    /// <summary>Verifies the Button page demonstrates both quiet composite and visible block-glyph shadows.</summary>
+    [Fact]
+    public void CreateExamples_WhenButtonPageIsSelected_ProvidesBothShadowModes()
+    {
+        using var gallery = new Gallery();
+        gallery.Select(IndexOf(gallery, "Button"));
+
+        var buttons = FindAll<Button>(gallery.Content);
+
+        buttons.ShouldContain(button => button.ShadowMode == ShadowMode.Composite);
+        buttons.ShouldContain(button =>
+            button.ShadowMode == ShadowMode.BlockGlyph &&
+            button.ShadowGlyph == new System.Text.Rune('░'));
     }
 
     /// <summary>Verifies the Canvas page pairs each positioning concept with its own live framed specimen.</summary>
@@ -86,7 +103,7 @@ public sealed class GalleryRenderingTests
         var screen = new Screen(frame);
         var edge = Find<Border>(
             gallery.Content,
-            static value => value.Child is Controls.Text { Content: "Right 2 / Bottom 1" });
+            static value => value.Child is ControlText { Content: "Right 2 / Bottom 1" });
         edge.ShouldNotBeNull().Bounds.Right.ShouldBeLessThanOrEqualTo(size.Width);
         screen.Text.ShouldContain("Fixed placement");
         screen.Text.ShouldContain("Percentage placement");
@@ -96,6 +113,98 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("50%,50%");
         screen.Text.ShouldContain("Right 2 / Bottom 1");
         screen.ValidateContinuations();
+    }
+
+    /// <summary>Verifies the Window page exposes chrome variants and centers its dialog actions.</summary>
+    [Fact]
+    public void Render_WhenWindowPageIsSelected_ShowsChromeOptionsAndCenteredActions()
+    {
+        using var gallery = new Gallery();
+        gallery.Select(IndexOf(gallery, "Window"));
+        var size = new Size(120, 80);
+        new Engine().Layout(gallery.Root, size);
+        using var frame = new Frame(size);
+
+        gallery.Root.Render(frame.Canvas);
+
+        var windows = FindAll<Window>(gallery.Content);
+        var screen = new Screen(frame);
+        screen.Text.ShouldContain("Apply");
+        screen.Text.ShouldContain("Cancel");
+        windows.Count.ShouldBeGreaterThanOrEqualTo(4);
+        windows.ShouldContain(window =>
+            window.Glyphs == Glyphs.Paired &&
+            window.TitlePlacement == WindowTitlePlacement.Center);
+
+        var dialog = windows.Single(window => window.Title == "Project settings");
+        dialog.Bounds.Height.ShouldBeGreaterThan(10);
+        var actions = FindAll<Button>(dialog);
+        actions.Count.ShouldBe(2);
+        var left = actions.Min(button => button.Bounds.X);
+        var right = actions.Max(button => button.Bounds.Right);
+        var actionCenter = (left + right) / 2;
+        var dialogCenter = dialog.Bounds.X + (dialog.Bounds.Width / 2);
+        Math.Abs(actionCenter - dialogCenter).ShouldBeLessThanOrEqualTo(1);
+        actions.ShouldAllBe(button => button.Bounds.Bottom <= dialog.Bounds.Bottom - 1);
+        actions.ShouldAllBe(button =>
+            button.Content.ShouldNotBeNull().Bounds.Height > 0 &&
+            button.Content.Bounds.Bottom <= dialog.Bounds.Bottom - 1);
+    }
+
+    /// <summary>Verifies the List page paints a distinct surface and selected-row highlight.</summary>
+    [Fact]
+    public void Render_WhenListPageIsSelected_PaintsSurfaceAndSelectedRow()
+    {
+        using var gallery = new Gallery();
+        gallery.Select(IndexOf(gallery, "List"));
+        var size = new Size(120, 80);
+        new Engine().Layout(gallery.Root, size);
+        using var frame = new Frame(size);
+
+        gallery.Root.Render(frame.Canvas);
+
+        var active = FindAll<List>(gallery.Content).Single(list => list.IsEnabled);
+        active.Appearance.Background.ShouldBe(Palette.InputSurface);
+        frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
+            .ShouldBe(Palette.Highlight);
+    }
+
+    /// <summary>Verifies the RichText page demonstrates every supported terminal text attribute.</summary>
+    [Fact]
+    public void CreateExamples_WhenRichTextPageIsSelected_ShowsTerminalAttributeRuns()
+    {
+        using var gallery = new Gallery();
+        gallery.Select(IndexOf(gallery, "RichText"));
+
+        var runs = FindAll<RichText>(gallery.Content)
+            .SelectMany(static richText => richText.Inlines.OfType<Run>())
+            .ToList();
+
+        runs.ShouldContain(run => run.Attributes == Attributes.Bold);
+        runs.ShouldContain(run => run.Attributes == Attributes.Dim);
+        runs.ShouldContain(run => run.Attributes == Attributes.Italic);
+        runs.ShouldContain(run => run.Attributes == Attributes.Underline);
+        runs.ShouldContain(run => run.Attributes == Attributes.Blink);
+        runs.ShouldContain(run => run.Attributes == Attributes.Reverse);
+        runs.ShouldContain(run => run.Attributes == Attributes.Strike);
+        runs.ShouldContain(run => run.Attributes == Attributes.Hidden);
+        runs.ShouldContain(run => run.Attributes == (Attributes.Bold | Attributes.Underline | Attributes.Italic));
+    }
+
+    /// <summary>Verifies the RichText action keeps its intrinsic content width instead of filling the document column.</summary>
+    [Fact]
+    public void Render_WhenRichTextActionIsLaidOut_UsesIntrinsicButtonWidth()
+    {
+        using var gallery = new Gallery();
+        gallery.Select(IndexOf(gallery, "RichText"));
+        new Engine().Layout(gallery.Root, new Size(120, 80));
+
+        var button = FindAll<Button>(gallery.Content)
+            .Single(value => value.Content is ControlText { Content: "Append a Run" });
+
+        button.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
+        button.Bounds.Width.ShouldBe(button.DesiredSize.Width);
+        button.Bounds.Width.ShouldBeLessThan(40);
     }
 
     private static T? Find<T>(Control control, Func<T, bool> predicate) where T : Control
@@ -122,6 +231,37 @@ public sealed class GalleryRenderingTests
         }
 
         return null;
+    }
+
+    private static List<T> FindAll<T>(Control control) where T : Control
+    {
+        var matches = new List<T>();
+        Visit(control, matches);
+        return matches;
+    }
+
+    private static void Visit<T>(Control control, List<T> matches) where T : Control
+    {
+        if (control is T match)
+        {
+            matches.Add(match);
+        }
+
+        if (control is Container container)
+        {
+            foreach (var child in container.Children)
+            {
+                Visit(child, matches);
+            }
+        }
+    }
+
+    private static int IndexOf(Gallery gallery, string page)
+    {
+        ArgumentNullException.ThrowIfNull(gallery);
+        ArgumentException.ThrowIfNullOrWhiteSpace(page);
+        var index = gallery.Pages.Select(static value => value.Name).ToList().IndexOf(page);
+        return index >= 0 ? index : throw new InvalidOperationException($"The {page} page is not registered.");
     }
 
     /// <summary>Verifies every page renders safely at tiny, typical, and large terminal sizes.</summary>

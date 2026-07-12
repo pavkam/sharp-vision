@@ -19,6 +19,51 @@ namespace SharpVision.Tests.Integration;
 /// <summary>Proves real terminal bytes through routing, rendering, and output transport.</summary>
 public sealed class TerminalInputTests
 {
+    /// <summary>Verifies Tab moves focus from one editor to the next eligible sibling.</summary>
+    [Fact]
+    public async Task Input_WhenTabIsPressedOnFocusedEditor_FocusMovesToNextEditorAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var root = new ProbeContainer();
+        var first = new TextInput();
+        var second = new TextInput();
+        root.Children.Add(first);
+        root.Children.Add(second);
+        await using var application = new Application(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var focused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Gained += (_, eventArgs) =>
+            {
+                if (ReferenceEquals(eventArgs.Current, second))
+                {
+                    _ = focused.TrySetResult();
+                }
+            };
+            application.Focus.Focus(first).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\t"u8);
+        await focused.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focused.ShouldBeSameAs(second);
+            first.IsFocused.ShouldBeFalse();
+            second.IsFocused.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies UTF-8 text mutates a focused control and reaches encoded frame bytes.</summary>
     [Fact]
     public async Task Input_WhenUtf8TextArrives_ChangesFocusedControlAndFinalOutputAsync()

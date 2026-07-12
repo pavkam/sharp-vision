@@ -1,0 +1,11 @@
+namespace SharpVision.Terminal.Rendering;
+
+/// <summary>Controls whether drawing replaces or preserves destination cell backgrounds.</summary>
+public enum BackgroundMode
+{
+    /// <summary>Writes the supplied style background, including an explicit terminal default.</summary>
+    Opaque,
+
+    /// <summary>Retains each destination cell background while applying the supplied foreground and attributes.</summary>
+    Transparent,
+}

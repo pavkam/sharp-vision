@@ -51,6 +51,36 @@ public sealed class RoutingTests
         eventArgs.Source.ShouldBeSameAs(target);
     }
 
+    /// <summary>Verifies Shift+Tab uses the shared default to move focus backward.</summary>
+    [Fact]
+    public async Task Route_WhenShiftTabIsPressed_MovesFocusToPreviousTabStopAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var first = new ProbeControl { CanFocus = true };
+            var second = new ProbeControl { CanFocus = true };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            focus.Focus(second).ShouldBeTrue();
+            var eventArgs = new KeyEventArgs(new Stroke(
+                Code.Tab,
+                character: null,
+                nativeCode: 0,
+                Modifiers.Shift,
+                KeyAction.Press));
+
+            Router.Route(second, Events.Key, eventArgs);
+
+            focus.Focused.ShouldBeSameAs(first);
+            eventArgs.Handled.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies handled state suppresses ordinary handlers and default behavior.</summary>
     [Fact]
     public void Route_WhenHandled_InvokesOnlyOptedInHandlersAfterward()

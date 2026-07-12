@@ -30,9 +30,12 @@ area after saturated outer spacing is reserved.
 
 Every child is measured again with its resolved spanned slot. Grid rebuilds the
 intrinsic requests once from that result so wrapping on either axis can affect
-the other. Arrange repeats that bounded pass when the final viewport differs
-from measure, computes cumulative integer origins, and commits each child to the
-union of its tracks and the actual allocated internal gaps.
+the other. A child spanning only automatic rows is then measured with its
+resolved finite column width and unbounded height, allowing wrapped text to grow
+those rows instead of being clipped to their pre-wrap probe height. Arrange
+repeats that bounded pass when the final viewport differs from measure, computes
+cumulative integer origins, and commits each child to the union of its tracks
+and the actual allocated internal gaps.
 
 Rounding uses the shared cumulative-edge allocator. If definitions and spacing
 cannot fit, spacing saturates first and tracks shrink deterministically until

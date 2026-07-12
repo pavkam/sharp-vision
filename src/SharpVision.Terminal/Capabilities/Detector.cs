@@ -60,6 +60,9 @@ public static class Detector
                 Osc52 = hint,
                 KittyClipboard = hint,
                 KittyGraphics = hint,
+                StyledUnderlines = hint,
+                UnderlineColor = hint,
+                Overline = hint,
             };
         }
         else if (xterm)
@@ -71,6 +74,9 @@ public static class Detector
                 BracketedPaste = hint,
                 CellMouse = hint,
                 Osc52 = hint,
+                StyledUnderlines = hint,
+                UnderlineColor = hint,
+                Overline = hint,
             };
         }
 
@@ -131,6 +137,9 @@ public static class Detector
                 KittyGraphics = Apply(value.KittyGraphics, overrides.KittyGraphics, Origin.Override),
                 Sixel = Apply(value.Sixel, overrides.Sixel, Origin.Override),
                 ItermImages = Apply(value.ItermImages, overrides.ItermImages, Origin.Override),
+                StyledUnderlines = Apply(value.StyledUnderlines, overrides.StyledUnderlines, Origin.Override),
+                UnderlineColor = Apply(value.UnderlineColor, overrides.UnderlineColor, Origin.Override),
+                Overline = Apply(value.Overline, overrides.Overline, Origin.Override),
             };
 
     private static Capabilities ApplyQueries(Capabilities value, Queries? queries) =>
@@ -149,6 +158,9 @@ public static class Detector
                 KittyGraphics = Apply(value.KittyGraphics, queries.KittyGraphics, Origin.Query),
                 Sixel = Apply(value.Sixel, queries.Sixel, Origin.Query),
                 ItermImages = Apply(value.ItermImages, queries.ItermImages, Origin.Query),
+                StyledUnderlines = Apply(value.StyledUnderlines, queries.StyledUnderlines, Origin.Query),
+                UnderlineColor = Apply(value.UnderlineColor, queries.UnderlineColor, Origin.Query),
+                Overline = Apply(value.Overline, queries.Overline, Origin.Query),
             };
 
     private static Feature Apply(Feature current, bool? supported, Origin origin) =>

@@ -29,6 +29,8 @@ public sealed class DetectorTests
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
         capabilities.KittyClipboard.ShouldBe(
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        capabilities.StyledUnderlines.ShouldBe(
+            new Feature(CapabilitySupport.Tentative, Origin.Environment));
         capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
         capabilities.ColorOrigin.ShouldBe(Origin.Environment);
     }
@@ -79,13 +81,23 @@ public sealed class DetectorTests
     public void Detect_WhenOverridesAreProvided_OverridesWinLast()
     {
         var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" };
-        var queries = new Queries { KittyClipboard = true, SynchronizedOutput = true };
+        var queries = new Queries
+        {
+            KittyClipboard = true,
+            SynchronizedOutput = true,
+            StyledUnderlines = true,
+            UnderlineColor = false,
+            Overline = false,
+        };
         var overrides = new Settings
         {
             KittyClipboard = false,
             SynchronizedOutput = false,
             Osc52 = true,
             ColorDepth = ColorDepth.Monochrome,
+            StyledUnderlines = false,
+            UnderlineColor = true,
+            Overline = true,
         };
 
         var capabilities = Detector.Detect(environment, queries, overrides);
@@ -98,5 +110,11 @@ public sealed class DetectorTests
             new Feature(CapabilitySupport.Supported, Origin.Override));
         capabilities.ColorDepth.ShouldBe(ColorDepth.Monochrome);
         capabilities.ColorOrigin.ShouldBe(Origin.Override);
+        capabilities.StyledUnderlines.ShouldBe(
+            new Feature(CapabilitySupport.Unsupported, Origin.Override));
+        capabilities.UnderlineColor.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Override));
+        capabilities.Overline.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Override));
     }
 }

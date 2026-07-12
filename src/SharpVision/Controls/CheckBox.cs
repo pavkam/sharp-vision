@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Input;
@@ -5,6 +6,7 @@ using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 
+using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
 namespace SharpVision.Controls;
@@ -80,6 +82,24 @@ public sealed class CheckBox: Pressable
         set => _ = Set(ref field, value, Invalidation.Render);
     } = Marks.Default;
 
+    /// <summary>Gets or sets the built-in mark family used before the optional label.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached CheckBox is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The CheckBox is disposed.</exception>
+    public CheckBoxStyle MarkStyle
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The checkbox mark style is unknown.");
+            }
+
+            _ = Set(ref field, value, Invalidation.Measure);
+        }
+    }
+
     /// <summary>Toggles an available CheckBox through the programmatic activation path.</summary>
     /// <exception cref="InvalidOperationException">The attached CheckBox is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The CheckBox is disposed.</exception>
@@ -112,12 +132,12 @@ public sealed class CheckBox: Pressable
 
         if (content is null)
         {
-            return new Size(1, 1);
+            return new Size(MarkWidth, 1);
         }
 
-        content.Measure(new Constraint(Subtract(constraint.Width, 2), constraint.Height));
+        content.Measure(new Constraint(Subtract(constraint.Width, MarkWidth + 1), constraint.Height));
         return new Size(
-            Add(2, Add(content.DesiredSize.Width, content.Margin.Horizontal)),
+            Add(MarkWidth + 1, Add(content.DesiredSize.Width, content.Margin.Horizontal)),
             Math.Max(1, Add(content.DesiredSize.Height, content.Margin.Vertical)));
     }
 
@@ -126,7 +146,7 @@ public sealed class CheckBox: Pressable
     {
         if (Content is { } content)
         {
-            var consumed = Math.Min(2, bounds.Width);
+            var consumed = Math.Min(MarkWidth + 1, bounds.Width);
             content.Arrange(
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
                 widthResolved: true,
@@ -142,22 +162,18 @@ public sealed class CheckBox: Pressable
             return;
         }
 
-        var glyph = _isChecked switch
+        var style = ResolvedStyle;
+
+        if (Appearance.Background.HasValue)
         {
-            true => Marks.Checked,
-            false => Marks.Unchecked,
-            null => Marks.Indeterminate,
-        };
-        Span<char> buffer = stackalloc char[2];
-        var fallback = _isChecked switch
-        {
-            true => new Rune('x'),
-            false => new Rune('o'),
-            null => new Rune('-'),
-        };
-        glyph = CellGlyph.Resolve(glyph, fallback, CellPolicy.AmbiguousWidth);
-        var length = glyph.EncodeToUtf16(buffer);
-        _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
+            canvas.Clear(Bounds, style);
+        }
+
+        _ = canvas.Draw(
+            Mark().AsSpan(),
+            new Point(Bounds.X, Bounds.Y),
+            style,
+            background: BackgroundMode.Transparent);
     }
 
     /// <inheritdoc/>
@@ -226,4 +242,32 @@ public sealed class CheckBox: Pressable
     private static int? Subtract(int? value, int extent) => value.HasValue
         ? Math.Max(0, value.Value - extent)
         : null;
+
+    private int MarkWidth => MarkStyle == CheckBoxStyle.Brackets ? 3 : 1;
+
+    private string Mark() => MarkStyle switch
+    {
+        CheckBoxStyle.Brackets => _isChecked switch
+        {
+            true => "[x]",
+            false => "[ ]",
+            null => "[-]",
+        },
+        CheckBoxStyle.Tick => _isChecked switch
+        {
+            true => Mark(new Rune('✓'), new Rune('x')),
+            false => Mark(new Rune('○'), new Rune('o')),
+            null => Mark(new Rune('−'), new Rune('-')),
+        },
+        CheckBoxStyle.Square => _isChecked switch
+        {
+            true => Mark(Marks.Checked, new Rune('x')),
+            false => Mark(Marks.Unchecked, new Rune('o')),
+            null => Mark(Marks.Indeterminate, new Rune('-')),
+        },
+        _ => throw new UnreachableException(),
+    };
+
+    private string Mark(Rune value, Rune fallback) =>
+        CellGlyph.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
 }

@@ -87,6 +87,15 @@ public sealed record Capabilities
     /// <summary>Gets iTerm2 inline image support.</summary>
     public Feature ItermImages { get; init; } = Feature.Unknown;
 
+    /// <summary>Gets styled underline variant support.</summary>
+    public Feature StyledUnderlines { get; init; } = Feature.Unknown;
+
+    /// <summary>Gets independent underline-color support.</summary>
+    public Feature UnderlineColor { get; init; } = Feature.Unknown;
+
+    /// <summary>Gets overline rendition support.</summary>
+    public Feature Overline { get; init; } = Feature.Unknown;
+
     /// <summary>
     /// Gets a snapshot of every optional feature for diagnostics and tests.
     /// </summary>
@@ -103,5 +112,8 @@ public sealed record Capabilities
         KittyGraphics,
         Sixel,
         ItermImages,
+        StyledUnderlines,
+        UnderlineColor,
+        Overline,
     ];
 }

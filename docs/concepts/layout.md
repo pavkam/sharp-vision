@@ -51,11 +51,18 @@ rectangle after the border box is aligned and padding is removed. Both extension
 points run only for hidden or visible controls; collapsed controls desire zero,
 commit empty bounds, and skip both callbacks.
 
-Fixed and percentage dimensions override stretch. An automatic dimension with
-stretch consumes the available axis; otherwise automatic layout uses the
-measured desired size. Minimum and maximum constraints are applied before the
-result is capped to the margin-deflated slot, so tiny viewports always produce
-contained non-negative rectangles.
+Fixed and percentage dimensions override alignment. Horizontal controls default
+to `Left`, so an automatic width uses the measured desired size; applications
+must opt into `HorizontalAlignment.Stretch` when a control should consume the
+available row. An automatic dimension with stretch consumes the available axis;
+otherwise automatic layout uses the measured desired size. Minimum and maximum
+constraints are applied before the result is capped to the margin-deflated slot,
+so tiny viewports always produce contained non-negative rectangles.
+
+Layout surfaces such as `Stack`, `Grid`, `Dock`, `Border`, `Overlay`, and
+`ScrollView` opt into horizontal stretch because they own a viewport or shared
+slot. Their ordinary child controls remain content-sized unless the surface's
+layout contract explicitly resolves that child to its slot.
 
 Fractional percentage/proportional boundaries use cumulative edge rounding so
 adjacent tracks share one boundary and the final track receives the remainder.

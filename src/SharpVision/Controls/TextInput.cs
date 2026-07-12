@@ -17,7 +17,7 @@ using UnicodeWidth = SharpVision.Terminal.Unicode.Width;
 namespace SharpVision.Controls;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
-public sealed class TextInput: Control
+public sealed class TextInput: Container
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -28,9 +28,23 @@ public sealed class TextInput: Control
     private CaptureManager? _subscribedCapture;
     private int _contentWidth;
     private int _contentHeight = 1;
+    private readonly Children _chrome;
+    private readonly ScrollBar _horizontal;
+    private readonly ScrollBar _vertical;
+    private Rect _editorBounds;
 
     /// <summary>Initializes an empty focusable single-line editor.</summary>
-    public TextInput() => CanFocus = true;
+    public TextInput() : base(capacity: 0)
+    {
+        _chrome = new Children(this, capacity: 2);
+        _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
+        _vertical = new ScrollBar { Orientation = Orientation.Vertical };
+        _horizontal.ValueChanged += OnHorizontalChanged;
+        _vertical.ValueChanged += OnVerticalChanged;
+        _chrome.Add(_horizontal);
+        _chrome.Add(_vertical);
+        CanFocus = true;
+    }
 
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>
     public event EventHandler<TextChangingEventArgs>? TextChanging;
@@ -180,6 +194,92 @@ public sealed class TextInput: Control
     /// <summary>Gets the current vertical line offset.</summary>
     public int VerticalOffset { get; private set; }
 
+    /// <summary>Gets or sets the axes eligible for editor overflow scrolling.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ScrollBars ScrollBars
+    {
+        get;
+        set
+        {
+            if ((value & ~ScrollBars.Both) != 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar axes contain unknown flags.");
+            }
+
+            if (Set(ref field, value, Invalidation.Arrange))
+            {
+                ArrangeChrome();
+            }
+        }
+    } = ScrollBars.Both;
+
+    /// <summary>Gets or sets the scrollbar reservation policy for enabled editor axes.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ShowScrollBars ShowScrollBars
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar visibility policy is unknown.");
+            }
+
+            if (Set(ref field, value, Invalidation.Arrange))
+            {
+                ArrangeChrome();
+            }
+        }
+    } = ShowScrollBars.WhenNeeded;
+
+    /// <summary>Gets or sets the compact or full form requested for editor rails.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ScrollBarStyle ScrollBarChrome
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar chrome is unknown.");
+            }
+
+            if (Set(ref field, value, Invalidation.Arrange))
+            {
+                _horizontal.Chrome = value;
+                _vertical.Chrome = value;
+            }
+        }
+    } = ScrollBarStyle.Full;
+
+    /// <summary>Gets or sets the generated line or block glyph treatment requested for editor rails.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public ScrollBarFill ScrollBarFill
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar fill is unknown.");
+            }
+
+            if (Set(ref field, value, Invalidation.Render))
+            {
+                _horizontal.Fill = value;
+                _vertical.Fill = value;
+            }
+        }
+    } = ScrollBarFill.Block;
+
     /// <summary>Gets or sets the maximum retained undo snapshots.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -263,12 +363,54 @@ public sealed class TextInput: Control
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds) => EnsureCaretVisible(bounds);
+    protected override void ArrangeCore(Rect bounds)
+    {
+        _editorBounds = bounds;
+        ArrangeChrome();
+        EnsureCaretVisible(_editorBounds);
+    }
+
+    /// <inheritdoc/>
+    public override Control? HitTest(Point point)
+    {
+        return IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled || !Bounds.Contains(point)
+            ? null
+            : _vertical.HitTest(point) ?? _horizontal.HitTest(point) ?? this;
+    }
+
+    /// <inheritdoc/>
+    internal override void VisitChildren(Action<Control> visitor)
+    {
+        ArgumentNullException.ThrowIfNull(visitor);
+
+        foreach (var child in _chrome)
+        {
+            visitor(child);
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void DisposeChildren()
+    {
+        while (_chrome.Count > 0)
+        {
+            var child = _chrome[^1];
+            _chrome.RemoveAt(_chrome.Count - 1);
+            child.Dispose();
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderChildren(TerminalCanvas canvas)
+    {
+        _horizontal.Render(canvas);
+        _vertical.Render(canvas);
+    }
 
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var bounds = ContentBounds;
+        var bounds = _editorBounds;
 
         if (bounds.Width == 0 || bounds.Height == 0)
         {
@@ -422,7 +564,7 @@ public sealed class TextInput: Control
 
         _text = proposal.Text;
         _selection = proposal.Selection;
-        EnsureCaretVisible(ContentBounds);
+        EnsureCaretVisible(_editorBounds);
 
         if (textChanged)
         {
@@ -593,6 +735,14 @@ public sealed class TextInput: Control
     {
         var pointer = eventArgs.Pointer;
 
+        if (pointer.Action == PointerAction.Wheel)
+        {
+            eventArgs.Handled = ScrollBy(
+                Negate(pointer.WheelX),
+                Negate(pointer.WheelY));
+            return;
+        }
+
         if (pointer.Action == PointerAction.Press &&
             (pointer.Buttons & Buttons.Primary) != 0 &&
             pointer.Cells is { } pressedCells &&
@@ -642,8 +792,8 @@ public sealed class TextInput: Control
 
     private int IndexAt(Point point)
     {
-        var targetX = Math.Max(0, point.X - ContentBounds.X + HorizontalOffset);
-        var targetY = Math.Max(0, point.Y - ContentBounds.Y + VerticalOffset);
+        var targetX = Math.Max(0, point.X - _editorBounds.X + HorizontalOffset);
+        var targetY = Math.Max(0, point.Y - _editorBounds.Y + VerticalOffset);
         var x = 0;
         var y = 0;
 
@@ -688,8 +838,8 @@ public sealed class TextInput: Control
         Position(_selection.Caret, out var x, out var y);
         var targetY = Math.Max(0, y + delta);
         var caret = IndexAt(new Point(
-            ContentBounds.X + x - HorizontalOffset,
-            ContentBounds.Y + targetY - VerticalOffset));
+            _editorBounds.X + x - HorizontalOffset,
+            _editorBounds.Y + targetY - VerticalOffset));
         var selection = extend
             ? new Selection(_selection.Anchor, caret)
             : new Selection(caret, caret);
@@ -703,6 +853,90 @@ public sealed class TextInput: Control
 
         HorizontalOffset = Offset(HorizontalOffset, x, bounds.Width, _contentWidth);
         VerticalOffset = Offset(VerticalOffset, y, bounds.Height, _contentHeight);
+    }
+
+    private bool ScrollBy(int horizontal, int vertical)
+    {
+        MeasureText(out _contentWidth, out _contentHeight);
+        var bounds = _editorBounds;
+        var nextHorizontal = Move(
+            HorizontalOffset,
+            horizontal,
+            bounds.Width,
+            _contentWidth);
+        var nextVertical = Move(
+            VerticalOffset,
+            vertical,
+            bounds.Height,
+            _contentHeight);
+
+        if (nextHorizontal == HorizontalOffset && nextVertical == VerticalOffset)
+        {
+            return false;
+        }
+
+        // Only consume a wheel event while this editor has moved. At an edge,
+        // the untouched event continues through bubble routing to an ancestor viewport.
+        HorizontalOffset = nextHorizontal;
+        VerticalOffset = nextVertical;
+        Invalidate(Invalidation.Render);
+        return true;
+    }
+
+    private void ArrangeChrome()
+    {
+        MeasureText(out _contentWidth, out _contentHeight);
+        var bounds = ContentBounds;
+        var horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
+            ShowScrollBars == ShowScrollBars.Always;
+        var vertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
+            ShowScrollBars == ShowScrollBars.Always;
+        var viewport = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vertical ? 1 : 0)), Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
+
+        if (ShowScrollBars == ShowScrollBars.WhenNeeded)
+        {
+            horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 && _contentWidth > viewport.Width;
+            vertical = (ScrollBars & ScrollBars.Vertical) != 0 && _contentHeight > viewport.Height;
+            viewport = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vertical ? 1 : 0)), Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
+            horizontal |= (ScrollBars & ScrollBars.Horizontal) != 0 && _contentWidth > viewport.Width;
+            vertical |= (ScrollBars & ScrollBars.Vertical) != 0 && _contentHeight > viewport.Height;
+            viewport = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vertical ? 1 : 0)), Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
+        }
+
+        _editorBounds = viewport;
+        _horizontal.Visibility = horizontal ? Visibility.Visible : Visibility.Collapsed;
+        _vertical.Visibility = vertical ? Visibility.Visible : Visibility.Collapsed;
+        _horizontal.Arrange(new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, horizontal ? 1 : 0), true, true);
+        _vertical.Arrange(new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height), true, true);
+        Configure(_horizontal, Math.Max(0, _contentWidth - viewport.Width + 1), viewport.Width, HorizontalOffset);
+        Configure(_vertical, Math.Max(0, _contentHeight - viewport.Height + 1), viewport.Height, VerticalOffset);
+    }
+
+    private void OnHorizontalChanged(object? sender, ScrollEventArgs eventArgs)
+    {
+        _ = sender;
+        HorizontalOffset = eventArgs.Value;
+        Invalidate(Invalidation.Render);
+    }
+
+    private void OnVerticalChanged(object? sender, ScrollEventArgs eventArgs)
+    {
+        _ = sender;
+        VerticalOffset = eventArgs.Value;
+        Invalidate(Invalidation.Render);
+    }
+
+    private static void Configure(ScrollBar bar, int maximum, int viewport, int value)
+    {
+        if (bar.Value > maximum)
+        {
+            bar.Value = maximum;
+        }
+
+        bar.Maximum = maximum;
+        bar.ViewportSize = viewport;
+        bar.LargeChange = viewport;
+        bar.Value = Math.Min(value, maximum);
     }
 
     private void Position(int index, out int x, out int y)
@@ -760,13 +994,13 @@ public sealed class TextInput: Control
             : UnicodeWidth.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
     }
 
-
     private int PasswordWidth(Rune value)
     {
         Span<char> buffer = stackalloc char[2];
         var length = value.EncodeToUtf16(buffer);
         return UnicodeWidth.Measure(buffer[..length], CellPolicy.AmbiguousWidth).Cells;
     }
+
     private TerminalStyle SelectedStyle()
     {
         var style = ResolvedStyle;
@@ -794,6 +1028,20 @@ public sealed class TextInput: Control
                 : current;
         return Math.Clamp(next, 0, Math.Max(0, content - viewport + 1));
     }
+
+    private static int Move(int current, int delta, int viewport, int content)
+    {
+        if (viewport <= 0)
+        {
+            return 0;
+        }
+
+        var next = (int) Math.Clamp((long) current + delta, 0, int.MaxValue);
+        return Math.Clamp(next, 0, Math.Max(0, content - viewport + 1));
+    }
+
+    private static int Negate(int value) =>
+        (int) Math.Clamp(-(long) value, int.MinValue, int.MaxValue);
 
     private static void Draw(
         TerminalCanvas canvas,

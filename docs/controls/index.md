@@ -10,36 +10,28 @@ All controls derive from the
 
 ### Display
 
-Shipped in Phase 5A:
-
 - [Text](display/text.md#text-contract)
 - [Border](display/border.md#border-contract)
 - [Shadow](display/shadow.md#shadow-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
-
-Specified for a later Phase 5 slice:
-
 - [RichText](display/rich-text.md#richtext-contract)
 
 ### Input
 
 - [Button](input/button.md#button-contract)
 - [CheckBox](input/check-box.md#checkbox-contract)
+- [ComboBox](input/combo-box.md#combobox-contract)
 - [RadioButton](input/radio-button.md#radiobutton-contract)
 - [TextInput](input/text-input.md#textinput-contract)
 
 ### Layout and scrolling
-
-Shipped in Phase 5A:
 
 - [Stack](layout/stack.md#stack-contract)
 - [Grid](layout/grid.md#grid-contract)
 - [Dock](layout/dock.md#dock-contract)
 - [Overlay](layout/overlay.md#overlay-contract)
 - [Canvas](layout/canvas.md#canvas-contract)
-
-Specified for a later Phase 5 slice:
-
+- [Table](layout/table.md#table-contract)
 - [ScrollView](layout/scroll-view.md#scrollview-contract)
 - [ScrollBar](layout/scroll-bar.md#scrollbar-contract)
 

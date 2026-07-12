@@ -5,6 +5,7 @@ using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
+using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
 namespace SharpVision.Controls;
 
@@ -20,6 +21,7 @@ internal sealed class ListItem: Pressable
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
+        HorizontalAlignment = HorizontalAlignment.Stretch;
         Index = index;
         Children.Add(content);
     }
@@ -90,6 +92,17 @@ internal sealed class ListItem: Pressable
         return new Size(
             Add(Content.DesiredSize.Width, Content.Margin.Horizontal),
             Add(Content.DesiredSize.Height, Content.Margin.Vertical));
+    }
+
+    /// <inheritdoc/>
+    protected override void RenderCore(TerminalCanvas canvas)
+    {
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !Appearance.Background.HasValue)
+        {
+            return;
+        }
+
+        canvas.Clear(Bounds, ResolvedStyle);
     }
 
     /// <inheritdoc/>
