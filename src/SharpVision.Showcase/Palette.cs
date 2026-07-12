@@ -93,6 +93,18 @@ internal static class Palette
         return style;
     }
 
+    /// <summary>Creates a visibly stateful style for interactive live samples.</summary>
+    internal static Style Interactive()
+    {
+        var style = new Style();
+        style.Set(State.Normal, new Appearance(Text, Surface));
+        style.Set(State.Hovered, new Appearance(Text, Hover, Attributes.Bold));
+        style.Set(State.Focused, new Appearance(Accent, Surface, Attributes.Bold));
+        style.Set(State.Pressed, new Appearance(Text, Pressed, Attributes.Bold));
+        style.Set(State.Disabled, new Appearance(Muted, Panel, Attributes.Dim));
+        return style;
+    }
+
     /// <summary>Creates a style for a low-emphasis dashboard label.</summary>
     internal static Style MutedText()
     {

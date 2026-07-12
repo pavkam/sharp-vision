@@ -179,7 +179,11 @@ internal static class Examples
     {
         var examples = Vertical();
         var status = new ControlText("Activation log: waiting");
-        var active = new Button { Content = new ControlText("Click or press Enter") };
+        var active = new Button
+        {
+            Content = new ControlText("Click or press Enter"),
+            Style = Palette.Interactive(),
+        };
         active.Click += (_, eventArgs) =>
             status.Content = $"Activation log: {eventArgs.Cause}";
         examples.Children.Add(active);
@@ -187,16 +191,19 @@ internal static class Examples
         {
             Content = new ControlText("Disabled"),
             IsEnabled = false,
+            Style = Palette.Interactive(),
         });
         examples.Children.Add(new Button
         {
             Content = new ControlText("Default action"),
             IsDefault = true,
+            Style = Palette.Interactive(),
         });
         examples.Children.Add(new Button
         {
             Content = new ControlText("Cancel action"),
             IsCancel = true,
+            Style = Palette.Interactive(),
         });
         examples.Children.Add(status);
         return examples;

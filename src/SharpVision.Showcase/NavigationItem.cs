@@ -68,7 +68,7 @@ internal sealed class NavigationItem: Pressable
     {
         var style = Resolver.ToTerminal(Appearance);
         canvas.Clear(Bounds, style);
-        var marker = IsSelected ? "›" : "·";
+        var marker = IsSelected || IsHovered ? "›" : "·";
         _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
 

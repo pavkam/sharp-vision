@@ -97,6 +97,45 @@ if [[ "$keyboard" != true ]]; then
   exit 1
 fi
 
+# Any-event tracking must report passive pointer motion. Hover Canvas without a
+# button, prove its visible marker changes, then prove the terminal leave clears it.
+send_sgr 35 3 9 M
+
+hovered=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q '› Canvas' "$plain"; then
+    hovered=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$hovered" != true ]]; then
+  printf 'The showcase did not visibly hover Canvas after passive SGR motion.\n' >&2
+  exit 1
+fi
+
+send_sgr 35 0 0 M
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q '· Canvas' "$plain"; then
+    break
+  fi
+
+  sleep 0.1
+done
+
+if ! grep -q '· Canvas' "$plain"; then
+  printf 'The showcase did not clear Canvas hover after the SGR leave report.\n' >&2
+  exit 1
+fi
+
 # A complete primary SGR press/release must activate navigation on its own.
 # Do not append a key here: that would hide host-side input buffering defects.
 tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 39 4d 1b 5b 3c 30 3b 33 3b 39 6d

@@ -158,6 +158,77 @@ public sealed class GalleryInteractionTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies passive SGR motion visibly hovers a sidebar entry and clears on terminal leave.</summary>
+    [Fact]
+    public async Task Input_WhenPointerMovesOverSidebarEntry_UsesAndClearsHoverAppearanceAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(80, 24)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var entry = gallery.Navigation[1];
+        var point = await application.Dispatcher.InvokeAsync(
+            () => entry.Bounds,
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<35;{point.X + 1};{point.Y + 1}M"));
+        await WaitUntilAsync(
+            () => entry.IsHovered,
+            application,
+            "sidebar passive hover");
+
+        await application.Dispatcher.InvokeAsync(() =>
+            entry.Appearance.Background.ShouldBe(Palette.Hover),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\u001b[<35;0;0M"u8);
+        await WaitUntilAsync(
+            () => !entry.IsHovered,
+            application,
+            "sidebar passive hover leave");
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies passive motion over sample Button content applies the showcase hover appearance.</summary>
+    [Fact]
+    public async Task Input_WhenPointerMovesOverButtonContent_UsesHoverAppearanceAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(80, 24)));
+        var root = Examples.Button();
+        await using var application = new Application(
+            root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var button = await application.Dispatcher.InvokeAsync(
+            () => Find<Button>(root, static value => value.IsEnabled),
+            TestContext.Current.CancellationToken);
+        var active = button.ShouldNotBeNull();
+        var point = await application.Dispatcher.InvokeAsync(
+            () => active.Bounds,
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<35;{point.X + 1};{point.Y + 1}M"));
+        await WaitUntilAsync(
+            () => active.IsHovered,
+            application,
+            "sample button passive hover");
+
+        await application.Dispatcher.InvokeAsync(() =>
+            active.Appearance.Background.ShouldBe(Palette.Hover),
+            TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies arrow navigation starts focused and selects the next sidebar page through decoded input.</summary>
     [Fact]
     public async Task Input_WhenArrowDownIsPressed_SelectsAndFocusesNextSidebarPageAsync()

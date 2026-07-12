@@ -26,11 +26,12 @@ overflow, semantic text, and every wide-cell continuation relationship. The
 checked-in [live tmux capture](../images/showcase-dashboard.png) is visually
 reviewed but does not replace cell, event, focus, resize, or scrolling
 assertions. It is also a required live interaction smoke test: it sends Down,
-then independent complete SGR clicks for Canvas and Button, waiting for each
-visible page change without adding a trailing key that could mask input
-buffering. It also opens and selects the Figlet font dropdown, then drags the
-ScrollBar thumb with SGR press, motion, and release reports, asserting each
-visible committed value.
+then a no-button SGR motion report, proves Canvas receives the visible hover
+marker, and proves a terminal leave report clears it. It next sends independent
+complete SGR clicks for Canvas and Button, waiting for each visible page change
+without adding a trailing key that could mask input buffering. It also opens and
+selects the Figlet font dropdown, then drags the ScrollBar thumb with SGR press,
+motion, and release reports, asserting each visible committed value.
 
 Every page must also contain a Practical recipe: a full-width “When to use it”
 card followed by bordered “Live example” and “Responsive” columns. The compact
