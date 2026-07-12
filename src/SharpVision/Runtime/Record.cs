@@ -1,4 +1,5 @@
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
 
 using TerminalDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
 using TerminalFocus = SharpVision.Terminal.Input.Focus;
@@ -32,6 +33,9 @@ internal readonly record struct Record
     /// <summary>Gets a stored terminal diagnostic.</summary>
     internal TerminalDiagnostic Diagnostic { get; private init; }
 
+    /// <summary>Gets a typed terminal protocol response.</summary>
+    internal Response Response { get; private init; }
+
     /// <summary>Gets a stored input fault.</summary>
     internal Exception? Exception { get; private init; }
 
@@ -54,6 +58,9 @@ internal readonly record struct Record
     /// <summary>Creates a diagnostic record.</summary>
     internal static Record From(TerminalDiagnostic value) =>
         new(RecordKind.Diagnostic) { Diagnostic = value };
+
+    /// <summary>Creates a typed terminal protocol response record.</summary>
+    internal static Record From(Response value) => new(RecordKind.Response) { Response = value };
 
     /// <summary>Creates an orderly closure record.</summary>
     internal static Record Closed() => new(RecordKind.Closed);

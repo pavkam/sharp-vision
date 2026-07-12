@@ -11,8 +11,12 @@ using SharpVision.Terminal.Transport;
 using SharpVision.Threading;
 
 using TerminalDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
+using TerminalDiagnosticCode = SharpVision.Terminal.Protocols.DiagnosticCode;
 using TerminalFocus = SharpVision.Terminal.Input.Focus;
 using TerminalOptions = SharpVision.Terminal.Runtime.Options;
+using TerminalResponse = SharpVision.Terminal.Protocols.Response;
+using TerminalSequence = SharpVision.Terminal.Protocols.ProtocolSequence;
+using TerminalSequenceKind = SharpVision.Terminal.Protocols.SequenceKind;
 using TerminalText = SharpVision.Terminal.Input.Text;
 
 namespace SharpVision.Runtime;
@@ -110,6 +114,9 @@ public sealed class Application: ISink, IAsyncDisposable
 
     /// <summary>Raised for immutable redacted terminal protocol diagnostics.</summary>
     public event EventHandler<DiagnosticEventArgs>? Diagnostic;
+
+    /// <summary>Raised on the dispatcher after the runtime receives one typed terminal protocol response.</summary>
+    public event EventHandler<ProtocolResponseEventArgs>? ResponseReceived;
 
     /// <summary>Gets the application-owned UI dispatcher.</summary>
     public Dispatcher Dispatcher { get; }
@@ -240,6 +247,25 @@ public sealed class Application: ISink, IAsyncDisposable
 
     /// <inheritdoc/>
     public void Input(in TerminalDiagnostic value) => Enqueue(Record.From(value));
+
+    /// <inheritdoc/>
+    public void Response(in TerminalResponse value) => Enqueue(Record.From(value));
+
+    /// <inheritdoc/>
+    public void Sequence(TerminalSequence value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        var discardedBytes = checked(
+            (long) value.Parameters.Length +
+            value.Intermediates.Length +
+            value.Payload.Length +
+            (value.Kind == TerminalSequenceKind.Dcs ? 1 : 0));
+        Input(new TerminalDiagnostic(
+            TerminalDiagnosticCode.Unsupported,
+            value.Kind,
+            offset: 0,
+            discardedBytes));
+    }
 
     /// <inheritdoc/>
     void ISink.Resize(in Dimensions value)
@@ -383,6 +409,9 @@ public sealed class Application: ISink, IAsyncDisposable
                 break;
             case RecordKind.Diagnostic:
                 Diagnostic?.Invoke(this, new DiagnosticEventArgs(record.Diagnostic));
+                break;
+            case RecordKind.Response:
+                ResponseReceived?.Invoke(this, new ProtocolResponseEventArgs(record.Response));
                 break;
             case RecordKind.Closed:
                 BeginStopping(forced: true, exception: null);

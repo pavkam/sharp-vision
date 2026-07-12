@@ -21,6 +21,9 @@ internal enum RecordKind
     /// <summary>A terminal protocol diagnostic.</summary>
     Diagnostic,
 
+    /// <summary>A typed terminal protocol response.</summary>
+    Response,
+
     /// <summary>An orderly input closure.</summary>
     Closed,
 
