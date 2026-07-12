@@ -45,3 +45,13 @@ wrapping, trimming, alignment, and ambiguous-width mode participates. The oracle
 independently enumerates source graphemes and cell widths, requiring
 deterministic output, monotonic source slices, valid grapheme boundaries, and
 finite-width containment whenever wrapping or trimming is active.
+
+Unicode cell ownership generation interleaves printable bases, orphan marks,
+selectors, modifiers, tags, ZWJ sequences, narrow/wide clusters, clips, clears,
+styles, and overwrites. The oracle retains source graphemes separately from safe
+terminal presentations and never calls production segmentation or width code.
+
+Pixel-grid generation chooses bounded positive cell and pixel totals, enumerates
+the full pixel domain, and compares exact rational mapping. It also generates
+missing, suspended, smaller-than-cell, and out-of-domain geometry and proves
+those cases cannot fabricate a cell coordinate.

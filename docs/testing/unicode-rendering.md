@@ -18,6 +18,13 @@ keycaps, flags, tags, modifiers, ZWJ sequences, private/unassigned values,
 orphan marks, controls, and invalid UTF-16. The warmed measurement loop must
 also allocate zero managed bytes.
 
+Orphan-presentation tests separately cover combining and spacing marks,
+prepend-only clusters, VS15/VS16, emoji modifiers, tag characters, ZWJ, and
+mixed base-less components. They prove source preservation at editing
+boundaries, U+FFFD ownership in frames, exact replacement UTF-8 in full and
+incremental output, and no mutation of a neighboring preceding cell. The
+independent terminal model classifies test input without production width code.
+
 ## Curated cases
 
 Cover ASCII, CJK, supplementary ideographs, full/half/ambiguous widths under
@@ -72,3 +79,9 @@ the remaining combining cluster in a fresh semantic frame and terminal output.
 The nested automatic-scroll proof renders wide CJK content through two clipped
 viewports while offsets and pixel-derived pointer cells change, then asserts no
 orphan continuation survives at the exposed frame edge.
+
+Exact grid tests enumerate every pixel in representative uneven totals and
+compare against an independent 64-bit rational formula. Seeded positive grids
+prove monotonic bounded mapping, first/last boundaries, overflow safety,
+nullable cells without metrics, no fabricated top-left hit, resize replacement,
+and captured pixel-only release behavior.

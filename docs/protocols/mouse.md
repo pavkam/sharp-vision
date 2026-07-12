@@ -32,11 +32,23 @@ directions, and the zero-coordinate leave sentinel remain distinct.
 
 Cell reports subtract the wire's one-based origin exactly once. With
 `Input.Options.PixelMouse`, SGR coordinates are retained as zero-based pixels;
-validated `Geometry.Metrics` derive cells by integer division and set
-`IsCellPositionInferred`. Without metrics, pixels remain available and inferred
-cells stay unset. Undefined extended buttons, negative/zero ordinary
-coordinates, overlong X10 fields, invalid UTF-8, and malformed decimal forms
-report once and recover at the next input.
+validated `Geometry.Metrics` derive optional cells from exact total dimensions
+and set `IsCellPositionInferred`. Without metrics, pixels remain available and
+cells stay null. Undefined extended buttons, negative/zero ordinary coordinates,
+overlong X10 fields, invalid UTF-8, and malformed decimal forms report once and
+recover at the next input.
+
+Exact metrics preserve total cell and pixel dimensions. For an in-window pixel
+coordinate, each axis maps as `floor(pixel * cellCount / pixelCount)` using a
+checked 64-bit intermediate. Uneven grids therefore retain every final column
+and row instead of truncating one nominal cell size. Coordinates outside the
+known pixel rectangle are not clamped into the terminal.
+
+Cell-protocol reports always expose cell coordinates. Pixel-protocol reports
+always expose pixels and expose nullable cells only when exact mapping succeeds.
+Pointer leave has neither coordinate. Ordinary hit testing requires cells; an
+existing capture may receive pixel-only motion or release for a documented
+pixel-aware behavior. Missing metrics never fabricate top-left cell zero.
 
 ## Tests
 

@@ -75,6 +75,13 @@ change invalidates measure; every other profile change invalidates rendering.
 Each frame captures one profile, so a refresh arriving during terminal output is
 used only by the next frame and cannot alter an in-flight encoding.
 
+The effective Unicode cell policy is an immutable derivative of the capability
+profile. Root attachment gives that same policy reference to every control;
+children added later inherit it before measurement. A geometry-affecting profile
+change replaces the tree policy on the dispatcher and invalidates root measure
+once. A nullable control-local ambiguous-width override, where an API offers
+one, wins only for that control and remains explicit.
+
 ## Safe degradation
 
 Feature fallback is deterministic: omit an unsupported visual attribute, reduce

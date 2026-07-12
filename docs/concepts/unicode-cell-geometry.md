@@ -44,6 +44,24 @@ reserves ellipsis width under the same explicit ambiguous-width policy. Text
 caches those lines, and Border rejects control or wide glyph Runes before
 mutation.
 
+## Source and terminal presentation
+
+Source text and terminal presentation have distinct ownership. Editing,
+selection, clipboard, and accessibility retain the original grapheme-aligned
+UTF-16. A frame stores the safe UTF-8 presentation that owns terminal cells.
+
+A base-less cluster made only from combining or spacing marks, prepend
+characters, variation selectors, emoji modifiers, tag characters, or joiners has
+no portable independent glyph position. It advances one repairable logical cell
+but presents as U+FFFD. Raw orphan components are never emitted alone, because a
+terminal could apply them to the preceding cell and violate frame ownership.
+Valid decomposed text retains its original base plus components.
+
+Cluster analysis returns width and presentation classification in one
+allocation-free pass. Measurement, layout, canvas preflight, canvas mutation,
+selection, and cursor placement consume that classification; none may invent a
+second orphan or emoji-width rule.
+
 ## Width rules
 
 - Printable narrow clusters occupy one cell.
@@ -67,6 +85,24 @@ same owned grapheme. Clipping, clearing, or overwriting either cell damages and
 repairs the full ownership range. Right-edge policy is explicit per drawing
 operation: wrap, clip the whole cluster, or emit a replacement; half output is
 forbidden.
+
+Ownership generalizes to a positive rectangular cell span. Ordinary text spans
+one row and one or two columns. Every continuation references one lead cell.
+Repair, clearing, styling, clipping, selection, semantic comparison, damage, and
+frame copying operate on the complete owner rectangle.
+
+## Cell and pixel grids
+
+When total cell and pixel dimensions are known, pixel boundaries use exact
+rational mapping rather than truncated per-cell division:
+
+`cell = floor(pixel * cellCount / pixelCount)`
+
+The coordinate must be inside the known pixel rectangle and arithmetic uses a
+checked 64-bit intermediate. Every valid pixel maps monotonically to one valid
+cell even when the final columns or rows have different pixel extents. Missing
+or out-of-domain geometry produces no cell coordinate; `(0, 0)` is never used as
+a placeholder.
 
 ## Shared consumers
 
