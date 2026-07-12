@@ -3,7 +3,7 @@
 set -euo pipefail
 
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-output="${1:-$root/docs/images/showcase-border.png}"
+output="${1:-$root/docs/images/showcase-dashboard.png}"
 session="sharpvision-capture-$$"
 temporary="$(mktemp -d)"
 plain="$temporary/pane.txt"
@@ -50,6 +50,29 @@ done
 
 if [[ "$ready" != true ]]; then
   printf 'The showcase did not render its documentation page before timeout.\n' >&2
+  exit 1
+fi
+
+# tmux's synthetic key injector retains an escape-prefixed report until a
+# following key arrives. The trailing Enter is not part of the mouse protocol;
+# it flushes that injector so the pane receives the exact SGR press/release.
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 38 4d 1b 5b 3c 30 3b 33 3b 38 6d 0d
+
+clicked=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'Click or press Enter' "$plain"; then
+    clicked=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$clicked" != true ]]; then
+  printf 'The showcase did not handle the injected SGR mouse click.\n' >&2
   exit 1
 fi
 

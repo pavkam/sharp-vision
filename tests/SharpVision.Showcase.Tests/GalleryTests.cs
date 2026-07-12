@@ -35,19 +35,20 @@ public sealed class GalleryTests
         using var gallery = new Gallery();
 
         _ = gallery.Root.ShouldBeOfType<Dock>();
-        gallery.Sidebar.Items.ShouldBe(_controls);
+        _ = gallery.Sidebar.ShouldBeOfType<Border>();
+        gallery.Pages.Select(static page => page.Name).ShouldBe(_controls);
         gallery.SelectedPage.ShouldBe("Border");
         _ = gallery.Content.ShouldNotBeNull();
     }
 
-    /// <summary>Verifies programmatic sidebar selection swaps the main page.</summary>
+    /// <summary>Verifies programmatic dashboard selection swaps the main page.</summary>
     [Fact]
     public void SelectedIndex_WhenChanged_UpdatesSelectedPageAndContent()
     {
         using var gallery = new Gallery();
         var previous = gallery.Content;
 
-        gallery.Sidebar.SelectedIndex = 1;
+        gallery.Select(1);
 
         gallery.SelectedPage.ShouldBe("Button");
         gallery.Content.ShouldNotBeSameAs(previous);
@@ -59,9 +60,9 @@ public sealed class GalleryTests
     {
         using var gallery = new Gallery();
 
-        for (var index = 0; index < gallery.Sidebar.Items.Count; index++)
+        for (var index = 0; index < gallery.Pages.Count; index++)
         {
-            gallery.Sidebar.SelectedIndex = index;
+            gallery.Select(index);
 
             ContainsRichText(gallery.Content).ShouldBeTrue(gallery.SelectedPage);
         }
@@ -115,10 +116,11 @@ public sealed class GalleryTests
 
         for (var index = 0; index < gallery.Pages.Count; index++)
         {
-            gallery.Sidebar.SelectedIndex = index;
+            gallery.Select(index);
 
             gallery.Selected.ShouldBeSameAs(gallery.Pages[index]);
             gallery.SelectedPage.ShouldBe(_controls[index]);
+            gallery.SelectedIndex.ShouldBe(index);
             gallery.Content.ShouldNotBeSameAs(previous);
             previous = gallery.Content;
         }

@@ -24,9 +24,12 @@ public sealed class GalleryRenderingTests
         var view = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
 
         gallery.Root.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
+        screen.Text.ShouldContain("SHARP VISION");
+        screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
         screen.Text.ShouldContain("Examples");
         screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2);
+        screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
         screen.ValidateContinuations();
     }
@@ -44,13 +47,13 @@ public sealed class GalleryRenderingTests
 
         for (var index = 0; index < gallery.Pages.Count; index++)
         {
-            gallery.Sidebar.SelectedIndex = index;
+            gallery.Select(index);
             engine.Layout(gallery.Root, size);
             using var frame = new Frame(size);
 
             Should.NotThrow(() => gallery.Root.Render(frame.Canvas));
             var screen = new Screen(frame);
-            gallery.Sidebar.SelectedIndex.ShouldBe(index);
+            gallery.SelectedIndex.ShouldBe(index);
             gallery.SelectedPage.ShouldBe(gallery.Pages[index].Name);
             gallery.Root.Bounds.ShouldBe(new Rect(0, 0, width, height));
             screen.ValidateContinuations();

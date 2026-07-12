@@ -105,7 +105,7 @@ internal sealed class Page
         };
         content.Children.Add(Heading(Name, Summary));
         content.Children.Add(Section("Examples"));
-        content.Children.Add(CreateExamples());
+        content.Children.Add(Card(CreateExamples()));
         content.Children.Add(Section("Properties"));
 
         foreach (var property in _properties)
@@ -114,7 +114,7 @@ internal sealed class Page
         }
 
         content.Children.Add(Section("Interaction"));
-        content.Children.Add(Paragraph(Interaction));
+        content.Children.Add(Card(Paragraph(Interaction)));
         return content;
     }
 
@@ -122,29 +122,71 @@ internal sealed class Page
 
     #region RichText composition
 
-    private static RichText Heading(string title, string summary)
+    private static Border Heading(string title, string summary)
     {
-        var text = new RichText { Wrapping = Wrapping.Word };
-        text.Inlines.Add(new ControlRun(title) { Attributes = Attributes.Bold });
+        var text = new RichText
+        {
+            Padding = new Thickness(1, 0),
+            Style = Palette.HeaderText(),
+            Wrapping = Wrapping.Word,
+        };
+        text.Inlines.Add(new ControlRun(title)
+        {
+            Foreground = Palette.Accent,
+            Attributes = Attributes.Bold,
+        });
         text.Inlines.Add(new LineBreak());
-        text.Inlines.Add(new ControlRun("Overview") { Attributes = Attributes.Bold });
+        text.Inlines.Add(new ControlRun("Overview")
+        {
+            Foreground = Palette.Success,
+            Attributes = Attributes.Bold,
+        });
         text.Inlines.Add(new LineBreak());
         text.Inlines.Add(new ControlRun(summary));
-        return text;
+        return new Border
+        {
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderColor = Palette.Accent,
+            Background = Palette.Canvas,
+            Child = text,
+        };
     }
 
     private static RichText Section(string title)
     {
         var text = new RichText { Wrapping = Wrapping.Word };
-        text.Inlines.Add(new ControlRun(title) { Attributes = Attributes.Bold | Attributes.Underline });
+        text.Inlines.Add(new ControlRun(title)
+        {
+            Foreground = Palette.Warning,
+            Attributes = Attributes.Bold,
+        });
         return text;
     }
 
     private static RichText Paragraph(string content)
     {
-        var text = new RichText { Wrapping = Wrapping.Word };
+        var text = new RichText
+        {
+            Style = Palette.CardText(),
+            Wrapping = Wrapping.Word,
+        };
         text.Inlines.Add(new ControlRun(content));
         return text;
+    }
+
+    private static Border Card(Control content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+
+        return new Border
+        {
+            Padding = new Thickness(1),
+            BorderThickness = new Thickness(1),
+            Glyphs = Glyphs.Rounded,
+            BorderColor = Palette.Border,
+            Background = Palette.Surface,
+            Child = content,
+        };
     }
 
     private static Border Property(PropertyDescription property)
@@ -152,10 +194,18 @@ internal sealed class Page
         var text = new RichText
         {
             Padding = new Thickness(1, 0),
+            Style = Palette.CardText(),
             Wrapping = Wrapping.Word,
         };
-        text.Inlines.Add(new ControlRun(property.Name) { Attributes = Attributes.Bold });
-        text.Inlines.Add(new ControlRun($"  {property.Type}  ·  default: {property.Default}"));
+        text.Inlines.Add(new ControlRun(property.Name)
+        {
+            Foreground = Palette.Accent,
+            Attributes = Attributes.Bold,
+        });
+        text.Inlines.Add(new ControlRun($"  {property.Type}  ·  default: {property.Default}")
+        {
+            Foreground = Palette.Muted,
+        });
         text.Inlines.Add(new LineBreak());
         text.Inlines.Add(new ControlRun(property.Description));
         return new Border
@@ -163,6 +213,8 @@ internal sealed class Page
             BorderThickness = new Thickness(1),
             Child = text,
             Glyphs = Glyphs.Rounded,
+            BorderColor = Palette.Border,
+            Background = Palette.Surface,
         };
     }
 

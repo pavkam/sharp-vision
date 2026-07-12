@@ -49,11 +49,14 @@ API on every page.
 
 ## Navigation and layout
 
-The root remains a traditional `Dock`: a fixed-width `List` sidebar on the left
-and a `ScrollView` main pane consuming the remaining space. The main pane
-enables automatic horizontal and vertical scrollbars. The selected catalog entry
-owns the exact sidebar label and creates fresh page content when selection
-changes.
+The root is a traditional `Dock`: a fixed-width framed sidebar on the left and a
+`ScrollView` main pane consuming the remaining space. The sidebar owns the
+product identity and one stateful navigation entry per concrete control; the
+selected catalog entry owns the exact sidebar label and creates fresh page
+content when selection changes. The follow-up
+[dashboard specification](2026-07-12-showcase-dashboard-design.md#dashboard-composition)
+defines its colored visual treatment and explicit cell-mouse startup policy. The
+main pane enables automatic horizontal and vertical scrollbars.
 
 Pages remain usable after terminal resize. Tiny layouts may clip or introduce
 scrollbars, but must not throw, create negative geometry, or lose the selected
@@ -83,12 +86,14 @@ classifications rather than representing them as approved licenses.
 
 Tests are written before production changes and prove that:
 
-- the sidebar inventory exactly matches the concrete shipped controls;
+- the sidebar inventory exactly matches the concrete shipped controls and
+  renders a distinct selected state;
 - every entry creates a page with typed `RichText`, live examples, and property
   documentation;
 - selecting every entry updates the title and replaces page content;
 - representative interactive examples respond through public keyboard and
-  pointer paths;
+  pointer paths after the executable showcase has emitted its SGR cell-mouse
+  enable sequence;
 - layout at tiny, typical, and large terminal sizes remains contained and uses
   scrolling where required;
 - embedded FIGlet resources still load from the renamed source paths and all 400

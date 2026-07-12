@@ -4,7 +4,6 @@ using SharpVision.Controls;
 using SharpVision.Fonts;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Text;
 
@@ -44,7 +43,7 @@ internal static class Examples
     internal static Control FigletText() => new FigletText(FigletCatalog.Default.Load("Standard"))
     {
         Content = "SV",
-        Foreground = Color.Indexed(6),
+        Foreground = Palette.Accent,
     };
 
     /// <summary>Creates styled, linked, wrapped Unicode inline content.</summary>
@@ -58,7 +57,7 @@ internal static class Examples
         richText.Inlines.Add(new ControlRun("Rich ")
         {
             Attributes = Attributes.Bold,
-            Foreground = Color.Indexed(2),
+            Foreground = Palette.Success,
         });
         richText.Inlines.Add(new ControlRun("terminal text") { Attributes = Attributes.Italic });
         richText.Inlines.Add(new LineBreak());
@@ -74,7 +73,7 @@ internal static class Examples
         examples.Children.Add(new Shadow
         {
             Child = Card(new ControlText("Composite"), Glyphs.Rounded),
-            Background = Color.Indexed(0),
+            Background = Palette.Canvas,
             Offset = new Point(2, 1),
         });
         examples.Children.Add(new Shadow
@@ -102,7 +101,7 @@ internal static class Examples
             Width = Length.Cells(20),
             TextAlignment = Alignment.Center,
             Trimming = Trimming.GraphemeEllipsis,
-            Foreground = Color.Indexed(3),
+            Foreground = Palette.Warning,
             Attributes = Attributes.Bold,
         });
         return examples;
@@ -377,7 +376,7 @@ internal static class Examples
         };
         var back = new ControlText("Background layer")
         {
-            Background = Color.Indexed(4),
+            Background = Palette.Highlight,
             Padding = new Thickness(1),
         };
         ControlOverlay.SetZIndex(back, -1);
@@ -387,7 +386,7 @@ internal static class Examples
         overlay.Children.Add(middle);
         var front = new ControlText("Front layer")
         {
-            Foreground = Color.Indexed(3),
+            Foreground = Palette.Warning,
             Attributes = Attributes.Bold,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,

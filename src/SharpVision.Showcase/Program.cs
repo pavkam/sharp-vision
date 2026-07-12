@@ -9,13 +9,28 @@ if (Console.IsInputRedirected || Console.IsOutputRedirected)
     return;
 }
 
+using var rawMode = ConsoleRawMode.Enter();
 using var gallery = new Gallery();
 var transport = new StreamTransport(
     Console.OpenStandardInput(),
     Console.OpenStandardOutput(),
     leaveOpen: true);
 var resize = new ConsoleResizeSource(TimeSpan.FromMilliseconds(100));
-await using var application = new Application(gallery.Root, transport, resize);
+var environment = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+{
+    if (entry.Key is string key)
+    {
+        environment[key] = entry.Value?.ToString();
+    }
+}
+
+await using var application = new Application(
+    gallery.Root,
+    transport,
+    resize,
+    StartupOptions.Create(environment));
 using var cancellation = new CancellationTokenSource();
 
 ConsoleCancelEventHandler cancel = (_, eventArgs) =>

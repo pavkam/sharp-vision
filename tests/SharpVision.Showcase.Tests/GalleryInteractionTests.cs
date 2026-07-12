@@ -26,7 +26,7 @@ public sealed class GalleryInteractionTests
             gallery.Root,
             terminal,
             terminal,
-            TerminalOptions.Minimal);
+            StartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
         application.Size.ShouldBe(new Size(80, 24));
         terminal.Writes.Count.ShouldBeGreaterThan(0);
@@ -49,7 +49,7 @@ public sealed class GalleryInteractionTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         terminal.QueueInput(Encoding.ASCII.GetBytes(
-            "\u001b[<0;1;2M\u001b[<0;1;2m"));
+            "\u001b[<0;3;8M\u001b[<0;3;8m"));
         await WaitUntilAsync(
             () => gallery.SelectedPage == "Button",
             application,
@@ -78,8 +78,9 @@ public sealed class GalleryInteractionTests
             application,
             "main page scrolling");
 
-        terminal.QueueInput(Encoding.ASCII.GetBytes(
-            "\u001b[<0;1;17M\u001b[<0;1;17m"));
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(16),
+            TestContext.Current.CancellationToken);
         await WaitUntilAsync(
             () => gallery.SelectedPage == "TextInput",
             application,
@@ -104,6 +105,53 @@ public sealed class GalleryInteractionTests
         gallery.SelectedPage.ShouldBe("TextInput");
         application.Failure.ShouldBeNull();
         terminal.Writes.Count.ShouldBeGreaterThan(0);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a decoded primary SGR click drives visible navigation states and selection.</summary>
+    [Fact]
+    public async Task Input_WhenPrimaryPointerClicksSidebarButton_SelectsButtonPageAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(80, 24)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var button = gallery.Navigation[1];
+        var point = await application.Dispatcher.InvokeAsync(
+            () => button.Bounds,
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes(
+            $"\u001b[<0;{point.X + 1};{point.Y + 1}M"));
+        await WaitUntilAsync(
+            () => button.IsPressed,
+            application,
+            "dashboard Button pressed state");
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            button.IsHovered.ShouldBeTrue();
+            button.IsFocused.ShouldBeTrue();
+            button.Appearance.Background.ShouldBe(Palette.Pressed);
+        }, TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes(
+            $"\u001b[<0;{point.X + 1};{point.Y + 1}m"));
+        await WaitUntilAsync(
+            () => gallery.SelectedPage == "Button",
+            application,
+            "dashboard Button page selection");
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            button.IsSelected.ShouldBeTrue();
+            button.Appearance.Background.ShouldBe(Palette.Highlight);
+        }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 

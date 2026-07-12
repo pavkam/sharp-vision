@@ -1,6 +1,7 @@
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 namespace SharpVision.Showcase.Tests;
@@ -40,6 +41,25 @@ internal sealed class Screen
         }
 
         return count;
+    }
+
+    /// <summary>Gets whether the copied frame contains an explicit foreground or background color.</summary>
+    internal bool HasNonDefaultColor()
+    {
+        for (var y = 0; y < _frame.Size.Height; y++)
+        {
+            for (var x = 0; x < _frame.Size.Width; x++)
+            {
+                var cell = _frame.GetCell(new Point(x, y));
+
+                if (cell.Style.Foreground != Color.Default || cell.Style.Background != Color.Default)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Throws when a continuation does not point to the preceding width-two lead cell.</summary>
