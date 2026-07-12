@@ -518,7 +518,7 @@ public sealed class Router: IDisposable
 - [ ] **Step 7: Run router and regression tests**
 
 ```bash
-dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests|*LegacyKeyTests|*KittyKeyboardTests|*PasteTests|*MouseTests" --timeout 60s
+dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests" "*LegacyKeyTests" "*KittyKeyboardTests" "*PasteTests" "*MouseTests" --timeout 60s
 ```
 
 Expected: all selected tests pass and only recognized replies are reclassified.
@@ -571,7 +571,7 @@ known following key.
 - [ ] **Step 3: Run focused proof**
 
 ```bash
-dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests|*ParserFragmentationTests|*ResponsesTests" --timeout 60s
+dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests" "*ParserFragmentationTests" "*ResponsesTests" --timeout 60s
 ```
 
 Expected: all selected cases pass, including every generated split.
@@ -648,7 +648,7 @@ cleanup unchanged.
 - [ ] **Step 4: Run runtime and PTY tests**
 
 ```bash
-dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*SessionTests|*PseudoterminalTests" --timeout 60s
+dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*SessionTests" "*PseudoterminalTests" --timeout 60s
 ```
 
 Expected: routed reply order passes and existing mode/PTY bytes remain
@@ -752,7 +752,7 @@ contains `secret`.
 - [ ] **Step 5: Run application integration tests**
 
 ```bash
-dotnet test --project tests/SharpVision.Tests --filter-class "*ProtocolRoutingTests|*OrderingTests|*ApplicationTests|*TerminalInputTests" --timeout 60s
+dotnet test --project tests/SharpVision.Tests --filter-class "*ProtocolRoutingTests" "*OrderingTests" "*ApplicationTests" "*TerminalInputTests" --timeout 60s
 ```
 
 Expected: all selected tests pass and response delivery is dispatcher-affine.
@@ -794,8 +794,8 @@ Expected: zero Markdown, link, anchor, and documentation-test failures.
 - [ ] **Step 3: Run focused suites**
 
 ```bash
-dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests|*ResponsesTests|*SessionTests|*PseudoterminalTests" --timeout 60s
-dotnet test --project tests/SharpVision.Tests --filter-class "*ProtocolRoutingTests|*OrderingTests|*TerminalInputTests" --timeout 60s
+dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*RouterTests" "*ResponsesTests" "*SessionTests" "*PseudoterminalTests" --timeout 60s
+dotnet test --project tests/SharpVision.Tests --filter-class "*ProtocolRoutingTests" "*OrderingTests" "*TerminalInputTests" --timeout 60s
 ```
 
 Expected: every selected test passes with nonzero discovery.
