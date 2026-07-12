@@ -114,7 +114,7 @@ control API:
 
 ```csharp
 public static StyleProperty<LabelPlacement> LabelPlacementProperty { get; } =
-    StyleProperty.Register<MyControl, LabelPlacement>(
+    StyleProperty<LabelPlacement>.Register<MyControl>(
         "label-placement",
         LabelPlacement.Left,
         Impact.Measure,
@@ -139,10 +139,12 @@ because the value must remain stable across later theme changes.
 
 ## 5. Control styles
 
-`ControlStyle` is the non-generic public base used by `Control.Style` and theme
-storage. `ControlStyle<TControl>` targets one specific control type and provides
-typed `Set`, `Remove`, and `TryGet` operations for normal and visual-state
-values.
+`IControlStyle` is the non-generic public contract used by `Control.Style` and
+theme storage. `ControlStyle<TControl>` implements that contract, targets one
+specific control type, and provides typed `Set`, `Remove`, and `TryGet`
+operations for normal and visual-state values. The distinct names preserve the
+repository's one-type-per-file convention without generic-arity filename
+collisions.
 
 A style may set a property declared by its target type or any base control type.
 For example, `ControlStyle<List>` may set `Control.PaddingProperty` and a
@@ -162,9 +164,14 @@ pointer and creating a layout/state feedback loop.
 assignable from the control's runtime type. It applies only to that control and
 does not flow to descendants.
 
+An attached control subscribes only to its current per-instance style. Style
+mutation invalidates the metadata's earliest affected phase on the owning
+dispatcher. Replacement, detach, and disposal remove the previous subscription,
+and reattachment subscribes exactly once.
+
 ## 6. Theme collection and inheritance
 
-`Theme` owns at most one `ControlStyle` for each target control type. Public
+`Theme` owns at most one `IControlStyle` for each target control type. Public
 generic operations add, replace, remove, and query styles without a built-in
 control list. Theme mutation subscribes and unsubscribes style resources
 atomically and raises one `Changed` event with the earliest affected phase.
