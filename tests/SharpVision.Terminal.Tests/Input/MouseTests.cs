@@ -75,6 +75,32 @@ public sealed class MouseTests
         pointer.IsCellPositionInferred.ShouldBeTrue();
     }
 
+    /// <summary>Verifies uneven total dimensions preserve the final cell.</summary>
+    [Fact]
+    public void Decode_WhenPixelGridIsUneven_UsesExactRationalMapping()
+    {
+        // Arrange
+        var sink = new RecordingInputSink();
+        using var decoder = new InputDecoder(
+            sink,
+            new Options
+            {
+                PixelMouse = true,
+                CellMetrics = new CellMetrics(
+                    new Size(10, 3),
+                    new Size(101, 31)),
+            });
+
+        // Act
+        decoder.Decode("\u001b[<0;101;31M"u8);
+
+        // Assert
+        var pointer = sink.Pointers.Single();
+        pointer.Pixels.ShouldBe(new Point(100, 30));
+        pointer.Cells.ShouldBe(new Point(9, 2));
+        pointer.IsCellPositionInferred.ShouldBeTrue();
+    }
+
     /// <summary>
     /// Verifies the mouse-leave sentinel remains distinct from invalid zero coordinates.
     /// </summary>

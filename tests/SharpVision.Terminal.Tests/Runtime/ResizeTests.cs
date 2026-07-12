@@ -21,7 +21,9 @@ public sealed class ResizeTests
     {
         var dimensions = new Dimensions(new Size(80, 24), new Size(800, 480));
 
-        dimensions.CellMetrics.ShouldBe(new CellMetrics(10, 20));
+        dimensions.CellMetrics.ShouldBe(new CellMetrics(
+            new Size(80, 24),
+            new Size(800, 480)));
         dimensions.IsSuspended.ShouldBeFalse();
     }
 
@@ -35,6 +37,16 @@ public sealed class ResizeTests
 
         dimensions.CellMetrics.ShouldBeNull();
         dimensions.IsSuspended.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a pixel grid smaller than its cell grid is unavailable.</summary>
+    [Fact]
+    public void Constructor_WhenPixelsCannotRepresentEveryCell_OmitsMetrics()
+    {
+        var dimensions = new Dimensions(new Size(80, 24), new Size(79, 23));
+
+        dimensions.CellMetrics.ShouldBeNull();
+        dimensions.Pixels.ShouldBe(new Size(79, 23));
     }
 
     /// <summary>

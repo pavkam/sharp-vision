@@ -1351,9 +1351,9 @@ public sealed class Decoder: IDisposable
         {
             pixels = source;
 
-            if (_cellMetrics is { } metrics)
+            if (_cellMetrics is { } metrics && metrics.TryMap(source, out var mapped))
             {
-                cells = new Geometry.Point(source.X / metrics.Width, source.Y / metrics.Height);
+                cells = mapped;
                 inferred = true;
             }
             else

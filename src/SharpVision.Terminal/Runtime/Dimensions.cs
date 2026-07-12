@@ -14,13 +14,11 @@ public readonly record struct Dimensions
         Pixels = pixels;
 
         if (cells.Width > 0 && cells.Height > 0 &&
-            pixels is { Width: > 0, Height: > 0 } pixelSize)
+            pixels is { Width: > 0, Height: > 0 } pixelSize &&
+            pixelSize.Width >= cells.Width &&
+            pixelSize.Height >= cells.Height)
         {
-            var width = pixelSize.Width / cells.Width;
-            var height = pixelSize.Height / cells.Height;
-            CellMetrics = width > 0 && height > 0
-                ? new Metrics(width, height)
-                : null;
+            CellMetrics = new Metrics(cells, pixelSize);
         }
     }
 
