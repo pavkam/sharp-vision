@@ -2,6 +2,7 @@ using SharpVision.Terminal.Protocols;
 
 using InputOptions = SharpVision.Terminal.Input.Options;
 using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
+using TerminalNegotiationOptions = SharpVision.Terminal.Capabilities.NegotiationOptions;
 
 namespace SharpVision.Terminal.Runtime;
 
@@ -30,6 +31,9 @@ public sealed record Options
             field = value;
         }
     } = TerminalCapabilities.Conservative;
+
+    /// <summary>Gets optional bounded startup negotiation policy.</summary>
+    public TerminalNegotiationOptions? Negotiation { get; init; }
 
     /// <summary>Gets whether to enter the alternate screen.</summary>
     public bool AlternateScreen { get; init; } = true;

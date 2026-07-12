@@ -2,6 +2,8 @@ using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
+
 namespace SharpVision.Terminal.Tests.Transport;
 
 /// <summary>Records one expected pseudoterminal resize and runtime faults.</summary>
@@ -43,6 +45,9 @@ internal sealed class RuntimeSink: ISink
 
     /// <inheritdoc/>
     public void Sequence(ProtocolSequence value) => ArgumentNullException.ThrowIfNull(value);
+
+    /// <inheritdoc/>
+    public void Profile(TerminalCapabilities value) => ArgumentNullException.ThrowIfNull(value);
 
     /// <inheritdoc/>
     public void Resize(in Dimensions value)

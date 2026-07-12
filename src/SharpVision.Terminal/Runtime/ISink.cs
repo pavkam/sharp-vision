@@ -1,5 +1,7 @@
 using SharpVision.Terminal.Protocols;
 
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
+
 namespace SharpVision.Terminal.Runtime;
 
 /// <summary>
@@ -7,6 +9,15 @@ namespace SharpVision.Terminal.Runtime;
 /// </summary>
 public interface ISink: IProtocolSink
 {
+    /// <summary>Publishes one immutable active capability profile.</summary>
+    /// <param name="value">The non-null immutable profile.</param>
+    /// <exception cref="NotSupportedException">
+    /// The sink did not implement negotiated profile publication.
+    /// </exception>
+    public void Profile(TerminalCapabilities value) =>
+        throw new NotSupportedException(
+            "This runtime sink does not accept capability profiles.");
+
     /// <summary>Receives one immutable terminal dimension change.</summary>
     /// <param name="value">The new cell and optional pixel dimensions.</param>
     public void Resize(in Dimensions value);

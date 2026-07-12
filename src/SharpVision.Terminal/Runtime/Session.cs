@@ -1,8 +1,11 @@
 using System.Buffers;
 using System.Runtime.ExceptionServices;
 
+using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Transport;
+
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Runtime;
 
@@ -132,22 +135,28 @@ public sealed class Session: IAsyncDisposable
             await EnableAsync(Lease.Cursor, cancellationToken).ConfigureAwait(false);
         }
 
-        if (_options.Focus && _options.Capabilities.FocusReporting.IsSupported)
+    }
+
+    private async ValueTask EnableOptionalAsync(
+        TerminalCapabilities capabilities,
+        CancellationToken cancellationToken)
+    {
+        if (_options.Focus && capabilities.FocusReporting.IsSupported)
         {
             await EnableAsync(Lease.Focus, cancellationToken).ConfigureAwait(false);
         }
 
-        if (_options.Paste && _options.Capabilities.BracketedPaste.IsSupported)
+        if (_options.Paste && capabilities.BracketedPaste.IsSupported)
         {
             await EnableAsync(Lease.Paste, cancellationToken).ConfigureAwait(false);
         }
 
-        if (_options.Tracking.HasValue && MouseSupported())
+        if (_options.Tracking.HasValue && MouseSupported(capabilities))
         {
             await EnableAsync(Lease.Mouse, cancellationToken).ConfigureAwait(false);
         }
 
-        if (_options.Keyboard.HasValue && _options.Capabilities.KittyKeyboard.IsSupported)
+        if (_options.Keyboard.HasValue && capabilities.KittyKeyboard.IsSupported)
         {
             await EnableAsync(Lease.Keyboard, cancellationToken).ConfigureAwait(false);
         }
@@ -165,9 +174,36 @@ public sealed class Session: IAsyncDisposable
         {
             PixelMouse = _options.Coordinates == MouseCoordinates.Pixel,
         };
-        using var router = new ProtocolRouter(_sink, inputOptions, _timeProvider);
+        var negotiator = _options.Negotiation is null
+            ? null
+            : new Negotiator(_options.Negotiation, _timeProvider);
+        IProtocolSink routeSink = negotiator is null
+            ? _sink
+            : new NegotiationSink(_sink, negotiator);
+        using var router = new ProtocolRouter(routeSink, inputOptions, _timeProvider);
+
+        if (negotiator is null)
+        {
+            await EnableOptionalAsync(_options.Capabilities, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            var queries = new ArrayBufferWriter<byte>();
+            negotiator.Start(queries);
+            await _transport.WriteAsync(queries.WrittenMemory, cancellationToken)
+                .ConfigureAwait(false);
+            await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         var buffer = ArrayPool<byte>.Shared.Rent(_options.ReadBufferSize);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var deadline = negotiator is null
+            ? null
+            : DelayUntilAsync(negotiator.Deadline, linked.Token);
+        var ready = negotiator is null;
+        var hasPendingResize = false;
+        var pendingResize = default(Dimensions);
 
         try
         {
@@ -178,13 +214,45 @@ public sealed class Session: IAsyncDisposable
 
             while (true)
             {
-                var completed = await Task.WhenAny(read, resize).ConfigureAwait(false);
+                var completed = deadline is null
+                    ? await Task.WhenAny(read, resize).ConfigureAwait(false)
+                    : await Task.WhenAny(read, resize, deadline).ConfigureAwait(false);
+
+                if (deadline is not null && ReferenceEquals(completed, deadline))
+                {
+                    await deadline.ConfigureAwait(false);
+                    _ = negotiator!.Expire();
+                    var capabilities = negotiator.Capabilities;
+                    _sink.Profile(capabilities);
+                    await EnableOptionalAsync(capabilities, linked.Token)
+                        .ConfigureAwait(false);
+                    ready = true;
+                    deadline = null;
+
+                    if (hasPendingResize)
+                    {
+                        _sink.Resize(in pendingResize);
+                        hasPendingResize = false;
+                    }
+
+                    continue;
+                }
 
                 if (ReferenceEquals(completed, resize))
                 {
                     var dimensions = await resize.ConfigureAwait(false);
                     router.SetCellMetrics(dimensions.CellMetrics);
-                    _sink.Resize(in dimensions);
+
+                    if (ready)
+                    {
+                        _sink.Resize(in dimensions);
+                    }
+                    else
+                    {
+                        pendingResize = dimensions;
+                        hasPendingResize = true;
+                    }
+
                     resize = _resize.ReadAsync(linked.Token).AsTask();
                     continue;
                 }
@@ -194,11 +262,43 @@ public sealed class Session: IAsyncDisposable
                 if (count == 0)
                 {
                     router.Complete();
+
+                    if (!ready)
+                    {
+                        _ = negotiator!.Complete();
+                        _sink.Profile(negotiator.Capabilities);
+                        ready = true;
+                        deadline = null;
+
+                        if (hasPendingResize)
+                        {
+                            _sink.Resize(in pendingResize);
+                            hasPendingResize = false;
+                        }
+                    }
+
                     _sink.Closed();
                     return;
                 }
 
                 router.Route(buffer.AsSpan(0, count));
+
+                if (!ready && negotiator!.IsComplete)
+                {
+                    var capabilities = negotiator.Capabilities;
+                    _sink.Profile(capabilities);
+                    await EnableOptionalAsync(capabilities, linked.Token)
+                        .ConfigureAwait(false);
+                    ready = true;
+                    deadline = null;
+
+                    if (hasPendingResize)
+                    {
+                        _sink.Resize(in pendingResize);
+                        hasPendingResize = false;
+                    }
+                }
+
                 read = _transport.ReadAsync(
                     buffer.AsMemory(0, _options.ReadBufferSize),
                     linked.Token).AsTask();
@@ -209,6 +309,18 @@ public sealed class Session: IAsyncDisposable
             linked.Cancel();
             ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
         }
+    }
+
+    private Task DelayUntilAsync(DateTimeOffset deadline, CancellationToken cancellationToken)
+    {
+        var delay = deadline - _timeProvider.GetUtcNow();
+
+        if (delay < TimeSpan.Zero)
+        {
+            delay = TimeSpan.Zero;
+        }
+
+        return Task.Delay(delay, _timeProvider, cancellationToken);
     }
 
     private async ValueTask CleanupAsync()
@@ -282,9 +394,10 @@ public sealed class Session: IAsyncDisposable
         await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private bool MouseSupported() => _options.Coordinates == MouseCoordinates.Pixel
-        ? _options.Capabilities.PixelMouse.IsSupported
-        : _options.Capabilities.CellMouse.IsSupported;
+    private bool MouseSupported(TerminalCapabilities capabilities) =>
+        _options.Coordinates == MouseCoordinates.Pixel
+            ? capabilities.PixelMouse.IsSupported
+            : capabilities.CellMouse.IsSupported;
 
     private void ThrowIfDisposed() =>
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);

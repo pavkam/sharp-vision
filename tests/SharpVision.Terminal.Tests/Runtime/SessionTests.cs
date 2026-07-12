@@ -17,6 +17,199 @@ namespace SharpVision.Terminal.Tests.Runtime;
 /// </summary>
 public sealed class SessionTests
 {
+    /// <summary>Verifies early EOF publishes fallback without enabling optional modes.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationEndsAtEof_PublishesWithoutOptionalModesAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            Focus = true,
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" }),
+        };
+        transport.Close();
+        await using var session = new Session(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        sink.Profiles.ShouldHaveSingleItem().KittyKeyboard.ShouldBe(
+            new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        sink.Order.ShouldBe(["profile", "closed"]);
+        transport.JoinedWrites.ShouldBe(
+            "\u001b[?u\u001b[c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p");
+    }
+
+    /// <summary>Verifies missing replies release startup at one finite deadline.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationTimesOut_PublishesAndReleasesResizeAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var limits = Limits.Default with
+        {
+            QueryTimeout = TimeSpan.FromMilliseconds(20),
+        };
+        var options = RuntimeOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
+                limits: limits),
+        };
+        await using var session = new Session(transport, resize, sink, options);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var dimensions = new Dimensions(new Geometry.Size(80, 24));
+
+        // Act
+        resize.Resize(dimensions);
+        await sink.ProfileReceived.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        // Assert
+        sink.Profiles.ShouldHaveSingleItem().KittyKeyboard.ShouldBe(
+            new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        sink.Resizes.ShouldBe([dimensions]);
+        sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
+    }
+
+    /// <summary>Verifies negotiation publishes before the retained first resize.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationRepliesComplete_PublishesBeforeResizeAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>()),
+        };
+        await using var session = new Session(transport, resize, sink, options);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var dimensions = new Dimensions(new Geometry.Size(80, 24));
+
+        // Act
+        transport.Input(System.Text.Encoding.ASCII.GetBytes(
+            "x" +
+            "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
+            "\u001b[?1004;1$y\u001b[?2026;1$y\u001b[?3u\u001b[?1;2c"));
+        resize.Resize(dimensions);
+        await sink.ResizeReceived.Task.WaitAsync(TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        // Assert
+        sink.Profiles.ShouldHaveSingleItem().SynchronizedOutput.IsSupported.ShouldBeTrue();
+        sink.Order.IndexOf("text").ShouldBeLessThan(sink.Order.IndexOf("profile"));
+        sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
+        sink.Resizes.ShouldBe([dimensions]);
+        transport.JoinedWrites.ShouldStartWith(
+            "\u001b[?u\u001b[c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p");
+    }
+
+    /// <summary>Verifies negotiated modes enable after publication and unwind in reverse.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationProvesModes_EnablesAndRestoresExactlyAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            Focus = true,
+            Paste = true,
+            Tracking = MouseTracking.Press,
+            Keyboard = Enhancement.Disambiguate | Enhancement.EventTypes,
+            Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
+        };
+        transport.Input(System.Text.Encoding.ASCII.GetBytes(
+            "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
+            "\u001b[?1004;1$y\u001b[?2026;1$y\u001b[?3u\u001b[?1;2c"));
+        transport.Close();
+        await using var session = new Session(transport, resize, sink, options);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = sink.Profiles.ShouldHaveSingleItem();
+        transport.JoinedWrites.ShouldBe(
+            "\u001b[?u\u001b[c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p" +
+            "\u001b[?1004h\u001b[?2004h\u001b[?1000h\u001b[?1006h\u001b[>3u" +
+            "\u001b[<u\u001b[?1006l\u001b[?1000l\u001b[?2004l\u001b[?1004l");
+    }
+
+    /// <summary>Verifies a query write failure remains primary and publishes nothing.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiationQueryWriteFails_PreservesExceptionAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport { FailWriteAt = 1 };
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
+        };
+        await using var session = new Session(transport, resize, sink, options);
+
+        // Act
+        var thrown = await Should.ThrowAsync<IOException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        thrown.ShouldBeSameAs(transport.WriteFailure);
+        sink.Faults.ShouldBe([transport.WriteFailure]);
+        sink.Profiles.ShouldBeEmpty();
+        transport.JoinedWrites.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies optional-mode failure restores the attempted lease.</summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiatedModeWriteFails_RestoresAndPreservesExceptionAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport { FailWriteAt = 2 };
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with
+        {
+            Focus = true,
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                new Settings { FocusReporting = true },
+                Limits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(20) }),
+        };
+        await using var session = new Session(transport, resize, sink, options);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        var thrown = await Should.ThrowAsync<IOException>(running);
+
+        // Assert
+        thrown.ShouldBeSameAs(transport.WriteFailure);
+        _ = sink.Profiles.ShouldHaveSingleItem();
+        transport.JoinedWrites.ShouldEndWith("\u001b[?1004l");
+    }
+
     /// <summary>Verifies replies and adjacent text retain transport order.</summary>
     [Fact]
     public async Task RunAsync_WhenReplyPrecedesText_RoutesBothInOrderAsync()

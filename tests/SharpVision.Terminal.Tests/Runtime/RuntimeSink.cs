@@ -3,6 +3,7 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
 using InputText = SharpVision.Terminal.Input.Text;
+using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
@@ -15,6 +16,9 @@ internal sealed class RuntimeSink: ISink
     /// <summary>Gets committed resize callbacks.</summary>
     internal List<Dimensions> Resizes { get; } = [];
 
+    /// <summary>Gets immutable capability profiles in publication order.</summary>
+    internal List<TerminalCapabilities> Profiles { get; } = [];
+
     /// <summary>Gets recognized terminal responses.</summary>
     internal List<Response> Responses { get; } = [];
 
@@ -26,6 +30,10 @@ internal sealed class RuntimeSink: ISink
 
     /// <summary>Gets completion for the first resize callback.</summary>
     internal TaskCompletionSource ResizeReceived { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Gets completion for the first capability profile.</summary>
+    internal TaskCompletionSource ProfileReceived { get; } =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Gets the closure callback count.</summary>
@@ -80,9 +88,19 @@ internal sealed class RuntimeSink: ISink
     }
 
     /// <inheritdoc/>
+    public void Profile(TerminalCapabilities value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        Profiles.Add(value);
+        Order.Add("profile");
+        _ = ProfileReceived.TrySetResult();
+    }
+
+    /// <inheritdoc/>
     public void Resize(in Dimensions value)
     {
         Resizes.Add(value);
+        Order.Add("resize");
         _ = ResizeReceived.TrySetResult();
     }
 

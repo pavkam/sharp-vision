@@ -169,6 +169,33 @@ public sealed class Negotiator
         return true;
     }
 
+    /// <summary>
+    /// Publishes absent evidence immediately when the owning transport closes.
+    /// </summary>
+    /// <returns>Whether this call transitioned negotiation to complete.</returns>
+    /// <exception cref="InvalidOperationException">The negotiator has not started.</exception>
+    internal bool Complete()
+    {
+        if (!IsStarted)
+        {
+            throw new InvalidOperationException("The capability negotiator has not started.");
+        }
+
+        if (IsComplete)
+        {
+            return false;
+        }
+
+        foreach (var mode in _pendingModes)
+        {
+            _ = _expiredModes.Add(mode);
+        }
+
+        _pendingModes.Clear();
+        Publish();
+        return true;
+    }
+
     private QueryMatch AcceptPrivateMode(in Response response)
     {
         var values = response.Values.Span;
@@ -242,6 +269,11 @@ public sealed class Negotiator
             return;
         }
 
+        Publish();
+    }
+
+    private void Publish()
+    {
         var queries = new Queries
         {
             SynchronizedOutput = _synchronizedOutput,
