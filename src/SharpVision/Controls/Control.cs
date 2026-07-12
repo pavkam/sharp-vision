@@ -300,6 +300,13 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether an active pointer press began on this control.</summary>
     public bool IsPressed { get; private set; }
 
+    /// <summary>Gets whether this control owns hover resolved from its hit-tested descendants.</summary>
+    /// <remarks>
+    /// The default preserves direct leaf hover. Composite interactive controls
+    /// override this to expose one semantic hover state for their visible content.
+    /// </remarks>
+    internal virtual bool OwnsHover => false;
+
     /// <summary>Gets the desired border-box size from the last successful measure.</summary>
     public Size DesiredSize { get; internal set; }
 

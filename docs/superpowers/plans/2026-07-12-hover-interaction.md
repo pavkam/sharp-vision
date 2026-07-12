@@ -78,7 +78,7 @@ git commit -m "feat(showcase): request passive mouse motion"
 
 **Files:**
 
-- Modify: `tests/SharpVision.Tests/Input/CaptureManagerTests.cs`
+- Modify: `tests/SharpVision.Tests/Input/PointerTests.cs`
 - Modify: `tests/SharpVision.Tests/Controls/ButtonTests.cs`
 - Modify: `tests/SharpVision.Tests/Controls/ScrollBarTests.cs`
 
@@ -174,7 +174,7 @@ affects routed delivery but not physical hover.
 
 ```bash
 dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --no-restore --filter-class "*CaptureManagerTests" --filter-class "*ButtonTests" --filter-class "*ScrollBarTests"
-git add src/SharpVision/Controls/Control.cs src/SharpVision/Controls/Pressable.cs src/SharpVision/Input/CaptureManager.cs docs/concepts/input-routing.md docs/controls/control.md tests/SharpVision.Tests/Input/CaptureManagerTests.cs tests/SharpVision.Tests/Controls/ButtonTests.cs tests/SharpVision.Tests/Controls/ScrollBarTests.cs
+git add src/SharpVision/Controls/Control.cs src/SharpVision/Controls/Pressable.cs src/SharpVision/Input/CaptureManager.cs docs/concepts/input-routing.md docs/controls/control.md tests/SharpVision.Tests/Input/PointerTests.cs tests/SharpVision.Tests/Controls/ButtonTests.cs tests/SharpVision.Tests/Controls/ScrollBarTests.cs
 git commit -m "feat(input): resolve hover to semantic controls"
 ```
 

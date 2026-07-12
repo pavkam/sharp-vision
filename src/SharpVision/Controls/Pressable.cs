@@ -20,6 +20,9 @@ public abstract class Pressable: Container
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     protected Pressable(int capacity) : base(capacity) => CanFocus = true;
 
+    /// <inheritdoc/>
+    internal override bool OwnsHover => true;
+
     /// <summary>Completes one validated activation in a concrete control.</summary>
     /// <param name="cause">The input path that completed activation.</param>
     protected abstract void Activate(ActivationCause cause);

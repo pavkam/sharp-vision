@@ -97,8 +97,12 @@ at each parent, and searches `Container.Children` from last to first so the
 highest z-order wins. A pointer handler receives `LocalCells` relative to its
 current sender's committed bounds.
 
-`CaptureManager.Dispatch` targets exclusive capture when present and otherwise
-uses root hit testing. It updates `IsHovered` and `IsPressed` before routing so
+`CaptureManager.Dispatch` routes to exclusive capture when present and otherwise
+uses root hit testing. Hover always resolves from the physical hit-test target,
+even while another control is captured, so drag delivery cannot leave stale
+visual feedback. A pressable composite owns hover for its hit-tested
+descendants; for example, text inside a Button sets the Button's `IsHovered`,
+not the label's. It updates `IsHovered` and `IsPressed` before routing so
 handlers observe committed visual state. Release clears press after routing.
 Explicit `Release` is quiet; detach, disable, hide, disposal, and terminal-focus
 loss emit one `Cancelled` callback with a precise `ReleaseReason`, then clear

@@ -152,6 +152,32 @@ public sealed class ButtonTests
         clicks.ShouldBe(1);
     }
 
+    /// <summary>Verifies passive motion over owned text resolves hover to the semantic Button.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerMovesOverContent_HoversButtonInsteadOfTextAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var content = new ControlText("Hover");
+        var button = new Button
+        {
+            Bounds = new Rect(0, 0, 6, 1),
+            Content = content,
+        };
+        new Engine().Layout(button, new Size(6, 1));
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            button.Attach(dispatcher);
+            using var capture = new CaptureManager(button);
+
+            _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Move));
+
+            capture.Hovered.ShouldBeSameAs(button);
+            button.IsHovered.ShouldBeTrue();
+            content.IsHovered.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies padding, margin, Unicode content, and semantic rendering.</summary>
     [Fact]
     public void Render_WhenButtonHasUnicodeContent_ComputesExactBoundsAndCells()

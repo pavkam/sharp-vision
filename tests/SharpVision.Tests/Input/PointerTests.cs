@@ -94,6 +94,42 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies capture retains routed delivery while hover follows the physical pointer target.</summary>
+    [Fact]
+    public async Task Dispatch_WhenCaptureIsActive_HoversPhysicalTargetAndRoutesToCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbePressable { Bounds = new Rect(0, 0, 10, 10) };
+            var second = new ProbePressable { Bounds = new Rect(10, 0, 10, 10) };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            var routed = new List<Control>();
+            _ = first.AddHandler(Events.Pointer, (sender, eventArgs) =>
+            {
+                if (eventArgs.Phase == Phase.Bubble)
+                {
+                    routed.Add((Control) sender!);
+                }
+            });
+
+            manager.Capture(first).ShouldBeTrue();
+            manager.Dispatch(CreatePointer(new Point(15, 5), PointerAction.Move))
+                .ShouldBeSameAs(first);
+
+            manager.Captured.ShouldBeSameAs(first);
+            manager.Hovered.ShouldBeSameAs(second);
+            first.IsHovered.ShouldBeFalse();
+            second.IsHovered.ShouldBeTrue();
+            routed.ShouldBe([first]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies detach and terminal focus loss cancel capture exactly once.</summary>
     [Fact]
     public async Task Capture_WhenStateBecomesInvalid_ReleasesWithReasonAsync()
