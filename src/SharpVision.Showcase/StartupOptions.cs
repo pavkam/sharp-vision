@@ -11,7 +11,7 @@ internal static class StartupOptions
     #region Construction
 
     /// <summary>
-    /// Produces options that request SGR cell mouse input with held-button drag motion for the showcase.
+    /// Produces options that request SGR cell mouse input with passive pointer motion for the showcase.
     /// </summary>
     /// <param name="environment">The non-null process environment copied by the executable host.</param>
     /// <returns>An immutable session policy with explicit app-level cell mouse evidence.</returns>
@@ -33,7 +33,7 @@ internal static class StartupOptions
         return new RuntimeOptions
         {
             Capabilities = capabilities,
-            Tracking = MouseTracking.Drag,
+            Tracking = MouseTracking.Any,
             Coordinates = MouseCoordinates.Sgr,
         };
     }
