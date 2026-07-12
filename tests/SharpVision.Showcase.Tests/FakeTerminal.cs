@@ -14,6 +14,9 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     private readonly List<byte[]> _writes = [];
     private int _disposed;
 
+    /// <summary>Raised synchronously after one complete write is copied.</summary>
+    internal event Action<ReadOnlyMemory<byte>>? Written;
+
     /// <summary>Initializes empty deterministic input, resize, and captured-output streams.</summary>
     internal FakeTerminal()
     {
@@ -83,12 +86,14 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var copy = source.ToArray();
 
         lock (_gate)
         {
-            _writes.Add(source.ToArray());
+            _writes.Add(copy);
         }
 
+        Written?.Invoke(copy);
         return ValueTask.CompletedTask;
     }
 

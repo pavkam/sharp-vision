@@ -42,7 +42,7 @@ await using var application = new Application(
     gallery.Root,
     transport,
     resize,
-    StartupOptions.Create(environment));
+    StartupOptions.Create(environment, negotiate: true));
 application.Started += FocusSelectedNavigation;
 using var cancellation = new CancellationTokenSource();
 
