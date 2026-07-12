@@ -6,6 +6,7 @@ using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Unicode;
 using SharpVision.Threading;
 
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
@@ -30,6 +31,9 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
+
+    /// <summary>Gets the immutable Unicode cell policy inherited from the root.</summary>
+    internal Policy CellPolicy { get; private set; } = Policy.Default;
 
     /// <summary>Gets or sets the requested border-box width.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -401,10 +405,22 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
     internal void Attach(Dispatcher dispatcher)
+        => Attach(dispatcher, Policy.Default);
+
+    /// <summary>Attaches a root and descendants with one immutable cell policy.</summary>
+    /// <param name="dispatcher">The non-null owning dispatcher.</param>
+    /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>
+    /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
+    /// <exception cref="ArgumentException">Any descendant is already attached.</exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
+    internal void Attach(Dispatcher dispatcher, Policy cellPolicy)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
+        ArgumentNullException.ThrowIfNull(cellPolicy);
         dispatcher.VerifyAccess();
         ValidateAttachment();
+        SetCellPolicy(cellPolicy);
         SetDispatcher(dispatcher);
     }
 
@@ -420,6 +436,23 @@ public abstract class Control: INotifyPropertyChanged, IDisposable
 
         dispatcher.VerifyAccess();
         SetDispatcher(null);
+        SetCellPolicy(Policy.Default);
+    }
+
+    /// <summary>Assigns one immutable Unicode cell policy recursively.</summary>
+    /// <param name="value">The non-null inherited cell policy.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    internal void SetCellPolicy(Policy value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (ReferenceEquals(CellPolicy, value))
+        {
+            return;
+        }
+
+        CellPolicy = value;
+        VisitChildren(child => child.SetCellPolicy(value));
     }
 
     /// <summary>Clears selected phases after a successful transaction.</summary>

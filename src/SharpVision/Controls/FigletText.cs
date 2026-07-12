@@ -114,7 +114,9 @@ public sealed class FigletText: Control
 
         foreach (var line in _lines)
         {
-            width = Math.Max(width, Terminal.Unicode.Width.Measure(line).Cells);
+            width = Math.Max(
+                width,
+                Terminal.Unicode.Width.Measure(line, CellPolicy.AmbiguousWidth).Cells);
         }
 
         return new Size(width, _lines.Length);

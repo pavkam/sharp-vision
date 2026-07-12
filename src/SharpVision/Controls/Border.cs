@@ -1,3 +1,5 @@
+using System.Text;
+
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
@@ -180,7 +182,13 @@ public sealed class Border: Container
                 glyph = top ? Glyphs.TopRight : Glyphs.BottomRight;
             }
 
-            canvas.DrawRune(glyph, new Point(x, y), style);
+            var fallback = x == Bounds.X || x == Bounds.Right - 1
+                ? new Rune('+')
+                : new Rune('-');
+            canvas.DrawRune(
+                CellGlyph.Resolve(glyph, fallback, CellPolicy.AmbiguousWidth),
+                new Point(x, y),
+                style);
         }
     }
 
@@ -198,7 +206,11 @@ public sealed class Border: Container
 
         for (var y = start; y < end; y++)
         {
-            canvas.DrawRune(left ? Glyphs.Left : Glyphs.Right, new Point(x, y), style);
+            var glyph = left ? Glyphs.Left : Glyphs.Right;
+            canvas.DrawRune(
+                CellGlyph.Resolve(glyph, new Rune('|'), CellPolicy.AmbiguousWidth),
+                new Point(x, y),
+                style);
         }
     }
 

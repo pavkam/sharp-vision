@@ -23,8 +23,10 @@ every rendered and interactive mapping.
   `Orientation.Horizontal` measures as `3x1`. Explicit sizing may stretch or
   shrink either orientation.
 - `DecrementGlyph`, `IncrementGlyph`, `TrackGlyph`, and `ThumbGlyph` accept any
-  printable `Rune` whose measured width is exactly one cell. Their safe ASCII
-  defaults are `-`, `+`, `.`, and `#`.
+  printable `Rune` whose default measurement is exactly one cell. Canonical
+  Unicode arrows, lines, and blocks are generated until explicitly overridden.
+  Under a wide-ambiguous profile, any generated or custom glyph that no longer
+  fits one physical cell presents as `-`, `+`, `.`, or `#` for its role.
 
 Thumb length represents `viewport / (range + viewport)` with a one-cell minimum
 when scrolling is possible; zero range fills the track. Position uses stable

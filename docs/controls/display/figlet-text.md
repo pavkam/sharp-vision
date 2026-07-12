@@ -11,8 +11,9 @@ and layout bits. Foreground, background, and attributes are direct nullable
 overrides over normal resolved appearance.
 
 Measure reports the maximum generated terminal-cell width and generated row
-count. The control does not scale or wrap FIGlet glyphs. Parent clipping and a
-`ScrollView` provide bounded presentation for large fonts.
+count under the inherited application cell policy. The control does not scale or
+wrap FIGlet glyphs. Parent clipping and a `ScrollView` provide bounded
+presentation for large fonts.
 
 ## Example
 

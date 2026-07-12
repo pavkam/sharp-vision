@@ -20,7 +20,10 @@ mutation. `Glyphs.Default` aliases the light Unicode set. Heavy, paired-line,
 rounded, ASCII, full-block, and light, medium, and dark shade presets are also
 available; custom `Rune` values must measure as one printable cell under the
 default narrow ambiguous-width policy. `BorderColor`, `Background`, and
-`Attributes` are nullable direct overrides over the resolved appearance.
+`Attributes` are nullable direct overrides over the resolved appearance. When
+the inherited policy treats a configured Unicode segment as two cells, rendering
+substitutes `+`, `-`, or `|` for that physical corner or edge. The public
+`Glyphs` value is unchanged; only the terminal presentation degrades.
 
 Measure reserves active border edges around the child's margin-inclusive
 request; base padding is then added by the shared box model. Arrange deflates

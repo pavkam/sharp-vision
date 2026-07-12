@@ -22,6 +22,7 @@ public sealed class Text: Control
     private Trimming _cachedTrimming;
     private Alignment _cachedAlignment;
     private Ambiguous _cachedAmbiguous;
+    private bool _hasAmbiguousWidth;
     private Line[] _lines = [];
     private int _lineCount;
     private bool _layoutValid;
@@ -114,17 +115,25 @@ public sealed class Text: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Ambiguous AmbiguousWidth
     {
-        get;
+        get => _hasAmbiguousWidth ? AmbiguousWidthValue : CellPolicy.AmbiguousWidth;
         set
         {
             Validate(value);
+            VerifyMutable();
 
-            if (Set(ref field, value, Invalidation.Measure))
+            if (_hasAmbiguousWidth && AmbiguousWidthValue == value)
             {
-                _layoutValid = false;
+                return;
             }
+
+            AmbiguousWidthValue = value;
+            _hasAmbiguousWidth = true;
+            _layoutValid = false;
+            NotifyChanged(nameof(AmbiguousWidth), Invalidation.Measure);
         }
     }
+
+    private Ambiguous AmbiguousWidthValue { get; set; }
 
     /// <summary>Gets or sets an optional direct foreground override.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>

@@ -11,8 +11,8 @@ cell geometry. It is not focusable by default and emits no terminal protocols.
 - `Wrapping` is none, word, or grapheme.
 - `Trimming` is none, clip, character ellipsis, or word ellipsis.
 - `TextAlignment` is start, center, or end within the arranged line width.
-- `AmbiguousWidth` defaults narrow and selects the shared East Asian Ambiguous
-  cell policy used by measurement and rendering.
+- `AmbiguousWidth` inherits the application cell policy until explicitly set; an
+  explicit value remains a control-local measurement and rendering override.
 - `Foreground`, `Background`, and `Attributes` optionally override style values.
 - `Lines` exposes read-only committed line metrics after layout.
 

@@ -222,7 +222,7 @@ public readonly struct Canvas
             throw new ArgumentOutOfRangeException(nameof(shade), shade, "The shade is unknown.");
         }
 
-        Fill(region, BlockResolver.Resolve(shade), style);
+        Fill(region, BlockResolver.Resolve(shade, _frame.AmbiguousWidth), style);
     }
 
     /// <summary>Draws and merges filled quadrants in one clipped cell.</summary>
@@ -260,7 +260,7 @@ public readonly struct Canvas
             quadrants |= previous;
         }
 
-        DrawRune(BlockResolver.Resolve(quadrants), point, style);
+        DrawRune(BlockResolver.Resolve(quadrants, _frame.AmbiguousWidth), point, style);
     }
 
     #endregion
@@ -445,10 +445,10 @@ public readonly struct Canvas
         }
     }
 
-    private static int ValidateRune(Rune value, Span<char> buffer)
+    private int ValidateRune(Rune value, Span<char> buffer)
     {
         var length = value.EncodeToUtf16(buffer);
-        var measurement = Width.Measure(buffer[..length]);
+        var measurement = Width.Measure(buffer[..length], _frame.AmbiguousWidth);
 
         return measurement.Cells == 1 && measurement.Controls == 0
             ? length
@@ -478,6 +478,6 @@ public readonly struct Canvas
             topology = LineResolver.Merge(previous, topology);
         }
 
-        DrawRune(LineResolver.Resolve(topology), point, style);
+        DrawRune(LineResolver.Resolve(topology, _frame.AmbiguousWidth), point, style);
     }
 }

@@ -753,13 +753,20 @@ public sealed class TextInput: Control
 
     private int ClusterWidth(ReadOnlySpan<char> cluster, int x)
     {
-        return PasswordCharacter.HasValue
-            ? 1
+        return PasswordCharacter is { } mask
+            ? PasswordWidth(mask)
             : cluster.Length == 1 && cluster[0] == '\t'
             ? 4 - (x % 4)
-            : UnicodeWidth.Measure(cluster).Cells;
+            : UnicodeWidth.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
     }
 
+
+    private int PasswordWidth(Rune value)
+    {
+        Span<char> buffer = stackalloc char[2];
+        var length = value.EncodeToUtf16(buffer);
+        return UnicodeWidth.Measure(buffer[..length], CellPolicy.AmbiguousWidth).Cells;
+    }
     private TerminalStyle SelectedStyle()
     {
         var style = ResolvedStyle;

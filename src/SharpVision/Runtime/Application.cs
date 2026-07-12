@@ -19,6 +19,7 @@ using TerminalResponse = SharpVision.Terminal.Protocols.Response;
 using TerminalSequence = SharpVision.Terminal.Protocols.ProtocolSequence;
 using TerminalSequenceKind = SharpVision.Terminal.Protocols.SequenceKind;
 using TerminalText = SharpVision.Terminal.Input.Text;
+using UnicodePolicy = SharpVision.Terminal.Unicode.Policy;
 
 namespace SharpVision.Runtime;
 
@@ -86,6 +87,7 @@ public sealed class Application: ISink, IAsyncDisposable
         _transport = transport;
         _options = options ?? new TerminalOptions();
         Capabilities = _options.Capabilities;
+        CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI");
         _session = new Session(transport, resize, this, _options);
         Dispatcher.Idle += OnIdle;
@@ -144,6 +146,9 @@ public sealed class Application: ISink, IAsyncDisposable
 
     /// <summary>Gets the immutable capability profile used by layout and rendering.</summary>
     public TerminalCapabilities Capabilities { get; private set; }
+
+    /// <summary>Gets the immutable Unicode cell policy used by the active tree and frame.</summary>
+    public UnicodePolicy CellPolicy { get; private set; }
 
     /// <summary>Gets the first primary runtime failure.</summary>
     public Exception? Failure { get; private set; }
@@ -546,7 +551,7 @@ public sealed class Application: ISink, IAsyncDisposable
 
         if (!_initialized)
         {
-            Root.Attach(Dispatcher);
+            Root.Attach(Dispatcher, CellPolicy);
             FocusValue = new FocusManager(Root);
             CaptureValue = new CaptureManager(Root);
             _initialized = true;
@@ -605,6 +610,13 @@ public sealed class Application: ISink, IAsyncDisposable
         var previous = Capabilities;
         var measure = previous.AmbiguousWidth != value.AmbiguousWidth;
         Capabilities = value;
+        CellPolicy = new UnicodePolicy(value.AmbiguousWidth);
+
+        if (_initialized)
+        {
+            Root.SetCellPolicy(CellPolicy);
+        }
+
         CapabilitiesChanged?.Invoke(
             this,
             new CapabilitiesChangedEventArgs(previous, value));
@@ -782,7 +794,7 @@ public sealed class Application: ISink, IAsyncDisposable
             return;
         }
 
-        var frame = new Frame(Size, ambiguousWidth: Capabilities.AmbiguousWidth);
+        var frame = new Frame(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
 
         try
         {

@@ -226,7 +226,11 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 
         if (_owner.Dispatcher is { } dispatcher)
         {
-            item.Attach(dispatcher);
+            item.Attach(dispatcher, _owner.CellPolicy);
+        }
+        else
+        {
+            item.SetCellPolicy(_owner.CellPolicy);
         }
     }
 

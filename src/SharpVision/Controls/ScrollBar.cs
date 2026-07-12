@@ -579,25 +579,37 @@ public sealed class ScrollBar: Control
 
     private int ButtonCount(int length) => Chrome == ScrollBarStyle.Full && length >= 2 ? 1 : 0;
 
-    private Rune DecrementRune() => DecrementGlyph.Value != '-'
-        ? DecrementGlyph
-        : Orientation == Orientation.Vertical ? new Rune('▲') : new Rune('◀');
+    private Rune DecrementRune() => CellGlyph.Resolve(
+        DecrementGlyph.Value != '-'
+            ? DecrementGlyph
+            : Orientation == Orientation.Vertical ? new Rune('▲') : new Rune('◀'),
+        new Rune('-'),
+        CellPolicy.AmbiguousWidth);
 
-    private Rune IncrementRune() => IncrementGlyph.Value != '+'
-        ? IncrementGlyph
-        : Orientation == Orientation.Vertical ? new Rune('▼') : new Rune('▶');
+    private Rune IncrementRune() => CellGlyph.Resolve(
+        IncrementGlyph.Value != '+'
+            ? IncrementGlyph
+            : Orientation == Orientation.Vertical ? new Rune('▼') : new Rune('▶'),
+        new Rune('+'),
+        CellPolicy.AmbiguousWidth);
 
-    private Rune TrackRune() => TrackGlyph.Value != '.'
-        ? TrackGlyph
-        : Fill == ScrollBarFill.Line
-            ? Orientation == Orientation.Vertical ? new Rune('│') : new Rune('─')
-            : new Rune('░');
+    private Rune TrackRune() => CellGlyph.Resolve(
+        TrackGlyph.Value != '.'
+            ? TrackGlyph
+            : Fill == ScrollBarFill.Line
+                ? Orientation == Orientation.Vertical ? new Rune('│') : new Rune('─')
+                : new Rune('░'),
+        new Rune('.'),
+        CellPolicy.AmbiguousWidth);
 
-    private Rune ThumbRune() => ThumbGlyph.Value != '#'
-        ? ThumbGlyph
-        : Fill == ScrollBarFill.Line
-            ? Orientation == Orientation.Vertical ? new Rune('┃') : new Rune('━')
-            : new Rune('▓');
+    private Rune ThumbRune() => CellGlyph.Resolve(
+        ThumbGlyph.Value != '#'
+            ? ThumbGlyph
+            : Fill == ScrollBarFill.Line
+                ? Orientation == Orientation.Vertical ? new Rune('┃') : new Rune('━')
+                : new Rune('▓'),
+        new Rune('#'),
+        CellPolicy.AmbiguousWidth);
 
     private void Draw(TerminalCanvas canvas, Point point, Rune glyph)
     {

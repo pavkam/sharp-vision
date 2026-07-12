@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text;
 
+using SharpVision.Terminal.Unicode;
+
 namespace SharpVision.Terminal.Rendering;
 
 /// <summary>Maps line-cell topology to and from Unicode or ASCII glyphs.</summary>
@@ -26,10 +28,11 @@ internal static class LineResolver
 
     /// <summary>Resolves a topology to its exact or safely degraded Rune.</summary>
     /// <param name="value">The topology to resolve.</param>
+    /// <param name="ambiguousWidth">The active frame width policy.</param>
     /// <returns>A printable one-cell Rune.</returns>
-    internal static Rune Resolve(Topology value)
+    internal static Rune Resolve(Topology value, Ambiguous ambiguousWidth)
     {
-        return value.Line.IsAscii
+        return value.Line.IsAscii || ambiguousWidth == Ambiguous.Wide
             ? new Rune(ResolveAscii(value.Connections))
             : TryResolvePattern(value, out var patterned)
                 ? new Rune(patterned)

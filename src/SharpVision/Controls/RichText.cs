@@ -186,7 +186,7 @@ public sealed class RichText: Control
             Wrapping.Word,
             Trimming.None,
             TextAlignment,
-            Ambiguous.Narrow,
+            CellPolicy.AmbiguousWidth,
             buffer);
         return buffer[..count];
     }
@@ -222,7 +222,9 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var width = Terminal.Unicode.Width.Measure(cluster).Cells;
+            var width = Terminal.Unicode.Width.Measure(
+                cluster,
+                CellPolicy.AmbiguousWidth).Cells;
 
             if (Wrapping != Wrapping.None && cells > 0 && width > limit - cells)
             {
@@ -254,7 +256,9 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var width = Terminal.Unicode.Width.Measure(cluster).Cells;
+            var width = Terminal.Unicode.Width.Measure(
+                cluster,
+                CellPolicy.AmbiguousWidth).Cells;
 
             if (Wrapping != Wrapping.None && cells > 0 && width > bounds.Width - cells)
             {
@@ -317,7 +321,7 @@ public sealed class RichText: Control
         }
     }
 
-    private static void RenderWordText(
+    private void RenderWordText(
         TerminalCanvas canvas,
         Rect bounds,
         Line[] lines,
@@ -348,7 +352,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var width = Terminal.Unicode.Width.Measure(cluster).Cells;
+            var width = Terminal.Unicode.Width.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
             _ = canvas.Draw(
                 cluster,
                 new Point(bounds.X + lines[line].Leading + cells, bounds.Y + line),

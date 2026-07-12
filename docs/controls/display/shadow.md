@@ -17,7 +17,10 @@ reserving layout space or expanding pointer hit testing.
 Composite mode preserves every underlying grapheme and replaces its semantic
 style. Touching a wide grapheme styles its complete owner only when that owner
 is inside the effective ancestor clip. Block-glyph mode replaces cells with the
-configured Rune.
+configured Rune. If that Rune becomes wide under the inherited ambiguous-width
+policy, block-glyph mode presents `#` instead. Composite mode is unaffected
+because it styles complete existing cell owners without drawing a replacement
+glyph.
 
 The footprint is the shifted arranged rectangle minus the original rectangle.
 Positive offsets produce the familiar right and bottom Turbo Vision strips;

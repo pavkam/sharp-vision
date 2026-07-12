@@ -1,3 +1,5 @@
+using System.Text;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Styling;
@@ -147,6 +149,13 @@ public sealed class CheckBox: Pressable
             null => Marks.Indeterminate,
         };
         Span<char> buffer = stackalloc char[2];
+        var fallback = _isChecked switch
+        {
+            true => new Rune('x'),
+            false => new Rune('o'),
+            null => new Rune('-'),
+        };
+        glyph = CellGlyph.Resolve(glyph, fallback, CellPolicy.AmbiguousWidth);
         var length = glyph.EncodeToUtf16(buffer);
         _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
     }

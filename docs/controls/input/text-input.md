@@ -64,10 +64,12 @@ snapshots, and default clipboard copy. The model still stores caller-provided
 text; it is not a secure-memory primitive.
 
 Rendering never builds a source-containing password display string: it emits one
-validated mask `Rune` directly for each source cluster. A selected wide cluster
-receives reverse rendition on both its lead and continuation cells. The terminal
-cursor is visible only while focused and its position is committed through the
-semantic frame, never by emitting terminal bytes from the control.
+validated mask `Rune` directly for each source cluster. An ambiguous mask uses
+the inherited policy for measurement, scrolling, pointer mapping, caret
+placement, and rendering. A selected wide cluster receives reverse rendition on
+both its lead and continuation cells. The terminal cursor is visible only while
+focused and its position is committed through the semantic frame, never by
+emitting terminal bytes from the control.
 
 `TextInput` clears its complete committed content box with its resolved style
 before drawing graphemes. Consequently, a configured background paints the full

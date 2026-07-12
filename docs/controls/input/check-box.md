@@ -28,6 +28,9 @@ mode while null commits the mode and false value before `Unchecked` then
 indeterminate states. Layout reserves one mark cell and, only when content is
 present, one separator cell before the atomic capacity-one child. A true value
 adds `State.Checked` to the inherited visual-state flags.
+A mark that becomes wide under the inherited policy presents as the
+state-equivalent ASCII `o`, `x`, or `-`; its configured Rune remains unchanged.
+
 
 ## Interaction
 

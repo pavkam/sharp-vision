@@ -163,7 +163,10 @@ public sealed class Shadow: Container
                 else
                 {
                     Debug.Assert(Mode == ShadowMode.BlockGlyph, "Public validation limits shadow modes.");
-                    canvas.DrawRune(Glyph, point, style);
+                    canvas.DrawRune(
+                        CellGlyph.Resolve(Glyph, new Rune('#'), CellPolicy.AmbiguousWidth),
+                        point,
+                        style);
                 }
             }
         }

@@ -26,7 +26,8 @@ opens a URL automatically.
 
 Runs retain styles across line wrapping. Explicit breaks and embedded newlines
 advance the visual line. A wide grapheme that does not fit moves as a complete
-owner; it is never split across rows.
+owner; it is never split across rows. Measurement, word wrapping, rendering, and
+alignment use the immutable cell policy inherited from the application.
 
 ## Example
 

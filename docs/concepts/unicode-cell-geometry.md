@@ -41,8 +41,18 @@ cell.
 `SharpVision.Text.Layout` is the shipped UI consumer of this geometry. It emits
 only grapheme-boundary source slices, expands tabs at four-cell stops, and
 reserves ellipsis width under the same explicit ambiguous-width policy. Text
-caches those lines, and Border rejects control or wide glyph Runes before
-mutation.
+caches those lines. The runtime derives one immutable `Policy` from the active
+capability profile before first layout, propagates the same reference through
+the attached control tree, and replaces it before invalidating layout after a
+profile change. Children inserted later inherit the owner's current policy.
+
+Physical-cell primitives have a stricter contract than flowing text.
+`Canvas.DrawRune` and `Canvas.Fill` validate one cell under the owning frame's
+policy before mutation. Semantic line, box, shade, and quadrant primitives use
+their exact Unicode glyphs under the narrow policy and deterministic ASCII
+fallbacks under the wide policy. Fixed-cell control chrome applies the same rule
+per glyph, so a negotiated policy can never make a border, shadow, checkbox,
+button, or scrollbar overwrite an adjacent cell.
 
 ## Source and terminal presentation
 
@@ -108,7 +118,8 @@ a placeholder.
 
 Measurement, wrapping, horizontal scrolling, clipping, cursor movement, hit
 testing, selection, `RichText`, canvas operations, damage tracking, and terminal
-encoding use this single geometry service.
+encoding use this single geometry service. Password-mask measurement and
+rendering use the same inherited ambiguous-width policy.
 
 ## Test contract
 
