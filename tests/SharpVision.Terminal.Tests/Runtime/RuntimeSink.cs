@@ -15,6 +15,15 @@ internal sealed class RuntimeSink: ISink
     /// <summary>Gets committed resize callbacks.</summary>
     internal List<Dimensions> Resizes { get; } = [];
 
+    /// <summary>Gets recognized terminal responses.</summary>
+    internal List<Response> Responses { get; } = [];
+
+    /// <summary>Gets owned unregistered terminal strings.</summary>
+    internal List<ProtocolSequence> Sequences { get; } = [];
+
+    /// <summary>Gets callback families in delivery order.</summary>
+    internal List<string> Order { get; } = [];
+
     /// <summary>Gets completion for the first resize callback.</summary>
     internal TaskCompletionSource ResizeReceived { get; } =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -40,6 +49,7 @@ internal sealed class RuntimeSink: ISink
         }
 
         Text.Add(value);
+        Order.Add("text");
     }
 
     /// <inheritdoc/>
@@ -55,6 +65,21 @@ internal sealed class RuntimeSink: ISink
     public void Input(in Diagnostic value) => _ = value;
 
     /// <inheritdoc/>
+    public void Response(in Response value)
+    {
+        Responses.Add(value);
+        Order.Add("response");
+    }
+
+    /// <inheritdoc/>
+    public void Sequence(ProtocolSequence value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        Sequences.Add(value);
+        Order.Add("sequence");
+    }
+
+    /// <inheritdoc/>
     public void Resize(in Dimensions value)
     {
         Resizes.Add(value);
@@ -62,7 +87,11 @@ internal sealed class RuntimeSink: ISink
     }
 
     /// <inheritdoc/>
-    public void Closed() => ClosedCount++;
+    public void Closed()
+    {
+        ClosedCount++;
+        Order.Add("closed");
+    }
 
     /// <inheritdoc/>
     public void Fault(Exception exception) => Faults.Add(exception);

@@ -1,4 +1,5 @@
 using SharpVision.Terminal.Capabilities;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Tests.Support;
 
@@ -16,6 +17,31 @@ namespace SharpVision.Terminal.Tests.Runtime;
 /// </summary>
 public sealed class SessionTests
 {
+    /// <summary>Verifies replies and adjacent text retain transport order.</summary>
+    [Fact]
+    public async Task RunAsync_WhenReplyPrecedesText_RoutesBothInOrderAsync()
+    {
+        // Arrange
+        await using var transport = new SessionTransport();
+        await using var resize = new FakeResizeSource();
+        var sink = new RuntimeSink();
+        transport.Input("\u001b[?1;2cx"u8.ToArray());
+        transport.Close();
+        await using var session = new Session(
+            transport,
+            resize,
+            sink,
+            RuntimeOptions.Minimal);
+
+        // Act
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        sink.Responses.ShouldHaveSingleItem().Kind.ShouldBe(
+            ResponseKind.PrimaryAttributes);
+        sink.Order.ShouldBe(["response", "text", "closed"]);
+    }
+
     /// <summary>
     /// Verifies supported modes wrap typed input and closure in exact reverse cleanup.
     /// </summary>

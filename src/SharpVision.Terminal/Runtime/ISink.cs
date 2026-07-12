@@ -1,9 +1,11 @@
-using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Protocols;
 
 namespace SharpVision.Terminal.Runtime;
 
-/// <summary>Receives ordered terminal input, resize, closure, and fault events.</summary>
-public interface ISink: IInputSink
+/// <summary>
+/// Receives ordered terminal input, protocol, resize, closure, and fault events.
+/// </summary>
+public interface ISink: IProtocolSink
 {
     /// <summary>Receives one immutable terminal dimension change.</summary>
     /// <param name="value">The new cell and optional pixel dimensions.</param>

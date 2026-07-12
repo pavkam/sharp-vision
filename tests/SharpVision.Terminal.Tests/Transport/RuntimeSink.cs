@@ -39,6 +39,12 @@ internal sealed class RuntimeSink: ISink
     public void Input(in Diagnostic value) => _ = value;
 
     /// <inheritdoc/>
+    public void Response(in Response value) => _ = value;
+
+    /// <inheritdoc/>
+    public void Sequence(ProtocolSequence value) => ArgumentNullException.ThrowIfNull(value);
+
+    /// <inheritdoc/>
     public void Resize(in Dimensions value)
     {
         if (value == _expected)

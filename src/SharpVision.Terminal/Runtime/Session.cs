@@ -1,7 +1,6 @@
 using System.Buffers;
 using System.Runtime.ExceptionServices;
 
-using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Transport;
 
@@ -166,7 +165,7 @@ public sealed class Session: IAsyncDisposable
         {
             PixelMouse = _options.Coordinates == MouseCoordinates.Pixel,
         };
-        using var decoder = new Decoder(_sink, inputOptions, _timeProvider);
+        using var router = new ProtocolRouter(_sink, inputOptions, _timeProvider);
         var buffer = ArrayPool<byte>.Shared.Rent(_options.ReadBufferSize);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -184,7 +183,7 @@ public sealed class Session: IAsyncDisposable
                 if (ReferenceEquals(completed, resize))
                 {
                     var dimensions = await resize.ConfigureAwait(false);
-                    decoder.SetCellMetrics(dimensions.CellMetrics);
+                    router.SetCellMetrics(dimensions.CellMetrics);
                     _sink.Resize(in dimensions);
                     resize = _resize.ReadAsync(linked.Token).AsTask();
                     continue;
@@ -194,12 +193,12 @@ public sealed class Session: IAsyncDisposable
 
                 if (count == 0)
                 {
-                    decoder.Complete();
+                    router.Complete();
                     _sink.Closed();
                     return;
                 }
 
-                decoder.Decode(buffer.AsSpan(0, count));
+                router.Route(buffer.AsSpan(0, count));
                 read = _transport.ReadAsync(
                     buffer.AsMemory(0, _options.ReadBufferSize),
                     linked.Token).AsTask();
