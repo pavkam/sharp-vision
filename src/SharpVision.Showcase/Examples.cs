@@ -186,25 +186,25 @@ internal static class Examples
         };
         active.Click += (_, eventArgs) =>
             status.Content = $"Activation log: {eventArgs.Cause}";
-        examples.Children.Add(active);
-        examples.Children.Add(new Button
+        examples.Children.Add(ButtonSpecimen(active));
+        examples.Children.Add(ButtonSpecimen(new Button
         {
             Content = new ControlText("Disabled"),
             IsEnabled = false,
             Style = Palette.Interactive(),
-        });
-        examples.Children.Add(new Button
+        }));
+        examples.Children.Add(ButtonSpecimen(new Button
         {
             Content = new ControlText("Default action"),
             IsDefault = true,
             Style = Palette.Interactive(),
-        });
-        examples.Children.Add(new Button
+        }));
+        examples.Children.Add(ButtonSpecimen(new Button
         {
             Content = new ControlText("Cancel action"),
             IsCancel = true,
             Style = Palette.Interactive(),
-        });
+        }));
         examples.Children.Add(status);
         return examples;
     }
@@ -589,6 +589,28 @@ internal static class Examples
         Glyphs = glyphs,
         Padding = new Thickness(1, 0),
     };
+
+    private static Shadow ButtonSpecimen(Button button)
+    {
+        ArgumentNullException.ThrowIfNull(button);
+        button.Padding = new Thickness(1, 0);
+        var border = new Border
+        {
+            BorderThickness = new Thickness(1),
+            Glyphs = Glyphs.Rounded,
+            BorderColor = Palette.Border,
+            Background = Palette.Surface,
+            Child = button,
+        };
+        return new Shadow
+        {
+            Child = border,
+            Mode = ShadowMode.Composite,
+            Offset = new Point(1, 1),
+            Background = Palette.Canvas,
+            Margin = new Thickness(0, 0, 1, 1),
+        };
+    }
 
     private static Border DemoCard(string content, Glyphs glyphs)
     {

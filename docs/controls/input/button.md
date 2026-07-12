@@ -24,8 +24,10 @@ notification without retaining disposed Buttons.
 
 `Content` is the atomic capacity-one child. Measure and arrange include its
 margin inside the Button's shared padding, and rendering remains semantic
-through the child's inherited active style. `IsDefault` and `IsCancel` are
-stored for Window fallback routing in Phase 5C.
+through the child's inherited active style. When the resolved appearance defines
+a background, Button fills its entire arranged surface before rendering content,
+so padding remains part of the visible interactive target. `IsDefault` and
+`IsCancel` are stored for Window fallback routing in Phase 5C.
 
 ## Interaction
 

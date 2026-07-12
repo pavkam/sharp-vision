@@ -4,6 +4,8 @@ using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
+using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
+
 namespace SharpVision.Controls;
 
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
@@ -125,6 +127,17 @@ public sealed class Button: Pressable
     /// <inheritdoc/>
     protected override void ArrangeCore(Rect bounds) =>
         Content?.Arrange(bounds, widthResolved: true, heightResolved: true);
+
+    /// <inheritdoc/>
+    protected override void RenderCore(TerminalCanvas canvas)
+    {
+        if (Appearance.Background.HasValue)
+        {
+            // A styled button owns its complete interaction surface, including
+            // padding cells that do not belong to its content child.
+            canvas.Clear(Bounds, ResolvedStyle);
+        }
+    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

@@ -1,7 +1,9 @@
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
@@ -11,6 +13,7 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = SharpVision.Terminal.Input.Action;
+using UiStyle = SharpVision.Styling.Style;
 
 namespace SharpVision.Tests.Controls;
 
@@ -193,6 +196,29 @@ public sealed class ButtonTests
         content.Bounds.ShouldBe(new Rect(2, 1, 2, 1));
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("界");
         frame.GetCell(new Point(3, 1)).IsContinuation.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a styled Button owns the complete visible surface behind its content.</summary>
+    [Fact]
+    public void Render_WhenStyleDefinesBackground_FillsButtonBounds()
+    {
+        var style = new UiStyle();
+        style.Set(State.Normal, new Appearance(Color.Indexed(255), Color.Indexed(24)));
+        var button = new Button
+        {
+            Content = new ControlText("Run"),
+            Padding = new Thickness(1),
+            Style = style,
+        };
+        var size = new Size(8, 3);
+        new Engine().Layout(button, size);
+        using var frame = new Frame(size);
+
+        button.Render(frame.Canvas);
+
+        frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(Color.Indexed(24));
+        frame.GetCell(new Point(7, 2)).Style.Background.ShouldBe(Color.Indexed(24));
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("R");
     }
 
     /// <summary>Verifies unavailable controls reject programmatic activation.</summary>
