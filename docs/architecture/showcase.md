@@ -49,10 +49,10 @@ The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
 `ScrollView` in the remaining space. The sidebar owns product identity,
 component-only stateful navigation entries, and compact interaction hints; its
 selected, focused, hovered, and pressed states use a shared indexed-color
-palette. The executable app explicitly requests SGR cell mouse reporting through
-an application-level capability override and owns a Unix raw-input lease while
-running, while the terminal library's default environment-hint policy remains
-conservative.
+palette. The executable app explicitly requests xterm button-drag (`1002`) SGR
+cell mouse reporting through an application-level capability override and owns a
+Unix raw-input lease while running, while the terminal library's default
+environment-hint policy remains conservative.
 
 The main pane reserves a vertical scrollbar automatically and suppresses a
 horizontal scrollbar so documentation remains a readable column. At narrow

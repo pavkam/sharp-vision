@@ -8,12 +8,14 @@ meaningful property descriptions, interaction guidance, or fresh live example.
 Each example tree must contain the control named by its sidebar entry and must
 be detached and independently owned.
 
-Navigation tests require the executable showcase policy to emit VT200 and SGR
-cell-mouse mode enables before its first frame. They then drive raw SGR primary
-pointer input through the public Application to select a framed dashboard entry,
-move and focus sidebar selection through decoded arrow input, activate Button
-through keyboard input, scroll the main pane with wheel reports, edit TextInput
-through decoded text, and retain selection after pixel-aware resize. A separate
+Navigation tests require the executable showcase policy to emit xterm drag
+tracking (`1002`) and SGR cell-mouse mode enables before its first frame. They
+then drive raw SGR primary-pointer input through the public Application to
+select a framed dashboard entry, move and focus sidebar selection through
+decoded arrow input, activate Button through keyboard input, scroll the main
+pane with wheel reports, edit TextInput through decoded text, and retain
+selection after pixel-aware resize. Its ScrollBar proof requires an intermediate
+SGR move to commit a value before the release reaches the endpoint. A separate
 startup test requires the first frame to commit, the initial sidebar entry to
 take focus, and shutdown to complete without runtime failure.
 

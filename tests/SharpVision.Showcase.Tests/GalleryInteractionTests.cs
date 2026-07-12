@@ -259,9 +259,18 @@ public sealed class GalleryInteractionTests
         var end = await application.Dispatcher.InvokeAsync(
             () => new Point(activeScrollBar.Bounds.X + activeScrollBar.Bounds.Width - 2, activeScrollBar.Bounds.Y),
             TestContext.Current.CancellationToken);
+        var middle = new Point((start.X + end.X) / 2, start.Y);
+        var initial = await application.Dispatcher.InvokeAsync(
+            () => activeScrollBar.Value,
+            TestContext.Current.CancellationToken);
 
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<0;{start.X + 1};{start.Y + 1}M"));
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<32;{middle.X + 1};{middle.Y + 1}M"));
+        await WaitUntilAsync(
+            () => activeScrollBar.Value > initial && activeScrollBar.Value < activeScrollBar.Maximum,
+            application,
+            "showcase scrollbar intermediate drag value");
         terminal.QueueInput(Encoding.ASCII.GetBytes(
-            $"\u001b[<0;{start.X + 1};{start.Y + 1}M" +
             $"\u001b[<32;{end.X + 1};{end.Y + 1}M" +
             $"\u001b[<0;{end.X + 1};{end.Y + 1}m"));
         await WaitUntilAsync(

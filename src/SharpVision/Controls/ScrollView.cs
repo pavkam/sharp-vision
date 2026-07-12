@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -29,8 +30,22 @@ public sealed class ScrollView: Container
     public ScrollView() : base(capacity: 1)
     {
         _chrome = new Children(this, capacity: 2);
-        _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
-        _vertical = new ScrollBar { Orientation = Orientation.Vertical };
+        _horizontal = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            DecrementGlyph = new Rune('◀'),
+            IncrementGlyph = new Rune('▶'),
+            TrackGlyph = new Rune('░'),
+            ThumbGlyph = new Rune('▓'),
+        };
+        _vertical = new ScrollBar
+        {
+            Orientation = Orientation.Vertical,
+            DecrementGlyph = new Rune('▲'),
+            IncrementGlyph = new Rune('▼'),
+            TrackGlyph = new Rune('░'),
+            ThumbGlyph = new Rune('▓'),
+        };
         _horizontal.ValueChanged += OnHorizontalChanged;
         _vertical.ValueChanged += OnVerticalChanged;
         _chrome.Add(_horizontal);

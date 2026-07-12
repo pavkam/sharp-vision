@@ -51,6 +51,68 @@ public sealed class ScrollViewTests
         view.Viewport.ShouldBe(new Size(4, 2));
     }
 
+    /// <summary>Verifies private vertical viewport chrome renders polished Unicode arrows, track, and thumb cells.</summary>
+    [Fact]
+    public void Render_WhenVerticalChromeIsAutomatic_UsesUnicodeScrollBarGlyphs()
+    {
+        var view = new ScrollView
+        {
+            Content = new ProbeControl(new Size(1, 4)),
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Auto,
+        };
+        var size = new Size(3, 3);
+        new Engine().Layout(view, size);
+        using var frame = new Frame(size);
+
+        view.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("▲");
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(2, 2)).ShouldBe("▼");
+    }
+
+    /// <summary>Verifies private horizontal viewport chrome renders polished Unicode arrows, track, and thumb cells.</summary>
+    [Fact]
+    public void Render_WhenHorizontalChromeIsAutomatic_UsesUnicodeScrollBarGlyphs()
+    {
+        var view = new ScrollView
+        {
+            Content = new ProbeControl(new Size(4, 1)),
+            HorizontalBarVisibility = ScrollBarVisibility.Auto,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        };
+        var size = new Size(3, 3);
+        new Engine().Layout(view, size);
+        using var frame = new Frame(size);
+
+        view.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("◀");
+        FrameOracle.Get(frame, new Point(1, 2)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(2, 2)).ShouldBe("▶");
+    }
+
+    /// <summary>Verifies passive viewport track cells use a shaded glyph that remains visually distinct from the thumb.</summary>
+    [Fact]
+    public void Render_WhenVerticalChromeHasUnoccupiedTrack_UsesShadedTrackGlyph()
+    {
+        var view = new ScrollView
+        {
+            Content = new ProbeControl(new Size(1, 100)),
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Auto,
+        };
+        var size = new Size(3, 6);
+        new Engine().Layout(view, size);
+        using var frame = new Frame(size);
+
+        view.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(2, 2)).ShouldBe("░");
+    }
+
     /// <summary>Verifies exact fit does not show automatic bars while Always reserves both axes.</summary>
     [Fact]
     public void Layout_WhenPoliciesDiffer_UsesExactFitAndAlwaysReservation()

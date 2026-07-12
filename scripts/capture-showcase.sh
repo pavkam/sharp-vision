@@ -249,6 +249,26 @@ if [[ -z "$scrollbar_row" ]]; then
 fi
 
 send_sgr 0 41 "$scrollbar_row" M
+send_sgr 32 50 "$scrollbar_row" M
+
+intermediate=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -Eq 'Thumb value: [4-9][0-9]' "$plain"; then
+    intermediate=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$intermediate" != true ]]; then
+  printf 'The showcase did not update the ScrollBar during the injected SGR drag.\n' >&2
+  exit 1
+fi
+
 send_sgr 32 59 "$scrollbar_row" M
 send_sgr 0 59 "$scrollbar_row" m
 

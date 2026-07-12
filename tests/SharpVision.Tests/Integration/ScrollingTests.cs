@@ -85,8 +85,8 @@ public sealed class ScrollingTests
         {
             using var frame = new Frame(application.Size);
             outer.Render(frame.Canvas);
-            FrameOracle.Get(frame, new Point(5, 4)).ShouldBe("#");
-            FrameOracle.Get(frame, new Point(7, 2)).ShouldBe("#");
+            FrameOracle.Get(frame, new Point(5, 4)).ShouldBe("▓");
+            FrameOracle.Get(frame, new Point(7, 2)).ShouldBe("▓");
             frame.GetCell(new Point(0, 0)).IsContinuation.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
         rendered = NextFrame(application);

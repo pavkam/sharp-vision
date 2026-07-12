@@ -46,7 +46,9 @@ Offsets clamp after every content or viewport change before child arrangement,
 events, bar synchronization, hit testing, or rendering. Content is translated by
 the committed offsets and rendered through a canvas clipped to the viewport.
 Bars render afterward along the bottom and right edges; their shared corner is
-left blank.
+left blank. The owned viewport chrome uses directional Unicode arrow buttons, a
+light-shade track, and a medium-shade thumb so scrolling state remains legible
+without the raw ASCII punctuation used by a standalone `ScrollBar` default.
 
 ## Interaction
 
