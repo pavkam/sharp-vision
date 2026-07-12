@@ -11,10 +11,11 @@ be detached and independently owned.
 Navigation tests require the executable showcase policy to emit VT200 and SGR
 cell-mouse mode enables before its first frame. They then drive raw SGR primary
 pointer input through the public Application to select a framed dashboard entry,
-activate Button through keyboard input, scroll the main pane with wheel reports,
-edit TextInput through decoded text, and retain selection after pixel-aware
-resize. A separate startup test requires the first frame to commit and shutdown
-to complete without runtime failure.
+move and focus sidebar selection through decoded arrow input, activate Button
+through keyboard input, scroll the main pane with wheel reports, edit TextInput
+through decoded text, and retain selection after pixel-aware resize. A separate
+startup test requires the first frame to commit, the initial sidebar entry to
+take focus, and shutdown to complete without runtime failure.
 
 Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
@@ -22,7 +23,10 @@ component navigation, non-default cell colors, page headings, automatic
 overflow, semantic text, and every wide-cell continuation relationship. The
 checked-in [live tmux capture](../images/showcase-dashboard.png) is visually
 reviewed but does not replace cell, event, focus, resize, or scrolling
-assertions.
+assertions. It is also a required live interaction smoke test: it sends Down,
+then independent complete SGR clicks for Canvas and Button, waiting for each
+visible page change without adding a trailing key that could mask input
+buffering.
 
 Showcase examples compile as production code and use no internal APIs,
 reflection shortcuts, fake controls, or rendering behavior unavailable to

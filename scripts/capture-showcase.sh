@@ -53,26 +53,67 @@ if [[ "$ready" != true ]]; then
   exit 1
 fi
 
-# tmux's synthetic key injector retains an escape-prefixed report until a
-# following key arrives. The trailing Enter is not part of the mouse protocol;
-# it flushes that injector so the pane receives the exact SGR press/release.
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 38 4d 1b 5b 3c 30 3b 33 3b 38 6d 0d
+# The initially selected entry owns keyboard focus, so a normal terminal arrow
+# must navigate immediately without a preceding click or Tab.
+tmux send-keys -t "$session" Down
 
-clicked=false
+keyboard=false
 
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
   if grep -q 'Click or press Enter' "$plain"; then
-    clicked=true
+    keyboard=true
     break
   fi
 
   sleep 0.1
 done
 
-if [[ "$clicked" != true ]]; then
-  printf 'The showcase did not handle the injected SGR mouse click.\n' >&2
+if [[ "$keyboard" != true ]]; then
+  printf 'The showcase did not handle the injected Down key.\n' >&2
+  exit 1
+fi
+
+# A complete primary SGR press/release must activate navigation on its own.
+# Do not append a key here: that would hide host-side input buffering defects.
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 39 4d 1b 5b 3c 30 3b 33 3b 39 6d
+
+canvas=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'fixed or percentage offsets' "$plain"; then
+    canvas=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$canvas" != true ]]; then
+  printf 'The showcase did not handle the injected Canvas SGR mouse click.\n' >&2
+  exit 1
+fi
+
+tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 38 4d 1b 5b 3c 30 3b 33 3b 38 6d
+
+button=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q 'Click or press Enter' "$plain"; then
+    button=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$button" != true ]]; then
+  printf 'The showcase did not handle the injected Button SGR mouse click.\n' >&2
   exit 1
 fi
 

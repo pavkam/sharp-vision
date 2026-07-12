@@ -3,9 +3,11 @@ using System.Diagnostics;
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Terminal.Input;
 
 using Attributes = SharpVision.Terminal.Rendering.Attributes;
 using ControlText = SharpVision.Controls.Text;
+using KeyAction = SharpVision.Terminal.Input.Action;
 
 namespace SharpVision.Showcase;
 
@@ -13,7 +15,9 @@ namespace SharpVision.Showcase;
 public sealed class Gallery: IDisposable
 {
     private readonly ScrollView _main;
+    private readonly ScrollView _navigationScroll;
     private readonly NavigationItem[] _navigation;
+    private FocusManager? _focus;
 
     #region Construction and navigation
 
@@ -43,7 +47,7 @@ public sealed class Gallery: IDisposable
             entries.Children.Add(item);
         }
 
-        var navigation = new ScrollView
+        _navigationScroll = new ScrollView
         {
             Content = entries,
             HorizontalBarVisibility = ScrollBarVisibility.Auto,
@@ -56,7 +60,7 @@ public sealed class Gallery: IDisposable
         Dock.SetSide(footer, Side.Bottom);
         sidebarLayout.Children.Add(header);
         sidebarLayout.Children.Add(footer);
-        sidebarLayout.Children.Add(navigation);
+        sidebarLayout.Children.Add(_navigationScroll);
         Sidebar = new Border
         {
             Width = Length.Cells(28),
@@ -66,6 +70,7 @@ public sealed class Gallery: IDisposable
             Background = Palette.Panel,
             Child = sidebarLayout,
         };
+        _ = Sidebar.AddHandler(Events.Key, OnNavigationKey);
         var surface = new Border
         {
             Background = Palette.Canvas,
@@ -102,6 +107,17 @@ public sealed class Gallery: IDisposable
 
     /// <summary>Gets the currently selected immutable page definition.</summary>
     internal Page Selected { get; private set; }
+
+    /// <summary>Focuses the selected sidebar entry after the application has attached the gallery tree.</summary>
+    /// <param name="focus">The non-null attached root focus manager.</param>
+    /// <returns>True when the selected entry accepted focus; otherwise, false.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="focus"/> is null.</exception>
+    internal bool FocusSelected(FocusManager focus)
+    {
+        ArgumentNullException.ThrowIfNull(focus);
+        _focus = focus;
+        return focus.Focus(_navigation[SelectedIndex]);
+    }
 
     /// <summary>Selects one validated catalog page and replaces only the main documentation tree.</summary>
     /// <param name="index">The zero-based page index.</param>
@@ -172,6 +188,76 @@ public sealed class Gallery: IDisposable
         }
     }
 
+    private void OnNavigationKey(object? sender, KeyEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != Phase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        {
+            return;
+        }
+
+        var current = FindNavigation(eventArgs.OriginalSource) ?? _navigation[SelectedIndex];
+        var target = ResolveNavigation(current.Index, eventArgs.Stroke);
+
+        if (target < 0)
+        {
+            return;
+        }
+
+        Select(target);
+        _ = _focus?.Focus(_navigation[target]);
+        _ = _navigationScroll.BringIntoView(_navigation[target]);
+        eventArgs.Handled = true;
+    }
+
+    private int ResolveNavigation(int current, Stroke stroke)
+    {
+        var count = _navigation.Length;
+
+        if (stroke.Code is Code.Up or Code.Left ||
+            (stroke.Code == Code.Tab && (stroke.Modifiers & Modifiers.Shift) != 0))
+        {
+            return Math.Max(0, current - 1);
+        }
+
+        if (stroke.Code is Code.Down or Code.Right or Code.Tab)
+        {
+            return Math.Min(count - 1, current + 1);
+        }
+
+        if (stroke.Code == Code.Home)
+        {
+            return 0;
+        }
+
+        if (stroke.Code == Code.End)
+        {
+            return count - 1;
+        }
+
+        var page = Math.Max(1, _navigationScroll.Viewport.Height - 1);
+
+        return stroke.Code == Code.PageUp
+            ? Math.Max(0, current - page)
+            : stroke.Code == Code.PageDown
+            ? Math.Min(count - 1, current + page)
+            : -1;
+    }
+
+    private static NavigationItem? FindNavigation(Control? source)
+    {
+        for (var current = source; current is not null; current = current.Parent)
+        {
+            if (current is NavigationItem item)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
     #endregion
 
     #region Lifetime
@@ -184,6 +270,7 @@ public sealed class Gallery: IDisposable
             item.Invoked -= OnNavigationInvoked;
         }
 
+        _focus = null;
         Root.Dispose();
         GC.SuppressFinalize(this);
     }

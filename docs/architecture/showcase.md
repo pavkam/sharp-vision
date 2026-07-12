@@ -47,7 +47,17 @@ conservative.
 The main pane reserves horizontal and vertical scrollbars automatically. At
 narrow widths geometry saturates and clips safely rather than throwing or
 creating negative extents. Selection survives resize, and keyboard, pointer,
-focus, editing, and scrolling continue through the public runtime path.
+focus, editing, and scrolling continue through the public runtime path. The
+initial sidebar entry takes focus after the first frame; Up, Down, Left, Right,
+Tab, Shift+Tab, Home, End, Page Up, and Page Down move the selected page and
+keep its entry visible. Enter activates the focused entry using the same path as
+a primary pointer release.
+
+On Unix the executable reads directly from `/dev/tty` through a one-byte
+asynchronous stream after acquiring its raw-input lease. This avoids the
+line-buffered standard-input behavior that can otherwise defer escape-prefixed
+mouse reports until a later key. Windows retains the standard console stream
+fallback. The protocol layer still receives only decoded terminal input values.
 
 Vendored resources used by examples remain under the documented
 [external-resource boundary](../../extern/README.md#external-resources). Stable
@@ -59,7 +69,9 @@ Showcase tests assert the exact inventory, metadata validation, fresh detached
 example ownership, and matching runtime control type. They render every page at
 30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell continuation
 structure, and prove automatic scrolling. A full Application test drives SGR
-pointer selection, keyboard button activation, wheel scrolling, text editing,
-and pixel-aware resize through terminal bytes. Startup coverage requires the
-exact SGR mouse-mode lease before the first frame. The live image supplements
-these assertions; it cannot replace them.
+pointer selection, keyboard sidebar navigation and button activation, wheel
+scrolling, text editing, and pixel-aware resize through terminal bytes. Startup
+coverage requires the exact SGR mouse-mode lease before the first frame. The
+live tmux smoke test then proves a normal Down key and separate complete SGR
+clicks for Canvas and Button, each without a trailing flushing key. The live
+image supplements these assertions; it cannot replace them.

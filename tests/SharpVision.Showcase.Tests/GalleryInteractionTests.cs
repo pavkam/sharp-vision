@@ -155,6 +155,71 @@ public sealed class GalleryInteractionTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies arrow navigation starts focused and selects the next sidebar page through decoded input.</summary>
+    [Fact]
+    public async Task Input_WhenArrowDownIsPressed_SelectsAndFocusesNextSidebarPageAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(80, 24)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        application.Started += FocusSelected;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\u001b[B"u8);
+        await WaitUntilAsync(
+            () => gallery.SelectedPage == "Button",
+            application,
+            "sidebar arrow navigation");
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            gallery.Navigation[1].IsFocused.ShouldBeTrue();
+            gallery.Navigation[1].IsSelected.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        void FocusSelected(object? sender, EventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            gallery.FocusSelected(application.Focus).ShouldBeTrue();
+        }
+    }
+
+    /// <summary>Verifies Enter activates the currently focused sidebar entry through the ordinary pressable path.</summary>
+    [Fact]
+    public async Task Input_WhenEnterIsPressedOnFocusedSidebarEntry_SelectsThatPageAsync()
+    {
+        await using var terminal = new FakeTerminal();
+        terminal.QueueResize(new Dimensions(new Size(80, 24)));
+        using var gallery = new Gallery();
+        await using var application = new Application(
+            gallery.Root,
+            terminal,
+            terminal,
+            StartupOptions.Create(new Dictionary<string, string?>()));
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(gallery.Navigation[1]).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\r"u8);
+        await WaitUntilAsync(
+            () => gallery.SelectedPage == "Button",
+            application,
+            "sidebar Enter activation");
+
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Navigation[1].IsFocused.ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     private static T? Find<T>(Control control, Func<T, bool> predicate) where T : Control
     {
         ArgumentNullException.ThrowIfNull(control);

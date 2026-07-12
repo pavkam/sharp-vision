@@ -60,9 +60,17 @@ path. Unsupported hosts retain keyboard fallback without changing the terminal
 state.
 
 Keyboard Tab/Enter and primary pointer activation are equivalent navigation
-actions. The sidebar and main pane independently scroll when their content
-overflows. At tiny dimensions, borders and text clip safely, selected state
-persists, and neither input nor resize throws.
+actions. The initially selected entry receives focus after the first frame; Up,
+Down, Left, Right, Tab, Shift+Tab, Home, End, and Page keys navigate the sidebar
+selection and preserve visibility. The sidebar and main pane independently
+scroll when their content overflows. At tiny dimensions, borders and text clip
+safely, selected state persists, and neither input nor resize throws.
+
+On Unix the host opens `/dev/tty` as a one-byte asynchronous input stream after
+entering raw mode. That is intentionally separate from normal standard input:
+complete escape-prefixed reports must wake the decoder immediately instead of
+being delayed until a later character arrives. Other platforms retain a safe
+standard-input fallback.
 
 ## Tests and visual proof
 
@@ -77,7 +85,10 @@ Tests prove all of the following:
 - selected, hovered, focused, and pressed navigation appearances are observable
   in virtual-screen cells;
 - the dashboard remains contained and navigable at tiny, typical, and large
-  terminal sizes.
+  terminal sizes;
+- the live tmux capture sends an ordinary Down key plus complete Canvas and
+  Button SGR clicks, each without a synthetic trailing key, and observes every
+  corresponding page change.
 
 The Release application is captured from a 120 by 40 `tmux` pane after the
 automated tests pass. The checked-in image demonstrates the real sidebar and
