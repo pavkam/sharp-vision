@@ -1,6 +1,11 @@
 namespace SharpVision.Styling;
 
-/// <summary>Defines the mutable style contract used by controls and themes.</summary>
+/// <summary>Defines the read-only style view shared by controls and themes.</summary>
+/// <remarks>
+/// The single creatable implementation is <see cref="ControlStyle{TControl}"/>. This interface is a
+/// stable read-only projection used when a style's concrete value type is not statically known
+/// (for example a control's per-instance style); theme lifecycle operations are internal.
+/// </remarks>
 public interface IControlStyle
 {
     /// <summary>Raised after one committed style mutation publishes a new snapshot.</summary>
@@ -15,18 +20,10 @@ public interface IControlStyle
     /// <summary>Gets the earliest impact of the current style contents.</summary>
     public Impact AggregateImpact { get; }
 
-    /// <summary>Creates an independent unfrozen copy of this style.</summary>
-    /// <returns>A mutable style with the same values.</returns>
-    internal IControlStyle CloneForTheme();
-
-    /// <summary>Creates a frozen copy of this style.</summary>
-    /// <returns>A frozen style with the same values.</returns>
-    internal IControlStyle FreezeForTheme();
-
     /// <summary>Gets one stored value from the current immutable snapshot.</summary>
-    /// <param name="property">The style property.</param>
+    /// <param name="styleProperty">The style property.</param>
     /// <param name="state">The visual state.</param>
     /// <param name="value">The stored value when present.</param>
-    /// <returns>Whether a value exists.</returns>
-    internal bool TryGetSnapshotValue(IStyleProperty property, State state, out object? value);
+    /// <returns>Whether a value exists for the property and state.</returns>
+    public bool TryGetValue(IStyleProperty styleProperty, State state, out object? value);
 }

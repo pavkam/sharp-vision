@@ -21,13 +21,13 @@ public sealed class GalleryRenderingTests
         using var gallery = new Gallery();
         var size = new Size(80, 24);
 
-        new Engine().Layout(gallery.Root, size);
+        new Engine().Layout(gallery, size);
         using var frame = new Frame(size);
-        gallery.Root.Render(frame.Canvas);
+        gallery.Render(frame.Canvas);
         var screen = new Screen(frame);
         var view = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
 
-        gallery.Root.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
+        gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
@@ -45,10 +45,10 @@ public sealed class GalleryRenderingTests
         using var gallery = new Gallery();
         gallery.Select(1);
         var size = new Size(80, 40);
-        new Engine().Layout(gallery.Root, size);
+        new Engine().Layout(gallery, size);
         using var frame = new Frame(size);
 
-        gallery.Root.Render(frame.Canvas);
+        gallery.Render(frame.Canvas);
 
         var screen = new Screen(frame);
         screen.Text.ShouldContain("command paths.");
@@ -63,10 +63,10 @@ public sealed class GalleryRenderingTests
         using var gallery = new Gallery();
         gallery.Select(IndexOf(gallery, "Shadow"));
         var size = new Size(100, 60);
-        new Engine().Layout(gallery.Root, size);
+        new Engine().Layout(gallery, size);
         using var frame = new Frame(size);
 
-        gallery.Root.Render(frame.Canvas);
+        gallery.Render(frame.Canvas);
 
         var screen = new Screen(frame);
         screen.Text.ShouldContain("Composite stage");
@@ -98,10 +98,10 @@ public sealed class GalleryRenderingTests
         using var gallery = new Gallery();
         gallery.Select(2);
         var size = new Size(120, 80);
-        new Engine().Layout(gallery.Root, size);
+        new Engine().Layout(gallery, size);
         using var frame = new Frame(size);
 
-        gallery.Root.Render(frame.Canvas);
+        gallery.Render(frame.Canvas);
 
         var screen = new Screen(frame);
         var edge = Find<Border>(
@@ -125,10 +125,10 @@ public sealed class GalleryRenderingTests
         using var gallery = new Gallery();
         gallery.Select(IndexOf(gallery, "Window"));
         var size = new Size(120, 80);
-        new Engine().Layout(gallery.Root, size);
+        new Engine().Layout(gallery, size);
         using var frame = new Frame(size);
 
-        gallery.Root.Render(frame.Canvas);
+        gallery.Render(frame.Canvas);
 
         var windows = FindAll<Window>(gallery.Content);
         var screen = new Screen(frame);
@@ -162,12 +162,12 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "List"));
         var theme = Themes.Dark.Clone();
         theme.SetStyle(Palette.ListForTheme());
-        ApplyTheme(gallery.Root, theme);
+        ApplyTheme(gallery, theme);
         var size = new Size(120, 80);
-        new Engine().Layout(gallery.Root, size);
+        new Engine().Layout(gallery, size);
         using var frame = new Frame(size);
 
-        gallery.Root.Render(frame.Canvas);
+        gallery.Render(frame.Canvas);
 
         var active = FindAll<List>(gallery.Content).Single(list => list.IsEnabled);
         active.Background.ShouldBe(Palette.InputSurface);
@@ -208,7 +208,7 @@ public sealed class GalleryRenderingTests
     {
         using var gallery = new Gallery();
         gallery.Select(IndexOf(gallery, "RichText"));
-        new Engine().Layout(gallery.Root, new Size(120, 80));
+        new Engine().Layout(gallery, new Size(120, 80));
 
         var button = FindAll<Button>(gallery.Content)
             .Single(value => value.Content is ControlText { Content: "Append a Run" });
@@ -289,14 +289,14 @@ public sealed class GalleryRenderingTests
         for (var index = 0; index < gallery.Pages.Count; index++)
         {
             gallery.Select(index);
-            engine.Layout(gallery.Root, size);
+            engine.Layout(gallery, size);
             using var frame = new Frame(size);
 
-            Should.NotThrow(() => gallery.Root.Render(frame.Canvas));
+            Should.NotThrow(() => gallery.Render(frame.Canvas));
             var screen = new Screen(frame);
             gallery.SelectedIndex.ShouldBe(index);
             gallery.SelectedPage.ShouldBe(gallery.Pages[index].Name);
-            gallery.Root.Bounds.ShouldBe(new Rect(0, 0, width, height));
+            gallery.Bounds.ShouldBe(new Rect(0, 0, width, height));
             screen.ValidateContinuations();
 
             if (width >= 80 && height >= 24)

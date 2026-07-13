@@ -1,4 +1,4 @@
-namespace SharpVision.Showcase;
+namespace SharpVision.Showcase.Panes.Theming;
 
 /// <summary>Selects where a showcase panel draws its caption relative to body content.</summary>
 public enum LabelPlacement

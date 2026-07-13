@@ -1,4 +1,5 @@
 using SharpVision.Styling;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Tests.Support;
 
 using Shouldly;
@@ -8,6 +9,21 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies third-party control extensibility through custom style properties.</summary>
 public sealed class ThirdPartyControlTests
 {
+    /// <summary>Verifies change notifications report CLR names for custom and built-in properties.</summary>
+    [Fact]
+    public void SetValue_RaisesPropertyChangedWithClrName()
+    {
+        var panel = new DemoPanel();
+        var names = new List<string?>();
+        panel.PropertyChanged += (_, args) => names.Add(args.PropertyName);
+
+        panel.LabelPlacement = DemoLabelPlacement.Right;
+        panel.Foreground = Color.Indexed(3);
+
+        names.ShouldContain("LabelPlacement");
+        names.ShouldContain("Foreground");
+    }
+
     /// <summary>Verifies a custom property inherits themed values from the application chain.</summary>
     [Fact]
     public void Resolve_WhenThemeDefinesCustomProperty_UsesThemedValue()

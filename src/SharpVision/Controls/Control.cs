@@ -253,9 +253,38 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
+    /// <exception cref="ArgumentException">The style targets a type this control does not derive from.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public IControlStyle? Style { get => InstanceStyle; set { VerifyMutable(); if (ReferenceEquals(InstanceStyle, value)) { return; } UnsubscribeInstanceStyle(InstanceStyle); InstanceStyle = value; SubscribeInstanceStyle(value); InvalidateResolvedStyleCache(); Invalidate(Invalidation.Measure); PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Style))); PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty)); } }
+    public IControlStyle? Style
+    {
+        get => InstanceStyle;
+        set
+        {
+            VerifyMutable();
+
+            if (value is not null && !value.TargetType.IsAssignableFrom(GetType()))
+            {
+                throw new ArgumentException(
+                    $"A style targeting {value.TargetType.Name} cannot be applied to {GetType().Name}.",
+                    nameof(value));
+            }
+
+            if (ReferenceEquals(InstanceStyle, value))
+            {
+                return;
+            }
+
+            UnsubscribeInstanceStyle(InstanceStyle);
+            InstanceStyle = value;
+            SubscribeInstanceStyle(value);
+            InvalidateResolvedStyleCache();
+            Invalidate(Invalidation.Measure);
+            CascadeStyleScopeInvalidation(Invalidation.Measure);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Style)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+        }
+    }
 
     /// <summary>Gets whether this control currently owns keyboard focus.</summary>
     public bool IsFocused { get; private set; }
@@ -315,10 +344,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     internal virtual bool ClipsChildren => true;
 
     /// <summary>Gets the complete terminal style for the resolved appearance.</summary>
-    internal TerminalStyle ResolvedStyle => GetResolvedStyle(GetVisualState());
+    protected internal TerminalStyle ResolvedStyle => GetResolvedStyle(GetVisualState());
 
     /// <summary>Gets the inherited normal-state terminal style for passive visual overflow.</summary>
-    internal TerminalStyle NormalStyle => GetResolvedStyle(State.Normal);
+    protected internal TerminalStyle NormalStyle => GetResolvedStyle(State.Normal);
 
     /// <summary>Adds one typed routed-event handler to this control.</summary>
     /// <typeparam name="TArgs">The exact event-argument type.</typeparam>
@@ -683,6 +712,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         var previous = Parent;
         Parent = value;
+        InvalidateSubtreeResolvedStyleCache();
         OnParentChanged(previous, value);
     }
 
@@ -788,6 +818,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         IsFocused = value;
+
         InvalidateResolvedStyleCache();
         Invalidate(Invalidation.Render);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused)));
@@ -805,6 +836,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         IsHovered = value;
+
         InvalidateResolvedStyleCache();
         Invalidate(Invalidation.Render);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsHovered)));
@@ -906,8 +938,17 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render content.");
-        ControlChrome.Render(this, canvas, GetVisualState());
+        RenderChrome(canvas);
     }
+
+    /// <summary>Draws the shared border, shadow, and body-fill chrome for the current visual state.</summary>
+    /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
+    /// <remarks>
+    /// Derived controls that fully override <see cref="RenderCore"/> can call this to draw the
+    /// standard chrome consistently with the built-in controls before rendering custom content.
+    /// </remarks>
+    protected void RenderChrome(TerminalCanvas canvas) =>
+        ControlChrome.Render(this, canvas, GetVisualState());
 
     /// <summary>Gets the own-content drawing bounds, including deliberate visual overflow.</summary>
     /// <remarks>
@@ -1138,8 +1179,30 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             child.InvalidateDescendants(value);
         });
 
-    private void OnInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs) { var dispatcher = Dispatcher; if (dispatcher is not null && !dispatcher.CheckAccess()) { dispatcher.Post(() => ApplyInstanceStyleChanged(sender, eventArgs)); return; } ApplyInstanceStyleChanged(sender, eventArgs); }
-    private void ApplyInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs) { if (IsDisposed || !ReferenceEquals(sender, InstanceStyle)) { return; } InvalidateResolvedStyleCache(); Invalidate(eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render); PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty)); }
+    private void OnInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs)
+    {
+        var dispatcher = Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            dispatcher.Post(() => ApplyInstanceStyleChanged(sender, eventArgs)); return;
+        }
+        ApplyInstanceStyleChanged(sender, eventArgs);
+    }
+
+    private void ApplyInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs)
+    {
+        if (IsDisposed || !ReferenceEquals(sender, InstanceStyle))
+        {
+            return;
+        }
+
+        InvalidateResolvedStyleCache();
+
+        var invalidation = eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
+        Invalidate(invalidation);
+        CascadeStyleScopeInvalidation(invalidation);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+    }
 
     private void ClearHandlers()
     {
@@ -1201,7 +1264,16 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             MinHeight,
             MaxHeight));
 
-    private void SetDispatcher(Dispatcher? value) { UnsubscribeInstanceStyle(InstanceStyle); Dispatcher = value; SubscribeInstanceStyle(InstanceStyle); VisitChildren(child => child.SetDispatcher(value)); }
+    private void SetDispatcher(Dispatcher? value)
+    {
+        UnsubscribeInstanceStyle(InstanceStyle);
+
+        Dispatcher = value;
+
+        SubscribeInstanceStyle(InstanceStyle);
+        VisitChildren(child => child.SetDispatcher(value));
+    }
+
     private void SubscribeInstanceStyle(IControlStyle? style)
     {
         if (Dispatcher is not null && style is not null)
@@ -1209,6 +1281,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             style.Changed += OnInstanceStyleChanged;
         }
     }
+
     private void UnsubscribeInstanceStyle(IControlStyle? style) => style?.Changed -= OnInstanceStyleChanged;
 
     private void VerifyAccess() => Dispatcher?.VerifyAccess();

@@ -53,17 +53,20 @@ public abstract partial class Control
     /// <exception cref="ArgumentException">
     /// The property does not apply to the control's runtime type.
     /// </exception>
-    protected T GetValue<T>(StyleProperty<T> property) =>
-        ResolveProperty(property, GetVisualState());
+    public T GetValue<T>(StyleProperty<T> property)
+    {
+        ArgumentNullException.ThrowIfNull(property);
+        return ResolveProperty(property, GetVisualState());
+    }
 
     internal T ResolveProperty<T>(StyleProperty<T> property, State visualState)
     {
         EnsureThemeProperty(property);
         var key = (Property: (IStyleProperty) property, State: visualState);
 
-        if (_resolvedPropertyCache.TryGetValue(key, out var cached) && cached is T typed)
+        if (_resolvedPropertyCache.TryGetValue(key, out var cached))
         {
-            return typed;
+            return (T) cached!;
         }
 
         var value = ThemeResolver.Resolve(this, property, visualState);
@@ -81,7 +84,7 @@ public abstract partial class Control
     /// </exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    protected void SetValue<T>(StyleProperty<T> property, T value)
+    public void SetValue<T>(StyleProperty<T> property, T value)
     {
         ArgumentNullException.ThrowIfNull(property);
         EnsureThemeProperty(property);
@@ -107,14 +110,30 @@ public abstract partial class Control
 
     internal void SetThemeContext(ThemeContext? context)
     {
+        if (ReferenceEquals(ThemeContext, context))
+        {
+            return;
+        }
+
         ThemeContext = context;
         InvalidateResolvedStyleCache();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
 
+    /// <summary>Applies one theme context to this control and its complete subtree.</summary>
+    /// <param name="context">The published theme context, or null to inherit none.</param>
+    internal void PropagateThemeContext(ThemeContext? context)
+    {
+        SetThemeContext(context);
+        VisitChildren(child => child.PropagateThemeContext(context));
+    }
+
     internal void SetInstanceStyle(IControlStyle? style) => InstanceStyle = style;
 
-    internal TerminalStyle GetResolvedStyle(State visualState) =>
+    /// <summary>Gets the composed terminal style for an explicit visual state.</summary>
+    /// <param name="visualState">The active visual-state flags.</param>
+    /// <returns>The resolved terminal style.</returns>
+    protected internal TerminalStyle GetResolvedStyle(State visualState) =>
         GetResolvedAppearance(visualState).Style;
 
     internal ResolvedAppearance GetResolvedAppearance(State visualState)
@@ -148,6 +167,31 @@ public abstract partial class Control
         _resolvedPropertyCache.Clear();
     }
 
+    /// <summary>Clears the resolved-style caches of this control and every descendant.</summary>
+    /// <remarks>Used on structural moves where ancestor style scopes may have changed.</remarks>
+    internal void InvalidateSubtreeResolvedStyleCache()
+    {
+        InvalidateResolvedStyleCache();
+        VisitChildren(child => child.InvalidateSubtreeResolvedStyleCache());
+    }
+
+    private void CascadeStyleScopeInvalidation(Invalidation invalidation)
+    {
+        if (this is not IStyleScope)
+        {
+            return;
+        }
+
+        VisitChildren(child => child.InvalidateInheritedStyle(invalidation));
+    }
+
+    private void InvalidateInheritedStyle(Invalidation invalidation)
+    {
+        InvalidateResolvedStyleCache();
+        Invalidate(invalidation);
+        VisitChildren(child => child.InvalidateInheritedStyle(invalidation));
+    }
+
     private int _cachedStyleResolutionEpoch = -1;
 
     private void EnsureThemeProperty<T>(StyleProperty<T> property)
@@ -164,31 +208,6 @@ public abstract partial class Control
     {
         InvalidateResolvedStyleCache();
         Invalidate(property.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render);
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(GetThemeClrPropertyName(property)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property.ClrName));
     }
-
-    private static string GetThemeClrPropertyName<T>(StyleProperty<T> property) =>
-        property.Name switch
-        {
-            "margin" => nameof(Margin),
-            "padding" => nameof(Padding),
-            "foreground" => nameof(Foreground),
-            "background" => nameof(Background),
-            "attributes" => nameof(Attributes),
-            "underline" => nameof(Underline),
-            "underline-color" => nameof(UnderlineColor),
-            "fill-mode" => nameof(FillMode),
-            "border-thickness" => nameof(BorderThickness),
-            "border-style" => nameof(BorderStyle),
-            "border-color" => nameof(BorderColor),
-            "border-attributes" => nameof(BorderAttributes),
-            "has-shadow" => nameof(HasShadow),
-            "shadow-mode" => nameof(ShadowMode),
-            "shadow-offset" => nameof(ShadowOffset),
-            "shadow-glyph" => nameof(ShadowGlyph),
-            "shadow-foreground" => nameof(ShadowForeground),
-            "shadow-background" => nameof(ShadowBackground),
-            "shadow-attributes" => nameof(ShadowAttributes),
-            _ => property.Name,
-        };
 }

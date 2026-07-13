@@ -21,9 +21,9 @@ public sealed class CellGeometryTests
         using var gallery = new Gallery();
         gallery.Select(IndexOf(gallery, "Text"));
         var size = new Size(120, 80);
-        new Engine().Layout(gallery.Root, size);
+        new Engine().Layout(gallery, size);
         using var frame = new Frame(size);
-        gallery.Root.Render(frame.Canvas);
+        gallery.Render(frame.Canvas);
         var screen = new Screen(frame);
 
         screen.Text.ShouldContain("Cell geometry specimen");
@@ -39,7 +39,7 @@ public sealed class CellGeometryTests
         terminal.QueueResize(new Dimensions(new Size(120, 80)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
@@ -50,7 +50,7 @@ public sealed class CellGeometryTests
 
         using var frame = new Frame(application.Size);
         await application.Dispatcher.InvokeAsync(
-            () => gallery.Root.Render(frame.Canvas),
+            () => gallery.Render(frame.Canvas),
             TestContext.Current.CancellationToken);
         var screen = new Screen(frame);
 

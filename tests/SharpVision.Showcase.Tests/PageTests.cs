@@ -1,9 +1,11 @@
 using SharpVision.Controls;
 using SharpVision.Layout;
+using SharpVision.Showcase.Panes;
 using SharpVision.Terminal.Geometry;
 
 using Shouldly;
 
+using ControlStack = SharpVision.Controls.Stack;
 using ControlText = SharpVision.Controls.Text;
 
 namespace SharpVision.Showcase.Tests;
@@ -49,7 +51,11 @@ public sealed class PageTests
             "Summary",
             [new InteractionDescription("Keyboard", "Press Enter", "Activates the command.")],
             [new PropertyDescription("Content", "Control?", "null", "Description")],
-            () => new ControlText("Example"));
+            static () => new TestPane(
+                "Sample",
+                "Summary",
+                [new InteractionDescription("Keyboard", "Press Enter", "Activates the command.")],
+                [new PropertyDescription("Content", "Control?", "null", "Description")]));
 
         using var content = page.CreateContent();
 
@@ -68,9 +74,19 @@ public sealed class PageTests
         var page = new Page(
             "Sample",
             "Use this control when a long explanation needs to remain readable in a narrow terminal page.",
-            "Open the live example, resize the terminal, and confirm that the guidance stays readable.",
+            [new InteractionDescription(
+                "General",
+                "Open the live example, resize the terminal, and confirm that the guidance stays readable.",
+                "Open the live example, resize the terminal, and confirm that the guidance stays readable.")],
             [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")],
-            () => new ControlText("Example"));
+            static () => new TestPane(
+                "Sample",
+                "Use this control when a long explanation needs to remain readable in a narrow terminal page.",
+                [new InteractionDescription(
+                    "General",
+                    "Open the live example, resize the terminal, and confirm that the guidance stays readable.",
+                    "Open the live example, resize the terminal, and confirm that the guidance stays readable.")],
+                [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")]));
         using var content = page.CreateContent();
         new Engine().Layout(content, new Size(72, 40));
         var recipe = FindAll<RichText>(content).Single(value => InlineText(value).StartsWith("Use this control when", StringComparison.Ordinal));
@@ -92,9 +108,9 @@ public sealed class PageTests
         _ = Should.Throw<ArgumentException>(() => new Page(
             values[0],
             values[1],
-            values[2],
+            [new InteractionDescription("General", "Use the documented control interaction.", values[2])],
             [new PropertyDescription("Content", "Control?", "null", "Description")],
-            () => new ControlText("Example")));
+            static () => new TestPane()));
     }
 
     /// <summary>Verifies a page requires property documentation.</summary>
@@ -104,9 +120,9 @@ public sealed class PageTests
         _ = Should.Throw<ArgumentException>(() => new Page(
             "Sample",
             "Summary",
-            "Interaction",
+            [new InteractionDescription("General", "Use the documented control interaction.", "Interaction")],
             [],
-            () => new ControlText("Example")));
+            static () => new TestPane()));
     }
 
     /// <summary>Verifies a page requires a live example factory.</summary>
@@ -116,7 +132,7 @@ public sealed class PageTests
         _ = Should.Throw<ArgumentNullException>(() => new Page(
             "Sample",
             "Summary",
-            "Interaction",
+            [new InteractionDescription("General", "Use the documented control interaction.", "Interaction")],
             [new PropertyDescription("Content", "Control?", "null", "Description")],
             null!));
     }
@@ -124,9 +140,9 @@ public sealed class PageTests
     private static Page CreatePage() => new(
         "Sample",
         "Explains a sample control.",
-        "Use the keyboard or pointer.",
+        [new InteractionDescription("General", "Use the documented control interaction.", "Use the keyboard or pointer.")],
         [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")],
-        () => new ControlText("Example"));
+        static () => new TestPane());
 
     private static List<T> FindAll<T>(Control control) where T : Control
     {
@@ -214,5 +230,29 @@ public sealed class PageTests
         {
             Visit(child, text);
         }
+    }
+
+    private sealed class TestPane: ShowcasePane
+    {
+        internal TestPane()
+            : base(
+                "Sample",
+                "Explains a sample control.",
+                [new InteractionDescription("General", "Use the documented control interaction.", "Use the keyboard or pointer.")],
+                [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")])
+        {
+        }
+
+        internal TestPane(
+            string name,
+            string summary,
+            InteractionDescription[] interactions,
+            PropertyDescription[] properties)
+            : base(name, summary, interactions, properties)
+        {
+        }
+
+        protected override void BuildExamples(ControlStack examples) =>
+            examples.Children.Add(new ControlText("Example"));
     }
 }

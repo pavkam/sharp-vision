@@ -5,7 +5,7 @@ using SharpVision.Terminal.Geometry;
 
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
-namespace SharpVision.Showcase;
+namespace SharpVision.Showcase.Panes.Theming;
 
 /// <summary>
 /// Demonstrates third-party control styling with a custom style property outside the core theme catalog.

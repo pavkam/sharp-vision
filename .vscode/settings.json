@@ -1,5 +1,6 @@
 {
   "cSpell.words": [
+    "accessibilities",
     "backpressures",
     "cellwise",
     "codepoint",
@@ -13,6 +14,7 @@
     "markdownlint",
     "prefilter",
     "preflights",
+    "Pressable",
     "pseudoterminal",
     "reentrancy",
     "Shouldly",

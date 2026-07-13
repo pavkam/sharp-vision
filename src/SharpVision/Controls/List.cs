@@ -4,6 +4,7 @@ using System.Globalization;
 
 using SharpVision.Input;
 using SharpVision.Layout;
+using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
@@ -19,7 +20,7 @@ namespace SharpVision.Controls;
     "Naming",
     "CA1710:Identifiers should have correct suffix",
     Justification = "List is the approved concise terminal control name, not a collection implementation.")]
-public sealed class List: Container
+public sealed class List: Container, IStyleScope
 {
     private readonly Children _chrome;
     private readonly ScrollView _scroll;

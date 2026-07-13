@@ -35,14 +35,14 @@ controls, layout, styling, focus, and routed input. It draws to the terminal
 project's cell canvas and never emits escape bytes. Phase 4 provides these
 infrastructure namespaces:
 
-| Namespace               | Shipped responsibility                                      |
-| ----------------------- | ----------------------------------------------------------- |
-| `SharpVision.Threading` | Single-owner dispatcher, invocation, and idle transition.   |
-| `SharpVision.Controls`  | Mutable control tree, ownership, invalidation, and drawing. |
-| `SharpVision.Layout`    | Box geometry, measure/arrange, and track allocation.        |
-| `SharpVision.Input`     | Routed input, focus, hit testing, and pointer capture.      |
-| `SharpVision.Styling`   | Mutable style resources and visual-state resolution.        |
-| `SharpVision.Runtime`   | Terminal session ownership and application lifecycle.       |
+| Namespace               | Shipped responsibility                                                         |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `SharpVision.Threading` | Single-owner dispatcher, invocation, and idle transition.                      |
+| `SharpVision.Controls`  | Mutable control tree, `Screen`, ownership, invalidation, and drawing.          |
+| `SharpVision.Layout`    | Box geometry, measure/arrange, and track allocation.                           |
+| `SharpVision.Input`     | Routed input, focus, hit testing, and pointer capture.                         |
+| `SharpVision.Styling`   | Mutable style resources and visual-state resolution.                           |
+| `SharpVision.Runtime`   | Terminal session ownership, application lifecycle, and console host bootstrap. |
 
 Phase 5A adds public Stack, Grid, Dock, Overlay, Canvas, Text, and Border types
 on these boundaries. Remaining controls, scrolling, menus, popups, and windows

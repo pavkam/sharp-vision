@@ -7,13 +7,18 @@ control API. It contains no behavior unavailable to ordinary library users.
 
 ```mermaid
 flowchart LR
-    Catalog["Control catalog"] --> Sidebar["Framed dashboard sidebar"]
-    Catalog --> Page["Selected showcase page"]
+    PaneCatalog["Pane catalog"] --> Sidebar["Framed dashboard sidebar"]
+    PaneCatalog --> Page["Selected showcase page"]
     Page --> Variants["Interactive variants"]
     Page --> RichText["RichText documentation"]
     Page --> Properties["Property guidance"]
     Page --> Interaction["Input guidance"]
 ```
+
+Each concrete control lives in `src/SharpVision.Showcase/Panes/<Control>/`. That
+directory owns the pane metadata, live example factory, and any pane-specific
+probe controls. `PaneCatalog` aggregates every `*Pane.Create()` entry;
+`PaneSupport` and `PaneMetadata` hold shared composition helpers.
 
 The sidebar contains one entry for each concrete shipped control: Border,
 Button, Canvas, CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu, Overlay,
@@ -53,9 +58,10 @@ The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
 component-only stateful navigation entries, and compact interaction hints; its
 selected, focused, hovered, and pressed states use a shared indexed-color
 palette. The executable app explicitly requests xterm any-event (`1003`) SGR
-cell mouse reporting through an application-level capability override and owns a
-Unix raw-input lease while running, while the terminal library's default
-environment-hint policy remains conservative.
+cell mouse reporting through an application-level capability override and runs
+through `Application.RunConsoleAsync` with a `Gallery` screen, which owns the
+Unix raw-input lease and console transport while running. The terminal library's
+default environment-hint policy remains conservative.
 
 The main pane reserves a vertical scrollbar automatically and suppresses a
 horizontal scrollbar so documentation remains a readable column. At narrow
@@ -77,11 +83,12 @@ Every showcase `TextInput` applies the dedicated editor palette, and the control
 paints that resolved background across its entire committed box. Empty space is
 therefore visibly part of the input rather than blending into its card.
 
-On Unix the executable reads directly from `/dev/tty` through a one-byte
-asynchronous stream after acquiring its raw-input lease. This avoids the
-line-buffered standard-input behavior that can otherwise defer escape-prefixed
-mouse reports until a later key. Windows retains the standard console stream
-fallback. The protocol layer still receives only decoded terminal input values.
+On Unix, `Application.RunConsoleAsync` reads directly from `/dev/tty` through a
+one-byte asynchronous stream after acquiring its raw-input lease. This avoids
+the line-buffered standard-input behavior that can otherwise defer
+escape-prefixed mouse reports until a later key. Windows retains the standard
+console stream fallback. The protocol layer still receives only decoded terminal
+input values.
 
 Vendored resources used by examples remain under the documented
 [external-resource boundary](../../extern/README.md#external-resources). Stable

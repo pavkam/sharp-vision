@@ -4,6 +4,7 @@ using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Runtime;
 using SharpVision.Scrolling;
+using SharpVision.Showcase.Panes.Button;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
 
@@ -26,7 +27,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
@@ -45,7 +46,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(80, 24), new Size(800, 480)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             TerminalOptions.Minimal);
@@ -104,7 +105,7 @@ public sealed class GalleryInteractionTests
         var rendered = NextFrame(application);
         terminal.QueueResize(new Dimensions(new Size(100, 30), new Size(1000, 600)));
         await rendered.WaitAsync(TestContext.Current.CancellationToken);
-        gallery.Root.Bounds.ShouldBe(new Rect(0, 0, 100, 30));
+        gallery.Bounds.ShouldBe(new Rect(0, 0, 100, 30));
         gallery.SelectedPage.ShouldBe("TextInput");
         application.Failure.ShouldBeNull();
         terminal.Writes.Count.ShouldBeGreaterThan(0);
@@ -119,7 +120,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(100, 40)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             TerminalOptions.Minimal);
@@ -163,7 +164,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(100, 40)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             TerminalOptions.Minimal);
@@ -207,7 +208,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(100, 40)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             TerminalOptions.Minimal);
@@ -253,7 +254,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
@@ -300,7 +301,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
@@ -334,8 +335,8 @@ public sealed class GalleryInteractionTests
     public async Task Input_WhenPointerMovesOverButtonContent_UsesHoverAppearanceAsync()
     {
         await using var terminal = new FakeTerminal();
-        terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        var root = Examples.Button();
+        terminal.QueueResize(new Dimensions(new Size(80, 60)));
+        var root = new ButtonPane();
         await using var application = new Application(
             root,
             terminal,
@@ -368,8 +369,8 @@ public sealed class GalleryInteractionTests
     public async Task Input_WhenPrimaryPointerClicksButton_LeavesFocusedAppearanceAsync()
     {
         await using var terminal = new FakeTerminal();
-        terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        var root = Examples.Button();
+        terminal.QueueResize(new Dimensions(new Size(80, 60)));
+        var root = new ButtonPane();
         await using var application = new Application(
             root,
             terminal,
@@ -409,7 +410,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
@@ -445,7 +446,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
@@ -474,7 +475,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
@@ -537,7 +538,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
@@ -637,7 +638,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));

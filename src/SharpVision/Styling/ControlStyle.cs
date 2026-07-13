@@ -4,7 +4,7 @@ namespace SharpVision.Styling;
 
 /// <summary>Stores typed style values for one specific control type.</summary>
 /// <typeparam name="TControl">The targeted control type.</typeparam>
-public sealed class ControlStyle<TControl>: IControlStyle
+public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     where TControl : Control
 {
     private const State _overlayStates =
@@ -56,7 +56,6 @@ public sealed class ControlStyle<TControl>: IControlStyle
         property.ValidateValue(value);
 
         var key = (property, state);
-        var impact = property.Impact;
 
         lock (_gate)
         {
@@ -66,8 +65,10 @@ public sealed class ControlStyle<TControl>: IControlStyle
             }
 
             _values[key] = value!;
-            Publish(impact);
+            CurrentSnapshot = BuildSnapshot();
         }
+
+        RaiseChanged(property.Impact);
     }
 
     /// <summary>Removes one property value for a visual state.</summary>
@@ -93,9 +94,11 @@ public sealed class ControlStyle<TControl>: IControlStyle
                 return false;
             }
 
-            Publish(property.Impact);
-            return true;
+            CurrentSnapshot = BuildSnapshot();
         }
+
+        RaiseChanged(property.Impact);
+        return true;
     }
 
     /// <summary>Gets one stored property value for a visual state.</summary>
@@ -150,17 +153,14 @@ public sealed class ControlStyle<TControl>: IControlStyle
     }
 
     /// <inheritdoc/>
-    IControlStyle IControlStyle.CloneForTheme() => Clone();
+    public bool TryGetValue(IStyleProperty styleProperty, State state, out object? value) =>
+        CurrentSnapshot.TryGet(styleProperty, state, out value);
 
     /// <inheritdoc/>
-    IControlStyle IControlStyle.FreezeForTheme() => FreezeCopy();
+    IControlStyle IStyleLifecycle.CloneForTheme() => Clone();
 
     /// <inheritdoc/>
-    bool IControlStyle.TryGetSnapshotValue(IStyleProperty property, State state, out object? value) =>
-        TryGetSnapshotValue(property, state, out value);
-
-    internal bool TryGetSnapshotValue(IStyleProperty property, State state, out object? value) =>
-        CurrentSnapshot.TryGet(property, state, out value);
+    IControlStyle IStyleLifecycle.FreezeForTheme() => FreezeCopy();
 
     private void EnsureMutable()
     {
@@ -207,11 +207,8 @@ public sealed class ControlStyle<TControl>: IControlStyle
         }
     }
 
-    private void Publish(Impact impact)
-    {
-        CurrentSnapshot = BuildSnapshot();
+    private void RaiseChanged(Impact impact) =>
         Changed?.Invoke(this, new ThemeChangedEventArgs(typeof(TControl), impact));
-    }
 
     private ControlStyleSnapshot BuildSnapshot()
     {

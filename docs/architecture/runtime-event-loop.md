@@ -42,6 +42,13 @@ immutable records into a bounded queue; they never enter the control tree.
 Resize uses a newest-value slot plus one queued wake, so storms cannot grow work
 without bound.
 
+`Application.RunConsoleAsync(screen, options?)` is the supported interactive
+console entry point. It rejects redirected standard I/O, acquires the host
+raw-input lease, opens the console transport and resize source, negotiates
+terminal capabilities, maps Ctrl+C to cooperative shutdown, attaches the
+supplied <see cref="Screen"/>, starts the application, waits for completion or
+cancellation, stops cleanly, and restores host terminal state.
+
 `StartAsync` raises `Starting` on the dispatcher before `Session.RunAsync` can
 enable a mode. The first resize attaches the root, creates focus/capture
 ownership, commits layout, raises `Resize`, and starts frame rendering.

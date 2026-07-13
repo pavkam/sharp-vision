@@ -6,7 +6,7 @@ using SharpVision.Terminal.Input;
 
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
-namespace SharpVision.Showcase;
+namespace SharpVision.Showcase.Panes.Text;
 
 /// <summary>Displays live pixel and optional mapped-cell coordinates for pointer input.</summary>
 internal sealed class PointerProbe: Control

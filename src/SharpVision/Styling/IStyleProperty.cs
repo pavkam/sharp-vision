@@ -9,6 +9,9 @@ public interface IStyleProperty
     /// <summary>Gets the stable serialized property name scoped to the declaring type.</summary>
     public string Name { get; }
 
+    /// <summary>Gets the CLR property name reported by change notifications.</summary>
+    public string ClrName { get; }
+
     /// <summary>Gets the earliest control phase affected by this property.</summary>
     public Impact Impact { get; }
 

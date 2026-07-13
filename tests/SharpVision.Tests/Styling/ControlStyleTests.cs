@@ -68,6 +68,17 @@ public sealed class ControlStyleTests
         value.ShouldBe(Color.Indexed(1));
     }
 
+    /// <summary>Verifies the public read-only interface view exposes stored values.</summary>
+    [Fact]
+    public void TryGetValue_ThroughPublicInterface_ReadsStoredValue()
+    {
+        var style = new ControlStyle<Control>();
+        style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
+
+        style.TryGetValue(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
+        value.ShouldBe(Color.Indexed(4));
+    }
+
     /// <summary>Verifies committed mutations raise the changed event once.</summary>
     [Fact]
     public void Set_WhenValueChanges_RaisesChanged()
@@ -79,5 +90,23 @@ public sealed class ControlStyleTests
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(6));
 
         raised.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the changed event runs outside the internal lock so handlers may re-enter the style.</summary>
+    [Fact]
+    public async Task Set_WhenHandlerReentersStyle_DoesNotDeadlockAsync()
+    {
+        var style = new ControlStyle<Control>();
+        style.Changed += (_, _) => _ = style.Clone();
+
+        var work = Task.Run(
+            () => style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1)),
+            TestContext.Current.CancellationToken);
+        var finished = await Task.WhenAny(
+            work,
+            Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        ReferenceEquals(finished, work).ShouldBeTrue();
+        await work;
     }
 }

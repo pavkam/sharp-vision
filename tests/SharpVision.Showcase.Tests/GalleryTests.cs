@@ -1,5 +1,6 @@
 using SharpVision.Controls;
 using SharpVision.Layout;
+using SharpVision.Showcase.Panes.Theming;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Text;
 
@@ -43,7 +44,9 @@ public sealed class GalleryTests
     {
         using var gallery = new Gallery();
 
-        _ = gallery.Root.ShouldBeOfType<Dock>();
+        _ = gallery.ShouldBeOfType<Gallery>();
+        gallery.Children.Count.ShouldBe(1);
+        _ = gallery.Children[0].ShouldBeOfType<Dock>();
         _ = gallery.Sidebar.ShouldBeOfType<Border>();
         gallery.Pages.Select(static page => page.Name).ShouldBe(_controls);
         gallery.SelectedPage.ShouldBe("Border");
@@ -68,7 +71,7 @@ public sealed class GalleryTests
     public void Select_WhenDocumentationWasScrolled_ResetsTheNewPageToTop()
     {
         using var gallery = new Gallery();
-        new Engine().Layout(gallery.Root, new Size(80, 24));
+        new Engine().Layout(gallery, new Size(80, 24));
         var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
         main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
 

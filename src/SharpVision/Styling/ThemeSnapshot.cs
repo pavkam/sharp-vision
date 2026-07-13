@@ -1,5 +1,3 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Styling;
 
 /// <summary>Immutable theme contents used during value resolution.</summary>
@@ -27,20 +25,14 @@ internal sealed class ThemeSnapshot
 
         var chain = new List<IControlStyle>();
 
-        for (var current = controlType; current is not null; current = current.BaseType)
+        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
         {
-            if (!typeof(Control).IsAssignableFrom(current))
-            {
-                break;
-            }
-
-            if (_styles.TryGetValue(current, out var style))
+            if (_styles.TryGetValue(type, out var style))
             {
                 chain.Add(style);
             }
         }
 
-        chain.Reverse();
         _styleChains[controlType] = chain;
         return chain;
     }

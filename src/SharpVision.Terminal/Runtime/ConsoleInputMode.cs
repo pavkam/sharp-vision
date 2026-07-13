@@ -1,9 +1,9 @@
 using System.Diagnostics;
 
-namespace SharpVision.Showcase;
+namespace SharpVision.Terminal.Runtime;
 
-/// <summary>Owns one best-effort Unix terminal raw-input lease for the interactive showcase host.</summary>
-internal sealed class ConsoleRawMode: IDisposable
+/// <summary>Owns one best-effort Unix terminal raw-input lease for interactive console hosts.</summary>
+public sealed class ConsoleInputMode: IDisposable
 {
     private readonly string? _restore;
     private int _disposed;
@@ -13,7 +13,7 @@ internal sealed class ConsoleRawMode: IDisposable
     /// <summary>Initializes one lease with an optional captured terminal restoration value.</summary>
     /// <param name="restore">The non-empty saved terminal state, or null when the host is unsupported.</param>
     /// <exception cref="ArgumentException"><paramref name="restore"/> is whitespace.</exception>
-    private ConsoleRawMode(string? restore)
+    private ConsoleInputMode(string? restore)
     {
         if (restore is not null)
         {
@@ -31,11 +31,11 @@ internal sealed class ConsoleRawMode: IDisposable
     /// cancellation event while individual key, pointer, paste, and focus bytes
     /// arrive without canonical line buffering.
     /// </remarks>
-    internal static ConsoleRawMode Enter()
+    public static ConsoleInputMode Enter()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
         {
-            return new ConsoleRawMode(restore: null);
+            return new ConsoleInputMode(restore: null);
         }
 
         var restore = Run("-g").Trim();
@@ -43,7 +43,7 @@ internal sealed class ConsoleRawMode: IDisposable
         try
         {
             _ = Run("raw", "-echo", "isig");
-            return new ConsoleRawMode(restore);
+            return new ConsoleInputMode(restore);
         }
         catch
         {

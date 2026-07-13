@@ -25,7 +25,7 @@ using UnicodePolicy = SharpVision.Terminal.Unicode.Policy;
 namespace SharpVision.Runtime;
 
 /// <summary>Owns the dispatcher-affine UI tree and asynchronous terminal runtime.</summary>
-public sealed class Application: ISink, IAsyncDisposable
+public sealed partial class Application: ISink, IAsyncDisposable
 {
     private const int _inputCapacity = 4096;
     private readonly Lock _gate = new();
@@ -733,13 +733,7 @@ public sealed class Application: ISink, IAsyncDisposable
             return;
         }
 
-        ApplyThemeContext(Root, _themeContext);
-    }
-
-    private static void ApplyThemeContext(Control control, ThemeContext context)
-    {
-        control.SetThemeContext(context);
-        control.VisitChildren(child => ApplyThemeContext(child, context));
+        Root.PropagateThemeContext(_themeContext);
     }
 
     private void FinalizeStopped()

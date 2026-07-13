@@ -4,24 +4,23 @@ using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Runtime;
+using SharpVision.Showcase.Panes;
 using SharpVision.Styling;
 using SharpVision.Terminal.Input;
 
-using Attributes = SharpVision.Terminal.Rendering.Attributes;
-using ControlText = SharpVision.Controls.Text;
 using KeyAction = SharpVision.Terminal.Input.Action;
+using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 
 namespace SharpVision.Showcase;
 
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
-public sealed class Gallery: IDisposable
+public sealed class Gallery: Screen
 {
     private readonly ScrollView _main;
     private readonly ScrollView _navigationScroll;
     private readonly NavigationItem[] _navigation;
     private readonly Button _lightTheme;
     private readonly Button _darkTheme;
-    private Application? _application;
     private FocusManager? _focus;
 
     #region Construction and navigation
@@ -29,7 +28,7 @@ public sealed class Gallery: IDisposable
     /// <summary>Initializes the complete sidebar and first selected control page.</summary>
     public Gallery()
     {
-        Pages = Catalog.Pages;
+        Pages = PaneCatalog.Pages;
         _main = new ScrollView
         {
             ScrollBars = ScrollBars.Vertical,
@@ -45,7 +44,7 @@ public sealed class Gallery: IDisposable
         {
             Foreground = Palette.Accent,
             Background = Palette.Panel,
-            Attributes = Attributes.Bold,
+            Attributes = TerminalAttributes.Bold,
         });
 
         for (var index = 0; index < Pages.Count; index++)
@@ -94,16 +93,18 @@ public sealed class Gallery: IDisposable
             Background = Palette.Canvas,
             Child = _main,
         };
-        Root = new Dock();
+        var layout = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
         Dock.SetSide(Sidebar, Side.Left);
-        Root.Children.Add(Sidebar);
-        Root.Children.Add(surface);
+        layout.Children.Add(Sidebar);
+        layout.Children.Add(surface);
+        Children.Add(layout);
         Selected = Pages[0];
         Select(0);
     }
-
-    /// <summary>Gets the root control passed directly to the application runtime.</summary>
-    public Dock Root { get; }
 
     /// <summary>Gets the framed keyboard- and pointer-enabled component navigation sidebar.</summary>
     public Border Sidebar { get; }
@@ -126,18 +127,17 @@ public sealed class Gallery: IDisposable
     /// <summary>Gets the currently selected immutable page definition.</summary>
     internal Page Selected { get; private set; }
 
-    /// <summary>Binds the running application so theme controls can publish <see cref="Application.Theme"/>.</summary>
-    /// <param name="application">The non-null gallery application.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="application"/> is null.</exception>
-    public void BindApplication(Application application)
+    /// <inheritdoc/>
+    protected override void OnAttach(Application application)
     {
-        ArgumentNullException.ThrowIfNull(application);
-        _application = application;
-
         var theme = Themes.Dark.Clone();
         theme.SetStyle(Palette.ListForTheme());
         application.Theme = theme;
     }
+
+    /// <inheritdoc/>
+    protected override void OnStarted(Application application) =>
+        _ = FocusSelected(application.Focus);
 
     /// <summary>Focuses the selected sidebar entry after the application has attached the gallery tree.</summary>
     /// <param name="focus">The non-null attached root focus manager.</param>
@@ -198,7 +198,7 @@ public sealed class Gallery: IDisposable
         {
             Foreground = Palette.Accent,
             Background = Palette.Panel,
-            Attributes = Attributes.Bold,
+            Attributes = TerminalAttributes.Bold,
         });
         header.Children.Add(new ControlText("Terminal UI toolkit")
         {
@@ -225,7 +225,7 @@ public sealed class Gallery: IDisposable
         {
             Foreground = Palette.Muted,
             Background = Palette.Panel,
-            Attributes = Attributes.Dim,
+            Attributes = TerminalAttributes.Dim,
         });
         footer.Children.Add(new Stack
         {
@@ -237,12 +237,18 @@ public sealed class Gallery: IDisposable
         {
             Foreground = Palette.Muted,
             Background = Palette.Panel,
-            Attributes = Attributes.Dim,
+            Attributes = TerminalAttributes.Dim,
         });
         return footer;
     }
 
-    private void SetTheme(Theme theme) => _application?.Theme = theme;
+    private void SetTheme(Theme theme)
+    {
+        if (Application is { } application)
+        {
+            application.Theme = theme;
+        }
+    }
 
     private void OnNavigationInvoked(object? sender, ActivationEventArgs eventArgs)
     {
@@ -324,12 +330,8 @@ public sealed class Gallery: IDisposable
         return null;
     }
 
-    #endregion
-
-    #region Lifetime
-
-    /// <summary>Releases the detached or application-owned gallery control tree.</summary>
-    public void Dispose()
+    /// <inheritdoc/>
+    protected override void OnDispose()
     {
         foreach (var item in _navigation)
         {
@@ -337,8 +339,6 @@ public sealed class Gallery: IDisposable
         }
 
         _focus = null;
-        Root.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     #endregion

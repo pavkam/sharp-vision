@@ -226,6 +226,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
         item.SetParent(_owner);
         item.SetFocusOwner(_owner.FocusOwner);
         item.SetCaptureOwner(_owner.CaptureOwner);
+        item.PropagateThemeContext(_owner.ThemeContext);
 
         if (_owner.Dispatcher is { } dispatcher)
         {
@@ -242,6 +243,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
         item.NotifyUnavailable(ReleaseReason.Detached);
         item.SetFocusOwner(null);
         item.SetCaptureOwner(null);
+        item.PropagateThemeContext(null);
         item.Detach();
         item.SetParent(null);
     }

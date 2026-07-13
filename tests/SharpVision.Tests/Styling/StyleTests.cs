@@ -130,6 +130,41 @@ public sealed class StyleTests
         cell.Style.Attributes.ShouldBe(Attributes.Underline);
     }
 
+    /// <summary>Verifies assigning a style whose target type does not match the control throws.</summary>
+    [Fact]
+    public void Style_WhenTargetTypeMismatched_Throws()
+    {
+        var control = new ProbeControl();
+        var foreign = new ControlStyle<Button>();
+
+        _ = Should.Throw<ArgumentException>(() => control.Style = foreign);
+    }
+
+    /// <summary>Verifies assigning a base-typed style to a derived control is accepted.</summary>
+    [Fact]
+    public void Style_WhenTargetTypeIsBase_Accepted()
+    {
+        var control = new ProbeControl();
+        var baseStyle = new ControlStyle<Control>();
+
+        control.Style = baseStyle;
+
+        control.Style.ShouldBeSameAs(baseStyle);
+    }
+
+    /// <summary>Verifies the local-override CRUD triad is publicly callable off a control instance.</summary>
+    [Fact]
+    public void GetValueSetValueClearValue_ArePublicAndConsistent()
+    {
+        var control = new ProbeControl();
+
+        control.SetValue(Control.ForegroundProperty, Color.Indexed(5));
+        control.GetValue(Control.ForegroundProperty).ShouldBe(Color.Indexed(5));
+
+        control.ClearValue(Control.ForegroundProperty);
+        control.GetValue(Control.ForegroundProperty).ShouldBeNull();
+    }
+
     private static void InvalidateThemeDependents(Control control, Impact impact)
     {
         var invalidation = impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;

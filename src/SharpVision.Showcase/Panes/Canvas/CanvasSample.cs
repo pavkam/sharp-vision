@@ -5,7 +5,7 @@ using SharpVision.Terminal.Rendering;
 
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 
-namespace SharpVision.Showcase;
+namespace SharpVision.Showcase.Panes.Canvas;
 
 /// <summary>Demonstrates low-level Canvas topology, shade, and quadrant primitives.</summary>
 internal sealed class CanvasSample: Control

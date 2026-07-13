@@ -50,7 +50,7 @@ public sealed class StartupOptionsTests
         var options = StartupOptions.Create(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             negotiate: true);
-        await using var application = new Application(gallery.Root, terminal, terminal, options);
+        await using var application = new Application(gallery, terminal, terminal, options);
         var queryWritten = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += value =>
@@ -93,7 +93,7 @@ public sealed class StartupOptionsTests
         {
             ["TERM"] = "xterm-256color",
         });
-        await using var application = new Application(gallery.Root, terminal, terminal, options);
+        await using var application = new Application(gallery, terminal, terminal, options);
 
         options.Tracking.ShouldBe(MouseTracking.Any);
         options.Coordinates.ShouldBe(MouseCoordinates.Sgr);

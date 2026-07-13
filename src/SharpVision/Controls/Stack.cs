@@ -14,7 +14,7 @@ namespace SharpVision.Controls;
     "Naming",
     "CA1711:Identifiers should not have incorrect suffix",
     Justification = "Stack is the approved concise terminal control name, not a collection type.")]
-public sealed class Stack: Container
+public class Stack: Container
 {
     /// <summary>Initializes a stack that fills its parent cross-axis slot.</summary>
     public Stack() => HorizontalAlignment = HorizontalAlignment.Stretch;

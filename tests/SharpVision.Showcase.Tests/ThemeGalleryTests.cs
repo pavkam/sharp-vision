@@ -1,5 +1,6 @@
 using SharpVision.Controls;
 using SharpVision.Runtime;
+using SharpVision.Showcase.Panes.Theming;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
@@ -22,11 +23,11 @@ public sealed class ThemeGalleryTests
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        gallery.BindApplication(application);
+        gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         var light = await application.Dispatcher.InvokeAsync(
@@ -54,11 +55,11 @@ public sealed class ThemeGalleryTests
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
         using var gallery = new Gallery();
         await using var application = new Application(
-            gallery.Root,
+            gallery,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        gallery.BindApplication(application);
+        gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         var themingIndex = gallery.Pages.ToList().FindIndex(static page => page.Name == "Theming");

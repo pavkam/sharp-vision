@@ -40,6 +40,7 @@ public sealed class Theme
         }
 
         EnsureMutable();
+        Impact impact;
 
         lock (_gate)
         {
@@ -51,8 +52,11 @@ public sealed class Theme
             _styles[typeof(TControl)] = style;
             Subscribe(style);
             InvalidateCaches();
-            Publish(style.AggregateImpact, typeof(TControl));
+            impact = style.AggregateImpact;
+            Version++;
         }
+
+        RaiseChanged(impact, typeof(TControl));
     }
 
     /// <summary>Removes the style for one control type when present.</summary>
@@ -73,9 +77,11 @@ public sealed class Theme
 
             Unsubscribe(existing);
             InvalidateCaches();
-            Publish(Impact.Measure, typeof(TControl));
-            return true;
+            Version++;
         }
+
+        RaiseChanged(Impact.Measure, typeof(TControl));
+        return true;
     }
 
     /// <summary>Gets the style for one control type when defined.</summary>
@@ -176,20 +182,14 @@ public sealed class Theme
     {
         var chain = new List<IControlStyle>();
 
-        for (var current = controlType; current is not null; current = current.BaseType)
+        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
         {
-            if (!typeof(Control).IsAssignableFrom(current))
-            {
-                break;
-            }
-
-            if (_styles.TryGetValue(current, out var style))
+            if (_styles.TryGetValue(type, out var style))
             {
                 chain.Add(style);
             }
         }
 
-        chain.Reverse();
         return chain;
     }
 
@@ -208,8 +208,10 @@ public sealed class Theme
             lock (_gate)
             {
                 InvalidateCaches();
-                Publish(args.Impact, args.TargetType);
+                Version++;
             }
+
+            RaiseChanged(args.Impact, args.TargetType);
         }
 
         style.Changed += handler;
@@ -230,13 +232,10 @@ public sealed class Theme
 
     private void InvalidateCaches() => _styleChains.Clear();
 
-    private void Publish(Impact impact, Type targetType)
-    {
-        Version++;
+    private void RaiseChanged(Impact impact, Type targetType) =>
         Changed?.Invoke(this, new ThemeChangedEventArgs(targetType, impact));
-    }
 
-    private static IControlStyle CloneStyle(IControlStyle style) => style.CloneForTheme();
+    private static IControlStyle CloneStyle(IControlStyle style) => ((IStyleLifecycle) style).CloneForTheme();
 
-    private static IControlStyle FreezeStyle(IControlStyle style) => style.FreezeForTheme();
+    private static IControlStyle FreezeStyle(IControlStyle style) => ((IStyleLifecycle) style).FreezeForTheme();
 }
