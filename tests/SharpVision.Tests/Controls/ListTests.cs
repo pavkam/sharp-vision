@@ -55,8 +55,8 @@ public sealed class ListTests
     public void Render_WhenStyledAndSelected_PaintsSurfaceAndSelectedRow()
     {
         var style = ThemeTestSupport.OverlayStyle<UiList>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240))),
-            (State.Checked, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(99))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
+            (State.Checked, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(99))));
         var control = new UiList
         {
             Items = new object?[] { "One", "Two" },
@@ -306,7 +306,7 @@ public sealed class ListTests
     public void Render_WhenItemIsSelected_UsesCheckedStyleWithoutChangingTemplateContent()
     {
         var style = ThemeTestSupport.OverlayStyle<UiList>(
-            (State.Checked, new Appearance(attributes: Attributes.Reverse)));
+            (State.Checked, new ThemeOverlay(attributes: Attributes.Reverse)));
         var control = Create("界", "B");
         control.Style = style;
         control.SelectedIndex = 0;

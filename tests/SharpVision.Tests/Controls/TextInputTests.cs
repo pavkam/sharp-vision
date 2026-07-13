@@ -219,7 +219,7 @@ public sealed class TextInputTests
     {
         var background = Color.Indexed(24);
         var style = ThemeTestSupport.OverlayStyle<TextInput>(
-            (State.Normal, new Appearance(background: background)));
+            (State.Normal, new ThemeOverlay(background: background)));
         var control = new TextInput
         {
             Width = Length.Cells(5),

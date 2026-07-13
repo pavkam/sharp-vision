@@ -361,6 +361,6 @@ public sealed class PointerTests
 
     private static ControlStyle<ProbeControl> FocusStyle() =>
         ThemeTestSupport.OverlayStyle<ProbeControl>(
-            (State.Normal, new Appearance(background: Color.Indexed(10))),
-            (State.Focused, new Appearance(background: Color.Indexed(11))));
+            (State.Normal, new ThemeOverlay(background: Color.Indexed(10))),
+            (State.Focused, new ThemeOverlay(background: Color.Indexed(11))));
 }

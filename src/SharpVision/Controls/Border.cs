@@ -1,11 +1,8 @@
-using System.Text;
-
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
 using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Controls;
 
@@ -67,12 +64,11 @@ public sealed class Border: Container
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var inherited = ResolvedStyle;
-        var borderStyle = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
         var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+
         if (opaque)
         {
-            canvas.Clear(Bounds, inherited);
+            canvas.Clear(Bounds, ResolvedStyle);
         }
 
         if (Bounds.Width == 0 || Bounds.Height == 0)
@@ -80,90 +76,22 @@ public sealed class Border: Container
             return;
         }
 
-        var mode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
-        DrawHorizontal(canvas, Bounds.Y, true, borderStyle, mode);
-        if (Bounds.Height > 1)
-        {
-            DrawHorizontal(canvas, Bounds.Bottom - 1, false, borderStyle, mode);
-        }
-
-        DrawVertical(canvas, Bounds.X, true, borderStyle, mode);
-        if (Bounds.Width > 1)
-        {
-            DrawVertical(canvas, Bounds.Right - 1, false, borderStyle, mode);
-        }
+        var borderStyle = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        ControlChrome.DrawPartialBorder(
+            canvas,
+            Bounds,
+            BorderThickness,
+            BorderStyle,
+            borderStyle,
+            background,
+            CellPolicy);
     }
 
     private static int Add(int left, int right)
     {
         var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
-    }
-
-    private void DrawHorizontal(
-        TerminalCanvas canvas,
-        int y,
-        bool top,
-        TerminalStyle style,
-        BackgroundMode background)
-    {
-        var active = top ? BorderThickness.Top != 0 : BorderThickness.Bottom != 0;
-
-        if (!active)
-        {
-            return;
-        }
-
-        for (var x = Bounds.X; x < Bounds.Right; x++)
-        {
-            var glyph = top ? BorderStyle.Top : BorderStyle.Bottom;
-
-            if (x == Bounds.X && BorderThickness.Left != 0)
-            {
-                glyph = top ? BorderStyle.TopLeft : BorderStyle.BottomLeft;
-            }
-            else if (x == Bounds.Right - 1 && BorderThickness.Right != 0)
-            {
-                glyph = top ? BorderStyle.TopRight : BorderStyle.BottomRight;
-            }
-
-            var fallback = x == Bounds.X || x == Bounds.Right - 1
-                ? new Rune('+')
-                : new Rune('-');
-            canvas.DrawRune(
-                CellGlyph.Resolve(glyph, fallback, CellPolicy.AmbiguousWidth),
-                new Point(x, y),
-                style,
-                background);
-        }
-    }
-
-    private void DrawVertical(
-        TerminalCanvas canvas,
-        int x,
-        bool left,
-        TerminalStyle style,
-        BackgroundMode background)
-    {
-        var active = left ? BorderThickness.Left != 0 : BorderThickness.Right != 0;
-
-        if (!active)
-        {
-            return;
-        }
-
-        var start = Bounds.Y + BorderThickness.Top;
-        var end = Bounds.Bottom - BorderThickness.Bottom;
-
-        for (var y = start; y < end; y++)
-        {
-            var glyph = left ? BorderStyle.Left : BorderStyle.Right;
-            canvas.DrawRune(
-                CellGlyph.Resolve(glyph, new Rune('|'), CellPolicy.AmbiguousWidth),
-                new Point(x, y),
-                style,
-                background);
-        }
     }
 
     private static int? Subtract(int? value, int extent) => value.HasValue

@@ -3,7 +3,8 @@
 ## Border contract
 
 `Border` contains zero or one child and draws typed border glyphs, colors,
-background, and padding around it.
+background, and padding around it. Theme resolution and visual states follow the
+shared [styling contract](../../concepts/styling.md#styling-contract).
 
 ## API
 
@@ -13,17 +14,17 @@ background, and padding around it.
   milestone.
 - `Padding` is non-negative `Thickness` inside the border.
 - `Glyphs` is a validated set of grapheme clusters, each exactly one cell wide.
-- Border/background style values may inherit from resources.
+- `BorderColor`, `Background`, and `Attributes` are nullable style-property
+  overrides resolved through the theme cascade.
 
 `BorderThickness` defaults empty and validates every edge is zero or one before
 mutation. `Glyphs.Default` aliases the light Unicode set. Heavy, paired-line,
 rounded, ASCII, full-block, and light, medium, and dark shade presets are also
 available; custom `Rune` values must measure as one printable cell under the
-default narrow ambiguous-width policy. `BorderColor`, `Background`, and
-`Attributes` are nullable direct overrides over the resolved appearance. When
-the inherited policy treats a configured Unicode segment as two cells, rendering
-substitutes `+`, `-`, or `|` for that physical corner or edge. The public
-`Glyphs` value is unchanged; only the terminal presentation degrades.
+default narrow ambiguous-width policy. When the inherited policy treats a
+configured Unicode segment as two cells, rendering substitutes `+`, `-`, or `|`
+for that physical corner or edge. The public `Glyphs` value is unchanged; only
+the terminal presentation degrades.
 
 Measure reserves active border edges around the child's margin-inclusive
 request; base padding is then added by the shared box model. Arrange deflates

@@ -47,7 +47,7 @@ theme chain so row selection styling remains coherent.
 
 Standard states are normal, hovered, pressed, focused, checked, and disabled.
 Measure-impact properties are normal-state values only. Render-impact properties
-may vary by overlay state. Appearance never controls behavior: `IsEnabled`
+may vary by overlay state. Visual overlays never control behavior: `IsEnabled`
 determines input acceptance.
 
 ## Invalidation and tests
@@ -57,8 +57,9 @@ render. Tests cover registration, theme precedence, local override/clear,
 application theme switching, standard theme cells, third-party style properties,
 showcase theme toggling, and exact terminal cell output.
 
-## Legacy resources
+## Shared chrome
 
-The older ancestor-inheriting `Style` and `Appearance` resources remain for
-compatibility tests of the legacy resolver. New code and showcase styling use
-`ControlStyle<TControl>`, `Theme`, and typed style properties exclusively.
+Border, shadow, and opaque body fill rasterize through `ControlChrome` so
+`Button`, `Window`, `Border`, and `Shadow` share one geometry and draw path.
+Controls with custom chrome call the shared helpers directly; the base control
+deflates `ContentBounds` by border thickness before padding.

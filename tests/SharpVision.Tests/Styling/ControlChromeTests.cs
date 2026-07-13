@@ -1,0 +1,86 @@
+using System.Text;
+
+using SharpVision.Controls;
+using SharpVision.Layout;
+using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Rendering;
+using SharpVision.Tests.Support;
+
+using Shouldly;
+
+using ControlText = SharpVision.Controls.Text;
+
+namespace SharpVision.Tests.Styling;
+
+/// <summary>Verifies shared control chrome rasterization and geometry.</summary>
+public sealed class ControlChromeTests
+{
+    /// <summary>Verifies partial border edges draw only enabled sides on tiny bounds.</summary>
+    [Fact]
+    public void DrawPartialBorder_WhenOnlyTopEdgeIsEnabled_DrawsSingleRow()
+    {
+        var border = new Border
+        {
+            Bounds = new Rect(0, 0, 3, 2),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            BorderStyle = Glyphs.Ascii,
+        };
+        using var frame = new Frame(new Size(3, 2));
+
+        border.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("-");
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("-");
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("-");
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe(string.Empty);
+    }
+
+    /// <summary>Verifies composite shadow overflow stays outside the body rectangle.</summary>
+    [Fact]
+    public void DrawShadow_WhenCompositeModeIsUsed_LeavesBodyCellsUntouched()
+    {
+        var shadow = new Shadow
+        {
+            Bounds = new Rect(0, 0, 2, 2),
+            Mode = ShadowMode.Composite,
+            Offset = new Point(1, 1),
+        };
+        using var frame = new Frame(new Size(4, 4));
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
+
+        shadow.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("x");
+        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(Attributes.Dim);
+        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+    }
+
+    /// <summary>Verifies border thickness reduces the arranged content box.</summary>
+    [Fact]
+    public void ContentBounds_WhenBorderAndPaddingAreSet_DeflatesBeforePadding()
+    {
+        var control = new ChromeProbe
+        {
+            Bounds = new Rect(0, 0, 6, 4),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(1),
+        };
+
+        control.ExposedContentBounds.ShouldBe(new Rect(2, 2, 2, 0));
+    }
+
+    /// <summary>Verifies border thickness increases measured size around content.</summary>
+    [Fact]
+    public void Measure_WhenBorderThicknessIsSet_ReservesActiveEdges()
+    {
+        var border = new Border
+        {
+            BorderThickness = new Thickness(1, 0, 0, 0),
+            Child = new ControlText("ab"),
+        };
+
+        new Engine().Layout(border, new Size(10, 4));
+
+        border.DesiredSize.ShouldBe(new Size(3, 1));
+    }
+}

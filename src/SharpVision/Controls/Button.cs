@@ -1,15 +1,11 @@
-using System.Diagnostics;
-using System.Text;
 using System.Windows.Input;
 
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Controls;
 
@@ -23,6 +19,7 @@ public sealed partial class Button: Pressable
         _ = HasShadowProperty.RegisterClassDefault<Button>(true);
         _ = ShadowOffsetProperty.RegisterClassDefault<Button>(new Point(1, 1));
         _ = BorderStyleProperty.RegisterClassDefault<Button>(Glyphs.Rounded);
+        _ = ShadowAttributesProperty.RegisterClassDefault<Button>(TerminalAttributes.Dim);
     }
 
     private ICommand? _command;
@@ -159,33 +156,25 @@ public sealed partial class Button: Pressable
         Content?.Arrange(FaceContentBounds(bounds), widthResolved: true, heightResolved: true);
 
     /// <inheritdoc/>
-    protected override Rect VisualBounds => HasShadow ? Union(Bounds, Shift(Bounds, ShadowOffset)) : FaceBounds;
+    protected override Rect VisualBounds =>
+        ControlChrome.ExpandVisualBounds(FaceBounds, HasShadow, ShadowOffset);
 
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var style = ResolvedStyle;
         var face = FaceBounds;
-
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
-
-        if (HasShadow)
-        {
-            // Draw behind the face so a pressed face can physically cover the
-            // translated strip, rather than tinting the strip as pressed.
-            DrawShadow(canvas, NormalStyle, BackgroundMode.Transparent, face);
-        }
-
-        if (opaque || (IsPressed && HasShadow))
-        {
-            // A styled button owns its complete interaction surface, including
-            // padding cells that do not belong to its content child. A pressed
-            // face clears too, so the old shadow cannot shine through its body.
-            canvas.Clear(face, style);
-        }
-
-        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
-        DrawFrame(canvas, face, style, background);
+        ControlChrome.Render(
+            this,
+            canvas,
+            GetVisualState(),
+            new ChromeRenderOptions
+            {
+                BodyBounds = face,
+                ShadowExcludeBounds = face,
+                ShadowAppearanceSource = NormalStyle,
+                PreserveButtonShadowGap = true,
+                ClearBodyWhenPressedWithShadow = true,
+            });
     }
 
     /// <inheritdoc/>
@@ -227,118 +216,10 @@ public sealed partial class Button: Pressable
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
-    private void DrawFrame(TerminalCanvas canvas, Rect bounds, TerminalStyle style, BackgroundMode background)
-    {
-        if (bounds.Width == 0 || bounds.Height == 0)
-        {
-            return;
-        }
+    private Rect FaceBounds => IsPressed && HasShadow ? ControlChrome.Shift(Bounds, ShadowOffset) : Bounds;
 
-        for (var x = bounds.X; x < bounds.Right; x++)
-        {
-            var top = x == bounds.X ? BorderStyle.TopLeft : x == bounds.Right - 1 ? BorderStyle.TopRight : BorderStyle.Top;
-            var bottom = x == bounds.X ? BorderStyle.BottomLeft : x == bounds.Right - 1 ? BorderStyle.BottomRight : BorderStyle.Bottom;
-            canvas.DrawRune(top, new Point(x, bounds.Y), style, background);
-
-            if (bounds.Height > 1)
-            {
-                canvas.DrawRune(bottom, new Point(x, bounds.Bottom - 1), style, background);
-            }
-        }
-
-        for (var y = bounds.Y + 1; y < bounds.Bottom - 1; y++)
-        {
-            canvas.DrawRune(BorderStyle.Left, new Point(bounds.X, y), style, background);
-
-            if (bounds.Width > 1)
-            {
-                canvas.DrawRune(BorderStyle.Right, new Point(bounds.Right - 1, y), style, background);
-            }
-        }
-    }
-
-    private void DrawShadow(TerminalCanvas canvas, TerminalStyle source, BackgroundMode background, Rect face)
-    {
-        var target = Shift(Bounds, ShadowOffset).Intersect(canvas.Bounds);
-        var style = new TerminalStyle(
-            source.Foreground,
-            source.Background,
-            TerminalAttributes.Dim,
-            source.Hyperlink);
-
-        for (var y = target.Y; y < target.Bottom; y++)
-        {
-            for (var x = target.X; x < target.Right; x++)
-            {
-                var point = new Point(x, y);
-
-                if (!face.Contains(point))
-                {
-                    // Keep one untouched cell before the bottom shadow begins.
-                    // Without this gap, the shadow reads as an accidental extra border.
-                    if (y >= Bounds.Bottom && x <= Bounds.X + Math.Abs(ShadowOffset.X))
-                    {
-                        continue;
-                    }
-
-                    if (ShadowMode == ShadowMode.Composite)
-                    {
-                        canvas.ApplyStyle(new Rect(x, y, 1, 1), style, background);
-                    }
-                    else
-                    {
-                        Debug.Assert(
-                            ShadowMode == ShadowMode.BlockGlyph,
-                            "Public validation limits button shadow modes.");
-                        canvas.DrawRune(ShadowGlyph, point, style, background);
-                    }
-                }
-            }
-        }
-    }
-
-    #endregion
-
-    #region Geometry and validation
-
-    private static Rect Shift(Rect value, Point offset) => new(
-        SaturatingAdd(value.X, offset.X),
-        SaturatingAdd(value.Y, offset.Y),
-        value.Width,
-        value.Height);
-
-    private Rect FaceBounds => IsPressed && HasShadow ? Shift(Bounds, ShadowOffset) : Bounds;
-
-    private Rect FaceContentBounds(Rect bounds) => IsPressed && HasShadow ? Shift(bounds, ShadowOffset) : bounds;
-
-    private static Rect Union(Rect left, Rect right)
-    {
-        var x = Math.Min(left.X, right.X);
-        var y = Math.Min(left.Y, right.Y);
-        var rightEdge = Math.Max(left.Right, right.Right);
-        var bottom = Math.Max(left.Bottom, right.Bottom);
-        return new Rect(x, y, Extent(x, rightEdge), Extent(y, bottom));
-    }
-
-    private static int Extent(int start, int end) =>
-        (int) Math.Min(int.MaxValue, Math.Max(0L, (long) end - start));
-
-    private static int SaturatingAdd(int left, int right) =>
-        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
-
-    private static void ValidateShadowGlyph(Rune value)
-    {
-        Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
-        var measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
-
-        if (measurement.Cells != 1 || measurement.Controls != 0)
-        {
-            throw new ArgumentException(
-                "A button shadow glyph must be printable and exactly one cell wide.",
-                nameof(value));
-        }
-    }
+    private Rect FaceContentBounds(Rect bounds) =>
+        IsPressed && HasShadow ? ControlChrome.Shift(bounds, ShadowOffset) : bounds;
 
     #endregion
 

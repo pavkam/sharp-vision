@@ -49,7 +49,7 @@ public sealed class WindowTests
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
         var style = ThemeTestSupport.OverlayStyle<Window>(
-            (State.Normal, new Appearance(
+            (State.Normal, new ThemeOverlay(
                 attributes: Attributes.Overline,
                 underline: Underline.Paired,
                 underlineColor: Color.Indexed(6))));

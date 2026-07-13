@@ -66,7 +66,7 @@ public sealed class TableTests
     public void Render_WhenTableStyleHasForegroundOnly_PreservesSurfaceBackgroundOnDividers()
     {
         var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
         var table = new Table { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
@@ -87,7 +87,7 @@ public sealed class TableTests
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
         var style = ThemeTestSupport.OverlayStyle<Table>(
-            (State.Normal, new Appearance(
+            (State.Normal, new ThemeOverlay(
                 attributes: Attributes.RapidBlink,
                 underline: Underline.Dashed,
                 underlineColor: Color.Indexed(5))));

@@ -121,8 +121,8 @@ public sealed class ButtonTests
     public void Render_WhenPressedWithoutShadow_UsesPressedAppearanceWithoutTranslation()
     {
         var style = ThemeTestSupport.OverlayStyle<Button>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(240))),
-            (State.Pressed, new Appearance(foreground: Color.Indexed(255), background: Color.Indexed(24))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
+            (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(24))));
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -158,8 +158,8 @@ public sealed class ButtonTests
     public void Render_WhenHovered_StylesFrameButNotShadow()
     {
         var style = ThemeTestSupport.OverlayStyle<Button>(
-            (State.Normal, new Appearance(attributes: Attributes.None)),
-            (State.Hovered, new Appearance(attributes: Attributes.Bold)));
+            (State.Normal, new ThemeOverlay(attributes: Attributes.None)),
+            (State.Hovered, new ThemeOverlay(attributes: Attributes.Bold)));
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -344,7 +344,7 @@ public sealed class ButtonTests
     public void Render_WhenStyleDefinesBackground_FillsButtonBounds()
     {
         var style = ThemeTestSupport.OverlayStyle<Button>(
-            (State.Normal, new Appearance(Color.Indexed(255), Color.Indexed(24))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(24))));
         var button = new Button
         {
             Content = new ControlText("Run"),

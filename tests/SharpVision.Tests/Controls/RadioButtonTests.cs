@@ -198,7 +198,7 @@ public sealed class RadioButtonTests
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
         var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
         var radio = new RadioButton { Style = style };
         new Engine().Layout(radio, new Size(2, 1));
         using var frame = new Frame(new Size(2, 1));

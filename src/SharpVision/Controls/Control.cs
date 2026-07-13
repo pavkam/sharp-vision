@@ -906,6 +906,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render content.");
+        ControlChrome.Render(this, canvas, GetVisualState());
     }
 
     /// <summary>Gets the own-content drawing bounds, including deliberate visual overflow.</summary>
@@ -913,7 +914,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// The default is <see cref="Bounds"/>. Overrides affect own drawing only;
     /// descendant clipping and pointer hit testing continue to use the arranged box.
     /// </remarks>
-    protected virtual Rect VisualBounds => Bounds;
+    protected virtual Rect VisualBounds =>
+        ControlChrome.ExpandVisualBounds(Bounds, HasShadow, ShadowOffset);
 
     /// <summary>Renders owned descendants after this control's content.</summary>
     /// <param name="canvas">The canvas clipped to this control.</param>
@@ -958,7 +960,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Gets the committed content rectangle after padding deflation.</summary>
-    protected Rect ContentBounds => Padding.Deflate(Bounds);
+    protected Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
 
     private static Invalidation Expand(Invalidation value) => value switch
     {

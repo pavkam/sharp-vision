@@ -154,9 +154,9 @@ public sealed class RenderingTests
     public void Render_WhenControlStateChanges_WritesResolvedStyle()
     {
         var style = ThemeTestSupport.OverlayStyle<ProbeControl>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(2))),
-            (State.Hovered, new Appearance(attributes: Attributes.Underline)),
-            (State.Pressed, new Appearance(foreground: Color.Indexed(5))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
+            (State.Hovered, new ThemeOverlay(attributes: Attributes.Underline)),
+            (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))));
         var control = new ProbeControl
         {
             Bounds = new Rect(0, 0, 1, 1),

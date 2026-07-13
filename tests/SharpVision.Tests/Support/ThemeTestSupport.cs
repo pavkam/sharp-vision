@@ -28,68 +28,68 @@ internal static class ThemeTestSupport
         return style;
     }
 
-    /// <summary>Copies one legacy appearance overlay into a typed control style.</summary>
+    /// <summary>Copies one overlay layer into a typed control style.</summary>
     /// <typeparam name="TControl">The targeted control type.</typeparam>
     /// <param name="style">The style receiving the values.</param>
     /// <param name="state">The visual state being configured.</param>
-    /// <param name="appearance">The optional appearance fields to copy.</param>
-    internal static void ApplyAppearance<TControl>(
+    /// <param name="overlay">The optional overlay fields to copy.</param>
+    internal static void ApplyOverlay<TControl>(
         ControlStyle<TControl> style,
         State state,
-        Appearance appearance)
+        ThemeOverlay overlay)
         where TControl : Control
     {
         ArgumentNullException.ThrowIfNull(style);
 
-        if (appearance.Foreground.HasValue)
+        if (overlay.Foreground.HasValue)
         {
-            style.Set(Control.ForegroundProperty, state, appearance.Foreground);
+            style.Set(Control.ForegroundProperty, state, overlay.Foreground);
         }
 
-        if (appearance.Background.HasValue)
+        if (overlay.Background.HasValue)
         {
-            style.Set(Control.BackgroundProperty, state, appearance.Background);
+            style.Set(Control.BackgroundProperty, state, overlay.Background);
         }
 
-        if (appearance.Attributes.HasValue)
+        if (overlay.Attributes.HasValue)
         {
-            style.Set(Control.AttributesProperty, state, appearance.Attributes);
+            style.Set(Control.AttributesProperty, state, overlay.Attributes);
         }
 
-        if (appearance.Underline.HasValue)
+        if (overlay.Underline.HasValue)
         {
-            style.Set(Control.UnderlineProperty, state, appearance.Underline);
+            style.Set(Control.UnderlineProperty, state, overlay.Underline);
         }
 
-        if (appearance.UnderlineColor.HasValue)
+        if (overlay.UnderlineColor.HasValue)
         {
-            style.Set(Control.UnderlineColorProperty, state, appearance.UnderlineColor);
+            style.Set(Control.UnderlineColorProperty, state, overlay.UnderlineColor);
         }
 
-        if (appearance.Padding.HasValue)
+        if (overlay.Padding.HasValue)
         {
-            style.Set(Control.PaddingProperty, state, appearance.Padding.Value);
+            style.Set(Control.PaddingProperty, state, overlay.Padding.Value);
         }
 
-        if (appearance.BorderColor.HasValue)
+        if (overlay.BorderColor.HasValue)
         {
-            style.Set(Control.BorderColorProperty, state, appearance.BorderColor);
+            style.Set(Control.BorderColorProperty, state, overlay.BorderColor);
         }
     }
 
-    /// <summary>Creates one per-instance overlay style from legacy appearance layers.</summary>
+    /// <summary>Creates one per-instance overlay style from themed overlay layers.</summary>
     /// <typeparam name="TControl">The targeted control type.</typeparam>
-    /// <param name="layers">Ordered state and appearance pairs.</param>
+    /// <param name="layers">Ordered state and overlay pairs.</param>
     /// <returns>The configured overlay style.</returns>
     internal static ControlStyle<TControl> OverlayStyle<TControl>(
-        params (State State, Appearance Appearance)[] layers)
+        params (State State, ThemeOverlay Overlay)[] layers)
         where TControl : Control
     {
         var style = new ControlStyle<TControl>();
 
-        foreach (var (state, appearance) in layers)
+        foreach (var (state, overlay) in layers)
         {
-            ApplyAppearance(style, state, appearance);
+            ApplyOverlay(style, state, overlay);
         }
 
         return style;

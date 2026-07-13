@@ -121,8 +121,8 @@ public sealed class CheckBoxTests
     public void Foreground_WhenChecked_IncludesCheckedOverlay()
     {
         var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(1))),
-            (State.Checked, new Appearance(foreground: Color.Indexed(5))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(1))),
+            (State.Checked, new ThemeOverlay(foreground: Color.Indexed(5))));
         var checkBox = new CheckBox { Style = style, IsChecked = true };
 
         checkBox.Foreground.ShouldBe(Color.Indexed(5));
@@ -150,7 +150,7 @@ public sealed class CheckBoxTests
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
         var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
         var checkBox = new CheckBox { Style = style };
         new Engine().Layout(checkBox, new Size(1, 1));
         using var frame = new Frame(new Size(1, 1));

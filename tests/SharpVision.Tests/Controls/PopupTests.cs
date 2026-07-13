@@ -73,7 +73,7 @@ public sealed class PopupTests
     public void Render_WhenStyleUsesModernDecorations_PreservesSurfaceStyle()
     {
         var style = ThemeTestSupport.OverlayStyle<Popup>(
-            (State.Normal, new Appearance(
+            (State.Normal, new ThemeOverlay(
                 attributes: Attributes.Overline,
                 underline: Underline.Dotted,
                 underlineColor: Color.Indexed(4))));

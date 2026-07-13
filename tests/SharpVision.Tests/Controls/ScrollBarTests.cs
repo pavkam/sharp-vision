@@ -173,7 +173,7 @@ public sealed class ScrollBarTests
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
         var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(45))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
         var control = new ScrollBar
         {
             Bounds = new Rect(0, 0, 3, 1),
@@ -439,9 +439,9 @@ public sealed class ScrollBarTests
     public void Render_WhenBehaviorStateChanges_UsesResolvedVisualStyle()
     {
         var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
-            (State.Normal, new Appearance(foreground: Color.Indexed(2))),
-            (State.Focused, new Appearance(attributes: Attributes.Underline)),
-            (State.Pressed, new Appearance(foreground: Color.Indexed(5))));
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
+            (State.Focused, new ThemeOverlay(attributes: Attributes.Underline)),
+            (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))));
         var control = new ScrollBar
         {
             Bounds = new Rect(0, 0, 1, 3),

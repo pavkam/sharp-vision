@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Text;
-
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -10,7 +7,6 @@ using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
 
 namespace SharpVision.Controls;
 
@@ -23,6 +19,7 @@ public sealed partial class Window: Container
     {
         _ = HasShadowProperty.RegisterClassDefault<Window>(true);
         _ = ShadowOffsetProperty.RegisterClassDefault<Window>(new Point(2, 1));
+        _ = ShadowAttributesProperty.RegisterClassDefault<Window>(TerminalAttributes.Dim);
     }
 
     /// <summary>Initializes an empty window with a rounded border and composite shadow.</summary>
@@ -86,7 +83,8 @@ public sealed partial class Window: Container
     #region Layout and rendering
 
     /// <inheritdoc/>
-    protected override Rect VisualBounds => HasShadow ? Union(Bounds, Shift(Bounds, ShadowOffset)) : Bounds;
+    protected override Rect VisualBounds =>
+        ControlChrome.ExpandVisualBounds(Bounds, HasShadow, ShadowOffset);
 
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
@@ -112,11 +110,11 @@ public sealed partial class Window: Container
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var inherited = ResolvedStyle;
         var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+
         if (opaque)
         {
-            canvas.Clear(Bounds, inherited);
+            canvas.Clear(Bounds, ResolvedStyle);
         }
 
         if (Bounds.Width == 0 || Bounds.Height == 0)
@@ -125,8 +123,8 @@ public sealed partial class Window: Container
         }
 
         var border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
-        var backgroundMode = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
-        DrawFrame(canvas, border, backgroundMode);
+        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, background);
 
         if (!string.IsNullOrEmpty(Title) && Bounds.Width > 3)
         {
@@ -145,12 +143,12 @@ public sealed partial class Window: Container
                 text.AsSpan(),
                 new Point(Bounds.X + 1 + offset, Bounds.Y),
                 border,
-                background: backgroundMode);
+                background: background);
         }
 
         if (HasShadow)
         {
-            DrawShadow(canvas, backgroundMode);
+            ControlChrome.DrawShadow(canvas, this, Bounds, Bounds, background, ResolvedStyle);
         }
     }
 
@@ -181,65 +179,6 @@ public sealed partial class Window: Container
 
     #region Implementation
 
-    private void DrawFrame(TerminalCanvas canvas, TerminalStyle style, BackgroundMode background)
-    {
-        for (var x = Bounds.X; x < Bounds.Right; x++)
-        {
-            var top = x == Bounds.X ? Glyphs.TopLeft : x == Bounds.Right - 1 ? Glyphs.TopRight : Glyphs.Top;
-            var bottom = x == Bounds.X ? Glyphs.BottomLeft : x == Bounds.Right - 1 ? Glyphs.BottomRight : Glyphs.Bottom;
-            canvas.DrawRune(top, new Point(x, Bounds.Y), style, background);
-
-            if (Bounds.Height > 1)
-            {
-                canvas.DrawRune(bottom, new Point(x, Bounds.Bottom - 1), style, background);
-            }
-        }
-
-        for (var y = Bounds.Y + 1; y < Bounds.Bottom - 1; y++)
-        {
-            canvas.DrawRune(Glyphs.Left, new Point(Bounds.X, y), style, background);
-
-            if (Bounds.Width > 1)
-            {
-                canvas.DrawRune(Glyphs.Right, new Point(Bounds.Right - 1, y), style, background);
-            }
-        }
-    }
-
-    private void DrawShadow(TerminalCanvas canvas, BackgroundMode background)
-    {
-        var shifted = Shift(Bounds, ShadowOffset).Intersect(canvas.Bounds);
-        var inherited = ResolvedStyle;
-        var style = new TerminalStyle(
-            inherited.Foreground,
-            Background ?? inherited.Background,
-            TerminalAttributes.Dim,
-            inherited.Hyperlink);
-
-        for (var y = shifted.Y; y < shifted.Bottom; y++)
-        {
-            for (var x = shifted.X; x < shifted.Right; x++)
-            {
-                var point = new Point(x, y);
-
-                if (Bounds.Contains(point))
-                {
-                    continue;
-                }
-
-                if (ShadowMode == ShadowMode.Composite)
-                {
-                    canvas.ApplyStyle(new Rect(x, y, 1, 1), style, background);
-                }
-                else
-                {
-                    Debug.Assert(ShadowMode == ShadowMode.BlockGlyph, "Public validation limits shadow modes.");
-                    canvas.DrawRune(ShadowGlyph, point, style, background);
-                }
-            }
-        }
-    }
-
     private static int Add(int left, int right)
     {
         var result = (long) left + right;
@@ -249,41 +188,6 @@ public sealed partial class Window: Container
     private static int? Subtract(int? value, int extent) => value.HasValue
         ? Math.Max(0, value.Value - extent)
         : null;
-
-    private static Rect Shift(Rect value, Point offset) => new(
-        SaturatingAdd(value.X, offset.X),
-        SaturatingAdd(value.Y, offset.Y),
-        value.Width,
-        value.Height);
-
-    private static Rect Union(Rect left, Rect right)
-    {
-        var x = Math.Min(left.X, right.X);
-        var y = Math.Min(left.Y, right.Y);
-        var rightEdge = Math.Max(left.Right, right.Right);
-        var bottom = Math.Max(left.Bottom, right.Bottom);
-        return new Rect(x, y, Extent(x, rightEdge), Extent(y, bottom));
-    }
-
-    private static int Extent(int start, int end) =>
-        (int) Math.Min(int.MaxValue, Math.Max(0L, (long) end - start));
-
-    private static int SaturatingAdd(int left, int right) =>
-        (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
-
-    private static void ValidateGlyph(Rune value)
-    {
-        Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
-        var measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
-
-        if (measurement.Cells != 1 || measurement.Controls != 0)
-        {
-            throw new ArgumentException(
-                "A shadow glyph must be printable and exactly one cell wide.",
-                nameof(value));
-        }
-    }
 
     private static Button? FindButton(Control control, Func<Button, bool> predicate)
     {

@@ -138,7 +138,7 @@ public sealed class TextTests
     public void Render_WhenOverridesAreSet_ComposesExactCellStyle()
     {
         var style = ThemeTestSupport.OverlayStyle<ControlText>(
-            (State.Normal, new Appearance(
+            (State.Normal, new ThemeOverlay(
                 foreground: Color.Indexed(1),
                 background: Color.Indexed(2),
                 attributes: TerminalAttributes.Bold)));
@@ -164,7 +164,7 @@ public sealed class TextTests
     public void Render_WhenStyleUsesModernDecorations_PreservesCompleteSemanticStyle()
     {
         var style = ThemeTestSupport.OverlayStyle<ControlText>(
-            (State.Normal, new Appearance(
+            (State.Normal, new ThemeOverlay(
                 attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
                 underline: Underline.Dashed,
                 underlineColor: Color.Indexed(3))));
@@ -185,7 +185,7 @@ public sealed class TextTests
     public void Render_WhenLegacyUnderlineOverridesTypedUnderline_UsesLegacyDecoration()
     {
         var style = ThemeTestSupport.OverlayStyle<ControlText>(
-            (State.Normal, new Appearance(
+            (State.Normal, new ThemeOverlay(
                 underline: Underline.Curly,
                 underlineColor: Color.Indexed(3))));
         var text = new ControlText("A")
