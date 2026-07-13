@@ -320,7 +320,7 @@ public sealed class ScrollBar: Control
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint.Width;
         Debug.Assert(Enum.IsDefined(Orientation), "Orientation is validated before assignment.");
@@ -372,7 +372,7 @@ public sealed class ScrollBar: Control
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         Rect bounds = ContentBounds;
         int length = AxisLength(bounds);

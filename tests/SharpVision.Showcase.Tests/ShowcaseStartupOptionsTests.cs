@@ -28,11 +28,11 @@ public sealed class StartupOptionsTests
         };
 
         // Act
-        Terminal.Runtime.Options options = ShowcaseStartupOptions.Create(environment, negotiate: true);
+        Options options = ShowcaseStartupOptions.Create(environment, negotiate: true);
         environment["TERM"] = "dumb";
 
         // Assert
-        Terminal.Capabilities.NegotiationOptions negotiation = options.Negotiation.ShouldNotBeNull();
+        NegotiationOptions negotiation = options.Negotiation.ShouldNotBeNull();
         negotiation.Environment["TERM"].ShouldBe("xterm-kitty");
         negotiation.Overrides.ShouldNotBeNull().CellMouse.ShouldBe(true);
         options.Capabilities.CellMouse.ShouldBe(
@@ -48,7 +48,7 @@ public sealed class StartupOptionsTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
         using Gallery gallery = new();
-        Terminal.Runtime.Options options = ShowcaseStartupOptions.Create(
+        Options options = ShowcaseStartupOptions.Create(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             negotiate: true);
         await using Application application = new(gallery, terminal, terminal, options);
@@ -90,7 +90,7 @@ public sealed class StartupOptionsTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
         using Gallery gallery = new();
-        Terminal.Runtime.Options options = ShowcaseStartupOptions.Create(new Dictionary<string, string?>
+        Options options = ShowcaseStartupOptions.Create(new Dictionary<string, string?>
         {
             ["TERM"] = "xterm-256color",
         });

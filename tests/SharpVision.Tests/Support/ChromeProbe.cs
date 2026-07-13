@@ -11,5 +11,5 @@ internal sealed class ChromeProbe: Control
     internal Rect ExposedContentBounds => ContentBounds;
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint) => default;
+    protected override Size MeasureOverride(Constraint constraint) => default;
 }

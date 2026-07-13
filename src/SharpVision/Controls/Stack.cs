@@ -62,7 +62,7 @@ public class Stack: Container
         Reverse ? Children[Children.Count - index - 1] : Children[index];
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         int axis = 0;
         int cross = 0;
@@ -97,7 +97,7 @@ public class Stack: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         int count = CountParticipants();
 

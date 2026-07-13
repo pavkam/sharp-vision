@@ -128,7 +128,7 @@ public sealed class Table: Container
     #region Layout and rendering
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         MeasureCells(constraint.Width);
         int width = Add(Sum(_columnWidths), GapWidth(Columns.Count));
@@ -148,7 +148,7 @@ public sealed class Table: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         MeasureCells(bounds.Width);
         int y = bounds.Y;
@@ -180,7 +180,7 @@ public sealed class Table: Container
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (Columns.Count == 0 || Bounds.Width == 0 || Bounds.Height == 0)
         {

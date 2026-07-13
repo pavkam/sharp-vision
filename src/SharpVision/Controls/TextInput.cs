@@ -349,7 +349,7 @@ public sealed class TextInput: Container
     public bool Redo() => Restore(_redo, _undo);
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint.Width;
         MeasureText(out _contentWidth, out _contentHeight);
@@ -357,7 +357,7 @@ public sealed class TextInput: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         _editorBounds = bounds;
         ArrangeChrome();
@@ -402,7 +402,7 @@ public sealed class TextInput: Container
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         Rect bounds = _editorBounds;
 

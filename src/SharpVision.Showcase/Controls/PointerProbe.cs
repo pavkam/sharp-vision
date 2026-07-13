@@ -38,7 +38,7 @@ internal sealed class PointerProbe: Control
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         Terminal.Rendering.CellStyle style = ResolvedStyle;
         canvas.Clear(Bounds, style);

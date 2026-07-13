@@ -100,7 +100,7 @@ public sealed class Overlay: Container
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         int width = 0;
         int height = 0;
@@ -122,7 +122,7 @@ public sealed class Overlay: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         foreach (Control child in Children)
         {

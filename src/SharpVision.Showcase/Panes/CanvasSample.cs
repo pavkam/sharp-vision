@@ -19,14 +19,14 @@ internal sealed class CanvasSample: Control
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
         return new Size(28, 7);
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         canvas.DrawBox(Bounds, LineStyle.Rounded);
 

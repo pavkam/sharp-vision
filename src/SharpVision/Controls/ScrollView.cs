@@ -355,7 +355,7 @@ public sealed class ScrollView: Container
     internal override void RenderPopupLayer(TerminalCanvas canvas) => Content?.RenderPopupLayer(canvas);
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         Control? content = Content;
 
@@ -385,7 +385,7 @@ public sealed class ScrollView: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         Resolve(
             new Size(bounds.Width, bounds.Height),

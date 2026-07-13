@@ -82,7 +82,7 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         Content.Measure(constraint);
         return new Size(
@@ -91,7 +91,7 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
@@ -102,7 +102,7 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds) =>
+    protected override void ArrangeOverride(Rect bounds) =>
         Content.Arrange(bounds, widthResolved: true, heightResolved: false);
 
     /// <inheritdoc/>

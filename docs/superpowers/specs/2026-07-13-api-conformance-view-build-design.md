@@ -51,15 +51,15 @@ make it hard to derive controls and hard to learn:
 
 ## Decisions (locked)
 
-| # | Decision | Choice |
-|---|----------|--------|
-| 1 | Extension-point naming | `MeasureCore`→`MeasureOverride`, `ArrangeCore`→`ArrangeOverride`, `RenderCore`→`OnRender` (WPF names) |
-| 2 | Composition model | New `public abstract class View : Container` with `protected abstract Control Build()`; primitives stay sealed |
-| 3 | `Stack` | Re-sealed once the showcase no longer subclasses it |
-| 4 | Control names | Keep the concise names; delete the 22 showcase aliases |
-| 5 | Showcase | Full rewrite onto `View`/`Build()` |
-| 6 | Base type name | `View` |
-| 7 | `Build()` shape | Returns the single content root: `protected abstract Control Build()` |
+| #   | Decision               | Choice                                                                                                         |
+| --- | ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1   | Extension-point naming | `MeasureCore`→`MeasureOverride`, `ArrangeCore`→`ArrangeOverride`, `RenderCore`→`OnRender` (WPF names)          |
+| 2   | Composition model      | New `public abstract class View : Container` with `protected abstract Control Build()`; primitives stay sealed |
+| 3   | `Stack`                | Re-sealed once the showcase no longer subclasses it                                                            |
+| 4   | Control names          | Keep the concise names; delete the 22 showcase aliases                                                         |
+| 5   | Showcase               | Full rewrite onto `View`/`Build()`                                                                             |
+| 6   | Base type name         | `View`                                                                                                         |
+| 7   | `Build()` shape        | Returns the single content root: `protected abstract Control Build()`                                          |
 
 ## Design
 
@@ -113,8 +113,9 @@ Contract:
 - **Called once, lazily, at the right time.** The runtime invokes `Build()`
   exactly once per instance, after the control is attached to its dispatcher and
   before its first `MeasureOverride`. This avoids the virtual-call-from-
-  constructor trap and guarantees dispatcher (and, for a `Screen`, `Application`)
-  context is available. A `View` that is never attached/measured never builds.
+  constructor trap and guarantees dispatcher (and, for a `Screen`,
+  `Application`) context is available. A `View` that is never attached/measured
+  never builds.
 - **Not reactive.** There is no rebuild in v1. After `Build()`, the content tree
   is a normal mutable subtree; change it by mutating controls, adding/removing
   children, or toggling properties — the traditional way.
@@ -223,7 +224,8 @@ public sealed class ButtonPane : View
 
 - **Rename:** existing behavior tests pass unchanged (the seams are protected
   and tested via public behavior). Update any test-only `Control` subclasses
-  that override `*Core`. Grep tests for `MeasureCore`/`ArrangeCore`/`RenderCore`.
+  that override `*Core`. Grep tests for
+  `MeasureCore`/`ArrangeCore`/`RenderCore`.
 - **`View`/`Build()`:** new tests — `Build()` is called exactly once; it runs
   after attach and before the first measure; its result is installed as the sole
   child; a detached, never-measured view does not build; `null` return throws;
@@ -235,8 +237,9 @@ public sealed class ButtonPane : View
 - **Sealing:** `typeof(Stack).IsSealed` is true.
 - **Showcase:** the existing showcase test contract (exact inventory, per-page
   render at 30×8 / 80×24 / 140×40, wide-cell continuation, automatic scrolling,
-  the full `Application` interaction drive, and the SGR mouse-mode startup lease)
-  keeps passing against the rewritten panes; update fixtures to the new types.
+  the full `Application` interaction drive, and the SGR mouse-mode startup
+  lease) keeps passing against the rewritten panes; update fixtures to the new
+  types.
 
 ## Documentation to update in the same change
 

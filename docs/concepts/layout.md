@@ -44,12 +44,12 @@ validates dispatcher affinity, caches unchanged constraints and slots, and
 rejects nested transactions. A changed viewport remeasures even when no property
 is dirty.
 
-`Control.MeasureCore(Constraint)` receives the content-box constraint after
+`Control.MeasureOverride(Constraint)` receives the content-box constraint after
 margin, the resolved border-box request, and padding are removed. It returns an
-intrinsic content size. `Control.ArrangeCore(Rect)` receives the final content
-rectangle after the border box is aligned and padding is removed. Both extension
-points run only for hidden or visible controls; collapsed controls desire zero,
-commit empty bounds, and skip both callbacks.
+intrinsic content size. `Control.ArrangeOverride(Rect)` receives the final
+content rectangle after the border box is aligned and padding is removed. Both
+extension points run only for hidden or visible controls; collapsed controls
+desire zero, commit empty bounds, and skip both callbacks.
 
 Fixed and percentage dimensions override alignment. Horizontal controls default
 to `Left`, so an automatic width uses the measured desired size; applications

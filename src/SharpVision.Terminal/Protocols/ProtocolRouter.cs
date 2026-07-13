@@ -46,7 +46,7 @@ public sealed class ProtocolRouter: IDisposable
 
     /// <summary>Updates ordered pixel-to-cell inference.</summary>
     /// <param name="value">Positive cell metrics, or null.</param>
-    internal void SetCellMetrics(Geometry.Metrics? value) =>
+    internal void SetCellMetrics(Metrics? value) =>
         _decoder.SetCellMetrics(value);
 
     #endregion

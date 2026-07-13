@@ -61,10 +61,10 @@ public sealed class ShowcasePanel: Control
     } = string.Empty;
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint) => new(26, 4);
+    protected override Size MeasureOverride(Constraint constraint) => new(26, 4);
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

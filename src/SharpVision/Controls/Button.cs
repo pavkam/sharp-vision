@@ -134,7 +134,7 @@ public sealed partial class Button: Pressable
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         Control? content = Content;
 
@@ -150,7 +150,7 @@ public sealed partial class Button: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds) =>
+    protected override void ArrangeOverride(Rect bounds) =>
         Content?.Arrange(FaceContentBounds(bounds), widthResolved: true, heightResolved: true);
 
     /// <inheritdoc/>
@@ -158,7 +158,7 @@ public sealed partial class Button: Pressable
         ControlChrome.ExpandVisualBounds(FaceBounds, HasShadow, ShadowOffset);
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         Rect face = FaceBounds;
         ControlChrome.Render(

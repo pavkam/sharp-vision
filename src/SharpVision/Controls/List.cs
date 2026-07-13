@@ -357,14 +357,14 @@ public sealed class List: Container, IStyleScope
     internal override void RenderPopupLayer(TerminalCanvas canvas) => _scroll.RenderPopupLayer(canvas);
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _scroll.Measure(constraint);
         return _scroll.DesiredSize;
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
@@ -375,7 +375,7 @@ public sealed class List: Container, IStyleScope
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds) =>
+    protected override void ArrangeOverride(Rect bounds) =>
         _scroll.Arrange(bounds, widthResolved: true, heightResolved: true);
 
     /// <inheritdoc/>

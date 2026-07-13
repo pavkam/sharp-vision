@@ -44,10 +44,10 @@ internal sealed class DemoPanel: Control
     } = string.Empty;
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint) => new(12, 3);
+    protected override Size MeasureOverride(Constraint constraint) => new(12, 3);
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

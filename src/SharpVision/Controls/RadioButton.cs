@@ -88,7 +88,7 @@ public sealed class RadioButton: Pressable
     protected override void Activate(ActivationCause cause) => RadioGroup.Select(this, cause);
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         Control? content = Content;
 
@@ -104,7 +104,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         if (Content is { } content)
         {
@@ -117,7 +117,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

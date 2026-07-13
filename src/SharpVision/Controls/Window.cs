@@ -82,7 +82,7 @@ public sealed partial class Window: Container
         ControlChrome.ExpandVisualBounds(Bounds, HasShadow, ShadowOffset);
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         Control? child = Child;
         int titleWidth = Title.Length == 0 ? 0 : Add(2, Terminal.Unicode.Width.Measure(Title).Cells);
@@ -99,11 +99,11 @@ public sealed partial class Window: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds) =>
+    protected override void ArrangeOverride(Rect bounds) =>
         Child?.Arrange(new Thickness(1).Deflate(bounds), widthResolved: true, heightResolved: true);
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         bool opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
 

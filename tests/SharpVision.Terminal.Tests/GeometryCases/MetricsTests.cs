@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.GeometryCases;
 
-using Metrics = SharpVision.Terminal.Geometry.Metrics;
+using Metrics = Geometry.Metrics;
 
 
 

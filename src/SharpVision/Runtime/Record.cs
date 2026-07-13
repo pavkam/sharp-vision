@@ -7,7 +7,7 @@ using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 
 using TerminalDiagnostic = Terminal.Protocols.Diagnostic;
-using TerminalFocus = SharpVision.Terminal.Input.Focus;
+using TerminalFocus = Terminal.Input.Focus;
 using TerminalText = Terminal.Input.Text;
 
 /// <summary>Stores one copied terminal input queue value without borrowed memory.</summary>

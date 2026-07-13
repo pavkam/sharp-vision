@@ -80,7 +80,7 @@ public sealed class Dock: Container
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         int? remainingWidth = constraint.Width;
         int? remainingHeight = constraint.Height;
@@ -132,7 +132,7 @@ public sealed class Dock: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         Rect remaining = bounds;
         int last = LastParticipant();

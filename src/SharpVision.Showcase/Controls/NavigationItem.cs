@@ -63,7 +63,7 @@ internal sealed class NavigationItem: Pressable
         Invoked?.Invoke(this, new ActivationEventArgs(cause));
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         Terminal.Rendering.CellStyle style = ResolvedStyle;
         canvas.Clear(Bounds, style);

@@ -3,13 +3,10 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using Encoder = SharpVision.Terminal.Rendering.Encoder;
-
-
 using SharpVision.Terminal.Capabilities;
 
-
 using CapabilitySupport = Terminal.Capabilities.Support;
+using Encoder = Terminal.Rendering.Encoder;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>

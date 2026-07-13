@@ -158,7 +158,7 @@ public sealed class Popup: Container
     protected override Rect VisualBounds => IsOpen ? SurfaceBounds : default;
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         if (!IsOpen || Child is not { } child)
         {
@@ -170,7 +170,7 @@ public sealed class Popup: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         if (!IsOpen || Child is not { } child)
         {
@@ -204,7 +204,7 @@ public sealed class Popup: Container
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (!IsOpen || SurfaceBounds.Width == 0 || SurfaceBounds.Height == 0)
         {

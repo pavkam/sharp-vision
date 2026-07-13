@@ -30,7 +30,7 @@ public sealed class Border: Container
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         Control? child = Child;
 
@@ -48,7 +48,7 @@ public sealed class Border: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         if (Child is { } child)
         {
@@ -60,7 +60,7 @@ public sealed class Border: Container
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         bool opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
 

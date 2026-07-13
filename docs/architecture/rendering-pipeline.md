@@ -53,7 +53,7 @@ according to the
 
 `Control.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It clears
 render invalidation before extension code, clips the supplied canvas to
-committed `Bounds`, calls `RenderCore`, then renders owned children. An
+committed `Bounds`, calls `OnRender`, then renders owned children. An
 invalidation raised during either callback therefore remains pending for the
 next frame. An exception restores render dirtiness before propagating.
 

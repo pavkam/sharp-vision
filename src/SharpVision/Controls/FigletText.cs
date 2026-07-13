@@ -66,7 +66,7 @@ public sealed class FigletText: Control
     #region Layout and rendering
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
         EnsureOutput();
@@ -83,7 +83,7 @@ public sealed class FigletText: Control
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         EnsureOutput();
         Rect bounds = ContentBounds;

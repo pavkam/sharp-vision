@@ -91,10 +91,10 @@ pointer, paste, and terminal focus payloads.
 
 ## Layout extension points
 
-Derived controls implement `MeasureCore(Constraint)` to report intrinsic content
-size and `ArrangeCore(Rect)` to receive their committed content box. The base
-class owns margin, padding, explicit/deferred length resolution, min/max
-clamping, alignment, caching, collapse behavior, dispatcher checks, and
+Derived controls implement `MeasureOverride(Constraint)` to report intrinsic
+content size and `ArrangeOverride(Rect)` to receive their committed content box.
+The base class owns margin, padding, explicit/deferred length resolution,
+min/max clamping, alignment, caching, collapse behavior, dispatcher checks, and
 reentrancy guards. Extension points therefore deal only with content; they do
 not repeat box-model arithmetic.
 

@@ -38,7 +38,7 @@ internal sealed class ProbeControl: Control
     internal Action<ProbeControl>? Rendering { get; set; }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         MeasureConstraints.Add(constraint);
         Measuring?.Invoke(this);
@@ -46,14 +46,14 @@ internal sealed class ProbeControl: Control
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         ArrangeBounds.Add(bounds);
         Arranging?.Invoke(this);
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         RenderCalls++;
         Rendering?.Invoke(this);

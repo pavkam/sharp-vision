@@ -162,7 +162,7 @@ public sealed class Grid: Container
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         ValidatePlacements();
         Track[] rows = Definitions(Rows);
@@ -198,7 +198,7 @@ public sealed class Grid: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         ValidatePlacements();
         Track[] rows = Definitions(Rows);

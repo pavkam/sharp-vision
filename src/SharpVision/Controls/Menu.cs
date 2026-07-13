@@ -76,7 +76,7 @@ public sealed class Menu: Container
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         int main = 0;
         int cross = 0;
@@ -100,7 +100,7 @@ public sealed class Menu: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         int position = Orientation == Orientation.Horizontal ? bounds.X : bounds.Y;
 

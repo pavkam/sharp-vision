@@ -137,7 +137,7 @@ public sealed class Text: Control
     public ReadOnlyMemory<Line> Lines => _lines.AsMemory(0, _lineCount);
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureLayout(constraint.Width ?? int.MaxValue);
         int width = 0;
@@ -151,10 +151,10 @@ public sealed class Text: Control
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds) => EnsureLayout(bounds.Width);
+    protected override void ArrangeOverride(Rect bounds) => EnsureLayout(bounds.Width);
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         Rect bounds = ContentBounds;
         EnsureLayout(bounds.Width);

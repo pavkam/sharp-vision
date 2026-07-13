@@ -142,7 +142,7 @@ public sealed class MenuItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint.Height;
         return Kind == MenuItemKind.Separator
@@ -151,7 +151,7 @@ public sealed class MenuItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

@@ -65,7 +65,7 @@ public sealed partial class Shadow: Container
     #region Layout and rendering
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         Control? child = Child;
 
@@ -81,7 +81,7 @@ public sealed partial class Shadow: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds) =>
+    protected override void ArrangeOverride(Rect bounds) =>
         Child?.Arrange(bounds, widthResolved: true, heightResolved: true);
 
     /// <inheritdoc/>
@@ -89,7 +89,7 @@ public sealed partial class Shadow: Container
         ControlChrome.Union(Bounds, ControlChrome.Shift(Bounds, ShadowOffset));
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         BackgroundMode background = ControlAppearance.HasOpaqueFill(this, GetVisualState())
             ? BackgroundMode.Opaque

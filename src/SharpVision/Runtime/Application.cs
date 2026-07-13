@@ -15,7 +15,7 @@ using SharpVision.Threading;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 using TerminalDiagnostic = Terminal.Protocols.Diagnostic;
 using TerminalDiagnosticCode = Terminal.Protocols.DiagnosticCode;
-using TerminalFocus = SharpVision.Terminal.Input.Focus;
+using TerminalFocus = Terminal.Input.Focus;
 using TerminalOptions = Terminal.Runtime.Options;
 using TerminalResponse = Terminal.Protocols.Response;
 using TerminalSequence = Terminal.Protocols.ProtocolSequence;

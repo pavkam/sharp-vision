@@ -213,7 +213,7 @@ public sealed class ComboBox: Pressable
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _popup.Measure(new Constraint(constraint.Width, Add(DropDownHeight, 2)));
         string text = SelectedText();
@@ -222,7 +222,7 @@ public sealed class ComboBox: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         if (!IsOpen)
         {
@@ -236,7 +236,7 @@ public sealed class ComboBox: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void RenderCore(TerminalCanvas canvas)
+    protected override void OnRender(TerminalCanvas canvas)
     {
         TerminalStyle style = ResolvedStyle;
 

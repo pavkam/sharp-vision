@@ -155,7 +155,7 @@ public sealed class Canvas: Container
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureCore(Constraint constraint)
+    protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
         int width = 0;
@@ -183,7 +183,7 @@ public sealed class Canvas: Container
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeCore(Rect bounds)
+    protected override void ArrangeOverride(Rect bounds)
     {
         foreach (Control child in Children)
         {

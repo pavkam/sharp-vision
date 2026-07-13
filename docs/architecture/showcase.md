@@ -58,8 +58,8 @@ The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
 `ScrollView` in the remaining space. The sidebar owns product identity,
 component-only stateful navigation entries, and compact interaction hints; its
 selected, focused, hovered, and pressed states follow the active application
-theme. The executable app explicitly requests xterm any-event (`1003`) SGR
-cell mouse reporting through an application-level capability override and runs
+theme. The executable app explicitly requests xterm any-event (`1003`) SGR cell
+mouse reporting through an application-level capability override and runs
 through `Application.RunConsoleAsync` with a `Gallery` screen, which owns the
 Unix raw-input lease and console transport while running. The terminal library's
 default environment-hint policy remains conservative.
@@ -80,9 +80,9 @@ the preview as text changes, while a Button-disclosed, scrollable List exposes
 the 400 audited catalog names and loads only the font the user selects. The
 ScrollBar page includes an explicit live value label beside the draggable
 horizontal thumb so capture, drag geometry, and commit are directly observable.
-Every showcase `TextInput` inherits the active theme, and the control
-paints its resolved background across its entire committed box. Empty space is
-therefore visibly part of the input rather than blending into its card.
+Every showcase `TextInput` inherits the active theme, and the control paints its
+resolved background across its entire committed box. Empty space is therefore
+visibly part of the input rather than blending into its card.
 
 On Unix, `Application.RunConsoleAsync` reads directly from `/dev/tty` through a
 one-byte asynchronous stream after acquiring its raw-input lease. This avoids

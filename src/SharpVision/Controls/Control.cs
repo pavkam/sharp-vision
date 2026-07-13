@@ -483,7 +483,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             }
 
             Constraint contentConstraint = CreateContentConstraint(constraint);
-            Size content = MeasureCore(contentConstraint);
+            Size content = MeasureOverride(contentConstraint);
             Size desired = ResolveDesiredSize(constraint, content);
 
             DesiredSize = desired;
@@ -577,7 +577,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
-            ArrangeCore(Padding.Deflate(bounds));
+            ArrangeOverride(Padding.Deflate(bounds));
         }
         catch
         {
@@ -622,7 +622,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             // while their own drawing always remains inside their bounds.
             TerminalCanvas visual = canvas.Clip(VisualBounds);
             TerminalCanvas clipped = canvas.Clip(Bounds);
-            RenderCore(visual);
+            OnRender(visual);
             RenderChildren(ClipsChildren ? clipped : canvas);
         }
         catch
@@ -885,7 +885,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Measures content inside margin, border-size, and padding constraints.</summary>
     /// <param name="constraint">The content-box constraint.</param>
     /// <returns>The non-negative intrinsic content size.</returns>
-    protected virtual Size MeasureCore(Constraint constraint)
+    protected virtual Size MeasureOverride(Constraint constraint)
     {
         Debug.Assert(!IsDisposed, "A disposed control cannot measure content.");
         return default;
@@ -893,7 +893,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Arranges content inside the committed padded border box.</summary>
     /// <param name="bounds">The non-negative content-box rectangle.</param>
-    protected virtual void ArrangeCore(Rect bounds) =>
+    protected virtual void ArrangeOverride(Rect bounds) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot arrange content.");
 
     /// <summary>Runs target-specific default behavior for one unhandled routed event.</summary>
@@ -928,7 +928,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Draws this control's own content into its clipped visual bounds.</summary>
     /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
-    protected virtual void RenderCore(TerminalCanvas canvas)
+    protected virtual void OnRender(TerminalCanvas canvas)
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render content.");
@@ -938,7 +938,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Draws the shared border, shadow, and body-fill chrome for the current visual state.</summary>
     /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
     /// <remarks>
-    /// Derived controls that fully override <see cref="RenderCore"/> can call this to draw the
+    /// Derived controls that fully override <see cref="OnRender"/> can call this to draw the
     /// standard chrome consistently with the built-in controls before rendering custom content.
     /// </remarks>
     protected void RenderChrome(TerminalCanvas canvas) =>
