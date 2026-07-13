@@ -103,10 +103,10 @@ public sealed class KittyPacket
         }
 
         ReadOnlySpan<byte> body = value[5..];
-        var separator = body.IndexOf((byte) ';');
+        int separator = body.IndexOf((byte) ';');
         ReadOnlySpan<byte> metadata = separator < 0 ? body : body[..separator];
         ReadOnlySpan<byte> payload = separator < 0 ? [] : body[(separator + 1)..];
-        var hasPayload = separator >= 0;
+        bool hasPayload = separator >= 0;
 
         if (metadata.IsEmpty || metadata.Length > effectiveLimits.MaxMetadataBytes)
         {
@@ -120,21 +120,21 @@ public sealed class KittyPacket
         byte[] mime = [];
         byte[] password = [];
         byte[] name = [];
-        List<string> unknownKeys = new List<string>();
-        var seenType = false;
-        var seenStatus = false;
-        var seenLocation = false;
-        var seenId = false;
-        var seenMime = false;
-        var seenPassword = false;
-        var seenName = false;
+        List<string> unknownKeys = [];
+        bool seenType = false;
+        bool seenStatus = false;
+        bool seenLocation = false;
+        bool seenId = false;
+        bool seenMime = false;
+        bool seenPassword = false;
+        bool seenName = false;
 
         while (!metadata.IsEmpty)
         {
-            var next = metadata.IndexOf((byte) ':');
+            int next = metadata.IndexOf((byte) ':');
             ReadOnlySpan<byte> field = next < 0 ? metadata : metadata[..next];
             metadata = next < 0 ? [] : metadata[(next + 1)..];
-            var equals = field.IndexOf((byte) '=');
+            int equals = field.IndexOf((byte) '=');
 
             if (equals <= 0 || equals == field.Length - 1)
             {
@@ -266,7 +266,7 @@ public sealed class KittyPacket
     /// <returns>A non-sensitive packet description.</returns>
     public override string ToString()
     {
-        var unknown = UnknownKeys.Count == 0
+        string unknown = UnknownKeys.Count == 0
             ? "none"
             : string.Join(',', UnknownKeys);
 
@@ -277,7 +277,7 @@ public sealed class KittyPacket
 
     private static KittyPacket Invalid(DiagnosticCode code, int discarded)
     {
-        Diagnostic diagnostic = new Diagnostic(code, SequenceKind.Osc, 0, discarded);
+        Diagnostic diagnostic = new(code, SequenceKind.Osc, 0, discarded);
 
         return new KittyPacket(
             isValid: false,
@@ -301,9 +301,9 @@ public sealed class KittyPacket
             return false;
         }
 
-        var padding = 0;
+        int padding = 0;
 
-        for (var index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
+        for (int index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
         {
             padding++;
         }
@@ -313,7 +313,7 @@ public sealed class KittyPacket
             return false;
         }
 
-        for (var index = 0; index < value.Length - padding; index++)
+        for (int index = 0; index < value.Length - padding; index++)
         {
             if (value[index] is not (
                 (>= (byte) 'A' and <= (byte) 'Z') or
@@ -335,7 +335,7 @@ public sealed class KittyPacket
             return false;
         }
 
-        foreach (var item in value)
+        foreach (byte item in value)
         {
             if (item is not (
                 (>= (byte) 'a' and <= (byte) 'z') or
@@ -352,7 +352,7 @@ public sealed class KittyPacket
 
     private static bool IsMetadataAscii(ReadOnlySpan<byte> value)
     {
-        foreach (var item in value)
+        foreach (byte item in value)
         {
             if (item is < 0x21 or > 0x7e)
             {
@@ -367,7 +367,7 @@ public sealed class KittyPacket
     {
         while (!value.IsEmpty)
         {
-            if (Rune.DecodeFromUtf8(value, out _, out var consumed) != OperationStatus.Done)
+            if (Rune.DecodeFromUtf8(value, out _, out int consumed) != OperationStatus.Done)
             {
                 return false;
             }
@@ -396,7 +396,7 @@ public sealed class KittyPacket
             return false;
         }
 
-        var buffer = ArrayPool<byte>.Shared.Rent(
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(
             Math.Max(1, Base64.GetMaxDecodedFromUtf8Length(encoded.Length)));
 
         try
@@ -404,8 +404,8 @@ public sealed class KittyPacket
             OperationStatus status = Base64.DecodeFromUtf8(
                 encoded,
                 buffer,
-                out var consumed,
-                out var written);
+                out int consumed,
+                out int written);
 
             if (status != OperationStatus.Done || consumed != encoded.Length || written > maximum)
             {

@@ -3,11 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-
-using BackgroundMode = BackgroundMode;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Owns one child and draws validated physical border edges around it.</summary>
 public sealed class Border: Container
@@ -67,7 +62,7 @@ public sealed class Border: Container
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+        bool opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
 
         if (opaque)
         {
@@ -93,7 +88,7 @@ public sealed class Border: Container
 
     private static int Add(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 

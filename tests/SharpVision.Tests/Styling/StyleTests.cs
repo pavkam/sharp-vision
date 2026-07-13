@@ -3,18 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 /// <summary>Verifies theme integration with control invalidation and rendering.</summary>
 public sealed class StyleTests
@@ -27,7 +17,7 @@ public sealed class StyleTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            Theme theme = new Theme();
+            Theme theme = new();
             ControlStyle<Control> inherited = ThemeTestSupport.CreateControlStyle();
             inherited.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
             theme.SetStyle(inherited);
@@ -35,14 +25,14 @@ public sealed class StyleTests
                 (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))));
             ControlStyle<Control> replacement = ThemeTestSupport.OverlayStyle<Control>(
                 (State.Normal, new ThemeOverlay(foreground: Color.Indexed(3))));
-            ProbeContainer root = new ProbeContainer();
+            ProbeContainer root = new();
             ThemeTestSupport.ApplyTheme(root, theme);
             theme.Changed += (_, args) =>
             {
                 ThemeTestSupport.RefreshTheme(root, theme);
                 InvalidateThemeDependents(root, args.Impact);
             };
-            ProbeControl child = new ProbeControl();
+            ProbeControl child = new();
             root.Children.Add(child);
             root.Attach(dispatcher);
             root.Clear(Invalidation.All);
@@ -82,7 +72,7 @@ public sealed class StyleTests
         await dispatcher.InvokeAsync(() =>
         {
             ControlStyle<Control> style = ThemeTestSupport.CreateStyle<Control>();
-            ProbeControl control = new ProbeControl { Style = style };
+            ProbeControl control = new() { Style = style };
             control.Attach(dispatcher);
             control.Clear(Invalidation.All);
 
@@ -100,7 +90,7 @@ public sealed class StyleTests
     {
         ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Disabled, new ThemeOverlay(foreground: Color.Indexed(8))));
-        ProbeControl control = new ProbeControl { Style = style };
+        ProbeControl control = new() { Style = style };
 
         control.IsEnabled.ShouldBeTrue();
         control.Foreground.ShouldBeNull();
@@ -117,14 +107,14 @@ public sealed class StyleTests
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
             (State.Focused, new ThemeOverlay(attributes: Attributes.Underline)),
             (State.Disabled, new ThemeOverlay(foreground: Color.Indexed(8))));
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             Style = style,
         };
         control.SetFocused(true);
         control.IsEnabled = false;
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         control.Draw(frame.Canvas, new Rune('A'));
 
@@ -137,8 +127,8 @@ public sealed class StyleTests
     [Fact]
     public void Style_WhenTargetTypeMismatched_Throws()
     {
-        ProbeControl control = new ProbeControl();
-        ControlStyle<Button> foreign = new ControlStyle<Button>();
+        ProbeControl control = new();
+        ControlStyle<Button> foreign = new();
 
         _ = Should.Throw<ArgumentException>(() => control.Style = foreign);
     }
@@ -147,8 +137,8 @@ public sealed class StyleTests
     [Fact]
     public void Style_WhenTargetTypeIsBase_Accepted()
     {
-        ProbeControl control = new ProbeControl();
-        ControlStyle<Control> baseStyle = new ControlStyle<Control>();
+        ProbeControl control = new();
+        ControlStyle<Control> baseStyle = new();
 
         control.Style = baseStyle;
 
@@ -159,7 +149,7 @@ public sealed class StyleTests
     [Fact]
     public void GetValueSetValueClearValue_ArePublicAndConsistent()
     {
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
 
         control.SetValue(Control.ForegroundProperty, Color.Indexed(5));
         control.GetValue(Control.ForegroundProperty).ShouldBe(Color.Indexed(5));

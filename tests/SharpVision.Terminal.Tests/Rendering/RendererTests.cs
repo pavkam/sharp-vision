@@ -4,12 +4,7 @@
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
 using RenderMetrics = Terminal.Rendering.Metrics;
@@ -26,8 +21,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenWriteSucceeds_CommitsOnlyOnceAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("ab");
 
         RenderMetrics first = await renderer.RenderAsync(
@@ -59,8 +54,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenStateIsInvalidated_ForcesFullRedrawAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("ab");
         _ = await renderer.RenderAsync(
             frame,
@@ -92,9 +87,9 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenColorDepthChanges_WritesDifferentFullRepresentationAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
-        using Frame frame = new Frame(new Size(1, 1));
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
+        using Frame frame = new(new Size(1, 1));
         _ = frame.Canvas.Draw("x", default, new Style(Color.Rgb(255, 0, 0)));
         TerminalCapabilities trueColor = TerminalCapabilities.Conservative with
         {
@@ -126,8 +121,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenFrameSizeChanges_ForcesFullRedrawAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame first = Create("a");
         using Frame resized = Create("ab");
         _ = await renderer.RenderAsync(
@@ -157,8 +152,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenSynchronizedOutputIsSupported_WrapsExactBatchAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("x");
         TerminalCapabilities capabilities = TerminalCapabilities.Conservative with
         {
@@ -187,10 +182,10 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenWriteFails_InvalidatesNextFrameAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("ab");
-        IOException failure = new IOException("write failed");
+        IOException failure = new("write failed");
         transport.QueueFailure(failure, prefixBytes: 3);
 
         IOException thrown = await Should.ThrowAsync<IOException>(async () =>
@@ -215,8 +210,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenFlushFails_InvalidatesNextFrameAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("ab");
         transport.FlushFailure = new IOException("flush failed");
 
@@ -241,15 +236,15 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenCancelledBeforeWrite_PreservesCommittedFrameAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("a");
         _ = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
-        using CancellationTokenSource cancellation = new CancellationTokenSource();
+        using CancellationTokenSource cancellation = new();
         cancellation.Cancel();
 
         _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
@@ -273,11 +268,11 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenCancelledDuringWrite_InvalidatesNextFrameAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("a");
         transport.Block();
-        using CancellationTokenSource cancellation = new CancellationTokenSource();
+        using CancellationTokenSource cancellation = new();
         Task<RenderMetrics> pending = renderer.RenderAsync(
             frame,
             transport,
@@ -303,15 +298,15 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenWriteAndCleanupFail_PreservesOriginalExceptionAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("x");
         TerminalCapabilities capabilities = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = new Feature(CapabilitySupport.Supported, Origin.Query),
         };
-        IOException original = new IOException("frame failed");
-        IOException cleanup = new IOException("cleanup failed");
+        IOException original = new("frame failed");
+        IOException cleanup = new("cleanup failed");
         transport.QueueFailure(original, prefixBytes: 2);
         transport.QueueFailure(cleanup);
 
@@ -332,8 +327,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenTransportIsBlocked_WaitsBeforeCommitAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("a");
         transport.Block();
 
@@ -356,8 +351,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenCalledConcurrently_ThrowsInvalidOperationExceptionAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("a");
         transport.Block();
         Task<RenderMetrics> first = renderer.RenderAsync(
@@ -383,8 +378,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenOutputExceedsLimit_ThrowsBeforeWriteAsync()
     {
-        using Renderer renderer = new Renderer(maxOutputBytes: 1);
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new(maxOutputBytes: 1);
+        await using FakeTransport transport = new();
         using Frame frame = Create("a");
 
         _ = await Should.ThrowAsync<InvalidOperationException>(async () =>
@@ -403,8 +398,8 @@ public sealed class RendererTests
     [Fact]
     public async Task RenderAsync_WhenFrameIsUnchanged_AllocatesZeroBytesAsync()
     {
-        using Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("unchanged");
         _ = await renderer.RenderAsync(
             frame,
@@ -412,7 +407,7 @@ public sealed class RendererTests
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
 
-        for (var index = 0; index < 10_000; index++)
+        for (int index = 0; index < 10_000; index++)
         {
             _ = await renderer.RenderAsync(
                 frame,
@@ -421,9 +416,9 @@ public sealed class RendererTests
                 CancellationToken.None);
         }
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        long before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (var index = 0; index < 10_000; index++)
+        for (int index = 0; index < 10_000; index++)
         {
             _ = await renderer.RenderAsync(
                 frame,
@@ -432,7 +427,7 @@ public sealed class RendererTests
                 CancellationToken.None);
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         allocated.ShouldBe(0);
     }
 
@@ -442,8 +437,8 @@ public sealed class RendererTests
     [Fact]
     public async Task Dispose_WhenCalledTwice_ReleasesOnlyRendererOwnershipAsync()
     {
-        Renderer renderer = new Renderer();
-        await using FakeTransport transport = new FakeTransport();
+        Renderer renderer = new();
+        await using FakeTransport transport = new();
         using Frame frame = Create("a");
         _ = await renderer.RenderAsync(
             frame,
@@ -460,7 +455,7 @@ public sealed class RendererTests
 
     private static Frame Create(string value)
     {
-        Frame frame = new Frame(new Size(value.Length, 1));
+        Frame frame = new(new Size(value.Length, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

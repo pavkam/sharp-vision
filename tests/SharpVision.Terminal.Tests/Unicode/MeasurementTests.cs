@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Unicode;
 
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies whole-span measurement counters and allocation behavior.
@@ -30,19 +29,19 @@ public sealed class MeasurementTests
     [Fact]
     public void Measure_WhenEmptyAndWarm_AllocatesNoManagedBytes()
     {
-        for (var index = 0; index < 100; index++)
+        for (int index = 0; index < 100; index++)
         {
             _ = Width.Measure([], Ambiguous.Narrow);
         }
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        long before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (var index = 0; index < 10_000; index++)
+        for (int index = 0; index < 10_000; index++)
         {
             _ = Width.Measure([], Ambiguous.Narrow);
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         allocated.ShouldBe(0);
     }
@@ -66,22 +65,22 @@ public sealed class MeasurementTests
     [Fact]
     public void Measure_WhenWarm_AllocatesNoManagedBytes()
     {
-        var value = "ASCII e\u0301 · 界 👩🏽‍💻 🇵🇹";
+        string value = "ASCII e\u0301 · 界 👩🏽‍💻 🇵🇹";
 
-        for (var index = 0; index < 10_000; index++)
+        for (int index = 0; index < 10_000; index++)
         {
             _ = Width.Measure(value.AsSpan(), Ambiguous.Narrow);
         }
 
-        var minimum = long.MaxValue;
+        long minimum = long.MaxValue;
 
         // Sample multiple windows so a one-time tiered-PGO bookkeeping
         // allocation from another concurrently run test cannot become data.
-        for (var sample = 0; sample < 5; sample++)
+        for (int sample = 0; sample < 5; sample++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
+            long before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (var index = 0; index < 10_000; index++)
+            for (int index = 0; index < 10_000; index++)
             {
                 _ = Width.Measure(value.AsSpan(), Ambiguous.Narrow);
             }

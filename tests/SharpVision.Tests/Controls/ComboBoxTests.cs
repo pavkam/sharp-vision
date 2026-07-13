@@ -3,18 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 using TerminalStyle = Style;
@@ -26,15 +16,15 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenClosed_ShowsSelectedLabelWithoutDropDown()
     {
-        ComboBox box = new ComboBox
+        ComboBox box = new()
         {
             Height = Length.Cells(1),
             Items = ["Small", "Large"],
             SelectedIndex = 1,
         };
-        Size size = new Size(12, 6);
+        Size size = new(12, 6);
         new Engine().Layout(box, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         box.Render(frame.Canvas);
 
@@ -47,21 +37,21 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpen_UsesOpaqueFramedDropDownSurface()
     {
-        Theme theme = new Theme();
+        Theme theme = new();
         ControlStyle<Control> controlStyle = ThemeTestSupport.CreateControlStyle();
         controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
         controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(42));
         theme.SetStyle(controlStyle);
-        ComboBox box = new ComboBox
+        ComboBox box = new()
         {
             Height = Length.Cells(1),
             Items = ["Small", "Large"],
             IsOpen = true,
         };
         ThemeTestSupport.ApplyTheme(box, theme);
-        Size size = new Size(12, 6);
+        Size size = new(12, 6);
         new Engine().Layout(box, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
         frame.Canvas.Fill(
             frame.Canvas.Bounds,
             new Rune(' '),
@@ -81,15 +71,15 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpen_RendersChoicesInsideFramedSurface()
     {
-        ComboBox box = new ComboBox
+        ComboBox box = new()
         {
             DropDownHeight = 4,
             Items = ["1Row", "3-D", "Standard"],
             IsOpen = true,
         };
-        Size size = new Size(24, 12);
+        Size size = new(24, 12);
         new Engine().Layout(box, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         box.Render(frame.Canvas);
 
@@ -108,14 +98,14 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpenWithSelectedChoice_FillsTheCompleteListRow()
     {
-        Theme theme = new Theme();
+        Theme theme = new();
         ControlStyle<Control> controlStyle = ThemeTestSupport.CreateControlStyle();
         controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
         controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(240));
         controlStyle.Set(Control.ForegroundProperty, State.Selected, Color.Indexed(255));
         controlStyle.Set(Control.BackgroundProperty, State.Selected, Color.Indexed(99));
         theme.SetStyle(controlStyle);
-        ComboBox box = new ComboBox
+        ComboBox box = new()
         {
             Width = Length.Cells(20),
             Items = ["Compact", "Comfortable", "Spacious"],
@@ -123,9 +113,9 @@ public sealed class ComboBoxTests
             IsOpen = true,
         };
         ThemeTestSupport.ApplyTheme(box, theme);
-        Size size = new Size(24, 8);
+        Size size = new(24, 8);
         new Engine().Layout(box, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         box.Render(frame.Canvas);
 
@@ -138,7 +128,7 @@ public sealed class ComboBoxTests
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardPolicyToOpenDropDown()
     {
-        ComboBox box = new ComboBox
+        ComboBox box = new()
         {
             Items = ["one", "two", "three", "four", "five", "six"],
             DropDownHeight = 3,
@@ -169,10 +159,10 @@ public sealed class ComboBoxTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ComboBox box = new ComboBox { Items = ["Small", "Large"], SelectedIndex = 0 };
+            ComboBox box = new() { Items = ["Small", "Large"], SelectedIndex = 0 };
             new Engine().Layout(box, new Size(12, 6));
             box.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(box);
+            using FocusManager focus = new(box);
             focus.Focus(box).ShouldBeTrue();
 
             Router.Route(box, Events.Key, Key(Code.Enter));
@@ -197,10 +187,10 @@ public sealed class ComboBoxTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ComboBox box = new ComboBox { Items = ["Small", "Large"], SelectedIndex = 0 };
+            ComboBox box = new() { Items = ["Small", "Large"], SelectedIndex = 0 };
             new Engine().Layout(box, new Size(12, 6));
             box.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(box);
+            using FocusManager focus = new(box);
             focus.Focus(box).ShouldBeTrue();
             Router.Route(box, Events.Key, Key(Code.Enter));
 
@@ -219,18 +209,18 @@ public sealed class ComboBoxTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ComboBox box = new ComboBox
+            ComboBox box = new()
             {
                 Height = Length.Cells(1),
                 Items = ["Small", "Large"],
                 SelectedIndex = 1,
                 DropDownHeight = 2,
             };
-            Size size = new Size(12, 6);
+            Size size = new(12, 6);
             new Engine().Layout(box, size);
             box.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(box);
-            using CaptureManager capture = new CaptureManager(box);
+            using FocusManager focus = new(box);
+            using CaptureManager capture = new(box);
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
             new Engine().Layout(box, size);

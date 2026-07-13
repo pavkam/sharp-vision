@@ -3,7 +3,6 @@
 
 namespace SharpVision.Input;
 
-using SharpVision.Controls;
 
 /// <summary>Owns transactional keyboard focus within one attached control tree.</summary>
 public sealed class FocusManager: IDisposable
@@ -77,11 +76,11 @@ public sealed class FocusManager: IDisposable
     {
         VerifyAccess();
         List<(Control Control, int Order)> candidates = [];
-        var order = 0;
+        int order = 0;
         Collect(Root, candidates, ref order);
         candidates.Sort(static (left, right) =>
         {
-            var tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
+            int tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
             return tab != 0 ? tab : left.Order.CompareTo(right.Order);
         });
 
@@ -90,8 +89,8 @@ public sealed class FocusManager: IDisposable
             return false;
         }
 
-        var current = candidates.FindIndex(item => ReferenceEquals(item.Control, Focused));
-        var next = reverse
+        int current = candidates.FindIndex(item => ReferenceEquals(item.Control, Focused));
+        int next = reverse
             ? (current <= 0 ? candidates.Count - 1 : current - 1)
             : (current < 0 || current == candidates.Count - 1 ? 0 : current + 1);
         return Focus(candidates[next].Control);
@@ -162,7 +161,7 @@ public sealed class FocusManager: IDisposable
 
         try
         {
-            FocusChangingEventArgs preview = new FocusChangingEventArgs(Focused, control);
+            FocusChangingEventArgs preview = new(Focused, control);
 
             if (cancellable)
             {
@@ -178,7 +177,7 @@ public sealed class FocusManager: IDisposable
             Focused = control;
             previous?.SetFocused(false);
             control?.SetFocused(true);
-            FocusChangedEventArgs changed = new FocusChangedEventArgs(previous, control);
+            FocusChangedEventArgs changed = new(previous, control);
 
             if (previous is not null)
             {
@@ -222,7 +221,7 @@ public sealed class FocusManager: IDisposable
 
         if (control is Container container)
         {
-            for (var index = 0; index < container.NavigationCount; index++)
+            for (int index = 0; index < container.NavigationCount; index++)
             {
                 Collect(container.NavigationAt(index), candidates, ref order);
             }

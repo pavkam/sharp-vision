@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Input;
 
 /// <summary>Reports a menu item and input cause after a completed activation.</summary>
 public sealed class MenuItemInvokedEventArgs: EventArgs

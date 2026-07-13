@@ -3,17 +3,10 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using BackgroundMode = BackgroundMode;
-using TerminalCanvas = TerminalCanvas;
-using TerminalStyle = TerminalStyle;
 using TextLayout = SharpVision.Text.Layout;
 
 /// <summary>Displays owned styled runs, line breaks, and semantic hyperlinks.</summary>
@@ -66,17 +59,17 @@ public sealed class RichText: Control
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var limit = Wrapping == Wrapping.None ? int.MaxValue : constraint.Width ?? int.MaxValue;
+        int limit = Wrapping == Wrapping.None ? int.MaxValue : constraint.Width ?? int.MaxValue;
 
         if (Wrapping == Wrapping.Word)
         {
             Line[] wordLines = GetWordLines(limit);
-            var wordWidth = wordLines.Length == 0 ? 0 : wordLines.Max(static line => line.Cells);
+            int wordWidth = wordLines.Length == 0 ? 0 : wordLines.Max(static line => line.Cells);
             return new Size(wordWidth, wordLines.Length);
         }
 
-        var widths = GetLineWidths(limit);
-        var width = widths.Length == 0 ? 0 : widths.Max();
+        int[] widths = GetLineWidths(limit);
+        int width = widths.Length == 0 ? 0 : widths.Max();
         return new Size(width, widths.Length);
     }
 
@@ -91,10 +84,10 @@ public sealed class RichText: Control
             return;
         }
 
-        var limit = Wrapping == Wrapping.None ? int.MaxValue : bounds.Width;
-        var widths = GetLineWidths(limit);
-        var line = 0;
-        var cells = 0;
+        int limit = Wrapping == Wrapping.None ? int.MaxValue : bounds.Width;
+        int[] widths = GetLineWidths(limit);
+        int line = 0;
+        int cells = 0;
 
         foreach (Inline inline in Inlines)
         {
@@ -143,8 +136,8 @@ public sealed class RichText: Control
     private int[] GetLineWidths(int limit)
     {
         List<int> widths = [];
-        var cells = 0;
-        var hasContent = false;
+        int cells = 0;
+        bool hasContent = false;
 
         foreach (Inline inline in Inlines)
         {
@@ -156,7 +149,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var content = inline switch
+            string content = inline switch
             {
                 Run run => run.Content,
                 Hyperlink hyperlink => hyperlink.Content,
@@ -178,7 +171,7 @@ public sealed class RichText: Control
     private Line[] GetWordLines(int width)
     {
         // Format the whole inline sequence so a word can span styled Run and Hyperlink boundaries.
-        var document = GetDocument();
+        string document = GetDocument();
 
         if (document.Length == 0)
         {
@@ -186,7 +179,7 @@ public sealed class RichText: Control
         }
 
         Line[] buffer = new Line[document.Length + 1];
-        var count = TextLayout.Format(
+        int count = TextLayout.Format(
             document,
             width,
             Wrapping.Word,
@@ -199,7 +192,7 @@ public sealed class RichText: Control
 
     private string GetDocument()
     {
-        StringBuilder builder = new StringBuilder();
+        StringBuilder builder = new();
 
         foreach (Inline inline in Inlines)
         {
@@ -228,7 +221,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var width = Terminal.Unicode.Width.Measure(
+            int width = Terminal.Unicode.Width.Measure(
                 cluster,
                 CellPolicy.AmbiguousWidth).Cells;
 
@@ -263,7 +256,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var width = Terminal.Unicode.Width.Measure(
+            int width = Terminal.Unicode.Width.Measure(
                 cluster,
                 CellPolicy.AmbiguousWidth).Cells;
 
@@ -279,7 +272,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var leading = Align(bounds.Width, widths[line]);
+            int leading = Align(bounds.Width, widths[line]);
             _ = canvas.Draw(
                 cluster,
                 new Point(bounds.X + leading + cells, bounds.Y + line),
@@ -293,9 +286,9 @@ public sealed class RichText: Control
     {
         // Reuse the shared source offsets from Text.Layout while applying each inline's own rendition.
         Line[] lines = GetWordLines(bounds.Width);
-        var sourceOffset = 0;
-        var line = 0;
-        var cells = 0;
+        int sourceOffset = 0;
+        int line = 0;
+        int cells = 0;
 
         foreach (Inline inline in Inlines)
         {
@@ -351,7 +344,7 @@ public sealed class RichText: Control
         foreach (Grapheme segment in Graphemes.Enumerate(content))
         {
             ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
-            var offset = sourceOffset + segment.Offset;
+            int offset = sourceOffset + segment.Offset;
 
             if (cluster.Contains('\r') || cluster.Contains('\n'))
             {
@@ -369,7 +362,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            var width = Terminal.Unicode.Width.Measure(cluster, ambiguous).Cells;
+            int width = Terminal.Unicode.Width.Measure(cluster, ambiguous).Cells;
             _ = canvas.Draw(
                 cluster,
                 new Point(bounds.X + lines[line].Leading + cells, bounds.Y + line),
@@ -426,7 +419,7 @@ public sealed class RichText: Control
 
     private int Align(int width, int cells)
     {
-        var remaining = Math.Max(0, width - cells);
+        int remaining = Math.Max(0, width - cells);
         return TextAlignment switch
         {
             Alignment.Start => 0,
@@ -438,7 +431,7 @@ public sealed class RichText: Control
 
     private static int Add(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 }

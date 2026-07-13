@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using Shouldly;
 
 /// <summary>Verifies validated immutable showcase property documentation.</summary>
 public sealed class PropertyDescriptionTests
@@ -12,7 +11,7 @@ public sealed class PropertyDescriptionTests
     [Fact]
     public void Constructor_WhenValuesAreValid_PreservesDocumentation()
     {
-        PropertyDescription description = new PropertyDescription(
+        PropertyDescription description = new(
             "Content",
             "Control?",
             "null",
@@ -32,7 +31,7 @@ public sealed class PropertyDescriptionTests
     [InlineData(3)]
     public void Constructor_WhenOneValueIsBlank_ThrowsArgumentException(int field)
     {
-        var values = new[] { "Content", "Control?", "null", "Description" };
+        string[] values = ["Content", "Control?", "null", "Description"];
         values[field] = " ";
 
         _ = Should.Throw<ArgumentException>(() => new PropertyDescription(

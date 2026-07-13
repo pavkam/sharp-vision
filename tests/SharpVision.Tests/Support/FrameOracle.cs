@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Support;
 
-using System.Text;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 
 /// <summary>Reads exact semantic frame graphemes for control-render assertions.</summary>
 internal static class FrameOracle
@@ -18,7 +15,7 @@ internal static class FrameOracle
     internal static string Get(Frame frame, Point point)
     {
         ArgumentNullException.ThrowIfNull(frame);
-        var length = frame.GetGraphemeByteCount(point);
+        int length = frame.GetGraphemeByteCount(point);
 
         if (length == 0)
         {
@@ -32,7 +29,7 @@ internal static class FrameOracle
             return Encoding.UTF8.GetString(buffer);
         }
 
-        var rented = new byte[length];
+        byte[] rented = new byte[length];
         _ = frame.CopyGrapheme(point, rented);
         return Encoding.UTF8.GetString(rented);
     }

@@ -4,11 +4,8 @@
 namespace SharpVision.Tests.Integration;
 
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -19,17 +16,17 @@ public sealed class ResizeRenderTests
     [Fact]
     public async Task Resize_WhenSuspendedHostBecomesPositive_LayoutsBeforeFrameAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(0, 0)));
-        ProbeControl root = new ProbeControl();
-        await using Application application = new Application(
+        ProbeControl root = new();
+        await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        List<string> order = new List<string>();
-        TaskCompletionSource rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        List<string> order = [];
+        TaskCompletionSource rendered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Resize += (_, eventArgs) =>
         {
             root.Bounds.Width.ShouldBe(eventArgs.Dimensions.Cells.Width);

@@ -4,11 +4,6 @@
 namespace SharpVision.Controls;
 
 using SharpVision.Fonts;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-
-using TerminalCanvas = TerminalCanvas;
-using TerminalStyle = TerminalStyle;
 
 /// <summary>Displays cached FIGlet output through grapheme-safe semantic cells.</summary>
 public sealed class FigletText: Control
@@ -75,9 +70,9 @@ public sealed class FigletText: Control
     {
         _ = constraint;
         EnsureOutput();
-        var width = 0;
+        int width = 0;
 
-        foreach (var line in _lines)
+        foreach (string line in _lines)
         {
             width = Math.Max(
                 width,
@@ -94,7 +89,7 @@ public sealed class FigletText: Control
         Rect bounds = ContentBounds;
         TerminalStyle style = ResolveTextStyle();
 
-        for (var row = 0; row < _lines.Length && row < bounds.Height; row++)
+        for (int row = 0; row < _lines.Length && row < bounds.Height; row++)
         {
             _ = canvas.Draw(_lines[row], new Point(bounds.X, bounds.Y + row), style);
         }

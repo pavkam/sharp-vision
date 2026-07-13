@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the Theming control.</summary>
 internal sealed class ThemingShowcasePane: ShowcasePane
@@ -37,16 +36,11 @@ internal sealed class ThemingShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ShowcasePanel panel = new ShowcasePanel
-        {
-            Foreground = Palette.Text,
-            Background = Palette.Surface,
-            BorderColor = Palette.Border,
-        };
-        ControlStack placement = new ControlStack { Spacing = 1 };
-        placement.Children.Add(new ControlText("Label placement") { Foreground = Palette.Muted });
-        ControlButton left = new ControlButton { Content = new ControlText("Left") };
-        ControlButton right = new ControlButton { Content = new ControlText("Right") };
+        ShowcasePanel panel = new();
+        ControlStack placement = new() { Spacing = 1 };
+        placement.Children.Add(new ControlText("Label placement"));
+        ControlButton left = new() { Content = new ControlText("Left") };
+        ControlButton right = new() { Content = new ControlText("Right") };
         left.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Left;
         right.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Right;
         placement.Children.Add(new ControlStack

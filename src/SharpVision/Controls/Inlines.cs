@@ -108,7 +108,7 @@ public sealed class Inlines: IList<Inline>
     {
         ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutable();
-        var index = _items.IndexOf(item);
+        int index = _items.IndexOf(item);
 
         if (index < 0)
         {

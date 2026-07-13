@@ -3,11 +3,9 @@
 
 namespace SharpVision.Tests.Fonts;
 
-using System.Text;
 
 using SharpVision.Fonts;
 
-using Shouldly;
 
 /// <summary>Verifies bounded FIGfont parsing and deterministic text rendering.</summary>
 public sealed class FigletFontTests
@@ -54,7 +52,7 @@ public sealed class FigletFontTests
     public void Load_WhenInputExceedsLimit_ThrowsInvalidDataException()
     {
         using MemoryStream stream = Stream(CreateFont());
-        FigletLimits limits = new FigletLimits(maxInputBytes: 16);
+        FigletLimits limits = new(maxInputBytes: 16);
 
         _ = Should.Throw<InvalidDataException>(() => FigletFont.Load(stream, "large", limits));
     }
@@ -69,7 +67,7 @@ public sealed class FigletFontTests
     {
         using MemoryStream stream = Stream(CreateFont());
         FigletFont font = FigletFont.Load(stream, "test");
-        FigletOptions options = new FigletOptions(FigletDirection.RightToLeft);
+        FigletOptions options = new(FigletDirection.RightToLeft);
 
         font.Render("ABC", options).ShouldBe("CBA");
     }
@@ -119,7 +117,7 @@ public sealed class FigletFontTests
             _ => RuneFor(code),
         }));
         FigletFont font = FigletFont.Load(stream, "big-x");
-        FigletOptions options = new FigletOptions(
+        FigletOptions options = new(
             layout: FigletLayout.HorizontalSmushing | FigletLayout.BigX);
 
         font.Render(content, options).ShouldBe(expected);
@@ -130,14 +128,14 @@ public sealed class FigletFontTests
     private static string CreateFont(Func<int, string>? glyph = null)
     {
         glyph ??= RuneFor;
-        StringBuilder builder = new StringBuilder("flf2a$ 1 1 80 -1 1 0\nTest font by SharpVision\n");
+        StringBuilder builder = new("flf2a$ 1 1 80 -1 1 0\nTest font by SharpVision\n");
 
-        for (var code = 32; code <= 126; code++)
+        for (int code = 32; code <= 126; code++)
         {
             _ = builder.Append(glyph(code)).Append("@@\n");
         }
 
-        foreach (var code in new[] { 196, 214, 220, 228, 246, 252, 223 })
+        foreach (int code in new[] { 196, 214, 220, 228, 246, 252, 223 })
         {
             _ = builder.Append(glyph(code)).Append("@@\n");
         }
@@ -149,15 +147,15 @@ public sealed class FigletFontTests
 
     private static string CreateTallFont()
     {
-        StringBuilder builder = new StringBuilder(
+        StringBuilder builder = new(
             "flf2a$ 2 2 80 -1 1 0 8192\nTest font by SharpVision\n");
 
-        for (var code = 32; code <= 126; code++)
+        for (int code = 32; code <= 126; code++)
         {
             _ = builder.Append(code == 'A' ? "A@\n" : " @\n").Append(" @@\n");
         }
 
-        for (var index = 0; index < 7; index++)
+        for (int index = 0; index < 7; index++)
         {
             _ = builder.Append(" @\n @@\n");
         }

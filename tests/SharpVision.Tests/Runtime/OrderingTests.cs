@@ -3,14 +3,10 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Input;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 using TerminalOptions = Terminal.Runtime.Options;
@@ -22,23 +18,23 @@ public sealed class OrderingTests
     [Fact]
     public async Task Resize_WhenSeveralArriveBeforeDrain_CoalescesNewestAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        using ManualResetEventSlim release = new ManualResetEventSlim();
-        TaskCompletionSource entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Dispatcher.Post(() =>
         {
             entered.SetResult();
             release.Wait();
         });
         await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
-        List<Size> sizes = new List<Size>();
+        List<Size> sizes = [];
         application.Resize += (_, eventArgs) => sizes.Add(eventArgs.Dimensions.Cells);
 
         terminal.QueueResize(new Dimensions(new Size(20, 5)));
@@ -58,25 +54,25 @@ public sealed class OrderingTests
     [Fact]
     public async Task Input_WhenFocusExists_RoutesTypedKeyToFocusedControlAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        ProbeContainer root = new ProbeContainer();
-        ProbeControl child = new ProbeControl { CanFocus = true };
+        ProbeContainer root = new();
+        ProbeControl child = new() { CanFocus = true };
         root.Children.Add(child);
-        await using Application application = new Application(
+        await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        List<Phase> phases = new List<Phase>();
+        List<Phase> phases = [];
         await application.Dispatcher.InvokeAsync(() =>
         {
             application.Focus.Focus(child).ShouldBeTrue();
             _ = child.AddHandler(Events.Key, (_, eventArgs) =>
                 phases.Add(eventArgs.Phase));
         }, TestContext.Current.CancellationToken);
-        Stroke stroke = new Stroke(
+        Stroke stroke = new(
             Code.Enter,
             character: null,
             nativeCode: 0,
@@ -96,16 +92,16 @@ public sealed class OrderingTests
     [Fact]
     public async Task Input_WhenReceivedBeforeResize_DeliversAfterTreeAttachmentAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
-        ProbeContainer root = new ProbeContainer();
-        var calls = 0;
+        await using FakeTerminal terminal = new();
+        ProbeContainer root = new();
+        int calls = 0;
         _ = root.AddHandler(Events.Focus, (_, _) => calls++);
-        await using Application application = new Application(
+        await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        Focus focus = new Focus(gained: true);
+        Focus focus = new(gained: true);
         application.Input(in focus);
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -121,10 +117,10 @@ public sealed class OrderingTests
     [Fact]
     public async Task Resize_WhenHandlerInvalidatesLayout_ReflowsBeforeFrameAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        ProbeControl root = new ProbeControl();
-        await using Application application = new Application(
+        ProbeControl root = new();
+        await using Application application = new(
             root,
             terminal,
             terminal,
@@ -142,15 +138,15 @@ public sealed class OrderingTests
     [Fact]
     public async Task Fault_WhenSessionReportsFailure_StopsWithOriginalExceptionAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        IOException failure = new IOException("terminal");
+        IOException failure = new("terminal");
 
         application.Fault(failure);
         IOException thrown = await Should.ThrowAsync<IOException>(application.Completion);
@@ -163,15 +159,15 @@ public sealed class OrderingTests
     [Fact]
     public async Task Idle_WhenHandlerPostsWork_DrainsBeforeSecondIdleAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        List<string> order = new List<string>();
-        TaskCompletionSource completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        List<string> order = [];
+        TaskCompletionSource completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Idle += (_, _) =>
         {
             order.Add("idle");

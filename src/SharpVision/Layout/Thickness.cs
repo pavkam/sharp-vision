@@ -3,7 +3,6 @@
 
 namespace SharpVision.Layout;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Represents non-negative physical box edges in terminal cells.</summary>
 public readonly record struct Thickness
@@ -79,8 +78,8 @@ public readonly record struct Thickness
     /// <returns>The deflated rectangle.</returns>
     public Rect Deflate(Rect value)
     {
-        var consumedLeft = Math.Min(Left, value.Width);
-        var consumedTop = Math.Min(Top, value.Height);
+        int consumedLeft = Math.Min(Left, value.Width);
+        int consumedTop = Math.Min(Top, value.Height);
 
         return new Rect(
             SaturatingAdd(value.X, consumedLeft),
@@ -91,7 +90,7 @@ public readonly record struct Thickness
 
     private static int SaturatingAdd(int value, int extent)
     {
-        var result = (long) value + extent;
+        long result = (long) value + extent;
         return result > int.MaxValue ? int.MaxValue : (int) result;
     }
 }

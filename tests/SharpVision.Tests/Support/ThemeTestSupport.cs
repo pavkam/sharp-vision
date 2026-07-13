@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Support;
 
-using SharpVision.Controls;
-using SharpVision.Styling;
 
 /// <summary>Provides helpers for theme and control-style test setup.</summary>
 internal static class ThemeTestSupport
@@ -14,7 +12,7 @@ internal static class ThemeTestSupport
     /// <returns>The configured style instance.</returns>
     internal static ControlStyle<Control> CreateControlStyle(Action<ControlStyle<Control>>? configure = null)
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
         configure?.Invoke(style);
         return style;
     }
@@ -26,7 +24,7 @@ internal static class ThemeTestSupport
     internal static ControlStyle<TControl> CreateStyle<TControl>(Action<ControlStyle<TControl>>? configure = null)
         where TControl : Control
     {
-        ControlStyle<TControl> style = new ControlStyle<TControl>();
+        ControlStyle<TControl> style = new();
         configure?.Invoke(style);
         return style;
     }
@@ -88,7 +86,7 @@ internal static class ThemeTestSupport
         params (State State, ThemeOverlay Overlay)[] layers)
         where TControl : Control
     {
-        ControlStyle<TControl> style = new ControlStyle<TControl>();
+        ControlStyle<TControl> style = new();
 
         foreach ((State state, ThemeOverlay overlay) in layers)
         {

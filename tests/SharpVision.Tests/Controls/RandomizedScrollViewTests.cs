@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Proves fixed-seed automatic scrollbar convergence and containment.</summary>
 public sealed class RandomizedScrollViewTests
@@ -20,19 +15,19 @@ public sealed class RandomizedScrollViewTests
     [Fact]
     public void Layout_WhenCasesAreRandomized_PreservesStableContainedGeometry()
     {
-        Random random = new Random(_seed);
-        Engine engine = new Engine();
-        ScrollView view = new ScrollView { Content = new ProbeControl(new Size(50, 30)) };
+        Random random = new(_seed);
+        Engine engine = new();
+        ScrollView view = new() { Content = new ProbeControl(new Size(50, 30)) };
 
-        for (var sample = 0; sample < _caseCount; sample++)
+        for (int sample = 0; sample < _caseCount; sample++)
         {
-            Size size = new Size(random.Next(0, 80), random.Next(0, 50));
+            Size size = new(random.Next(0, 80), random.Next(0, 50));
             view.HorizontalBarVisibility = Policy(random);
             view.VerticalBarVisibility = Policy(random);
             engine.Layout(view, size);
             Size first = view.Viewport;
             engine.Layout(view, size);
-            var context = $"seed=0x{_seed:X8}, case={sample}, size={size}";
+            string context = $"seed=0x{_seed:X8}, case={sample}, size={size}";
 
             view.Viewport.ShouldBe(first, context);
             view.Viewport.Width.ShouldBeInRange(0, size.Width, context);

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Styling;
 
+using SharpVision.Terminal.Protocols;
+
 /// <summary>Provides immutable theme snapshots to attached controls.</summary>
 internal sealed class ThemeContext
 {
@@ -14,6 +16,8 @@ internal sealed class ThemeContext
 
     internal IReadOnlyList<IControlStyle> GetStyleChain(Type controlType) =>
         _snapshot.GetStyleChain(controlType);
+
+    internal bool TryGetColor(ColorRole role, out Color color) => _snapshot.TryGetColor(role, out color);
 
     internal static ThemeContext Create(Theme? theme) =>
         new(theme?.CreateSnapshot() ?? ThemeSnapshot.Empty);

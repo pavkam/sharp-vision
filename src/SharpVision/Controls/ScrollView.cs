@@ -3,16 +3,9 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
 
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Scrolling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-
-using KeyAction = KeyAction;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a clipped one-child viewport with independent automatic scrollbars.</summary>
 public sealed class ScrollView: Container
@@ -283,10 +276,10 @@ public sealed class ScrollView: Container
             throw new ArgumentException("The control must be inside Content.", nameof(descendant));
         }
 
-        var logicalX = Add(Difference(descendant.Bounds.X, _viewportBounds.X), HorizontalOffset);
-        var logicalY = Add(Difference(descendant.Bounds.Y, _viewportBounds.Y), VerticalOffset);
-        var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
-        var y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
+        int logicalX = Add(Difference(descendant.Bounds.X, _viewportBounds.X), HorizontalOffset);
+        int logicalY = Add(Difference(descendant.Bounds.Y, _viewportBounds.Y), VerticalOffset);
+        int x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
+        int y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
         return Apply(x, y, Cause.BringIntoView);
     }
 
@@ -382,10 +375,10 @@ public sealed class ScrollView: Container
                 Add(content.DesiredSize.Height, content.Margin.Vertical));
         }
 
-        Size available = new Size(
+        Size available = new(
             constraint.Width ?? _measuredExtent.Width,
             constraint.Height ?? _measuredExtent.Height);
-        Resolve(available, _measuredExtent, out var horizontal, out var vertical, out _);
+        Resolve(available, _measuredExtent, out bool horizontal, out bool vertical, out _);
         return new Size(
             Add(_measuredExtent.Width, vertical ? 1 : 0),
             Add(_measuredExtent.Height, horizontal ? 1 : 0));
@@ -397,12 +390,12 @@ public sealed class ScrollView: Container
         Resolve(
             new Size(bounds.Width, bounds.Height),
             _measuredExtent,
-            out var horizontal,
-            out var vertical,
+            out bool horizontal,
+            out bool vertical,
             out Size viewport);
         _viewportBounds = new Rect(bounds.X, bounds.Y, viewport.Width, viewport.Height);
-        var extentChanged = _extent != _measuredExtent;
-        var viewportChanged = _viewport != viewport;
+        bool extentChanged = _extent != _measuredExtent;
+        bool viewportChanged = _viewport != viewport;
         _ = Set(ref _extent, _measuredExtent, Invalidation.None, nameof(Extent));
         _ = Set(ref _viewport, viewport, Invalidation.None, nameof(Viewport));
         _ = Apply(
@@ -468,9 +461,9 @@ public sealed class ScrollView: Container
     {
         x = Math.Clamp(x, 0, MaximumX());
         y = Math.Clamp(y, 0, MaximumY());
-        Point previous = new Point(HorizontalOffset, VerticalOffset);
-        var changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
-        var changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
+        Point previous = new(HorizontalOffset, VerticalOffset);
+        bool changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
+        bool changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
 
         if (!changedX && !changedY)
         {
@@ -544,7 +537,7 @@ public sealed class ScrollView: Container
             return;
         }
 
-        var page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
+        int page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
         Code code = eventArgs.Stroke.Code;
 
         if (code == Code.Left)
@@ -596,16 +589,16 @@ public sealed class ScrollView: Container
             return;
         }
 
-        var x = MultiplyNegative(pointer.WheelX, LineSize);
-        var y = MultiplyNegative(pointer.WheelY, LineSize);
-        var remainingX = x;
-        var remainingY = y;
+        int x = MultiplyNegative(pointer.WheelX, LineSize);
+        int y = MultiplyNegative(pointer.WheelY, LineSize);
+        int remainingX = x;
+        int remainingY = y;
 
         for (ScrollView? current = this; current is not null && (remainingX != 0 || remainingY != 0);
             current = Ancestor(current))
         {
-            var previousX = current.HorizontalOffset;
-            var previousY = current.VerticalOffset;
+            int previousX = current.HorizontalOffset;
+            int previousY = current.VerticalOffset;
             _ = current.ScrollBy(remainingX, remainingY, Cause.Wheel);
             remainingX = Difference(remainingX, current.HorizontalOffset - previousX);
             remainingY = Difference(remainingY, current.VerticalOffset - previousY);
@@ -655,7 +648,7 @@ public sealed class ScrollView: Container
             return start;
         }
 
-        var end = Add(start, length);
+        int end = Add(start, length);
         return end > Add(current, viewport) ? Math.Max(0, end - viewport) : current;
     }
 
@@ -673,19 +666,19 @@ public sealed class ScrollView: Container
 
         // Automatic bars are added monotonically because one reserved axis can
         // induce overflow on the other. Two additions are the finite maximum.
-        for (var probe = 0; probe < 2; probe++)
+        for (int probe = 0; probe < 2; probe++)
         {
             viewport = new Size(
                 Math.Max(0, available.Width - (vertical ? 1 : 0)),
                 Math.Max(0, available.Height - (horizontal ? 1 : 0)));
-            var addHorizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
+            bool addHorizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
                 HorizontalBarVisibility == ScrollBarVisibility.Auto &&
                 extent.Width > viewport.Width;
-            var addVertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
+            bool addVertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
                 VerticalBarVisibility == ScrollBarVisibility.Auto &&
                 extent.Height > viewport.Height;
-            var nextHorizontal = horizontal || addHorizontal;
-            var nextVertical = vertical || addVertical;
+            bool nextHorizontal = horizontal || addHorizontal;
+            bool nextVertical = vertical || addVertical;
 
             if (nextHorizontal == horizontal && nextVertical == vertical)
             {

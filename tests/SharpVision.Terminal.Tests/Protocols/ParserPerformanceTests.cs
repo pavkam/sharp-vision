@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies parser allocation and hostile-payload bounds.
@@ -22,16 +19,16 @@ public sealed class ParserPerformanceTests
     {
         const int maxPayload = 1_024;
         Limits limits = Limits.Default with { MaxStringBytes = maxPayload };
-        using Parser parser = new Parser(limits);
-        RecordingSink sink = new RecordingSink();
-        var input = new byte[2 * 1_024 * 1_024];
+        using Parser parser = new(limits);
+        RecordingSink sink = new();
+        byte[] input = new byte[2 * 1_024 * 1_024];
         input[0] = 0x1b;
         input[1] = (byte) ']';
         input.AsSpan(2).Fill((byte) 's');
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        long before = GC.GetAllocatedBytesForCurrentThread();
         parser.Parse(input, ref sink);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         allocated.ShouldBeLessThan(256 * 1_024);
         sink.Observations.ShouldBeEmpty();
@@ -50,23 +47,23 @@ public sealed class ParserPerformanceTests
     [Fact]
     public void Parse_WhenCsiLoopIsWarm_AllocatesNoManagedBytes()
     {
-        using Parser parser = new Parser();
-        CountingSink sink = new CountingSink();
+        using Parser parser = new();
+        CountingSink sink = new();
         ReadOnlySpan<byte> input = "\u001b[2J"u8;
 
-        for (var index = 0; index < 100; index++)
+        for (int index = 0; index < 100; index++)
         {
             parser.Parse(input, ref sink);
         }
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        long before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (var index = 0; index < 10_000; index++)
+        for (int index = 0; index < 10_000; index++)
         {
             parser.Parse(input, ref sink);
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         allocated.ShouldBe(0);
         sink.CsiCount.ShouldBe(10_100);

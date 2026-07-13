@@ -4,10 +4,7 @@
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 using InputOptions = Terminal.Input.Options;
 
@@ -40,13 +37,13 @@ public sealed class RouterTests
         ResponseKind expected)
     {
         // Arrange
-        var bytes = Encoding.UTF8.GetBytes(input);
+        byte[] bytes = Encoding.UTF8.GetBytes(input);
 
         // Act / Assert
-        for (var split = 0; split <= bytes.Length; split++)
+        for (int split = 0; split <= bytes.Length; split++)
         {
-            RecordingProtocolSink sink = new RecordingProtocolSink();
-            using ProtocolRouter router = new ProtocolRouter(sink);
+            RecordingProtocolSink sink = new();
+            using ProtocolRouter router = new(sink);
             router.Route(bytes.AsSpan(0, split));
             router.Route(bytes.AsSpan(split));
 
@@ -62,9 +59,9 @@ public sealed class RouterTests
     public void Route_WhenDcsCompletes_OwnsHeaderAndPayload()
     {
         // Arrange
-        RecordingProtocolSink sink = new RecordingProtocolSink();
-        using ProtocolRouter router = new ProtocolRouter(sink);
-        var input = "\u001bP1;2$qpayload\u001b\\"u8.ToArray();
+        RecordingProtocolSink sink = new();
+        using ProtocolRouter router = new(sink);
+        byte[] input = "\u001bP1;2$qpayload\u001b\\"u8.ToArray();
 
         // Act
         router.Route(input);
@@ -90,8 +87,8 @@ public sealed class RouterTests
         SequenceKind kind)
     {
         // Arrange
-        RecordingProtocolSink expectedSink = new RecordingProtocolSink();
-        using (ProtocolRouter expectedRouter = new ProtocolRouter(expectedSink))
+        RecordingProtocolSink expectedSink = new();
+        using (ProtocolRouter expectedRouter = new(expectedSink))
         {
             expectedRouter.Route(input);
         }
@@ -99,10 +96,10 @@ public sealed class RouterTests
         ProtocolSequence expected = expectedSink.Sequences.ShouldHaveSingleItem();
 
         // Act / Assert
-        for (var split = 0; split <= input.Length; split++)
+        for (int split = 0; split <= input.Length; split++)
         {
-            RecordingProtocolSink sink = new RecordingProtocolSink();
-            using ProtocolRouter router = new ProtocolRouter(sink);
+            RecordingProtocolSink sink = new();
+            using ProtocolRouter router = new(sink);
             router.Route(input.AsSpan(0, split));
             router.Route(input.AsSpan(split));
 
@@ -112,10 +109,10 @@ public sealed class RouterTests
             AssertEquivalent(expected, actual);
         }
 
-        RecordingProtocolSink byteSink = new RecordingProtocolSink();
-        using ProtocolRouter byteRouter = new ProtocolRouter(byteSink);
+        RecordingProtocolSink byteSink = new();
+        using ProtocolRouter byteRouter = new(byteSink);
 
-        foreach (var value in input)
+        foreach (byte value in input)
         {
             byteRouter.Route([value]);
         }
@@ -128,8 +125,8 @@ public sealed class RouterTests
     public void Route_WhenReplyPrecedesText_PreservesTransportOrder()
     {
         // Arrange
-        RecordingProtocolSink sink = new RecordingProtocolSink();
-        using ProtocolRouter router = new ProtocolRouter(sink);
+        RecordingProtocolSink sink = new();
+        using ProtocolRouter router = new(sink);
 
         // Act
         router.Route("\u001b[?1;2cx"u8);
@@ -143,8 +140,8 @@ public sealed class RouterTests
     public void Decode_WhenSinkHandlesOnlyInput_ReportsUnsupportedReply()
     {
         // Arrange
-        RecordingInputSink sink = new RecordingInputSink();
-        using Decoder decoder = new Terminal.Input.Decoder(sink);
+        RecordingInputSink sink = new();
+        using Decoder decoder = new(sink);
 
         // Act
         decoder.Decode("\u001b[?1;2c"u8);
@@ -160,12 +157,12 @@ public sealed class RouterTests
     public void Route_WhenStringExceedsLimit_ReportsAndRecoversFollowingText()
     {
         // Arrange
-        RecordingProtocolSink sink = new RecordingProtocolSink();
+        RecordingProtocolSink sink = new();
         InputOptions options = InputOptions.Default with
         {
             Limits = Limits.Default with { MaxStringBytes = 8 },
         };
-        using ProtocolRouter router = new ProtocolRouter(sink, options);
+        using ProtocolRouter router = new(sink, options);
 
         // Act
         router.Route("\u001b]777;0123456789\u001b\\known"u8);
@@ -184,8 +181,8 @@ public sealed class RouterTests
     public void Route_WhenStringIsCancelled_ReportsAndRecoversFollowingText()
     {
         // Arrange
-        RecordingProtocolSink sink = new RecordingProtocolSink();
-        using ProtocolRouter router = new ProtocolRouter(sink);
+        RecordingProtocolSink sink = new();
+        using ProtocolRouter router = new(sink);
 
         // Act
         router.Route("\u001b]777;payload\u0018x"u8);
@@ -203,8 +200,8 @@ public sealed class RouterTests
     public void Complete_WhenStringIsTruncated_ReportsOnceAndRoutesNoSequence()
     {
         // Arrange
-        RecordingProtocolSink sink = new RecordingProtocolSink();
-        using ProtocolRouter router = new ProtocolRouter(sink);
+        RecordingProtocolSink sink = new();
+        using ProtocolRouter router = new(sink);
         router.Route("\u001bP1;2$qpartial"u8);
 
         // Act

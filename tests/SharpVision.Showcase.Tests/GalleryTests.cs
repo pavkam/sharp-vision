@@ -3,10 +3,7 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Showcase.Panes;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Text;
 
 /// <summary>Verifies showcase registration, navigation, and public-control composition.</summary>
@@ -43,13 +40,13 @@ public sealed class GalleryTests
     [Fact]
     public void Constructor_WhenCreated_RegistersEveryConcreteControl()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
 
         _ = gallery.ShouldBeOfType<Gallery>();
         gallery.Children.Count.ShouldBe(1);
         _ = gallery.Children[0].ShouldBeOfType<Dock>();
         _ = gallery.Sidebar.ShouldBeOfType<Border>();
-        gallery.Pages.Select(static page => page.Name).ShouldBe(_controls);
+        gallery.Pages.ShouldBe(_controls);
         gallery.SelectedPage.ShouldBe("Border");
         _ = gallery.Content.ShouldNotBeNull();
     }
@@ -58,7 +55,7 @@ public sealed class GalleryTests
     [Fact]
     public void SelectedIndex_WhenChanged_UpdatesSelectedPageAndContent()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
         Control previous = gallery.Content;
 
         gallery.Select(1);
@@ -71,7 +68,7 @@ public sealed class GalleryTests
     [Fact]
     public void Select_WhenDocumentationWasScrolled_ResetsTheNewPageToTop()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
         new Engine().Layout(gallery, new Size(80, 24));
         ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
         main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
@@ -85,9 +82,9 @@ public sealed class GalleryTests
     [Fact]
     public void CreatePage_WhenEachPageIsSelected_ContainsRichTextDescription()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
 
-        for (var index = 0; index < gallery.Pages.Count; index++)
+        for (int index = 0; index < gallery.Pages.Count; index++)
         {
             gallery.Select(index);
 
@@ -99,7 +96,7 @@ public sealed class GalleryTests
     [Fact]
     public void Constructor_WhenRichTextIsCreated_UsesWordWrapping()
     {
-        RichText document = new RichText();
+        RichText document = new();
 
         document.Wrapping.ShouldBe(Wrapping.Word);
     }
@@ -108,35 +105,36 @@ public sealed class GalleryTests
     [Fact]
     public void CreatePage_WhenEachPageIsSelected_IncludesWrappedPracticalRecipe()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
 
-        for (var index = 0; index < gallery.Pages.Count; index++)
+        for (int index = 0; index < gallery.Pages.Count; index++)
         {
-            GalleryEntry entry = gallery.Pages[index];
+            string name = gallery.Pages[index];
             gallery.Select(index);
             RichText? recipe = FindRichText(gallery.Content, "Practical recipe");
 
-            _ = recipe.ShouldNotBeNull(entry.Name);
-            recipe.Wrapping.ShouldBe(Wrapping.Word, entry.Name);
+            _ = recipe.ShouldNotBeNull(name);
+            recipe.Wrapping.ShouldBe(Wrapping.Word, name);
         }
     }
 
     /// <summary>Verifies every page creates fresh detached panes containing its named control.</summary>
     [Fact]
-    public void CreatePane_WhenEveryPageBuildsTwice_ReturnsFreshMatchingControlTrees()
+    public void CreatePage_WhenEveryPageBuildsTwice_ReturnsFreshMatchingControlTrees()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
 
-        foreach (GalleryEntry entry in gallery.Pages)
+        for (int index = 0; index < gallery.Pages.Count; index++)
         {
-            using ShowcasePane first = entry.CreatePane();
-            using ShowcasePane second = entry.CreatePane();
+            string name = gallery.Pages[index];
+            using ShowcasePane first = Gallery.CreatePage(index);
+            using ShowcasePane second = Gallery.CreatePage(index);
 
             first.ShouldNotBeSameAs(second);
             first.Parent.ShouldBeNull();
             second.Parent.ShouldBeNull();
-            ContainsType(first, entry.Name).ShouldBeTrue(entry.Name);
-            ContainsType(second, entry.Name).ShouldBeTrue(entry.Name);
+            ContainsType(first, name).ShouldBeTrue(name);
+            ContainsType(second, name).ShouldBeTrue(name);
         }
     }
 
@@ -144,19 +142,20 @@ public sealed class GalleryTests
     [Fact]
     public void Properties_WhenCatalogLoads_DescribeMeaningfulControlAttributes()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
 
-        foreach (GalleryEntry entry in gallery.Pages)
+        for (int index = 0; index < gallery.Pages.Count; index++)
         {
-            using ShowcasePane pane = entry.CreatePane();
-            pane.Properties.Count.ShouldBeGreaterThanOrEqualTo(3, entry.Name);
+            string name = gallery.Pages[index];
+            using ShowcasePane pane = Gallery.CreatePage(index);
+            pane.Properties.Count.ShouldBeGreaterThanOrEqualTo(3, name);
 
             foreach (PropertyDescription property in pane.Properties)
             {
-                property.Name.ShouldNotBeNullOrWhiteSpace(entry.Name);
-                property.Type.ShouldNotBeNullOrWhiteSpace(entry.Name);
-                property.Default.ShouldNotBeNullOrWhiteSpace(entry.Name);
-                property.Description.Length.ShouldBeGreaterThan(24, $"{entry.Name}.{property.Name}");
+                property.Name.ShouldNotBeNullOrWhiteSpace(name);
+                property.Type.ShouldNotBeNullOrWhiteSpace(name);
+                property.Default.ShouldNotBeNullOrWhiteSpace(name);
+                property.Description.Length.ShouldBeGreaterThan(24, $"{name}.{property.Name}");
             }
         }
     }
@@ -165,14 +164,13 @@ public sealed class GalleryTests
     [Fact]
     public void SelectedIndex_WhenEveryPageIsSelected_UpdatesSelectedEntryAndContent()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
         Control? previous = null;
 
-        for (var index = 0; index < gallery.Pages.Count; index++)
+        for (int index = 0; index < gallery.Pages.Count; index++)
         {
             gallery.Select(index);
 
-            gallery.Selected.ShouldBe(gallery.Pages[index]);
             gallery.SelectedPage.ShouldBe(_controls[index]);
             gallery.SelectedIndex.ShouldBe(index);
             gallery.Content.ShouldNotBeSameAs(previous);

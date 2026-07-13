@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Transport;
 
 using SharpVision.Terminal.Transport;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies memory-based stream transport ownership and write serialization.
@@ -18,12 +17,12 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task ReadWriteAsync_WhenStreamsAreValid_TransfersExactBytesAsync()
     {
-        await using MemoryStream input = new MemoryStream("input"u8.ToArray());
-        await using MemoryStream output = new MemoryStream();
-        await using StreamTransport transport = new StreamTransport(input, output, leaveOpen: true);
-        var destination = new byte[5];
+        await using MemoryStream input = new("input"u8.ToArray());
+        await using MemoryStream output = new();
+        await using StreamTransport transport = new(input, output, leaveOpen: true);
+        byte[] destination = new byte[5];
 
-        var read = await transport.ReadAsync(destination, TestContext.Current.CancellationToken);
+        int read = await transport.ReadAsync(destination, TestContext.Current.CancellationToken);
         await transport.WriteAsync("output"u8.ToArray(), TestContext.Current.CancellationToken);
         await transport.FlushAsync(TestContext.Current.CancellationToken);
 
@@ -38,8 +37,8 @@ public sealed class StreamTransportTests
     [Fact]
     public void Constructor_WhenStreamCapabilityIsInvalid_ThrowsArgumentException()
     {
-        using WriteOnlyStream unreadable = new WriteOnlyStream();
-        using ReadOnlyStream unwritable = new ReadOnlyStream();
+        using WriteOnlyStream unreadable = new();
+        using ReadOnlyStream unwritable = new();
 
         _ = Should.Throw<ArgumentException>(
             () => new StreamTransport(unreadable, Stream.Null));
@@ -53,8 +52,8 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task WriteAsync_WhenCallsOverlap_SerializesWritesAsync()
     {
-        await using BlockingStream output = new BlockingStream();
-        await using StreamTransport transport = new StreamTransport(Stream.Null, output, leaveOpen: true);
+        await using BlockingStream output = new();
+        await using StreamTransport transport = new(Stream.Null, output, leaveOpen: true);
 
         ValueTask first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
         await output.FirstStarted;
@@ -74,11 +73,11 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task WriteAsync_WhenWaitingCallerIsCancelled_ThrowsOperationCanceledExceptionAsync()
     {
-        await using BlockingStream output = new BlockingStream();
-        await using StreamTransport transport = new StreamTransport(Stream.Null, output, leaveOpen: true);
+        await using BlockingStream output = new();
+        await using StreamTransport transport = new(Stream.Null, output, leaveOpen: true);
         ValueTask first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
         await output.FirstStarted;
-        using CancellationTokenSource cancellation = new CancellationTokenSource();
+        using CancellationTokenSource cancellation = new();
         cancellation.Cancel();
 
         _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
@@ -95,10 +94,10 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task DisposeAsync_WhenLeaveOpenVaries_UsesDocumentedOwnershipAsync()
     {
-        TrackingStream owned = new TrackingStream();
-        TrackingStream borrowed = new TrackingStream();
-        StreamTransport ownedTransport = new StreamTransport(Stream.Null, owned);
-        StreamTransport borrowedTransport = new StreamTransport(Stream.Null, borrowed, leaveOpen: true);
+        TrackingStream owned = new();
+        TrackingStream borrowed = new();
+        StreamTransport ownedTransport = new(Stream.Null, owned);
+        StreamTransport borrowedTransport = new(Stream.Null, borrowed, leaveOpen: true);
 
         await ownedTransport.DisposeAsync();
         await ownedTransport.DisposeAsync();

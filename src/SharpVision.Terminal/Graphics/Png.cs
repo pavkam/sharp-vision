@@ -23,21 +23,21 @@ internal static class Png
             throw Invalid();
         }
 
-        var offset = Signature.Length;
-        var first = true;
-        var hasData = false;
+        int offset = Signature.Length;
+        bool first = true;
+        bool hasData = false;
         Size size = default;
 
         while (offset <= source.Length - 12)
         {
-            var length = BinaryPrimitives.ReadUInt32BigEndian(source[offset..]);
+            uint length = BinaryPrimitives.ReadUInt32BigEndian(source[offset..]);
 
             if (length > int.MaxValue || length > (uint) (source.Length - offset - 12))
             {
                 throw Invalid();
             }
 
-            var count = (int) length;
+            int count = (int) length;
             ReadOnlySpan<byte> type = source.Slice(offset + 4, 4);
             ReadOnlySpan<byte> data = source.Slice(offset + 8, count);
             offset = checked(offset + count + 12);
@@ -73,10 +73,10 @@ internal static class Png
 
     private static Size ReadHeader(ReadOnlySpan<byte> value)
     {
-        var width = BinaryPrimitives.ReadUInt32BigEndian(value);
-        var height = BinaryPrimitives.ReadUInt32BigEndian(value[4..]);
-        var bitDepth = value[8];
-        var colorType = value[9];
+        uint width = BinaryPrimitives.ReadUInt32BigEndian(value);
+        uint height = BinaryPrimitives.ReadUInt32BigEndian(value[4..]);
+        byte bitDepth = value[8];
+        byte colorType = value[9];
 
         return width is 0 or > int.MaxValue ||
             height is 0 or > int.MaxValue ||

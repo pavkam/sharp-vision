@@ -101,14 +101,14 @@ public sealed class Renderer: IDisposable
         }
 
         Frame? replacement = null;
-        var synchronized = capabilities.SynchronizedOutput.IsSupported;
-        var started = Stopwatch.GetTimestamp();
+        bool synchronized = capabilities.SynchronizedOutput.IsSupported;
+        long started = Stopwatch.GetTimestamp();
         LastCleanupException = null;
 
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var forceFull = _invalidated ||
+            bool forceFull = _invalidated ||
                 _front is null ||
                 !Equals(_capabilities, capabilities);
 
@@ -254,7 +254,7 @@ public sealed class Renderer: IDisposable
     {
         try
         {
-            using CancellationTokenSource timeout = new CancellationTokenSource(_cleanupTimeout, _timeProvider);
+            using CancellationTokenSource timeout = new(_cleanupTimeout, _timeProvider);
             await transport.WriteAsync(_synchronizedEnd, timeout.Token).ConfigureAwait(false);
             await transport.FlushAsync(timeout.Token).ConfigureAwait(false);
         }

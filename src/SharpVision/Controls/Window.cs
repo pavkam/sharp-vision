@@ -3,15 +3,7 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-
-using BackgroundMode = BackgroundMode;
-using KeyAction = KeyAction;
-using TerminalAttributes = TerminalAttributes;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Frames one owned child as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
 public sealed partial class Window: Container
@@ -93,7 +85,7 @@ public sealed partial class Window: Container
     protected override Size MeasureCore(Constraint constraint)
     {
         Control? child = Child;
-        var titleWidth = Title.Length == 0 ? 0 : Add(2, Terminal.Unicode.Width.Measure(Title).Cells);
+        int titleWidth = Title.Length == 0 ? 0 : Add(2, Terminal.Unicode.Width.Measure(Title).Cells);
 
         if (child is null)
         {
@@ -113,7 +105,7 @@ public sealed partial class Window: Container
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+        bool opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
 
         if (opaque)
         {
@@ -131,10 +123,10 @@ public sealed partial class Window: Container
 
         if (!string.IsNullOrEmpty(Title) && Bounds.Width > 3)
         {
-            var text = $" {Title} ";
-            var available = Bounds.Width - 2;
-            var cells = Terminal.Unicode.Width.Measure(text).Cells;
-            var offset = TitlePlacement switch
+            string text = $" {Title} ";
+            int available = Bounds.Width - 2;
+            int cells = Terminal.Unicode.Width.Measure(text).Cells;
+            int offset = TitlePlacement switch
             {
                 WindowTitlePlacement.Left => 0,
                 WindowTitlePlacement.Center => Math.Max(0, (available - cells) / 2),
@@ -184,7 +176,7 @@ public sealed partial class Window: Container
 
     private static int Add(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 

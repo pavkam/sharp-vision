@@ -4,11 +4,7 @@
 namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
-
-using Rune = Rune;
 
 /// <summary>Verifies terminal focus transitions and adjacent input.</summary>
 public sealed class FocusTests
@@ -19,12 +15,12 @@ public sealed class FocusTests
     [Fact]
     public void Decode_WhenFocusAndTextAreAdjacent_EmitsOrderedValues()
     {
-        var bytes = "\u001b[Ix\u001b[O"u8.ToArray();
+        byte[] bytes = "\u001b[Ix\u001b[O"u8.ToArray();
 
-        for (var split = 0; split <= bytes.Length; split++)
+        for (int split = 0; split <= bytes.Length; split++)
         {
-            RecordingInputSink sink = new RecordingInputSink();
-            using Decoder decoder = new Decoder(sink);
+            RecordingInputSink sink = new();
+            using Decoder decoder = new(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
             decoder.Complete();

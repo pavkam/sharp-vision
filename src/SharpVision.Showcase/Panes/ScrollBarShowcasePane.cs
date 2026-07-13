@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the ScrollBar control.</summary>
 internal sealed class ScrollBarShowcasePane: ShowcasePane
@@ -40,7 +38,7 @@ internal sealed class ScrollBarShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlScrollBar horizontal = new ControlScrollBar
+        ControlScrollBar horizontal = new()
         {
             Width = Length.Cells(28),
             Orientation = Orientation.Horizontal,
@@ -52,9 +50,8 @@ internal sealed class ScrollBarShowcasePane: ShowcasePane
             TrackGlyph = new Rune('─'),
             ThumbGlyph = new Rune('█'),
         };
-        ControlText status = new ControlText($"Thumb value: {horizontal.Value}")
+        ControlText status = new($"Thumb value: {horizontal.Value}")
         {
-            Foreground = Palette.Muted,
         };
         horizontal.ValueChanged += (_, eventArgs) =>
             status.Content = $"Thumb value: {eventArgs.Value}";
@@ -66,7 +63,7 @@ internal sealed class ScrollBarShowcasePane: ShowcasePane
             "Drag the solid thumb, click the shaded track for page movement, or use the arrow buttons for line movement.",
             PaneSupport.Card(full, Glyphs.Rounded)));
 
-        ControlScrollBar vertical = new ControlScrollBar
+        ControlScrollBar vertical = new()
         {
             Height = Length.Cells(8),
             Maximum = 40,

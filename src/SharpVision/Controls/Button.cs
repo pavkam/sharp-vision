@@ -5,13 +5,7 @@ namespace SharpVision.Controls;
 
 using System.Windows.Input;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Threading;
-
-using TerminalAttributes = TerminalAttributes;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
 public sealed partial class Button: Pressable
@@ -127,14 +121,14 @@ public sealed partial class Button: Pressable
     protected override void Activate(ActivationCause cause)
     {
         ICommand? command = Command;
-        var parameter = CommandParameter;
+        object? parameter = CommandParameter;
 
         if (command is not null && !command.CanExecute(parameter))
         {
             return;
         }
 
-        ActivationEventArgs eventArgs = new ActivationEventArgs(cause);
+        ActivationEventArgs eventArgs = new(cause);
         Click?.Invoke(this, eventArgs);
         command?.Execute(parameter);
     }
@@ -216,7 +210,7 @@ public sealed partial class Button: Pressable
 
     private static int Add(int left, int right)
     {
-        var value = (long) left + right;
+        long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 

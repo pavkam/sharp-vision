@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies theme resolver precedence through the public cascade.</summary>
 public sealed class ThemeResolverTests
@@ -17,11 +12,11 @@ public sealed class ThemeResolverTests
     [Fact]
     public void Resolve_WhenLocalValueExists_WinsOverThemeAndInstanceStyle()
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> themed = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> themed = new();
         themed.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
         theme.SetStyle(themed);
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         ThemeTestSupport.ApplyTheme(control, theme);
         control.Foreground = Color.Indexed(9);
 
@@ -33,15 +28,15 @@ public sealed class ThemeResolverTests
     [Fact]
     public void Resolve_WhenInstanceStyleExists_OverlaysThemeWithoutInheritance()
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> themed = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> themed = new();
         themed.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
         theme.SetStyle(themed);
-        ProbeContainer root = new ProbeContainer();
-        ProbeControl child = new ProbeControl();
+        ProbeContainer root = new();
+        ProbeControl child = new();
         root.Children.Add(child);
         ThemeTestSupport.ApplyTheme(root, theme);
-        ControlStyle<Control> overlay = new ControlStyle<Control>();
+        ControlStyle<Control> overlay = new();
         overlay.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
         child.Style = overlay;
 

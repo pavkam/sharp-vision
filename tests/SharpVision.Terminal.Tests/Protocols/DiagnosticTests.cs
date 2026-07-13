@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies structured protocol diagnostics.
@@ -19,13 +17,13 @@ public sealed class DiagnosticTests
     public void ToString_WhenDiagnosticIsSensitive_DoesNotExposePayload()
     {
         const string secret = "clipboard-password-do-not-log";
-        Diagnostic diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new(
             DiagnosticCode.StringLimit,
             SequenceKind.Osc,
             42,
             secret.Length);
 
-        var text = diagnostic.ToString();
+        string text = diagnostic.ToString();
 
         text.ShouldContain(nameof(DiagnosticCode.StringLimit));
         text.ShouldContain(nameof(SequenceKind.Osc));

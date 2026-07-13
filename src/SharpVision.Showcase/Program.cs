@@ -4,10 +4,6 @@
 using SharpVision.Runtime;
 using SharpVision.Showcase;
 
-ConsoleRunStatus status = await Application.RunConsoleAsync(
-    new Gallery(),
-    new ConsoleRunOptions
-    {
-        RedirectedMessage = StartupMessage.Get(),
-    });
+ConsoleRunStatus status = await Application.RunConsoleAsync(new Gallery());
+
 return status == ConsoleRunStatus.Failed ? 1 : 0;

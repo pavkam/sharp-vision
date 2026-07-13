@@ -6,7 +6,6 @@ namespace SharpVision.Tests.Text;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using Shouldly;
 
 /// <summary>Proves deterministic grapheme-safe editing across mixed Unicode sequences.</summary>
 public sealed class RandomizedEditTests
@@ -36,10 +35,10 @@ public sealed class RandomizedEditTests
 
     private static EditResult Replay(int seed)
     {
-        Random random = new Random(seed);
-        EditResult state = new EditResult(string.Empty, new Selection(0, 0), changed: false);
+        Random random = new(seed);
+        EditResult state = new(string.Empty, new Selection(0, 0), changed: false);
 
-        for (var sample = 0; sample < _caseCount; sample++)
+        for (int sample = 0; sample < _caseCount; sample++)
         {
             state = random.Next(0, 5) switch
             {
@@ -54,7 +53,7 @@ public sealed class RandomizedEditTests
                 _ => Edit.MoveNext(state.Text, state.Selection, random.Next(0, 2) == 0),
             };
 
-            var context = $"seed=0x{seed:X8}, case={sample}";
+            string context = $"seed=0x{seed:X8}, case={sample}";
             Edit.Validate(state.Text, state.Selection);
             Edit.GraphemeCount(state.Text).ShouldBeLessThanOrEqualTo(64, context);
             Boundary(state.Text, state.Selection.Anchor).ShouldBeTrue(context);

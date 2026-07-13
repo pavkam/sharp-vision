@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies allocation-free CSI parameter enumeration.
@@ -18,9 +16,9 @@ public sealed class ParametersTests
     [Fact]
     public void Read_WhenInputIsEmpty_ReturnsEnd()
     {
-        Parameters parameters = new Parameters([]);
+        Parameters parameters = new([]);
 
-        ParameterStatus status = parameters.Read(out var value, out ParameterSeparator separator);
+        ParameterStatus status = parameters.Read(out int value, out ParameterSeparator separator);
 
         status.ShouldBe(ParameterStatus.End);
         value.ShouldBe(0);
@@ -33,10 +31,10 @@ public sealed class ParametersTests
     [Fact]
     public void Read_WhenFieldsAreDefault_ReturnsDefaultValues()
     {
-        Parameters parameters = new Parameters(";"u8);
+        Parameters parameters = new(";"u8);
 
-        parameters.Read(out var first, out ParameterSeparator firstSeparator).ShouldBe(ParameterStatus.Default);
-        parameters.Read(out var second, out ParameterSeparator secondSeparator).ShouldBe(ParameterStatus.Default);
+        parameters.Read(out int first, out ParameterSeparator firstSeparator).ShouldBe(ParameterStatus.Default);
+        parameters.Read(out int second, out ParameterSeparator secondSeparator).ShouldBe(ParameterStatus.Default);
         parameters.Read(out _, out _).ShouldBe(ParameterStatus.End);
 
         first.ShouldBe(0);
@@ -51,7 +49,7 @@ public sealed class ParametersTests
     [Fact]
     public void Read_WhenInputHasSubparameters_PreservesSeparators()
     {
-        Parameters parameters = new Parameters("38:2:1:2:3;4"u8);
+        Parameters parameters = new("38:2:1:2:3;4"u8);
 
         AssertField(ref parameters, 38, ParameterSeparator.Colon);
         AssertField(ref parameters, 2, ParameterSeparator.Colon);
@@ -68,7 +66,7 @@ public sealed class ParametersTests
     [Fact]
     public void PrivateMarker_WhenInputStartsWithMarker_IsExposed()
     {
-        Parameters parameters = new Parameters("?25"u8);
+        Parameters parameters = new("?25"u8);
 
         parameters.PrivateMarker.ShouldBe((byte) '?');
         AssertField(ref parameters, 25, ParameterSeparator.None);
@@ -83,7 +81,7 @@ public sealed class ParametersTests
     [InlineData(":?")]
     public void Read_WhenInputIsMalformed_EventuallyReturnsInvalid(string input)
     {
-        Parameters parameters = new Parameters(Encoding.ASCII.GetBytes(input));
+        Parameters parameters = new(Encoding.ASCII.GetBytes(input));
         ParameterStatus status;
 
         do
@@ -104,7 +102,7 @@ public sealed class ParametersTests
     [InlineData("2", 1)]
     public void Read_WhenValueExceedsMaximum_ReturnsOverflow(string input, int maximum)
     {
-        Parameters parameters = new Parameters(
+        Parameters parameters = new(
             Encoding.ASCII.GetBytes(input),
             maxCount: 8,
             maxValue: maximum);
@@ -118,7 +116,7 @@ public sealed class ParametersTests
     [Fact]
     public void Read_WhenFieldCountExceedsMaximum_ReturnsLimit()
     {
-        Parameters parameters = new Parameters("1;2;3"u8, maxCount: 2, maxValue: 100);
+        Parameters parameters = new("1;2;3"u8, maxCount: 2, maxValue: 100);
 
         parameters.Read(out _, out _).ShouldBe(ParameterStatus.Value);
         parameters.Read(out _, out _).ShouldBe(ParameterStatus.Value);
@@ -142,7 +140,7 @@ public sealed class ParametersTests
         int expectedValue,
         ParameterSeparator expectedSeparator)
     {
-        parameters.Read(out var value, out ParameterSeparator separator).ShouldBe(ParameterStatus.Value);
+        parameters.Read(out int value, out ParameterSeparator separator).ShouldBe(ParameterStatus.Value);
         value.ShouldBe(expectedValue);
         separator.ShouldBe(expectedSeparator);
     }

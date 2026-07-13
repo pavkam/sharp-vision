@@ -108,13 +108,13 @@ public sealed class Parser: IDisposable
         ThrowIfDisposed();
         ThrowIfNull(ref sink);
 
-        var position = 0;
+        int position = 0;
 
         while (position < input.Length)
         {
             if (_state == State.Ground && IsText(input[position]))
             {
-                var start = position++;
+                int start = position++;
 
                 while (position < input.Length && IsText(input[position]))
                 {
@@ -127,8 +127,8 @@ public sealed class Parser: IDisposable
                 continue;
             }
 
-            var value = input[position++];
-            var currentOffset = Offset;
+            byte value = input[position++];
+            long currentOffset = Offset;
             Offset = checked(Offset + 1);
             Process(value, currentOffset, ref sink);
         }
@@ -157,7 +157,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                Diagnostic diagnostic = new Diagnostic(
+                Diagnostic diagnostic = new(
                     DiagnosticCode.Truncated,
                     CurrentKind,
                     Offset,
@@ -185,9 +185,9 @@ public sealed class Parser: IDisposable
     /// </summary>
     public void Dispose()
     {
-        var parameters = _parameters;
-        var intermediates = _intermediates;
-        var payload = _payload;
+        byte[]? parameters = _parameters;
+        byte[]? intermediates = _intermediates;
+        byte[]? payload = _payload;
 
         if (parameters is null || intermediates is null)
         {
@@ -340,7 +340,7 @@ public sealed class Parser: IDisposable
         SequenceKind kind = _stringKind;
         Span<byte> parameters = _parameters.AsSpan(0, _parameterLength);
         Span<byte> intermediates = _intermediates.AsSpan(0, _intermediateLength);
-        var final = _dcsFinal;
+        byte final = _dcsFinal;
         _state = State.Ground;
 
         try
@@ -386,10 +386,10 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        var size = _payload is null
+        int size = _payload is null
             ? Math.Min(_limits.MaxStringBytes, Math.Max(256, required))
             : Math.Min(_limits.MaxStringBytes, Math.Max(required, _payload.Length * 2));
-        var replacement = ArrayPool<byte>.Shared.Rent(size);
+        byte[] replacement = ArrayPool<byte>.Shared.Rent(size);
 
         if (_payload is not null)
         {
@@ -445,7 +445,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                Diagnostic diagnostic = new Diagnostic(
+                Diagnostic diagnostic = new(
                     DiagnosticCode.Cancelled,
                     CurrentKind,
                     currentOffset,
@@ -557,7 +557,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        Diagnostic diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new(
             DiagnosticCode.Malformed,
             SequenceKind.Csi,
             currentOffset,
@@ -635,7 +635,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        Diagnostic diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new(
             DiagnosticCode.Malformed,
             SequenceKind.Dcs,
             currentOffset,
@@ -668,7 +668,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                Diagnostic diagnostic = new Diagnostic(
+                Diagnostic diagnostic = new(
                     DiagnosticCode.Cancelled,
                     CurrentKind,
                     currentOffset,
@@ -837,7 +837,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        Diagnostic diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new(
             DiagnosticCode.Malformed,
             SequenceKind.Escape,
             currentOffset,
@@ -902,7 +902,7 @@ public sealed class Parser: IDisposable
     {
         Debug.Assert(IsIgnoring, "A pending diagnostic belongs to an ignore state.");
 
-        Diagnostic diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new(
             _pendingCode,
             _pendingKind,
             _pendingOffset,

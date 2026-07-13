@@ -10,7 +10,6 @@ using System.Runtime.InteropServices;
 
 using Microsoft.Win32.SafeHandles;
 
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
 
 /// <summary>Owns one raw Unix pseudoterminal master/slave pair for integration tests.</summary>
@@ -64,54 +63,54 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
             return OpenMac(dimensions.Value);
         }
 
-        var noControllingTerminal = OperatingSystem.IsMacOS() ? 0x0002_0000 : 0x0000_0100;
-        var masterDescriptor = PosixOpenPt(_openReadWrite | noControllingTerminal);
+        int noControllingTerminal = OperatingSystem.IsMacOS() ? 0x0002_0000 : 0x0000_0100;
+        int masterDescriptor = PosixOpenPt(_openReadWrite | noControllingTerminal);
 
         if (masterDescriptor < 0)
         {
             throw NativeFailure("The pseudoterminal master could not be opened.");
         }
 
-        SafeFileHandle masterHandle = new SafeFileHandle(masterDescriptor, ownsHandle: true);
+        SafeFileHandle masterHandle = new(masterDescriptor, ownsHandle: true);
 
         try
         {
             RequireSuccess(GrantPt(masterDescriptor), "The pseudoterminal could not be granted.");
             RequireSuccess(UnlockPt(masterDescriptor), "The pseudoterminal could not be unlocked.");
-            var namePointer = PtsName(masterDescriptor);
+            nint namePointer = PtsName(masterDescriptor);
 
             if (namePointer == 0)
             {
                 throw NativeFailure("The pseudoterminal slave name could not be read.");
             }
 
-            var slaveName = Marshal.PtrToStringUTF8(namePointer)
+            string slaveName = Marshal.PtrToStringUTF8(namePointer)
                 ?? throw new IOException("The pseudoterminal slave name was null.");
-            var slaveDescriptor = NativeOpen(slaveName, _openReadWrite | noControllingTerminal);
+            int slaveDescriptor = NativeOpen(slaveName, _openReadWrite | noControllingTerminal);
 
             if (slaveDescriptor < 0)
             {
                 throw NativeFailure("The pseudoterminal slave could not be opened.");
             }
 
-            SafeFileHandle slaveHandle = new SafeFileHandle(slaveDescriptor, ownsHandle: true);
+            SafeFileHandle slaveHandle = new(slaveDescriptor, ownsHandle: true);
 
             try
             {
                 // Keep the slave open while changing its line discipline. Darwin
                 // resets the settings when the temporary stty descriptor is last.
                 ConfigureRaw(slaveName);
-                FileStream master = new FileStream(
+                FileStream master = new(
                     masterHandle,
                     FileAccess.ReadWrite,
                     bufferSize: 4096,
                     isAsync: false);
-                FileStream slave = new FileStream(
+                FileStream slave = new(
                     slaveHandle,
                     FileAccess.ReadWrite,
                     bufferSize: 4096,
                     isAsync: false);
-                UnixPseudoterminal terminal = new UnixPseudoterminal(
+                UnixPseudoterminal terminal = new(
                     master,
                     slave,
                     slaveDescriptor,
@@ -157,14 +156,14 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
             return;
         }
 
-        WindowSize window = new WindowSize
+        WindowSize window = new()
         {
             Rows = checked((ushort) value.Cells.Height),
             Columns = checked((ushort) value.Cells.Width),
             PixelWidth = checked((ushort) (value.Pixels?.Width ?? 0)),
             PixelHeight = checked((ushort) (value.Pixels?.Height ?? 0)),
         };
-        var request = OperatingSystem.IsMacOS() ? 0x8008_7467u : 0x5414u;
+        uint request = OperatingSystem.IsMacOS() ? 0x8008_7467u : 0x5414u;
 
         if (Ioctl(SlaveDescriptor, request, (nint) (&window)) != 0)
         {
@@ -204,7 +203,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
 
     private static void ConfigureRaw(string slaveName)
     {
-        ProcessStartInfo start = new ProcessStartInfo("/bin/stty")
+        ProcessStartInfo start = new("/bin/stty")
         {
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -215,7 +214,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
         start.ArgumentList.Add("-echo");
         using Process process = Process.Start(start)
             ?? throw new IOException("The raw-mode utility could not start.");
-        var error = process.StandardError.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
         if (process.ExitCode != 0)
@@ -226,7 +225,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
 
     private static void ConfigureSize(string slaveName, Dimensions value)
     {
-        ProcessStartInfo start = new ProcessStartInfo("/bin/stty")
+        ProcessStartInfo start = new("/bin/stty")
         {
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -239,7 +238,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
         start.ArgumentList.Add(value.Cells.Width.ToString(System.Globalization.CultureInfo.InvariantCulture));
         using Process process = Process.Start(start)
             ?? throw new IOException("The resize utility could not start.");
-        var error = process.StandardError.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
         if (process.ExitCode != 0)
@@ -250,8 +249,8 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
 
     private static unsafe UnixPseudoterminal OpenMac(Dimensions dimensions)
     {
-        var masterDescriptor = -1;
-        var slaveDescriptor = -1;
+        int masterDescriptor = -1;
+        int slaveDescriptor = -1;
         Span<byte> name = stackalloc byte[1024];
         WindowSize window = CreateWindow(dimensions);
 
@@ -268,26 +267,26 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
             }
         }
 
-        var nameLength = name.IndexOf((byte) 0);
+        int nameLength = name.IndexOf((byte) 0);
 
         if (nameLength <= 0)
         {
             throw new IOException("The Darwin pseudoterminal slave name was invalid.");
         }
 
-        var slaveName = Encoding.UTF8.GetString(name[..nameLength]);
-        SafeFileHandle masterHandle = new SafeFileHandle(masterDescriptor, ownsHandle: true);
-        SafeFileHandle slaveHandle = new SafeFileHandle(slaveDescriptor, ownsHandle: true);
+        string slaveName = Encoding.UTF8.GetString(name[..nameLength]);
+        SafeFileHandle masterHandle = new(masterDescriptor, ownsHandle: true);
+        SafeFileHandle slaveHandle = new(slaveDescriptor, ownsHandle: true);
 
         try
         {
             ConfigureRaw(slaveName);
-            FileStream master = new FileStream(
+            FileStream master = new(
                 masterHandle,
                 FileAccess.ReadWrite,
                 bufferSize: 4096,
                 isAsync: false);
-            FileStream slave = new FileStream(
+            FileStream slave = new(
                 slaveHandle,
                 FileAccess.ReadWrite,
                 bufferSize: 4096,

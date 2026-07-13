@@ -3,18 +3,10 @@
 
 namespace SharpVision.Tests.Integration;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using ControlCanvas = SharpVision.Controls.Canvas;
 using Label = SharpVision.Controls.Text;
@@ -27,11 +19,11 @@ public sealed class ScrollingTests
     [Fact]
     public async Task Input_WhenNestedAutomaticViewsUsePixelMouse_PreservesExactOffsetsAndThumbsAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(8, 5), new Size(80, 50)));
-        ControlCanvas content = new ControlCanvas { Width = Length.Cells(14), Height = Length.Cells(9) };
-        Label label = new Label("界Z");
-        Button target = new Button
+        ControlCanvas content = new() { Width = Length.Cells(14), Height = Length.Cells(9) };
+        Label label = new("界Z");
+        Button target = new()
         {
             Content = new Label("Go"),
             Width = Length.Cells(2),
@@ -41,14 +33,14 @@ public sealed class ScrollingTests
         ControlCanvas.SetTop(target, Length.Cells(8));
         content.Children.Add(label);
         content.Children.Add(target);
-        ScrollView inner = new ScrollView
+        ScrollView inner = new()
         {
             Content = content,
             Width = Length.Cells(12),
             Height = Length.Cells(7),
         };
-        ScrollView outer = new ScrollView { Content = inner };
-        await using Application application = new Application(
+        ScrollView outer = new() { Content = inner };
+        await using Application application = new(
             outer,
             terminal,
             terminal,
@@ -74,8 +66,8 @@ public sealed class ScrollingTests
             inner.VerticalOffset = 0;
         }, TestContext.Current.CancellationToken);
         await rendered.WaitAsync(TestContext.Current.CancellationToken);
-        var horizontal = string.Concat(Enumerable.Repeat("\u001b[<66;16;16M", 10));
-        var vertical = string.Concat(Enumerable.Repeat("\u001b[<65;16;16M", 10));
+        string horizontal = string.Concat(Enumerable.Repeat("\u001b[<66;16;16M", 10));
+        string vertical = string.Concat(Enumerable.Repeat("\u001b[<65;16;16M", 10));
         terminal.QueueInput(Encoding.ASCII.GetBytes(horizontal + vertical));
         await WaitUntilAsync(
             () => inner.HorizontalOffset == 3 && outer.HorizontalOffset == 5 &&
@@ -86,7 +78,7 @@ public sealed class ScrollingTests
 
         await application.Dispatcher.InvokeAsync(() =>
         {
-            using Frame frame = new Frame(application.Size);
+            using Frame frame = new(application.Size);
             outer.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(5, 4)).ShouldBe("▓");
             FrameOracle.Get(frame, new Point(7, 2)).ShouldBe("▓");
@@ -123,7 +115,7 @@ public sealed class ScrollingTests
         outer.Viewport.ShouldBe(new Size(16, 11));
         await application.Dispatcher.InvokeAsync(() =>
         {
-            using Frame frame = new Frame(application.Size);
+            using Frame frame = new(application.Size);
             outer.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(15, 10)).ShouldBeEmpty();
         }, TestContext.Current.CancellationToken);
@@ -134,16 +126,16 @@ public sealed class ScrollingTests
     [Fact]
     public async Task Input_WhenNestedViewsReceiveWheel_ConsumesRemainderAndClampsAfterResizeAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(5, 4), new Size(50, 40)));
-        Label leaf = new Label(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
+        Label leaf = new(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
         ScrollView inner = Hidden(leaf);
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
         ScrollView outer = Hidden(inner);
-        await using Application application = new Application(outer, terminal, terminal, TerminalOptions.Minimal);
+        await using Application application = new(outer, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        TaskCompletionSource reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
         outer.ScrollChanged += (_, _) =>
         {
             if (outer.VerticalOffset == 4)
@@ -151,7 +143,7 @@ public sealed class ScrollingTests
                 _ = reached.TrySetResult();
             }
         };
-        var wheel = string.Concat(Enumerable.Repeat("\u001b[<65;1;1M", 20));
+        string wheel = string.Concat(Enumerable.Repeat("\u001b[<65;1;1M", 20));
 
         terminal.QueueInput(Encoding.ASCII.GetBytes(wheel));
         await reached.Task.WaitAsync(TestContext.Current.CancellationToken);
@@ -174,7 +166,7 @@ public sealed class ScrollingTests
 
     private static Task NextFrame(Application application)
     {
-        TaskCompletionSource completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 
@@ -193,7 +185,7 @@ public sealed class ScrollingTests
         string operation,
         CancellationToken cancellationToken)
     {
-        for (var attempt = 0; attempt < 10_000; attempt++)
+        for (int attempt = 0; attempt < 10_000; attempt++)
         {
             if (await application.Dispatcher.InvokeAsync(predicate, cancellationToken))
             {

@@ -3,18 +3,10 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Scrolling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 
@@ -25,9 +17,9 @@ public sealed class ScrollViewTests
     [Fact]
     public void Content_WhenReplaced_TransfersParentOwnership()
     {
-        ScrollView view = new ScrollView();
-        ProbeControl first = new ProbeControl();
-        ProbeControl second = new ProbeControl();
+        ScrollView view = new();
+        ProbeControl first = new();
+        ProbeControl second = new();
 
         view.Content = first;
         view.Content = second;
@@ -41,7 +33,7 @@ public sealed class ScrollViewTests
     [Fact]
     public void Layout_WhenAutomaticBarInducesOther_ConvergesWithBothBars()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(5, 4)),
             HorizontalBarVisibility = ScrollBarVisibility.Auto,
@@ -58,15 +50,15 @@ public sealed class ScrollViewTests
     [Fact]
     public void Render_WhenVerticalChromeIsAutomatic_UsesUnicodeScrollBarGlyphs()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(1, 4)),
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
             VerticalBarVisibility = ScrollBarVisibility.Auto,
         };
-        Size size = new Size(3, 3);
+        Size size = new(3, 3);
         new Engine().Layout(view, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         view.Render(frame.Canvas);
 
@@ -79,15 +71,15 @@ public sealed class ScrollViewTests
     [Fact]
     public void Render_WhenHorizontalChromeIsAutomatic_UsesUnicodeScrollBarGlyphs()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(4, 1)),
             HorizontalBarVisibility = ScrollBarVisibility.Auto,
             VerticalBarVisibility = ScrollBarVisibility.Hidden,
         };
-        Size size = new Size(3, 3);
+        Size size = new(3, 3);
         new Engine().Layout(view, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         view.Render(frame.Canvas);
 
@@ -100,15 +92,15 @@ public sealed class ScrollViewTests
     [Fact]
     public void Render_WhenVerticalChromeHasUnoccupiedTrack_UsesShadedTrackGlyph()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(1, 100)),
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
             VerticalBarVisibility = ScrollBarVisibility.Auto,
         };
-        Size size = new Size(3, 6);
+        Size size = new(3, 6);
         new Engine().Layout(view, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         view.Render(frame.Canvas);
 
@@ -120,13 +112,13 @@ public sealed class ScrollViewTests
     [Fact]
     public void Layout_WhenPoliciesDiffer_UsesExactFitAndAlwaysReservation()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(5, 3)),
             HorizontalBarVisibility = ScrollBarVisibility.Auto,
             VerticalBarVisibility = ScrollBarVisibility.Auto,
         };
-        Engine engine = new Engine();
+        Engine engine = new();
 
         engine.Layout(view, new Size(5, 3));
         view.Viewport.ShouldBe(new Size(5, 3));
@@ -141,7 +133,7 @@ public sealed class ScrollViewTests
     [Fact]
     public void Layout_WhenScrollBarsAreVerticalAndNever_ShowsNoChromeButRetainsVerticalRange()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(8, 10)),
             ScrollBars = ScrollBars.Vertical,
@@ -164,7 +156,7 @@ public sealed class ScrollViewTests
     {
         ScrollView view = Hidden(new ProbeControl(new Size(20, 10)));
         new Engine().Layout(view, new Size(5, 3));
-        List<ScrollChangedEventArgs> changes = new List<ScrollChangedEventArgs>();
+        List<ScrollChangedEventArgs> changes = [];
         view.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => view.HorizontalOffset = 16);
@@ -183,7 +175,7 @@ public sealed class ScrollViewTests
     public void Layout_WhenViewportGrows_ClampsOffsetsWithResizeCause()
     {
         ScrollView view = Hidden(new ProbeControl(new Size(20, 10)));
-        Engine engine = new Engine();
+        Engine engine = new();
         engine.Layout(view, new Size(5, 3));
         _ = view.ScrollBy(100, 100);
         ScrollChangedEventArgs? change = null;
@@ -201,13 +193,13 @@ public sealed class ScrollViewTests
     [Fact]
     public void Render_WhenContentIsScrolled_ClipsAndTargetsOnlyViewport()
     {
-        ProbeControl content = new ProbeControl(new Size(8, 1)) { Content = "ABCDEFGH".AsMemory() };
+        ProbeControl content = new(new Size(8, 1)) { Content = "ABCDEFGH".AsMemory() };
         ScrollView view = Hidden(content);
         view.Bounds = new Rect(0, 0, 4, 1);
         new Engine().Layout(view, new Size(4, 1));
         _ = view.ScrollBy(2, 0);
         new Engine().Layout(view, new Size(4, 1));
-        using Frame frame = new Frame(new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
 
         view.Render(frame.Canvas);
 
@@ -221,8 +213,8 @@ public sealed class ScrollViewTests
     [Fact]
     public void BringIntoView_WhenDescendantIsOutsideViewport_UsesMinimalOffset()
     {
-        ProbeContainer content = new ProbeContainer();
-        ProbeControl target = new ProbeControl { Bounds = new Rect(8, 4, 2, 1) };
+        ProbeContainer content = new();
+        ProbeControl target = new() { Bounds = new Rect(8, 4, 2, 1) };
         content.Children.Add(target);
         content.Width = Length.Cells(12);
         content.Height = Length.Cells(8);
@@ -239,7 +231,7 @@ public sealed class ScrollViewTests
     [Fact]
     public void Layout_WhenBarsAreHidden_PreservesFullViewportAndScrollableOffsets()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(10, 10)),
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
@@ -258,11 +250,11 @@ public sealed class ScrollViewTests
     [Fact]
     public void Layout_WhenHorizontalBarIsHidden_ReflowsWordWrappedContentToViewportWidth()
     {
-        SharpVision.Controls.Text text = new SharpVision.Controls.Text("one two three")
+        SharpVision.Controls.Text text = new("one two three")
         {
             Wrapping = SharpVision.Text.Wrapping.Word,
         };
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = text,
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
@@ -309,8 +301,8 @@ public sealed class ScrollViewTests
     [Fact]
     public void Dispatch_WhenNonScrollKeyArrives_LeavesEventUnhandledWithoutThrowing()
     {
-        HashSet<Code> scrollCodes = new HashSet<Code>
-        {
+        HashSet<Code> scrollCodes =
+        [
             Code.Left,
             Code.Right,
             Code.Up,
@@ -319,13 +311,13 @@ public sealed class ScrollViewTests
             Code.PageDown,
             Code.Home,
             Code.End,
-        };
+        ];
         ScrollView view = Hidden(new ProbeControl(new Size(20, 20)));
         new Engine().Layout(view, new Size(5, 4));
 
         foreach (Code code in Enum.GetValues<Code>().Where(code => !scrollCodes.Contains(code)))
         {
-            KeyEventArgs eventArgs = new KeyEventArgs(new Stroke(
+            KeyEventArgs eventArgs = new(new Stroke(
                 code,
                 code == Code.Character ? new Rune('x') : null,
                 nativeCode: 0,
@@ -344,7 +336,7 @@ public sealed class ScrollViewTests
     [Fact]
     public void ScrollBy_WhenInternalBarChanges_SynchronizesViewportOffset()
     {
-        ScrollView view = new ScrollView
+        ScrollView view = new()
         {
             Content = new ProbeControl(new Size(20, 10)),
             HorizontalBarVisibility = ScrollBarVisibility.Always,
@@ -362,7 +354,7 @@ public sealed class ScrollViewTests
     [Fact]
     public void Dispatch_WhenNestedViewReachesBoundary_PropagatesRemainingWheelDelta()
     {
-        ProbeControl leaf = new ProbeControl(new Size(5, 20));
+        ProbeControl leaf = new(new Size(5, 20));
         ScrollView inner = Hidden(leaf);
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
@@ -389,7 +381,7 @@ public sealed class ScrollViewTests
     public void Layout_WhenContentShrinks_ClampsOffsetsWithContentCause()
     {
         ScrollView view = Hidden(new ProbeControl(new Size(20, 10)));
-        Engine engine = new Engine();
+        Engine engine = new();
         engine.Layout(view, new Size(5, 3));
         _ = view.ScrollBy(100, 100);
         ScrollChangedEventArgs? change = null;
@@ -409,12 +401,12 @@ public sealed class ScrollViewTests
     [Fact]
     public void Render_WhenOffsetCrossesWideRune_ClipsCompleteCellOwner()
     {
-        ProbeControl content = new ProbeControl(new Size(3, 1)) { Content = "界A".AsMemory() };
+        ProbeControl content = new(new Size(3, 1)) { Content = "界A".AsMemory() };
         ScrollView view = Hidden(content);
         new Engine().Layout(view, new Size(2, 1));
         _ = view.ScrollBy(1, 0);
         new Engine().Layout(view, new Size(2, 1));
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
 
         view.Render(frame.Canvas);
 
@@ -427,8 +419,8 @@ public sealed class ScrollViewTests
     [Fact]
     public void Dispose_WhenViewportOwnsContent_ReleasesCompleteComposedTree()
     {
-        ProbeControl content = new ProbeControl();
-        ScrollView view = new ScrollView { Content = content };
+        ProbeControl content = new();
+        ScrollView view = new() { Content = content };
 
         view.Dispose();
 

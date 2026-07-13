@@ -64,7 +64,7 @@ internal sealed class FakeTransport: ITransport
             return ValueTask.CompletedTask;
         }
 
-        TaskCompletionSource started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         WriteStarted = started.Task;
         return new ValueTask(WriteBlockedAsync(source, started, cancellationToken));
     }
@@ -106,7 +106,7 @@ internal sealed class FakeTransport: ITransport
     {
         if (_failures.TryDequeue(out Failure? failure))
         {
-            var count = Math.Min(source.Length, failure.PrefixBytes);
+            int count = Math.Min(source.Length, failure.PrefixBytes);
 
             if (count > 0)
             {

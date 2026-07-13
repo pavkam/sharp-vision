@@ -6,7 +6,6 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies Unicode width policy is explicit in immutable capabilities.

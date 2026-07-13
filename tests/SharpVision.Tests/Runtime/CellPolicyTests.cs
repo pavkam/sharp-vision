@@ -5,14 +5,10 @@ namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Unicode;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
-using Dispatcher = Dispatcher;
 using LayoutEngine = Engine;
 using RichTextControl = RichText;
 using RunInline = Run;
@@ -29,14 +25,14 @@ public sealed class CellPolicyTests
     public async Task StartAsync_WhenAmbiguousWidthIsWide_MeasuresTextAsWideAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(4, 1)));
-        TextControl text = new TextControl { Content = "·" };
+        TextControl text = new() { Content = "·" };
         Capabilities capabilities = Capabilities.Conservative with
         {
             AmbiguousWidth = Ambiguous.Wide,
         };
-        await using Application application = new Application(
+        await using Application application = new(
             text,
             terminal,
             terminal,
@@ -61,10 +57,10 @@ public sealed class CellPolicyTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer();
-            Policy policy = new Policy(Ambiguous.Wide);
+            ProbeContainer root = new();
+            Policy policy = new(Ambiguous.Wide);
             root.Attach(dispatcher, policy);
-            ProbeControl child = new ProbeControl();
+            ProbeControl child = new();
 
             // Act
             root.Children.Add(child);
@@ -84,13 +80,13 @@ public sealed class CellPolicyTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            Policy policy = new Policy(Ambiguous.Wide);
-            RichTextControl rich = new RichTextControl { Wrapping = TextWrapping.None };
+            Policy policy = new(Ambiguous.Wide);
+            RichTextControl rich = new() { Wrapping = TextWrapping.None };
             rich.Inlines.Add(new RunInline("·"));
-            TextInputControl input = new TextInputControl { Text = "·" };
+            TextInputControl input = new() { Text = "·" };
             rich.Attach(dispatcher, policy);
             input.Attach(dispatcher, policy);
-            LayoutEngine engine = new LayoutEngine();
+            LayoutEngine engine = new();
 
             // Act
             engine.Layout(rich, new Size(10, 2));
@@ -107,17 +103,17 @@ public sealed class CellPolicyTests
     public async Task Profile_WhenGeometryChanges_ReplacesTreePolicyAndRemeasuresAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(4, 1)));
-        TextControl text = new TextControl { Content = "·" };
-        await using Application application = new Application(
+        TextControl text = new() { Content = "·" };
+        await using Application application = new(
             text,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         Policy previous = application.CellPolicy;
-        TaskCompletionSource frames = new TaskCompletionSource(
+        TaskCompletionSource frames = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += (_, _) => _ = frames.TrySetResult();
         Capabilities wide = Capabilities.Conservative with

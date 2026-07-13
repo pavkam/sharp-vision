@@ -83,14 +83,14 @@ public sealed class FigletFont
             throw new ArgumentException("The limits must be explicitly initialized.", nameof(limits));
         }
 
-        using MemoryStream buffer = new MemoryStream();
-        var rented = ArrayPool<byte>.Shared.Rent(8192);
+        using MemoryStream buffer = new();
+        byte[] rented = ArrayPool<byte>.Shared.Rent(8192);
 
         try
         {
             while (true)
             {
-                var read = source.Read(rented, 0, rented.Length);
+                int read = source.Read(rented, 0, rented.Length);
 
                 if (read == 0)
                 {

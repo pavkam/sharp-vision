@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Input;
 
 /// <summary>Coordinates RadioButton selection by scanning the current owned tree.</summary>
 internal static class RadioGroup
@@ -18,7 +17,7 @@ internal static class RadioGroup
             return;
         }
 
-        SelectionChangedEventArgs eventArgs = new SelectionChangedEventArgs(value, current: null, cause);
+        SelectionChangedEventArgs eventArgs = new(value, current: null, cause);
         value.RaiseUnchecked(eventArgs);
         value.RaiseSelectionChanged(eventArgs);
     }
@@ -38,7 +37,7 @@ internal static class RadioGroup
             }
         }
 
-        var changed = !value.IsChecked;
+        bool changed = !value.IsChecked;
         _ = previous?.Commit(false);
         _ = value.Commit(true);
 
@@ -47,7 +46,7 @@ internal static class RadioGroup
             return;
         }
 
-        SelectionChangedEventArgs eventArgs = new SelectionChangedEventArgs(previous, value, cause);
+        SelectionChangedEventArgs eventArgs = new(previous, value, cause);
         previous?.RaiseUnchecked(eventArgs);
 
         if (!value.IsChecked)
@@ -82,8 +81,8 @@ internal static class RadioGroup
             return false;
         }
 
-        var current = eligible.FindIndex(member => ReferenceEquals(member, value));
-        var next = reverse
+        int current = eligible.FindIndex(member => ReferenceEquals(member, value));
+        int next = reverse
             ? (current <= 0 ? eligible.Count - 1 : current - 1)
             : (current < 0 || current == eligible.Count - 1 ? 0 : current + 1);
         RadioButton target = eligible[next];

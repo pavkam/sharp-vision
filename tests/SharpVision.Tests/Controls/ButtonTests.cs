@@ -3,20 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = Terminal.Input.Action;
@@ -28,7 +17,7 @@ public sealed class ButtonTests
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
-        Button button = new Button();
+        Button button = new();
 
         button.Content.ShouldBeNull();
         button.Command.ShouldBeNull();
@@ -49,12 +38,12 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenDefaultStyleIsUsed_DrawsBorderAndShadow()
     {
-        Button button = new Button { Content = new ControlText("Apply") };
-        Size size = new Size(9, 5);
+        Button button = new() { Content = new ControlText("Apply") };
+        Size size = new(9, 5);
         button.Width = Length.Cells(size.Width);
         button.Height = Length.Cells(size.Height);
         new Engine().Layout(button, size);
-        using Frame frame = new Frame(new Size(10, 6));
+        using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
 
@@ -68,7 +57,7 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenBlockShadowIsSelected_DrawsConfiguredShadowGlyphOutsideTheBody()
     {
-        Button button = new Button
+        Button button = new()
         {
             Content = new ControlText("Apply"),
             ShadowMode = ShadowMode.BlockGlyph,
@@ -76,9 +65,9 @@ public sealed class ButtonTests
             Width = Length.Cells(9),
             Height = Length.Cells(5),
         };
-        Size size = new Size(9, 5);
+        Size size = new(9, 5);
         new Engine().Layout(button, size);
-        using Frame frame = new Frame(new Size(10, 6));
+        using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
 
@@ -90,7 +79,7 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenPressed_MovesFaceIntoShadow()
     {
-        Button button = new Button
+        Button button = new()
         {
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
@@ -98,9 +87,9 @@ public sealed class ButtonTests
             Height = Length.Cells(3),
             Content = new ControlText("Go"),
         };
-        Size size = new Size(10, 6);
+        Size size = new(10, 6);
         new Engine().Layout(button, size);
-        using Frame released = new Frame(size);
+        using Frame released = new(size);
         button.Render(released.Canvas);
 
         Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
@@ -109,7 +98,7 @@ public sealed class ButtonTests
             nativeCode: 0,
             Modifiers.None,
             KeyAction.Press)));
-        using Frame pressed = new Frame(size);
+        using Frame pressed = new(size);
         button.Render(pressed.Canvas);
 
         button.IsPressed.ShouldBeTrue();
@@ -126,7 +115,7 @@ public sealed class ButtonTests
         ControlStyle<Button> style = ThemeTestSupport.OverlayStyle<Button>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
             (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(24))));
-        Button button = new Button
+        Button button = new()
         {
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
@@ -136,7 +125,7 @@ public sealed class ButtonTests
             Style = style,
             Content = new ControlText("Go"),
         };
-        Size size = new Size(10, 6);
+        Size size = new(10, 6);
         new Engine().Layout(button, size);
 
         Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
@@ -145,7 +134,7 @@ public sealed class ButtonTests
             nativeCode: 0,
             Modifiers.None,
             KeyAction.Press)));
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
         button.Render(frame.Canvas);
 
         button.IsPressed.ShouldBeTrue();
@@ -163,7 +152,7 @@ public sealed class ButtonTests
         ControlStyle<Button> style = ThemeTestSupport.OverlayStyle<Button>(
             (State.Normal, new ThemeOverlay(attributes: Attributes.None)),
             (State.Hovered, new ThemeOverlay(attributes: Attributes.Bold)));
-        Button button = new Button
+        Button button = new()
         {
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
@@ -173,7 +162,7 @@ public sealed class ButtonTests
         };
         new Engine().Layout(button, new Size(10, 6));
         button.SetHovered(true);
-        using Frame frame = new Frame(new Size(10, 6));
+        using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
 
@@ -185,10 +174,10 @@ public sealed class ButtonTests
     [Fact]
     public void Content_WhenReplacementIsOwned_ThrowsBeforeMutation()
     {
-        Button button = new Button();
-        ProbeControl previous = new ProbeControl();
-        Overlay owner = new Overlay();
-        ProbeControl invalid = new ProbeControl();
+        Button button = new();
+        ProbeControl previous = new();
+        Overlay owner = new();
+        ProbeControl invalid = new();
         button.Content = previous;
         owner.Children.Add(invalid);
 
@@ -203,10 +192,10 @@ public sealed class ButtonTests
     [Fact]
     public void PerformClick_WhenCommandCanExecute_RaisesThenExecutesExactlyOnce()
     {
-        List<string> order = new List<string>();
-        var parameter = new object();
-        ProbeCommand command = new ProbeCommand { Executing = _ => order.Add("command") };
-        Button button = new Button { Command = command, CommandParameter = parameter };
+        List<string> order = [];
+        object parameter = new object();
+        ProbeCommand command = new() { Executing = _ => order.Add("command") };
+        Button button = new() { Command = command, CommandParameter = parameter };
         button.Click += (_, eventArgs) =>
         {
             button.IsPressed.ShouldBeFalse();
@@ -225,9 +214,9 @@ public sealed class ButtonTests
     [Fact]
     public void PerformClick_WhenCommandCannotExecute_DoesNothing()
     {
-        ProbeCommand command = new ProbeCommand { CanExecuteValue = false };
-        Button button = new Button { Command = command };
-        var clicks = 0;
+        ProbeCommand command = new() { CanExecuteValue = false };
+        Button button = new() { Command = command };
+        int clicks = 0;
         button.Click += (_, _) => clicks++;
 
         button.PerformClick();
@@ -240,10 +229,10 @@ public sealed class ButtonTests
     [Fact]
     public void Command_WhenReplacementChanges_RaisesPropertyChangedOnce()
     {
-        Button button = new Button();
-        List<string?> names = new List<string?>();
+        Button button = new();
+        List<string?> names = [];
         button.PropertyChanged += (_, eventArgs) => names.Add(eventArgs.PropertyName);
-        ProbeCommand command = new ProbeCommand();
+        ProbeCommand command = new();
 
         button.Command = command;
         button.Command = command;
@@ -255,8 +244,8 @@ public sealed class ButtonTests
     [Fact]
     public void Route_WhenEnterIsPressed_ActivatesButtonWithKeyboardCause()
     {
-        ProbeCommand command = new ProbeCommand();
-        Button button = new Button { Command = command };
+        ProbeCommand command = new();
+        Button button = new() { Command = command };
         ActivationCause? cause = null;
         button.Click += (_, eventArgs) => cause = eventArgs.Cause;
 
@@ -279,19 +268,19 @@ public sealed class ButtonTests
     public async Task Dispatch_WhenContentIsPointerTarget_ActivatesOwningButtonAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        Button button = new Button
+        Button button = new()
         {
             Bounds = new Rect(0, 0, 6, 1),
             Content = new ControlText("Click"),
         };
         new Engine().Layout(button, new Size(6, 1));
-        var clicks = 0;
+        int clicks = 0;
         button.Click += (_, _) => clicks++;
 
         await dispatcher.InvokeAsync(() =>
         {
             button.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(button);
+            using CaptureManager capture = new(button);
             _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Release));
         }, TestContext.Current.CancellationToken);
@@ -304,8 +293,8 @@ public sealed class ButtonTests
     public async Task Dispatch_WhenPointerMovesOverContent_HoversButtonInsteadOfTextAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        ControlText content = new ControlText("Hover");
-        Button button = new Button
+        ControlText content = new("Hover");
+        Button button = new()
         {
             Bounds = new Rect(0, 0, 6, 1),
             Content = content,
@@ -315,7 +304,7 @@ public sealed class ButtonTests
         await dispatcher.InvokeAsync(() =>
         {
             button.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(button);
+            using CaptureManager capture = new(button);
 
             _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Move));
 
@@ -329,10 +318,10 @@ public sealed class ButtonTests
     [Fact]
     public void Render_WhenButtonHasUnicodeContent_ComputesExactBoundsAndCells()
     {
-        ControlText content = new ControlText("界") { Margin = new Thickness(1, 0) };
-        Button button = new Button { Content = content, Padding = new Thickness(1) };
+        ControlText content = new("界") { Margin = new Thickness(1, 0) };
+        Button button = new() { Content = content, Padding = new Thickness(1) };
         new Engine().Layout(button, new Size(6, 3));
-        using Frame frame = new Frame(new Size(6, 3));
+        using Frame frame = new(new Size(6, 3));
 
         button.Render(frame.Canvas);
 
@@ -348,7 +337,7 @@ public sealed class ButtonTests
     {
         ControlStyle<Button> style = ThemeTestSupport.OverlayStyle<Button>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(24))));
-        Button button = new Button
+        Button button = new()
         {
             Content = new ControlText("Run"),
             Padding = new Thickness(1),
@@ -356,9 +345,9 @@ public sealed class ButtonTests
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };
-        Size size = new Size(8, 3);
+        Size size = new(8, 3);
         new Engine().Layout(button, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         button.Render(frame.Canvas);
 
@@ -373,8 +362,8 @@ public sealed class ButtonTests
     [InlineData(true, Visibility.Hidden)]
     public void PerformClick_WhenButtonIsUnavailable_DoesNothing(bool enabled, Visibility visibility)
     {
-        Button button = new Button { IsEnabled = enabled, Visibility = visibility };
-        var clicks = 0;
+        Button button = new() { IsEnabled = enabled, Visibility = visibility };
+        int clicks = 0;
         button.Click += (_, _) => clicks++;
 
         button.PerformClick();

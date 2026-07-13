@@ -46,7 +46,7 @@ public sealed class QueryTracker
         DateTimeOffset now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
-        Key key = new Key(kind, id);
+        Key key = new(kind, id);
 
         if (_active.Count >= _limits.MaxConcurrentQueries ||
             _active.ContainsKey(key) ||
@@ -57,7 +57,7 @@ public sealed class QueryTracker
             return false;
         }
 
-        var value = checked(++_nextToken);
+        long value = checked(++_nextToken);
         token = new QueryToken(value);
         _active.Add(key, new Active(token, now + _limits.QueryTimeout));
         _tokens.Add(value, key);
@@ -77,7 +77,7 @@ public sealed class QueryTracker
         DateTimeOffset now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
-        Key key = new Key(kind, id);
+        Key key = new(kind, id);
 
         if (_active.Remove(key, out Active active))
         {
@@ -127,7 +127,7 @@ public sealed class QueryTracker
                 response,
                 "The response kind is not query-trackable."),
         };
-        var keyboardUnsupported = kind == QueryKind.PrimaryAttributes &&
+        bool keyboardUnsupported = kind == QueryKind.PrimaryAttributes &&
             CompleteUnsupported(QueryKind.Keyboard);
         QueryMatch result = Match(kind);
 
@@ -162,7 +162,7 @@ public sealed class QueryTracker
     public int Expire()
     {
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        var expired = ExpireCore(now);
+        int expired = ExpireCore(now);
         PruneHistory(now);
         return expired;
     }
@@ -181,7 +181,7 @@ public sealed class QueryTracker
 
     private bool CompleteUnsupported(QueryKind kind)
     {
-        Key key = new Key(kind, null);
+        Key key = new(kind, null);
 
         if (!_active.Remove(key, out Active active))
         {

@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
 /// <summary>Verifies shade and quadrant block drawing.</summary>
 public sealed class BlockTests
@@ -21,7 +18,7 @@ public sealed class BlockTests
     [InlineData(Shade.Solid, "█")]
     public void FillShade_WhenShadeIsSelected_WritesExactGlyph(Shade shade, string expected)
     {
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
 
         frame.Canvas.FillShade(new Rect(0, 0, 2, 1), shade);
 
@@ -40,7 +37,7 @@ public sealed class BlockTests
         Quadrants quadrants,
         string expected)
     {
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         frame.Canvas.DrawQuadrants(default, quadrants);
 
@@ -51,7 +48,7 @@ public sealed class BlockTests
     [Fact]
     public void DrawQuadrants_WhenSeparateMasksShareCell_MergesBits()
     {
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         frame.Canvas.DrawQuadrants(default, Quadrants.UpperLeft);
         frame.Canvas.DrawQuadrants(default, Quadrants.LowerRight);

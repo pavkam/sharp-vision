@@ -3,21 +3,12 @@
 
 namespace SharpVision.Tests.Integration;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Unicode;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using ComboBoxControl = ComboBox;
-using Dispatcher = Dispatcher;
 using RichTextControl = RichText;
 using RunInline = Run;
 using TerminalOptions = Terminal.Runtime.Options;
@@ -37,16 +28,16 @@ public sealed class UnicodeGeometryTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            Policy policy = new Policy(Ambiguous.Wide);
-            TextControl text = new TextControl { Content = "·" };
-            RichTextControl rich = new RichTextControl { Wrapping = TextWrapping.None };
+            Policy policy = new(Ambiguous.Wide);
+            TextControl text = new() { Content = "·" };
+            RichTextControl rich = new() { Wrapping = TextWrapping.None };
             rich.Inlines.Add(new RunInline("·"));
-            TextInputControl input = new TextInputControl { Text = "·" };
-            Table table = new Table();
+            TextInputControl input = new() { Text = "·" };
+            Table table = new();
             table.Columns.Add(TableColumn.Fixed("Value", 4));
             table.Rows.Add(new TableRow([new TextControl("·")]));
-            ComboBoxControl combo = new ComboBoxControl { Items = ["·"] };
-            Stack stack = new Stack();
+            ComboBoxControl combo = new() { Items = ["·"] };
+            Stack stack = new();
             stack.Children.Add(text);
             stack.Children.Add(rich);
             stack.Children.Add(input);
@@ -75,10 +66,10 @@ public sealed class UnicodeGeometryTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            TextInputControl input = new TextInputControl { Text = source, Width = Length.Cells(2) };
+            TextInputControl input = new() { Text = source, Width = Length.Cells(2) };
             input.Attach(dispatcher, Policy.Default);
             new Engine().Layout(input, new Size(2, 1));
-            using Frame frame = new Frame(new Size(2, 1));
+            using Frame frame = new(new Size(2, 1));
 
             // Act
             input.Render(frame.Canvas);
@@ -94,10 +85,10 @@ public sealed class UnicodeGeometryTests
     public async Task Input_WhenUnevenPixelGridMaps_RoutesExactCellsWithoutFabricationAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4), new Size(101, 31)));
-        List<Point?> hits = new List<Point?>();
-        ProbePressable root = new ProbePressable
+        List<Point?> hits = [];
+        ProbePressable root = new()
         {
             Width = Length.Cells(10),
             Height = Length.Cells(4),
@@ -109,12 +100,12 @@ public sealed class UnicodeGeometryTests
                 hits.Add(pointer.LocalCells);
             }
         });
-        await using Application application = new Application(
+        await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
-        TaskCompletionSource ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
             if (eventArgs.Response.Kind == ResponseKind.PrimaryAttributes)
@@ -138,7 +129,7 @@ public sealed class UnicodeGeometryTests
 
     private static async Task WaitForPointerHitAsync(List<Point?> hits)
     {
-        for (var attempt = 0; attempt < 100; attempt++)
+        for (int attempt = 0; attempt < 100; attempt++)
         {
             if (hits.Count > 0)
             {

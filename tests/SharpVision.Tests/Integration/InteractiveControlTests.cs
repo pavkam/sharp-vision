@@ -3,18 +3,10 @@
 
 namespace SharpVision.Tests.Integration;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using Label = SharpVision.Controls.Text;
 using TerminalOptions = Terminal.Runtime.Options;
@@ -27,7 +19,7 @@ public sealed class InteractiveControlTests
     [Fact]
     public async Task Input_WhenInteractiveControlsCompose_CommitsStateEventsCellsAndDamageAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(32, 16)));
         Stack root = CreateControls(
             out Button? button,
@@ -38,14 +30,14 @@ public sealed class InteractiveControlTests
             out ScrollBar? scrollBar,
             out ScrollView? scrollView,
             out UiList? list);
-        List<string> order = new List<string>();
+        List<string> order = [];
         button.Click += (_, _) => order.Add("button");
         checkBox.Checked += (_, _) => order.Add("check-checked");
         checkBox.StateChanged += (_, _) => order.Add("check-changed");
         firstRadio.Unchecked += (_, _) => order.Add("radio-a-unchecked");
         secondRadio.Checked += (_, _) => order.Add("radio-b-checked");
         secondRadio.SelectionChanged += (_, _) => order.Add("radio-b-changed");
-        await using Application application = new Application(
+        await using Application application = new(
             root,
             terminal,
             terminal,
@@ -130,7 +122,7 @@ public sealed class InteractiveControlTests
             list.SelectedItem.ShouldBe("B");
             application.Focus.Focused.ShouldBeSameAs(input);
             application.Capture.Captured.ShouldBeNull();
-            using Frame frame = new Frame(application.Size);
+            using Frame frame = new(application.Size);
             root.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(secondRadio.Bounds.X, secondRadio.Bounds.Y))
                 .ShouldBe("◉");
@@ -143,7 +135,7 @@ public sealed class InteractiveControlTests
             .AsSpan()
             .IndexOf(Encoding.UTF8.GetBytes("界"))
             .ShouldBeGreaterThanOrEqualTo(0);
-        var previousWrites = terminal.Writes.Count;
+        int previousWrites = terminal.Writes.Count;
         Task rendered = NextFrame(application);
         await application.Dispatcher.InvokeAsync(
             () =>
@@ -155,7 +147,7 @@ public sealed class InteractiveControlTests
 
         await application.Dispatcher.InvokeAsync(() =>
         {
-            using Frame frame = new Frame(application.Size);
+            using Frame frame = new(application.Size);
             root.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("O");
             FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y + 1)).ShouldBeEmpty();
@@ -178,10 +170,10 @@ public sealed class InteractiveControlTests
     [Fact]
     public async Task Input_WhenTextPasteAndLegacyKeysArrive_CommitsExactEditorFrameAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 2)));
-        TextInput input = new TextInput();
-        await using Application application = new Application(input, terminal, terminal, TerminalOptions.Minimal);
+        TextInput input = new();
+        await using Application application = new(input, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(() =>
             application.Focus.Focus(input).ShouldBeTrue(),
@@ -210,7 +202,7 @@ public sealed class InteractiveControlTests
         {
             input.Text.ShouldBe("e\u0301");
             input.CaretIndex.ShouldBe(0);
-            using Frame frame = new Frame(application.Size);
+            using Frame frame = new(application.Size);
             input.Render(frame.Canvas);
             FrameOracle.Get(frame, default).ShouldBe("e\u0301");
             frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeFalse();
@@ -218,7 +210,7 @@ public sealed class InteractiveControlTests
         terminal.Writes.SelectMany(static bytes => bytes)
             .Contains((byte) 'e').ShouldBeTrue();
 
-        TaskCompletionSource focusLost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource focusLost = new(TaskCreationOptions.RunContinuationsAsynchronously);
         await application.Dispatcher.InvokeAsync(() =>
         {
             _ = input.AddHandler(Events.Focus, (_, eventArgs) =>
@@ -244,7 +236,7 @@ public sealed class InteractiveControlTests
         string operation,
         CancellationToken cancellationToken)
     {
-        for (var attempt = 0; attempt < 10_000; attempt++)
+        for (int attempt = 0; attempt < 10_000; attempt++)
         {
             if (await application.Dispatcher.InvokeAsync(predicate, cancellationToken))
             {
@@ -306,7 +298,7 @@ public sealed class InteractiveControlTests
             Width = Length.Cells(20),
             Height = Length.Cells(3),
         };
-        Stack root = new Stack();
+        Stack root = new();
         root.Children.Add(button);
         root.Children.Add(checkBox);
         root.Children.Add(firstRadio);
@@ -324,8 +316,8 @@ public sealed class InteractiveControlTests
 
     private static void Click(FakeTerminal terminal, Point point)
     {
-        var x = point.X + 1;
-        var y = point.Y + 1;
+        int x = point.X + 1;
+        int y = point.Y + 1;
         terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<0;{x};{y}M\u001b[<0;{x};{y}m"));
     }
 
@@ -335,7 +327,7 @@ public sealed class InteractiveControlTests
 
     private static Task NextFrame(Application application)
     {
-        TaskCompletionSource completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 

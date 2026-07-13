@@ -30,7 +30,7 @@ public static class Keyboard
         Validate(flags);
         Span<byte> parameters = stackalloc byte[12];
         parameters[0] = (byte) '>';
-        var formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out var written);
+        bool formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out int written);
         Debug.Assert(formatted, "A 32-bit enhancement value must fit its stack buffer.");
         writer.Csi(parameters[..(written + 1)], [], (byte) 'u');
     }
@@ -44,11 +44,11 @@ public static class Keyboard
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         Span<byte> parameters = stackalloc byte[12];
         parameters[0] = (byte) '<';
-        var length = 1;
+        int length = 1;
 
         if (count != 1)
         {
-            var formatted = Utf8Formatter.TryFormat(count, parameters[1..], out var written);
+            bool formatted = Utf8Formatter.TryFormat(count, parameters[1..], out int written);
             Debug.Assert(formatted, "A positive 32-bit pop count must fit its stack buffer.");
             length += written;
         }
@@ -73,9 +73,9 @@ public static class Keyboard
 
         Span<byte> parameters = stackalloc byte[16];
         parameters[0] = (byte) '=';
-        var formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out var written);
+        bool formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out int written);
         Debug.Assert(formatted, "A 32-bit enhancement value must fit its stack buffer.");
-        var position = written + 1;
+        int position = written + 1;
         parameters[position++] = (byte) ';';
         formatted = Utf8Formatter.TryFormat((int) mode, parameters[position..], out written);
         Debug.Assert(formatted, "An enhancement mode must fit its stack buffer.");

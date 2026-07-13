@@ -6,7 +6,6 @@ namespace SharpVision.Tests.Text;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using Shouldly;
 
 using TextLayout = SharpVision.Text.Layout;
 
@@ -140,7 +139,7 @@ public sealed class LayoutTests
     {
         Line[] lines = new Line[1];
 
-        var required = TextLayout.Format(
+        int required = TextLayout.Format(
             "a\nb".AsSpan(),
             8,
             Wrapping.None,
@@ -174,7 +173,7 @@ public sealed class LayoutTests
         Alignment alignment = Alignment.Start)
     {
         Span<Line> initial = stackalloc Line[4];
-        var required = TextLayout.Format(
+        int required = TextLayout.Format(
             content,
             width,
             wrapping,

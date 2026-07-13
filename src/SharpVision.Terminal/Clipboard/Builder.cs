@@ -27,7 +27,7 @@ internal sealed class Builder: IDisposable
     /// <summary>Clears and returns pooled storage.</summary>
     public void Dispose()
     {
-        var buffer = _buffer;
+        byte[]? buffer = _buffer;
 
         if (buffer is null)
         {
@@ -46,10 +46,10 @@ internal sealed class Builder: IDisposable
             return;
         }
 
-        var size = _buffer is null
+        int size = _buffer is null
             ? Math.Max(256, required)
             : Math.Max(required, checked(_buffer.Length * 2));
-        var replacement = ArrayPool<byte>.Shared.Rent(size);
+        byte[] replacement = ArrayPool<byte>.Shared.Rent(size);
 
         if (_buffer is not null)
         {

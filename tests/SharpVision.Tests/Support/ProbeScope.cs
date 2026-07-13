@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Support;
 
-using SharpVision.Controls;
-using SharpVision.Styling;
 
 /// <summary>Provides a third-party-style container that cascades its style to descendants.</summary>
 internal sealed class ProbeScope: Container, IStyleScope

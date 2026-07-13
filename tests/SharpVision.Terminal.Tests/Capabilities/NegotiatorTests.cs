@@ -3,13 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Capabilities;
 
-using System.Buffers;
-using System.Text;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
 
@@ -22,7 +18,7 @@ public sealed class NegotiatorTests
     {
         // Arrange
         Limits limits = Limits.Default with { MaxConcurrentQueries = 2 };
-        Negotiator negotiator = new Negotiator(new NegotiationOptions(
+        Negotiator negotiator = new(new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
             limits: limits));
         negotiator.Start(new ArrayBufferWriter<byte>());
@@ -46,7 +42,7 @@ public sealed class NegotiatorTests
     public void Accept_WhenModeIsRepeatedOrUnknown_ClassifiesWithoutMutation()
     {
         // Arrange
-        Negotiator negotiator = new Negotiator(
+        Negotiator negotiator = new(
             new NegotiationOptions(new Dictionary<string, string?>()));
         negotiator.Start(new ArrayBufferWriter<byte>());
         Response synchronized = PrivateMode(2026, state: 1);
@@ -66,16 +62,16 @@ public sealed class NegotiatorTests
     public void Expire_WhenDeadlineElapses_PublishesOnceAndClassifiesLateReply()
     {
         // Arrange
-        ManualTimeProvider clock = new ManualTimeProvider();
+        ManualTimeProvider clock = new();
         Limits limits = Limits.Default with
         {
             QueryTimeout = TimeSpan.FromSeconds(1),
         };
-        NegotiationOptions options = new NegotiationOptions(
+        NegotiationOptions options = new(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
             new Settings { SynchronizedOutput = false },
             limits);
-        Negotiator negotiator = new Negotiator(options, clock);
+        Negotiator negotiator = new(options, clock);
         negotiator.Start(new ArrayBufferWriter<byte>());
 
         // Act / Assert
@@ -101,14 +97,14 @@ public sealed class NegotiatorTests
     public void Accept_WhenRepliesArriveOutOfOrder_PublishesCompleteProfile()
     {
         // Arrange
-        Negotiator negotiator = new Negotiator(
+        Negotiator negotiator = new(
             new NegotiationOptions(new Dictionary<string, string?>()));
         negotiator.Start(new ArrayBufferWriter<byte>());
 
         // Act / Assert
         int[] modes = [1016, 1006, 2004, 1004, 2026];
 
-        foreach (var mode in modes)
+        foreach (int mode in modes)
         {
             Response response = PrivateMode(mode, state: 1);
             negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);
@@ -155,11 +151,11 @@ public sealed class NegotiatorTests
         {
             MaxConcurrentQueries = capacity,
         };
-        NegotiationOptions options = new NegotiationOptions(
+        NegotiationOptions options = new(
             new Dictionary<string, string?>(),
             limits: limits);
-        Negotiator negotiator = new Negotiator(options, new ManualTimeProvider());
-        ArrayBufferWriter<byte> output = new ArrayBufferWriter<byte>();
+        Negotiator negotiator = new(options, new ManualTimeProvider());
+        ArrayBufferWriter<byte> output = new();
 
         // Act
         negotiator.Start(output);
@@ -173,10 +169,10 @@ public sealed class NegotiatorTests
     public void Start_WhenDefaultCapacityIsAvailable_WritesSafeQueriesInOrder()
     {
         // Arrange
-        NegotiationOptions options = new NegotiationOptions(
+        NegotiationOptions options = new(
             new Dictionary<string, string?>());
-        Negotiator negotiator = new Negotiator(options, new ManualTimeProvider());
-        ArrayBufferWriter<byte> output = new ArrayBufferWriter<byte>();
+        Negotiator negotiator = new(options, new ManualTimeProvider());
+        ArrayBufferWriter<byte> output = new();
 
         // Act
         negotiator.Start(output);
@@ -193,7 +189,7 @@ public sealed class NegotiatorTests
     public void Start_WhenStateIsInvalid_ThrowsDeterministically()
     {
         // Arrange
-        Negotiator negotiator = new Negotiator(
+        Negotiator negotiator = new(
             new NegotiationOptions(new Dictionary<string, string?>()));
 
         // Act / Assert
@@ -203,14 +199,14 @@ public sealed class NegotiatorTests
         Response response = PrivateMode(2026, state: 1);
         _ = Should.Throw<InvalidOperationException>(() => negotiator.Accept(in response));
         _ = Should.Throw<InvalidOperationException>(() => negotiator.Expire());
-        ArrayBufferWriter<byte> output = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> output = new();
         negotiator.Start(output);
         _ = Should.Throw<InvalidOperationException>(() => negotiator.Start(output));
     }
 
     private static Response PrivateMode(int mode, int state)
     {
-        var parameters = Encoding.ASCII.GetBytes($"?{mode};{state}");
+        byte[] parameters = Encoding.ASCII.GetBytes($"?{mode};{state}");
         return Response(parameters, "$"u8, (byte) 'y');
     }
 

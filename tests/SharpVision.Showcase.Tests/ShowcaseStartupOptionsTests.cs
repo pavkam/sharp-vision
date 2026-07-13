@@ -6,12 +6,10 @@ namespace SharpVision.Showcase.Tests;
 using System.Text;
 
 using SharpVision.Runtime;
+using SharpVision.Showcase.Tests.Support;
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
-
-using Shouldly;
 
 using CapabilityOrigin = Terminal.Capabilities.Origin;
 using CapabilitySupport = Terminal.Capabilities.Support;
@@ -24,17 +22,17 @@ public sealed class StartupOptionsTests
     public void Create_WhenNegotiationIsEnabled_OwnsEnvironmentAndPreservesOverride()
     {
         // Arrange
-        Dictionary<string, string?> environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new()
         {
             ["TERM"] = "xterm-kitty",
         };
 
         // Act
-        var options = StartupOptions.Create(environment, negotiate: true);
+        Terminal.Runtime.Options options = ShowcaseStartupOptions.Create(environment, negotiate: true);
         environment["TERM"] = "dumb";
 
         // Assert
-        var negotiation = options.Negotiation.ShouldNotBeNull();
+        Terminal.Capabilities.NegotiationOptions negotiation = options.Negotiation.ShouldNotBeNull();
         negotiation.Environment["TERM"].ShouldBe("xterm-kitty");
         negotiation.Overrides.ShouldNotBeNull().CellMouse.ShouldBe(true);
         options.Capabilities.CellMouse.ShouldBe(
@@ -47,14 +45,14 @@ public sealed class StartupOptionsTests
     public async Task Create_WhenNegotiatedShowcaseStarts_EnablesMouseAfterQueryBatchAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using Gallery gallery = new Gallery();
-        var options = StartupOptions.Create(
+        using Gallery gallery = new();
+        Terminal.Runtime.Options options = ShowcaseStartupOptions.Create(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             negotiate: true);
-        await using Application application = new Application(gallery, terminal, terminal, options);
-        TaskCompletionSource queryWritten = new TaskCompletionSource(
+        await using Application application = new(gallery, terminal, terminal, options);
+        TaskCompletionSource queryWritten = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += value =>
         {
@@ -74,11 +72,11 @@ public sealed class StartupOptionsTests
         await starting;
 
         // Assert
-        var output = Encoding.ASCII.GetString([.. terminal.Writes.SelectMany(static value => value)]);
-        var queries =
+        string output = Encoding.ASCII.GetString([.. terminal.Writes.SelectMany(static value => value)]);
+        string queries =
             "\u001b[?u\u001b[c\u001b[?2026$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p";
-        var startup = "\u001b[?1049h\u001b[?25l" + queries;
+        string startup = "\u001b[?1049h\u001b[?25l" + queries;
         output.ShouldStartWith(startup);
         output.IndexOf("\u001b[?1003h\u001b[?1006h", StringComparison.Ordinal)
             .ShouldBeGreaterThanOrEqualTo(startup.Length);
@@ -89,14 +87,14 @@ public sealed class StartupOptionsTests
     [Fact]
     public async Task Create_WhenShowcaseStarts_EnablesSgrAnyEventMouseAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using Gallery gallery = new Gallery();
-        var options = StartupOptions.Create(new Dictionary<string, string?>
+        using Gallery gallery = new();
+        Terminal.Runtime.Options options = ShowcaseStartupOptions.Create(new Dictionary<string, string?>
         {
             ["TERM"] = "xterm-256color",
         });
-        await using Application application = new Application(gallery, terminal, terminal, options);
+        await using Application application = new(gallery, terminal, terminal, options);
 
         options.Tracking.ShouldBe(MouseTracking.Any);
         options.Coordinates.ShouldBe(MouseCoordinates.Sgr);
@@ -104,7 +102,7 @@ public sealed class StartupOptionsTests
 
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        var output = Encoding.ASCII.GetString([.. terminal.Writes.SelectMany(static value => value)]);
+        string output = Encoding.ASCII.GetString([.. terminal.Writes.SelectMany(static value => value)]);
         output.ShouldContain("\u001b[?1003h\u001b[?1006h");
 
         await application.StopAsync(TestContext.Current.CancellationToken);

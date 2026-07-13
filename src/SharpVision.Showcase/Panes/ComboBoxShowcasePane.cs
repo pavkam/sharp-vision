@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the ComboBox control.</summary>
 internal sealed class ComboBoxShowcasePane: ShowcasePane
@@ -41,14 +40,13 @@ internal sealed class ComboBoxShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlText status = new ControlText("Selected: Comfortable") { Foreground = Palette.Muted };
-        ControlComboBox comboBox = new ControlComboBox
+        ControlText status = new("Selected: Comfortable");
+        ControlComboBox comboBox = new()
         {
             Width = Length.Cells(28),
             Items = ["Compact", "Comfortable", "Spacious"],
             SelectedIndex = 1,
             DropDownHeight = 4,
-            Style = Palette.List(),
         };
         comboBox.SelectionChanged += (_, _) =>
         {
@@ -56,7 +54,7 @@ internal sealed class ComboBoxShowcasePane: ShowcasePane
                 ? $"Selected: {comboBox.Items[comboBox.SelectedIndex]}."
                 : "No selection.";
         };
-        ControlCanvas stage = new ControlCanvas
+        ControlCanvas stage = new()
         {
             Width = Length.Cells(30),
             Height = Length.Cells(6),

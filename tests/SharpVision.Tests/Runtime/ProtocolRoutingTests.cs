@@ -4,12 +4,8 @@
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -20,14 +16,14 @@ public sealed class ProtocolRoutingTests
     [Fact]
     public async Task Input_WhenDeviceAttributesResponseArrives_PublishesTypedDispatcherEventAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        TaskCompletionSource<Response> received = new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<Response> received = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
             application.Dispatcher.CheckAccess().ShouldBeTrue();
@@ -50,14 +46,14 @@ public sealed class ProtocolRoutingTests
     [Fact]
     public async Task Input_WhenUnknownOscArrives_PublishesRedactedDiagnosticAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        TaskCompletionSource<Diagnostic> received = new TaskCompletionSource<Diagnostic>(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<Diagnostic> received = new(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Diagnostic += (_, eventArgs) =>
         {
             application.Dispatcher.CheckAccess().ShouldBeTrue();
@@ -83,14 +79,14 @@ public sealed class ProtocolRoutingTests
     public async Task Input_WhenUnknownDcsArrives_CountsAllOwnedSequenceBytesAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        TaskCompletionSource<Diagnostic> received = new TaskCompletionSource<Diagnostic>(
+        TaskCompletionSource<Diagnostic> received = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.Diagnostic += (_, eventArgs) =>
             _ = received.TrySetResult(eventArgs.Diagnostic);

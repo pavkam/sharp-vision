@@ -29,7 +29,7 @@ internal sealed class ManualTimeProvider: TimeProvider
         ArgumentNullException.ThrowIfNull(callback);
         ValidateDuration(dueTime, nameof(dueTime));
         ValidateDuration(period, nameof(period));
-        ManualTimer timer = new ManualTimer(this, callback, state);
+        ManualTimer timer = new(this, callback, state);
 
         lock (_gate)
         {

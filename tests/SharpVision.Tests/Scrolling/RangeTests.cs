@@ -5,7 +5,6 @@ namespace SharpVision.Tests.Scrolling;
 
 using SharpVision.Scrolling;
 
-using Shouldly;
 
 using ScrollRange = SharpVision.Scrolling.Range;
 
@@ -26,7 +25,7 @@ public sealed class RangeTests
     [Fact]
     public void Move_WhenDeltaExceedsRange_ClampsToEndpoints()
     {
-        ScrollRange range = new ScrollRange(10, 20, 15, viewport: 4);
+        ScrollRange range = new(10, 20, 15, viewport: 4);
 
         range.Move(int.MinValue).ShouldBe(10);
         range.Move(int.MaxValue).ShouldBe(20);
@@ -46,7 +45,7 @@ public sealed class RangeTests
     [Fact]
     public void Resolve_WhenRangeScrolls_ComputesExactThumb()
     {
-        ScrollRange range = new ScrollRange(0, 80, 40, viewport: 20);
+        ScrollRange range = new(0, 80, 40, viewport: 20);
 
         Thumb thumb = Thumb.Resolve(range, trackLength: 10);
 
@@ -66,7 +65,7 @@ public sealed class RangeTests
     [Fact]
     public void Resolve_WhenRangeUsesIntegerBoundary_AvoidsOverflow()
     {
-        ScrollRange range = new ScrollRange(0, int.MaxValue, int.MaxValue, int.MaxValue);
+        ScrollRange range = new(0, int.MaxValue, int.MaxValue, int.MaxValue);
 
         Thumb thumb = Thumb.Resolve(range, trackLength: 500);
 
@@ -78,7 +77,7 @@ public sealed class RangeTests
     [Fact]
     public void Resolve_WhenViewportExceedsRange_UsesCumulativeRoundedEdges()
     {
-        ScrollRange range = new ScrollRange(0, 10, 5, viewport: 100);
+        ScrollRange range = new(0, 10, 5, viewport: 100);
 
         Thumb.Resolve(range, trackLength: 11).ShouldBe(new Thumb(1, 10));
     }
@@ -90,7 +89,7 @@ public sealed class RangeTests
     [InlineData(500)]
     public void Resolve_WhenTrackResizes_PreservesContainedEndpointGeometry(int trackLength)
     {
-        ScrollRange range = new ScrollRange(3, 103, 103, viewport: 25);
+        ScrollRange range = new(3, 103, 103, viewport: 25);
 
         Thumb thumb = Thumb.Resolve(range, trackLength);
 
@@ -104,7 +103,7 @@ public sealed class RangeTests
     [InlineData(1)]
     public void Resolve_WhenTrackIsTiny_RemainsContained(int trackLength)
     {
-        ScrollRange range = new ScrollRange(3, 9, 9, viewport: 2);
+        ScrollRange range = new(3, 9, 9, viewport: 2);
         Thumb thumb = Thumb.Resolve(range, trackLength);
 
         thumb.Start.ShouldBeGreaterThanOrEqualTo(0);

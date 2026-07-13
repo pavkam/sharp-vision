@@ -97,7 +97,7 @@ public static class Sgr
 
     private static int Append(int value, Span<byte> destination)
     {
-        var formatted = Utf8Formatter.TryFormat(value, destination, out var written);
+        bool formatted = Utf8Formatter.TryFormat(value, destination, out int written);
         Debug.Assert(formatted, "The SGR scratch span is sized for an Int32.");
 
         return written;
@@ -138,8 +138,8 @@ public static class Sgr
             throw new ArgumentOutOfRangeException(nameof(color), color, "The basic color is unknown.");
         }
 
-        var index = (int) color;
-        var value = index < 8
+        int index = (int) color;
+        int value = index < 8
             ? (foreground ? 30 : 40) + index
             : (foreground ? 90 : 100) + index - 8;
         WriteNumber(writer, value);
@@ -148,7 +148,7 @@ public static class Sgr
     private static void WriteColor(Writer writer, Color color, int selector, int reset)
     {
         Span<byte> parameters = stackalloc byte[32];
-        var length = 0;
+        int length = 0;
 
         switch (color.Kind)
         {
@@ -187,7 +187,7 @@ public static class Sgr
     private static void WriteNumber(Writer writer, int value)
     {
         Span<byte> parameters = stackalloc byte[10];
-        var length = Append(value, parameters);
+        int length = Append(value, parameters);
         writer.Csi(parameters[..length], [], (byte) 'm');
     }
 }

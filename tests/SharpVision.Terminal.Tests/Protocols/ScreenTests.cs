@@ -3,11 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using System.Buffers;
 
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies exact GNU screen DCS passthrough framing.</summary>
 public sealed class ScreenTests
@@ -16,7 +13,7 @@ public sealed class ScreenTests
     [Fact]
     public void WritePassthrough_WhenSequenceContainsEsc_WritesExactDcsEnvelope()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new();
 
         Screen.WritePassthrough(destination, "\u001b]52;c;YQ==\u001b\\"u8);
 

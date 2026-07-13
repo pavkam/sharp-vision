@@ -4,12 +4,9 @@
 namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 using InputAction = Terminal.Input.Action;
-using Rune = Rune;
 
 /// <summary>
 /// Verifies legacy VT key mappings, modifiers, fragmentation, and recovery.
@@ -61,12 +58,12 @@ public sealed class LegacyKeyTests
         Modifiers modifiers,
         int nativeCode)
     {
-        var bytes = Encoding.UTF8.GetBytes(input);
+        byte[] bytes = Encoding.UTF8.GetBytes(input);
 
-        for (var split = 0; split <= bytes.Length; split++)
+        for (int split = 0; split <= bytes.Length; split++)
         {
-            RecordingInputSink sink = new RecordingInputSink();
-            using Decoder decoder = new Decoder(sink);
+            RecordingInputSink sink = new();
+            using Decoder decoder = new(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
             decoder.Complete();
@@ -159,9 +156,9 @@ public sealed class LegacyKeyTests
 
     private static RecordingInputSink Decode(byte[] input)
     {
-        RecordingInputSink sink = new RecordingInputSink();
+        RecordingInputSink sink = new();
 
-        using (Decoder decoder = new Decoder(sink))
+        using (Decoder decoder = new(sink))
         {
             decoder.Decode(input);
             decoder.Complete();

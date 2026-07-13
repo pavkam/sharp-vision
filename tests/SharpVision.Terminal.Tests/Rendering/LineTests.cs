@@ -3,13 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using System.Text;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
 /// <summary>Verifies topology-aware Unicode line and box drawing.</summary>
 public sealed class LineTests
@@ -25,11 +20,11 @@ public sealed class LineTests
         LineWeight weight,
         string expected)
     {
-        using Frame frame = new Frame(new Size(3, 1));
+        using Frame frame = new(new Size(3, 1));
 
         frame.Canvas.DrawHorizontalLine(default, 3, new LineStyle(weight));
 
-        for (var x = 0; x < 3; x++)
+        for (int x = 0; x < 3; x++)
         {
             FrameTests.GetText(frame, new Point(x, 0)).ShouldBe(expected);
         }
@@ -45,7 +40,7 @@ public sealed class LineTests
         string bottomLeft,
         string bottomRight)
     {
-        using Frame frame = new Frame(new Size(3, 3));
+        using Frame frame = new(new Size(3, 3));
 
         frame.Canvas.DrawBox(new Rect(0, 0, 3, 3), line);
 
@@ -69,8 +64,8 @@ public sealed class LineTests
     [Fact]
     public void DrawVerticalLine_WhenPatternIsTripleDash_WritesDashedGlyph()
     {
-        using Frame frame = new Frame(new Size(1, 2));
-        LineStyle line = new LineStyle(LineWeight.Heavy, LinePattern.TripleDash);
+        using Frame frame = new(new Size(1, 2));
+        LineStyle line = new(LineWeight.Heavy, LinePattern.TripleDash);
 
         frame.Canvas.DrawVerticalLine(default, 2, line);
 
@@ -82,14 +77,14 @@ public sealed class LineTests
     [Fact]
     public void DrawHorizontalLine_WhenSurfaceIsPainted_PreservesDestinationBackground()
     {
-        using Frame frame = new Frame(new Size(3, 1));
-        Style surface = new Style(Color.Indexed(255), Color.Indexed(238));
-        Style line = new Style(Color.Indexed(45), Color.Default);
+        using Frame frame = new(new Size(3, 1));
+        Style surface = new(Color.Indexed(255), Color.Indexed(238));
+        Style line = new(Color.Indexed(45), Color.Default);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
 
         frame.Canvas.DrawHorizontalLine(default, 3, LineStyle.Light, line);
 
-        for (var x = 0; x < 3; x++)
+        for (int x = 0; x < 3; x++)
         {
             frame.GetCell(new Point(x, 0)).Style.ShouldBe(
                 new Style(Color.Indexed(45), Color.Indexed(238)));
@@ -104,7 +99,7 @@ public sealed class LineTests
     [Fact]
     public void DrawLine_WhenLightSegmentsCross_WritesFourWayJunction()
     {
-        using Frame frame = new Frame(new Size(3, 3));
+        using Frame frame = new(new Size(3, 3));
 
         frame.Canvas.DrawHorizontalLine(new Point(0, 1), 3, LineStyle.Light);
         frame.Canvas.DrawVerticalLine(new Point(1, 0), 3, LineStyle.Light);
@@ -116,8 +111,8 @@ public sealed class LineTests
     [Fact]
     public void DrawLine_WhenMixedWeightsCross_IsCommutative()
     {
-        using Frame first = new Frame(new Size(3, 3));
-        using Frame second = new Frame(new Size(3, 3));
+        using Frame first = new(new Size(3, 3));
+        using Frame second = new(new Size(3, 3));
 
         first.Canvas.DrawHorizontalLine(new Point(0, 1), 3, LineStyle.Light);
         first.Canvas.DrawVerticalLine(new Point(1, 0), 3, LineStyle.Heavy);
@@ -133,7 +128,7 @@ public sealed class LineTests
     [Fact]
     public void DrawHorizontalLine_WhenClipped_WritesOnlyVisibleCells()
     {
-        using Frame frame = new Frame(new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
 
         frame.Canvas.Clip(new Rect(1, 0, 2, 1))
             .DrawHorizontalLine(default, 4, LineStyle.Light);

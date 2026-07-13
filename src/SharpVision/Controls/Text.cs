@@ -3,15 +3,11 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using TerminalStyle = TerminalStyle;
 using TextLayout = SharpVision.Text.Layout;
 
 /// <summary>Displays cached grapheme-safe text through semantic terminal cells.</summary>
@@ -144,7 +140,7 @@ public sealed class Text: Control
     protected override Size MeasureCore(Constraint constraint)
     {
         EnsureLayout(constraint.Width ?? int.MaxValue);
-        var width = 0;
+        int width = 0;
 
         foreach (Line line in Lines.Span)
         {
@@ -165,10 +161,10 @@ public sealed class Text: Control
         TerminalStyle style = ResolveStyle();
         ReadOnlySpan<Line> lines = Lines.Span;
 
-        for (var index = 0; index < lines.Length && index < bounds.Height; index++)
+        for (int index = 0; index < lines.Length && index < bounds.Height; index++)
         {
             Line line = lines[index];
-            Point origin = new Point(bounds.X + line.Leading, bounds.Y + index);
+            Point origin = new(bounds.X + line.Leading, bounds.Y + index);
             DrawResult result = canvas.Draw(
                 Content.AsSpan(line.Offset, line.Length),
                 origin,
@@ -205,7 +201,7 @@ public sealed class Text: Control
 
     private void Format(int width)
     {
-        var required = TextLayout.Format(
+        int required = TextLayout.Format(
             Content,
             width,
             Wrapping,
@@ -239,11 +235,11 @@ public sealed class Text: Control
 
     private void Align(int width)
     {
-        for (var index = 0; index < _lineCount; index++)
+        for (int index = 0; index < _lineCount; index++)
         {
             Line line = _lines[index];
-            var remaining = Math.Max(0, width - line.Cells);
-            var leading = TextAlignment switch
+            int remaining = Math.Max(0, width - line.Cells);
+            int leading = TextAlignment switch
             {
                 Alignment.Start => 0,
                 Alignment.Center => remaining / 2,

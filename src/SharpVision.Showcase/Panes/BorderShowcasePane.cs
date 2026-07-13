@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
 
 /// <summary>Documents and demonstrates the Border control.</summary>
 internal sealed class BorderShowcasePane: ShowcasePane

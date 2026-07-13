@@ -3,7 +3,6 @@
 
 namespace SharpVision.Input;
 
-using SharpVision.Controls;
 
 /// <summary>Provides controlled source, phase, and handled state for one route.</summary>
 public abstract class RoutedEventArgs: EventArgs

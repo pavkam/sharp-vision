@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Selects whether List permits no, one, or many selected indexes.</summary>
 [SuppressMessage(

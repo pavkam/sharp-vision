@@ -46,6 +46,8 @@ in the protocol document.
 - Place `using` directives after the file-scoped `namespace` declaration, not
   before it. Put shared standard and project-wide imports in each project's
   `GlobalUsings.cs` instead of repeating them in individual source files.
+  Assembly attribute files may keep top-level `using` directives before
+  `[assembly:]` metadata when required.
 - Put every named C# type in its own file named exactly after the type, with the
   generic arity omitted: `Button` belongs in `Button.cs`. This applies to
   classes, structs, records, interfaces, enums, delegates, production code,

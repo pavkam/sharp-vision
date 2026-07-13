@@ -3,13 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using Panel = Dock;
 
@@ -20,8 +14,8 @@ public sealed class DockTests
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {
-        Panel panel = new Panel();
-        ProbeControl child = new ProbeControl();
+        Panel panel = new();
+        ProbeControl child = new();
 
         panel.LastChildFills.ShouldBeTrue();
         panel.Spacing.ShouldBe(0);
@@ -37,10 +31,10 @@ public sealed class DockTests
     [Fact]
     public void Measure_WhenSidesCombine_ReportsCompleteIntrinsicUnion()
     {
-        Panel panel = new Panel();
-        ProbeControl left = new ProbeControl(new Size(2, 4));
-        ProbeControl top = new ProbeControl(new Size(5, 1));
-        ProbeControl fill = new ProbeControl(new Size(3, 2));
+        Panel panel = new();
+        ProbeControl left = new(new Size(2, 4));
+        ProbeControl top = new(new Size(5, 1));
+        ProbeControl fill = new(new Size(3, 2));
         Panel.SetSide(top, Side.Top);
         panel.Children.Add(left);
         panel.Children.Add(top);
@@ -55,12 +49,12 @@ public sealed class DockTests
     [Fact]
     public void Layout_WhenAllSidesAreUsed_LeavesExactFinalRectangle()
     {
-        Panel panel = new Panel();
+        Panel panel = new();
         ProbeControl left = WidthOnly(2);
         ProbeControl top = HeightOnly(1);
         ProbeControl right = WidthOnly(2);
         ProbeControl bottom = HeightOnly(1);
-        ProbeControl fill = new ProbeControl();
+        ProbeControl fill = new();
         Panel.SetSide(left, Side.Left);
         Panel.SetSide(top, Side.Top);
         Panel.SetSide(right, Side.Right);
@@ -84,9 +78,9 @@ public sealed class DockTests
     [Fact]
     public void Layout_WhenSpacingIsSet_ReservesGapAfterConsumedChild()
     {
-        Panel panel = new Panel { Spacing = 1 };
+        Panel panel = new() { Spacing = 1 };
         ProbeControl left = WidthOnly(2);
-        ProbeControl fill = new ProbeControl();
+        ProbeControl fill = new();
         panel.Children.Add(left);
         panel.Children.Add(fill);
 
@@ -100,10 +94,10 @@ public sealed class DockTests
     [Fact]
     public void Layout_WhenSequentialChildrenUsePercent_UsesCurrentRemainingRectangle()
     {
-        Panel panel = new Panel();
-        ProbeControl first = new ProbeControl { Width = Length.Percent(50) };
-        ProbeControl second = new ProbeControl { Width = Length.Percent(50) };
-        ProbeControl fill = new ProbeControl();
+        Panel panel = new();
+        ProbeControl first = new() { Width = Length.Percent(50) };
+        ProbeControl second = new() { Width = Length.Percent(50) };
+        ProbeControl fill = new();
         panel.Children.Add(first);
         panel.Children.Add(second);
         panel.Children.Add(fill);
@@ -119,7 +113,7 @@ public sealed class DockTests
     [Fact]
     public void Layout_WhenLastChildDoesNotFill_ConsumesItsConfiguredSide()
     {
-        Panel panel = new Panel { LastChildFills = false };
+        Panel panel = new() { LastChildFills = false };
         ProbeControl first = WidthOnly(2);
         ProbeControl last = WidthOnly(3);
         Panel.SetSide(last, Side.Right);
@@ -136,10 +130,10 @@ public sealed class DockTests
     [Fact]
     public void Layout_WhenChildIsCollapsed_SkipsItsGeometryEntirely()
     {
-        Panel panel = new Panel { Spacing = 1 };
+        Panel panel = new() { Spacing = 1 };
         ProbeControl collapsed = WidthOnly(4);
         collapsed.Visibility = Visibility.Collapsed;
-        ProbeControl fill = new ProbeControl();
+        ProbeControl fill = new();
         panel.Children.Add(collapsed);
         panel.Children.Add(fill);
 
@@ -153,10 +147,10 @@ public sealed class DockTests
     [Fact]
     public void Layout_WhenChildrenOverConsume_RemainingBoundsSaturateAtZero()
     {
-        Panel panel = new Panel();
+        Panel panel = new();
         ProbeControl first = WidthOnly(8);
         ProbeControl second = WidthOnly(8);
-        ProbeControl fill = new ProbeControl();
+        ProbeControl fill = new();
         panel.Children.Add(first);
         panel.Children.Add(second);
         panel.Children.Add(fill);
@@ -175,8 +169,8 @@ public sealed class DockTests
     public async Task SetSide_WhenChildIsOwned_InvalidatesMeasureAndRequiresDispatcherAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        Panel panel = new Panel();
-        ProbeControl child = new ProbeControl();
+        Panel panel = new();
+        ProbeControl child = new();
         panel.Children.Add(child);
         panel.Clear(Invalidation.All);
 

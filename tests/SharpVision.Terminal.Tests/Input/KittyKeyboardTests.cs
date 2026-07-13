@@ -3,12 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Input;
 
-using System.Text;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 using InputAction = Terminal.Input.Action;
 using InputDecoder = Terminal.Input.Decoder;
@@ -118,12 +115,12 @@ public sealed class KittyKeyboardTests
     [Fact]
     public void Decode_WhenKittyEventIsFragmented_MapsAtEverySplit()
     {
-        var bytes = "\u001b[97:65:99;6:2;65:98u"u8.ToArray();
+        byte[] bytes = "\u001b[97:65:99;6:2;65:98u"u8.ToArray();
 
-        for (var split = 0; split <= bytes.Length; split++)
+        for (int split = 0; split <= bytes.Length; split++)
         {
-            RecordingInputSink sink = new RecordingInputSink();
-            using InputDecoder decoder = new InputDecoder(sink);
+            RecordingInputSink sink = new();
+            using InputDecoder decoder = new(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
             decoder.Complete();
@@ -145,7 +142,7 @@ public sealed class KittyKeyboardTests
     [InlineData("\u001b[97;1;65;66u")]
     public void Decode_WhenKittyEventIsMalformed_ReportsAndRecovers(string input)
     {
-        var bytes = Encoding.UTF8.GetBytes(input + "x");
+        byte[] bytes = Encoding.UTF8.GetBytes(input + "x");
         RecordingInputSink sink = Decode(bytes);
 
         sink.Diagnostics.Count.ShouldBe(1);
@@ -154,9 +151,9 @@ public sealed class KittyKeyboardTests
 
     private static RecordingInputSink Decode(byte[] bytes)
     {
-        RecordingInputSink sink = new RecordingInputSink();
+        RecordingInputSink sink = new();
 
-        using (InputDecoder decoder = new InputDecoder(sink))
+        using (InputDecoder decoder = new(sink))
         {
             decoder.Decode(bytes);
             decoder.Complete();

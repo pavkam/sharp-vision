@@ -35,8 +35,8 @@ public ref struct DamageEnumerator
     /// <returns><see langword="true"/> when a run is available.</returns>
     public bool MoveNext()
     {
-        var width = _back.Size.Width;
-        var height = _back.Size.Height;
+        int width = _back.Size.Width;
+        int height = _back.Size.Height;
 
         while (_row < height)
         {
@@ -68,17 +68,17 @@ public ref struct DamageEnumerator
                 continue;
             }
 
-            var start = Math.Min(
+            int start = Math.Min(
                 _front.GetLeadColumn(_row, _column),
                 _back.GetLeadColumn(_row, _column));
-            var end = _column + 1;
+            int end = _column + 1;
 
             while (end < width && !CellsEqual(_row, end))
             {
                 end++;
             }
 
-            var expanded = Math.Max(
+            int expanded = Math.Max(
                 _front.GetOwnedEnd(_row, end - 1),
                 _back.GetOwnedEnd(_row, end - 1));
             end = Math.Max(end, expanded);
@@ -93,7 +93,7 @@ public ref struct DamageEnumerator
     private readonly bool CellsEqual(int row, int column)
     {
         Debug.Assert(_front is not null, "Incremental comparison requires a front frame.");
-        var index = checked((row * _back.Size.Width) + column);
+        int index = checked((row * _back.Size.Width) + column);
         return _front.SemanticallyEquals(_back, index);
     }
 }

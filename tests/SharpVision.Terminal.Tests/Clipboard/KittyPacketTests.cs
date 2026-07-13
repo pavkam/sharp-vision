@@ -4,9 +4,7 @@
 namespace SharpVision.Terminal.Tests.Clipboard;
 
 using SharpVision.Terminal.Clipboard;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies Kitty OSC 5522 metadata and payload parsing.
@@ -50,7 +48,7 @@ public sealed class KittyPacketTests
         string wire,
         KittyReplyStatus expected)
     {
-        var input = Encoding.ASCII.GetBytes($"5522;type=write:status={wire}");
+        byte[] input = Encoding.ASCII.GetBytes($"5522;type=write:status={wire}");
 
         KittyPacket packet = KittyPacket.Parse(input);
 

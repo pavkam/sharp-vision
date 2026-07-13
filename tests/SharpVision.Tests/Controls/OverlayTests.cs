@@ -3,15 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using Layer = Overlay;
 
@@ -22,9 +14,9 @@ public sealed class OverlayTests
     [Fact]
     public void Measure_WhenChildrenDiffer_UsesMaximumMarginInclusiveSize()
     {
-        Layer layer = new Layer();
-        ProbeControl first = new ProbeControl(new Size(3, 2));
-        ProbeControl second = new ProbeControl(new Size(4, 1)) { Margin = new Thickness(1) };
+        Layer layer = new();
+        ProbeControl first = new(new Size(3, 2));
+        ProbeControl second = new(new Size(4, 1)) { Margin = new Thickness(1) };
         layer.Children.Add(first);
         layer.Children.Add(second);
 
@@ -38,8 +30,8 @@ public sealed class OverlayTests
     [Fact]
     public void Arrange_WhenChildUsesPercentAndAlignment_ResolvesAgainstSharedBounds()
     {
-        Layer layer = new Layer();
-        ProbeControl child = new ProbeControl(new Size(1, 1))
+        Layer layer = new();
+        ProbeControl child = new(new Size(1, 1))
         {
             Width = Length.Percent(50),
             Height = Length.Cells(2),
@@ -57,14 +49,14 @@ public sealed class OverlayTests
     [Fact]
     public void ZIndex_WhenLayersOverlap_ControlsRenderAndHitOrder()
     {
-        Layer layer = new Layer { Bounds = new Rect(0, 0, 1, 1) };
+        Layer layer = new() { Bounds = new Rect(0, 0, 1, 1) };
         ProbeControl high = Child("H");
         ProbeControl low = Child("L");
         Layer.SetZIndex(high, 10);
         Layer.SetZIndex(low, -3);
         layer.Children.Add(high);
         layer.Children.Add(low);
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         layer.Render(frame.Canvas);
 
@@ -78,12 +70,12 @@ public sealed class OverlayTests
     [Fact]
     public void ZIndex_WhenValuesTie_PreservesCollectionOrder()
     {
-        Layer layer = new Layer { Bounds = new Rect(0, 0, 1, 1) };
+        Layer layer = new() { Bounds = new Rect(0, 0, 1, 1) };
         ProbeControl first = Child("A");
         ProbeControl second = Child("B");
         layer.Children.Add(first);
         layer.Children.Add(second);
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         layer.Render(frame.Canvas);
 
@@ -95,13 +87,13 @@ public sealed class OverlayTests
     [Fact]
     public void SetZIndex_WhenOrderChanges_InvalidatesParentAndReordersFrame()
     {
-        Layer layer = new Layer { Bounds = new Rect(0, 0, 1, 1) };
+        Layer layer = new() { Bounds = new Rect(0, 0, 1, 1) };
         ProbeControl first = Child("A");
         ProbeControl second = Child("B");
         layer.Children.Add(first);
         layer.Children.Add(second);
         layer.Clear(Invalidation.All);
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         Layer.SetZIndex(first, 2);
         layer.Pending.ShouldBe(Invalidation.Render);
@@ -114,18 +106,18 @@ public sealed class OverlayTests
     [Fact]
     public void ClipToBounds_WhenFalse_AllowsChildrenInsideAncestorCanvas()
     {
-        Layer layer = new Layer
+        Layer layer = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             ClipToBounds = false,
         };
-        ProbeControl child = new ProbeControl
+        ProbeControl child = new()
         {
             Bounds = new Rect(1, 0, 1, 1),
             Content = "X".AsMemory(),
         };
         layer.Children.Add(child);
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
 
         layer.Render(frame.Canvas);
 
@@ -137,14 +129,14 @@ public sealed class OverlayTests
     [Fact]
     public void ClipToBounds_WhenTrue_RejectsChildrenOutsideBounds()
     {
-        Layer layer = new Layer { Bounds = new Rect(0, 0, 1, 1) };
-        ProbeControl child = new ProbeControl
+        Layer layer = new() { Bounds = new Rect(0, 0, 1, 1) };
+        ProbeControl child = new()
         {
             Bounds = new Rect(1, 0, 1, 1),
             Content = "X".AsMemory(),
         };
         layer.Children.Add(child);
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
 
         layer.Render(frame.Canvas);
 
@@ -156,7 +148,7 @@ public sealed class OverlayTests
     [Fact]
     public void HitTest_WhenTopLayerIsTransparent_ReturnsLowerLayer()
     {
-        Layer layer = new Layer { Bounds = new Rect(0, 0, 1, 1) };
+        Layer layer = new() { Bounds = new Rect(0, 0, 1, 1) };
         ProbeControl low = Child("L");
         ProbeControl high = Child("H");
         high.IsHitTestVisible = false;
@@ -172,9 +164,9 @@ public sealed class OverlayTests
     public async Task MoveNext_WhenZOrderDiffers_UsesCollectionOrderAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        Layer layer = new Layer();
-        ProbeControl first = new ProbeControl { CanFocus = true };
-        ProbeControl second = new ProbeControl { CanFocus = true };
+        Layer layer = new();
+        ProbeControl first = new() { CanFocus = true };
+        ProbeControl second = new() { CanFocus = true };
         Layer.SetZIndex(first, 20);
         layer.Children.Add(first);
         layer.Children.Add(second);
@@ -182,7 +174,7 @@ public sealed class OverlayTests
         await dispatcher.InvokeAsync(() =>
         {
             layer.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(layer);
+            using FocusManager focus = new(layer);
             focus.MoveNext().ShouldBeTrue();
             focus.Focused.ShouldBeSameAs(first);
             focus.MoveNext().ShouldBeTrue();
@@ -195,7 +187,7 @@ public sealed class OverlayTests
     public async Task SetZIndex_WhenControlIsAttachedOffThread_ThrowsBeforeMutationAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        ProbeControl child = new ProbeControl();
+        ProbeControl child = new();
         await dispatcher.InvokeAsync(
             () => child.Attach(dispatcher),
             TestContext.Current.CancellationToken);

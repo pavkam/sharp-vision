@@ -3,13 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Clipboard;
 
-using System.Buffers;
 
 using SharpVision.Terminal.Clipboard;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies byte-exact OSC 52 text clipboard behavior.
@@ -32,7 +28,7 @@ public sealed class Osc52Tests
         Selection selection,
         char identifier)
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new();
 
         Osc52.Write(new Writer(destination), selection, []);
 
@@ -46,8 +42,8 @@ public sealed class Osc52Tests
     [Fact]
     public void Write_WhenTextIsValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         Osc52.Write(writer, Selection.Clipboard, "hello"u8);
         Osc52.Write(writer, Selection.Primary, "🦄"u8);
@@ -64,7 +60,7 @@ public sealed class Osc52Tests
     [Fact]
     public void Query_WhenSelectionIsKnown_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new();
 
         Osc52.Query(new Writer(destination), Selection.Clipboard);
 
@@ -77,8 +73,8 @@ public sealed class Osc52Tests
     [Fact]
     public void Write_WhenArgumentIsInvalid_ThrowsBeforeWriting()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Osc52.Write(writer, (Selection) 999, []));
@@ -147,8 +143,8 @@ public sealed class Osc52Tests
     [InlineData("\u001b]52;c;aGk=\a")]
     public void Decode_WhenParserDeliversOsc_ReturnsClipboardText(string sequence)
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
 
         parser.Parse(Encoding.ASCII.GetBytes(sequence), ref sink);
         Observation observation = sink.Observations.ShouldHaveSingleItem();

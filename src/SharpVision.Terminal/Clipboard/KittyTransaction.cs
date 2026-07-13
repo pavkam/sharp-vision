@@ -311,9 +311,9 @@ public sealed class KittyTransaction: IDisposable
 
         KittyMimeData[] items = new KittyMimeData[_mimeOrder.Count];
 
-        for (var index = 0; index < _mimeOrder.Count; index++)
+        for (int index = 0; index < _mimeOrder.Count; index++)
         {
-            var mime = _mimeOrder[index];
+            string mime = _mimeOrder[index];
             items[index] = new KittyMimeData(mime, _builders[mime].ToArray());
         }
 
@@ -347,7 +347,7 @@ public sealed class KittyTransaction: IDisposable
             return false;
         }
 
-        foreach (var item in value)
+        foreach (char item in value)
         {
             if (item is not (
                 (>= 'a' and <= 'z') or

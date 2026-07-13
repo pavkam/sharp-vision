@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
-using System.Text;
 using System.Threading.Channels;
 
 using SharpVision.Terminal.Transport;
@@ -52,7 +51,7 @@ internal sealed class SessionTransport: ITransport
 
         try
         {
-            var value = await _input.Reader.ReadAsync(cancellationToken);
+            byte[] value = await _input.Reader.ReadAsync(cancellationToken);
             value.AsMemory().CopyTo(destination);
             return value.Length;
         }

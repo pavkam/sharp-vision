@@ -59,7 +59,7 @@ internal sealed class Buffer: IBufferWriter<byte>, IDisposable
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
         Ensure(sizeHint);
-        var available = Math.Min(
+        int available = Math.Min(
             _buffer!.Length - WrittenCount,
             _maximum - WrittenCount);
         return _buffer.AsMemory(WrittenCount, available);
@@ -69,7 +69,7 @@ internal sealed class Buffer: IBufferWriter<byte>, IDisposable
     public Span<byte> GetSpan(int sizeHint = 0)
     {
         Ensure(sizeHint);
-        var available = Math.Min(
+        int available = Math.Min(
             _buffer!.Length - WrittenCount,
             _maximum - WrittenCount);
         return _buffer.AsSpan(WrittenCount, available);
@@ -97,7 +97,7 @@ internal sealed class Buffer: IBufferWriter<byte>, IDisposable
     /// <summary>Clears and returns pooled encoded storage.</summary>
     public void Dispose()
     {
-        var buffer = _buffer;
+        byte[]? buffer = _buffer;
 
         if (buffer is null)
         {
@@ -114,7 +114,7 @@ internal sealed class Buffer: IBufferWriter<byte>, IDisposable
         ThrowIfDisposed();
         ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
         sizeHint = Math.Max(1, sizeHint);
-        var required = checked(WrittenCount + sizeHint);
+        int required = checked(WrittenCount + sizeHint);
 
         if (required > _maximum)
         {
@@ -126,10 +126,10 @@ internal sealed class Buffer: IBufferWriter<byte>, IDisposable
             return;
         }
 
-        var doubled = _buffer.Length > _maximum / 2 ? _maximum : _buffer.Length * 2;
-        var replacement = ArrayPool<byte>.Shared.Rent(Math.Max(required, doubled));
+        int doubled = _buffer.Length > _maximum / 2 ? _maximum : _buffer.Length * 2;
+        byte[] replacement = ArrayPool<byte>.Shared.Rent(Math.Max(required, doubled));
         _buffer.AsSpan(0, WrittenCount).CopyTo(replacement);
-        var previous = _buffer;
+        byte[] previous = _buffer;
         _buffer = replacement;
         ArrayPool<byte>.Shared.Return(previous, clearArray: true);
         Debug.Assert(_buffer.Length >= required, "The pooled buffer must honor its size hint.");

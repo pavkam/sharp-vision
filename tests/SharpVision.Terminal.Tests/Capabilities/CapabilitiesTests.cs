@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
 
-using Shouldly;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
 

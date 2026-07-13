@@ -35,17 +35,17 @@ internal static class Palette
             return source;
         }
 
-        Resolve(source, out var red, out var green, out var blue);
-        var count = depth == ColorDepth.Basic16 ? 16 : 256;
+        Resolve(source, out byte red, out byte green, out byte blue);
+        int count = depth == ColorDepth.Basic16 ? 16 : 256;
         return Color.Indexed(Nearest(red, green, blue, count));
     }
 
     private static int Nearest(byte red, byte green, byte blue, int count)
     {
-        var bestIndex = 0;
-        var bestDistance = int.MaxValue;
+        int bestIndex = 0;
+        int bestDistance = int.MaxValue;
 
-        for (var index = 0; index < 16; index++)
+        for (int index = 0; index < 16; index++)
         {
             Consider(red, green, blue, index, ref bestIndex, ref bestDistance);
         }
@@ -55,7 +55,7 @@ internal static class Palette
             return bestIndex;
         }
 
-        var cube = 16 +
+        int cube = 16 +
             (NearestLevel(red) * 36) +
             (NearestLevel(green) * 6) +
             NearestLevel(blue);
@@ -63,7 +63,7 @@ internal static class Palette
 
         // The grayscale ramp is one-dimensional, but checking its 24 entries
         // keeps tie-breaking visibly identical to ascending palette order.
-        for (var index = 232; index <= byte.MaxValue; index++)
+        for (int index = 232; index <= byte.MaxValue; index++)
         {
             Consider(red, green, blue, index, ref bestIndex, ref bestDistance);
         }
@@ -79,8 +79,8 @@ internal static class Palette
         ref int bestIndex,
         ref int bestDistance)
     {
-        Resolve(index, out var candidateRed, out var candidateGreen, out var candidateBlue);
-        var distance = Distance(red, candidateRed) +
+        Resolve(index, out byte candidateRed, out byte candidateGreen, out byte candidateBlue);
+        int distance = Distance(red, candidateRed) +
             Distance(green, candidateGreen) +
             Distance(blue, candidateBlue);
 
@@ -93,7 +93,7 @@ internal static class Palette
 
     private static int Distance(byte left, byte right)
     {
-        var difference = left - right;
+        int difference = left - right;
         return difference * difference;
     }
 
@@ -123,14 +123,14 @@ internal static class Palette
 
         if (index < 232)
         {
-            var cube = index - 16;
+            int cube = index - 16;
             red = Level(cube / 36);
             green = Level(cube % 36 / 6);
             blue = Level(cube % 6);
             return;
         }
 
-        var gray = (byte) (8 + ((index - 232) * 10));
+        byte gray = (byte) (8 + ((index - 232) * 10));
         red = gray;
         green = gray;
         blue = gray;
@@ -140,12 +140,12 @@ internal static class Palette
 
     private static int NearestLevel(byte component)
     {
-        var best = 0;
-        var bestDistance = int.MaxValue;
+        int best = 0;
+        int bestDistance = int.MaxValue;
 
-        for (var level = 0; level < 6; level++)
+        for (int level = 0; level < 6; level++)
         {
-            var distance = Distance(component, Level(level));
+            int distance = Distance(component, Level(level));
 
             if (distance < bestDistance)
             {
@@ -159,7 +159,7 @@ internal static class Palette
 
     private static void ResolveBasic(int index, out byte red, out byte green, out byte blue)
     {
-        var packed = index switch
+        int packed = index switch
         {
             0 => 0x000000,
             1 => 0xcd0000,

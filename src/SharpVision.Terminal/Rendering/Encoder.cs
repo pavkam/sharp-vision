@@ -38,21 +38,21 @@ public static class Encoder
         ArgumentNullException.ThrowIfNull(capabilities);
         back.ThrowIfDisposed();
         front?.ThrowIfDisposed();
-        var redraw = full || front is null || front.Size != back.Size;
-        Writer writer = new Writer(destination);
+        bool redraw = full || front is null || front.Size != back.Size;
+        Writer writer = new(destination);
         Style semanticStyle = Style.Default;
         Style style = Style.Default;
-        var spanCount = 0;
+        int spanCount = 0;
 
         foreach (DamageSpan span in Damage.Enumerate(front, back, redraw))
         {
             Csi.Position(writer, span.Row + 1, span.Start + 1);
             spanCount++;
-            var end = span.Start + span.Length;
+            int end = span.Start + span.Length;
 
-            for (var column = span.Start; column < end; column++)
+            for (int column = span.Start; column < end; column++)
             {
-                var index = checked((span.Row * back.Size.Width) + column);
+                int index = checked((span.Row * back.Size.Width) + column);
                 Cell cell = back.GetCell(index);
 
                 if (cell.IsContinuation)
@@ -80,7 +80,7 @@ public static class Encoder
         }
 
         ResetStyle(writer, style);
-        var cursorChanged = redraw || front!.Cursor != back.Cursor;
+        bool cursorChanged = redraw || front!.Cursor != back.Cursor;
 
         if ((spanCount > 0 || cursorChanged) && back.Size.Width > 0 && back.Size.Height > 0)
         {
@@ -266,8 +266,8 @@ public static class Encoder
 
     private static void OpenHyperlink(Writer writer, string hyperlink)
     {
-        var byteCount = Encoding.UTF8.GetByteCount(hyperlink);
-        var rented = byteCount > _stackLinkBytes
+        int byteCount = Encoding.UTF8.GetByteCount(hyperlink);
+        byte[]? rented = byteCount > _stackLinkBytes
             ? ArrayPool<byte>.Shared.Rent(byteCount)
             : null;
         Span<byte> bytes = rented is null
@@ -276,7 +276,7 @@ public static class Encoder
 
         try
         {
-            var written = Encoding.UTF8.GetBytes(hyperlink.AsSpan(), bytes);
+            int written = Encoding.UTF8.GetBytes(hyperlink.AsSpan(), bytes);
             Osc.OpenHyperlink(writer, bytes[..written]);
         }
         finally

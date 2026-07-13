@@ -3,9 +3,7 @@
 
 namespace SharpVision.Tests.Layout;
 
-using SharpVision.Layout;
 
-using Shouldly;
 
 /// <summary>Verifies exact fixed, intrinsic, percentage, star, and span allocation.</summary>
 public sealed class TrackTests
@@ -14,7 +12,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenPercentAndStarsShareOddSpace_UsesCumulativeEdges()
     {
-        var result = Tracks.Resolve(
+        int[] result = Tracks.Resolve(
             available: 11,
             [Length.Percent(50), Length.Star(1), Length.Star(1)],
             [0, 0, 0]);
@@ -27,7 +25,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenKindsAreMixed_UsesFinalAxisAndRemainingSpace()
     {
-        var result = Tracks.Resolve(
+        int[] result = Tracks.Resolve(
             available: 20,
             [Length.Cells(3), Length.Auto, Length.Percent(25), Length.Star(1)],
             [0, 4, 0, 0]);
@@ -39,7 +37,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenAxisIsUnbounded_UsesIntrinsicForPercentAndStar()
     {
-        var result = Tracks.Resolve(
+        int[] result = Tracks.Resolve(
             available: null,
             [Length.Percent(50), Length.Star(1), Length.Cells(5), Length.Auto],
             [4, 3, 0, 2]);
@@ -52,10 +50,10 @@ public sealed class TrackTests
     public void Resolve_WhenTracksHaveLimits_ClampsAndRedistributesRemainder()
     {
         Length[] lengths = [Length.Auto, Length.Star(1), Length.Star(1)];
-        var automatic = new[] { 10, 0, 0 };
-        var minimum = new[] { 0, 4, 0 };
-        var maximum = new[] { 6, 5, int.MaxValue };
-        var result = new int[3];
+        int[] automatic = new[] { 10, 0, 0 };
+        int[] minimum = new[] { 0, 4, 0 };
+        int[] maximum = new[] { 6, 5, int.MaxValue };
+        int[] result = new int[3];
 
         Tracks.Resolve(20, lengths, automatic, minimum, maximum, result);
 
@@ -66,7 +64,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenRequestsExceedAvailable_ShrinksByDeterministicPriority()
     {
-        var result = Tracks.Resolve(
+        int[] result = Tracks.Resolve(
             available: 8,
             [Length.Cells(10), Length.Auto, Length.Percent(50), Length.Star(1)],
             [0, 5, 0, 0]);
@@ -78,7 +76,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenAvailableIsZero_ReturnsZeroTracks()
     {
-        var result = Tracks.Resolve(
+        int[] result = Tracks.Resolve(
             available: 0,
             [Length.Cells(4), Length.Auto, Length.Percent(50), Length.Star(1)],
             [0, 3, 0, 0]);
@@ -90,7 +88,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenInputIsInvalid_ThrowsBeforeWritingDestination()
     {
-        var destination = new[] { 7, 7 };
+        int[] destination = new[] { 7, 7 };
 
         _ = Should.Throw<ArgumentException>(() => Tracks.Resolve(
             10,
@@ -107,7 +105,7 @@ public sealed class TrackTests
     [Fact]
     public void Satisfy_WhenSpanRequiresMoreSpace_DistributesCumulativeDeficit()
     {
-        var tracks = new[] { 2, 1, 2, 9 };
+        int[] tracks = new[] { 2, 1, 2, 9 };
 
         Tracks.Satisfy(tracks, start: 0, count: 3, required: 11);
 
@@ -118,7 +116,7 @@ public sealed class TrackTests
     [Fact]
     public void Satisfy_WhenRangeIsInvalid_ThrowsBeforeWritingTracks()
     {
-        var tracks = new[] { 2, 1, 2 };
+        int[] tracks = new[] { 2, 1, 2 };
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             Tracks.Satisfy(tracks, start: 2, count: 2, required: 8));

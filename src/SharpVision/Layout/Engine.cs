@@ -3,8 +3,6 @@
 
 namespace SharpVision.Layout;
 
-using SharpVision.Controls;
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Runs guarded deterministic measure and arrange transactions.</summary>
 /// <remarks>

@@ -3,11 +3,9 @@
 
 namespace SharpVision.Tests.Text;
 
-using System.Text;
 
 using SharpVision.Text;
 
-using Shouldly;
 
 /// <summary>Verifies grapheme-boundary editing, policy, movement, and projection.</summary>
 public sealed class EditTests
@@ -16,7 +14,7 @@ public sealed class EditTests
     [Fact]
     public void Constructor_WhenSelectionIsBackward_PreservesDirectionAndRange()
     {
-        Selection selection = new Selection(anchor: 8, caret: 2);
+        Selection selection = new(anchor: 8, caret: 2);
 
         selection.Anchor.ShouldBe(8);
         selection.Caret.ShouldBe(2);
@@ -44,7 +42,7 @@ public sealed class EditTests
     [Fact]
     public void MoveNext_WhenTextHasInvalidUtf16_PreservesSourceUnitBoundaries()
     {
-        var value = "A\uD800\uDC00\uD800B";
+        string value = "A\uD800\uDC00\uD800B";
         EditResult first = Edit.MoveNext(value, new Selection(1, 1), extend: false);
         EditResult second = Edit.MoveNext(value, first.Selection, extend: false);
 
@@ -171,7 +169,7 @@ public sealed class EditTests
     [Fact]
     public void Replace_WhenSnapshotsAreRetained_RemainsDeterministicAndIndependent()
     {
-        EditResult original = new EditResult("A", new Selection(1, 1), changed: false);
+        EditResult original = new("A", new Selection(1, 1), changed: false);
         EditResult edited = Edit.Replace(original.Text, original.Selection, "界");
 
         original.Text.ShouldBe("A");

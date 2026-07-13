@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies the showcase project test harness and assembly reference.
@@ -16,7 +15,7 @@ public sealed class AssemblyTests
     [Fact]
     public void Assembly_WhenLoaded_HasExpectedName()
     {
-        var name = typeof(AssemblyMarker).Assembly.GetName().Name;
+        string? name = typeof(AssemblyMarker).Assembly.GetName().Name;
 
         name.ShouldBe("SharpVision.Showcase");
     }

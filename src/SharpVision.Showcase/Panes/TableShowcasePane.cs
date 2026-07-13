@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Text;
 
 /// <summary>Documents and demonstrates the Table control.</summary>
@@ -42,12 +40,10 @@ internal sealed class TableShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlTable primary = new ControlTable
+        ControlTable primary = new()
         {
             Width = Length.Cells(58),
-            HeaderForeground = Palette.Text,
-            HeaderBackground = Palette.Highlight,
-            GridLineColor = Palette.Border,
+            ShowHeader = true,
             CellPadding = new Thickness(1, 0),
             RowSpacing = 1,
         };
@@ -56,19 +52,19 @@ internal sealed class TableShowcasePane: ShowcasePane
         primary.Columns.Add(TableColumn.Fill("Details"));
         primary.Rows.Add(new TableRow([
             new ControlText("Terminal core"),
-            new ControlText("Stable") { Foreground = Palette.Success },
+            new ControlText("Stable") ,
             new ControlText("ANSI, OSC, CSI, and input decoding."),
         ]));
-        ControlRichText linked = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlRichText linked = new() { Wrapping = Wrapping.Word };
         linked.Inlines.Add(new ControlRun("Open "));
         linked.Inlines.Add(new Hyperlink("protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
         primary.Rows.Add(new TableRow([
             new ControlText("UI toolkit"),
-            new ControlText("Preview") { Foreground = Palette.Warning },
+            new ControlText("Preview") ,
             linked,
         ]));
 
-        ControlTable compact = new ControlTable
+        ControlTable compact = new()
         {
             Width = Length.Cells(42),
             ShowHeader = false,

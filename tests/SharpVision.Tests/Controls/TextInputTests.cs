@@ -3,21 +3,10 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 using SharpVision.Text;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 using TerminalText = Terminal.Input.Text;
@@ -29,7 +18,7 @@ public sealed class TextInputTests
     [Fact]
     public void Properties_WhenAssignmentsAreInvalid_PreservePreviousState()
     {
-        TextInput control = new TextInput();
+        TextInput control = new();
 
         control.Text.ShouldBeEmpty();
         control.CaretIndex.ShouldBe(0);
@@ -57,8 +46,8 @@ public sealed class TextInputTests
     [Fact]
     public void Text_WhenChangingIsCancelled_PreservesStateAndEventOrder()
     {
-        TextInput control = new TextInput { Text = "A" };
-        List<string> order = new List<string>();
+        TextInput control = new() { Text = "A" };
+        List<string> order = [];
         control.TextChanging += (_, eventArgs) =>
         {
             order.Add($"changing:{control.Text}:{eventArgs.Proposal.Text}");
@@ -84,7 +73,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenTextAndPasteArrive_AppliesPolicyAndMaximum()
     {
-        TextInput control = new TextInput { MaxLength = 3 };
+        TextInput control = new() { MaxLength = 3 };
 
         Route(control, new TextEventArgs(new TerminalText(new Rune('界'))), Events.Text);
         Route(control, new PasteEventArgs(new Paste(Encoding.UTF8.GetBytes("e\u0301👩‍💻Z"))), Events.Paste);
@@ -104,7 +93,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenEditingKeysArrive_UsesDirectionalGraphemeSelection()
     {
-        TextInput control = new TextInput { Text = "one e\u0301👩‍💻" };
+        TextInput control = new() { Text = "one e\u0301👩‍💻" };
 
         Key(control, Code.Left, Modifiers.Shift);
         Key(control, Code.Left, Modifiers.Shift);
@@ -124,7 +113,7 @@ public sealed class TextInputTests
     [Fact]
     public void Undo_WhenHistoryExists_RestoresTextSelectionAndRedo()
     {
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             UndoLimit = 2,
             Text = "A"
@@ -146,7 +135,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenReadOnlyOrSubmitted_UsesDocumentedBehavior()
     {
-        TextInput control = new TextInput { Text = "value", IsReadOnly = true };
+        TextInput control = new() { Text = "value", IsReadOnly = true };
         SubmittedEventArgs? submitted = null;
         control.Submitted += (_, eventArgs) => submitted = eventArgs;
 
@@ -163,7 +152,7 @@ public sealed class TextInputTests
     [Fact]
     public void Render_WhenPasswordIsFocused_MasksSourceAndSetsVisibleCursor()
     {
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             Text = "Ae\u0301👩‍💻",
             PasswordCharacter = new Rune('*'),
@@ -171,7 +160,7 @@ public sealed class TextInputTests
         };
         control.SetFocused(true);
         new Engine().Layout(control, new Size(6, 1));
-        using Frame frame = new Frame(new Size(6, 1));
+        using Frame frame = new(new Size(6, 1));
 
         control.Render(frame.Canvas);
 
@@ -185,13 +174,13 @@ public sealed class TextInputTests
     [Fact]
     public void Render_WhenFocusedCaretIsOutsideCanvas_LeavesCursorHidden()
     {
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             Bounds = new Rect(0, -1, 12, 1),
             Text = "Scrolled out",
         };
         control.SetFocused(true);
-        using Frame frame = new Frame(new Size(12, 2));
+        using Frame frame = new(new Size(12, 2));
 
         Should.NotThrow(() => control.Render(frame.Canvas));
 
@@ -202,10 +191,10 @@ public sealed class TextInputTests
     [Fact]
     public void Render_WhenSelectionContainsWideRune_StylesCompleteOwnedCells()
     {
-        TextInput control = new TextInput { Text = "A界Z" };
+        TextInput control = new() { Text = "A界Z" };
         control.Select(start: 1, length: 1);
         new Engine().Layout(control, new Size(4, 1));
-        using Frame frame = new Frame(new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
 
         control.Render(frame.Canvas);
 
@@ -223,18 +212,18 @@ public sealed class TextInputTests
         Color background = Color.Indexed(24);
         ControlStyle<TextInput> style = ThemeTestSupport.OverlayStyle<TextInput>(
             (State.Normal, new ThemeOverlay(background: background)));
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             Width = Length.Cells(5),
             Text = "A",
             Style = style,
         };
         new Engine().Layout(control, new Size(5, 1));
-        using Frame frame = new Frame(new Size(5, 1));
+        using Frame frame = new(new Size(5, 1));
 
         control.Render(frame.Canvas);
 
-        for (var x = 0; x < 5; x++)
+        for (int x = 0; x < 5; x++)
         {
             frame.GetCell(new Point(x, 0)).Style.Background.ShouldBe(background);
         }
@@ -248,14 +237,14 @@ public sealed class TextInputTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            TextInput control = new TextInput
+            TextInput control = new()
             {
                 Bounds = new Rect(0, 0, 8, 1),
                 Text = "A界e\u0301Z",
             };
             control.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(control);
-            using CaptureManager capture = new CaptureManager(control);
+            using FocusManager focus = new(control);
+            using CaptureManager capture = new(control);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, new Point(5, 5)));
             _ = capture.Dispatch(Pointer(new Point(4, 0), PointerAction.Move, new Point(45, 5)));
@@ -273,13 +262,13 @@ public sealed class TextInputTests
     [Fact]
     public void Arrange_WhenCaretExceedsViewport_ScrollsAndClampsAfterResize()
     {
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             AcceptsReturn = true,
             Text = "123456\nabcdef\nXYZ",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        Engine engine = new Engine();
+        Engine engine = new();
 
         engine.Layout(control, new Size(3, 2));
         control.HorizontalOffset.ShouldBe(2);
@@ -297,7 +286,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenWheelTargetsOverflowingEditor_ScrollsAndBubblesAtEndpoint()
     {
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             AcceptsReturn = true,
             Text = "abcdef\none\ntwo\nthree",
@@ -326,7 +315,7 @@ public sealed class TextInputTests
     [Fact]
     public void ScrollBars_WhenMultilineContentOverflows_ExposesCanonicalVerticalRail()
     {
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             Width = Length.Cells(8),
             Height = Length.Cells(3),
@@ -349,7 +338,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenEditorWheelReachesEndpoint_OffersNextDeltaToEnclosingViewport()
     {
-        TextInput input = new TextInput
+        TextInput input = new()
         {
             Width = Length.Cells(5),
             Height = Length.Cells(2),
@@ -357,10 +346,10 @@ public sealed class TextInputTests
             Text = "one\ntwo\nthree\nfour",
             CaretIndex = 0,
         };
-        Stack content = new Stack();
+        Stack content = new();
         content.Children.Add(input);
         content.Children.Add(new ProbeControl(new Size(5, 8)));
-        ScrollView outer = new ScrollView
+        ScrollView outer = new()
         {
             Content = content,
             ScrollBars = ScrollBars.Vertical,
@@ -383,8 +372,8 @@ public sealed class TextInputTests
     [Fact]
     public void Text_WhenChangedHandlerThrows_PreservesCommittedStateAndFutureEdits()
     {
-        TextInput control = new TextInput();
-        InvalidOperationException failure = new InvalidOperationException("observer");
+        TextInput control = new();
+        InvalidOperationException failure = new("observer");
         void handler(object? sender, TextChangedEventArgs eventArgs)
         {
             _ = sender;
@@ -405,8 +394,8 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenObserverThrowsArgumentException_PropagatesAfterCommit()
     {
-        TextInput control = new TextInput();
-        ArgumentException failure = new ArgumentException("observer");
+        TextInput control = new();
+        ArgumentException failure = new("observer");
         control.TextChanged += (_, _) => throw failure;
 
         Should.Throw<ArgumentException>(() =>
@@ -421,7 +410,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenControlShortcutsArrive_SelectsAndRestoresHistory()
     {
-        TextInput control = new TextInput { Text = "A" };
+        TextInput control = new() { Text = "A" };
         control.Text = "AB";
 
         CharacterKey(control, new Rune('a'), Modifiers.Control);
@@ -437,7 +426,7 @@ public sealed class TextInputTests
     [Fact]
     public void CutSelection_WhenSelectionExists_ReturnsOwnedTextAndHonorsSecurityPolicy()
     {
-        TextInput control = new TextInput { Text = "A界Z" };
+        TextInput control = new() { Text = "A界Z" };
         control.Select(1, 1);
 
         control.CopySelection().ShouldBe("界");
@@ -459,7 +448,7 @@ public sealed class TextInputTests
     [Fact]
     public void Dispatch_WhenUpArrives_MovesToNearestBoundaryOnPreviousLine()
     {
-        TextInput control = new TextInput
+        TextInput control = new()
         {
             AcceptsReturn = true,
             Text = "abc\n12345",
@@ -478,13 +467,13 @@ public sealed class TextInputTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 2) };
-            TextInput control = new TextInput
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 2) };
+            TextInput control = new()
             {
                 Bounds = new Rect(0, 0, 8, 1),
                 Text = "select",
             };
-            ProbeControl other = new ProbeControl
+            ProbeControl other = new()
             {
                 Bounds = new Rect(10, 0, 2, 1),
                 CanFocus = true,
@@ -492,8 +481,8 @@ public sealed class TextInputTests
             root.Children.Add(control);
             root.Children.Add(other);
             root.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(root);
-            using CaptureManager capture = new CaptureManager(root);
+            using FocusManager focus = new(root);
+            using CaptureManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, new Point(5, 5)));
             capture.Captured.ShouldBeSameAs(control);
@@ -553,9 +542,9 @@ public sealed class TextInputTests
 
     private static string Cells(Frame frame, int count)
     {
-        StringBuilder result = new StringBuilder(count);
+        StringBuilder result = new(count);
 
-        for (var x = 0; x < count; x++)
+        for (int x = 0; x < count; x++)
         {
             _ = result.Append(FrameOracle.Get(frame, new Point(x, 0)));
         }
@@ -565,25 +554,25 @@ public sealed class TextInputTests
 
     private static byte[] CopyOccupied(Frame frame)
     {
-        List<byte> result = new List<byte>();
+        List<byte> result = [];
 
-        for (var x = 0; x < frame.Size.Width; x++)
+        for (int x = 0; x < frame.Size.Width; x++)
         {
-            Point point = new Point(x, 0);
+            Point point = new(x, 0);
 
             if (frame.GetCell(point).IsContinuation)
             {
                 continue;
             }
 
-            var length = frame.GetGraphemeByteCount(point);
+            int length = frame.GetGraphemeByteCount(point);
 
             if (length == 0)
             {
                 continue;
             }
 
-            var bytes = new byte[length];
+            byte[] bytes = new byte[length];
             _ = frame.CopyGrapheme(point, bytes);
             result.AddRange(bytes);
         }

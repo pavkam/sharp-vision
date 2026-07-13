@@ -23,7 +23,7 @@ internal static class ShowcaseStartupOptions
         bool negotiate = false)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        Settings overrides = new Settings { CellMouse = true };
+        Settings overrides = new() { CellMouse = true };
         Capabilities capabilities = negotiate
             ? Detector.Detect(new Dictionary<string, string?>(), overrides: overrides)
             : Detector.Detect(environment, overrides: overrides);

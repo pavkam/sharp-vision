@@ -3,15 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies clipped, ordered, grapheme-safe control rendering into semantic cells.</summary>
 public sealed class RenderingTests
@@ -20,20 +12,20 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenChildrenOverlap_ClipsAndUsesCollectionZOrder()
     {
-        ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 5, 2) };
-        ProbeControl first = new ProbeControl
+        ProbeContainer root = new() { Bounds = new Rect(0, 0, 5, 2) };
+        ProbeControl first = new()
         {
             Bounds = new Rect(0, 0, 8, 1),
             Content = "ABCDEFGH".AsMemory(),
         };
-        ProbeControl second = new ProbeControl
+        ProbeControl second = new()
         {
             Bounds = new Rect(2, 0, 1, 1),
             Content = "Z".AsMemory(),
         };
         root.Children.Add(first);
         root.Children.Add(second);
-        using Frame frame = new Frame(new Size(8, 2));
+        using Frame frame = new(new Size(8, 2));
 
         root.Render(frame.Canvas);
 
@@ -48,18 +40,18 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenContainerDoesNotClipChildren_DrawsWithinAncestorCanvas()
     {
-        ProbeContainer root = new ProbeContainer
+        ProbeContainer root = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             ClipChildren = false,
         };
-        ProbeControl child = new ProbeControl
+        ProbeControl child = new()
         {
             Bounds = new Rect(1, 0, 1, 1),
             Content = "X".AsMemory(),
         };
         root.Children.Add(child);
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
 
         root.Render(frame.Canvas);
 
@@ -70,13 +62,13 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenControlIsHitTestTransparent_StillDrawsCells()
     {
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             Content = "X".AsMemory(),
             IsHitTestVisible = false,
         };
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         control.Render(frame.Canvas);
 
@@ -87,14 +79,14 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenVisibilitySuppressesDrawing_LeavesCellsBlank()
     {
-        ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 4, 1) };
-        ProbeControl hidden = new ProbeControl
+        ProbeContainer root = new() { Bounds = new Rect(0, 0, 4, 1) };
+        ProbeControl hidden = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             Content = "H".AsMemory(),
             Visibility = Visibility.Hidden,
         };
-        ProbeControl collapsed = new ProbeControl
+        ProbeControl collapsed = new()
         {
             Bounds = new Rect(1, 0, 1, 1),
             Content = "C".AsMemory(),
@@ -102,7 +94,7 @@ public sealed class RenderingTests
         };
         root.Children.Add(hidden);
         root.Children.Add(collapsed);
-        using Frame frame = new Frame(new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
 
         root.Render(frame.Canvas);
 
@@ -116,13 +108,13 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenControlHasPadding_DrawsInsideContentBox()
     {
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Padding = new Thickness(1),
             Content = "A".AsMemory(),
         };
         new Engine().Layout(control, new Size(5, 3));
-        using Frame frame = new Frame(new Size(5, 3));
+        using Frame frame = new(new Size(5, 3));
 
         control.Render(frame.Canvas);
 
@@ -134,12 +126,12 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenContentHasComplexGraphemes_PreservesLeadAndContinuations()
     {
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 8, 1),
             Content = "e\u0301界👩‍💻".AsMemory(),
         };
-        using Frame frame = new Frame(new Size(8, 1));
+        using Frame frame = new(new Size(8, 1));
 
         control.Render(frame.Canvas);
 
@@ -160,7 +152,7 @@ public sealed class RenderingTests
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
             (State.Hovered, new ThemeOverlay(attributes: Attributes.Underline)),
             (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))));
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             Content = "A".AsMemory(),
@@ -168,7 +160,7 @@ public sealed class RenderingTests
         };
         control.SetHovered(true);
         control.SetPressed(true);
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         control.Render(frame.Canvas);
 
@@ -181,13 +173,13 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenCoreInvalidates_LeavesNextFramePending()
     {
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             Content = "A".AsMemory(),
             Rendering = current => current.SetHovered(true),
         };
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
         control.Clear(Invalidation.All);
         control.Invalidate(Invalidation.Render);
 
@@ -205,13 +197,13 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenCoreThrows_RestoresRenderInvalidation()
     {
-        InvalidOperationException failure = new InvalidOperationException("render");
-        ProbeControl control = new ProbeControl
+        InvalidOperationException failure = new("render");
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 1, 1),
             Rendering = _ => throw failure,
         };
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
         control.Clear(Invalidation.All);
         control.Invalidate(Invalidation.Render);
 
@@ -225,20 +217,20 @@ public sealed class RenderingTests
     [Fact]
     public void Render_WhenBoundsAreZeroOrTiny_DoesNotEscapeClip()
     {
-        ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 1, 1) };
-        ProbeControl zero = new ProbeControl
+        ProbeContainer root = new() { Bounds = new Rect(0, 0, 1, 1) };
+        ProbeControl zero = new()
         {
             Bounds = new Rect(0, 0, 0, 0),
             Content = "X".AsMemory(),
         };
-        ProbeControl outside = new ProbeControl
+        ProbeControl outside = new()
         {
             Bounds = new Rect(1, 0, 2, 1),
             Content = "YZ".AsMemory(),
         };
         root.Children.Add(zero);
         root.Children.Add(outside);
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
 
         root.Render(frame.Canvas);
 

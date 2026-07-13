@@ -3,14 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 /// <summary>Verifies the visual-state model: selection vs checked, combined states, and geometry.</summary>
 public sealed class StateModelTests
@@ -19,12 +12,12 @@ public sealed class StateModelTests
     [Fact]
     public void SelectedUncheckedControl_ResolvesSelectedNotChecked()
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Checked, Color.Indexed(1));
         style.Set(Control.ForegroundProperty, State.Selected, Color.Indexed(2));
         theme.SetStyle(style);
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         control.SetSelectedState(true);
@@ -36,12 +29,12 @@ public sealed class StateModelTests
     [Fact]
     public void UncheckedCheckBox_WhenRowSelected_DoesNotResolveCheckedStyle()
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> style = new();
         style.Set(Control.BackgroundProperty, State.Checked, Color.Indexed(1));
         style.Set(Control.BackgroundProperty, State.Selected, Color.Indexed(2));
         theme.SetStyle(style);
-        CheckBox box = new CheckBox();
+        CheckBox box = new();
         ThemeTestSupport.ApplyTheme(box, theme);
 
         box.SetSelectedState(true);
@@ -53,13 +46,13 @@ public sealed class StateModelTests
     [Fact]
     public void Resolve_WhenCombinedStateDefined_WinsOverSingleStates()
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Hovered, Color.Indexed(1));
         style.Set(Control.ForegroundProperty, State.Focused, Color.Indexed(2));
         style.Set(Control.ForegroundProperty, State.Hovered | State.Focused, Color.Indexed(3));
         theme.SetStyle(style);
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Hovered | State.Focused)
@@ -72,11 +65,11 @@ public sealed class StateModelTests
     [Fact]
     public void IndeterminateCheckBox_ResolvesIndeterminateStyle()
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Indeterminate, Color.Indexed(5));
         theme.SetStyle(style);
-        CheckBox box = new CheckBox { IsThreeState = true, IsChecked = null };
+        CheckBox box = new() { IsThreeState = true, IsChecked = null };
         ThemeTestSupport.ApplyTheme(box, theme);
 
         box.Foreground.ShouldBe(Color.Indexed(5));
@@ -93,7 +86,7 @@ public sealed class StateModelTests
             {
                 ControlStyle<Control> style = ThemeTestSupport.CreateStyle<Control>();
                 style.Set(Control.PaddingProperty, State.Pressed, new Thickness(2));
-                ProbeControl control = new ProbeControl { Style = style };
+                ProbeControl control = new() { Style = style };
                 control.Attach(dispatcher);
                 control.Clear(Invalidation.All);
 
@@ -115,7 +108,7 @@ public sealed class StateModelTests
             {
                 ControlStyle<Control> style = ThemeTestSupport.CreateStyle<Control>();
                 style.Set(Control.ForegroundProperty, State.Pressed, Color.Indexed(3));
-                ProbeControl control = new ProbeControl { Style = style };
+                ProbeControl control = new() { Style = style };
                 control.Attach(dispatcher);
                 control.Clear(Invalidation.All);
 

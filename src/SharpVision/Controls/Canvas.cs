@@ -3,11 +3,8 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Positions children by optional physical offsets and resolved sizes.</summary>
 public sealed class Canvas: Container
@@ -146,7 +143,7 @@ public sealed class Canvas: Container
             return popup;
         }
 
-        for (var index = Children.Count - 1; index >= 0; index--)
+        for (int index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].HitTest(point) is { } child)
             {
@@ -161,8 +158,8 @@ public sealed class Canvas: Container
     protected override Size MeasureCore(Constraint constraint)
     {
         _ = constraint;
-        var width = 0;
-        var height = 0;
+        int width = 0;
+        int height = 0;
 
         foreach (Control child in Children)
         {
@@ -174,8 +171,8 @@ public sealed class Canvas: Container
             }
 
             Position? position = GetPosition(child);
-            var outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
-            var outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
+            int outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
+            int outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
             width = Math.Max(width, Add(Add(Fixed(position?.Left), outerWidth), Fixed(position?.Right)));
             height = Math.Max(
                 height,
@@ -197,18 +194,18 @@ public sealed class Canvas: Container
             }
 
             Position? position = GetPosition(child);
-            var left = Resolve(position?.Left, bounds.Width);
-            var right = Resolve(position?.Right, bounds.Width);
-            var top = Resolve(position?.Top, bounds.Height);
-            var bottom = Resolve(position?.Bottom, bounds.Height);
-            var width = Outer(child, horizontal: true, bounds.Width, left, right);
-            var height = Outer(child, horizontal: false, bounds.Height, top, bottom);
-            var x = position?.Left is not null
+            int left = Resolve(position?.Left, bounds.Width);
+            int right = Resolve(position?.Right, bounds.Width);
+            int top = Resolve(position?.Top, bounds.Height);
+            int bottom = Resolve(position?.Bottom, bounds.Height);
+            int width = Outer(child, horizontal: true, bounds.Width, left, right);
+            int height = Outer(child, horizontal: false, bounds.Height, top, bottom);
+            int x = position?.Left is not null
                 ? Add(bounds.X, left)
                 : position?.Right is not null
                     ? bounds.Right - right - width
                     : bounds.X;
-            var y = position?.Top is not null
+            int y = position?.Top is not null
                 ? Add(bounds.Y, top)
                 : position?.Bottom is not null
                     ? bounds.Bottom - bottom - height
@@ -222,7 +219,7 @@ public sealed class Canvas: Container
 
     private static int Add(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
@@ -252,7 +249,7 @@ public sealed class Canvas: Container
         int trailing)
     {
         Length length = horizontal ? child.Width : child.Height;
-        var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+        int margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
 
         if (length.Kind == Kind.Auto &&
             (horizontal ? GetPosition(child)?.Left : GetPosition(child)?.Top) is not null &&
@@ -261,10 +258,10 @@ public sealed class Canvas: Container
             return Math.Max(0, axis - leading - trailing);
         }
 
-        var desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
-        var minimum = horizontal ? child.MinWidth : child.MinHeight;
-        var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
-        var border = length.Kind switch
+        int desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
+        int minimum = horizontal ? child.MinWidth : child.MinHeight;
+        int maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+        int border = length.Kind switch
         {
             Kind.Auto => desired,
             Kind.Cells => (int) length.Value,
@@ -286,7 +283,7 @@ public sealed class Canvas: Container
 
     private static int Percent(int axis, double value)
     {
-        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
+        double result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 

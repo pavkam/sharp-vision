@@ -4,11 +4,8 @@
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -19,15 +16,15 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenFirstResizeArrives_UsesDocumentedOrderingAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        List<string> order = new List<string>();
-        ProbeControl root = new ProbeControl
+        List<string> order = [];
+        ProbeControl root = new()
         {
             Measuring = _ => order.Add("layout"),
             Rendering = _ => order.Add("control-frame"),
         };
-        await using Application application = new Application(
+        await using Application application = new(
             root,
             terminal,
             terminal,
@@ -56,15 +53,15 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenFlushIsPaused_DoesNotCommitFrameEarlyAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.PauseFlush();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var rendered = false;
+        bool rendered = false;
         application.FrameRendered += (_, _) => rendered = true;
 
         Task starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
@@ -84,14 +81,14 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenSizeIsSuspended_StartsWithoutRenderingFrameAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(0, 0)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var frames = 0;
+        int frames = 0;
         application.FrameRendered += (_, _) => frames++;
 
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -105,15 +102,15 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StopAsync_WhenCalledRepeatedly_StopsAndCleansOnceAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal with { AlternateScreen = true });
-        var stopping = 0;
-        var stopped = 0;
+        int stopping = 0;
+        int stopped = 0;
         application.Stopping += (_, _) => stopping++;
         application.Stopped += (_, _) => stopped++;
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -130,9 +127,9 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StopAsync_WhenPreviewCancels_LeavesApplicationRunningAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
@@ -158,17 +155,17 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenResizeHandlerThrows_PreservesPrimaryExceptionAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        IOException cleanup = new IOException("cleanup");
+        IOException cleanup = new("cleanup");
         terminal.FailWriteNumber = 2;
         terminal.WriteFailure = cleanup;
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal with { AlternateScreen = true });
-        InvalidOperationException failure = new InvalidOperationException("resize-handler");
+        InvalidOperationException failure = new("resize-handler");
         application.Resize += (_, _) => throw failure;
 
         InvalidOperationException thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
@@ -184,9 +181,9 @@ public sealed class ApplicationTests
     [Fact]
     public async Task DisposeAsync_WhenNeverStarted_ReleasesOwnedResourcesAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
-        ProbeControl root = new ProbeControl();
-        Application application = new Application(
+        await using FakeTerminal terminal = new();
+        ProbeControl root = new();
+        Application application = new(
             root,
             terminal,
             terminal,

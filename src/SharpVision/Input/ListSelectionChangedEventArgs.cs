@@ -28,7 +28,7 @@ public sealed class ListSelectionChangedEventArgs: EventArgs
 
     private static void Validate(ReadOnlySpan<int> values, string name)
     {
-        foreach (var value in values)
+        foreach (int value in values)
         {
             if (value < 0)
             {

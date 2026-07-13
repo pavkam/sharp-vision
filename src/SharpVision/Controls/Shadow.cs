@@ -3,14 +3,7 @@
 
 namespace SharpVision.Controls;
 
-using System.Text;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-
-using BackgroundMode = BackgroundMode;
-using TerminalAttributes = TerminalAttributes;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Decorates one child with composite or block-glyph visual overflow.</summary>
 public sealed partial class Shadow: Container
@@ -114,7 +107,7 @@ public sealed partial class Shadow: Container
 
     private static int Add(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 }

@@ -3,8 +3,6 @@
 
 namespace SharpVision.Fonts;
 
-using System.Diagnostics;
-using System.Text;
 
 /// <summary>Composes FIGfont glyph rows using version 2 horizontal rules.</summary>
 internal static class FigletRenderer
@@ -26,10 +24,10 @@ internal static class FigletRenderer
     {
         FigletDirection direction = options.Direction ?? font.Direction;
         FigletLayout layout = options.Layout ?? font.Layout;
-        var logicalLines = text.ReplaceLineEndings("\n").Split('\n');
+        string[] logicalLines = text.ReplaceLineEndings("\n").Split('\n');
         List<StringBuilder> composed = [];
 
-        for (var lineIndex = 0; lineIndex < logicalLines.Length; lineIndex++)
+        for (int lineIndex = 0; lineIndex < logicalLines.Length; lineIndex++)
         {
             Rune[] runes = [.. logicalLines[lineIndex].EnumerateRunes()];
 
@@ -43,9 +41,9 @@ internal static class FigletRenderer
             AppendVertical(composed, rows, layout, font.Hardblank);
         }
 
-        StringBuilder output = new StringBuilder();
+        StringBuilder output = new();
 
-        for (var row = 0; row < composed.Count; row++)
+        for (int row = 0; row < composed.Count; row++)
         {
             if (row != 0)
             {
@@ -66,7 +64,7 @@ internal static class FigletRenderer
     {
         StringBuilder[] rows = new StringBuilder[font.Height];
 
-        for (var row = 0; row < rows.Length; row++)
+        for (int row = 0; row < rows.Length; row++)
         {
             rows[row] = new StringBuilder();
         }
@@ -74,9 +72,9 @@ internal static class FigletRenderer
         foreach (Rune rune in runes)
         {
             FigletGlyph glyph = font.GetGlyph(rune.Value);
-            var overlap = GetOverlap(rows, glyph, layout, font.Hardblank);
+            int overlap = GetOverlap(rows, glyph, layout, font.Hardblank);
 
-            for (var row = 0; row < rows.Length; row++)
+            for (int row = 0; row < rows.Length; row++)
             {
                 Merge(rows[row], glyph.Rows[row], overlap, layout, font.Hardblank);
             }
@@ -97,27 +95,27 @@ internal static class FigletRenderer
             return 0;
         }
 
-        var maximum = Math.Min(left[0].Length, right.Width);
-        var result = maximum;
+        int maximum = Math.Min(left[0].Length, right.Width);
+        int result = maximum;
 
-        for (var row = 0; row < left.Length; row++)
+        for (int row = 0; row < left.Length; row++)
         {
-            var trailing = 0;
+            int trailing = 0;
 
             while (trailing < left[row].Length && left[row][left[row].Length - trailing - 1] == ' ')
             {
                 trailing++;
             }
 
-            var leading = 0;
+            int leading = 0;
 
             while (leading < right.Width && right.Rows[row][leading] == ' ')
             {
                 leading++;
             }
 
-            var rowOverlap = Math.Min(maximum, trailing + leading);
-            var leftIndex = left[row].Length - trailing - 1;
+            int rowOverlap = Math.Min(maximum, trailing + leading);
+            int leftIndex = left[row].Length - trailing - 1;
 
             if (leftIndex >= 0 &&
                 leading < right.Width &&
@@ -139,12 +137,12 @@ internal static class FigletRenderer
         FigletLayout layout,
         char hardblank)
     {
-        var start = left.Length - overlap;
+        int start = left.Length - overlap;
 
-        for (var column = 0; column < overlap; column++)
+        for (int column = 0; column < overlap; column++)
         {
-            var l = left[start + column];
-            var r = right[column];
+            char l = left[start + column];
+            char r = right[column];
             left[start + column] = l == ' '
                 ? r
                 : r == ' '
@@ -189,8 +187,8 @@ internal static class FigletRenderer
 
         if ((rules & FigletLayout.Hierarchy) != 0)
         {
-            var leftClass = Hierarchy(left);
-            var rightClass = Hierarchy(right);
+            int leftClass = Hierarchy(left);
+            int rightClass = Hierarchy(right);
 
             if (leftClass >= 0 && rightClass >= 0 && leftClass != rightClass)
             {
@@ -255,11 +253,11 @@ internal static class FigletRenderer
 
     private static void TrimLeading(StringBuilder[] rows)
     {
-        var count = rows.Length == 0 ? 0 : rows[0].Length;
+        int count = rows.Length == 0 ? 0 : rows[0].Length;
 
         foreach (StringBuilder row in rows)
         {
-            var leading = 0;
+            int leading = 0;
 
             while (leading < row.Length && row[leading] == ' ')
             {
@@ -300,15 +298,15 @@ internal static class FigletRenderer
             return;
         }
 
-        var overlap = GetVerticalOverlap(output, rows, layout, hardblank);
-        var start = output.Count - overlap;
+        int overlap = GetVerticalOverlap(output, rows, layout, hardblank);
+        int start = output.Count - overlap;
 
-        for (var row = 0; row < overlap; row++)
+        for (int row = 0; row < overlap; row++)
         {
             output[start + row] = MergeVertical(output[start + row], rows[row], layout, hardblank);
         }
 
-        for (var row = overlap; row < rows.Length; row++)
+        for (int row = overlap; row < rows.Length; row++)
         {
             output.Add(rows[row]);
         }
@@ -320,15 +318,15 @@ internal static class FigletRenderer
         FigletLayout layout,
         char hardblank)
     {
-        var maximum = Math.Min(top.Count, bottom.Length);
-        var width = Math.Max(
+        int maximum = Math.Min(top.Count, bottom.Length);
+        int width = Math.Max(
             top.Count == 0 ? 0 : top.Max(row => row.Length),
             bottom.Length == 0 ? 0 : bottom.Max(row => row.Length));
-        var result = maximum;
+        int result = maximum;
 
-        for (var column = 0; column < width; column++)
+        for (int column = 0; column < width; column++)
         {
-            var trailing = 0;
+            int trailing = 0;
 
             while (trailing < top.Count &&
                 IsVerticalBlank(Get(top[top.Count - trailing - 1], column), hardblank))
@@ -336,15 +334,15 @@ internal static class FigletRenderer
                 trailing++;
             }
 
-            var leading = 0;
+            int leading = 0;
 
             while (leading < bottom.Length && IsVerticalBlank(Get(bottom[leading], column), hardblank))
             {
                 leading++;
             }
 
-            var columnOverlap = Math.Min(maximum, trailing + leading);
-            var topIndex = top.Count - trailing - 1;
+            int columnOverlap = Math.Min(maximum, trailing + leading);
+            int topIndex = top.Count - trailing - 1;
 
             if (topIndex >= 0 &&
                 leading < bottom.Length &&
@@ -369,14 +367,14 @@ internal static class FigletRenderer
         FigletLayout layout,
         char hardblank)
     {
-        var width = Math.Max(top.Length, bottom.Length);
-        StringBuilder result = new StringBuilder(width);
+        int width = Math.Max(top.Length, bottom.Length);
+        StringBuilder result = new(width);
 
-        for (var column = 0; column < width; column++)
+        for (int column = 0; column < width; column++)
         {
-            var upper = Get(top, column);
-            var lower = Get(bottom, column);
-            var value = IsVerticalBlank(upper, hardblank)
+            char upper = Get(top, column);
+            char lower = Get(bottom, column);
+            char value = IsVerticalBlank(upper, hardblank)
                 ? lower
                 : IsVerticalBlank(lower, hardblank)
                     ? upper
@@ -433,8 +431,8 @@ internal static class FigletRenderer
 
         if ((rules & FigletLayout.VerticalHierarchy) != 0)
         {
-            var topClass = Hierarchy(top);
-            var bottomClass = Hierarchy(bottom);
+            int topClass = Hierarchy(top);
+            int bottomClass = Hierarchy(bottom);
 
             if (topClass >= 0 && bottomClass >= 0 && topClass != bottomClass)
             {

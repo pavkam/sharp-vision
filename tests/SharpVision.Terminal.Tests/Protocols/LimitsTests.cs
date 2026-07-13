@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies the finite protocol limit contract.

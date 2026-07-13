@@ -49,7 +49,7 @@ public static class Osc52
         ReadOnlySpan<byte> text,
         int maxBytes = _defaultMaxBytes)
     {
-        var identifier = GetIdentifier(selection);
+        byte identifier = GetIdentifier(selection);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBytes);
 
         if (text.Length > maxBytes)
@@ -59,9 +59,9 @@ public static class Osc52
 
         ValidateUtf8(text, nameof(text));
 
-        var base64Length = Base64.GetMaxEncodedToUtf8Length(text.Length);
-        var length = checked(base64Length + 2);
-        var rented = length > _stackPayloadLimit
+        int base64Length = Base64.GetMaxEncodedToUtf8Length(text.Length);
+        int length = checked(base64Length + 2);
+        byte[]? rented = length > _stackPayloadLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
         Span<byte> payload = rented is null
@@ -75,8 +75,8 @@ public static class Osc52
             OperationStatus status = Base64.EncodeToUtf8(
                 text,
                 payload[2..],
-                out var consumed,
-                out var written);
+                out int consumed,
+                out int written);
 
             if (status != OperationStatus.Done || consumed != text.Length)
             {
@@ -152,16 +152,16 @@ public static class Osc52
             return Malformed(selection);
         }
 
-        var maximumDecoded = Base64.GetMaxDecodedFromUtf8Length(encoded.Length);
-        var rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, maximumDecoded));
+        int maximumDecoded = Base64.GetMaxDecodedFromUtf8Length(encoded.Length);
+        byte[] rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, maximumDecoded));
 
         try
         {
             OperationStatus status = Base64.DecodeFromUtf8(
                 encoded,
                 rented,
-                out var consumed,
-                out var written);
+                out int consumed,
+                out int written);
 
             if (status != OperationStatus.Done ||
                 consumed != encoded.Length ||
@@ -210,9 +210,9 @@ public static class Osc52
             return false;
         }
 
-        var padding = 0;
+        int padding = 0;
 
-        for (var index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
+        for (int index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
         {
             padding++;
         }
@@ -222,10 +222,10 @@ public static class Osc52
             return false;
         }
 
-        for (var index = 0; index < value.Length - padding; index++)
+        for (int index = 0; index < value.Length - padding; index++)
         {
-            var item = value[index];
-            var valid = item is (>= (byte) 'A' and <= (byte) 'Z') or
+            byte item = value[index];
+            bool valid = item is (>= (byte) 'A' and <= (byte) 'Z') or
                 (>= (byte) 'a' and <= (byte) 'z') or
                 (>= (byte) '0' and <= (byte) '9') or
                 (byte) '+' or (byte) '/';
@@ -243,7 +243,7 @@ public static class Osc52
     {
         while (!value.IsEmpty)
         {
-            OperationStatus status = Rune.DecodeFromUtf8(value, out _, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf8(value, out _, out int consumed);
 
             if (status != OperationStatus.Done)
             {

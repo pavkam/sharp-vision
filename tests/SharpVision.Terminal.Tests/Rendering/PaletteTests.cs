@@ -4,10 +4,7 @@
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
 /// <summary>Verifies deterministic semantic-color projection to terminal tiers.</summary>
 public sealed class PaletteTests
@@ -45,7 +42,7 @@ public sealed class PaletteTests
     [Fact]
     public void Project_WhenEveryIndexIsDegraded_RemainsInsideTier()
     {
-        for (var index = 0; index <= byte.MaxValue; index++)
+        for (int index = 0; index <= byte.MaxValue; index++)
         {
             Color source = Color.Indexed(index);
             Color basic = Palette.Project(source, ColorDepth.Basic16);
@@ -61,9 +58,9 @@ public sealed class PaletteTests
     [Fact]
     public void Project_WhenRandomColorsAreRepeated_IsDeterministicAndIdempotent()
     {
-        Random random = new Random(0x00C01012);
+        Random random = new(0x00C01012);
 
-        for (var iteration = 0; iteration < 2_000; iteration++)
+        for (int iteration = 0; iteration < 2_000; iteration++)
         {
             Color source = Color.Rgb(random.Next(256), random.Next(256), random.Next(256));
 

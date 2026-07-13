@@ -1,12 +1,12 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
-using SharpVision.Controls;
 
 /// <summary>Identifies one typed style property declared by a control type.</summary>
 /// <typeparam name="T">The validated property value type.</typeparam>
@@ -85,7 +85,7 @@ public sealed class StyleProperty<T>: IStyleProperty
 
         validate?.Invoke(defaultValue);
 
-        StyleProperty<T> property = new StyleProperty<T>(
+        StyleProperty<T> property = new(
             typeof(TControl),
             name,
             clrName ?? DeriveClrName(name),
@@ -98,10 +98,10 @@ public sealed class StyleProperty<T>: IStyleProperty
 
     private static string DeriveClrName(string name)
     {
-        StringBuilder builder = new StringBuilder(name.Length);
-        var capitalizeNext = true;
+        StringBuilder builder = new(name.Length);
+        bool capitalizeNext = true;
 
-        foreach (var character in name)
+        foreach (char character in name)
         {
             if (character is '-' or '_')
             {

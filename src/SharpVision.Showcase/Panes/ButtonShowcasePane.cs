@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Layout;
 
 /// <summary>Live Button documentation page composed as a real control tree.</summary>
 internal sealed class ButtonShowcasePane: ShowcasePane
@@ -43,15 +42,14 @@ internal sealed class ButtonShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlText status = new ControlText("Activation log: waiting");
-        ControlButton active = new ControlButton
+        ControlText status = new("Activation log: waiting");
+        ControlButton active = new()
         {
             Content = new ControlText("Click or press Enter"),
-            Style = Palette.Interactive(),
         };
         active.Click += (_, eventArgs) =>
             status.Content = $"Activation log: {eventArgs.Cause}";
-        ControlStack primary = new ControlStack();
+        ControlStack primary = new();
         primary.Children.Add(PaneSupport.ButtonSpecimen(active));
         primary.Children.Add(status);
         examples.Children.Add(PaneSupport.SampleSection(
@@ -59,18 +57,16 @@ internal sealed class ButtonShowcasePane: ShowcasePane
             "A raised, bordered action surface responds to hover, focus, press, Enter, Space, and a primary pointer click.",
             primary));
 
-        ControlStack roles = new ControlStack { Orientation = Orientation.Horizontal, Spacing = 2 };
+        ControlStack roles = new() { Orientation = Orientation.Horizontal, Spacing = 2 };
         roles.Children.Add(PaneSupport.ButtonSpecimen(new ControlButton
         {
             Content = new ControlText("Default action"),
             IsDefault = true,
-            Style = Palette.Interactive(),
         }));
         roles.Children.Add(PaneSupport.ButtonSpecimen(new ControlButton
         {
             Content = new ControlText("Cancel action"),
             IsCancel = true,
-            Style = Palette.Interactive(),
         }));
         examples.Children.Add(PaneSupport.SampleSection(
             "Dialog command roles",
@@ -85,17 +81,15 @@ internal sealed class ButtonShowcasePane: ShowcasePane
                 Content = new ControlText("Block glyph shadow"),
                 ShadowMode = ShadowMode.BlockGlyph,
                 ShadowGlyph = new Rune('░'),
-                Style = Palette.Interactive(),
             })));
 
         examples.Children.Add(PaneSupport.SampleSection(
             "Flat action",
-            "A shadowless button stays in place while pressed. Its pressed palette covers the full face and border instead of simulating depth that is not there.",
+            "A shadowless button stays in place while pressed. Its pressed theme covers the full face and border instead of simulating depth that is not there.",
             PaneSupport.ButtonSpecimen(new ControlButton
             {
                 Content = new ControlText("Flat action"),
                 HasShadow = false,
-                Style = Palette.Interactive(),
             })));
 
         examples.Children.Add(PaneSupport.SampleSection(
@@ -105,7 +99,6 @@ internal sealed class ButtonShowcasePane: ShowcasePane
             {
                 Content = new ControlText("Disabled"),
                 IsEnabled = false,
-                Style = Palette.Interactive(),
             })));
     }
 }

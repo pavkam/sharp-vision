@@ -5,12 +5,9 @@ namespace SharpVision.Terminal.Tests.Transport;
 
 using System.Runtime.Versioning;
 
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Terminal.Tests.Support;
 using SharpVision.Terminal.Transport;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies real Unix pseudoterminal transport, EOF, and resize behavior.
@@ -27,25 +24,25 @@ public sealed class PseudoterminalTests
             OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             "Unix pseudoterminals require Linux or macOS.");
         await using UnixPseudoterminal terminal = UnixPseudoterminal.Open();
-        await using StreamTransport transport = new StreamTransport(
+        await using StreamTransport transport = new(
             terminal.Slave,
             terminal.Slave,
             leaveOpen: true);
-        var destination = new byte[5];
+        byte[] destination = new byte[5];
 
         await terminal.Master.WriteAsync(
             "input"u8.ToArray(),
             TestContext.Current.CancellationToken);
         await terminal.Master.FlushAsync(TestContext.Current.CancellationToken);
-        var read = await transport.ReadAsync(
+        int read = await transport.ReadAsync(
             destination,
             TestContext.Current.CancellationToken);
         await transport.WriteAsync(
             "output"u8.ToArray(),
             TestContext.Current.CancellationToken);
         await transport.FlushAsync(TestContext.Current.CancellationToken);
-        var output = new byte[6];
-        var written = await terminal.Master.ReadAsync(
+        byte[] output = new byte[6];
+        int written = await terminal.Master.ReadAsync(
             output,
             TestContext.Current.CancellationToken);
 
@@ -63,13 +60,13 @@ public sealed class PseudoterminalTests
             OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             "Unix pseudoterminals require Linux or macOS.");
         await using UnixPseudoterminal terminal = UnixPseudoterminal.Open();
-        await using StreamTransport transport = new StreamTransport(
+        await using StreamTransport transport = new(
             terminal.Slave,
             terminal.Slave,
             leaveOpen: true);
         await terminal.CloseMasterAsync();
 
-        var read = await transport.ReadAsync(
+        int read = await transport.ReadAsync(
             new byte[1],
             TestContext.Current.CancellationToken);
 
@@ -83,10 +80,10 @@ public sealed class PseudoterminalTests
         Assert.SkipUnless(
             OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             "Unix pseudoterminals require Linux or macOS.");
-        Dimensions initial = new Dimensions(new Size(80, 24), new Size(800, 480));
-        Dimensions expected = new Dimensions(new Size(132, 43), initial.Pixels);
+        Dimensions initial = new(new Size(80, 24), new Size(800, 480));
+        Dimensions expected = new(new Size(132, 43), initial.Pixels);
         await using UnixPseudoterminal terminal = UnixPseudoterminal.Open(initial);
-        await using UnixResizeSource source = new UnixResizeSource(terminal.SlaveDescriptor);
+        await using UnixResizeSource source = new(terminal.SlaveDescriptor);
 
         Dimensions first = await source.ReadAsync(TestContext.Current.CancellationToken);
         terminal.SetWindowSize(expected);
@@ -104,7 +101,7 @@ public sealed class PseudoterminalTests
         Assert.SkipUnless(
             OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             "Unix pseudoterminals require Linux or macOS.");
-        Dimensions expected = new Dimensions(new Size(91, 31), new Size(1092, 620));
+        Dimensions expected = new(new Size(91, 31), new Size(1092, 620));
         await using UnixPseudoterminal terminal = UnixPseudoterminal.Open(expected);
 
         Dimensions actual = Native.GetDimensions(terminal.SlaveDescriptor);
@@ -119,16 +116,16 @@ public sealed class PseudoterminalTests
         Assert.SkipUnless(
             OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             "Unix pseudoterminals require Linux or macOS.");
-        Dimensions initial = new Dimensions(new Size(80, 24), new Size(800, 480));
-        Dimensions expected = new Dimensions(new Size(144, 48), initial.Pixels);
+        Dimensions initial = new(new Size(80, 24), new Size(800, 480));
+        Dimensions expected = new(new Size(144, 48), initial.Pixels);
         await using UnixPseudoterminal terminal = UnixPseudoterminal.Open(initial);
-        await using StreamTransport transport = new StreamTransport(
+        await using StreamTransport transport = new(
             terminal.Slave,
             terminal.Slave,
             leaveOpen: true);
-        await using UnixResizeSource source = new UnixResizeSource(terminal.SlaveDescriptor);
-        RuntimeSink sink = new RuntimeSink(expected);
-        await using Session session = new Session(
+        await using UnixResizeSource source = new(terminal.SlaveDescriptor);
+        RuntimeSink sink = new(expected);
+        await using Session session = new(
             transport,
             source,
             sink,

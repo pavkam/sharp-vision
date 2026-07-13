@@ -5,10 +5,8 @@ namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
-using Shouldly;
 
 using CapabilityOrigin = Terminal.Capabilities.Origin;
 using CapabilitySupport = Terminal.Capabilities.Support;

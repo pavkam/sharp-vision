@@ -5,10 +5,9 @@ namespace SharpVision.Showcase;
 
 using System.Diagnostics;
 
-using SharpVision.Controls;
 using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Runtime;
+using SharpVision.Showcase.Controls;
 using SharpVision.Showcase.Panes;
 using SharpVision.Styling;
 using SharpVision.Terminal.Input;
@@ -19,6 +18,33 @@ using TerminalAttributes = Terminal.Rendering.Attributes;
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
 {
+    private static readonly (string Name, Func<ShowcasePane> Create)[] Catalog =
+    [
+        (BorderShowcasePane.Title, static () => new BorderShowcasePane()),
+        (ButtonShowcasePane.Title, static () => new ButtonShowcasePane()),
+        (CanvasShowcasePane.Title, static () => new CanvasShowcasePane()),
+        (CheckBoxShowcasePane.Title, static () => new CheckBoxShowcasePane()),
+        (ComboBoxShowcasePane.Title, static () => new ComboBoxShowcasePane()),
+        (DockShowcasePane.Title, static () => new DockShowcasePane()),
+        (FigletTextShowcasePane.Title, static () => new FigletTextShowcasePane()),
+        (GridShowcasePane.Title, static () => new GridShowcasePane()),
+        (ListShowcasePane.Title, static () => new ListShowcasePane()),
+        (MenuShowcasePane.Title, static () => new MenuShowcasePane()),
+        (OverlayShowcasePane.Title, static () => new OverlayShowcasePane()),
+        (PopupShowcasePane.Title, static () => new PopupShowcasePane()),
+        (RadioButtonShowcasePane.Title, static () => new RadioButtonShowcasePane()),
+        (RichTextShowcasePane.Title, static () => new RichTextShowcasePane()),
+        (ScrollBarShowcasePane.Title, static () => new ScrollBarShowcasePane()),
+        (ScrollViewShowcasePane.Title, static () => new ScrollViewShowcasePane()),
+        (ShadowShowcasePane.Title, static () => new ShadowShowcasePane()),
+        (StackShowcasePane.Title, static () => new StackShowcasePane()),
+        (TableShowcasePane.Title, static () => new TableShowcasePane()),
+        (TextShowcasePane.Title, static () => new TextShowcasePane()),
+        (TextInputShowcasePane.Title, static () => new TextInputShowcasePane()),
+        (WindowShowcasePane.Title, static () => new WindowShowcasePane()),
+        (ThemingShowcasePane.Title, static () => new ThemingShowcasePane()),
+    ];
+
     private readonly ControlScrollView _main;
     private readonly ControlScrollView _navigationScroll;
     private readonly NavigationItem[] _navigation;
@@ -31,7 +57,7 @@ public sealed class Gallery: Screen
     /// <summary>Initializes the complete sidebar and first selected control page.</summary>
     public Gallery()
     {
-        Pages = PaneCatalog.Pages;
+        Pages = Array.ConvertAll(Catalog, static entry => entry.Name);
         _main = new ControlScrollView
         {
             ScrollBars = ScrollBars.Vertical,
@@ -42,17 +68,15 @@ public sealed class Gallery: Screen
             ConstrainContentToViewport = true,
         };
         _navigation = new NavigationItem[Pages.Count];
-        ControlStack entries = new ControlStack { Padding = new Thickness(1, 0) };
+        ControlStack entries = new() { Padding = new Thickness(1, 0) };
         entries.Children.Add(new ControlText("Components")
         {
-            Foreground = Palette.Accent,
-            Background = Palette.Panel,
             Attributes = TerminalAttributes.Bold,
         });
 
-        for (var index = 0; index < Pages.Count; index++)
+        for (int index = 0; index < Pages.Count; index++)
         {
-            NavigationItem item = new NavigationItem(index, Pages[index].Name)
+            NavigationItem item = new(index, Pages[index])
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
@@ -69,7 +93,7 @@ public sealed class Gallery: Screen
             ScrollBarChrome = ScrollBarStyle.Thin,
             ScrollBarFill = ScrollBarFill.Line,
         };
-        ControlDock sidebarLayout = new ControlDock();
+        ControlDock sidebarLayout = new();
         ControlStack header = CreateSidebarHeader();
         _lightTheme = new ControlButton { Content = new ControlText("Light") };
         _darkTheme = new ControlButton { Content = new ControlText("Dark") };
@@ -86,17 +110,14 @@ public sealed class Gallery: Screen
             Width = Length.Cells(28),
             BorderThickness = new Thickness(1),
             Glyphs = Glyphs.Rounded,
-            BorderColor = Palette.Border,
-            Background = Palette.Panel,
             Child = sidebarLayout,
         };
         _ = Sidebar.AddHandler(Events.Key, OnNavigationKey);
-        ControlBorder surface = new ControlBorder
+        ControlBorder surface = new()
         {
-            Background = Palette.Canvas,
             Child = _main,
         };
-        ControlDock layout = new ControlDock
+        ControlDock layout = new()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -105,7 +126,6 @@ public sealed class Gallery: Screen
         layout.Children.Add(Sidebar);
         layout.Children.Add(surface);
         Children.Add(layout);
-        Selected = Pages[0];
         Select(0);
     }
 
@@ -116,27 +136,31 @@ public sealed class Gallery: Screen
     public Control Content => _main.Content!;
 
     /// <summary>Gets the current exact concrete control name.</summary>
-    public string SelectedPage => Selected.Name;
+    public string SelectedPage => Pages[SelectedIndex];
 
     /// <summary>Gets the selected page's stable zero-based catalog index.</summary>
-    internal int SelectedIndex { get; private set; } = -1;
+    internal int SelectedIndex { get; private set; }
 
-    /// <summary>Gets the stable complete control-page inventory.</summary>
-    internal IReadOnlyList<GalleryEntry> Pages { get; }
+    /// <summary>Gets the stable page names in catalog order.</summary>
+    internal IReadOnlyList<string> Pages { get; }
 
     /// <summary>Gets the stable stateful navigation entries in catalog order.</summary>
     internal IReadOnlyList<NavigationItem> Navigation => _navigation;
 
-    /// <summary>Gets the currently selected gallery entry.</summary>
-    internal GalleryEntry Selected { get; private set; }
+    /// <summary>Creates a fresh detached showcase pane for one catalog index.</summary>
+    /// <param name="index">The zero-based page index.</param>
+    /// <returns>A new showcase pane instance.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
+    internal static ShowcasePane CreatePage(int index)
+    {
+        return (uint) index >= (uint) Catalog.Length
+            ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
+            : Catalog[index].Create();
+    }
 
     /// <inheritdoc/>
-    protected override void OnAttach(Application application)
-    {
-        Theme theme = Themes.Dark.Clone();
-        theme.SetStyle(Palette.ListForTheme());
-        application.Theme = theme;
-    }
+    protected override void OnAttach(Application application) =>
+        application.Theme = Themes.Dark;
 
     /// <inheritdoc/>
     protected override void OnStarted(Application application) =>
@@ -158,14 +182,13 @@ public sealed class Gallery: Screen
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
     internal void Select(int index)
     {
-        if ((uint) index >= (uint) Pages.Count)
+        if ((uint) index >= (uint) Catalog.Length)
         {
             throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.");
         }
 
-        Debug.Assert(_navigation[index].Label == Pages[index].Name);
+        Debug.Assert(_navigation[index].Label == Catalog[index].Name);
         Control? previous = _main.Content;
-        Selected = Pages[index];
         SelectedIndex = index;
 
         // A catalog selection changes subject, not just content. Preserve the
@@ -180,9 +203,9 @@ public sealed class Gallery: Screen
             _main.VerticalOffset = 0;
         }
 
-        _main.Content = Selected.CreatePane();
+        _main.Content = Catalog[index].Create();
 
-        for (var navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)
+        for (int navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)
         {
             _navigation[navigationIndex].SetSelected(navigationIndex == index);
         }
@@ -192,33 +215,26 @@ public sealed class Gallery: Screen
 
     private static ControlStack CreateSidebarHeader()
     {
-        ControlStack header = new ControlStack
+        ControlStack header = new()
         {
             Height = Length.Cells(4),
             Padding = new Thickness(1, 0),
         };
         header.Children.Add(new ControlText("SHARP VISION")
         {
-            Foreground = Palette.Accent,
-            Background = Palette.Panel,
             Attributes = TerminalAttributes.Bold,
         });
         header.Children.Add(new ControlText("Terminal UI toolkit")
         {
-            Foreground = Palette.Muted,
-            Background = Palette.Panel,
+            Attributes = TerminalAttributes.Dim,
         });
-        header.Children.Add(new ControlText("Control showcase")
-        {
-            Foreground = Palette.Text,
-            Background = Palette.Panel,
-        });
+        header.Children.Add(new ControlText("Control showcase"));
         return header;
     }
 
     private static ControlStack CreateSidebarFooter(ControlButton lightTheme, ControlButton darkTheme)
     {
-        ControlStack footer = new ControlStack
+        ControlStack footer = new()
         {
             Height = Length.Cells(4),
             Padding = new Thickness(1, 0),
@@ -226,8 +242,6 @@ public sealed class Gallery: Screen
         };
         footer.Children.Add(new ControlText("Theme")
         {
-            Foreground = Palette.Muted,
-            Background = Palette.Panel,
             Attributes = TerminalAttributes.Dim,
         });
         footer.Children.Add(new ControlStack
@@ -238,8 +252,6 @@ public sealed class Gallery: Screen
         });
         footer.Children.Add(new ControlText("Enter select · Click")
         {
-            Foreground = Palette.Muted,
-            Background = Palette.Panel,
             Attributes = TerminalAttributes.Dim,
         });
         return footer;
@@ -273,7 +285,7 @@ public sealed class Gallery: Screen
         }
 
         NavigationItem current = FindNavigation(eventArgs.OriginalSource) ?? _navigation[SelectedIndex];
-        var target = ResolveNavigation(current.Index, eventArgs.Stroke);
+        int target = ResolveNavigation(current.Index, eventArgs.Stroke);
 
         if (target < 0)
         {
@@ -288,7 +300,7 @@ public sealed class Gallery: Screen
 
     private int ResolveNavigation(int current, Stroke stroke)
     {
-        var count = _navigation.Length;
+        int count = _navigation.Length;
 
         if (stroke.Code is Code.Up or Code.Left ||
             (stroke.Code == Code.Tab && (stroke.Modifiers & Modifiers.Shift) != 0))
@@ -311,7 +323,7 @@ public sealed class Gallery: Screen
             return count - 1;
         }
 
-        var page = Math.Max(1, _navigationScroll.Viewport.Height - 1);
+        int page = Math.Max(1, _navigationScroll.Viewport.Height - 1);
 
         return stroke.Code == Code.PageUp
             ? Math.Max(0, current - page)

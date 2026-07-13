@@ -73,12 +73,12 @@ public sealed class Negotiator
             throw new InvalidOperationException("The capability negotiator already started.");
         }
 
-        var capacity = _options.Limits.MaxConcurrentQueries;
-        var queryKeyboard = capacity >= 2;
+        int capacity = _options.Limits.MaxConcurrentQueries;
+        bool queryKeyboard = capacity >= 2;
         _keyboardQueried = queryKeyboard;
-        var keyboard = !queryKeyboard ||
+        bool keyboard = !queryKeyboard ||
             _tracker.TryRegister(QueryKind.Keyboard, null, out _);
-        var attributes = _tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
+        bool attributes = _tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
         Debug.Assert(
             keyboard && attributes,
             "A fresh tracker must admit the selected bounded query families.");
@@ -91,7 +91,7 @@ public sealed class Negotiator
 
         IsStarted = true;
         Deadline = _timeProvider.GetUtcNow() + _options.Limits.QueryTimeout;
-        Writer writer = new Writer(destination);
+        Writer writer = new(destination);
 
         if (queryKeyboard)
         {
@@ -99,9 +99,9 @@ public sealed class Negotiator
         }
 
         Csi.PrimaryDeviceAttributes(writer);
-        var remaining = capacity - (queryKeyboard ? 2 : 1);
+        int remaining = capacity - (queryKeyboard ? 2 : 1);
 
-        foreach (var mode in _modes.Take(remaining))
+        foreach (int mode in _modes.Take(remaining))
         {
             _ = _pendingModes.Add(mode);
             Csi.QueryPrivateMode(writer, mode);
@@ -162,7 +162,7 @@ public sealed class Negotiator
 
         _ = _tracker.Expire();
 
-        foreach (var mode in _pendingModes)
+        foreach (int mode in _pendingModes)
         {
             _ = _expiredModes.Add(mode);
         }
@@ -189,7 +189,7 @@ public sealed class Negotiator
             return false;
         }
 
-        foreach (var mode in _pendingModes)
+        foreach (int mode in _pendingModes)
         {
             _ = _expiredModes.Add(mode);
         }
@@ -209,7 +209,7 @@ public sealed class Negotiator
             return QueryMatch.Unknown;
         }
 
-        var mode = values[0];
+        int mode = values[0];
 
         if (_completedModes.Contains(mode))
         {
@@ -277,7 +277,7 @@ public sealed class Negotiator
 
     private void Publish()
     {
-        Queries queries = new Queries
+        Queries queries = new()
         {
             SynchronizedOutput = _synchronizedOutput,
             FocusReporting = _focusReporting,

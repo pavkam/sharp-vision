@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using TerminalStyle = TerminalStyle;
-
 internal readonly struct ResolvedAppearance
 {
     internal TerminalStyle Style { get; init; }

@@ -95,8 +95,8 @@ public readonly record struct Metrics
             return false;
         }
 
-        var x = checked((long) pixels.X * cellGrid.Width) / pixelGrid.Width;
-        var y = checked((long) pixels.Y * cellGrid.Height) / pixelGrid.Height;
+        long x = checked((long) pixels.X * cellGrid.Width) / pixelGrid.Width;
+        long y = checked((long) pixels.Y * cellGrid.Height) / pixelGrid.Height;
         cells = new Point(checked((int) x), checked((int) y));
         return true;
     }

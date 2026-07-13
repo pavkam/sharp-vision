@@ -3,17 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 
@@ -24,16 +15,16 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenTitleAndChildArePresent_DrawsFramedChromeAndInterior()
     {
-        ProbeControl child = new ProbeControl(new Size(3, 1)) { Content = "app".AsMemory() };
-        Window window = new Window
+        ProbeControl child = new(new Size(3, 1)) { Content = "app".AsMemory() };
+        Window window = new()
         {
             Title = "Tools",
             Child = child,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        Size size = new Size(10, 4);
+        Size size = new(10, 4);
         new Engine().Layout(window, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         window.Render(frame.Canvas);
 
@@ -56,13 +47,13 @@ public sealed class WindowTests
                 attributes: Attributes.Overline,
                 underline: Underline.Paired,
                 underlineColor: Color.Indexed(6))));
-        Window window = new Window
+        Window window = new()
         {
             Bounds = new Rect(0, 0, 4, 3),
             Background = Color.Indexed(0),
             Style = style,
         };
-        using Frame frame = new Frame(new Size(4, 3));
+        using Frame frame = new(new Size(4, 3));
 
         window.Render(frame.Canvas);
 
@@ -76,14 +67,14 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenBlockShadowIsEnabled_DrawsOutsideBodyWithoutCoveringContent()
     {
-        Window window = new Window
+        Window window = new()
         {
             Bounds = new Rect(0, 0, 4, 3),
             HasShadow = true,
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowOffset = new Point(1, 1),
         };
-        using Frame frame = new Frame(new Size(6, 5));
+        using Frame frame = new(new Size(6, 5));
 
         window.Render(frame.Canvas);
 
@@ -97,10 +88,10 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenTitleExceedsFrameWidth_PreservesTopCorners()
     {
-        Window window = new Window { Title = "A deliberately long title" };
-        Size size = new Size(6, 2);
+        Window window = new() { Title = "A deliberately long title" };
+        Size size = new(6, 2);
         new Engine().Layout(window, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         window.Render(frame.Canvas);
 
@@ -116,13 +107,13 @@ public sealed class WindowTests
         WindowTitlePlacement placement,
         int expectedTitleColumn)
     {
-        Window window = new Window
+        Window window = new()
         {
             Bounds = new Rect(0, 0, 20, 3),
             Title = "Hi",
             TitlePlacement = placement,
         };
-        using Frame frame = new Frame(new Size(20, 3));
+        using Frame frame = new(new Size(20, 3));
 
         window.Render(frame.Canvas);
 
@@ -135,16 +126,16 @@ public sealed class WindowTests
     [Fact]
     public void Dispatch_WhenEnterOrEscapeIsUnhandled_InvokesWindowDefaultOrCancelButton()
     {
-        var defaults = 0;
-        var cancels = 0;
-        Stack content = new Stack();
-        Button accept = new Button { IsDefault = true };
-        Button cancel = new Button { IsCancel = true };
+        int defaults = 0;
+        int cancels = 0;
+        Stack content = new();
+        Button accept = new() { IsDefault = true };
+        Button cancel = new() { IsCancel = true };
         accept.Click += (_, _) => defaults++;
         cancel.Click += (_, _) => cancels++;
         content.Children.Add(accept);
         content.Children.Add(cancel);
-        Window window = new Window { Child = content };
+        Window window = new() { Child = content };
 
         Router.Route(window, Events.Key, Key(Code.Enter));
         Router.Route(window, Events.Key, Key(Code.Escape));

@@ -3,15 +3,9 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
 using SharpVision.Runtime;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -22,9 +16,9 @@ public sealed class ThemeApplicationTests
     [Fact]
     public async Task StartAsync_WhenNoThemeIsAssigned_UsesDarkThemeAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
@@ -40,10 +34,10 @@ public sealed class ThemeApplicationTests
     [Fact]
     public async Task Theme_WhenSwitchedToWhite_RepublishesResolvedForegroundAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        ProbeControl root = new ProbeControl();
-        await using Application application = new Application(
+        ProbeControl root = new();
+        await using Application application = new(
             root,
             terminal,
             terminal,
@@ -72,9 +66,9 @@ public sealed class ThemeApplicationTests
     [Fact]
     public async Task Theme_WhenAssignedOffDispatcher_PostsChangeAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        await using Application application = new Application(
+        await using Application application = new(
             new ProbeControl(),
             terminal,
             terminal,
@@ -83,7 +77,7 @@ public sealed class ThemeApplicationTests
 
         application.Theme = Themes.White;
 
-        for (var attempt = 0; attempt < 200; attempt++)
+        for (int attempt = 0; attempt < 200; attempt++)
         {
             if (ReferenceEquals(application.Theme, Themes.White))
             {

@@ -3,7 +3,7 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Layout;
+using SharpVision.Showcase.Controls;
 using SharpVision.Text;
 
 using TerminalAttributes = Terminal.Rendering.Attributes;
@@ -47,7 +47,6 @@ internal sealed class TextShowcasePane: ShowcasePane
             "Composed and decomposed text share width. Orphan combining marks render as replacement cells without changing editable source text.",
             new ControlText("é vs e\u0301 · orphan \u0301 · ambiguous · · 你好 · 👩‍💻 · 🇺🇸")
             {
-                Foreground = Palette.Accent,
             }));
         examples.Children.Add(PaneSupport.SampleSection(
             "Uneven pixel pointer grid",
@@ -68,7 +67,6 @@ internal sealed class TextShowcasePane: ShowcasePane
             {
                 Width = Length.Cells(28),
                 TextAlignment = Alignment.Center,
-                Foreground = Palette.Warning,
                 Attributes = TerminalAttributes.Bold,
             }));
         examples.Children.Add(PaneSupport.SampleSection(
@@ -78,7 +76,6 @@ internal sealed class TextShowcasePane: ShowcasePane
             {
                 Width = Length.Cells(28),
                 Trimming = Trimming.GraphemeEllipsis,
-                Foreground = Palette.Accent,
             }));
     }
 }

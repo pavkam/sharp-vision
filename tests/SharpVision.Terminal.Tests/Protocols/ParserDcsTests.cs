@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies DCS header, payload, termination, and recovery.
@@ -17,8 +14,8 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsIsComplete_DeliversHeaderAndPayload()
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
 
         parser.Parse("\u001bP1;2$qdata\u001b\\"u8, ref sink);
 
@@ -33,8 +30,8 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsContainsBell_PreservesBellUntilSt()
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
 
         parser.Parse("\u001bPqa\ab\u001b\\"u8, ref sink);
 
@@ -51,8 +48,8 @@ public sealed class ParserDcsTests
     public void Parse_WhenDcsHeaderExceedsLimit_ReportsAtStAndRecovers()
     {
         Limits limits = Limits.Default with { MaxParameterBytes = 2 };
-        using Parser parser = new Parser(limits);
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new(limits);
+        RecordingSink sink = new();
 
         parser.Parse("\u001bP123qsecret\u001b\\X"u8, ref sink);
 
@@ -67,8 +64,8 @@ public sealed class ParserDcsTests
     public void Parse_WhenStringPayloadExceedsLimit_ReportsAtStAndRecovers()
     {
         Limits limits = Limits.Default with { MaxStringBytes = 4 };
-        using Parser parser = new Parser(limits);
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new(limits);
+        RecordingSink sink = new();
 
         parser.Parse("\u001b]12345\u001b\\X"u8, ref sink);
 

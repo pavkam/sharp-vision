@@ -3,15 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Input;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 
@@ -22,7 +16,7 @@ public sealed class PressableTests
     [Fact]
     public void Dispatch_WhenKeyboardActivates_UsesExactTransitionAndCause()
     {
-        ProbePressable control = new ProbePressable();
+        ProbePressable control = new();
 
         Key(control, Code.Character, new Rune(' '), KeyAction.Press);
         control.IsPressed.ShouldBeTrue();
@@ -47,12 +41,12 @@ public sealed class PressableTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new ProbePressable { Bounds = new Rect(2, 2, 8, 3) };
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
+            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(root);
-            using CaptureManager capture = new CaptureManager(root);
+            using FocusManager focus = new(root);
+            using CaptureManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(3, 3), PointerAction.Press));
             control.IsPressed.ShouldBeTrue();
@@ -74,11 +68,11 @@ public sealed class PressableTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new ProbePressable { Bounds = new Rect(2, 2, 8, 3) };
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
+            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(root);
+            using CaptureManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(3, 3), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(15, 7), PointerAction.Move));
@@ -98,14 +92,14 @@ public sealed class PressableTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new ProbePressable { Bounds = new Rect(2, 2, 8, 3) };
-            ProbePressable other = new ProbePressable { Bounds = new Rect(12, 2, 6, 3) };
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
+            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
+            ProbePressable other = new() { Bounds = new Rect(12, 2, 6, 3) };
             root.Children.Add(control);
             root.Children.Add(other);
             root.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(root);
-            using CaptureManager capture = new CaptureManager(root);
+            using FocusManager focus = new(root);
+            using CaptureManager capture = new(root);
             focus.Focus(control).ShouldBeTrue();
             Key(control, Code.Character, new Rune(' '), KeyAction.Press);
 
@@ -135,11 +129,11 @@ public sealed class PressableTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new ProbePressable { Bounds = new Rect(2, 2, 8, 3) };
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
+            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(root);
+            using CaptureManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(
                 new Point(3, 3),

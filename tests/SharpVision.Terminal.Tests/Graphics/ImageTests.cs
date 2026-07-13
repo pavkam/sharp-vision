@@ -3,10 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Graphics;
 
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Graphics;
 
-using Shouldly;
 
 using GraphicsImage = Terminal.Graphics.Image;
 
@@ -17,12 +15,12 @@ public sealed class ImageTests
     [Fact]
     public void FromRgba_WhenSourceIsValid_OwnsIndependentPixels()
     {
-        var source = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+        byte[] source = [1, 2, 3, 4, 5, 6, 7, 8];
 
         GraphicsImage image = GraphicsImage.FromRgba(new Size(2, 1), source);
         source.AsSpan().Clear();
-        var copied = new byte[image.ByteCount];
-        var written = image.CopyTo(copied);
+        byte[] copied = new byte[image.ByteCount];
+        int written = image.CopyTo(copied);
 
         image.Size.ShouldBe(new Size(2, 1));
         image.Format.ShouldBe(Format.Rgba);

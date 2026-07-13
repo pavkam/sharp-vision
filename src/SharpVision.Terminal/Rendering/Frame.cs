@@ -46,12 +46,12 @@ public sealed class Frame: IDisposable
                 "The ambiguous-width policy is unknown.");
         }
 
-        var cellCount = checked(size.Width * size.Height);
+        int cellCount = checked(size.Width * size.Height);
         Cell[] cells = ArrayPool<Cell>.Shared.Rent(Math.Max(1, cellCount));
 
         try
         {
-            var initialTextLength = Math.Min(256, maxTextBytes);
+            int initialTextLength = Math.Min(256, maxTextBytes);
             _text = ArrayPool<byte>.Shared.Rent(initialTextLength);
         }
         catch
@@ -99,7 +99,7 @@ public sealed class Frame: IDisposable
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
     public CellInfo GetCell(Point point)
     {
-        var index = GetIndex(point);
+        int index = GetIndex(point);
         Cell cell = Cells[index];
         Point lead = cell.IsContinuation
             ? new Point(cell.LeadIndex % Size.Width, cell.LeadIndex / Size.Width)
@@ -117,7 +117,7 @@ public sealed class Frame: IDisposable
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
     public int GetGraphemeByteCount(Point point)
     {
-        var index = ResolveLead(GetIndex(point));
+        int index = ResolveLead(GetIndex(point));
         return Cells[index].Length;
     }
 
@@ -134,7 +134,7 @@ public sealed class Frame: IDisposable
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
     public int CopyGrapheme(Point point, Span<byte> destination)
     {
-        var index = ResolveLead(GetIndex(point));
+        int index = ResolveLead(GetIndex(point));
         Cell cell = Cells[index];
 
         if (destination.Length < cell.Length)
@@ -170,7 +170,7 @@ public sealed class Frame: IDisposable
     public void SetCursor(Point position, bool visible)
     {
         ThrowIfDisposed();
-        var suspended = Size.Width == 0 || Size.Height == 0;
+        bool suspended = Size.Width == 0 || Size.Height == 0;
 
         if ((suspended && (position != default || visible)) ||
             (!suspended && !Bounds.Contains(position)))
@@ -188,7 +188,7 @@ public sealed class Frame: IDisposable
     public void Dispose()
     {
         Cell[]? cells = _cells;
-        var text = _text;
+        byte[]? text = _text;
 
         if (cells is null || text is null)
         {
@@ -233,7 +233,7 @@ public sealed class Frame: IDisposable
     internal Frame Clone()
     {
         ThrowIfDisposed();
-        Frame result = new Frame(Size, MaxTextBytes, AmbiguousWidth);
+        Frame result = new(Size, MaxTextBytes, AmbiguousWidth);
 
         try
         {
@@ -286,7 +286,7 @@ public sealed class Frame: IDisposable
     internal ReadOnlySpan<byte> GetGrapheme(int index)
     {
         Debug.Assert((uint) index < (uint) Cells.Length, "Internal grapheme indexes are bounded.");
-        var lead = ResolveLead(index);
+        int lead = ResolveLead(index);
         Cell cell = Cells[lead];
         return Text.Slice(cell.Offset, cell.Length);
     }
@@ -297,7 +297,7 @@ public sealed class Frame: IDisposable
     /// <returns>The lead column, or the input column for non-continuations.</returns>
     internal int GetLeadColumn(int row, int column)
     {
-        var index = checked((row * Size.Width) + column);
+        int index = checked((row * Size.Width) + column);
         Cell cell = GetCell(index);
         return cell.IsContinuation ? cell.LeadIndex % Size.Width : column;
     }
@@ -308,7 +308,7 @@ public sealed class Frame: IDisposable
     /// <returns>The exclusive column after the complete owner.</returns>
     internal int GetOwnedEnd(int row, int column)
     {
-        var leadColumn = GetLeadColumn(row, column);
+        int leadColumn = GetLeadColumn(row, column);
         Cell lead = GetCell(checked((row * Size.Width) + leadColumn));
         return Math.Min(Size.Width, leadColumn + Math.Max(1, (int) lead.Width));
     }
@@ -369,7 +369,7 @@ public sealed class Frame: IDisposable
     internal void Write(Point point, ReadOnlySpan<char> value, int width, Style style)
     {
         Debug.Assert(width is 1 or 2, "Only printable narrow and wide cells are stored.");
-        var index = GetIndex(point);
+        int index = GetIndex(point);
         Debug.Assert(index + width <= Cells.Length, "Canvas edge handling guarantees cell capacity.");
         Repair(index);
 
@@ -378,10 +378,10 @@ public sealed class Frame: IDisposable
             Repair(index + 1);
         }
 
-        var offset = TextLength;
-        var length = Append(value);
+        int offset = TextLength;
+        int length = Append(value);
         Span<byte> bytes = Text.Slice(offset, length);
-        var hash = Hash(bytes);
+        uint hash = Hash(bytes);
         Cells[index] = new Cell
         {
             Offset = offset,
@@ -404,12 +404,12 @@ public sealed class Frame: IDisposable
     {
         Debug.Assert((uint) index < (uint) Cells.Length, "Repair indexes are validated by the canvas.");
         Cell cell = Cells[index];
-        var leadIndex = cell.IsContinuation ? cell.LeadIndex : index;
+        int leadIndex = cell.IsContinuation ? cell.LeadIndex : index;
         Cell lead = Cells[leadIndex];
-        var width = Math.Max(1, (int) lead.Width);
+        int width = Math.Max(1, (int) lead.Width);
         Style style = lead.Style;
 
-        for (var offset = 0; offset < width && leadIndex + offset < Cells.Length; offset++)
+        for (int offset = 0; offset < width && leadIndex + offset < Cells.Length; offset++)
         {
             Cells[leadIndex + offset] = Cell.Blank(style);
         }
@@ -432,12 +432,12 @@ public sealed class Frame: IDisposable
     internal bool TrySetOwnerStyle(int index, Rect clip, Style style)
     {
         Debug.Assert((uint) index < (uint) Cells.Length, "Style indexes are validated by the canvas.");
-        var leadIndex = ResolveLead(index);
+        int leadIndex = ResolveLead(index);
         Cell lead = Cells[leadIndex];
-        var width = Math.Max(1, (int) lead.Width);
-        Point point = new Point(leadIndex % Size.Width, leadIndex / Size.Width);
+        int width = Math.Max(1, (int) lead.Width);
+        Point point = new(leadIndex % Size.Width, leadIndex / Size.Width);
 
-        for (var offset = 0; offset < width; offset++)
+        for (int offset = 0; offset < width; offset++)
         {
             if (!clip.Contains(new Point(point.X + offset, point.Y)))
             {
@@ -445,7 +445,7 @@ public sealed class Frame: IDisposable
             }
         }
 
-        for (var offset = 0; offset < width; offset++)
+        for (int offset = 0; offset < width; offset++)
         {
             Cell cell = Cells[leadIndex + offset];
             cell.Style = style;
@@ -460,12 +460,12 @@ public sealed class Frame: IDisposable
     /// <returns>The encoded byte count.</returns>
     internal static int CountUtf8(ReadOnlySpan<char> value)
     {
-        var count = 0;
-        var position = 0;
+        int count = 0;
+        int position = 0;
 
         while (position < value.Length)
         {
-            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out int consumed);
 
             if (status != OperationStatus.Done)
             {
@@ -485,15 +485,15 @@ public sealed class Frame: IDisposable
 
     private int Append(ReadOnlySpan<char> value)
     {
-        var byteCount = CountUtf8(value);
+        int byteCount = CountUtf8(value);
         EnsureAppendable(byteCount);
         EnsureCapacity(checked(TextLength + byteCount));
-        var start = TextLength;
-        var position = 0;
+        int start = TextLength;
+        int position = 0;
 
         while (position < value.Length)
         {
-            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out int consumed);
 
             if (status != OperationStatus.Done)
             {
@@ -516,13 +516,13 @@ public sealed class Frame: IDisposable
             return;
         }
 
-        var doubled = Text.Length > MaxTextBytes / 2
+        int doubled = Text.Length > MaxTextBytes / 2
             ? MaxTextBytes
             : Text.Length * 2;
-        var length = Math.Max(required, doubled);
-        var replacement = ArrayPool<byte>.Shared.Rent(length);
+        int length = Math.Max(required, doubled);
+        byte[] replacement = ArrayPool<byte>.Shared.Rent(length);
         Text[..TextLength].CopyTo(replacement);
-        var previous = _text;
+        byte[]? previous = _text;
         _text = replacement;
         ArrayPool<byte>.Shared.Return(previous!, clearArray: true);
     }
@@ -552,7 +552,7 @@ public sealed class Frame: IDisposable
     {
         Span<Cell> cells = Cells;
 
-        for (var index = 0; index < cells.Length; index++)
+        for (int index = 0; index < cells.Length; index++)
         {
             cells[index] = Cell.Blank(style);
         }
@@ -568,9 +568,9 @@ public sealed class Frame: IDisposable
     {
         const uint offset = 2166136261;
         const uint prime = 16777619;
-        var hash = offset;
+        uint hash = offset;
 
-        foreach (var item in value)
+        foreach (byte item in value)
         {
             hash ^= item;
             hash *= prime;

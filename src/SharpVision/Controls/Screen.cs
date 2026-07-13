@@ -3,10 +3,7 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Defines the detached application root control and screen startup hooks.</summary>
 public abstract class Screen: Container
@@ -27,8 +24,8 @@ public abstract class Screen: Container
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var width = 0;
-        var height = 0;
+        int width = 0;
+        int height = 0;
 
         foreach (Control child in Children)
         {

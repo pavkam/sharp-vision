@@ -3,14 +3,9 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
+using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
-
-using BackgroundMode = BackgroundMode;
-using TerminalCanvas = TerminalCanvas;
-using TerminalStyle = TerminalStyle;
 
 /// <summary>Arranges typed rows and columns into a terminal-safe table with optional headers and grid lines.</summary>
 public sealed class Table: Container
@@ -89,31 +84,43 @@ public sealed class Table: Container
         set => _ = Set(ref field, value, Invalidation.Measure);
     } = true;
 
-    /// <summary>Gets or sets an optional direct foreground override for header text.</summary>
+    /// <summary>Identifies the themeable header-text foreground style property.</summary>
+    public static StyleProperty<Color?> HeaderForegroundProperty { get; } =
+        StyleProperty<Color?>.Register<Table>("header-foreground", null, Impact.Render);
+
+    /// <summary>Identifies the themeable header-row background style property.</summary>
+    public static StyleProperty<Color?> HeaderBackgroundProperty { get; } =
+        StyleProperty<Color?>.Register<Table>("header-background", null, Impact.Render);
+
+    /// <summary>Identifies the themeable grid-line color style property.</summary>
+    public static StyleProperty<Color?> GridLineColorProperty { get; } =
+        StyleProperty<Color?>.Register<Table>("grid-line-color", null, Impact.Render);
+
+    /// <summary>Gets or sets an optional foreground override for header text, resolved through the theme.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public Color? HeaderForeground
     {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        get => GetValue(HeaderForegroundProperty);
+        set => SetValue(HeaderForegroundProperty, value);
     }
 
-    /// <summary>Gets or sets an optional direct background override for the complete header row.</summary>
+    /// <summary>Gets or sets an optional background override for the header row, resolved through the theme.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public Color? HeaderBackground
     {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        get => GetValue(HeaderBackgroundProperty);
+        set => SetValue(HeaderBackgroundProperty, value);
     }
 
-    /// <summary>Gets or sets an optional direct foreground override for grid lines.</summary>
+    /// <summary>Gets or sets an optional grid-line color, resolved through the theme.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public Color? GridLineColor
     {
-        get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        get => GetValue(GridLineColorProperty);
+        set => SetValue(GridLineColorProperty, value);
     }
 
     #endregion
@@ -124,8 +131,8 @@ public sealed class Table: Container
     protected override Size MeasureCore(Constraint constraint)
     {
         MeasureCells(constraint.Width);
-        var width = Add(Sum(_columnWidths), GapWidth(Columns.Count));
-        var height = Add(Sum(_rowHeights), GapHeight(Rows.Count));
+        int width = Add(Sum(_columnWidths), GapWidth(Columns.Count));
+        int height = Add(Sum(_rowHeights), GapHeight(Rows.Count));
 
         if (ShowHeader && Columns.Count > 0)
         {
@@ -144,7 +151,7 @@ public sealed class Table: Container
     protected override void ArrangeCore(Rect bounds)
     {
         MeasureCells(bounds.Width);
-        var y = bounds.Y;
+        int y = bounds.Y;
 
         if (ShowHeader && Columns.Count > 0)
         {
@@ -156,14 +163,14 @@ public sealed class Table: Container
             }
         }
 
-        for (var rowIndex = 0; rowIndex < Rows.Count; rowIndex++)
+        for (int rowIndex = 0; rowIndex < Rows.Count; rowIndex++)
         {
             TableRow row = Rows[rowIndex];
-            var x = bounds.X;
+            int x = bounds.X;
 
-            for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
+            for (int columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
             {
-                Rect slot = new Rect(x, y, _columnWidths[columnIndex], _rowHeights[rowIndex]);
+                Rect slot = new(x, y, _columnWidths[columnIndex], _rowHeights[rowIndex]);
                 row.Cells[columnIndex].Arrange(CellPadding.Deflate(slot), widthResolved: true, heightResolved: true);
                 x = Add(x, Add(_columnWidths[columnIndex], ColumnGap));
             }
@@ -182,21 +189,21 @@ public sealed class Table: Container
 
         TerminalStyle inherited = ResolvedStyle;
         (TerminalAttributes attributes, Underline underline, Color underlineColor) = Decoration.Resolve(inherited);
-        TerminalStyle header = new TerminalStyle(
+        TerminalStyle header = new(
             HeaderForeground ?? inherited.Foreground,
             HeaderBackground ?? inherited.Background,
             attributes,
             inherited.Hyperlink,
             underline,
             underlineColor);
-        TerminalStyle grid = new TerminalStyle(
+        TerminalStyle grid = new(
             GridLineColor ?? inherited.Foreground,
             inherited.Background,
             attributes,
             inherited.Hyperlink,
             underline,
             underlineColor);
-        var headerHeight = ShowHeader ? Add(CellPadding.Vertical, 1) : 0;
+        int headerHeight = ShowHeader ? Add(CellPadding.Vertical, 1) : 0;
 
         if (ShowHeader)
         {
@@ -205,11 +212,11 @@ public sealed class Table: Container
                 canvas.Clear(new Rect(Bounds.X, Bounds.Y, Bounds.Width, headerHeight), header);
             }
 
-            var x = Bounds.X;
+            int x = Bounds.X;
 
-            for (var index = 0; index < Columns.Count; index++)
+            for (int index = 0; index < Columns.Count; index++)
             {
-                Rect area = new Rect(x, Bounds.Y + CellPadding.Top, _columnWidths[index], 1);
+                Rect area = new(x, Bounds.Y + CellPadding.Top, _columnWidths[index], 1);
                 TerminalCanvas text = canvas.Clip(CellPadding.Deflate(area));
                 _ = text.Draw(Columns[index].Header.AsSpan(), new Point(area.X + CellPadding.Left, area.Y), header, background: BackgroundMode.Transparent);
                 x = Add(x, Add(_columnWidths[index], ColumnGap));
@@ -221,9 +228,9 @@ public sealed class Table: Container
             return;
         }
 
-        var xLine = Bounds.X;
+        int xLine = Bounds.X;
 
-        for (var index = 0; index < Columns.Count - 1; index++)
+        for (int index = 0; index < Columns.Count - 1; index++)
         {
             xLine = Add(xLine, _columnWidths[index]);
             canvas.DrawVerticalLine(new Point(xLine, Bounds.Y), Bounds.Height, LineStyle.Light, grid);
@@ -241,9 +248,9 @@ public sealed class Table: Container
                 grid);
         }
 
-        var y = Add(Bounds.Y, headerHeight + (ShowHeader ? RowGap : 0));
+        int y = Add(Bounds.Y, headerHeight + (ShowHeader ? RowGap : 0));
 
-        for (var index = 0; index < Rows.Count - 1; index++)
+        for (int index = 0; index < Rows.Count - 1; index++)
         {
             y = Add(y, _rowHeights[index]);
             canvas.DrawHorizontalLine(new Point(Bounds.X, y), Bounds.Width, LineStyle.Light, grid);
@@ -313,7 +320,7 @@ public sealed class Table: Container
     {
         VerifyRowsOwner(owner);
 
-        for (var index = Rows.Count - 1; index >= 0; index--)
+        for (int index = Rows.Count - 1; index >= 0; index--)
         {
             RemoveRow(owner, index);
         }
@@ -361,10 +368,10 @@ public sealed class Table: Container
             return;
         }
 
-        var automatic = new int[Columns.Count];
+        int[] automatic = new int[Columns.Count];
         Length[] lengths = new Length[Columns.Count];
 
-        for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
+        for (int columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
         {
             lengths[columnIndex] = Columns[columnIndex].Width;
             automatic[columnIndex] = Add(Terminal.Unicode.Width.Measure(Columns[columnIndex].Header).Cells, CellPadding.Horizontal);
@@ -372,7 +379,7 @@ public sealed class Table: Container
 
         foreach (TableRow row in Rows)
         {
-            for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
+            for (int columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
             {
                 Control cell = row.Cells[columnIndex];
                 cell.Measure(new Constraint(width: null, height: null));
@@ -386,14 +393,14 @@ public sealed class Table: Container
         _columnWidths = Tracks.Resolve(available, lengths, automatic);
         _rowHeights = new int[Rows.Count];
 
-        for (var rowIndex = 0; rowIndex < Rows.Count; rowIndex++)
+        for (int rowIndex = 0; rowIndex < Rows.Count; rowIndex++)
         {
-            var height = 0;
+            int height = 0;
 
-            for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
+            for (int columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
             {
                 Control cell = Rows[rowIndex].Cells[columnIndex];
-                var width = Math.Max(0, _columnWidths[columnIndex] - CellPadding.Horizontal);
+                int width = Math.Max(0, _columnWidths[columnIndex] - CellPadding.Horizontal);
                 cell.Measure(new Constraint(width, height: null));
                 height = Math.Max(height, Add(cell.DesiredSize.Height, Add(cell.Margin.Vertical, CellPadding.Vertical)));
             }
@@ -437,9 +444,9 @@ public sealed class Table: Container
 
     private static int Sum(IEnumerable<int> values)
     {
-        var total = 0;
+        int total = 0;
 
-        foreach (var value in values)
+        foreach (int value in values)
         {
             total = Add(total, value);
         }

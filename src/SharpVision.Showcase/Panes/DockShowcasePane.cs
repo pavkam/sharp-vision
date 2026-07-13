@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the Dock control.</summary>
 internal sealed class DockShowcasePane: ShowcasePane
@@ -38,7 +36,7 @@ internal sealed class DockShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlDock dock = new ControlDock
+        ControlDock dock = new()
         {
             Width = Length.Cells(38),
             Height = Length.Cells(9),

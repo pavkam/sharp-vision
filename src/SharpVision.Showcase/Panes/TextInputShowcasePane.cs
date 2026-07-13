@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the TextInput control.</summary>
 internal sealed class TextInputShowcasePane: ShowcasePane
@@ -48,28 +47,24 @@ internal sealed class TextInputShowcasePane: ShowcasePane
         {
             Width = Length.Cells(28),
             Text = "Edit me: café 👩‍💻",
-            Style = Palette.Editor(),
         });
         examples.Children.Add(new ControlTextInput
         {
             Width = Length.Cells(28),
             Text = "Read-only value",
             IsReadOnly = true,
-            Style = Palette.Editor(),
         });
         examples.Children.Add(new ControlTextInput
         {
             Width = Length.Cells(28),
             Text = "secret",
             PasswordCharacter = new Rune('•'),
-            Style = Palette.Editor(),
         });
         examples.Children.Add(new ControlTextInput
         {
             Width = Length.Cells(28),
             Text = "12 chars max",
             MaxLength = 12,
-            Style = Palette.Editor(),
         });
         examples.Children.Add(new ControlTextInput
         {
@@ -82,7 +77,6 @@ internal sealed class TextInputShowcasePane: ShowcasePane
             ScrollBarChrome = ScrollBarStyle.Thin,
             ScrollBarFill = ScrollBarFill.Line,
             Text = "Multiline editor\nWheel here to scroll\nwithout losing focus\nAt the edge, the page scrolls",
-            Style = Palette.Editor(),
         });
     }
 }

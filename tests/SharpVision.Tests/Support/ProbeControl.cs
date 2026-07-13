@@ -3,11 +3,7 @@
 
 namespace SharpVision.Tests.Support;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 
 using TerminalCanvas = Terminal.Rendering.Canvas;
 
@@ -71,7 +67,7 @@ internal sealed class ProbeControl: Control
     internal void Draw(TerminalCanvas canvas, Rune value)
     {
         Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
+        int length = value.EncodeToUtf16(buffer);
         _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
     }
 }

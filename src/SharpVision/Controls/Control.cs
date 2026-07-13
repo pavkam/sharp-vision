@@ -4,21 +4,12 @@
 namespace SharpVision.Controls;
 
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Threading;
-
-using KeyAction = KeyAction;
-
-using TerminalCanvas = TerminalCanvas;
-using TerminalStyle = TerminalStyle;
 
 /// <summary>
 /// Defines a traditional mutable UI element with dispatcher affinity and box layout.
@@ -378,7 +369,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 nameof(handler));
         }
 
-        Registration<TArgs> registration = new Registration<TArgs>(
+        Registration<TArgs> registration = new(
             this,
             routedEvent,
             handler,
@@ -558,7 +549,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             }
 
             Rect available = Margin.Deflate(slot);
-            var width = widthResolved
+            int width = widthResolved
                 ? available.Width
                 : ResolveArrangeAxis(
                     Width,
@@ -568,7 +559,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                     DesiredSize.Width,
                     MinWidth,
                     MaxWidth);
-            var height = heightResolved
+            int height = heightResolved
                 ? available.Height
                 : ResolveArrangeAxis(
                     Height,
@@ -578,9 +569,9 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                     DesiredSize.Height,
                     MinHeight,
                     MaxHeight);
-            var x = Align(available.X, available.Width, width, HorizontalAlignment);
-            var y = Align(available.Y, available.Height, height, VerticalAlignment);
-            Rect bounds = new Rect(x, y, width, height);
+            int x = Align(available.X, available.Width, width, HorizontalAlignment);
+            int y = Align(available.Y, available.Height, height, VerticalAlignment);
+            Rect bounds = new(x, y, width, height);
 
             Bounds = bounds;
             LastArrangeSlot = slot;
@@ -745,11 +736,11 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         IHandler[] snapshot = System.Buffers.ArrayPool<IHandler>.Shared.Rent(handlers.Count);
         handlers.CopyTo(snapshot);
-        var count = handlers.Count;
+        int count = handlers.Count;
 
         try
         {
-            for (var index = 0; index < count; index++)
+            for (int index = 0; index < count; index++)
             {
                 snapshot[index].Invoke(this, routedEvent, eventArgs, sequence);
             }
@@ -1112,7 +1103,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         int minimum,
         int maximum)
     {
-        var requested = length.Kind switch
+        int requested = length.Kind switch
         {
             Kind.Auto when stretch => available,
             Kind.Auto => desired,
@@ -1134,7 +1125,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         int minimum,
         int maximum)
     {
-        var requested = length.Kind switch
+        int requested = length.Kind switch
         {
             Kind.Auto => SaturatingAdd(intrinsic, padding),
             Kind.Cells => (int) length.Value,
@@ -1146,7 +1137,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 : SaturatingAdd(intrinsic, padding),
             _ => throw new UnreachableException(),
         };
-        var clamped = Math.Clamp(requested, minimum, maximum);
+        int clamped = Math.Clamp(requested, minimum, maximum);
 
         return slot.HasValue
             ? Math.Min(Math.Max(0, slot.Value - margin), clamped)
@@ -1173,19 +1164,19 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             return null;
         }
 
-        var available = slot.HasValue ? Math.Max(0, slot.Value - margin) : int.MaxValue;
+        int available = slot.HasValue ? Math.Max(0, slot.Value - margin) : int.MaxValue;
         return Math.Max(0, Math.Min(border.Value, available) - padding);
     }
 
     private static int ResolvePercent(int value, double percent)
     {
-        var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
+        double result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private static int SaturatingAdd(int value, int extent)
     {
-        var result = (long) value + extent;
+        long result = (long) value + extent;
         return result > int.MaxValue ? int.MaxValue : (int) result;
     }
 

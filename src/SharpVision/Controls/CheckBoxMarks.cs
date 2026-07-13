@@ -4,7 +4,7 @@
 namespace SharpVision.Controls;
 
 /// <summary>Selects the built-in visual mark family used by a CheckBox.</summary>
-public enum CheckBoxStyle
+public enum CheckBoxMarks
 {
     /// <summary>Uses the configurable one-cell <see cref="Marks"/> glyphs.</summary>
     Square,

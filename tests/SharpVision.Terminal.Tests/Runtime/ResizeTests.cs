@@ -3,11 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 using CellMetrics = Geometry.Metrics;
 
@@ -22,7 +19,7 @@ public sealed class ResizeTests
     [Fact]
     public void Constructor_WhenCellsAndPixelsArePositive_DerivesMetrics()
     {
-        Dimensions dimensions = new Dimensions(new Size(80, 24), new Size(800, 480));
+        Dimensions dimensions = new(new Size(80, 24), new Size(800, 480));
 
         dimensions.CellMetrics.ShouldBe(new CellMetrics(
             new Size(80, 24),
@@ -36,7 +33,7 @@ public sealed class ResizeTests
     [Fact]
     public void Constructor_WhenCellsAreZero_CreatesSuspendedDimensions()
     {
-        Dimensions dimensions = new Dimensions(new Size(0, 0), new Size(800, 480));
+        Dimensions dimensions = new(new Size(0, 0), new Size(800, 480));
 
         dimensions.CellMetrics.ShouldBeNull();
         dimensions.IsSuspended.ShouldBeTrue();
@@ -46,7 +43,7 @@ public sealed class ResizeTests
     [Fact]
     public void Constructor_WhenPixelsCannotRepresentEveryCell_OmitsMetrics()
     {
-        Dimensions dimensions = new Dimensions(new Size(80, 24), new Size(79, 23));
+        Dimensions dimensions = new(new Size(80, 24), new Size(79, 23));
 
         dimensions.CellMetrics.ShouldBeNull();
         dimensions.Pixels.ShouldBe(new Size(79, 23));
@@ -58,11 +55,11 @@ public sealed class ResizeTests
     [Fact]
     public async Task ReadAsync_WhenResizeArrives_DeliversDimensionsAsync()
     {
-        await using FakeResizeSource source = new FakeResizeSource();
+        await using FakeResizeSource source = new();
         Task<Dimensions> pending = source.ReadAsync(TestContext.Current.CancellationToken).AsTask();
 
         pending.IsCompleted.ShouldBeFalse();
-        Dimensions expected = new Dimensions(new Size(120, 40), new Size(1200, 800));
+        Dimensions expected = new(new Size(120, 40), new Size(1200, 800));
         source.Resize(expected);
 
         (await pending).ShouldBe(expected);

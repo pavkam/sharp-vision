@@ -3,20 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 using Label = SharpVision.Controls.Text;
@@ -30,14 +19,14 @@ public sealed class ListTests
     [Fact]
     public void Items_WhenAssigned_RealizesOwnedControlsAndExactCells()
     {
-        List<Label> realized = new List<Label>();
-        UiList control = new UiList
+        List<Label> realized = [];
+        UiList control = new()
         {
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
             Items = new object?[] { "One", "界", null },
         };
         new Engine().Layout(control, new Size(5, 3));
-        using Frame frame = new Frame(new Size(5, 3));
+        using Frame frame = new(new Size(5, 3));
 
         control.Render(frame.Canvas);
 
@@ -60,7 +49,7 @@ public sealed class ListTests
         ControlStyle<UiList> style = ThemeTestSupport.OverlayStyle<UiList>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
             (State.Selected, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(99))));
-        UiList control = new UiList
+        UiList control = new()
         {
             Items = new object?[] { "One", "Two" },
             SelectedIndex = 1,
@@ -68,9 +57,9 @@ public sealed class ListTests
             Style = style,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        Size size = new Size(8, 2);
+        Size size = new(8, 2);
         new Engine().Layout(control, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(234)));
 
         control.Render(frame.Canvas);
@@ -111,8 +100,8 @@ public sealed class ListTests
     [Fact]
     public void ShowScrollBars_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
     {
-        UiList control = new UiList();
-        var notifications = 0;
+        UiList control = new();
+        int notifications = 0;
         control.PropertyChanged += (_, eventArgs) =>
         {
             if (eventArgs.PropertyName == nameof(UiList.ShowScrollBars))
@@ -132,14 +121,14 @@ public sealed class ListTests
     [Fact]
     public void ItemTemplate_WhenCandidateIsInvalid_PreservesItemsTemplateAndOwnership()
     {
-        List<Label> previous = new List<Label>();
+        List<Label> previous = [];
         ItemTemplate valid = item => Add(previous, new Label((string) item!));
-        UiList control = new UiList
+        UiList control = new()
         {
             ItemTemplate = valid,
             Items = new object?[] { "A", "B" },
         };
-        Label duplicate = new Label("bad");
+        Label duplicate = new("bad");
 
         _ = Should.Throw<ArgumentNullException>(() => control.Items = null!);
         _ = Should.Throw<ArgumentNullException>(() => control.ItemTemplate = null!);
@@ -155,8 +144,8 @@ public sealed class ListTests
     [Fact]
     public void Items_WhenReplaced_DisposesPreviousRealizationWithoutStateLeakage()
     {
-        List<Label> realized = new List<Label>();
-        UiList control = new UiList
+        List<Label> realized = [];
+        UiList control = new()
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B" },
@@ -197,7 +186,7 @@ public sealed class ListTests
     {
         UiList control = Create("A", "B", "C");
         IReadOnlyList<object?> view = control.SelectedItems;
-        List<string> order = new List<string>();
+        List<string> order = [];
         control.SelectionChanging += (_, eventArgs) =>
         {
             order.Add($"changing:{Join(eventArgs.AddedIndexes)}:{Join(eventArgs.RemovedIndexes)}");
@@ -225,20 +214,20 @@ public sealed class ListTests
     public async Task Dispatch_WhenKeyboardNavigates_UsesStableRealizedOrderAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        List<Label> realized = new List<Label>();
-        UiList control = new UiList
+        List<Label> realized = [];
+        UiList control = new()
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B", "C" },
         };
         realized[1].IsEnabled = false;
-        List<int> invoked = new List<int>();
+        List<int> invoked = [];
         control.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
 
         await dispatcher.InvokeAsync(() =>
         {
             control.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(control);
+            using FocusManager focus = new(control);
             focus.Focus(realized[0].Parent!).ShouldBeTrue();
             Key(realized[0].Parent!, Code.Down);
             focus.Focused.ShouldBeSameAs(realized[2].Parent);
@@ -267,7 +256,7 @@ public sealed class ListTests
         await dispatcher.InvokeAsync(() =>
         {
             control.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(control);
+            using CaptureManager capture = new(control);
             Click(capture, new Point(0, 1), Modifiers.Control);
             Click(capture, new Point(0, 3), Modifiers.Shift);
         }, TestContext.Current.CancellationToken);
@@ -280,8 +269,8 @@ public sealed class ListTests
     public async Task Dispatch_WhenActiveItemMovesBeyondViewport_BringsItIntoViewAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        List<Label> realized = new List<Label>();
-        UiList control = new UiList
+        List<Label> realized = [];
+        UiList control = new()
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
@@ -291,10 +280,10 @@ public sealed class ListTests
         await dispatcher.InvokeAsync(() =>
         {
             control.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(control);
+            using FocusManager focus = new(control);
             focus.Focus(realized[0].Parent!).ShouldBeTrue();
 
-            for (var index = 0; index < 7; index++)
+            for (int index = 0; index < 7; index++)
             {
                 Key(focus.Focused!, Code.Down);
             }
@@ -314,7 +303,7 @@ public sealed class ListTests
         control.Style = style;
         control.SelectedIndex = 0;
         new Engine().Layout(control, new Size(3, 2));
-        using Frame frame = new Frame(new Size(3, 2));
+        using Frame frame = new(new Size(3, 2));
 
         control.Render(frame.Canvas);
 

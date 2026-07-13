@@ -3,10 +3,7 @@
 
 namespace SharpVision.Input;
 
-using System.Diagnostics.CodeAnalysis;
 
-using SharpVision.Controls;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
 /// <summary>Provides immutable cell and optional pixel pointer input.</summary>
@@ -43,7 +40,7 @@ public sealed class PointerEventArgs: RoutedEventArgs
 
     private static int Difference(int left, int right)
     {
-        var result = (long) left - right;
+        long result = (long) left - right;
         return (int) Math.Clamp(result, int.MinValue, int.MaxValue);
     }
 }

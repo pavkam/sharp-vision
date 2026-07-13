@@ -26,9 +26,9 @@ public static class Tmux
     {
         ArgumentNullException.ThrowIfNull(destination);
 
-        var escapeCount = 0;
+        int escapeCount = 0;
 
-        foreach (var value in sequence)
+        foreach (byte value in sequence)
         {
             if (value == 0x1b)
             {
@@ -36,14 +36,14 @@ public static class Tmux
             }
         }
 
-        var length = checked(Header.Length + sequence.Length + escapeCount + Terminator.Length);
+        int length = checked(Header.Length + sequence.Length + escapeCount + Terminator.Length);
         Span<byte> output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
-        var written = 0;
+        int written = 0;
         Header.CopyTo(output);
         written += Header.Length;
 
-        foreach (var value in sequence)
+        foreach (byte value in sequence)
         {
             output[written++] = value;
 
@@ -72,9 +72,9 @@ public static class Tmux
         }
 
         ReadOnlySpan<byte> source = payload[Prefix.Length..];
-        var length = 0;
+        int length = 0;
 
-        for (var index = 0; index < source.Length; index++)
+        for (int index = 0; index < source.Length; index++)
         {
             if (source[index] != 0x1b)
             {
@@ -92,9 +92,9 @@ public static class Tmux
 
         Span<byte> output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
-        var written = 0;
+        int written = 0;
 
-        for (var index = 0; index < source.Length; index++)
+        for (int index = 0; index < source.Length; index++)
         {
             output[written++] = source[index];
 

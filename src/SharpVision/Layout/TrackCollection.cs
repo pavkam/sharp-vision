@@ -97,7 +97,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
     /// <inheritdoc/>
     public bool Remove(Track item)
     {
-        var index = _items.IndexOf(item);
+        int index = _items.IndexOf(item);
 
         if (index < 0)
         {

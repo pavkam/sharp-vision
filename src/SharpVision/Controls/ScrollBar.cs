@@ -3,21 +3,12 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Scrolling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Unicode;
 
-using BackgroundMode = BackgroundMode;
-using KeyAction = KeyAction;
 using ScrollRange = Scrolling.Range;
-using TerminalCanvas = TerminalCanvas;
-using TerminalStyle = TerminalStyle;
 using UnicodeWidth = Terminal.Unicode.Width;
 
 /// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
@@ -208,7 +199,7 @@ public sealed class ScrollBar: Control
         {
             Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
-            var wasCustom = _hasDecrementGlyph;
+            bool wasCustom = _hasDecrementGlyph;
             _hasDecrementGlyph = true;
 
             if (DefaultDecrementGlyph == glyph)
@@ -237,7 +228,7 @@ public sealed class ScrollBar: Control
         {
             Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
-            var wasCustom = _hasIncrementGlyph;
+            bool wasCustom = _hasIncrementGlyph;
             _hasIncrementGlyph = true;
 
             if (DefaultIncrementGlyph == glyph)
@@ -266,7 +257,7 @@ public sealed class ScrollBar: Control
         {
             Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
-            var wasCustom = _hasTrackGlyph;
+            bool wasCustom = _hasTrackGlyph;
             _hasTrackGlyph = true;
 
             if (DefaultTrackGlyph == glyph)
@@ -295,7 +286,7 @@ public sealed class ScrollBar: Control
         {
             Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
-            var wasCustom = _hasThumbGlyph;
+            bool wasCustom = _hasThumbGlyph;
             _hasThumbGlyph = true;
 
             if (DefaultThumbGlyph == glyph)
@@ -333,7 +324,7 @@ public sealed class ScrollBar: Control
     {
         _ = constraint.Width;
         Debug.Assert(Enum.IsDefined(Orientation), "Orientation is validated before assignment.");
-        var extent = Chrome == ScrollBarStyle.Thin ? 1 : 3;
+        int extent = Chrome == ScrollBarStyle.Thin ? 1 : 3;
         return Orientation == Orientation.Vertical ? new Size(1, extent) : new Size(extent, 1);
     }
 
@@ -384,15 +375,15 @@ public sealed class ScrollBar: Control
     protected override void RenderCore(TerminalCanvas canvas)
     {
         Rect bounds = ContentBounds;
-        var length = AxisLength(bounds);
+        int length = AxisLength(bounds);
 
         if (length == 0)
         {
             return;
         }
 
-        var buttons = ButtonCount(length);
-        var trackLength = Math.Max(0, length - (buttons * 2));
+        int buttons = ButtonCount(length);
+        int trackLength = Math.Max(0, length - (buttons * 2));
         Thumb thumb = Thumb.Resolve(CurrentRange(), trackLength);
         TerminalStyle style = ResolvedStyle;
 
@@ -401,7 +392,7 @@ public sealed class ScrollBar: Control
             canvas.Clear(bounds, style);
         }
 
-        for (var position = 0; position < length; position++)
+        for (int position = 0; position < length; position++)
         {
             Rune glyph = ResolveGlyph(position, length, buttons, thumb);
             Draw(canvas, PointAt(bounds, position), glyph, style);
@@ -411,7 +402,7 @@ public sealed class ScrollBar: Control
     private bool Commit(int value, Cause cause)
     {
         value = Math.Clamp(value, Minimum, Maximum);
-        var previous = _value;
+        int previous = _value;
 
         if (!Set(ref _value, value, Invalidation.Render, nameof(Value)))
         {
@@ -491,8 +482,8 @@ public sealed class ScrollBar: Control
         }
 
         Rect bounds = ContentBounds;
-        var length = AxisLength(bounds);
-        var position = Axis(cells) - AxisOrigin(bounds);
+        int length = AxisLength(bounds);
+        int position = Axis(cells) - AxisOrigin(bounds);
 
         if (length == 0 || position < 0 || position >= length)
         {
@@ -502,7 +493,7 @@ public sealed class ScrollBar: Control
         _ = FocusOwner?.Focus(this);
         eventArgs.Handled = true;
 
-        var buttons = ButtonCount(length);
+        int buttons = ButtonCount(length);
 
         if (buttons != 0 && position == 0)
         {
@@ -516,8 +507,8 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        var trackLength = Math.Max(0, length - (buttons * 2));
-        var trackPosition = position - buttons;
+        int trackLength = Math.Max(0, length - (buttons * 2));
+        int trackPosition = position - buttons;
         ScrollRange range = CurrentRange();
         Thumb thumb = Thumb.Resolve(range, trackLength);
 
@@ -537,7 +528,7 @@ public sealed class ScrollBar: Control
 
     private void HandleWheel(PointerEventArgs eventArgs)
     {
-        var wheel = Orientation == Orientation.Vertical
+        int wheel = Orientation == Orientation.Vertical
             ? eventArgs.Pointer.WheelY
             : eventArgs.Pointer.WheelX;
 
@@ -546,8 +537,8 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        var requested = -(long) wheel * SmallChange;
-        var delta = (int) Math.Clamp(requested, int.MinValue, int.MaxValue);
+        long requested = -(long) wheel * SmallChange;
+        int delta = (int) Math.Clamp(requested, int.MinValue, int.MaxValue);
 
         // A pinned rail must not swallow the next viewport's wheel gesture.
         // The unchanged routed event can continue to an enclosing scroll host.
@@ -595,20 +586,20 @@ public sealed class ScrollBar: Control
         }
 
         Rect bounds = ContentBounds;
-        var buttons = ButtonCount(AxisLength(bounds));
-        var position = Axis(cells) - AxisOrigin(bounds) - buttons;
-        var delta = Difference(position, _dragPointerStart);
+        int buttons = ButtonCount(AxisLength(bounds));
+        int position = Axis(cells) - AxisOrigin(bounds) - buttons;
+        int delta = Difference(position, _dragPointerStart);
 
         if (_dragPixelStart.HasValue && pointer.Pixels is { } pixels)
         {
-            var pixelDelta = Difference(Axis(pixels), _dragPixelStart.Value);
+            int pixelDelta = Difference(Axis(pixels), _dragPixelStart.Value);
             Debug.Assert(
                 delta == 0 || pixelDelta == 0 || Math.Sign(delta) == Math.Sign(pixelDelta),
                 "Inferred cell and pixel drag directions must agree.");
         }
 
-        var start = SaturatingAdd(_dragThumbStart, delta);
-        var value = Thumb.ValueAt(_dragRange, _dragTrackLength, start);
+        int start = SaturatingAdd(_dragThumbStart, delta);
+        int value = Thumb.ValueAt(_dragRange, _dragTrackLength, start);
         _ = Commit(value, Cause.Pointer);
         eventArgs.Handled = true;
 
@@ -660,7 +651,7 @@ public sealed class ScrollBar: Control
 
     private Rune ResolveGlyph(int position, int length, int buttons, Thumb thumb)
     {
-        var trackPosition = position - buttons;
+        int trackPosition = position - buttons;
 
         return buttons == 0
             ? trackPosition >= thumb.Start && trackPosition < thumb.Start + thumb.Length
@@ -712,7 +703,7 @@ public sealed class ScrollBar: Control
     private static void Draw(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style)
     {
         Span<char> buffer = stackalloc char[2];
-        var length = glyph.EncodeToUtf16(buffer);
+        int length = glyph.EncodeToUtf16(buffer);
         _ = canvas.Draw(buffer[..length], point, style, background: BackgroundMode.Transparent);
     }
 
@@ -746,7 +737,7 @@ public sealed class ScrollBar: Control
     private static Rune Validate(Rune value, string name)
     {
         Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
+        int length = value.EncodeToUtf16(buffer);
         Measurement measurement = UnicodeWidth.Measure(buffer[..length]);
 
         return measurement.Cells == 1 && measurement.Controls == 0

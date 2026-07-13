@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the Stack control.</summary>
 internal sealed class StackShowcasePane: ShowcasePane

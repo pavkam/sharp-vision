@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
 
-using Shouldly;
 
 /// <summary>Verifies negotiation policy ownership and validation.</summary>
 public sealed class NegotiationOptionsTests
@@ -15,11 +14,11 @@ public sealed class NegotiationOptionsTests
     public void Constructor_WhenEnvironmentChanges_RetainsOwnedSnapshot()
     {
         // Arrange
-        Dictionary<string, string?> environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new()
         {
             ["TERM"] = "xterm-kitty",
         };
-        NegotiationOptions options = new NegotiationOptions(environment);
+        NegotiationOptions options = new(environment);
 
         // Act
         environment["TERM"] = "dumb";

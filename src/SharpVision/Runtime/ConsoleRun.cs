@@ -16,7 +16,7 @@ internal static class ConsoleRun
     internal static TerminalOptions CreateTerminalOptions()
     {
         Dictionary<string, string?> environment = CaptureEnvironment();
-        Settings overrides = new Settings { CellMouse = true };
+        Settings overrides = new() { CellMouse = true };
         return new TerminalOptions
         {
             Capabilities = Detector.Detect(new Dictionary<string, string?>(), overrides: overrides),
@@ -30,7 +30,7 @@ internal static class ConsoleRun
     /// <returns>A mutable dictionary copy of the current environment.</returns>
     internal static Dictionary<string, string?> CaptureEnvironment()
     {
-        Dictionary<string, string?> environment = new Dictionary<string, string?>(StringComparer.Ordinal);
+        Dictionary<string, string?> environment = new(StringComparer.Ordinal);
 
         foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
         {

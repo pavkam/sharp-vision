@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
 
-using Shouldly;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
 
@@ -20,7 +19,7 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenKittyEnvironmentIsPresent_RecordsTentativeFeatures()
     {
-        Dictionary<string, string?> environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new()
         {
             ["TERM"] = "xterm-kitty",
             ["COLORTERM"] = "truecolor",
@@ -44,12 +43,12 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenTmuxAndQueryArePresent_QueryWinsNarrowing()
     {
-        Dictionary<string, string?> environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new()
         {
             ["TERM"] = "xterm-kitty",
             ["TMUX"] = "/tmp/tmux-1000/default,1,0",
         };
-        Queries queries = new Queries { KittyClipboard = true };
+        Queries queries = new() { KittyClipboard = true };
 
         Capabilities capabilities = Detector.Detect(environment, queries);
 
@@ -64,7 +63,7 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenSessionIsRemoteOrScreen_NarrowsClipboardHints()
     {
-        Dictionary<string, string?> environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new()
         {
             ["TERM"] = "screen-256color",
             ["SSH_CONNECTION"] = "client server",
@@ -83,8 +82,8 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenOverridesAreProvided_OverridesWinLast()
     {
-        Dictionary<string, string?> environment = new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" };
-        Queries queries = new Queries
+        Dictionary<string, string?> environment = new() { ["TERM"] = "xterm-kitty" };
+        Queries queries = new()
         {
             KittyClipboard = true,
             SynchronizedOutput = true,
@@ -92,7 +91,7 @@ public sealed class DetectorTests
             UnderlineColor = false,
             Overline = false,
         };
-        Settings overrides = new Settings
+        Settings overrides = new()
         {
             KittyClipboard = false,
             SynchronizedOutput = false,

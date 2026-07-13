@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
 /// <summary>Verifies semantic terminal style validation for modern decorations.</summary>
 public sealed class StyleTests
@@ -15,7 +12,7 @@ public sealed class StyleTests
     [Fact]
     public void Constructor_WhenDecorationsAreValid_PreservesValues()
     {
-        Style style = new Style(
+        Style style = new(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));

@@ -92,7 +92,7 @@ public sealed class TableColumns: IList<TableColumn>, IReadOnlyList<TableColumn>
     /// <inheritdoc/>
     public bool Remove(TableColumn item)
     {
-        var index = _items.IndexOf(item);
+        int index = _items.IndexOf(item);
 
         if (index < 0)
         {

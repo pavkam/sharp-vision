@@ -3,7 +3,6 @@
 
 namespace SharpVision.Input;
 
-using SharpVision.Controls;
 
 /// <summary>Stores one typed routed-handler registration.</summary>
 /// <typeparam name="TArgs">The exact routed argument type.</typeparam>

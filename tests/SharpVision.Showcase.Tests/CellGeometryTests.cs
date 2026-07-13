@@ -3,14 +3,11 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Layout;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Runtime;
 
-using Shouldly;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -21,13 +18,13 @@ public sealed class CellGeometryTests
     [Fact]
     public void Render_WhenTextPageIsSelected_ShowsGeometrySpecimen()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = new();
         gallery.Select(IndexOf(gallery, "Text"));
-        Size size = new Size(120, 80);
+        Size size = new(120, 80);
         new Engine().Layout(gallery, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
         gallery.Render(frame.Canvas);
-        Screen screen = new Screen(frame);
+        Screen screen = new(frame);
 
         screen.Text.ShouldContain("Cell geometry specimen");
         screen.Text.ShouldContain("orphan");
@@ -38,10 +35,10 @@ public sealed class CellGeometryTests
     [Fact]
     public async Task Input_WhenPixelMetricsAreMissing_ShowsUnavailableCellsAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(120, 80)));
-        using Gallery gallery = new Gallery();
-        await using Application application = new Application(
+        using Gallery gallery = new();
+        await using Application application = new(
             gallery,
             terminal,
             terminal,
@@ -51,11 +48,11 @@ public sealed class CellGeometryTests
             () => gallery.Select(IndexOf(gallery, "Text")),
             TestContext.Current.CancellationToken);
 
-        using Frame frame = new Frame(application.Size);
+        using Frame frame = new(application.Size);
         await application.Dispatcher.InvokeAsync(
             () => gallery.Render(frame.Canvas),
             TestContext.Current.CancellationToken);
-        Screen screen = new Screen(frame);
+        Screen screen = new(frame);
 
         screen.Text.ShouldContain("Pixels: unavailable");
         screen.Text.ShouldContain("Cells: unavailable");
@@ -66,7 +63,7 @@ public sealed class CellGeometryTests
     {
         ArgumentNullException.ThrowIfNull(gallery);
         ArgumentException.ThrowIfNullOrWhiteSpace(page);
-        var index = gallery.Pages.Select(static value => value.Name).ToList().IndexOf(page);
+        int index = gallery.Pages.Select(static value => value).ToList().IndexOf(page);
         return index >= 0 ? index : throw new InvalidOperationException($"The {page} page is not registered.");
     }
 }

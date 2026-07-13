@@ -3,19 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = Terminal.Input.Action;
@@ -28,7 +18,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Activate_WhenTwoState_CyclesFalseAndTrue()
     {
-        CheckBox checkBox = new CheckBox();
+        CheckBox checkBox = new();
 
         checkBox.IsChecked.ShouldBe(false);
         checkBox.IsThreeState.ShouldBeFalse();
@@ -44,7 +34,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Activate_WhenThreeState_CyclesInDocumentedOrder()
     {
-        CheckBox checkBox = new CheckBox { IsThreeState = true };
+        CheckBox checkBox = new() { IsThreeState = true };
 
         checkBox.PerformToggle();
         checkBox.PerformToggle();
@@ -58,7 +48,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void IsChecked_WhenNullInTwoState_ThrowsBeforeMutation()
     {
-        CheckBox checkBox = new CheckBox { IsChecked = true };
+        CheckBox checkBox = new() { IsChecked = true };
 
         _ = Should.Throw<ArgumentException>(() => checkBox.IsChecked = null);
 
@@ -69,8 +59,8 @@ public sealed class CheckBoxTests
     [Fact]
     public void IsThreeState_WhenDisabledFromNull_CommitsFalseBeforeEvents()
     {
-        CheckBox checkBox = new CheckBox { IsThreeState = true, IsChecked = null };
-        List<string> order = new List<string>();
+        CheckBox checkBox = new() { IsThreeState = true, IsChecked = null };
+        List<string> order = [];
         checkBox.Unchecked += (_, eventArgs) =>
         {
             checkBox.IsThreeState.ShouldBeFalse();
@@ -89,8 +79,8 @@ public sealed class CheckBoxTests
     [Fact]
     public void IsChecked_WhenChangedProgrammatically_RaisesSpecificThenGeneral()
     {
-        CheckBox checkBox = new CheckBox();
-        List<string> order = new List<string>();
+        CheckBox checkBox = new();
+        List<string> order = [];
         checkBox.Checked += (_, eventArgs) =>
         {
             checkBox.IsChecked.ShouldBe(true);
@@ -108,7 +98,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Route_WhenSpaceCompletes_TogglesWithKeyboardCause()
     {
-        CheckBox checkBox = new CheckBox();
+        CheckBox checkBox = new();
         ActivationCause? cause = null;
         checkBox.Checked += (_, eventArgs) => cause = eventArgs.Cause;
 
@@ -126,7 +116,7 @@ public sealed class CheckBoxTests
         ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(1))),
             (State.Checked, new ThemeOverlay(foreground: Color.Indexed(5))));
-        CheckBox checkBox = new CheckBox { Style = style, IsChecked = true };
+        CheckBox checkBox = new() { Style = style, IsChecked = true };
 
         checkBox.Foreground.ShouldBe(Color.Indexed(5));
     }
@@ -135,10 +125,10 @@ public sealed class CheckBoxTests
     [Fact]
     public void Render_WhenCheckedWithContent_WritesExactMarkAndUnicodeCells()
     {
-        ControlText content = new ControlText("界");
-        CheckBox checkBox = new CheckBox { Content = content, IsChecked = true };
+        ControlText content = new("界");
+        CheckBox checkBox = new() { Content = content, IsChecked = true };
         new Engine().Layout(checkBox, new Size(4, 1));
-        using Frame frame = new Frame(new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
 
         checkBox.Render(frame.Canvas);
 
@@ -154,9 +144,9 @@ public sealed class CheckBoxTests
     {
         ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        CheckBox checkBox = new CheckBox { Style = style };
+        CheckBox checkBox = new() { Style = style };
         new Engine().Layout(checkBox, new Size(1, 1));
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
 
         checkBox.Render(frame.Canvas);
@@ -166,28 +156,28 @@ public sealed class CheckBoxTests
 
     /// <summary>Verifies bracket and tick mark styles reserve stable documented cell widths.</summary>
     [Theory]
-    [InlineData(CheckBoxStyle.Brackets, "[x]", 5)]
-    [InlineData(CheckBoxStyle.Tick, "✓", 3)]
+    [InlineData(CheckBoxMarks.Brackets, "[x]", 5)]
+    [InlineData(CheckBoxMarks.Tick, "✓", 3)]
     public void Render_WhenMarkStyleChanges_UsesExpectedMarkAndStableContentOffset(
-        CheckBoxStyle style,
+        CheckBoxMarks style,
         string mark,
         int width)
     {
-        ControlText content = new ControlText("Go");
-        CheckBox checkBox = new CheckBox
+        ControlText content = new("Go");
+        CheckBox checkBox = new()
         {
             Content = content,
             IsChecked = true,
             MarkStyle = style,
         };
-        Size size = new Size(width, 1);
+        Size size = new(width, 1);
         new Engine().Layout(checkBox, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         checkBox.Render(frame.Canvas);
 
         FrameOracle.Get(frame, default).ShouldBe(mark[..1]);
-        FrameOracle.Get(frame, new Point(style == CheckBoxStyle.Brackets ? 4 : 2, 0)).ShouldBe("G");
+        FrameOracle.Get(frame, new Point(style == CheckBoxMarks.Brackets ? 4 : 2, 0)).ShouldBe("G");
     }
 
     /// <summary>Verifies wide and control marks are rejected during construction.</summary>

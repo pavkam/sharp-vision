@@ -4,7 +4,6 @@
 namespace SharpVision.Terminal.Tests.Transport;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;

@@ -5,7 +5,6 @@ namespace SharpVision.Controls;
 
 using System.Collections;
 
-using SharpVision.Input;
 
 /// <summary>Owns one container's validated ordered child controls.</summary>
 public sealed class Children: IList<Control>, IReadOnlyList<Control>
@@ -69,7 +68,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
             return;
         }
 
-        for (var index = _items.Count - 1; index >= 0; index--)
+        for (int index = _items.Count - 1; index >= 0; index--)
         {
             Detach(_items[index]);
         }
@@ -180,7 +179,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
     {
         ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutable();
-        var index = _items.IndexOf(item);
+        int index = _items.IndexOf(item);
 
         if (index < 0)
         {

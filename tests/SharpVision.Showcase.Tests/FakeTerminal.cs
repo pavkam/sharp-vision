@@ -67,7 +67,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
         ArgumentOutOfRangeException.ThrowIfZero(destination.Length);
         try
         {
-            var value = await _input.Reader.ReadAsync(cancellationToken);
+            byte[] value = await _input.Reader.ReadAsync(cancellationToken);
 
             if (value.Length > destination.Length)
             {
@@ -89,7 +89,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var copy = source.ToArray();
+        byte[] copy = source.ToArray();
 
         lock (_gate)
         {

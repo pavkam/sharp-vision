@@ -3,9 +3,7 @@
 
 namespace SharpVision.Input;
 
-using System.Diagnostics.CodeAnalysis;
 
-using SharpVision.Controls;
 using SharpVision.Terminal.Input;
 
 /// <summary>Owns hit targeting, hover, press, and exclusive pointer capture.</summary>

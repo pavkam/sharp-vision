@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the ScrollView control.</summary>
 internal sealed class ScrollViewShowcasePane: ShowcasePane
@@ -42,7 +41,7 @@ internal sealed class ScrollViewShowcasePane: ShowcasePane
     {
         ControlStack content = PaneSupport.Vertical();
 
-        for (var index = 1; index <= 14; index++)
+        for (int index = 1; index <= 14; index++)
         {
             content.Children.Add(new ControlText(
                 $"Scrollable row {index:00} · wide content beyond the viewport"));

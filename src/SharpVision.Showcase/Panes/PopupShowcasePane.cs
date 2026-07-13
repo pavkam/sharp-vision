@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the Popup control.</summary>
 internal sealed class PopupShowcasePane: ShowcasePane
@@ -44,30 +42,25 @@ internal sealed class PopupShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlText status = new ControlText("Choose an item with the mouse, arrows, or Enter.")
+        ControlText status = new("Choose an item with the mouse, arrows, or Enter.")
         {
-            Foreground = Palette.Muted,
         };
-        ControlButton trigger = new ControlButton
+        ControlButton trigger = new()
         {
             Content = new ControlText("Actions ▼"),
-            Style = Palette.Interactive(),
         };
-        ControlList choices = new ControlList
+        ControlList choices = new()
         {
             Width = Length.Cells(24),
             Height = Length.Cells(5),
             Items = ["Duplicate", "Rename", "Archive", "Delete"],
             SelectedIndex = 0,
-            Style = Palette.Interactive(),
         };
-        ControlPopup popup = new ControlPopup
+        ControlPopup popup = new()
         {
             Anchor = trigger,
             Placement = PopupPlacement.Below,
             Glyphs = Glyphs.Rounded,
-            BorderColor = Palette.Accent,
-            Background = Palette.Surface,
             Child = choices,
         };
         trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
@@ -84,7 +77,7 @@ internal sealed class PopupShowcasePane: ShowcasePane
             "Open the compact menu, then select with the mouse or keyboard. Escape closes it without selecting anything.",
             PaneSupport.ButtonSpecimen(trigger)));
         content.Children.Add(status);
-        ControlOverlay overlay = new ControlOverlay { ClipToBounds = false };
+        ControlOverlay overlay = new() { ClipToBounds = false };
         overlay.Children.Add(content);
         ControlOverlay.SetZIndex(popup, 10);
         overlay.Children.Add(popup);

@@ -3,17 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using TerminalStyle = Style;
@@ -25,10 +16,10 @@ public sealed class TableTests
     [Fact]
     public void Layout_WhenColumnsMixFixedPercentAndFill_ResolvesContainedCellSlots()
     {
-        ControlText first = new ControlText("Alpha");
-        ControlText second = new ControlText("Ready");
-        ControlText third = new ControlText("Details");
-        Table table = new Table();
+        ControlText first = new("Alpha");
+        ControlText second = new("Ready");
+        ControlText third = new("Details");
+        Table table = new();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Percent("Status", 50));
         table.Columns.Add(TableColumn.Fill("Details"));
@@ -46,13 +37,13 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenHeaderAndGridLinesAreEnabled_WritesHeaderCellsAndIntersections()
     {
-        Table table = new Table();
+        Table table = new();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
-        Size size = new Size(14, 4);
+        Size size = new(14, 4);
         new Engine().Layout(table, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         table.Render(frame.Canvas);
 
@@ -70,13 +61,13 @@ public sealed class TableTests
     {
         ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        Table table = new Table { Style = style };
+        Table table = new() { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
-        Size size = new Size(14, 4);
+        Size size = new(14, 4);
         new Engine().Layout(table, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
 
         table.Render(frame.Canvas);
@@ -94,12 +85,12 @@ public sealed class TableTests
                 attributes: Attributes.RapidBlink,
                 underline: Underline.Dashed,
                 underlineColor: Color.Indexed(5))));
-        Table table = new Table { Style = style };
+        Table table = new() { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Rows.Add(new TableRow([new ControlText("A")]));
-        Size size = new Size(6, 3);
+        Size size = new(6, 3);
         new Engine().Layout(table, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         table.Render(frame.Canvas);
 
@@ -115,13 +106,13 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenTableIsOffset_DrawsHeaderDividerBelowItsOwnHeader()
     {
-        Table table = new Table();
+        Table table = new();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
         table.Measure(new Constraint(width: 14, height: 4));
         table.Arrange(new Rect(2, 3, 14, 4));
-        using Frame frame = new Frame(new Size(20, 10));
+        using Frame frame = new(new Size(20, 10));
 
         table.Render(frame.Canvas);
 
@@ -133,12 +124,12 @@ public sealed class TableTests
     [Fact]
     public void Layout_WhenTableHasNoRows_UsesOnlyTheHeaderHeight()
     {
-        Table table = new Table();
+        Table table = new();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fixed("Value", 5));
-        Size size = new Size(12, 4);
+        Size size = new(12, 4);
         new Engine().Layout(table, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         table.Render(frame.Canvas);
 
@@ -151,11 +142,11 @@ public sealed class TableTests
     [Fact]
     public void Rows_WhenCellCountDiffersFromColumns_RejectsRowWithoutOwnershipTransfer()
     {
-        Table table = new Table();
+        Table table = new();
         table.Columns.Add(TableColumn.Auto("One"));
         table.Columns.Add(TableColumn.Auto("Two"));
-        ControlText cell = new ControlText("Only one");
-        TableRow row = new TableRow([cell]);
+        ControlText cell = new("Only one");
+        TableRow row = new([cell]);
 
         _ = Should.Throw<ArgumentException>(() => table.Rows.Add(row));
 

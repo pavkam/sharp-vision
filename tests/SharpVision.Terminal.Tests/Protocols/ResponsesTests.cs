@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies typed capability and status response decoding.
@@ -39,7 +37,7 @@ public sealed class ResponsesTests
         string parameters,
         bool supported)
     {
-        var bytes = Encoding.ASCII.GetBytes(parameters);
+        byte[] bytes = Encoding.ASCII.GetBytes(parameters);
 
         Responses.TryCsi(bytes, "$"u8, (byte) 'y', out Response response).ShouldBeTrue();
 

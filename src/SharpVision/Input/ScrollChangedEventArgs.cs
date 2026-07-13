@@ -4,7 +4,6 @@
 namespace SharpVision.Input;
 
 using SharpVision.Scrolling;
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Reports one committed two-axis ScrollView geometry or offset transition.</summary>
 public sealed class ScrollChangedEventArgs: EventArgs

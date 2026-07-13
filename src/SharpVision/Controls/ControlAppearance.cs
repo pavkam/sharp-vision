@@ -6,9 +6,6 @@ namespace SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = TerminalAttributes;
-using TerminalStyle = TerminalStyle;
-
 internal static class ControlAppearance
 {
     internal static ResolvedAppearance Resolve(Control control, State visualState)
@@ -30,13 +27,13 @@ internal static class ControlAppearance
             underline,
             underlineColor);
 
-        TerminalStyle style = new TerminalStyle(
+        TerminalStyle style = new(
             foreground ?? Color.Default,
             background ?? Color.Default,
             resolvedAttributes,
             underline: resolvedUnderline,
             underlineColor: resolvedUnderlineColor);
-        var hasOpaqueFill = fillMode == FillMode.Opaque ||
+        bool hasOpaqueFill = fillMode == FillMode.Opaque ||
             (control.TryGetLocalValue(Control.BackgroundProperty, out Color? local) && local.HasValue) ||
             background.HasValue;
 

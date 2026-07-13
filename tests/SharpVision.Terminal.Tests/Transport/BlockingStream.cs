@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Transport;
 
-using System.Text;
 
 /// <summary>Blocks writes to prove serialized transport access.</summary>
 internal sealed class BlockingStream: MemoryStream

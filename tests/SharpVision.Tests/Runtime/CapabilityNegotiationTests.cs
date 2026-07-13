@@ -3,15 +3,11 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using System.Text;
 
 using SharpVision.Runtime;
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using Ambiguous = Terminal.Unicode.Ambiguous;
 using CapabilityOrigin = Terminal.Capabilities.Origin;
@@ -27,16 +23,16 @@ public sealed class CapabilityNegotiationTests
     public async Task StartAsync_WhenNegotiationCompletes_AppliesProfileBeforeFirstFrameAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        ProbeControl root = new ProbeControl { Content = "x".AsMemory() };
+        ProbeControl root = new() { Content = "x".AsMemory() };
         TerminalOptions options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
         };
-        await using Application application = new Application(root, terminal, terminal, options);
-        List<string> order = new List<string>();
-        TaskCompletionSource queryWritten = new TaskCompletionSource(
+        await using Application application = new(root, terminal, terminal, options);
+        List<string> order = [];
+        TaskCompletionSource queryWritten = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         CapabilitiesChangedEventArgs? changed = null;
         terminal.Written += value =>
@@ -71,7 +67,7 @@ public sealed class CapabilityNegotiationTests
         eventArgs.Current.ShouldBeSameAs(application.Capabilities);
         application.Capabilities.SynchronizedOutput.IsSupported.ShouldBeTrue();
         order.ShouldBe(["capabilities", "resize", "frame"]);
-        var frame = Encoding.UTF8.GetString(terminal.Writes[^1]);
+        string frame = Encoding.UTF8.GetString(terminal.Writes[^1]);
         frame.ShouldStartWith("\u001b[?2026h");
         frame.ShouldEndWith("\u001b[?2026l");
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -82,23 +78,23 @@ public sealed class CapabilityNegotiationTests
     public async Task Profile_WhenRenderIsPaused_CoalescesIntoNextFrameAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        ProbeControl root = new ProbeControl { Content = "·".AsMemory() };
-        await using Application application = new Application(
+        ProbeControl root = new() { Content = "·".AsMemory() };
+        await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        List<CapabilitiesChangedEventArgs> changes = new List<CapabilitiesChangedEventArgs>();
+        List<CapabilitiesChangedEventArgs> changes = [];
         application.CapabilitiesChanged += (_, eventArgs) => changes.Add(eventArgs);
         await application.StartAsync(TestContext.Current.CancellationToken);
         terminal.PauseFlush();
-        TaskCompletionSource synchronizedWrite = new TaskCompletionSource(
+        TaskCompletionSource synchronizedWrite = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource thirdFrame = new TaskCompletionSource(
+        TaskCompletionSource thirdFrame = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        var frames = 1;
+        int frames = 1;
         terminal.Written += value =>
         {
             if (value.Span.StartsWith("\u001b[?2026h"u8))
@@ -115,8 +111,8 @@ public sealed class CapabilityNegotiationTests
                 _ = thirdFrame.TrySetResult();
             }
         };
-        Feature supported = new Feature(CapabilitySupport.Supported, CapabilityOrigin.Override);
-        Feature unsupported = new Feature(CapabilitySupport.Unsupported, CapabilityOrigin.Override);
+        Feature supported = new(CapabilitySupport.Supported, CapabilityOrigin.Override);
+        Feature unsupported = new(CapabilitySupport.Unsupported, CapabilityOrigin.Override);
         TerminalCapabilities first = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = supported,

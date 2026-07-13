@@ -4,7 +4,6 @@
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Fonts;
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the FigletText control.</summary>
 internal sealed class FigletTextShowcasePane: ShowcasePane
@@ -39,14 +38,13 @@ internal sealed class FigletTextShowcasePane: ShowcasePane
     protected override void BuildExamples(ControlStack examples)
     {
         FigletCatalog catalog = FigletCatalog.Default;
-        ControlTextInput text = new ControlTextInput
+        ControlTextInput text = new()
         {
             Width = Length.Cells(30),
             Text = "SharpVision",
-            Style = Palette.Editor(),
         };
-        var fontNames = catalog.Names.ToArray();
-        ControlComboBox picker = new ControlComboBox
+        string[] fontNames = [.. catalog.Names];
+        ControlComboBox picker = new()
         {
             Width = Length.Cells(30),
             Items = fontNames,
@@ -56,16 +54,13 @@ internal sealed class FigletTextShowcasePane: ShowcasePane
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             ScrollBarChrome = ScrollBarStyle.Thin,
             ScrollBarFill = ScrollBarFill.Line,
-            Style = Palette.List(),
         };
-        ControlFigletText preview = new ControlFigletText(catalog.Load("Standard"))
+        ControlFigletText preview = new(catalog.Load("Standard"))
         {
             Content = text.Text,
-            Foreground = Palette.Accent,
         };
-        ControlText status = new ControlText("Type text, then choose a font from the dropdown.")
+        ControlText status = new("Type text, then choose a font from the dropdown.")
         {
-            Foreground = Palette.Muted,
         };
         text.TextChanged += (_, eventArgs) => preview.Content = eventArgs.Text;
         picker.SelectionChanged += (_, _) =>

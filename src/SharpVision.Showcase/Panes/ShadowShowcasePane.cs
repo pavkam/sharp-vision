@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
 using SharpVision.Terminal.Geometry;
 
 using TerminalAttributes = Terminal.Rendering.Attributes;
@@ -43,19 +42,15 @@ internal sealed class ShadowShowcasePane: ShowcasePane
     {
         examples.Children.Add(new ControlText("Composite stage")
         {
-            Foreground = Palette.Success,
             Attributes = TerminalAttributes.Bold,
         });
         examples.Children.Add(PaneSupport.ShadowStage(new ControlShadow
         {
             Child = PaneSupport.DemoCard("Composite", Glyphs.Rounded),
-            Foreground = Palette.Muted,
-            Background = Palette.Canvas,
             Offset = new Point(2, 1),
         }));
         examples.Children.Add(new ControlText("Block glyph stage")
         {
-            Foreground = Palette.Accent,
             Attributes = TerminalAttributes.Bold,
         });
         examples.Children.Add(PaneSupport.ShadowStage(new ControlShadow
@@ -63,8 +58,6 @@ internal sealed class ShadowShowcasePane: ShowcasePane
             Child = PaneSupport.DemoCard("Block glyph", Glyphs.Paired),
             Mode = ShadowMode.BlockGlyph,
             Glyph = new Rune('░'),
-            Foreground = Palette.Muted,
-            Background = Palette.Canvas,
             Offset = new Point(2, 1),
         }));
     }

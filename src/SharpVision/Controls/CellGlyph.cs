@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
-using System.Text;
 
 using SharpVision.Terminal.Unicode;
 
@@ -19,7 +17,7 @@ internal static class CellGlyph
     internal static Rune Resolve(Rune value, Rune fallback, Ambiguous ambiguousWidth)
     {
         Span<char> valueBuffer = stackalloc char[2];
-        var valueLength = value.EncodeToUtf16(valueBuffer);
+        int valueLength = value.EncodeToUtf16(valueBuffer);
         Measurement measurement = Width.Measure(valueBuffer[..valueLength], ambiguousWidth);
 
         if (measurement.Cells == 1 && measurement.Controls == 0)
@@ -28,7 +26,7 @@ internal static class CellGlyph
         }
 
         Span<char> fallbackBuffer = stackalloc char[2];
-        var fallbackLength = fallback.EncodeToUtf16(fallbackBuffer);
+        int fallbackLength = fallback.EncodeToUtf16(fallbackBuffer);
         Measurement fallbackMeasurement = Width.Measure(fallbackBuffer[..fallbackLength], ambiguousWidth);
         Debug.Assert(
             fallbackMeasurement.Cells == 1 && fallbackMeasurement.Controls == 0,

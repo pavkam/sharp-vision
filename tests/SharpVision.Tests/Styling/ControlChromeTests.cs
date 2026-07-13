@@ -3,15 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 
@@ -22,13 +15,13 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawPartialBorder_WhenOnlyTopEdgeIsEnabled_DrawsSingleRow()
     {
-        Border border = new Border
+        Border border = new()
         {
             Bounds = new Rect(0, 0, 3, 2),
             BorderThickness = new Thickness(0, 1, 0, 0),
             BorderStyle = Glyphs.Ascii,
         };
-        using Frame frame = new Frame(new Size(3, 2));
+        using Frame frame = new(new Size(3, 2));
 
         border.Render(frame.Canvas);
 
@@ -42,13 +35,13 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawShadow_WhenCompositeModeIsUsed_LeavesBodyCellsUntouched()
     {
-        Shadow shadow = new Shadow
+        Shadow shadow = new()
         {
             Bounds = new Rect(0, 0, 2, 2),
             Mode = ShadowMode.Composite,
             Offset = new Point(1, 1),
         };
-        using Frame frame = new Frame(new Size(4, 4));
+        using Frame frame = new(new Size(4, 4));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
 
         shadow.Render(frame.Canvas);
@@ -62,7 +55,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void ContentBounds_WhenBorderAndPaddingAreSet_DeflatesBeforePadding()
     {
-        ChromeProbe control = new ChromeProbe
+        ChromeProbe control = new()
         {
             Bounds = new Rect(0, 0, 6, 4),
             BorderThickness = new Thickness(1),
@@ -76,7 +69,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void Measure_WhenBorderThicknessIsSet_ReservesActiveEdges()
     {
-        Border border = new Border
+        Border border = new()
         {
             BorderThickness = new Thickness(1, 0, 0, 0),
             Child = new ControlText("ab"),

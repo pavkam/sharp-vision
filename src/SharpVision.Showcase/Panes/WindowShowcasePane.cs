@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
 /// <summary>Documents and demonstrates the Window control.</summary>
@@ -51,20 +49,17 @@ internal sealed class WindowShowcasePane: ShowcasePane
         ControlStack form = PaneSupport.Vertical();
         form.Children.Add(new ControlText("Choose how this project opens.")
         {
-            Foreground = Palette.Text,
         });
         form.Children.Add(new ControlCheckBox
         {
             Content = new ControlText("Restore last session"),
             IsChecked = true,
-            MarkStyle = CheckBoxStyle.Tick,
-            Style = Palette.Interactive(),
+            MarkStyle = CheckBoxMarks.Tick,
         });
         form.Children.Add(new ControlCheckBox
         {
             Content = new ControlText("Start in safe mode"),
-            MarkStyle = CheckBoxStyle.Brackets,
-            Style = Palette.Interactive(),
+            MarkStyle = CheckBoxMarks.Brackets,
         });
         ControlStack actions = PaneSupport.Horizontal();
         actions.HorizontalAlignment = HorizontalAlignment.Center;
@@ -72,28 +67,24 @@ internal sealed class WindowShowcasePane: ShowcasePane
         {
             Content = new ControlText("Apply"),
             IsDefault = true,
-            Style = Palette.Interactive(),
         }));
         actions.Children.Add(PaneSupport.ButtonSpecimen(new ControlButton
         {
             Content = new ControlText("Cancel"),
             IsCancel = true,
-            Style = Palette.Interactive(),
         }));
         form.Children.Add(actions);
-        ControlWindow window = new ControlWindow
+        ControlWindow window = new()
         {
             Width = Length.Cells(42),
             Height = Length.Auto,
             Title = "Project settings",
-            BorderColor = Palette.Accent,
-            Background = Palette.Surface,
             HasShadow = true,
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowOffset = new Point(2, 1),
             Child = form,
         };
-        ControlCanvas stage = new ControlCanvas
+        ControlCanvas stage = new()
         {
             Width = Length.Cells(48),
             Height = Length.Cells(13),
@@ -113,8 +104,6 @@ internal sealed class WindowShowcasePane: ShowcasePane
             {
                 BorderThickness = new Thickness(1),
                 Glyphs = Glyphs.Light,
-                BorderColor = Palette.Border,
-                Background = Palette.Panel,
                 Child = stage,
             }));
     }
@@ -126,14 +115,11 @@ internal sealed class WindowShowcasePane: ShowcasePane
         Title = title,
         TitlePlacement = placement,
         Glyphs = glyphs,
-        BorderColor = Palette.Accent,
-        Background = Palette.Surface,
         ShadowOffset = new Point(1, 1),
         Child = new ControlText("Preview")
         {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = Palette.Text,
         },
     };
 }

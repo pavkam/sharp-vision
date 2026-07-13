@@ -4,9 +4,7 @@
 namespace SharpVision.Terminal.Tests.Clipboard;
 
 using SharpVision.Terminal.Clipboard;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies bounded Kitty clipboard transaction state machines.
@@ -121,7 +119,7 @@ public sealed class KittyTransactionTests
     {
         using KittyTransaction transaction = KittyTransaction.Read();
 
-        foreach (var packet in new[] { first, second, third, fourth })
+        foreach (string? packet in new[] { first, second, third, fourth })
         {
             if (packet is not null)
             {
@@ -176,7 +174,7 @@ public sealed class KittyTransactionTests
     [Fact]
     public void Accept_WhenDataChunkExceeds4096Bytes_Fails()
     {
-        var encoded = Convert.ToBase64String(new byte[4_097]);
+        string encoded = Convert.ToBase64String(new byte[4_097]);
         using KittyTransaction transaction = KittyTransaction.Read();
         _ = transaction.Accept(Packet("5522;type=read:status=OK"));
 
@@ -208,7 +206,7 @@ public sealed class KittyTransactionTests
     [Fact]
     public void CheckTimeout_WhenDeadlinePasses_TimesOut()
     {
-        ManualTimeProvider clock = new ManualTimeProvider();
+        ManualTimeProvider clock = new();
         Limits limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(2) };
         using KittyTransaction transaction = KittyTransaction.Read(limits, timeProvider: clock);
 

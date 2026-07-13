@@ -6,10 +6,6 @@ namespace SharpVision.Controls;
 using System.Buffers;
 using System.Runtime.CompilerServices;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Arranges owned children in one shared box with stable layering.</summary>
 public sealed class Overlay: Container
@@ -87,7 +83,7 @@ public sealed class Overlay: Container
 
         try
         {
-            for (var index = Children.Count - 1; index >= 0; index--)
+            for (int index = Children.Count - 1; index >= 0; index--)
             {
                 if (rented[index].HitTest(point) is { } child)
                 {
@@ -106,8 +102,8 @@ public sealed class Overlay: Container
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var width = 0;
-        var height = 0;
+        int width = 0;
+        int height = 0;
 
         foreach (Control child in Children)
         {
@@ -141,7 +137,7 @@ public sealed class Overlay: Container
 
         try
         {
-            for (var index = 0; index < Children.Count; index++)
+            for (int index = 0; index < Children.Count; index++)
             {
                 rented[index].Render(canvas);
             }
@@ -159,7 +155,7 @@ public sealed class Overlay: Container
 
     private static int Add(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
@@ -167,18 +163,18 @@ public sealed class Overlay: Container
     {
         Control[] result = ArrayPool<Control>.Shared.Rent(Children.Count);
 
-        for (var index = 0; index < Children.Count; index++)
+        for (int index = 0; index < Children.Count; index++)
         {
             result[index] = Children[index];
         }
 
         // Insertion sort is stable for equal z-values and avoids comparer or
         // tuple allocation for the small layer sets common in terminal UIs.
-        for (var index = 1; index < Children.Count; index++)
+        for (int index = 1; index < Children.Count; index++)
         {
             Control current = result[index];
-            var currentZ = GetZIndex(current);
-            var insertion = index - 1;
+            int currentZ = GetZIndex(current);
+            int insertion = index - 1;
 
             while (insertion >= 0 && GetZIndex(result[insertion]) > currentZ)
             {

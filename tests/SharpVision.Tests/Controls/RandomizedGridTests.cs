@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Proves seeded Grid geometry invariants across hostile valid inputs.</summary>
 public sealed class RandomizedGridTests
@@ -20,16 +15,16 @@ public sealed class RandomizedGridTests
     [Fact]
     public void Layout_WhenGridsAreRandomized_RemainsDeterministicAndContained()
     {
-        Random seeds = new Random(_seed);
+        Random seeds = new(_seed);
 
-        for (var sample = 0; sample < _caseCount; sample++)
+        for (int sample = 0; sample < _caseCount; sample++)
         {
-            var caseSeed = seeds.Next();
+            int caseSeed = seeds.Next();
             Grid first = CreateGrid(new Random(caseSeed), out List<ProbeControl>? firstColumns, out List<ProbeControl>? firstRows);
             Grid second = CreateGrid(new Random(caseSeed), out List<ProbeControl>? secondColumns, out List<ProbeControl>? secondRows);
-            Size size = new Size(caseSeed % 31, caseSeed / 31 % 17);
-            var context = $"seed=0x{_seed:X8}, case={sample}, caseSeed={caseSeed}, size={size}";
-            Engine engine = new Engine();
+            Size size = new(caseSeed % 31, caseSeed / 31 % 17);
+            string context = $"seed=0x{_seed:X8}, case={sample}, caseSeed={caseSeed}, size={size}";
+            Engine engine = new();
 
             engine.Layout(first, size);
             engine.Layout(second, size);
@@ -53,20 +48,20 @@ public sealed class RandomizedGridTests
         bool horizontal,
         string context)
     {
-        var consumed = 0;
-        var previousEnd = 0;
+        int consumed = 0;
+        int previousEnd = 0;
 
-        for (var index = 0; index < controls.Count; index++)
+        for (int index = 0; index < controls.Count; index++)
         {
             Rect bounds = controls[index].Bounds;
-            var origin = horizontal ? bounds.X : bounds.Y;
-            var extent = horizontal ? bounds.Width : bounds.Height;
+            int origin = horizontal ? bounds.X : bounds.Y;
+            int extent = horizontal ? bounds.Width : bounds.Height;
             origin.ShouldBeGreaterThanOrEqualTo(previousEnd, context);
             extent.ShouldBeGreaterThanOrEqualTo(0, context);
 
             if (index > 0)
             {
-                var gap = origin - previousEnd;
+                int gap = origin - previousEnd;
                 gap.ShouldBeLessThanOrEqualTo(spacing, context);
                 consumed += gap;
             }
@@ -96,9 +91,9 @@ public sealed class RandomizedGridTests
         out List<ProbeControl> columnControls,
         out List<ProbeControl> rowControls)
     {
-        var columnCount = random.Next(1, 6);
-        var rowCount = random.Next(1, 6);
-        Grid grid = new Grid
+        int columnCount = random.Next(1, 6);
+        int rowCount = random.Next(1, 6);
+        Grid grid = new()
         {
             ColumnSpacing = random.Next(0, 4),
             RowSpacing = random.Next(0, 4),
@@ -109,29 +104,29 @@ public sealed class RandomizedGridTests
         columnControls = [];
         rowControls = [];
 
-        for (var column = 0; column < columnCount; column++)
+        for (int column = 0; column < columnCount; column++)
         {
-            ProbeControl child = new ProbeControl(new Size(random.Next(0, 9), random.Next(0, 5)));
+            ProbeControl child = new(new Size(random.Next(0, 9), random.Next(0, 5)));
             Grid.SetColumn(child, column);
             grid.Children.Add(child);
             columnControls.Add(child);
         }
 
-        for (var row = 0; row < rowCount; row++)
+        for (int row = 0; row < rowCount; row++)
         {
-            ProbeControl child = new ProbeControl(new Size(random.Next(0, 9), random.Next(0, 5)));
+            ProbeControl child = new(new Size(random.Next(0, 9), random.Next(0, 5)));
             Grid.SetRow(child, row);
             grid.Children.Add(child);
             rowControls.Add(child);
         }
 
-        var extraCount = random.Next(0, 6);
+        int extraCount = random.Next(0, 6);
 
-        for (var index = 0; index < extraCount; index++)
+        for (int index = 0; index < extraCount; index++)
         {
-            var row = random.Next(rowCount);
-            var column = random.Next(columnCount);
-            ProbeControl child = new ProbeControl(new Size(random.Next(0, 17), random.Next(0, 9)))
+            int row = random.Next(rowCount);
+            int column = random.Next(columnCount);
+            ProbeControl child = new(new Size(random.Next(0, 17), random.Next(0, 9)))
             {
                 Visibility = random.Next(0, 5) == 0 ? Visibility.Collapsed : Visibility.Visible,
             };
@@ -147,7 +142,7 @@ public sealed class RandomizedGridTests
 
     private static void AddDefinitions(Random random, TrackCollection collection, int count)
     {
-        for (var index = 0; index < count; index++)
+        for (int index = 0; index < count; index++)
         {
             if (index == count - 1)
             {
@@ -155,8 +150,8 @@ public sealed class RandomizedGridTests
                 continue;
             }
 
-            var minimum = random.Next(0, 4);
-            var maximum = random.Next(minimum, minimum + 10);
+            int minimum = random.Next(0, 4);
+            int maximum = random.Next(minimum, minimum + 10);
             Track track = random.Next(0, 4) switch
             {
                 0 => Track.Auto(minimum, maximum),

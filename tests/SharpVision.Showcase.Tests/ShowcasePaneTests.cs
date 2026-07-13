@@ -3,13 +3,10 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Showcase.Panes;
-using SharpVision.Terminal.Geometry;
 
 using ControlStack = Stack;
-using ControlText = Controls.Text;
+using ControlText = SharpVision.Controls.Text;
 
 /// <summary>Verifies showcase pane documentation chrome and live example ownership.</summary>
 public sealed class ShowcasePaneTests
@@ -45,7 +42,7 @@ public sealed class ShowcasePaneTests
     [Fact]
     public void Constructor_WhenInteractionsAreStructured_RendersDedicatedInteractionTable()
     {
-        using TestPane content = new TestPane(
+        using TestPane content = new(
             "Sample",
             "Summary",
             [new InteractionDescription("Keyboard", "Press Enter", "Activates the command.")],
@@ -63,7 +60,7 @@ public sealed class ShowcasePaneTests
     [Fact]
     public void Constructor_WhenNarrativeIsNarrow_WrapsRichTextBeyondOneContentLine()
     {
-        using TestPane content = new TestPane(
+        using TestPane content = new(
             "Sample",
             "Use this control when a long explanation needs to remain readable in a narrow terminal page.",
             [new InteractionDescription(
@@ -85,7 +82,7 @@ public sealed class ShowcasePaneTests
     [InlineData(2)]
     public void Constructor_WhenRequiredTextIsBlank_ThrowsArgumentException(int field)
     {
-        var values = new[] { "Sample", "Summary", "Interaction" };
+        string[] values = ["Sample", "Summary", "Interaction"];
         values[field] = " ";
 
         _ = Should.Throw<ArgumentException>(() => new TestPane(
@@ -114,7 +111,7 @@ public sealed class ShowcasePaneTests
 
     private static List<T> FindAll<T>(Control control) where T : Control
     {
-        List<T> matches = new List<T>();
+        List<T> matches = [];
         Visit(control, matches);
         return matches;
     }
@@ -137,7 +134,7 @@ public sealed class ShowcasePaneTests
 
     private static string FindText(Control control)
     {
-        List<string> text = new List<string>();
+        List<string> text = [];
         Visit(control, text);
         return string.Join('\n', text);
     }
@@ -145,7 +142,7 @@ public sealed class ShowcasePaneTests
     private static string InlineText(RichText text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        List<string> values = new List<string>();
+        List<string> values = [];
 
         foreach (Inline inline in text.Inlines)
         {

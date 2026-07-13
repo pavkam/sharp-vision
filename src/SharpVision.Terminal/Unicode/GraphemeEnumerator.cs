@@ -34,14 +34,14 @@ public ref struct GraphemeEnumerator
             return false;
         }
 
-        var start = _position;
-        Decode(_position, out Rune previous, out var consumed, out var invalid);
-        var hasInvalidData = invalid;
+        int start = _position;
+        Decode(_position, out Rune previous, out int consumed, out bool invalid);
+        bool hasInvalidData = invalid;
         GraphemeBreak previousBreak = Data.GetGraphemeBreak(previous.Value);
-        var regionalIndicators = previousBreak == GraphemeBreak.RegionalIndicator ? 1 : 0;
-        var extendedPictographicCandidate = Data.IsExtendedPictographic(previous.Value);
-        var previousZwjAfterPictographic = false;
-        var indicState = NextIndicState(0, Data.GetIndicConjunct(previous.Value));
+        int regionalIndicators = previousBreak == GraphemeBreak.RegionalIndicator ? 1 : 0;
+        bool extendedPictographicCandidate = Data.IsExtendedPictographic(previous.Value);
+        bool previousZwjAfterPictographic = false;
+        int indicState = NextIndicState(0, Data.GetIndicConjunct(previous.Value));
         _position += consumed;
 
         while (_position < _value.Length)
@@ -49,7 +49,7 @@ public ref struct GraphemeEnumerator
             Decode(_position, out Rune current, out consumed, out invalid);
             GraphemeBreak currentBreak = Data.GetGraphemeBreak(current.Value);
             IndicConjunct currentIndic = Data.GetIndicConjunct(current.Value);
-            var currentPictographic = Data.IsExtendedPictographic(current.Value);
+            bool currentPictographic = Data.IsExtendedPictographic(current.Value);
 
             if (ShouldBreak(
                 previousBreak,
@@ -87,7 +87,7 @@ public ref struct GraphemeEnumerator
             _position += consumed;
         }
 
-        var length = _position - start;
+        int length = _position - start;
         Debug.Assert(length > 0, "Every grapheme segment must consume UTF-16 input.");
         Debug.Assert(_position <= _value.Length, "A grapheme cannot exceed its source span.");
         Current = new Grapheme(start, length, hasInvalidData);

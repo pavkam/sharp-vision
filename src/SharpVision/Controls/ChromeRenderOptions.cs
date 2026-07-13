@@ -3,9 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Terminal.Geometry;
-
-using TerminalStyle = TerminalStyle;
 
 /// <summary>Overrides one control chrome render pass.</summary>
 internal readonly struct ChromeRenderOptions

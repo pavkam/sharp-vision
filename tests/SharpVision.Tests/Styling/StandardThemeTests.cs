@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies frozen standard theme semantic values.</summary>
 public sealed class StandardThemeTests
@@ -17,7 +12,7 @@ public sealed class StandardThemeTests
     [Fact]
     public void Dark_WhenResolvedOnControl_UsesIndexedSemanticCells()
     {
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         ThemeTestSupport.ApplyTheme(control, Themes.Dark);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
@@ -32,7 +27,7 @@ public sealed class StandardThemeTests
     [Fact]
     public void White_WhenResolvedOnControl_UsesIndexedSemanticCells()
     {
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         ThemeTestSupport.ApplyTheme(control, Themes.White);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)

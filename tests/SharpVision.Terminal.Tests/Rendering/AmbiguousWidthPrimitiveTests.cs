@@ -3,13 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using System.Text;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 /// <summary>Verifies physical-cell primitives honor the frame ambiguous-width policy.</summary>
 public sealed class AmbiguousWidthPrimitiveTests
@@ -18,7 +14,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void DrawRune_WhenAmbiguousRuneIsWideForFrame_ThrowsBeforeMutation()
     {
-        using Frame frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
 
         _ = Should.Throw<ArgumentException>(() =>
             frame.Canvas.DrawRune(new Rune('·'), default));
@@ -31,7 +27,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void DrawBox_WhenAmbiguousWidthIsWide_WritesSingleCellAsciiTopology()
     {
-        using Frame frame = new Frame(new Size(3, 3), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(3, 3), ambiguousWidth: Ambiguous.Wide);
 
         frame.Canvas.DrawBox(frame.Canvas.Bounds, LineStyle.Light);
 
@@ -45,7 +41,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void FillShade_WhenAmbiguousWidthIsWide_WritesPortableAsciiShade()
     {
-        using Frame frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
 
         frame.Canvas.FillShade(frame.Canvas.Bounds, Shade.Medium);
 
@@ -57,7 +53,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void DrawQuadrants_WhenAmbiguousWidthIsWide_WritesPortableAsciiBlock()
     {
-        using Frame frame = new Frame(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
 
         frame.Canvas.DrawQuadrants(default, Quadrants.UpperLeft);
 

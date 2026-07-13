@@ -4,9 +4,7 @@
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies bounded query registration, correlation, and deadlines.
@@ -19,7 +17,7 @@ public sealed class QueryTrackerTests
     [Fact]
     public void TryRegister_WhenUncorrelatedKindIsActive_RejectsDuplicate()
     {
-        QueryTracker tracker = new QueryTracker();
+        QueryTracker tracker = new();
 
         tracker.TryRegister(QueryKind.PrimaryAttributes, id: null, out _).ShouldBeTrue();
         tracker.TryRegister(QueryKind.PrimaryAttributes, id: null, out _).ShouldBeFalse();
@@ -34,7 +32,7 @@ public sealed class QueryTrackerTests
     [Fact]
     public void Match_WhenKittyIdsAreUnique_MatchesCorrectQuery()
     {
-        QueryTracker tracker = new QueryTracker();
+        QueryTracker tracker = new();
         _ = tracker.TryRegister(QueryKind.KittyClipboard, "one", out _);
         _ = tracker.TryRegister(QueryKind.KittyClipboard, "two", out _);
 
@@ -50,7 +48,7 @@ public sealed class QueryTrackerTests
     public void TryRegister_WhenConcurrencyLimitIsReached_RejectsQuery()
     {
         Limits limits = Limits.Default with { MaxConcurrentQueries = 1 };
-        QueryTracker tracker = new QueryTracker(limits);
+        QueryTracker tracker = new(limits);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
 
         tracker.TryRegister(QueryKind.CursorPosition, null, out _).ShouldBeFalse();
@@ -64,9 +62,9 @@ public sealed class QueryTrackerTests
     [Fact]
     public void Match_WhenQueryIsNoLongerActive_ReturnsDuplicateOrLate()
     {
-        ManualTimeProvider clock = new ManualTimeProvider();
+        ManualTimeProvider clock = new();
         Limits limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
-        QueryTracker tracker = new QueryTracker(limits, clock);
+        QueryTracker tracker = new(limits, clock);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out QueryToken completed);
         _ = tracker.TryRegister(QueryKind.CursorPosition, null, out QueryToken cancelled);
         _ = tracker.TryRegister(QueryKind.PrivateMode, null, out _);

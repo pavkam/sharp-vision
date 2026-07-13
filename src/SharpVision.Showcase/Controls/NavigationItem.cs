@@ -1,11 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Showcase;
+namespace SharpVision.Showcase.Controls;
 
-using SharpVision.Controls;
 using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
 using TerminalCanvas = Terminal.Rendering.Canvas;
@@ -27,7 +25,6 @@ internal sealed class NavigationItem: Pressable
         Index = index;
         Label = label;
         Height = Length.Cells(1);
-        Style = Palette.Navigation();
     }
 
     /// <summary>Raised after keyboard or primary pointer activation requests page selection.</summary>
@@ -70,7 +67,7 @@ internal sealed class NavigationItem: Pressable
     {
         Terminal.Rendering.Style style = ResolvedStyle;
         canvas.Clear(Bounds, style);
-        var marker = IsSelected || IsHovered ? "›" : "·";
+        string marker = IsSelected || IsHovered ? "›" : "·";
         _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
 

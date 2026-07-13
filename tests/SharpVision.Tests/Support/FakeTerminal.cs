@@ -8,7 +8,6 @@ using System.Threading.Channels;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
 
-using Shouldly;
 
 /// <summary>Provides deterministic real transport and resize boundaries for host tests.</summary>
 internal sealed class FakeTerminal: ITransport, IResizeSource
@@ -66,7 +65,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     {
         try
         {
-            var value = await _input.Reader.ReadAsync(cancellationToken);
+            byte[] value = await _input.Reader.ReadAsync(cancellationToken);
             value.AsSpan().CopyTo(destination.Span);
             return value.Length;
         }
@@ -82,7 +81,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var copy = source.ToArray();
+        byte[] copy = source.ToArray();
         int count;
 
         lock (_gate)

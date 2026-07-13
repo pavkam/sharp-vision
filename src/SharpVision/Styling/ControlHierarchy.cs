@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Controls;
 
 /// <summary>Shared traversal of the control base-type chain used by style resolution.</summary>
 /// <remarks>

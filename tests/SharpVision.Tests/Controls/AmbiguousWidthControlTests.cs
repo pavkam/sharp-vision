@@ -3,16 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies fixed-cell control chrome adapts to the inherited width policy.</summary>
 public sealed class AmbiguousWidthControlTests
@@ -21,10 +14,10 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Border_WhenAmbiguousWidthIsWide_RendersPortableOneCellGlyphs()
     {
-        Border border = new Border { BorderThickness = new Thickness(1) };
+        Border border = new() { BorderThickness = new Thickness(1) };
         border.SetCellPolicy(new Policy(Ambiguous.Wide));
         new Engine().Layout(border, new Size(3, 2));
-        using Frame frame = new Frame(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
         border.Render(frame.Canvas);
 
@@ -37,7 +30,7 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Shadow_WhenAmbiguousWidthIsWide_RendersPortableBlockGlyph()
     {
-        Shadow shadow = new Shadow
+        Shadow shadow = new()
         {
             Child = new ProbeControl(new Size(2, 1)),
             Mode = ShadowMode.BlockGlyph,
@@ -45,7 +38,7 @@ public sealed class AmbiguousWidthControlTests
         };
         shadow.SetCellPolicy(new Policy(Ambiguous.Wide));
         new Engine().Layout(shadow, new Size(2, 1));
-        using Frame frame = new Frame(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
         shadow.Render(frame.Canvas);
 
@@ -56,14 +49,14 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void ScrollBar_WhenAmbiguousWidthIsWide_RendersPortableChrome()
     {
-        ScrollBar scrollBar = new ScrollBar
+        ScrollBar scrollBar = new()
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         scrollBar.SetCellPolicy(new Policy(Ambiguous.Wide));
         new Engine().Layout(scrollBar, new Size(5, 1));
-        using Frame frame = new Frame(new Size(5, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(5, 1), ambiguousWidth: Ambiguous.Wide);
 
         scrollBar.Render(frame.Canvas);
 
@@ -75,14 +68,14 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void CheckBox_WhenAmbiguousWidthIsWide_RendersPortableMark()
     {
-        CheckBox checkBox = new CheckBox
+        CheckBox checkBox = new()
         {
             IsChecked = true,
             Marks = new Marks(new Rune('o'), new Rune('·'), new Rune('-')),
         };
         checkBox.SetCellPolicy(new Policy(Ambiguous.Wide));
         new Engine().Layout(checkBox, new Size(1, 1));
-        using Frame frame = new Frame(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
 
         checkBox.Render(frame.Canvas);
 
@@ -93,7 +86,7 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void PasswordCharacter_WhenAmbiguousWidthIsWide_UsesTwoCellMaskGeometry()
     {
-        TextInput input = new TextInput
+        TextInput input = new()
         {
             Text = "a",
             PasswordCharacter = new Rune('·'),
@@ -102,7 +95,7 @@ public sealed class AmbiguousWidthControlTests
         input.SetCellPolicy(new Policy(Ambiguous.Wide));
         input.SetFocused(true);
         new Engine().Layout(input, new Size(4, 1));
-        using Frame frame = new Frame(new Size(4, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(4, 1), ambiguousWidth: Ambiguous.Wide);
 
         input.Render(frame.Canvas);
 

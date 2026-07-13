@@ -3,7 +3,6 @@
 
 namespace SharpVision.Input;
 
-using SharpVision.Controls;
 
 /// <summary>Describes one implicit capture or press cancellation.</summary>
 public sealed class CaptureCancelledEventArgs: EventArgs

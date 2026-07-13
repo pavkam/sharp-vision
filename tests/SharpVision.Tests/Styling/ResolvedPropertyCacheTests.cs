@@ -3,11 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies the control-level resolved-property cache handles null results.</summary>
 public sealed class ResolvedPropertyCacheTests
@@ -16,7 +12,7 @@ public sealed class ResolvedPropertyCacheTests
     [Fact]
     public void Foreground_WhenNoValueResolves_CachesNullAndUpdatesAfterSetAndClear()
     {
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
 
         control.Foreground.ShouldBeNull();
         control.Foreground.ShouldBeNull();

@@ -3,15 +3,7 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-
-using BackgroundMode = BackgroundMode;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a focusable two- or three-state toggle with optional content.</summary>
 public sealed class CheckBox: Pressable
@@ -88,7 +80,7 @@ public sealed class CheckBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached CheckBox is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The CheckBox is disposed.</exception>
-    public CheckBoxStyle MarkStyle
+    public CheckBoxMarks MarkStyle
     {
         get;
         set
@@ -148,7 +140,7 @@ public sealed class CheckBox: Pressable
     {
         if (Content is { } content)
         {
-            var consumed = Math.Min(MarkWidth + 1, bounds.Width);
+            int consumed = Math.Min(MarkWidth + 1, bounds.Width);
             content.Arrange(
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
                 widthResolved: true,
@@ -200,7 +192,7 @@ public sealed class CheckBox: Pressable
 
     private static int Add(int left, int right)
     {
-        var value = (long) left + right;
+        long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
@@ -218,14 +210,14 @@ public sealed class CheckBox: Pressable
             throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
         }
 
-        var previous = _isChecked;
+        bool? previous = _isChecked;
 
         if (!Set(ref _isChecked, value, Invalidation.Render, nameof(IsChecked)))
         {
             return;
         }
 
-        CheckChangedEventArgs eventArgs = new CheckChangedEventArgs(previous, value, cause);
+        CheckChangedEventArgs eventArgs = new(previous, value, cause);
 
         if (value == true)
         {
@@ -247,23 +239,23 @@ public sealed class CheckBox: Pressable
         ? Math.Max(0, value.Value - extent)
         : null;
 
-    private int MarkWidth => MarkStyle == CheckBoxStyle.Brackets ? 3 : 1;
+    private int MarkWidth => MarkStyle == CheckBoxMarks.Brackets ? 3 : 1;
 
     private string Mark() => MarkStyle switch
     {
-        CheckBoxStyle.Brackets => _isChecked switch
+        CheckBoxMarks.Brackets => _isChecked switch
         {
             true => "[x]",
             false => "[ ]",
             null => "[-]",
         },
-        CheckBoxStyle.Tick => _isChecked switch
+        CheckBoxMarks.Tick => _isChecked switch
         {
             true => Mark(new Rune('✓'), new Rune('x')),
             false => Mark(new Rune('○'), new Rune('o')),
             null => Mark(new Rune('−'), new Rune('-')),
         },
-        CheckBoxStyle.Square => _isChecked switch
+        CheckBoxMarks.Square => _isChecked switch
         {
             true => Mark(Marks.Checked, new Rune('x')),
             false => Mark(Marks.Unchecked, new Rune('o')),

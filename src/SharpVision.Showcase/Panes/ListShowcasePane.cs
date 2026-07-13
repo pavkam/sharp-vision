@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the List control.</summary>
 internal sealed class ListShowcasePane: ShowcasePane
@@ -41,15 +40,13 @@ internal sealed class ListShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlText status = new ControlText("Selected item: Beta. Use Up or Down to move the selection.")
+        ControlText status = new("Selected item: Beta. Use Up or Down to move the selection.")
         {
-            Foreground = Palette.Muted,
         };
-        ControlList active = new ControlList
+        ControlList active = new()
         {
             Width = Length.Cells(18),
             Height = Length.Cells(6),
-            Style = Palette.List(),
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
             ScrollBarChrome = ScrollBarStyle.Thin,
@@ -69,12 +66,11 @@ internal sealed class ListShowcasePane: ShowcasePane
         active.ItemInvoked += (_, eventArgs) =>
             status.Content = $"Activated {eventArgs.Item} via {eventArgs.Cause}.";
 
-        ControlList disabled = new ControlList
+        ControlList disabled = new()
         {
             Width = Length.Cells(18),
             Height = Length.Cells(4),
             IsEnabled = false,
-            Style = Palette.List(),
             Items = new object?[] { "Alpha", "Beta", "Gamma" },
         };
 

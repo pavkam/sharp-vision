@@ -5,7 +5,6 @@ namespace SharpVision.Showcase.Tests;
 
 using System.Text;
 
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
@@ -34,8 +33,8 @@ internal sealed class Screen
     internal int Count(string value)
     {
         ArgumentException.ThrowIfNullOrEmpty(value);
-        var count = 0;
-        var offset = 0;
+        int count = 0;
+        int offset = 0;
 
         while ((offset = Text.IndexOf(value, offset, StringComparison.Ordinal)) >= 0)
         {
@@ -49,9 +48,9 @@ internal sealed class Screen
     /// <summary>Gets whether the copied frame contains an explicit foreground or background color.</summary>
     internal bool HasNonDefaultColor()
     {
-        for (var y = 0; y < _frame.Size.Height; y++)
+        for (int y = 0; y < _frame.Size.Height; y++)
         {
-            for (var x = 0; x < _frame.Size.Width; x++)
+            for (int x = 0; x < _frame.Size.Width; x++)
             {
                 CellInfo cell = _frame.GetCell(new Point(x, y));
 
@@ -69,11 +68,11 @@ internal sealed class Screen
     /// <exception cref="InvalidDataException">A continuation relationship is structurally invalid.</exception>
     internal void ValidateContinuations()
     {
-        for (var y = 0; y < _frame.Size.Height; y++)
+        for (int y = 0; y < _frame.Size.Height; y++)
         {
-            for (var x = 0; x < _frame.Size.Width; x++)
+            for (int x = 0; x < _frame.Size.Width; x++)
             {
-                Point point = new Point(x, y);
+                Point point = new(x, y);
                 CellInfo cell = _frame.GetCell(point);
 
                 if (!cell.IsContinuation)
@@ -98,18 +97,18 @@ internal sealed class Screen
 
     private static string CopyText(Frame frame)
     {
-        StringBuilder text = new StringBuilder();
+        StringBuilder text = new();
 
-        for (var y = 0; y < frame.Size.Height; y++)
+        for (int y = 0; y < frame.Size.Height; y++)
         {
             if (y > 0)
             {
                 _ = text.Append('\n');
             }
 
-            for (var x = 0; x < frame.Size.Width; x++)
+            for (int x = 0; x < frame.Size.Width; x++)
             {
-                Point point = new Point(x, y);
+                Point point = new(x, y);
                 CellInfo cell = frame.GetCell(point);
 
                 if (cell.IsContinuation)
@@ -117,7 +116,7 @@ internal sealed class Screen
                     continue;
                 }
 
-                var length = frame.GetGraphemeByteCount(point);
+                int length = frame.GetGraphemeByteCount(point);
 
                 if (length == 0)
                 {
@@ -125,7 +124,7 @@ internal sealed class Screen
                     continue;
                 }
 
-                var bytes = new byte[length];
+                byte[] bytes = new byte[length];
                 _ = frame.CopyGrapheme(point, bytes);
                 _ = text.Append(Encoding.UTF8.GetString(bytes));
             }

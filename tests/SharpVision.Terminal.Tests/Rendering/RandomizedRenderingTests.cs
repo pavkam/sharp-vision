@@ -3,15 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using System.Buffers;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
@@ -29,19 +23,19 @@ public sealed class RandomizedRenderingTests
     [Fact]
     public void Encode_WhenFramesAreRandomized_MatchesFullRender()
     {
-        Random random = new Random(_seed);
+        Random random = new(_seed);
 
-        for (var testCase = 0; testCase < 128; testCase++)
+        for (int testCase = 0; testCase < 128; testCase++)
         {
             using Frame front = Create(random);
             using Frame back = Create(random);
 
             try
             {
-                VirtualScreen incremental = new VirtualScreen(back.Size);
+                VirtualScreen incremental = new(back.Size);
                 incremental.Apply(Encode(null, front));
                 incremental.Apply(Encode(front, back));
-                VirtualScreen full = new VirtualScreen(back.Size);
+                VirtualScreen full = new(back.Size);
                 full.Apply(Encode(null, back));
                 incremental.ShouldMatch(back);
                 incremental.ShouldMatch(full);
@@ -57,13 +51,13 @@ public sealed class RandomizedRenderingTests
 
     private static Frame Create(Random random)
     {
-        Frame frame = new Frame(new Size(10, 4));
-        var values = new[] { "a", "Z", "界", "語", "e\u0301", "👩‍💻", " " };
-        var links = new string?[] { null, "https://one.test", "https://two.test" };
+        Frame frame = new(new Size(10, 4));
+        string[] values = ["a", "Z", "界", "語", "e\u0301", "👩‍💻", " "];
+        string?[] links = [null, "https://one.test", "https://two.test"];
 
-        for (var index = 0; index < 24; index++)
+        for (int index = 0; index < 24; index++)
         {
-            Point point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
+            Point point = new(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
             Attributes attributes = random.Next(8) switch
             {
                 0 => Attributes.None,
@@ -90,7 +84,7 @@ public sealed class RandomizedRenderingTests
             Color underlineColor = underline != Underline.None && random.Next(2) == 0
                 ? Color.Rgb(random.Next(256), random.Next(256), random.Next(256))
                 : Color.Default;
-            Style style = new Style(
+            Style style = new(
                 foreground,
                 attributes: attributes,
                 hyperlink: links[random.Next(links.Length)],
@@ -111,7 +105,7 @@ public sealed class RandomizedRenderingTests
 
     private static byte[] Encode(Frame? front, Frame back)
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new();
         _ = Encoder.Encode(
             front,
             back,

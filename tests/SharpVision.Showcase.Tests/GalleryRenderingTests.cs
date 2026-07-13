@@ -3,16 +3,12 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
-using ControlText = Controls.Text;
+using ControlText = SharpVision.Controls.Text;
 
 /// <summary>Proves every showcase page lays out and renders into semantic terminal cells.</summary>
 public sealed class GalleryRenderingTests
@@ -21,13 +17,13 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void Render_WhenViewportIsTypical_ShowsDocumentationAndAutomaticScrolling()
     {
-        using Gallery gallery = new Gallery();
-        Size size = new Size(80, 24);
+        using Gallery gallery = CreateThemedGallery();
+        Size size = new(80, 24);
 
         new Engine().Layout(gallery, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
         gallery.Render(frame.Canvas);
-        Screen screen = new Screen(frame);
+        Screen screen = new(frame);
         ScrollView view = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
 
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
@@ -45,15 +41,15 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void Render_WhenDocumentationPaneIsNarrow_WrapsCompleteRichTextGuidance()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(1);
-        Size size = new Size(80, 40);
+        Size size = new(80, 40);
         new Engine().Layout(gallery, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         gallery.Render(frame.Canvas);
 
-        Screen screen = new Screen(frame);
+        Screen screen = new(frame);
         screen.Text.ShouldContain("command paths.");
         gallery.Content.Parent.ShouldBeOfType<ScrollView>()
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
@@ -63,15 +59,15 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void Render_WhenShadowPageIsSelected_ShowsSeparatedCompositeAndBlockGlyphStages()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "Shadow"));
-        Size size = new Size(100, 60);
+        Size size = new(100, 60);
         new Engine().Layout(gallery, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         gallery.Render(frame.Canvas);
 
-        Screen screen = new Screen(frame);
+        Screen screen = new(frame);
         screen.Text.ShouldContain("Composite stage");
         screen.Text.ShouldContain("Block glyph stage");
         screen.Text.ShouldContain("░");
@@ -82,7 +78,7 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void CreateExamples_WhenButtonPageIsSelected_ProvidesShadowAndFlatVariants()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "Button"));
 
         List<Button> buttons = FindAll<Button>(gallery.Content);
@@ -98,15 +94,15 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void Render_WhenCanvasPageIsSelected_ShowsGuidedPlacementExamples()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(2);
-        Size size = new Size(120, 80);
+        Size size = new(120, 80);
         new Engine().Layout(gallery, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         gallery.Render(frame.Canvas);
 
-        Screen screen = new Screen(frame);
+        Screen screen = new(frame);
         Border? edge = Find<Border>(
             gallery.Content,
             static value => value.Child is ControlText { Content: "Right 2 / Bottom 1" });
@@ -125,16 +121,16 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void Render_WhenWindowPageIsSelected_ShowsChromeOptionsAndCenteredActions()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "Window"));
-        Size size = new Size(120, 80);
+        Size size = new(120, 80);
         new Engine().Layout(gallery, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         gallery.Render(frame.Canvas);
 
         List<Window> windows = FindAll<Window>(gallery.Content);
-        Screen screen = new Screen(frame);
+        Screen screen = new(frame);
         screen.Text.ShouldContain("Apply");
         screen.Text.ShouldContain("Cancel");
         windows.Count.ShouldBeGreaterThanOrEqualTo(4);
@@ -146,10 +142,10 @@ public sealed class GalleryRenderingTests
         dialog.Bounds.Height.ShouldBeGreaterThan(10);
         List<Button> actions = FindAll<Button>(dialog);
         actions.Count.ShouldBe(2);
-        var left = actions.Min(button => button.Bounds.X);
-        var right = actions.Max(button => button.Bounds.Right);
-        var actionCenter = (left + right) / 2;
-        var dialogCenter = dialog.Bounds.X + (dialog.Bounds.Width / 2);
+        int left = actions.Min(button => button.Bounds.X);
+        int right = actions.Max(button => button.Bounds.Right);
+        int actionCenter = (left + right) / 2;
+        int dialogCenter = dialog.Bounds.X + (dialog.Bounds.Width / 2);
         Math.Abs(actionCenter - dialogCenter).ShouldBeLessThanOrEqualTo(1);
         actions.ShouldAllBe(button => button.Bounds.Bottom <= dialog.Bounds.Bottom - 1);
         actions.ShouldAllBe(button =>
@@ -161,33 +157,28 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void Render_WhenListPageIsSelected_PaintsSurfaceAndSelectedRow()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "List"));
-        Theme theme = Themes.Dark.Clone();
-        theme.SetStyle(Palette.ListForTheme());
-        ApplyTheme(gallery, theme);
-        Size size = new Size(120, 80);
+        Size size = new(120, 80);
         new Engine().Layout(gallery, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         gallery.Render(frame.Canvas);
 
         List active = FindAll<List>(gallery.Content).Single(list => list.IsEnabled);
-        active.Background.ShouldBe(Palette.InputSurface);
+        active.Background.ShouldBe(Color.Indexed(0));
         frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
-            .ShouldBe(Palette.Highlight);
+            .ShouldBe(Color.Indexed(4));
     }
 
     /// <summary>Verifies the RichText page demonstrates every supported terminal text attribute.</summary>
     [Fact]
     public void CreateExamples_WhenRichTextPageIsSelected_ShowsTerminalAttributeRuns()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "RichText"));
 
-        List<Run> runs = FindAll<RichText>(gallery.Content)
-            .SelectMany(static richText => richText.Inlines.OfType<Run>())
-            .ToList();
+        List<Run> runs = [.. FindAll<RichText>(gallery.Content).SelectMany(static richText => richText.Inlines.OfType<Run>())];
 
         runs.ShouldContain(run => run.Attributes == Attributes.Bold);
         runs.ShouldContain(run => run.Attributes == Attributes.Dim);
@@ -201,7 +192,7 @@ public sealed class GalleryRenderingTests
         runs.ShouldContain(run => run.Attributes == Attributes.Overline);
         runs.ShouldContain(run =>
             run.Underline == Underline.Curly &&
-            run.UnderlineColor == Color.Indexed(220));
+            run.UnderlineColor == Color.Indexed(11));
         runs.ShouldContain(run => run.Attributes == (Attributes.Bold | Attributes.Underline | Attributes.Italic));
     }
 
@@ -209,7 +200,7 @@ public sealed class GalleryRenderingTests
     [Fact]
     public void Render_WhenRichTextActionIsLaidOut_UsesIntrinsicButtonWidth()
     {
-        using Gallery gallery = new Gallery();
+        using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "RichText"));
         new Engine().Layout(gallery, new Size(120, 80));
 
@@ -249,7 +240,7 @@ public sealed class GalleryRenderingTests
 
     private static List<T> FindAll<T>(Control control) where T : Control
     {
-        List<T> matches = new List<T>();
+        List<T> matches = [];
         Visit(control, matches);
         return matches;
     }
@@ -274,7 +265,7 @@ public sealed class GalleryRenderingTests
     {
         ArgumentNullException.ThrowIfNull(gallery);
         ArgumentException.ThrowIfNullOrWhiteSpace(page);
-        var index = gallery.Pages.Select(static value => value.Name).ToList().IndexOf(page);
+        int index = gallery.Pages.Select(static value => value).ToList().IndexOf(page);
         return index >= 0 ? index : throw new InvalidOperationException($"The {page} page is not registered.");
     }
 
@@ -285,20 +276,20 @@ public sealed class GalleryRenderingTests
     [InlineData(140, 40)]
     public void Render_WhenEveryPageUsesViewport_PreservesSelectionAndValidCells(int width, int height)
     {
-        using Gallery gallery = new Gallery();
-        Size size = new Size(width, height);
-        Engine engine = new Engine();
+        using Gallery gallery = CreateThemedGallery();
+        Size size = new(width, height);
+        Engine engine = new();
 
-        for (var index = 0; index < gallery.Pages.Count; index++)
+        for (int index = 0; index < gallery.Pages.Count; index++)
         {
             gallery.Select(index);
             engine.Layout(gallery, size);
-            using Frame frame = new Frame(size);
+            using Frame frame = new(size);
 
             Should.NotThrow(() => gallery.Render(frame.Canvas));
-            Screen screen = new Screen(frame);
+            Screen screen = new(frame);
             gallery.SelectedIndex.ShouldBe(index);
-            gallery.SelectedPage.ShouldBe(gallery.Pages[index].Name);
+            gallery.SelectedPage.ShouldBe(gallery.Pages[index]);
             gallery.Bounds.ShouldBe(new Rect(0, 0, width, height));
             screen.ValidateContinuations();
 
@@ -309,6 +300,13 @@ public sealed class GalleryRenderingTests
                 screen.Text.ShouldContain("Practical recipe");
             }
         }
+    }
+
+    private static Gallery CreateThemedGallery()
+    {
+        Gallery gallery = new();
+        ApplyTheme(gallery, Themes.Dark);
+        return gallery;
     }
 
     private static void ApplyTheme(Control control, Theme theme)

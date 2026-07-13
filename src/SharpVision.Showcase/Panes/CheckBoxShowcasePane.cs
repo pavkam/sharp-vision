@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
 
 /// <summary>Documents and demonstrates the CheckBox control.</summary>
 internal sealed class CheckBoxShowcasePane: ShowcasePane
@@ -24,7 +23,7 @@ internal sealed class CheckBoxShowcasePane: ShowcasePane
         new PropertyDescription("IsChecked", "bool?", "false", "Stores unchecked, checked, or indeterminate state when three-state mode permits null."),
         new PropertyDescription("IsThreeState", "bool", "false", "Adds indeterminate to the activation cycle and normalizes null when later disabled."),
         new PropertyDescription("Content", "Control?", "null", "Owns the optional label after the fixed-width active mark family."),
-        new PropertyDescription("MarkStyle", "CheckBoxStyle", "Square", "Chooses square, [x] bracket, or Unicode tick marks without label movement."),
+        new PropertyDescription("MarkStyle", "CheckBoxMarks", "Square", "Chooses square, [x] bracket, or Unicode tick marks without label movement."),
         new PropertyDescription("Marks", "Marks", "Unicode defaults", "Selects validated printable one-cell Runes for the square mark family."),
         new PropertyDescription("IsEnabled", "bool", "true", "Prevents focus and state transitions while preserving the current mark when false."),
     ];
@@ -43,23 +42,20 @@ internal sealed class CheckBoxShowcasePane: ShowcasePane
         brackets.Children.Add(new ControlCheckBox
         {
             Content = new ControlText("Unchecked brackets"),
-            MarkStyle = CheckBoxStyle.Brackets,
-            Style = Palette.Interactive(),
+            MarkStyle = CheckBoxMarks.Brackets,
         });
         brackets.Children.Add(new ControlCheckBox
         {
             Content = new ControlText("Checked brackets"),
             IsChecked = true,
-            MarkStyle = CheckBoxStyle.Brackets,
-            Style = Palette.Interactive(),
+            MarkStyle = CheckBoxMarks.Brackets,
         });
         brackets.Children.Add(new ControlCheckBox
         {
             Content = new ControlText("Indeterminate brackets"),
             IsThreeState = true,
             IsChecked = null,
-            MarkStyle = CheckBoxStyle.Brackets,
-            Style = Palette.Interactive(),
+            MarkStyle = CheckBoxMarks.Brackets,
         });
         examples.Children.Add(PaneSupport.SampleSection(
             "Bracket marks",
@@ -67,14 +63,13 @@ internal sealed class CheckBoxShowcasePane: ShowcasePane
             PaneSupport.Card(brackets, Glyphs.Rounded)));
         examples.Children.Add(PaneSupport.SampleSection(
             "Disabled bracket state",
-            "The familiar [x] mark stays structurally recognizable while the disabled palette deliberately recedes from interactive choices.",
+            "The familiar [x] mark stays structurally recognizable while the disabled theme deliberately recedes from interactive choices.",
             PaneSupport.Card(new ControlCheckBox
             {
                 Content = new ControlText("Disabled bracket"),
                 IsChecked = true,
                 IsEnabled = false,
-                MarkStyle = CheckBoxStyle.Brackets,
-                Style = Palette.Interactive(),
+                MarkStyle = CheckBoxMarks.Brackets,
             }, Glyphs.Light)));
     }
 }

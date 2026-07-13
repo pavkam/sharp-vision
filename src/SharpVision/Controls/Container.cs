@@ -3,9 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Terminal.Geometry;
-
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 public abstract class Container: Control
@@ -46,7 +43,7 @@ public abstract class Container: Control
             return null;
         }
 
-        for (var index = Children.Count - 1; index >= 0; index--)
+        for (int index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].HitTest(point) is { } child)
             {
@@ -71,7 +68,7 @@ public abstract class Container: Control
     /// <inheritdoc/>
     internal override Control? HitTestPopup(Point point)
     {
-        for (var index = Children.Count - 1; index >= 0; index--)
+        for (int index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].HitTestPopup(point) is { } popup)
             {

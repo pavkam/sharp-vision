@@ -4,7 +4,6 @@
 namespace SharpVision.Terminal.Tests.Support;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 
 using InputText = Terminal.Input.Text;
 

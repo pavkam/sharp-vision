@@ -5,9 +5,6 @@ namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = TerminalAttributes;
-using TerminalStyle = TerminalStyle;
-
 /// <summary>Validates one complete optional inline-decoration proposal before mutation.</summary>
 internal static class Decoration
 {

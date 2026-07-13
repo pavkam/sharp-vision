@@ -4,7 +4,6 @@
 namespace SharpVision.Terminal.Tests.Support;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Retains typed input callbacks for deterministic decoder assertions.

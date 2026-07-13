@@ -3,16 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 
@@ -23,13 +15,13 @@ public sealed class MenuTests
     [Fact]
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {
-        Menu menu = new Menu { Orientation = Orientation.Vertical };
+        Menu menu = new() { Orientation = Orientation.Vertical };
         menu.Items.Add(new MenuItem { Header = "Open" });
         menu.Items.Add(new MenuItem { Header = "Pinned", Kind = MenuItemKind.Check, IsChecked = true });
         menu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });
-        Size size = new Size(12, 5);
+        Size size = new(12, 5);
         new Engine().Layout(menu, size);
-        using Frame frame = new Frame(size);
+        using Frame frame = new(size);
 
         menu.Render(frame.Canvas);
 
@@ -49,15 +41,15 @@ public sealed class MenuTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            Menu menu = new Menu { Orientation = Orientation.Vertical };
-            MenuItem first = new MenuItem { Header = "First" };
-            MenuItem separator = new MenuItem { Kind = MenuItemKind.Separator };
-            MenuItem second = new MenuItem { Header = "Second" };
+            Menu menu = new() { Orientation = Orientation.Vertical };
+            MenuItem first = new() { Header = "First" };
+            MenuItem separator = new() { Kind = MenuItemKind.Separator };
+            MenuItem second = new() { Header = "Second" };
             menu.Items.Add(first);
             menu.Items.Add(separator);
             menu.Items.Add(second);
             menu.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(menu);
+            using FocusManager focus = new(menu);
             focus.Focus(first).ShouldBeTrue();
 
             Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
@@ -76,11 +68,11 @@ public sealed class MenuTests
     [Fact]
     public void PerformInvoke_WhenCheckAndRadioItemsActivate_CommitsStateBeforeEvent()
     {
-        Menu menu = new Menu();
-        MenuItem check = new MenuItem { Header = "Auto save", Kind = MenuItemKind.Check };
-        MenuItem first = new MenuItem { Header = "Small", Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
-        MenuItem second = new MenuItem { Header = "Large", Kind = MenuItemKind.Radio, GroupName = "size" };
-        List<string> observed = new List<string>();
+        Menu menu = new();
+        MenuItem check = new() { Header = "Auto save", Kind = MenuItemKind.Check };
+        MenuItem first = new() { Header = "Small", Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        MenuItem second = new() { Header = "Large", Kind = MenuItemKind.Radio, GroupName = "size" };
+        List<string> observed = [];
         menu.Items.Add(check);
         menu.Items.Add(first);
         menu.Items.Add(second);

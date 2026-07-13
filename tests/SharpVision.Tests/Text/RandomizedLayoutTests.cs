@@ -6,7 +6,6 @@ namespace SharpVision.Tests.Text;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using Shouldly;
 
 using TextLayout = SharpVision.Text.Layout;
 
@@ -20,23 +19,23 @@ public sealed class RandomizedLayoutTests
     [Fact]
     public void Format_WhenInputsAreRandomized_PreservesGraphemeAndCellInvariants()
     {
-        Random random = new Random(_seed);
+        Random random = new(_seed);
 
-        for (var sample = 0; sample < _caseCount; sample++)
+        for (int sample = 0; sample < _caseCount; sample++)
         {
-            var content = Content(random);
-            var width = random.Next(0, 21);
+            string content = Content(random);
+            int width = random.Next(0, 21);
             Wrapping wrapping = (Wrapping) random.Next(0, 3);
             Trimming trimming = (Trimming) random.Next(0, 4);
             Alignment alignment = (Alignment) random.Next(0, 3);
             Ambiguous ambiguous = (Ambiguous) random.Next(0, 2);
-            var context = $"seed=0x{_seed:X8}, case={sample}, width={width}, " +
+            string context = $"seed=0x{_seed:X8}, case={sample}, width={width}, " +
                 $"wrapping={wrapping}, trimming={trimming}, alignment={alignment}, " +
                 $"utf16={Convert.ToHexString(Encoding.Unicode.GetBytes(content))}";
             Line[] first = Format(content, width, wrapping, trimming, alignment, ambiguous);
             Line[] second = Format(content, width, wrapping, trimming, alignment, ambiguous);
             HashSet<int> boundaries = Boundaries(content);
-            var previous = 0;
+            int previous = 0;
 
             second.ShouldBe(first, context);
             first.ShouldNotBeEmpty(context);
@@ -65,7 +64,7 @@ public sealed class RandomizedLayoutTests
 
     private static HashSet<int> Boundaries(string content)
     {
-        HashSet<int> result = new HashSet<int> { 0, content.Length };
+        HashSet<int> result = [0, content.Length];
 
         foreach (Grapheme grapheme in Graphemes.Enumerate(content))
         {
@@ -78,7 +77,7 @@ public sealed class RandomizedLayoutTests
 
     private static int Cells(ReadOnlySpan<char> value, Ambiguous ambiguous)
     {
-        var result = 0;
+        int result = 0;
 
         foreach (Grapheme grapheme in Graphemes.Enumerate(value))
         {
@@ -98,10 +97,10 @@ public sealed class RandomizedLayoutTests
             "a", " ", "\t", "\r", "\n", "\r\n", "e\u0301", "界", "·", "👩‍💻", "\uFE0F",
             "\uD800", "\uDC00",
         ];
-        StringBuilder result = new StringBuilder();
-        var count = random.Next(0, 25);
+        StringBuilder result = new();
+        int count = random.Next(0, 25);
 
-        for (var index = 0; index < count; index++)
+        for (int index = 0; index < count; index++)
         {
             _ = result.Append(tokens[random.Next(tokens.Length)]);
         }
@@ -117,7 +116,7 @@ public sealed class RandomizedLayoutTests
         Alignment alignment,
         Ambiguous ambiguous)
     {
-        var required = TextLayout.Format(
+        int required = TextLayout.Format(
             content,
             width,
             wrapping,

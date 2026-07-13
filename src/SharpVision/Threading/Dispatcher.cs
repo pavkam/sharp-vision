@@ -3,7 +3,6 @@
 
 namespace SharpVision.Threading;
 
-using System.Diagnostics;
 
 /// <summary>
 /// Serializes UI work, callbacks, and idle transitions on one dedicated thread.
@@ -30,7 +29,7 @@ public sealed class Dispatcher: IAsyncDisposable
     private Dispatcher(int capacity, string name)
     {
         _capacity = capacity;
-        using ManualResetEventSlim started = new ManualResetEventSlim();
+        using ManualResetEventSlim started = new();
         _thread = new Thread(() => Run(started))
         {
             IsBackground = true,
@@ -64,7 +63,7 @@ public sealed class Dispatcher: IAsyncDisposable
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
 
-        var threadName = name is null
+        string threadName = name is null
             ? "SharpVision.Dispatcher"
             : !string.IsNullOrWhiteSpace(name)
                 ? name
@@ -131,7 +130,7 @@ public sealed class Dispatcher: IAsyncDisposable
             }
         }
 
-        ActionWork work = new ActionWork(action, cancellationToken);
+        ActionWork work = new(action, cancellationToken);
         Enqueue(work);
         return new ValueTask(work.Completion);
     }
@@ -167,7 +166,7 @@ public sealed class Dispatcher: IAsyncDisposable
             }
         }
 
-        FunctionWork<T> work = new FunctionWork<T>(function, cancellationToken);
+        FunctionWork<T> work = new(function, cancellationToken);
         Enqueue(work);
         return new ValueTask<T>(work.Completion);
     }
@@ -244,7 +243,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
         try
         {
-            while (TryTake(out Work? work, out var raiseIdle))
+            while (TryTake(out Work? work, out bool raiseIdle))
             {
                 if (work is not null)
                 {
@@ -312,7 +311,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
     private void Report(Exception exception)
     {
-        UnhandledEventArgs eventArgs = new UnhandledEventArgs(exception);
+        UnhandledEventArgs eventArgs = new(exception);
 
         try
         {

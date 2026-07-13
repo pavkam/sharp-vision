@@ -24,9 +24,9 @@ public static class Width
         Ambiguous ambiguous = Ambiguous.Narrow)
     {
         Validate(ambiguous);
-        var cells = 0;
-        var graphemes = 0;
-        var controls = 0;
+        int cells = 0;
+        int graphemes = 0;
+        int controls = 0;
 
         foreach (Grapheme segment in Graphemes.Enumerate(value))
         {
@@ -78,18 +78,18 @@ public static class Width
             return new Cluster(CellWidth.Narrow, requiresReplacement: true);
         }
 
-        var baseScalar = -1;
-        var hasTextSelector = false;
-        var hasEmojiSelector = false;
-        var hasEmojiPresentation = false;
-        var hasExtendedPictographic = false;
-        var hasZwj = false;
-        var hasKeycap = false;
-        var position = 0;
+        int baseScalar = -1;
+        bool hasTextSelector = false;
+        bool hasEmojiSelector = false;
+        bool hasEmojiPresentation = false;
+        bool hasExtendedPictographic = false;
+        bool hasZwj = false;
+        bool hasKeycap = false;
+        int position = 0;
 
         while (position < value.Length)
         {
-            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out int consumed);
 
             if (status != OperationStatus.Done)
             {
@@ -97,7 +97,7 @@ public static class Width
                 consumed = 1;
             }
 
-            var scalar = rune.Value;
+            int scalar = rune.Value;
             GraphemeBreak graphemeBreak = Data.GetGraphemeBreak(scalar);
 
             if (graphemeBreak is GraphemeBreak.Control or GraphemeBreak.Cr or GraphemeBreak.Lf)

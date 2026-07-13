@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Input;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 /// <summary>Verifies transactional focus, navigation, and invalid-state cleanup.</summary>
 public sealed class FocusTests
@@ -21,14 +16,14 @@ public sealed class FocusTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            List<string> order = new List<string>();
-            RecordingControl root = new RecordingControl("root", order);
-            ProbeControl first = new ProbeControl { CanFocus = true };
-            ProbeControl second = new ProbeControl { CanFocus = true };
+            List<string> order = [];
+            RecordingControl root = new("root", order);
+            ProbeControl first = new() { CanFocus = true };
+            ProbeControl second = new() { CanFocus = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
-            using FocusManager manager = new FocusManager(root);
+            using FocusManager manager = new(root);
             manager.Focus(first).ShouldBeTrue();
             order.Clear();
             manager.Changing += (_, eventArgs) =>
@@ -66,13 +61,13 @@ public sealed class FocusTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer();
-            ProbeControl first = new ProbeControl { CanFocus = true };
-            ProbeControl second = new ProbeControl { CanFocus = true };
+            ProbeContainer root = new();
+            ProbeControl first = new() { CanFocus = true };
+            ProbeControl second = new() { CanFocus = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
-            using FocusManager manager = new FocusManager(root);
+            using FocusManager manager = new(root);
             manager.Focus(first).ShouldBeTrue();
             manager.Changing += (_, eventArgs) => eventArgs.Cancel = true;
 
@@ -92,15 +87,15 @@ public sealed class FocusTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer();
-            ProbeControl first = new ProbeControl { CanFocus = true, TabIndex = 1 };
-            ProbeControl second = new ProbeControl { CanFocus = true, TabIndex = 0 };
-            ProbeControl third = new ProbeControl { CanFocus = true, TabIndex = 1 };
+            ProbeContainer root = new();
+            ProbeControl first = new() { CanFocus = true, TabIndex = 1 };
+            ProbeControl second = new() { CanFocus = true, TabIndex = 0 };
+            ProbeControl third = new() { CanFocus = true, TabIndex = 1 };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Children.Add(third);
             root.Attach(dispatcher);
-            using FocusManager manager = new FocusManager(root);
+            using FocusManager manager = new(root);
 
             manager.MoveNext().ShouldBeTrue();
             manager.Focused.ShouldBeSameAs(second);
@@ -123,16 +118,16 @@ public sealed class FocusTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer();
-            ProbeControl hidden = new ProbeControl
+            ProbeContainer root = new();
+            ProbeControl hidden = new()
             {
                 CanFocus = true,
                 Visibility = Visibility.Hidden,
             };
-            ProbeControl foreign = new ProbeControl { CanFocus = true };
+            ProbeControl foreign = new() { CanFocus = true };
             root.Children.Add(hidden);
             root.Attach(dispatcher);
-            using FocusManager manager = new FocusManager(root);
+            using FocusManager manager = new(root);
 
             manager.Focus(hidden).ShouldBeFalse();
             _ = Should.Throw<ArgumentException>(() => manager.Focus(foreign));
@@ -148,13 +143,13 @@ public sealed class FocusTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer();
-            ProbeControl child = new ProbeControl { CanFocus = true };
-            ProbeControl replacement = new ProbeControl { CanFocus = true };
+            ProbeContainer root = new();
+            ProbeControl child = new() { CanFocus = true };
+            ProbeControl replacement = new() { CanFocus = true };
             root.Children.Add(child);
             root.Children.Add(replacement);
             root.Attach(dispatcher);
-            using FocusManager manager = new FocusManager(root);
+            using FocusManager manager = new(root);
             manager.Focus(child).ShouldBeTrue();
 
             root.IsEnabled = false;

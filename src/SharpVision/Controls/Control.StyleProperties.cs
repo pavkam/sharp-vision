@@ -3,15 +3,10 @@
 
 namespace SharpVision.Controls;
 
-using System.Text;
 
-using SharpVision.Layout;
 using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Unicode;
-
-using TerminalAttributes = TerminalAttributes;
 
 public abstract partial class Control
 {
@@ -61,7 +56,7 @@ public abstract partial class Control
 
     /// <summary>Identifies the border glyph style property.</summary>
     public static StyleProperty<Glyphs> BorderStyleProperty { get; } =
-        StyleProperty<Glyphs>.Register<Control>("border-style", Glyphs.Default, Impact.Render);
+        StyleProperty<Glyphs>.Register<Control>("border-glyphs", Glyphs.Default, Impact.Render);
 
     /// <summary>Identifies the border color style property.</summary>
     public static StyleProperty<Color?> BorderColorProperty { get; } =
@@ -303,7 +298,7 @@ public abstract partial class Control
     private static void ValidateThemeShadowGlyph(Rune value)
     {
         Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
+        int length = value.EncodeToUtf16(buffer);
         Measurement measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
 
         if (measurement.Cells != 1 || measurement.Controls != 0)

@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies semantic damage spans and wide-owner expansion.
@@ -72,7 +69,7 @@ public sealed class DamageTests
     public void Enumerate_WhenOnlyStyleChanges_ReturnsChangedCell()
     {
         using Frame front = Create("x");
-        using Frame back = new Frame(new Size(1, 1));
+        using Frame back = new(new Size(1, 1));
         _ = back.Canvas.Draw(
             "x".AsSpan(),
             new Point(0, 0),
@@ -87,8 +84,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenFullOrResized_ReturnsEveryBackCell()
     {
-        using Frame front = new Frame(new Size(1, 1));
-        using Frame back = new Frame(new Size(2, 2));
+        using Frame front = new(new Size(1, 1));
+        using Frame back = new(new Size(2, 2));
 
         GetSpans(front, back).ShouldBe(
         [
@@ -100,19 +97,14 @@ public sealed class DamageTests
 
     internal static List<DamageSpan> GetSpans(Frame? front, Frame back, bool full = false)
     {
-        List<DamageSpan> result = new List<DamageSpan>();
-
-        foreach (DamageSpan span in Damage.Enumerate(front, back, full))
-        {
-            result.Add(span);
-        }
+        List<DamageSpan> result = [.. Damage.Enumerate(front, back, full)];
 
         return result;
     }
 
     private static Frame Create(string value, int? width = null)
     {
-        Frame frame = new Frame(new Size(width ?? value.Length, 1));
+        Frame frame = new(new Size(width ?? value.Length, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

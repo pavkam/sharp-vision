@@ -3,16 +3,12 @@
 
 namespace SharpVision.Terminal.Tests.Performance;
 
-using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 using FrameEncoder = Terminal.Rendering.Encoder;
 using InputDecoder = Terminal.Input.Decoder;
@@ -30,9 +26,9 @@ public sealed class PhaseThreePerformanceTests
     [Fact]
     public void Enumerate_WhenRepresentativeTextIsWarm_AllocatesZeroBytes()
     {
-        var values = new[] { "plain ASCII", "e\u0301 · 界", "👩🏽‍💻 🇵🇹" };
+        string[] values = ["plain ASCII", "e\u0301 · 界", "👩🏽‍💻 🇵🇹"];
 
-        for (var index = 0; index < 10_000; index++)
+        for (int index = 0; index < 10_000; index++)
         {
             Count(values);
         }
@@ -47,32 +43,32 @@ public sealed class PhaseThreePerformanceTests
     [Fact]
     public void Encode_WhenRepresentativeFramesAreWarm_AllocatesZeroBytes()
     {
-        using Frame front = new Frame(new Size(80, 24));
-        using Frame sparse = new Frame(new Size(80, 24));
-        using Frame dense = new Frame(new Size(80, 24));
+        using Frame front = new(new Size(80, 24));
+        using Frame sparse = new(new Size(80, 24));
+        using Frame dense = new(new Size(80, 24));
         _ = sparse.Canvas.Draw("x".AsSpan(), new Point(40, 12));
-        var row = new string('x', 80);
+        string row = new('x', 80);
 
-        for (var y = 0; y < dense.Size.Height; y++)
+        for (int y = 0; y < dense.Size.Height; y++)
         {
             _ = dense.Canvas.Draw(row.AsSpan(), new Point(0, y));
         }
 
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>(8192);
+        ArrayBufferWriter<byte> destination = new(8192);
 
-        for (var index = 0; index < 10_000; index++)
+        for (int index = 0; index < 10_000; index++)
         {
             Encode(front, sparse, dense, destination);
         }
 
-        var minimum = long.MaxValue;
+        long minimum = long.MaxValue;
         Stopwatch watch = Stopwatch.StartNew();
 
-        for (var sample = 0; sample < 5; sample++)
+        for (int sample = 0; sample < 5; sample++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
+            long before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (var index = 0; index < 10_000; index++)
+            for (int index = 0; index < 10_000; index++)
             {
                 Encode(front, sparse, dense, destination);
             }
@@ -91,22 +87,22 @@ public sealed class PhaseThreePerformanceTests
     [Fact]
     public void Decode_WhenRepresentativeInputIsWarm_AllocatesZeroBytes()
     {
-        CountingSink sink = new CountingSink();
-        using InputDecoder decoder = new InputDecoder(sink);
+        CountingSink sink = new();
+        using InputDecoder decoder = new(sink);
 
-        for (var index = 0; index < 20_000; index++)
+        for (int index = 0; index < 20_000; index++)
         {
             Decode(decoder);
         }
 
-        var minimum = long.MaxValue;
+        long minimum = long.MaxValue;
         Stopwatch watch = Stopwatch.StartNew();
 
-        for (var sample = 0; sample < 5; sample++)
+        for (int sample = 0; sample < 5; sample++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
+            long before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (var index = 0; index < 10_000; index++)
+            for (int index = 0; index < 10_000; index++)
             {
                 Decode(decoder);
             }
@@ -126,14 +122,14 @@ public sealed class PhaseThreePerformanceTests
         Action<TState> action,
         TState state)
     {
-        var minimum = long.MaxValue;
+        long minimum = long.MaxValue;
         Stopwatch watch = Stopwatch.StartNew();
 
-        for (var sample = 0; sample < 5; sample++)
+        for (int sample = 0; sample < 5; sample++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
+            long before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (var index = 0; index < 10_000; index++)
+            for (int index = 0; index < 10_000; index++)
             {
                 action(state);
             }
@@ -149,7 +145,7 @@ public sealed class PhaseThreePerformanceTests
 
     private static void Count(string[] values)
     {
-        foreach (var value in values)
+        foreach (string value in values)
         {
             foreach (Grapheme unused in Graphemes.Enumerate(value.AsSpan()))
             {

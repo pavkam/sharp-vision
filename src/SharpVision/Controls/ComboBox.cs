@@ -3,14 +3,7 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-
-using BackgroundMode = BackgroundMode;
-using KeyAction = KeyAction;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Displays one selected list value and opens an owned popup-style list for keyboard or pointer choice.</summary>
 public sealed class ComboBox: Pressable
@@ -223,8 +216,8 @@ public sealed class ComboBox: Pressable
     protected override Size MeasureCore(Constraint constraint)
     {
         _popup.Measure(new Constraint(constraint.Width, Add(DropDownHeight, 2)));
-        var text = SelectedText();
-        var width = Add(Terminal.Unicode.Width.Measure(text).Cells, 2);
+        string text = SelectedText();
+        int width = Add(Terminal.Unicode.Width.Measure(text).Cells, 2);
         return new Size(width, 1);
     }
 
@@ -374,10 +367,10 @@ public sealed class ComboBox: Pressable
 
     private static Rect Union(Rect left, Rect right)
     {
-        var x = Math.Min(left.X, right.X);
-        var y = Math.Min(left.Y, right.Y);
-        var rightEdge = Math.Max(left.Right, right.Right);
-        var bottom = Math.Max(left.Bottom, right.Bottom);
+        int x = Math.Min(left.X, right.X);
+        int y = Math.Min(left.Y, right.Y);
+        int rightEdge = Math.Max(left.Right, right.Right);
+        int bottom = Math.Max(left.Bottom, right.Bottom);
         return new Rect(
             x,
             y,

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Support;
 
-using SharpVision.Controls;
 
 /// <summary>Provides a concrete parent for shared control infrastructure tests.</summary>
 internal sealed class ProbeContainer: Container

@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies streaming CSI parsing and cancellation recovery.
@@ -19,8 +16,8 @@ public sealed class ParserCsiTests
     [Fact]
     public void Parse_WhenCsiHasNoParameters_DeliversFinal()
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
 
         parser.Parse("\u001b[H"u8, ref sink);
 
@@ -37,8 +34,8 @@ public sealed class ParserCsiTests
     [Fact]
     public void Parse_WhenCsiIsPrivate_PreservesParameterBytes()
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
 
         parser.Parse("\u001b[?25h"u8, ref sink);
 
@@ -53,8 +50,8 @@ public sealed class ParserCsiTests
     [Fact]
     public void Parse_WhenCsiHasSubparameters_PreservesColonBytes()
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
 
         parser.Parse("\u001b[38:2:1:2:3m"u8, ref sink);
 
@@ -67,8 +64,8 @@ public sealed class ParserCsiTests
     [Fact]
     public void Parse_WhenReadContainsMultipleEvents_DeliversInOrder()
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
 
         parser.Parse("a\u001b[2J\nb"u8, ref sink);
 
@@ -82,8 +79,8 @@ public sealed class ParserCsiTests
     [Fact]
     public void Parse_WhenCanCancelsCsi_ReportsAndRecoversToText()
     {
-        using Parser parser = new Parser();
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new();
+        RecordingSink sink = new();
         byte[] input = [0x1b, (byte) '[', (byte) '1', (byte) '2', 0x18, (byte) 'x'];
 
         parser.Parse(input, ref sink);

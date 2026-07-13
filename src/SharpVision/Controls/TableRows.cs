@@ -70,7 +70,7 @@ public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>
     public bool Remove(TableRow item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var index = _items.IndexOf(item);
+        int index = _items.IndexOf(item);
 
         if (index < 0)
         {

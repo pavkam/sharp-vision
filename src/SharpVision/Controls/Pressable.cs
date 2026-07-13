@@ -3,13 +3,8 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Input;
 using SharpVision.Terminal.Input;
-
-using KeyAction = KeyAction;
 
 /// <summary>Provides shared focus, keyboard, pointer, capture, and pressed behavior.</summary>
 public abstract class Pressable: Container
@@ -84,7 +79,7 @@ public abstract class Pressable: Container
     private void Handle(KeyEventArgs eventArgs)
     {
         Stroke stroke = eventArgs.Stroke;
-        var space = stroke.Code == Code.Character && stroke.Character == new Rune(' ');
+        bool space = stroke.Code == Code.Character && stroke.Character == new Rune(' ');
 
         if (space)
         {
@@ -130,7 +125,7 @@ public abstract class Pressable: Container
             return;
         }
 
-        var inside = pointer.Cells is { } cells && Bounds.Contains(cells);
+        bool inside = pointer.Cells is { } cells && Bounds.Contains(cells);
 
         if (pointer.Action == PointerAction.Press && inside)
         {

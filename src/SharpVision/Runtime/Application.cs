@@ -3,12 +3,7 @@
 
 namespace SharpVision.Runtime;
 
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Input;
@@ -20,7 +15,7 @@ using SharpVision.Threading;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 using TerminalDiagnostic = Terminal.Protocols.Diagnostic;
 using TerminalDiagnosticCode = Terminal.Protocols.DiagnosticCode;
-using TerminalFocus = Focus;
+using TerminalFocus = SharpVision.Terminal.Input.Focus;
 using TerminalOptions = Terminal.Runtime.Options;
 using TerminalResponse = Terminal.Protocols.Response;
 using TerminalSequence = Terminal.Protocols.ProtocolSequence;
@@ -333,7 +328,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     public void Sequence(TerminalSequence value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var discardedBytes = checked(
+        long discardedBytes = checked(
             (long) value.Parameters.Length +
             value.Intermediates.Length +
             value.Payload.Length +
@@ -412,7 +407,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        StoppingEventArgs eventArgs = new StoppingEventArgs();
+        StoppingEventArgs eventArgs = new();
         Stopping?.Invoke(this, eventArgs);
 
         if (eventArgs.Cancel && !forced)
@@ -615,7 +610,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         if (!_initialized)
         {
             Root.Attach(Dispatcher, CellPolicy);
-            ApplyThemeContext();
+            PublishThemeContext();
             FocusValue = new FocusManager(Root);
             CaptureValue = new CaptureManager(Root);
             _initialized = true;
@@ -672,7 +667,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         }
 
         TerminalCapabilities previous = Capabilities;
-        var measure = previous.AmbiguousWidth != value.AmbiguousWidth;
+        bool measure = previous.AmbiguousWidth != value.AmbiguousWidth;
         Capabilities = value;
         CellPolicy = new UnicodePolicy(value.AmbiguousWidth);
 
@@ -880,7 +875,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private void Report(Exception exception)
     {
         Failure ??= exception;
-        UnhandledEventArgs eventArgs = new UnhandledEventArgs(exception);
+        UnhandledEventArgs eventArgs = new(exception);
         UnhandledException?.Invoke(this, eventArgs);
 
         if (!eventArgs.Handled)
@@ -899,7 +894,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        Frame frame = new Frame(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
+        Frame frame = new(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
 
         try
         {
@@ -912,7 +907,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         }
 
         IDisposable hold = Dispatcher.Hold();
-        TaskCompletionSource completion = new TaskCompletionSource(
+        TaskCompletionSource completion = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         _renderTask = completion.Task;
         _rendering = true;
@@ -926,7 +921,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
     private void WakeInput()
     {
-        var post = false;
+        bool post = false;
 
         lock (_gate)
         {

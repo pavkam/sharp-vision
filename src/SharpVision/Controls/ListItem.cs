@@ -3,13 +3,7 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-
-using KeyAction = KeyAction;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Owns one realized List template control and its selection behavior.</summary>
 internal sealed class ListItem: Pressable

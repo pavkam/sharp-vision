@@ -6,16 +6,8 @@ namespace SharpVision.Tests.Performance;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 
@@ -27,9 +19,9 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public void Layout_WhenConstraintAndStateAreUnchanged_AllocatesZeroBytes()
     {
-        Engine engine = new Engine();
-        ProbeControl control = new ProbeControl(new Size(20, 4));
-        Size size = new Size(80, 24);
+        Engine engine = new();
+        ProbeControl control = new(new Size(20, 4));
+        Size size = new(80, 24);
         engine.Layout(control, size);
 
         (long allocated, TimeSpan elapsed) = Measure(() => engine.Layout(control, size), 10_000);
@@ -42,12 +34,12 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public void Render_WhenFrameAndTreeAreReused_AllocatesZeroBytes()
     {
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 80, 24),
             Content = "e\u0301 · 界 · 👩‍💻".AsMemory(),
         };
-        using Frame frame = new Frame(new Size(80, 24));
+        using Frame frame = new(new Size(80, 24));
         Render();
 
         (long allocated, TimeSpan elapsed) = Measure(Render, 1_000);
@@ -67,20 +59,20 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public void Route_WhenAncestryIsDeepAndStable_AllocatesZeroBytes()
     {
-        ProbeContainer root = new ProbeContainer();
+        ProbeContainer root = new();
         ProbeContainer current = root;
 
-        for (var depth = 1; depth < 20; depth++)
+        for (int depth = 1; depth < 20; depth++)
         {
-            ProbeContainer child = new ProbeContainer();
+            ProbeContainer child = new();
             current.Children.Add(child);
             current = child;
         }
 
-        ProbeControl target = new ProbeControl();
+        ProbeControl target = new();
         current.Children.Add(target);
         _ = target.AddHandler(Events.Key, static (_, _) => { });
-        KeyEventArgs eventArgs = new KeyEventArgs(new Stroke(
+        KeyEventArgs eventArgs = new(new Stroke(
             Code.Enter,
             character: null,
             nativeCode: 0,
@@ -101,20 +93,20 @@ public sealed class InfrastructurePerformanceTests
     public async Task Post_WhenDispatcherIsWarm_StaysWithinAllocationBudgetAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        TaskCompletionSource warmed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource warmed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.Post(warmed.SetResult);
         await warmed.Task.WaitAsync(TestContext.Current.CancellationToken);
         const int iterations = 1_000;
         Stopwatch watch = Stopwatch.StartNew();
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        long before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (var index = 0; index < iterations; index++)
+        for (int index = 0; index < iterations; index++)
         {
             dispatcher.Post(static () => { });
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        TaskCompletionSource completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        TaskCompletionSource completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.Post(completed.SetResult);
         await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
         watch.Stop();
@@ -125,19 +117,19 @@ public sealed class InfrastructurePerformanceTests
 
     private static (long Allocated, TimeSpan Elapsed) Measure(System.Action action, int iterations)
     {
-        for (var index = 0; index < iterations; index++)
+        for (int index = 0; index < iterations; index++)
         {
             action();
         }
 
-        var minimum = long.MaxValue;
+        long minimum = long.MaxValue;
         Stopwatch watch = Stopwatch.StartNew();
 
-        for (var sample = 0; sample < 5; sample++)
+        for (int sample = 0; sample < 5; sample++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
+            long before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (var index = 0; index < iterations; index++)
+            for (int index = 0; index < iterations; index++)
             {
                 action();
             }

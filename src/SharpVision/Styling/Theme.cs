@@ -3,7 +3,7 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Controls;
+using SharpVision.Terminal.Protocols;
 
 /// <summary>Owns one style per control type and publishes immutable style-chain snapshots.</summary>
 public sealed class Theme
@@ -11,6 +11,7 @@ public sealed class Theme
     private readonly Lock _gate = new();
     private readonly Dictionary<Type, IControlStyle> _styles = [];
     private readonly Dictionary<Type, IReadOnlyList<IControlStyle>> _styleChains = [];
+    private readonly Dictionary<ColorRole, Color> _colors = [];
     private readonly List<(IControlStyle Style, EventHandler<ThemeChangedEventArgs> Handler)> _subscriptions = [];
 
     /// <summary>Raised after one committed theme mutation publishes a new version.</summary>
@@ -118,19 +119,56 @@ public sealed class Theme
         }
     }
 
+    /// <summary>Assigns one semantic color role.</summary>
+    /// <param name="role">The semantic role.</param>
+    /// <param name="color">The color for the role.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="role"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The theme is frozen.</exception>
+    public void SetColor(ColorRole role, Color color)
+    {
+        if (!Enum.IsDefined(role))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role), role, "The color role is unknown.");
+        }
+
+        EnsureMutable();
+
+        lock (_gate)
+        {
+            _colors[role] = color;
+        }
+    }
+
+    /// <summary>Gets one semantic color role when defined.</summary>
+    /// <param name="role">The semantic role.</param>
+    /// <param name="color">The resolved color when present.</param>
+    /// <returns>Whether the role is defined by this theme.</returns>
+    public bool TryGetColor(ColorRole role, out Color color)
+    {
+        lock (_gate)
+        {
+            return _colors.TryGetValue(role, out color);
+        }
+    }
+
     /// <summary>Creates an independent unfrozen copy containing cloned styles.</summary>
     /// <returns>A mutable theme copy.</returns>
     public Theme Clone()
     {
         lock (_gate)
         {
-            Theme clone = new Theme();
+            Theme clone = new();
 
             foreach (KeyValuePair<Type, IControlStyle> entry in _styles)
             {
                 IControlStyle cloned = CloneStyle(entry.Value);
                 clone._styles[entry.Key] = cloned;
                 clone.Subscribe(cloned);
+            }
+
+            foreach (KeyValuePair<ColorRole, Color> entry in _colors)
+            {
+                clone._colors[entry.Key] = entry.Value;
             }
 
             clone.Version = Version;
@@ -162,7 +200,10 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            return new ThemeSnapshot(Version, new Dictionary<Type, IControlStyle>(_styles));
+            return new ThemeSnapshot(
+                Version,
+                new Dictionary<Type, IControlStyle>(_styles),
+                new Dictionary<ColorRole, Color>(_colors));
         }
     }
 
@@ -223,7 +264,7 @@ public sealed class Theme
 
     private void Unsubscribe(IControlStyle style)
     {
-        for (var index = _subscriptions.Count - 1; index >= 0; index--)
+        for (int index = _subscriptions.Count - 1; index >= 0; index--)
         {
             if (ReferenceEquals(_subscriptions[index].Style, style))
             {

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
 
 /// <summary>Documents and demonstrates the RadioButton control.</summary>
 internal sealed class RadioButtonShowcasePane: ShowcasePane
@@ -43,32 +42,28 @@ internal sealed class RadioButtonShowcasePane: ShowcasePane
             Content = new ControlText("Fast"),
             GroupName = "quality",
             IsChecked = true,
-            Style = Palette.Interactive(),
         });
         group.Children.Add(new ControlRadioButton
         {
             Content = new ControlText("Balanced"),
             GroupName = "quality",
-            Style = Palette.Interactive(),
         });
         group.Children.Add(new ControlRadioButton
         {
             Content = new ControlText("Unavailable"),
             GroupName = "quality",
             IsEnabled = false,
-            Style = Palette.Interactive(),
         });
         examples.Children.Add(PaneSupport.SampleSection(
             "Named quality group",
             "Pick one mode. Arrow keys move selection between available members; the disabled member remains visibly unavailable.",
             PaneSupport.Card(group, Glyphs.Rounded)));
 
-        ControlRadioButton independent = new ControlRadioButton
+        ControlRadioButton independent = new()
         {
             Content = new ControlText("Independent selection group"),
             GroupName = "delivery",
             IsChecked = true,
-            Style = Palette.Interactive(),
         };
         examples.Children.Add(PaneSupport.SampleSection(
             "Separate group",

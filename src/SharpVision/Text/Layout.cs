@@ -4,8 +4,6 @@
 namespace SharpVision.Text;
 
 using System.Buffers;
-using System.Diagnostics;
-using System.Text;
 
 using SharpVision.Terminal.Unicode;
 
@@ -54,12 +52,12 @@ public static class Layout
         Validate(trimming);
         Validate(alignment);
         Validate(ambiguous);
-        var count = 0;
-        var start = 0;
+        int count = 0;
+        int start = 0;
 
         while (true)
         {
-            var end = start;
+            int end = start;
 
             while (end < value.Length && value[end] is not ('\r' or '\n'))
             {
@@ -106,7 +104,7 @@ public static class Layout
 
     private static int Align(int width, int cells, Alignment alignment)
     {
-        var remaining = Math.Max(0, width - cells);
+        int remaining = Math.Max(0, width - cells);
         return alignment switch
         {
             Alignment.Start => 0,
@@ -118,13 +116,13 @@ public static class Layout
 
     private static int Cells(ReadOnlySpan<char> value, Ambiguous ambiguous)
     {
-        var result = 0;
-        var position = 0;
+        int result = 0;
+        int position = 0;
 
         while (position < value.Length)
         {
             Grapheme grapheme = Next(value[position..]);
-            var cells = ClusterCells(value.Slice(position, grapheme.Length), result, ambiguous);
+            int cells = ClusterCells(value.Slice(position, grapheme.Length), result, ambiguous);
             result = SaturatingAdd(result, cells);
             position += grapheme.Length;
         }
@@ -175,7 +173,7 @@ public static class Layout
         Span<Line> destination,
         ref int count)
     {
-        var completeCells = Cells(value, ambiguous);
+        int completeCells = Cells(value, ambiguous);
 
         if (trimming == Trimming.None || completeCells <= width)
         {
@@ -191,20 +189,20 @@ public static class Layout
             return;
         }
 
-        var ellipsisCells = Width.Measure(_ellipsis, ambiguous).Cells;
-        var ellipsis = trimming is Trimming.GraphemeEllipsis or Trimming.WordEllipsis &&
+        int ellipsisCells = Width.Measure(_ellipsis, ambiguous).Cells;
+        bool ellipsis = trimming is Trimming.GraphemeEllipsis or Trimming.WordEllipsis &&
             width >= ellipsisCells;
-        var limit = Math.Max(0, width - (ellipsis ? ellipsisCells : 0));
-        var position = 0;
-        var cells = 0;
-        var wordEnd = 0;
-        var wordCells = 0;
+        int limit = Math.Max(0, width - (ellipsis ? ellipsisCells : 0));
+        int position = 0;
+        int cells = 0;
+        int wordEnd = 0;
+        int wordCells = 0;
 
         while (position < value.Length)
         {
             Grapheme grapheme = Next(value[position..]);
             ReadOnlySpan<char> cluster = value.Slice(position, grapheme.Length);
-            var clusterCells = ClusterCells(cluster, cells, ambiguous);
+            int clusterCells = ClusterCells(cluster, cells, ambiguous);
 
             if (clusterCells > limit - cells)
             {
@@ -254,17 +252,17 @@ public static class Layout
             return;
         }
 
-        var lineStart = 0;
-        var position = 0;
-        var cells = 0;
-        var breakEnd = 0;
-        var breakCells = 0;
+        int lineStart = 0;
+        int position = 0;
+        int cells = 0;
+        int breakEnd = 0;
+        int breakCells = 0;
 
         while (position < value.Length)
         {
             Grapheme grapheme = Next(value[position..]);
             ReadOnlySpan<char> cluster = value.Slice(position, grapheme.Length);
-            var clusterCells = ClusterCells(cluster, cells, ambiguous);
+            int clusterCells = ClusterCells(cluster, cells, ambiguous);
 
             if (clusterCells <= width - cells)
             {
@@ -349,14 +347,14 @@ public static class Layout
 
     private static int SaturatingAdd(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private static Grapheme Next(ReadOnlySpan<char> value)
     {
         GraphemeEnumerator enumerator = Graphemes.Enumerate(value).GetEnumerator();
-        var moved = enumerator.MoveNext();
+        bool moved = enumerator.MoveNext();
         Debug.Assert(moved, "A non-empty source suffix must contain one grapheme.");
         return enumerator.Current;
     }

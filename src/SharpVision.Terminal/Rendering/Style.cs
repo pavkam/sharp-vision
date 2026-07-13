@@ -88,7 +88,7 @@ public readonly record struct Style
                 throw new ArgumentException("A hyperlink cannot be empty.", nameof(hyperlink));
             }
 
-            foreach (var value in hyperlink)
+            foreach (char value in hyperlink)
             {
                 if (char.IsControl(value))
                 {

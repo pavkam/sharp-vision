@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Layout;
 
 /// <summary>Stores one weakly attached Dock side.</summary>
 internal sealed class DockPlacement

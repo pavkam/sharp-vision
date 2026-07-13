@@ -3,7 +3,6 @@
 
 namespace SharpVision.Runtime;
 
-using SharpVision.Controls;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
 
@@ -40,15 +39,15 @@ public sealed partial class Application
 
         using ConsoleInputMode inputMode = ConsoleInputMode.Enter();
         StreamTransport transport = ConsoleHost.CreateTransport();
-        ConsoleResizeSource resize = new ConsoleResizeSource(TimeSpan.FromMilliseconds(100));
-        await using Application application = new Application(
+        ConsoleResizeSource resize = new(TimeSpan.FromMilliseconds(100));
+        await using Application application = new(
             screen,
             transport,
             resize,
             ConsoleRun.CreateTerminalOptions());
         screen.Attach(application);
 
-        using CancellationTokenSource cancellation = new CancellationTokenSource();
+        using CancellationTokenSource cancellation = new();
         void OnCancel(object? sender, ConsoleCancelEventArgs eventArgs)
         {
             eventArgs.Cancel = true;

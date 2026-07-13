@@ -5,8 +5,6 @@ namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = TerminalAttributes;
-
 /// <summary>Defines one styled mutable UTF-16 text run.</summary>
 public sealed class Run: Inline
 {

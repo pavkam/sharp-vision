@@ -53,10 +53,10 @@ public readonly record struct Rect
     /// <returns>A possibly empty intersection.</returns>
     public Rect Intersect(Rect other)
     {
-        var left = Math.Max(X, other.X);
-        var top = Math.Max(Y, other.Y);
-        var right = Math.Min(Right, other.Right);
-        var bottom = Math.Min(Bottom, other.Bottom);
+        int left = Math.Max(X, other.X);
+        int top = Math.Max(Y, other.Y);
+        int right = Math.Min(Right, other.Right);
+        int bottom = Math.Min(Bottom, other.Bottom);
 
         return new Rect(
             left,
@@ -67,7 +67,7 @@ public readonly record struct Rect
 
     private static int SaturatingAdd(int value, int extent)
     {
-        var result = (long) value + extent;
+        long result = (long) value + extent;
         return result > int.MaxValue ? int.MaxValue : (int) result;
     }
 }

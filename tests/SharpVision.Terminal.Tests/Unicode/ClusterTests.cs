@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Unicode;
 
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 /// <summary>Verifies width and safe presentation classification for one cluster.</summary>
 public sealed class ClusterTests

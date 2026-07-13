@@ -4,14 +4,9 @@
 namespace SharpVision.Terminal.Tests.Support;
 
 using System.Globalization;
-using System.Text;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 using TerminalColor = Color;
 
@@ -36,7 +31,7 @@ internal sealed class VirtualScreen: ISequenceSink
         Size = size;
         _cells = new ModelCell[checked(size.Width * size.Height)];
 
-        for (var index = 0; index < _cells.Length; index++)
+        for (int index = 0; index < _cells.Length; index++)
         {
             _cells[index] = ModelCell.Blank;
         }
@@ -52,7 +47,7 @@ internal sealed class VirtualScreen: ISequenceSink
     /// <param name="value">The encoded bytes.</param>
     internal void Apply(ReadOnlySpan<byte> value)
     {
-        using Parser parser = new Parser();
+        using Parser parser = new();
         VirtualScreen sink = this;
         parser.Parse(value, ref sink);
         parser.Complete(ref sink);
@@ -64,14 +59,14 @@ internal sealed class VirtualScreen: ISequenceSink
     {
         Size.ShouldBe(frame.Size);
 
-        for (var y = 0; y < Size.Height; y++)
+        for (int y = 0; y < Size.Height; y++)
         {
-            for (var x = 0; x < Size.Width; x++)
+            for (int x = 0; x < Size.Width; x++)
             {
-                Point point = new Point(x, y);
+                Point point = new(x, y);
                 CellInfo expected = frame.GetCell(point);
                 ModelCell actual = _cells[Index(point)];
-                var expectedText = FrameText(frame, point);
+                string expectedText = FrameText(frame, point);
 
                 actual.Text.ShouldBe(expectedText.Length == 0 ? " " : expectedText);
                 actual.Style.ShouldBe(expected.Style);
@@ -97,12 +92,12 @@ internal sealed class VirtualScreen: ISequenceSink
     /// <inheritdoc/>
     public void Text(ReadOnlySpan<byte> value)
     {
-        var text = Encoding.UTF8.GetString(value);
+        string text = Encoding.UTF8.GetString(value);
 
         foreach (Grapheme segment in Graphemes.Enumerate(text.AsSpan()))
         {
             ReadOnlySpan<char> cluster = text.AsSpan(segment.Offset, segment.Length);
-            var width = (int) Width.GetCluster(cluster, Ambiguous.Narrow, segment.HasInvalidData);
+            int width = (int) Width.GetCluster(cluster, Ambiguous.Narrow, segment.HasInvalidData);
 
             if (width > 0)
             {
@@ -129,7 +124,7 @@ internal sealed class VirtualScreen: ISequenceSink
     {
         if (final == (byte) 'H')
         {
-            var values = Parse(parameters);
+            int[] values = Parse(parameters);
             _position = new Point(values[1] - 1, values[0] - 1);
         }
         else if (final == (byte) 'm')
@@ -153,7 +148,7 @@ internal sealed class VirtualScreen: ISequenceSink
             return;
         }
 
-        var separator = value[2..].IndexOf((byte) ';');
+        int separator = value[2..].IndexOf((byte) ';');
 
         if (separator >= 0)
         {
@@ -177,10 +172,10 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private void ApplySgr(ReadOnlySpan<byte> parameters)
     {
-        var text = Encoding.ASCII.GetString(parameters);
-        var values = text.Length == 0 ? ["0"] : text.Split(';');
+        string text = Encoding.ASCII.GetString(parameters);
+        string[] values = text.Length == 0 ? ["0"] : text.Split(';');
 
-        for (var index = 0; index < values.Length; index++)
+        for (int index = 0; index < values.Length; index++)
         {
             if (values[index].StartsWith("4:", StringComparison.Ordinal))
             {
@@ -188,7 +183,7 @@ internal sealed class VirtualScreen: ISequenceSink
                 continue;
             }
 
-            var value = int.Parse(values[index], NumberStyles.None, CultureInfo.InvariantCulture);
+            int value = int.Parse(values[index], NumberStyles.None, CultureInfo.InvariantCulture);
 
             switch (value)
             {
@@ -266,7 +261,7 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private void ApplyTypedUnderline(string parameter)
     {
-        var value = int.Parse(parameter.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture);
+        int value = int.Parse(parameter.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture);
 
         if (!Enum.IsDefined((Underline) value))
         {
@@ -306,10 +301,10 @@ internal sealed class VirtualScreen: ISequenceSink
     private void Repair(int x, int y)
     {
         ModelCell cell = _cells[Index(new Point(x, y))];
-        var leadX = cell.IsContinuation ? cell.LeadX : x;
+        int leadX = cell.IsContinuation ? cell.LeadX : x;
         ModelCell lead = _cells[Index(new Point(leadX, y))];
 
-        for (var offset = 0; offset < Math.Max(1, lead.Width) && leadX + offset < Size.Width; offset++)
+        for (int offset = 0; offset < Math.Max(1, lead.Width) && leadX + offset < Size.Width; offset++)
         {
             _cells[Index(new Point(leadX + offset, y))] = ModelCell.Blank with
             {
@@ -336,14 +331,14 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private static int[] Parse(ReadOnlySpan<byte> value)
     {
-        var text = Encoding.ASCII.GetString(value);
+        string text = Encoding.ASCII.GetString(value);
         return [.. text.Split(';').Select(static item =>
             int.Parse(item, NumberStyles.None, CultureInfo.InvariantCulture))];
     }
 
     private static TerminalColor ParseColor(string[] values, ref int index)
     {
-        var mode = ParseNumber(values[++index]);
+        int mode = ParseNumber(values[++index]);
 
         return mode == 5
             ? TerminalColor.Indexed(ParseNumber(values[++index]))
@@ -360,14 +355,14 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private static string FrameText(Frame frame, Point point)
     {
-        var length = frame.GetGraphemeByteCount(point);
+        int length = frame.GetGraphemeByteCount(point);
 
         if (length == 0)
         {
             return string.Empty;
         }
 
-        var bytes = new byte[length];
+        byte[] bytes = new byte[length];
         _ = frame.CopyGrapheme(point, bytes);
         return Encoding.UTF8.GetString(bytes);
     }

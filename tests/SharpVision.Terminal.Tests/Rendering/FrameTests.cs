@@ -3,12 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using System.Text;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
 using CellMetrics = Geometry.Metrics;
 using RenderingMetrics = Terminal.Rendering.Metrics;
@@ -23,7 +19,7 @@ public sealed class FrameTests
     public void Clone_WhenTextExceedsInitialArena_PreservesEveryGrapheme()
     {
         const int length = 300;
-        using Frame frame = new Frame(new Size(length, 1));
+        using Frame frame = new(new Size(length, 1));
         _ = frame.Canvas.Draw(new string('x', length), default, Style.Default);
 
         using Frame clone = frame.Clone();
@@ -64,7 +60,7 @@ public sealed class FrameTests
     [Fact]
     public void Constructor_WhenSizeIsZero_CreatesSuspendedFrame()
     {
-        using Frame frame = new Frame(new Size(0, 0));
+        using Frame frame = new(new Size(0, 0));
 
         frame.Size.ShouldBe(new Size(0, 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(
@@ -77,7 +73,7 @@ public sealed class FrameTests
     [Fact]
     public void GetCell_WhenPointIsOutsideFrame_ThrowsArgumentOutOfRangeException()
     {
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => frame.GetCell(new Point(-1, 0)));
@@ -91,7 +87,7 @@ public sealed class FrameTests
     [Fact]
     public void CopyGrapheme_WhenDestinationIsTooSmall_ThrowsArgumentException()
     {
-        using Frame frame = new Frame(new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
         _ = frame.Canvas.Draw("界".AsSpan(), new Point(0, 0));
 
         frame.GetGraphemeByteCount(new Point(0, 0)).ShouldBe(3);
@@ -109,8 +105,8 @@ public sealed class FrameTests
     [Fact]
     public void Clear_WhenFrameContainsText_ResetsEveryCell()
     {
-        using Frame frame = new Frame(new Size(2, 1));
-        Style style = new Style(attributes: Attributes.Bold);
+        using Frame frame = new(new Size(2, 1));
+        Style style = new(attributes: Attributes.Bold);
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
 
         frame.Clear();
@@ -126,7 +122,7 @@ public sealed class FrameTests
     [Fact]
     public void Dispose_WhenCalled_RejectsFurtherAccess()
     {
-        Frame frame = new Frame(new Size(1, 1));
+        Frame frame = new(new Size(1, 1));
 
         frame.Dispose();
         frame.Dispose();
@@ -138,8 +134,8 @@ public sealed class FrameTests
 
     internal static string GetText(Frame frame, Point point)
     {
-        var count = frame.GetGraphemeByteCount(point);
-        var bytes = new byte[count];
+        int count = frame.GetGraphemeByteCount(point);
+        byte[] bytes = new byte[count];
         frame.CopyGrapheme(point, bytes).ShouldBe(count);
 
         return Encoding.UTF8.GetString(bytes);

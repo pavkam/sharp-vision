@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Support;
 
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Compares parser observations across whole, split, and byte-at-a-time reads.
@@ -20,23 +18,23 @@ public static class Fragmentation
     /// <param name="limits">Optional parser limits.</param>
     public static void AssertAll(ReadOnlySpan<byte> input, Limits? limits = null)
     {
-        var owned = input.ToArray();
-        var expected = Parse([owned], limits);
+        byte[] owned = input.ToArray();
+        string[] expected = Parse([owned], limits);
 
-        for (var split = 0; split <= owned.Length; split++)
+        for (int split = 0; split <= owned.Length; split++)
         {
-            var actual = Parse([owned[..split], owned[split..]], limits);
+            string[] actual = Parse([owned[..split], owned[split..]], limits);
             actual.ShouldBe(expected, $"Input differed at split {split}.");
         }
 
-        var bytes = owned.Select(static value => new[] { value }).ToArray();
+        byte[][] bytes = [.. owned.Select(static value => new[] { value })];
         Parse(bytes, limits).ShouldBe(expected, "Byte-at-a-time input differed.");
     }
 
     private static string[] Normalize(IEnumerable<Observation> observations)
     {
-        List<string> normalized = new List<string>();
-        List<byte> text = new List<byte>();
+        List<string> normalized = [];
+        List<byte> text = [];
 
         foreach (Observation observation in observations)
         {
@@ -68,10 +66,10 @@ public static class Fragmentation
 
     private static string[] Parse(IEnumerable<byte[]> reads, Limits? limits)
     {
-        using Parser parser = new Parser(limits);
-        RecordingSink sink = new RecordingSink();
+        using Parser parser = new(limits);
+        RecordingSink sink = new();
 
-        foreach (var read in reads)
+        foreach (byte[] read in reads)
         {
             parser.Parse(read, ref sink);
         }

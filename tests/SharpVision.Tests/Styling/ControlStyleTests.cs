@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies mutable control-style storage, validation, and freezing.</summary>
 public sealed class ControlStyleTests
@@ -17,7 +12,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenValueIsStored_TryGetReturnsIt()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(3));
 
         style.TryGet(Control.ForegroundProperty, State.Normal, out Color? value).ShouldBeTrue();
@@ -30,7 +25,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenOverlayStatesAreCombined_StoresValue()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
         State combined = State.Hovered | State.Focused;
 
         style.Set(Control.ForegroundProperty, combined, Color.Indexed(1));
@@ -43,7 +38,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenStateHasUnknownFlags_Throws()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             style.Set(Control.ForegroundProperty, (State) (1 << 20), Color.Indexed(1)));
@@ -53,7 +48,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenMeasurePropertyUsesOverlayState_StoresValue()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
 
         style.Set(Control.PaddingProperty, State.Pressed, new Thickness(1));
 
@@ -65,7 +60,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenStyleIsFrozen_Throws()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
         ControlStyle<Control> frozen = style.FreezeCopy();
 
@@ -77,7 +72,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Clone_WhenSourceMutatesAfterCopy_DoesNotAffectClone()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
         ControlStyle<Control> clone = style.Clone();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(5));
@@ -90,10 +85,10 @@ public sealed class ControlStyleTests
     [Fact]
     public void TryGetValue_ThroughPublicInterface_ReadsStoredValue()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
 
-        style.TryGetValue(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
+        style.TryGetValue(Control.ForegroundProperty, State.Normal, out object? value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(4));
     }
 
@@ -101,8 +96,8 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenValueChanges_RaisesChanged()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
-        var raised = 0;
+        ControlStyle<Control> style = new();
+        int raised = 0;
         style.Changed += (_, _) => raised++;
 
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(6));
@@ -114,7 +109,7 @@ public sealed class ControlStyleTests
     [Fact]
     public async Task Set_WhenHandlerReentersStyle_DoesNotDeadlockAsync()
     {
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new();
         style.Changed += (_, _) => _ = style.Clone();
 
         Task work = Task.Run(

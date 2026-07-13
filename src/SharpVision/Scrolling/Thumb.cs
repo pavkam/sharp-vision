@@ -43,14 +43,14 @@ public readonly record struct Thumb
             return new Thumb(0, trackLength);
         }
 
-        var total = (long) range.Span + range.Viewport;
-        var proportional = total == 0
+        long total = (long) range.Span + range.Viewport;
+        int proportional = total == 0
             ? 0
             : Round((long) trackLength * range.Viewport, total);
-        var length = Math.Clamp(proportional, 1, trackLength);
-        var travel = trackLength - length;
-        var offset = range.Value - range.Minimum;
-        var start = travel == 0 ? 0 : Round((long) travel * offset, range.Span);
+        int length = Math.Clamp(proportional, 1, trackLength);
+        int travel = trackLength - length;
+        int offset = range.Value - range.Minimum;
+        int start = travel == 0 ? 0 : Round((long) travel * offset, range.Span);
         return new Thumb(start, length);
     }
 
@@ -64,15 +64,15 @@ public readonly record struct Thumb
     {
         ArgumentOutOfRangeException.ThrowIfNegative(trackLength);
         Thumb thumb = Resolve(range, trackLength);
-        var travel = trackLength - thumb.Length;
+        int travel = trackLength - thumb.Length;
 
         if (travel == 0 || range.Span == 0)
         {
             return range.Minimum;
         }
 
-        var start = Math.Clamp(thumbStart, 0, travel);
-        var offset = Round((long) range.Span * start, travel);
+        int start = Math.Clamp(thumbStart, 0, travel);
+        int offset = Round((long) range.Span * start, travel);
         return range.Minimum + offset;
     }
 

@@ -3,11 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using System.Buffers;
 
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies typed operating system command encoding.
@@ -20,8 +17,8 @@ public sealed class OscTests
     [Fact]
     public void Title_WhenTextIsValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         Osc.IconAndTitle(writer, "both"u8);
         Osc.Title(writer, "title"u8);
@@ -36,8 +33,8 @@ public sealed class OscTests
     [Fact]
     public void Hyperlink_WhenValuesAreValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         Osc.OpenHyperlink(writer, "https://example.test"u8, "docs"u8);
         Osc.CloseHyperlink(writer);
@@ -52,8 +49,8 @@ public sealed class OscTests
     [Fact]
     public void ColorQuery_WhenIndexIsValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         Osc.QueryPalette(writer, 15);
         Osc.QueryForeground(writer);
@@ -69,8 +66,8 @@ public sealed class OscTests
     [Fact]
     public void Command_WhenValueIsInvalid_ThrowsBeforeWriting()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         _ = Should.Throw<ArgumentException>(
             () => Osc.Title(writer, [(byte) 'a', 0x07]));

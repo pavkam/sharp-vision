@@ -5,7 +5,6 @@ namespace SharpVision.Tests.Fonts;
 
 using SharpVision.Fonts;
 
-using Shouldly;
 
 /// <summary>Verifies the embedded audited 400-font catalog.</summary>
 public sealed class FigletCatalogTests
@@ -53,7 +52,7 @@ public sealed class FigletCatalogTests
     {
         FigletFont font = FigletCatalog.Default.Load("Standard");
 
-        var output = font.Render("Hi");
+        string output = font.Render("Hi");
 
         output.ShouldBe(
             " _   _ _ \n" +
@@ -70,7 +69,7 @@ public sealed class FigletCatalogTests
     {
         FigletCatalog catalog = FigletCatalog.Default;
 
-        foreach (var name in catalog.Names)
+        foreach (string name in catalog.Names)
         {
             _ = Should.NotThrow(() => catalog.Load(name), name);
         }

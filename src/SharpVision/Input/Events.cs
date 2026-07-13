@@ -3,7 +3,6 @@
 
 namespace SharpVision.Input;
 
-using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Exposes the standard typed terminal-input routed events.</summary>
 public static class Events

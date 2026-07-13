@@ -3,20 +3,15 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies theme-context propagation as controls attach and detach at runtime.</summary>
 public sealed class ThemeContextPropagationTests
 {
     private static Theme ForegroundTheme(int index)
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(index));
         theme.SetStyle(style);
         return theme;
@@ -26,10 +21,10 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Add_WhenChildAttachedToThemedParent_InheritsThemeContext()
     {
-        ProbeContainer root = new ProbeContainer();
+        ProbeContainer root = new();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(3));
 
-        ProbeControl child = new ProbeControl();
+        ProbeControl child = new();
         root.Children.Add(child);
 
         child.Foreground.ShouldBe(Color.Indexed(3));
@@ -39,10 +34,10 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Add_WhenSubtreeAttachedToThemedParent_InheritsThemeContext()
     {
-        ProbeContainer root = new ProbeContainer();
+        ProbeContainer root = new();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(5));
-        ProbeContainer branch = new ProbeContainer();
-        ProbeControl leaf = new ProbeControl();
+        ProbeContainer branch = new();
+        ProbeControl leaf = new();
         branch.Children.Add(leaf);
 
         root.Children.Add(branch);
@@ -54,9 +49,9 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Remove_WhenChildDetached_ClearsInheritedThemeContext()
     {
-        ProbeContainer root = new ProbeContainer();
+        ProbeContainer root = new();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(3));
-        ProbeControl child = new ProbeControl();
+        ProbeControl child = new();
         root.Children.Add(child);
 
         _ = root.Children.Remove(child);

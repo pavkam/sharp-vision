@@ -25,7 +25,7 @@ public static class Screen
     {
         ArgumentNullException.ThrowIfNull(destination);
 
-        var length = checked(Header.Length + sequence.Length + Terminator.Length);
+        int length = checked(Header.Length + sequence.Length + Terminator.Length);
         Span<byte> output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
         Header.CopyTo(output);

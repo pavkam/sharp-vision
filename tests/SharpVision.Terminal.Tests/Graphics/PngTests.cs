@@ -3,10 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Graphics;
 
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Graphics;
 
-using Shouldly;
 
 using GraphicsImage = Terminal.Graphics.Image;
 
@@ -17,11 +15,11 @@ public sealed class PngTests
     [Fact]
     public void FromPng_WhenStructureIsValid_OwnsBytesAndDimensions()
     {
-        var source = CreatePng(3, 2);
+        byte[] source = CreatePng(3, 2);
 
         GraphicsImage image = GraphicsImage.FromPng(source);
         source.AsSpan().Clear();
-        var copied = new byte[image.ByteCount];
+        byte[] copied = new byte[image.ByteCount];
         _ = image.CopyTo(copied);
 
         image.Size.ShouldBe(new Size(3, 2));
@@ -35,12 +33,12 @@ public sealed class PngTests
     [Fact]
     public void FromPng_WhenStructureIsMalformed_ThrowsDocumentedException()
     {
-        var invalidSignature = CreatePng(1, 1);
+        byte[] invalidSignature = CreatePng(1, 1);
         invalidSignature[0] = 0;
-        var invalidHeader = CreatePng(1, 1);
+        byte[] invalidHeader = CreatePng(1, 1);
         invalidHeader[24] = 1;
-        var missingEnd = CreatePng(1, 1)[..45];
-        var oversizedChunk = CreatePng(1, 1);
+        byte[] missingEnd = CreatePng(1, 1)[..45];
+        byte[] oversizedChunk = CreatePng(1, 1);
         oversizedChunk[33] = 127;
 
         _ = Should.Throw<ArgumentException>(() => GraphicsImage.FromPng(invalidSignature));
@@ -53,7 +51,7 @@ public sealed class PngTests
     [Fact]
     public void FromPng_WhenPolicyIsExceeded_ThrowsBeforeOwnership()
     {
-        var source = CreatePng(2, 2);
+        byte[] source = CreatePng(2, 2);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             GraphicsImage.FromPng(
@@ -67,8 +65,8 @@ public sealed class PngTests
 
     private static byte[] CreatePng(int width, int height)
     {
-        var result = new byte[]
-        {
+        byte[] result =
+        [
             137, 80, 78, 71, 13, 10, 26, 10,
             0, 0, 0, 13, 73, 72, 68, 82,
             0, 0, 0, 0, 0, 0, 0, 0,
@@ -78,7 +76,7 @@ public sealed class PngTests
             0, 0, 0, 0,
             0, 0, 0, 0, 73, 69, 78, 68,
             0, 0, 0, 0,
-        };
+        ];
         WriteInt32(result.AsSpan(16, 4), width);
         WriteInt32(result.AsSpan(20, 4), height);
         return result;

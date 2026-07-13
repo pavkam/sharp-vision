@@ -41,7 +41,7 @@ public sealed class ConsoleInputMode: IDisposable
             return new ConsoleInputMode(restore: null);
         }
 
-        var restore = Run("-g").Trim();
+        string restore = Run("-g").Trim();
 
         try
         {
@@ -85,22 +85,22 @@ public sealed class ConsoleInputMode: IDisposable
 
     private static string Run(params string[] arguments)
     {
-        ProcessStartInfo start = new ProcessStartInfo("/bin/stty")
+        ProcessStartInfo start = new("/bin/stty")
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
 
-        foreach (var argument in arguments)
+        foreach (string argument in arguments)
         {
             start.ArgumentList.Add(argument);
         }
 
         using Process process = Process.Start(start)
             ?? throw new IOException("The terminal raw-mode utility could not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
         return process.ExitCode == 0

@@ -3,17 +3,8 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-
-using BackgroundMode = BackgroundMode;
-using Code = Code;
-using KeyAction = KeyAction;
-using KeyEventArgs = KeyEventArgs;
-using ReleaseReason = ReleaseReason;
-using RoutedEventArgs = RoutedEventArgs;
-using TerminalCanvas = TerminalCanvas;
-using TerminalStyle = TerminalStyle;
+using SharpVision.Input;
+using SharpVision.Terminal.Input;
 
 /// <summary>Displays one owned child on an opaque, framed, anchor-relative surface.</summary>
 public sealed class Popup: Container
@@ -190,12 +181,12 @@ public sealed class Popup: Container
         Rect anchor = Anchor?.Bounds ?? bounds;
         Size desired = SurfaceSize(child, anchor.Width, bounds.Width, bounds.Height);
         PopupPlacement placement = ResolvePlacement(bounds, anchor, desired);
-        var x = placement is PopupPlacement.Left
+        int x = placement is PopupPlacement.Left
             ? anchor.X - desired.Width
             : placement is PopupPlacement.Right
                 ? anchor.Right
                 : anchor.X;
-        var y = placement is PopupPlacement.Above
+        int y = placement is PopupPlacement.Above
             ? anchor.Y - desired.Height
             : placement is PopupPlacement.Below
                 ? anchor.Bottom
@@ -273,10 +264,10 @@ public sealed class Popup: Container
 
     private static Size SurfaceSize(Control child, int anchorWidth, int? availableWidth, int? availableHeight)
     {
-        var contentWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
-        var contentHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
-        var width = Math.Max(anchorWidth, Add(contentWidth, 2));
-        var height = Add(contentHeight, 2);
+        int contentWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
+        int contentHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
+        int width = Math.Max(anchorWidth, Add(contentWidth, 2));
+        int height = Add(contentHeight, 2);
 
         return new Size(
             availableWidth.HasValue ? Math.Min(width, availableWidth.Value) : width,
@@ -303,7 +294,7 @@ public sealed class Popup: Container
 
     private void DrawFrame(TerminalCanvas canvas, TerminalStyle style)
     {
-        for (var x = SurfaceBounds.X; x < SurfaceBounds.Right; x++)
+        for (int x = SurfaceBounds.X; x < SurfaceBounds.Right; x++)
         {
             Rune top = x == SurfaceBounds.X ? Glyphs.TopLeft : x == SurfaceBounds.Right - 1 ? Glyphs.TopRight : Glyphs.Top;
             Rune bottom = x == SurfaceBounds.X ? Glyphs.BottomLeft : x == SurfaceBounds.Right - 1 ? Glyphs.BottomRight : Glyphs.Bottom;
@@ -315,7 +306,7 @@ public sealed class Popup: Container
             }
         }
 
-        for (var y = SurfaceBounds.Y + 1; y < SurfaceBounds.Bottom - 1; y++)
+        for (int y = SurfaceBounds.Y + 1; y < SurfaceBounds.Bottom - 1; y++)
         {
             canvas.DrawRune(Glyphs.Left, new Point(SurfaceBounds.X, y), style, BackgroundMode.Opaque);
 

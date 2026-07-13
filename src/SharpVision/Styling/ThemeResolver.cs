@@ -5,7 +5,6 @@ namespace SharpVision.Styling;
 
 using System.Numerics;
 
-using SharpVision.Controls;
 
 /// <summary>Resolves effective style-property values through the theme cascade.</summary>
 public static class ThemeResolver
@@ -35,7 +34,7 @@ public static class ThemeResolver
 
         T? value = property.DefaultValue;
 
-        if (property.TryGetClassDefault(control.GetType(), out var classDefault))
+        if (property.TryGetClassDefault(control.GetType(), out object? classDefault))
         {
             value = (T) classDefault!;
         }
@@ -79,7 +78,7 @@ public static class ThemeResolver
 
         T? value = property.DefaultValue;
 
-        if (property.TryGetClassDefault(controlType, out var classDefault))
+        if (property.TryGetClassDefault(controlType, out object? classDefault))
         {
             value = (T) classDefault!;
         }
@@ -119,11 +118,11 @@ public static class ThemeResolver
 
         List<State> combos = [];
 
-        for (var mask = 1; mask < 1 << active.Count; mask++)
+        for (int mask = 1; mask < 1 << active.Count; mask++)
         {
             State combo = State.Normal;
 
-            for (var index = 0; index < active.Count; index++)
+            for (int index = 0; index < active.Count; index++)
             {
                 if ((mask & (1 << index)) != 0)
                 {
@@ -141,13 +140,13 @@ public static class ThemeResolver
 
     private static int CompareSpecificity(State left, State right)
     {
-        var byCount = BitOperations.PopCount((uint) left).CompareTo(BitOperations.PopCount((uint) right));
+        int byCount = BitOperations.PopCount((uint) left).CompareTo(BitOperations.PopCount((uint) right));
         return byCount != 0 ? byCount : MaxRank(left).CompareTo(MaxRank(right));
     }
 
     private static int MaxRank(State state)
     {
-        var rank = -1;
+        int rank = -1;
 
         foreach (State overlay in VisualStates.PrecedenceOrder)
         {
@@ -173,21 +172,21 @@ public static class ThemeResolver
             ApplyChain(context.GetStyleChain(control.GetType()), property, state, ref value);
 
             // Farthest scope first so a nearer scope overrides a farther one.
-            for (var index = scopes.Count - 1; index >= 0; index--)
+            for (int index = scopes.Count - 1; index >= 0; index--)
             {
                 ApplyChain(context.GetStyleChain(scopes[index].GetType()), property, state, ref value);
             }
         }
 
-        if (control.InstanceStyle is { } own && TryGetSnapshotValue(own, property, state, out var ownValue))
+        if (control.InstanceStyle is { } own && TryGetSnapshotValue(own, property, state, out object? ownValue))
         {
             value = (T) ownValue!;
         }
 
-        for (var index = scopes.Count - 1; index >= 0; index--)
+        for (int index = scopes.Count - 1; index >= 0; index--)
         {
             if (scopes[index].InstanceStyle is { } scopeStyle &&
-                TryGetSnapshotValue(scopeStyle, property, state, out var scopeValue))
+                TryGetSnapshotValue(scopeStyle, property, state, out object? scopeValue))
             {
                 value = (T) scopeValue!;
             }
@@ -202,7 +201,7 @@ public static class ThemeResolver
     {
         foreach (IControlStyle style in chain)
         {
-            if (TryGetSnapshotValue(style, property, state, out var themed))
+            if (TryGetSnapshotValue(style, property, state, out object? themed))
             {
                 value = (T) themed!;
             }

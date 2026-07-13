@@ -3,15 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using Panel = Stack;
 
@@ -22,7 +14,7 @@ public sealed class StackTests
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {
-        Panel panel = new Panel();
+        Panel panel = new();
 
         panel.Orientation.ShouldBe(Orientation.Vertical);
         panel.Spacing.ShouldBe(0);
@@ -38,9 +30,9 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenVerticalChildrenAreAutomatic_ArrangesSequentialIntrinsicHeights()
     {
-        Panel panel = new Panel { Spacing = 1 };
-        ProbeControl first = new ProbeControl(new Size(3, 2));
-        ProbeControl second = new ProbeControl(new Size(4, 1));
+        Panel panel = new() { Spacing = 1 };
+        ProbeControl first = new(new Size(3, 2));
+        ProbeControl second = new(new Size(4, 1));
         panel.Children.Add(first);
         panel.Children.Add(second);
 
@@ -55,15 +47,15 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenHorizontalLengthsAreMixed_AllocatesFinalAxisExactly()
     {
-        Panel panel = new Panel
+        Panel panel = new()
         {
             Orientation = Orientation.Horizontal,
             Spacing = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        ProbeControl fixedChild = new ProbeControl { Width = Length.Cells(3) };
-        ProbeControl percentChild = new ProbeControl { Width = Length.Percent(25) };
-        ProbeControl starChild = new ProbeControl { Width = Length.Star(1) };
+        ProbeControl fixedChild = new() { Width = Length.Cells(3) };
+        ProbeControl percentChild = new() { Width = Length.Percent(25) };
+        ProbeControl starChild = new() { Width = Length.Star(1) };
         panel.Children.Add(fixedChild);
         panel.Children.Add(percentChild);
         panel.Children.Add(starChild);
@@ -79,13 +71,13 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenMiddleChildIsCollapsed_RemovesItsTrackAndSpacing()
     {
-        Panel panel = new Panel { Spacing = 1 };
-        ProbeControl first = new ProbeControl(new Size(1, 1));
-        ProbeControl collapsed = new ProbeControl(new Size(1, 4))
+        Panel panel = new() { Spacing = 1 };
+        ProbeControl first = new(new Size(1, 1));
+        ProbeControl collapsed = new(new Size(1, 4))
         {
             Visibility = Visibility.Collapsed,
         };
-        ProbeControl last = new ProbeControl(new Size(1, 1));
+        ProbeControl last = new(new Size(1, 1));
         panel.Children.Add(first);
         panel.Children.Add(collapsed);
         panel.Children.Add(last);
@@ -102,9 +94,9 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenChildrenHaveMargins_ConsumesOuterEdgesWithoutCollapsing()
     {
-        Panel panel = new Panel { Spacing = 1 };
-        ProbeControl first = new ProbeControl(new Size(1, 1)) { Margin = new Thickness(1) };
-        ProbeControl second = new ProbeControl(new Size(1, 1));
+        Panel panel = new() { Spacing = 1 };
+        ProbeControl first = new(new Size(1, 1)) { Margin = new Thickness(1) };
+        ProbeControl second = new(new Size(1, 1));
         panel.Children.Add(first);
         panel.Children.Add(second);
 
@@ -119,13 +111,13 @@ public sealed class StackTests
     public async Task Reverse_WhenEnabled_ReversesVisualAndNavigationOrderAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        Panel panel = new Panel { Reverse = true };
-        ProbeControl first = new ProbeControl(new Size(1, 1))
+        Panel panel = new() { Reverse = true };
+        ProbeControl first = new(new Size(1, 1))
         {
             CanFocus = true,
             Content = "A".AsMemory(),
         };
-        ProbeControl second = new ProbeControl(new Size(1, 1))
+        ProbeControl second = new(new Size(1, 1))
         {
             CanFocus = true,
             Content = "B".AsMemory(),
@@ -133,7 +125,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
         new Engine().Layout(panel, new Size(1, 2));
-        using Frame frame = new Frame(new Size(1, 2));
+        using Frame frame = new(new Size(1, 2));
         panel.Render(frame.Canvas);
 
         first.Bounds.Y.ShouldBe(1);
@@ -144,7 +136,7 @@ public sealed class StackTests
         await dispatcher.InvokeAsync(() =>
         {
             panel.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(panel);
+            using FocusManager focus = new(panel);
             focus.MoveNext().ShouldBeTrue();
             focus.Focused.ShouldBeSameAs(second);
             focus.MoveNext().ShouldBeTrue();
@@ -156,16 +148,16 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenViewportChanges_ReallocatesDeferredLengths()
     {
-        Panel panel = new Panel
+        Panel panel = new()
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        ProbeControl percent = new ProbeControl { Width = Length.Percent(50) };
-        ProbeControl star = new ProbeControl { Width = Length.Star(1) };
+        ProbeControl percent = new() { Width = Length.Percent(50) };
+        ProbeControl star = new() { Width = Length.Star(1) };
         panel.Children.Add(percent);
         panel.Children.Add(star);
-        Engine engine = new Engine();
+        Engine engine = new();
 
         engine.Layout(panel, new Size(9, 1));
         percent.Bounds.Width.ShouldBe(5);
@@ -180,9 +172,9 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenFixedTracksOverflowTinyBounds_ContainsEveryChild()
     {
-        Panel panel = new Panel { Orientation = Orientation.Horizontal };
-        ProbeControl first = new ProbeControl { Width = Length.Cells(5) };
-        ProbeControl second = new ProbeControl { Width = Length.Cells(5) };
+        Panel panel = new() { Orientation = Orientation.Horizontal };
+        ProbeControl first = new() { Width = Length.Cells(5) };
+        ProbeControl second = new() { Width = Length.Cells(5) };
         panel.Children.Add(first);
         panel.Children.Add(second);
 
@@ -198,7 +190,7 @@ public sealed class StackTests
     [Fact]
     public void PropertySetter_WhenStackPolicyChanges_InvalidatesPrecisePhase()
     {
-        Panel panel = new Panel();
+        Panel panel = new();
         panel.Clear(Invalidation.All);
 
         panel.Spacing = 1;

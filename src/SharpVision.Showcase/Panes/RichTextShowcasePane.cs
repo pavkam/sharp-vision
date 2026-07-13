@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Text;
 
@@ -13,6 +11,12 @@ using TerminalAttributes = Terminal.Rendering.Attributes;
 /// <summary>Documents and demonstrates the RichText control.</summary>
 internal sealed class RichTextShowcasePane: ShowcasePane
 {
+    private static readonly Color _bright = Color.Indexed(15);
+    private static readonly Color _muted = Color.Indexed(8);
+    private static readonly Color _accent = Color.Indexed(14);
+    private static readonly Color _success = Color.Indexed(10);
+    private static readonly Color _warning = Color.Indexed(11);
+
     internal const string Title = "RichText";
     private const string _catalogSummary =
         "Displays an owned document of styled runs, explicit line breaks, and semantic hyperlinks.";
@@ -38,11 +42,10 @@ internal sealed class RichTextShowcasePane: ShowcasePane
     {
     }
 
-
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlRichText introductory = new ControlRichText
+        ControlRichText introductory = new()
         {
             Wrapping = Wrapping.Word,
             TextAlignment = Alignment.Start,
@@ -50,7 +53,6 @@ internal sealed class RichTextShowcasePane: ShowcasePane
         introductory.Inlines.Add(new ControlRun("Rich ")
         {
             Attributes = TerminalAttributes.Bold,
-            Foreground = Palette.Success,
         });
         introductory.Inlines.Add(new ControlRun("terminal text") { Attributes = TerminalAttributes.Italic });
         introductory.Inlines.Add(new LineBreak());
@@ -58,64 +60,59 @@ internal sealed class RichTextShowcasePane: ShowcasePane
         introductory.Inlines.Add(new Hyperlink("project source", "https://github.com/pavkam")
         {
             Attributes = TerminalAttributes.Underline,
-            Foreground = Palette.Accent,
         });
         examples.Children.Add(PaneSupport.SampleSection(
             "Styled document and OSC 8 link",
             "Runs carry independent foreground, attributes, and hyperlink metadata. The link is explicitly underlined as well as semantic; compatible terminals expose it on hover or open it with their configured gesture.",
             PaneSupport.Card(introductory, Glyphs.Rounded)));
 
-        ControlRichText attributes = new ControlRichText { Wrapping = Wrapping.Word };
-        PaneSupport.AddAttributeLine(attributes, "Bold", "increased intensity", TerminalAttributes.Bold, Palette.Text);
-        PaneSupport.AddAttributeLine(attributes, "Dim", "reduced intensity", TerminalAttributes.Dim, Palette.Muted);
-        PaneSupport.AddAttributeLine(attributes, "Italic", "slanted presentation", TerminalAttributes.Italic, Palette.Accent);
-        PaneSupport.AddAttributeLine(attributes, "Underline", "single underline", TerminalAttributes.Underline, Palette.Success);
-        PaneSupport.AddAttributeLine(attributes, "Blink", "blink requested; terminal policy may suppress it", TerminalAttributes.Blink, Palette.Warning);
-        PaneSupport.AddAttributeLine(attributes, "Rapid blink", "rapid blink requested", TerminalAttributes.RapidBlink, Palette.Warning);
-        PaneSupport.AddAttributeLine(attributes, "Reverse", "foreground and background exchanged", TerminalAttributes.Reverse, Palette.Accent);
-        PaneSupport.AddAttributeLine(attributes, "Strike", "strikethrough presentation", TerminalAttributes.Strike, Palette.Warning);
-        PaneSupport.AddAttributeLine(attributes, "Overline", "line above the text", TerminalAttributes.Overline, Palette.Accent);
+        ControlRichText attributes = new() { Wrapping = Wrapping.Word };
+        PaneSupport.AddAttributeLine(attributes, "Bold", "increased intensity", TerminalAttributes.Bold, _bright);
+        PaneSupport.AddAttributeLine(attributes, "Dim", "reduced intensity", TerminalAttributes.Dim, _muted);
+        PaneSupport.AddAttributeLine(attributes, "Italic", "slanted presentation", TerminalAttributes.Italic, _accent);
+        PaneSupport.AddAttributeLine(attributes, "Underline", "single underline", TerminalAttributes.Underline, _success);
+        PaneSupport.AddAttributeLine(attributes, "Blink", "blink requested; terminal policy may suppress it", TerminalAttributes.Blink, _warning);
+        PaneSupport.AddAttributeLine(attributes, "Rapid blink", "rapid blink requested", TerminalAttributes.RapidBlink, _warning);
+        PaneSupport.AddAttributeLine(attributes, "Reverse", "foreground and background exchanged", TerminalAttributes.Reverse, _accent);
+        PaneSupport.AddAttributeLine(attributes, "Strike", "strikethrough presentation", TerminalAttributes.Strike, _warning);
+        PaneSupport.AddAttributeLine(attributes, "Overline", "line above the text", TerminalAttributes.Overline, _accent);
         attributes.Inlines.Add(new LineBreak());
-        attributes.Inlines.Add(new ControlRun("Curly underline: ") { Foreground = Palette.Muted });
+        attributes.Inlines.Add(new ControlRun("Curly underline: ") { Attributes = TerminalAttributes.Dim });
         attributes.Inlines.Add(new ControlRun("diagnostic emphasis")
         {
-            Foreground = Palette.Text,
+            Foreground = _bright,
             Underline = Terminal.Protocols.Underline.Curly,
-            UnderlineColor = Palette.Warning,
+            UnderlineColor = _warning,
         });
-        PaneSupport.AddAttributeLine(attributes, "Hidden", "concealed run follows", TerminalAttributes.Hidden, Palette.Muted);
-        attributes.Inlines.Add(new ControlRun(" (the concealed sample is intentional)") { Foreground = Palette.Muted });
+        PaneSupport.AddAttributeLine(attributes, "Hidden", "concealed run follows", TerminalAttributes.Hidden, _muted);
+        attributes.Inlines.Add(new ControlRun(" (the concealed sample is intentional)") { Attributes = TerminalAttributes.Dim });
         PaneSupport.AddAttributeLine(
             attributes,
             "Combined",
             "bold + underline + italic",
             TerminalAttributes.Bold | TerminalAttributes.Underline | TerminalAttributes.Italic,
-            Palette.Success);
+            _success);
         examples.Children.Add(PaneSupport.SampleSection(
             "Terminal text attributes",
             "Every row below is a real RichText run. Modern underline shape/color and overline use proved terminal capabilities; unsupported underline shapes become straight and unsupported color or overline is omitted.",
             PaneSupport.Card(attributes, Glyphs.Light)));
 
-        ControlRichText wrapped = new ControlRichText { Width = Length.Cells(30), Wrapping = Wrapping.Word };
+        ControlRichText wrapped = new() { Width = Length.Cells(30), Wrapping = Wrapping.Word };
         wrapped.Inlines.Add(new ControlRun("Resize this narrow reading column. RichText wraps between words while keeping Unicode graphemes intact. "));
         wrapped.Inlines.Add(new Hyperlink("Read the protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
 
-        ControlText activity = new ControlText("Activity log: waiting for an inline mutation.")
-        {
-            Foreground = Palette.Muted,
-        };
-        ControlButton append = new ControlButton
+        ControlText activity = new("Activity log: waiting for an inline mutation.");
+        ControlButton append = new()
         {
             Content = new ControlText("Append a Run"),
-            Style = Palette.Interactive(),
         };
-        var mutation = 0;
+        int mutation = 0;
         (string Name, TerminalAttributes Value, Color Color)[] mutationStyles =
         [
-            (Name: "underline", Value: TerminalAttributes.Underline, Color: Palette.Success),
-            (Name: "strikethrough", Value: TerminalAttributes.Strike, Color: Palette.Warning),
-            (Name: "reverse", Value: TerminalAttributes.Reverse, Color: Palette.Accent),
-            (Name: "bold + italic", Value: TerminalAttributes.Bold | TerminalAttributes.Italic, Color: Palette.Text),
+            (Name: "underline", Value: TerminalAttributes.Underline, Color: _success),
+            (Name: "strikethrough", Value: TerminalAttributes.Strike, Color: _warning),
+            (Name: "reverse", Value: TerminalAttributes.Reverse, Color: _accent),
+            (Name: "bold + italic", Value: TerminalAttributes.Bold | TerminalAttributes.Italic, Color: _bright),
         ];
         append.Click += (_, eventArgs) =>
         {

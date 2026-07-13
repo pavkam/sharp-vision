@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Layout;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 
-using Shouldly;
 
 /// <summary>Verifies immutable layout units and saturated box-model geometry.</summary>
 public sealed class PrimitiveTests
@@ -54,7 +51,7 @@ public sealed class PrimitiveTests
     [Fact]
     public void Constructor_WhenConstraintIsValid_PreservesAxisBounds()
     {
-        Constraint value = new Constraint(width: null, height: 0);
+        Constraint value = new(width: null, height: 0);
 
         value.IsWidthBounded.ShouldBeFalse();
         value.IsHeightBounded.ShouldBeTrue();
@@ -77,7 +74,7 @@ public sealed class PrimitiveTests
         new Thickness(2).ShouldBe(new Thickness(2, 2, 2, 2));
         new Thickness(horizontal: 2, vertical: 3)
             .ShouldBe(new Thickness(2, 3, 2, 3));
-        Thickness value = new Thickness(1, 2, 3, 4);
+        Thickness value = new(1, 2, 3, 4);
 
         value.Horizontal.ShouldBe(4);
         value.Vertical.ShouldBe(6);
@@ -97,7 +94,7 @@ public sealed class PrimitiveTests
     [Fact]
     public void Deflate_WhenThicknessExceedsGeometry_SaturatesAtZero()
     {
-        Thickness value = new Thickness(1, 2, 3, 4);
+        Thickness value = new(1, 2, 3, 4);
 
         value.Deflate(new Size(2, 3)).ShouldBe(default);
         value.Deflate(new Rect(10, 20, 2, 3)).ShouldBe(new Rect(11, 22, 0, 0));

@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Rendering;

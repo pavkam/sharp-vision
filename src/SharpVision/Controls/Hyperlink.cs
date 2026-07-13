@@ -5,9 +5,6 @@ namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = TerminalAttributes;
-using TerminalStyle = TerminalStyle;
-
 /// <summary>Defines styled text carrying a semantic terminal hyperlink target.</summary>
 public sealed class Hyperlink: Inline
 {
@@ -51,7 +48,7 @@ public sealed class Hyperlink: Inline
         get;
         set
         {
-            var valid = ValidateTarget(value);
+            string valid = ValidateTarget(value);
             VerifyMutable();
 
             if (field == valid)

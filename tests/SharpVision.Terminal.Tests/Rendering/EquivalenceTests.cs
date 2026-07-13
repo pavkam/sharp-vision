@@ -3,13 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using System.Buffers;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Terminal.Tests.Support;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
@@ -35,10 +30,10 @@ public sealed class EquivalenceTests
     {
         using Frame front = Create(frontText);
         using Frame back = Create(backText);
-        VirtualScreen incremental = new VirtualScreen(back.Size);
+        VirtualScreen incremental = new(back.Size);
         incremental.Apply(Encode(null, front));
         incremental.Apply(Encode(front, back));
-        VirtualScreen full = new VirtualScreen(back.Size);
+        VirtualScreen full = new(back.Size);
         full.Apply(Encode(null, back));
 
         incremental.ShouldMatch(back);
@@ -52,18 +47,18 @@ public sealed class EquivalenceTests
     [Fact]
     public void Encode_WhenStyleAndCursorChange_AgreesWithFullRender()
     {
-        using Frame front = new Frame(new Size(2, 1));
-        using Frame back = new Frame(new Size(2, 1));
+        using Frame front = new(new Size(2, 1));
+        using Frame back = new(new Size(2, 1));
         _ = front.Canvas.Draw("ab".AsSpan(), new Point(0, 0));
         _ = back.Canvas.Draw(
             "ab".AsSpan(),
             new Point(0, 0),
             new Style(attributes: Attributes.Bold, hyperlink: "https://example.test"));
         back.SetCursor(new Point(1, 0), visible: true);
-        VirtualScreen incremental = new VirtualScreen(back.Size);
+        VirtualScreen incremental = new(back.Size);
         incremental.Apply(Encode(null, front));
         incremental.Apply(Encode(front, back));
-        VirtualScreen full = new VirtualScreen(back.Size);
+        VirtualScreen full = new(back.Size);
         full.Apply(Encode(null, back));
 
         incremental.ShouldMatch(back);
@@ -76,13 +71,13 @@ public sealed class EquivalenceTests
     [Fact]
     public void Encode_WhenModernDecorationsAreSupported_AgreesWithFullRender()
     {
-        using Frame frame = new Frame(new Size(2, 1));
-        Style style = new Style(
+        using Frame frame = new(new Size(2, 1));
+        Style style = new(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(12, 34, 56));
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
-        VirtualScreen screen = new VirtualScreen(frame.Size);
+        VirtualScreen screen = new(frame.Size);
 
         screen.Apply(Encode(null, frame, ModernDecorationCapabilities));
 
@@ -103,7 +98,7 @@ public sealed class EquivalenceTests
         Frame back,
         TerminalCapabilities? capabilities = null)
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new();
         _ = Encoder.Encode(
             front,
             back,
@@ -114,7 +109,7 @@ public sealed class EquivalenceTests
 
     private static Frame Create(string value)
     {
-        Frame frame = new Frame(new Size(3, 1));
+        Frame frame = new(new Size(3, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

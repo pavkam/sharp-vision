@@ -28,7 +28,7 @@ public static class Modes
 
         Span<byte> parameters = stackalloc byte[11];
         parameters[0] = (byte) '?';
-        var formatted = Utf8Formatter.TryFormat(mode, parameters[1..], out var written);
+        bool formatted = Utf8Formatter.TryFormat(mode, parameters[1..], out int written);
         Debug.Assert(formatted, "Ten bytes must hold a positive Int32.");
         writer.Csi(parameters[..(written + 1)], [], enabled ? (byte) 'h' : (byte) 'l');
     }

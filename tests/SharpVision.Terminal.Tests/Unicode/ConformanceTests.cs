@@ -4,11 +4,9 @@
 namespace SharpVision.Terminal.Tests.Unicode;
 
 using System.Globalization;
-using System.Text;
 
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies every official Unicode 17 extended-grapheme conformance case.
@@ -21,17 +19,17 @@ public sealed class ConformanceTests
     [Fact]
     public void Enumerate_WhenUnicodeConformanceCasesAreRead_MatchesEveryBoundary()
     {
-        var path = Path.Combine(
+        string path = Path.Combine(
             AppContext.BaseDirectory,
             "Unicode",
             "Data",
             "GraphemeBreakTest-17.0.0.txt");
-        var lineNumber = 0;
+        int lineNumber = 0;
 
-        foreach (var rawLine in File.ReadLines(path))
+        foreach (string rawLine in File.ReadLines(path))
         {
             lineNumber++;
-            var content = rawLine.Split('#', 2)[0].Trim();
+            string content = rawLine.Split('#', 2)[0].Trim();
 
             if (content.Length == 0)
             {
@@ -39,7 +37,7 @@ public sealed class ConformanceTests
             }
 
             Case test = Parse(content);
-            List<int> actual = new List<int> { 0 };
+            List<int> actual = [0];
 
             foreach (Grapheme segment in Graphemes.Enumerate(test.Value.AsSpan()))
             {
@@ -53,11 +51,11 @@ public sealed class ConformanceTests
 
     private static Case Parse(string content)
     {
-        var tokens = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        StringBuilder value = new StringBuilder();
-        List<int> boundaries = new List<int>();
+        string[] tokens = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        StringBuilder value = new();
+        List<int> boundaries = [];
 
-        for (var index = 0; index < tokens.Length; index += 2)
+        for (int index = 0; index < tokens.Length; index += 2)
         {
             tokens[index].ShouldBeOneOf("÷", "×");
 
@@ -68,7 +66,7 @@ public sealed class ConformanceTests
 
             if (index + 1 < tokens.Length)
             {
-                var scalar = int.Parse(tokens[index + 1], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                int scalar = int.Parse(tokens[index + 1], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 _ = value.Append(new Rune(scalar));
             }
         }

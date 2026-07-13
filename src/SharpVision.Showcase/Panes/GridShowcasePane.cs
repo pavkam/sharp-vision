@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the Grid control.</summary>
 internal sealed class GridShowcasePane: ShowcasePane
@@ -39,7 +37,7 @@ internal sealed class GridShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlGrid grid = new ControlGrid
+        ControlGrid grid = new()
         {
             Width = Length.Cells(40),
             Height = Length.Cells(9),

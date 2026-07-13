@@ -21,7 +21,7 @@ public sealed class NegotiationOptions
         Limits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        Dictionary<string, string?> copy = new Dictionary<string, string?>(StringComparer.Ordinal);
+        Dictionary<string, string?> copy = new(StringComparer.Ordinal);
 
         foreach (KeyValuePair<string, string?> pair in environment)
         {

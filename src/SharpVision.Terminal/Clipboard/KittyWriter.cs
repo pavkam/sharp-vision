@@ -98,15 +98,15 @@ public static class KittyWriter
             throw new ArgumentException("Clipboard data exceeds the configured byte limit.", nameof(data));
         }
 
-        var mimeLength = Base64.GetMaxEncodedToUtf8Length(mime.Length);
-        var metadataLength = checked("type=wdata:mime="u8.Length + mimeLength);
+        int mimeLength = Base64.GetMaxEncodedToUtf8Length(mime.Length);
+        int metadataLength = checked("type=wdata:mime="u8.Length + mimeLength);
 
         if (metadataLength > _maxMetadataBytes)
         {
             throw new ArgumentException("Encoded MIME metadata exceeds the protocol limit.", nameof(mime));
         }
 
-        var rented = metadataLength > _stackLimit
+        byte[]? rented = metadataLength > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(metadataLength)
             : null;
         Span<byte> metadata = rented is null
@@ -120,7 +120,7 @@ public static class KittyWriter
                 mime,
                 metadata["type=wdata:mime="u8.Length..],
                 out _,
-                out var mimeWritten);
+                out int mimeWritten);
 
             if (mimeStatus != OperationStatus.Done || mimeWritten != mimeLength)
             {
@@ -133,9 +133,9 @@ public static class KittyWriter
                 return;
             }
 
-            for (var offset = 0; offset < data.Length; offset += _chunkBytes)
+            for (int offset = 0; offset < data.Length; offset += _chunkBytes)
             {
-                var length = Math.Min(_chunkBytes, data.Length - offset);
+                int length = Math.Min(_chunkBytes, data.Length - offset);
                 WritePacket(
                     writer,
                     metadata[..metadataLength],
@@ -165,15 +165,15 @@ public static class KittyWriter
         ValidateMime(targetMime, nameof(targetMime));
         ValidateMimeList(aliases, nameof(aliases));
 
-        var mimeLength = Base64.GetMaxEncodedToUtf8Length(targetMime.Length);
-        var metadataLength = checked("type=walias:mime="u8.Length + mimeLength);
+        int mimeLength = Base64.GetMaxEncodedToUtf8Length(targetMime.Length);
+        int metadataLength = checked("type=walias:mime="u8.Length + mimeLength);
 
         if (metadataLength > _maxMetadataBytes)
         {
             throw new ArgumentException("Encoded MIME metadata exceeds the protocol limit.", nameof(targetMime));
         }
 
-        var rented = metadataLength > _stackLimit
+        byte[]? rented = metadataLength > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(metadataLength)
             : null;
         Span<byte> metadata = rented is null
@@ -187,7 +187,7 @@ public static class KittyWriter
                 targetMime,
                 metadata["type=walias:mime="u8.Length..],
                 out _,
-                out var written);
+                out int written);
 
             if (status != OperationStatus.Done || written != mimeLength)
             {
@@ -221,7 +221,7 @@ public static class KittyWriter
 
     private static int AppendBase64(ReadOnlySpan<byte> value, Span<byte> destination)
     {
-        OperationStatus status = Base64.EncodeToUtf8(value, destination, out _, out var written);
+        OperationStatus status = Base64.EncodeToUtf8(value, destination, out _, out int written);
 
         return status == OperationStatus.Done
             ? written
@@ -236,7 +236,7 @@ public static class KittyWriter
 
     private static bool IsIdentifier(ReadOnlySpan<byte> value)
     {
-        foreach (var item in value)
+        foreach (byte item in value)
         {
             if (item is not (
                 (>= (byte) 'a' and <= (byte) 'z') or
@@ -255,7 +255,7 @@ public static class KittyWriter
     {
         while (!value.IsEmpty)
         {
-            if (Rune.DecodeFromUtf8(value, out _, out var consumed) != OperationStatus.Done)
+            if (Rune.DecodeFromUtf8(value, out _, out int consumed) != OperationStatus.Done)
             {
                 return false;
             }
@@ -283,7 +283,7 @@ public static class KittyWriter
             throw new ArgumentException("A MIME type cannot be empty.", parameterName);
         }
 
-        foreach (var item in value)
+        foreach (byte item in value)
         {
             if (item is < 0x21 or > 0x7e or (byte) ':' or (byte) ';')
             {
@@ -303,7 +303,7 @@ public static class KittyWriter
 
         while (!remaining.IsEmpty)
         {
-            var separator = remaining.IndexOf((byte) ' ');
+            int separator = remaining.IndexOf((byte) ' ');
             ReadOnlySpan<byte> mime = separator < 0 ? remaining : remaining[..separator];
             ValidateMime(mime, parameterName);
             remaining = separator < 0 ? [] : remaining[(separator + 1)..];
@@ -340,11 +340,11 @@ public static class KittyWriter
         ReadOnlySpan<byte> rawPayload,
         bool hasPayload)
     {
-        var payloadLength = hasPayload
+        int payloadLength = hasPayload
             ? Base64.GetMaxEncodedToUtf8Length(rawPayload.Length)
             : 0;
-        var length = checked(metadata.Length + (hasPayload ? payloadLength + 1 : 0));
-        var rented = length > _stackLimit
+        int length = checked(metadata.Length + (hasPayload ? payloadLength + 1 : 0));
+        byte[]? rented = length > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
         Span<byte> packet = rented is null
@@ -354,7 +354,7 @@ public static class KittyWriter
         try
         {
             metadata.CopyTo(packet);
-            var written = metadata.Length;
+            int written = metadata.Length;
 
             if (hasPayload)
             {
@@ -393,9 +393,9 @@ public static class KittyWriter
             throw new ArgumentException("A password requires a human-readable name.", nameof(name));
         }
 
-        var passwordLength = Base64.GetMaxEncodedToUtf8Length(password.Length);
-        var nameLength = Base64.GetMaxEncodedToUtf8Length(name.Length);
-        var length = checked(
+        int passwordLength = Base64.GetMaxEncodedToUtf8Length(password.Length);
+        int nameLength = Base64.GetMaxEncodedToUtf8Length(name.Length);
+        int length = checked(
             "type="u8.Length + type.Length +
             (selection == Selection.Primary ? ":loc=primary"u8.Length : 0) +
             (id.IsEmpty ? 0 : ":id="u8.Length + id.Length) +
@@ -407,7 +407,7 @@ public static class KittyWriter
             throw new ArgumentException("Encoded clipboard metadata exceeds the protocol limit.");
         }
 
-        var rented = length > _stackLimit
+        byte[]? rented = length > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
         Span<byte> metadata = rented is null
@@ -416,7 +416,7 @@ public static class KittyWriter
 
         try
         {
-            var position = AppendLiteral("type="u8, metadata, 0);
+            int position = AppendLiteral("type="u8, metadata, 0);
             position = AppendLiteral(type, metadata, position);
 
             if (selection == Selection.Primary)

@@ -7,37 +7,38 @@ control API. It contains no behavior unavailable to ordinary library users.
 
 ```mermaid
 flowchart LR
-    PaneCatalog["Pane catalog"] --> Sidebar["Framed dashboard sidebar"]
-    PaneCatalog --> Page["Selected showcase page"]
+    Gallery["Gallery catalog"] --> Sidebar["Framed dashboard sidebar"]
+    Gallery --> Page["Selected showcase pane"]
     Page --> Variants["Interactive variants"]
     Page --> RichText["RichText documentation"]
     Page --> Properties["Property guidance"]
     Page --> Interaction["Input guidance"]
 ```
 
-Each concrete control lives in `src/SharpVision.Showcase/Panes/<Control>/`. That
-directory owns the pane metadata, live example factory, and any pane-specific
-probe controls. `PaneCatalog` lists every `*ShowcasePane` factory; `PaneSupport`
-holds shared composition helpers.
+Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
+`*ShowcasePane` subclass. Each pane is a real `Stack` that composes its child
+tree in the constructor, matching how application authors use the toolkit.
+`PaneSupport` holds shared composition helpers for specimens and cards.
 
-The sidebar contains one entry for each concrete shipped control: Border,
-Button, Canvas, CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu, Overlay,
-Popup, RadioButton, RichText, ScrollBar, ScrollView, Shadow, Stack, Table, Text,
-TextInput, and Window. Foundation types and unimplemented specifications are not
-navigation entries.
+`Gallery` owns the stable catalog of pane titles and factories. The sidebar
+contains one entry for each concrete shipped control: Border, Button, Canvas,
+CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu, Overlay, Popup,
+RadioButton, RichText, ScrollBar, ScrollView, Shadow, Stack, Table, Text,
+TextInput, Window, and Theming. Foundation types and unimplemented
+specifications are not navigation entries.
 
-Each immutable catalog `Page` owns the exact name, purpose, structured
-interaction rows, meaningful `PropertyDescription` values, and a factory for
-fresh live examples. Its page shell uses public Stack, RichText, Table, Border,
-and layout APIs to render Overview, a Practical recipe, Examples, Properties,
-and a standalone Interaction table. Every interaction row records the input
-path, the control behavior, and the observable result; interaction prose is not
-hidden inside a decorative card. The recipe is one borderless, word-wrapped
-RichText narrative that combines the control's purpose, every supported
-interaction path, and responsive exploration guidance. Its text reflows as the
-page narrows, as do the heading, section labels, property table, and interaction
-table. Examples use only behavior available to ordinary application code;
-reflection and private render paths are forbidden.
+Each `ShowcasePane` owns the exact title, purpose, structured interaction rows,
+meaningful `PropertyDescription` values, and live examples built through
+`BuildExamples`. Its page shell uses public Stack, RichText, Table, Border, and
+layout APIs to render Overview, a Practical recipe, Examples, Properties, and a
+standalone Interaction table. Every interaction row records the input path, the
+control behavior, and the observable result; interaction prose is not hidden
+inside a decorative card. The recipe is one borderless, word-wrapped RichText
+narrative that combines the control's purpose, every supported interaction path,
+and responsive exploration guidance. Its text reflows as the page narrows, as do
+the heading, section labels, property table, and interaction table. Examples use
+only behavior available to ordinary application code; reflection and private
+render paths are forbidden.
 
 Canvas and Shadow demonstrate visual behavior as several labeled, framed live
 specimens rather than a single crowded sample. Each stage keeps the control's
@@ -56,8 +57,8 @@ when the captured pane is converted to PNG.
 The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
 `ScrollView` in the remaining space. The sidebar owns product identity,
 component-only stateful navigation entries, and compact interaction hints; its
-selected, focused, hovered, and pressed states use a shared indexed-color
-palette. The executable app explicitly requests xterm any-event (`1003`) SGR
+selected, focused, hovered, and pressed states follow the active application
+theme. The executable app explicitly requests xterm any-event (`1003`) SGR
 cell mouse reporting through an application-level capability override and runs
 through `Application.RunConsoleAsync` with a `Gallery` screen, which owns the
 Unix raw-input lease and console transport while running. The terminal library's
@@ -79,8 +80,8 @@ the preview as text changes, while a Button-disclosed, scrollable List exposes
 the 400 audited catalog names and loads only the font the user selects. The
 ScrollBar page includes an explicit live value label beside the draggable
 horizontal thumb so capture, drag geometry, and commit are directly observable.
-Every showcase `TextInput` applies the dedicated editor palette, and the control
-paints that resolved background across its entire committed box. Empty space is
+Every showcase `TextInput` inherits the active theme, and the control
+paints its resolved background across its entire committed box. Empty space is
 therefore visibly part of the input rather than blending into its card.
 
 On Unix, `Application.RunConsoleAsync` reads directly from `/dev/tty` through a

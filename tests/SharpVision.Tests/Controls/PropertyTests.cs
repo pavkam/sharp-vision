@@ -3,13 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 /// <summary>Verifies validated mutable control properties and invalidation.</summary>
 public sealed class PropertyTests
@@ -18,7 +12,7 @@ public sealed class PropertyTests
     [Fact]
     public void Constructor_WhenCreated_HasDocumentedDefaults()
     {
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
 
         control.Width.ShouldBe(Length.Auto);
         control.Height.ShouldBe(Length.Auto);
@@ -43,7 +37,7 @@ public sealed class PropertyTests
     [Fact]
     public void Layout_WhenHorizontalAlignmentIsDefault_UsesIntrinsicContentWidth()
     {
-        ProbeControl control = new ProbeControl(new Size(3, 2));
+        ProbeControl control = new(new Size(3, 2));
 
         new Engine().Layout(control, new Size(10, 6));
 
@@ -54,7 +48,7 @@ public sealed class PropertyTests
     [Fact]
     public void HitTest_WhenControlIsTransparent_RejectsPointerTargetOnly()
     {
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             Bounds = new Rect(0, 0, 2, 1),
             CanFocus = true,
@@ -70,7 +64,7 @@ public sealed class PropertyTests
     [Fact]
     public void ConstraintSetter_WhenValueIsInvalid_ThrowsBeforeMutation()
     {
-        ProbeControl control = new ProbeControl
+        ProbeControl control = new()
         {
             MinWidth = 3,
             MaxHeight = 8,
@@ -90,7 +84,7 @@ public sealed class PropertyTests
     [Fact]
     public void PropertySetter_WhenValueChanges_InvalidatesRequiredPhases()
     {
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         control.Clear(Invalidation.All);
 
         control.Width = Length.Cells(10);
@@ -117,8 +111,8 @@ public sealed class PropertyTests
     [Fact]
     public void Width_WhenChanged_RaisesPropertyChangedOnceAfterMutation()
     {
-        ProbeControl control = new ProbeControl();
-        List<(string? Name, Length Width)> observed = new List<(string? Name, Length Width)>();
+        ProbeControl control = new();
+        List<(string? Name, Length Width)> observed = [];
         control.PropertyChanged += (_, eventArgs) =>
             observed.Add((eventArgs.PropertyName, control.Width));
 
@@ -132,8 +126,8 @@ public sealed class PropertyTests
     [Fact]
     public void IsEnabled_WhenAncestorChanges_UpdatesDescendantEffectiveState()
     {
-        ProbeContainer parent = new ProbeContainer();
-        ProbeControl child = new ProbeControl();
+        ProbeContainer parent = new();
+        ProbeControl child = new();
         parent.Children.Add(child);
         parent.Clear(Invalidation.All);
         child.Clear(Invalidation.All);
@@ -151,7 +145,7 @@ public sealed class PropertyTests
     public async Task Width_WhenAttachedAndSetOffThread_ThrowsBeforeMutationAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         await dispatcher.InvokeAsync(
             () => control.Attach(dispatcher),
             TestContext.Current.CancellationToken);
@@ -166,7 +160,7 @@ public sealed class PropertyTests
     public async Task IsHitTestVisible_WhenAttachedAndSetOffThread_ThrowsBeforeMutationAsync()
     {
         await using Dispatcher dispatcher = Dispatcher.Start();
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
         await dispatcher.InvokeAsync(
             () => control.Attach(dispatcher),
             TestContext.Current.CancellationToken);
@@ -180,7 +174,7 @@ public sealed class PropertyTests
     [Fact]
     public void Setter_WhenStateIsInvalid_ThrowsDocumentedException()
     {
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => control.Visibility = (Visibility) int.MaxValue);

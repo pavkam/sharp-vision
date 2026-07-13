@@ -3,14 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
 using SharpVision.Fonts;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies FIGletText validation, layout, caching, and exact cells.</summary>
 public sealed class FigletTextTests
@@ -20,7 +14,7 @@ public sealed class FigletTextTests
     public void Constructor_WhenFontIsProvided_UsesDocumentedDefaults()
     {
         FigletFont font = FigletCatalog.Default.Load("Standard");
-        FigletText control = new FigletText(font);
+        FigletText control = new(font);
 
         control.Font.ShouldBeSameAs(font);
         control.Content.ShouldBe(string.Empty);
@@ -31,7 +25,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Layout_WhenContentIsSet_MeasuresRenderedFontOutput()
     {
-        FigletText control = new FigletText(FigletCatalog.Default.Load("Standard"))
+        FigletText control = new(FigletCatalog.Default.Load("Standard"))
         {
             Content = "H",
         };
@@ -45,12 +39,12 @@ public sealed class FigletTextTests
     [Fact]
     public void Render_WhenContentIsSet_WritesExactFigletCells()
     {
-        FigletText control = new FigletText(FigletCatalog.Default.Load("Standard"))
+        FigletText control = new(FigletCatalog.Default.Load("Standard"))
         {
             Content = "H",
         };
         new Engine().Layout(control, new Size(7, 6));
-        using Frame frame = new Frame(new Size(7, 6));
+        using Frame frame = new(new Size(7, 6));
 
         control.Render(frame.Canvas);
 
@@ -64,7 +58,7 @@ public sealed class FigletTextTests
     public void Font_WhenValueIsNull_ThrowsBeforeMutation()
     {
         FigletFont font = FigletCatalog.Default.Load("Standard");
-        FigletText control = new FigletText(font);
+        FigletText control = new(font);
 
         _ = Should.Throw<ArgumentNullException>(() => control.Font = null!);
 

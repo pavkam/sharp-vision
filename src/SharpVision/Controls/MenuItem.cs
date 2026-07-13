@@ -3,12 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-
-using BackgroundMode = BackgroundMode;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines one focusable command, check, radio, or separator entry in a <see cref="Menu"/>.</summary>
 public sealed class MenuItem: Pressable
@@ -168,7 +162,7 @@ public sealed class MenuItem: Pressable
 
         if (Kind == MenuItemKind.Separator)
         {
-            for (var x = Bounds.X; x < Bounds.Right; x++)
+            for (int x = Bounds.X; x < Bounds.Right; x++)
             {
                 _ = canvas.Draw("─".AsSpan(), new Point(x, Bounds.Y), style, background: BackgroundMode.Transparent);
             }
@@ -176,7 +170,7 @@ public sealed class MenuItem: Pressable
             return;
         }
 
-        var marker = Kind switch
+        string marker = Kind switch
         {
             MenuItemKind.Check => _isChecked ? "[x] " : "[ ] ",
             MenuItemKind.Radio => _isChecked ? "◉ " : "○ ",

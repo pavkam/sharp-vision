@@ -183,7 +183,7 @@ public sealed class Session: IAsyncDisposable
         IProtocolSink routeSink = negotiator is null
             ? _sink
             : new NegotiationSink(_sink, negotiator);
-        using ProtocolRouter router = new ProtocolRouter(routeSink, inputOptions, _timeProvider);
+        using ProtocolRouter router = new(routeSink, inputOptions, _timeProvider);
 
         if (negotiator is null)
         {
@@ -192,21 +192,21 @@ public sealed class Session: IAsyncDisposable
         }
         else
         {
-            ArrayBufferWriter<byte> queries = new ArrayBufferWriter<byte>();
+            ArrayBufferWriter<byte> queries = new();
             negotiator.Start(queries);
             await _transport.WriteAsync(queries.WrittenMemory, cancellationToken)
                 .ConfigureAwait(false);
             await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var buffer = ArrayPool<byte>.Shared.Rent(_options.ReadBufferSize);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(_options.ReadBufferSize);
         using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Task? deadline = negotiator is null
             ? null
             : DelayUntilAsync(negotiator.Deadline, linked.Token);
-        var ready = negotiator is null;
-        var hasPendingResize = false;
-        Dimensions pendingResize = default(Dimensions);
+        bool ready = negotiator is null;
+        bool hasPendingResize = false;
+        Dimensions pendingResize = default;
 
         try
         {
@@ -260,7 +260,7 @@ public sealed class Session: IAsyncDisposable
                     continue;
                 }
 
-                var count = await read.ConfigureAwait(false);
+                int count = await read.ConfigureAwait(false);
 
                 if (count == 0)
                 {
@@ -328,11 +328,11 @@ public sealed class Session: IAsyncDisposable
 
     private async ValueTask CleanupAsync()
     {
-        using CancellationTokenSource timeout = new CancellationTokenSource(
+        using CancellationTokenSource timeout = new(
             _options.CleanupTimeout,
             _timeProvider);
 
-        for (var index = _leases.Count - 1; index >= 0; index--)
+        for (int index = _leases.Count - 1; index >= 0; index--)
         {
             try
             {
@@ -353,8 +353,8 @@ public sealed class Session: IAsyncDisposable
         bool enabled,
         CancellationToken cancellationToken)
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         switch (lease)
         {

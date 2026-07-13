@@ -3,12 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using System.Buffers;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies exact Kitty keyboard commands, status replies, and query ordering.
@@ -21,8 +18,8 @@ public sealed class KeyboardTests
     [Fact]
     public void Commands_WhenValuesAreValid_WriteExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         Keyboard.Query(writer);
         Keyboard.Push(writer, Enhancement.Disambiguate | Enhancement.EventTypes);
@@ -40,8 +37,8 @@ public sealed class KeyboardTests
     [Fact]
     public void Commands_WhenValueIsInvalid_ThrowBeforeWriting()
     {
-        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
-        Writer writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new();
+        Writer writer = new(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Keyboard.Push(writer, (Enhancement) 32));
@@ -72,7 +69,7 @@ public sealed class KeyboardTests
     [Fact]
     public void Match_WhenDeviceAttributesArriveFirst_ClassifiesKeyboardUnsupported()
     {
-        QueryTracker tracker = new QueryTracker();
+        QueryTracker tracker = new();
         _ = tracker.TryRegister(QueryKind.Keyboard, null, out _);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
         _ = Responses.TryCsi("?1"u8, [], (byte) 'c', out Response response);
@@ -89,7 +86,7 @@ public sealed class KeyboardTests
     [Fact]
     public void Match_WhenKeyboardStatusArrivesFirst_MatchesBothQueries()
     {
-        QueryTracker tracker = new QueryTracker();
+        QueryTracker tracker = new();
         _ = tracker.TryRegister(QueryKind.Keyboard, null, out _);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
         _ = Responses.TryCsi("?3"u8, [], (byte) 'u', out Response keyboard);

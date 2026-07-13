@@ -3,16 +3,8 @@
 
 namespace SharpVision.Controls;
 
-using System.Text;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-
-using BackgroundMode = BackgroundMode;
-using KeyAction = KeyAction;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a focusable mutually exclusive selection control.</summary>
 public sealed class RadioButton: Pressable
@@ -116,7 +108,7 @@ public sealed class RadioButton: Pressable
     {
         if (Content is { } content)
         {
-            var consumed = Math.Min(2, bounds.Width);
+            int consumed = Math.Min(2, bounds.Width);
             content.Arrange(
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
                 widthResolved: true,
@@ -132,9 +124,9 @@ public sealed class RadioButton: Pressable
             return;
         }
 
-        Rune glyph = new Rune(IsChecked ? '◉' : '○');
+        Rune glyph = new(IsChecked ? '◉' : '○');
         Span<char> buffer = stackalloc char[2];
-        var length = glyph.EncodeToUtf16(buffer);
+        int length = glyph.EncodeToUtf16(buffer);
         TerminalStyle style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
@@ -159,7 +151,7 @@ public sealed class RadioButton: Pressable
             return;
         }
 
-        var reverse = key.Stroke.Code is Code.Left or Code.Up;
+        bool reverse = key.Stroke.Code is Code.Left or Code.Up;
 
         if (reverse || key.Stroke.Code is Code.Right or Code.Down)
         {
@@ -212,7 +204,7 @@ public sealed class RadioButton: Pressable
 
     private static int Add(int left, int right)
     {
-        var value = (long) left + right;
+        long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 

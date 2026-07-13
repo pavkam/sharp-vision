@@ -42,7 +42,7 @@ public sealed class Image
     {
         Limits policy = limits ?? Limits.Default;
         policy.Validate(size, source.Length);
-        var expected = checked((long) size.Width * size.Height * 4);
+        long expected = checked((long) size.Width * size.Height * 4);
 
         return source.Length != expected
             ? throw new ArgumentException(

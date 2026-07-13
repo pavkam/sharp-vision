@@ -19,13 +19,13 @@ internal static class LineResolver
     {
         Connections connections = left.Connections | right.Connections;
         LineWeight weight = (LineWeight) Math.Max((int) left.Line.Weight, (int) right.Line.Weight);
-        var straight = connections is (Connections.Left | Connections.Right) or
+        bool straight = connections is (Connections.Left | Connections.Right) or
             (Connections.Up | Connections.Down);
         LinePattern pattern = straight && left.Line.Pattern == right.Line.Pattern
             ? left.Line.Pattern
             : LinePattern.Solid;
-        var rounded = left.Line.HasRoundedCorners && right.Line.HasRoundedCorners;
-        var ascii = left.Line.IsAscii && right.Line.IsAscii;
+        bool rounded = left.Line.HasRoundedCorners && right.Line.HasRoundedCorners;
+        bool ascii = left.Line.IsAscii && right.Line.IsAscii;
         return new Topology(connections, new LineStyle(weight, pattern, rounded, ascii));
     }
 
@@ -37,7 +37,7 @@ internal static class LineResolver
     {
         return value.Line.IsAscii || ambiguousWidth == Ambiguous.Wide
             ? new Rune(ResolveAscii(value.Connections))
-            : TryResolvePattern(value, out var patterned)
+            : TryResolvePattern(value, out int patterned)
                 ? new Rune(patterned)
                 : ResolveSolid(value);
     }
@@ -273,7 +273,7 @@ internal static class LineResolver
     };
 
     private static Rune ResolveSolid(Topology value) =>
-        value.Line.HasRoundedCorners && TryResolveRounded(value.Connections, out var rounded)
+        value.Line.HasRoundedCorners && TryResolveRounded(value.Connections, out int rounded)
             ? new Rune(rounded)
             : new Rune(value.Line.Weight switch
             {

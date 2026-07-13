@@ -3,13 +3,9 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Controls;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -20,10 +16,10 @@ public sealed class ScreenTests
     [Fact]
     public async Task Attach_WhenApplicationStarts_RunsHooksInOrderAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        using ProbeScreen screen = new ProbeScreen();
-        await using Application application = new Application(
+        using ProbeScreen screen = new();
+        await using Application application = new(
             screen,
             terminal,
             terminal,
@@ -36,7 +32,7 @@ public sealed class ScreenTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    private sealed class ProbeScreen: Screen
+    private sealed class ProbeScreen: SharpVision.Controls.Screen
     {
         internal ProbeScreen() => Order = [];
 

@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Rendering;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies seeded frame mutations preserve wide-cell ownership invariants.
@@ -21,7 +18,7 @@ public sealed class FrameRandomizedTests
     [Fact]
     public void Mutate_WhenOperationsAreRandomized_PreservesOwnership()
     {
-        Random random = new Random(_seed);
+        Random random = new(_seed);
         (string Source, string Presentation)[] values =
         [
             (Source: "a", Presentation: "a"),
@@ -34,11 +31,11 @@ public sealed class FrameRandomizedTests
             (Source: "\ufe0f", Presentation: "�"),
             (Source: "🏽", Presentation: "�"),
         ];
-        using Frame frame = new Frame(new Size(20, 5));
+        using Frame frame = new(new Size(20, 5));
 
-        for (var operation = 0; operation < 1_000; operation++)
+        for (int operation = 0; operation < 1_000; operation++)
         {
-            Point point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
+            Point point = new(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
 
             if (random.Next(4) == 0)
             {
@@ -64,13 +61,13 @@ public sealed class FrameRandomizedTests
 
     private static void AssertOwnership(Frame frame, int operation)
     {
-        for (var y = 0; y < frame.Size.Height; y++)
+        for (int y = 0; y < frame.Size.Height; y++)
         {
-            for (var x = 0; x < frame.Size.Width; x++)
+            for (int x = 0; x < frame.Size.Width; x++)
             {
-                Point point = new Point(x, y);
+                Point point = new(x, y);
                 CellInfo cell = frame.GetCell(point);
-                var message = $"Seed {_seed}, operation {operation}, cell ({x},{y}).";
+                string message = $"Seed {_seed}, operation {operation}, cell ({x},{y}).";
 
                 if (cell.IsContinuation)
                 {

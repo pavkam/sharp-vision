@@ -3,15 +3,9 @@
 
 namespace SharpVision.Tests.Integration;
 
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Runtime;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 using TerminalOptions = Terminal.Runtime.Options;
 
@@ -23,23 +17,23 @@ public sealed class PixelPointerTests
     public async Task Input_WhenCapturedReleaseCannotMap_CancelsPressWithoutActivationAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(
             new Size(10, 4),
             new Size(80, 64)));
-        ProbePressable root = new ProbePressable
+        ProbePressable root = new()
         {
             Width = Length.Cells(10),
             Height = Length.Cells(4),
         };
-        await using Application application = new Application(
+        await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
-        TaskCompletionSource primary = new TaskCompletionSource(
+        TaskCompletionSource primary = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource secondary = new TaskCompletionSource(
+        TaskCompletionSource secondary = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
@@ -73,23 +67,23 @@ public sealed class PixelPointerTests
     public async Task Input_WhenPixelCannotMap_DoesNotRouteAsTopLeftCellAsync()
     {
         // Arrange
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(
             new Size(10, 4),
             new Size(80, 64)));
-        ProbePressable root = new ProbePressable
+        ProbePressable root = new()
         {
             Width = Length.Cells(10),
             Height = Length.Cells(4),
         };
-        await using Application application = new Application(
+        await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
-        var pointers = 0;
+        int pointers = 0;
         _ = root.AddHandler(Events.Pointer, (_, _) => pointers++);
-        TaskCompletionSource observed = new TaskCompletionSource(
+        TaskCompletionSource observed = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {

@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Unicode;
 
 using SharpVision.Terminal.Unicode;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies the pinned Unicode source identity and generated property tables.
@@ -61,7 +60,7 @@ public sealed class DataTests
     {
         ranges.IsEmpty.ShouldBeFalse();
 
-        for (var index = 0; index < ranges.Length; index++)
+        for (int index = 0; index < ranges.Length; index++)
         {
             PropertyRange current = ranges[index];
 

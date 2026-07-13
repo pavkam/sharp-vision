@@ -3,20 +3,11 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Tests.Performance;
-using SharpVision.Tests.Support;
 using SharpVision.Text;
 
-using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using TerminalAttributes = Attributes;
@@ -30,8 +21,8 @@ public sealed class TextTests
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
-        ControlText empty = new ControlText();
-        ControlText value = new ControlText("hello");
+        ControlText empty = new();
+        ControlText value = new("hello");
 
         empty.Content.ShouldBe(string.Empty);
         value.Content.ShouldBe("hello");
@@ -50,7 +41,7 @@ public sealed class TextTests
     [Fact]
     public void Setters_WhenValuesAreInvalid_ThrowBeforeMutation()
     {
-        ControlText text = new ControlText("safe");
+        ControlText text = new("safe");
 
         _ = Should.Throw<ArgumentNullException>(() => text.Content = null!);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => text.Wrapping = (Wrapping) 99);
@@ -69,7 +60,7 @@ public sealed class TextTests
     [Fact]
     public void Layout_WhenContentWraps_CommitsGraphemeSafeLines()
     {
-        ControlText text = new ControlText("e\u0301界x") { Wrapping = Wrapping.Grapheme };
+        ControlText text = new("e\u0301界x") { Wrapping = Wrapping.Grapheme };
 
         new Engine().Layout(text, new Size(2, 4));
 
@@ -85,13 +76,13 @@ public sealed class TextTests
     [Fact]
     public void Layout_WhenViewportResizes_ReflowsAndRealignsLines()
     {
-        ControlText text = new ControlText("abcd")
+        ControlText text = new("abcd")
         {
             Wrapping = Wrapping.Grapheme,
             TextAlignment = Alignment.End,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        Engine engine = new Engine();
+        Engine engine = new();
 
         engine.Layout(text, new Size(2, 3));
         text.Lines.Length.ShouldBe(2);
@@ -105,9 +96,9 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenContentIsTrimmedAndMultiline_WritesExpectedCells()
     {
-        ControlText text = new ControlText("ab界c\nZ") { Trimming = Trimming.GraphemeEllipsis };
+        ControlText text = new("ab界c\nZ") { Trimming = Trimming.GraphemeEllipsis };
         new Engine().Layout(text, new Size(4, 2));
-        using Frame frame = new Frame(new Size(4, 2));
+        using Frame frame = new(new Size(4, 2));
 
         text.Render(frame.Canvas);
 
@@ -121,13 +112,13 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenEllipsisIsAmbiguousWide_ReservesTwoCompleteCells()
     {
-        ControlText text = new ControlText("abcde")
+        ControlText text = new("abcde")
         {
             Trimming = Trimming.GraphemeEllipsis,
             AmbiguousWidth = Ambiguous.Wide,
         };
         new Engine().Layout(text, new Size(4, 1));
-        using Frame frame = new Frame(new Size(4, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(4, 1), ambiguousWidth: Ambiguous.Wide);
 
         text.Render(frame.Canvas);
 
@@ -145,14 +136,14 @@ public sealed class TextTests
                 foreground: Color.Indexed(1),
                 background: Color.Indexed(2),
                 attributes: TerminalAttributes.Bold)));
-        ControlText text = new ControlText("A")
+        ControlText text = new("A")
         {
             Style = style,
             Foreground = Color.Indexed(7),
             Attributes = TerminalAttributes.Underline,
         };
         new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         text.Render(frame.Canvas);
 
@@ -171,9 +162,9 @@ public sealed class TextTests
                 attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
                 underline: Underline.Dashed,
                 underlineColor: Color.Indexed(3))));
-        ControlText text = new ControlText("A") { Style = style };
+        ControlText text = new("A") { Style = style };
         new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         text.Render(frame.Canvas);
 
@@ -191,13 +182,13 @@ public sealed class TextTests
             (State.Normal, new ThemeOverlay(
                 underline: Underline.Curly,
                 underlineColor: Color.Indexed(3))));
-        ControlText text = new ControlText("A")
+        ControlText text = new("A")
         {
             Style = style,
             Attributes = TerminalAttributes.Underline,
         };
         new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
 
         text.Render(frame.Canvas);
 
@@ -211,9 +202,9 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenBackgroundIsUnset_PreservesDestinationSurface()
     {
-        ControlText text = new ControlText("A") { Foreground = Color.Indexed(45) };
+        ControlText text = new("A") { Foreground = Color.Indexed(45) };
         new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new Frame(new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
         frame.Canvas.Fill(
             new Rect(0, 0, 1, 1),
             new Rune(' '),
@@ -230,9 +221,9 @@ public sealed class TextTests
     [InlineData(Visibility.Collapsed)]
     public void Render_WhenTextIsUnavailable_WritesNoCells(Visibility visibility)
     {
-        ControlText text = new ControlText("secret") { Visibility = visibility };
+        ControlText text = new("secret") { Visibility = visibility };
         new Engine().Layout(text, new Size(6, 1));
-        using Frame frame = new Frame(new Size(6, 1));
+        using Frame frame = new(new Size(6, 1));
 
         text.Render(frame.Canvas);
 
@@ -244,24 +235,24 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenLayoutIsUnchanged_AllocatesNoManagedMemoryAfterWarmup()
     {
-        ControlText text = new ControlText("e\u0301 · 界 · 👩‍💻") { Wrapping = Wrapping.Word };
-        Engine engine = new Engine();
-        Size size = new Size(80, 2);
-        using Frame frame = new Frame(size);
+        ControlText text = new("e\u0301 · 界 · 👩‍💻") { Wrapping = Wrapping.Word };
+        Engine engine = new();
+        Size size = new(80, 2);
+        using Frame frame = new(size);
         Render();
 
-        for (var index = 0; index < 1_000; index++)
+        for (int index = 0; index < 1_000; index++)
         {
             Render();
         }
 
-        var minimum = long.MaxValue;
+        long minimum = long.MaxValue;
 
-        for (var sample = 0; sample < 5; sample++)
+        for (int sample = 0; sample < 5; sample++)
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
+            long before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (var index = 0; index < 1_000; index++)
+            for (int index = 0; index < 1_000; index++)
             {
                 Render();
             }

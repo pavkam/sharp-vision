@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Support;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Represents one copied parser callback for deterministic comparisons.</summary>
 public sealed record Observation

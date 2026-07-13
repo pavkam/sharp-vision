@@ -3,21 +3,10 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Text;
 
-using SharpVision.Controls;
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Scrolling;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 using TerminalStyle = Style;
@@ -29,7 +18,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Properties_WhenAssignmentIsInvalid_PreservePreviousState()
     {
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Maximum = 100,
             Value = 50,
@@ -63,8 +52,8 @@ public sealed class ScrollBarTests
     [Fact]
     public void ScrollBy_WhenDeltaExceedsRange_ClampsAndRaisesOrderedEvent()
     {
-        ScrollBar control = new ScrollBar { Maximum = 100, Value = 40 };
-        List<string> changes = new List<string>();
+        ScrollBar control = new() { Maximum = 100, Value = 40 };
+        List<string> changes = [];
         control.ValueChanged += (_, eventArgs) =>
             changes.Add($"{eventArgs.PreviousValue}>{eventArgs.Value}:{eventArgs.Cause}:{control.Value}");
 
@@ -84,7 +73,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void ScrollBy_WhenMaximumIsIntegerBoundary_DoesNotOverflow()
     {
-        ScrollBar control = new ScrollBar { Maximum = int.MaxValue, Value = int.MaxValue - 1 };
+        ScrollBar control = new() { Maximum = int.MaxValue, Value = int.MaxValue - 1 };
 
         control.ScrollBy(int.MaxValue).ShouldBeTrue();
 
@@ -99,19 +88,19 @@ public sealed class ScrollBarTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ScrollBar control = new ScrollBar
+            ScrollBar control = new()
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(control);
+            using CaptureManager capture = new(control);
             control.ValueChanged += NarrowOnFirstChange;
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(6, 0), PointerAction.Move));
-            var narrowed = control.Minimum;
+            int narrowed = control.Minimum;
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Move));
 
             narrowed.ShouldBeInRange(55, 56);
@@ -131,7 +120,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenHorizontal_WritesButtonsTrackAndExactThumbCells()
     {
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Orientation = Orientation.Horizontal,
             Maximum = 80,
@@ -140,7 +129,7 @@ public sealed class ScrollBarTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         new Engine().Layout(control, new Size(10, 1));
-        using Frame frame = new Frame(new Size(10, 1));
+        using Frame frame = new(new Size(10, 1));
 
         control.Render(frame.Canvas);
 
@@ -152,7 +141,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenThinLineChromeIsSelected_UsesCanonicalTrackAndThumb()
     {
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Orientation = Orientation.Horizontal,
             Chrome = ScrollBarStyle.Thin,
@@ -163,7 +152,7 @@ public sealed class ScrollBarTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         new Engine().Layout(control, new Size(10, 1));
-        using Frame frame = new Frame(new Size(10, 1));
+        using Frame frame = new(new Size(10, 1));
 
         control.Render(frame.Canvas);
 
@@ -177,7 +166,7 @@ public sealed class ScrollBarTests
     {
         ControlStyle<ScrollBar> style = ThemeTestSupport.OverlayStyle<ScrollBar>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Bounds = new Rect(0, 0, 3, 1),
             Orientation = Orientation.Horizontal,
@@ -185,7 +174,7 @@ public sealed class ScrollBarTests
             Fill = ScrollBarFill.Line,
             Style = style,
         };
-        using Frame frame = new Frame(new Size(3, 1));
+        using Frame frame = new(new Size(3, 1));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
 
         control.Render(frame.Canvas);
@@ -197,7 +186,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenLegacyTrackGlyphIsAssigned_UsesAssignedGlyph()
     {
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Orientation = Orientation.Horizontal,
             Maximum = 80,
@@ -207,7 +196,7 @@ public sealed class ScrollBarTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         new Engine().Layout(control, new Size(10, 1));
-        using Frame frame = new Frame(new Size(10, 1));
+        using Frame frame = new(new Size(10, 1));
 
         control.Render(frame.Canvas);
 
@@ -218,7 +207,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Dispatch_WhenKeyboardCommandsArrive_AppliesOrientationAndPageMappings()
     {
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Maximum = 100,
             Value = 50,
@@ -249,7 +238,7 @@ public sealed class ScrollBarTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ScrollBar control = new ScrollBar
+            ScrollBar control = new()
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
@@ -260,8 +249,8 @@ public sealed class ScrollBarTests
                 LargeChange = 20,
             };
             control.Attach(dispatcher);
-            using FocusManager focus = new FocusManager(control);
-            using CaptureManager capture = new CaptureManager(control);
+            using FocusManager focus = new(control);
+            using CaptureManager capture = new(control);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press));
             control.Value.ShouldBe(48);
@@ -283,14 +272,14 @@ public sealed class ScrollBarTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ScrollBar control = new ScrollBar
+            ScrollBar control = new()
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(control);
+            using CaptureManager capture = new(control);
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(control);
@@ -311,15 +300,15 @@ public sealed class ScrollBarTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ScrollBar control = new ScrollBar
+            ScrollBar control = new()
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(control);
-            var changes = 0;
+            using CaptureManager capture = new(control);
+            int changes = 0;
             control.ValueChanged += (_, _) => changes++;
 
             _ = capture.Dispatch(Pointer(
@@ -332,7 +321,7 @@ public sealed class ScrollBarTests
                 PointerAction.Move,
                 pixels: new Point(60, 5),
                 inferred: true));
-            var dragged = control.Value;
+            int dragged = control.Value;
             control.IsEnabled = false;
 
             dragged.ShouldBeInRange(55, 56);
@@ -347,13 +336,13 @@ public sealed class ScrollBarTests
     [Fact]
     public void Dispatch_WhenWheelMoves_AppliesAxisSpecificSmallChange()
     {
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Maximum = 100,
             Value = 50,
             SmallChange = 2,
         };
-        List<Cause> causes = new List<Cause>();
+        List<Cause> causes = [];
         control.ValueChanged += (_, eventArgs) => causes.Add(eventArgs.Cause);
 
         Route(control, Wheel(wheelX: 0, wheelY: 3));
@@ -369,8 +358,8 @@ public sealed class ScrollBarTests
     [Fact]
     public void Dispatch_WhenWheelCannotMoveRange_LeavesEventUnhandled()
     {
-        ScrollBar control = new ScrollBar { Maximum = 10, Value = 10 };
-        PointerEventArgs eventArgs = new PointerEventArgs(Wheel(wheelX: 0, wheelY: -1));
+        ScrollBar control = new() { Maximum = 10, Value = 10 };
+        PointerEventArgs eventArgs = new(Wheel(wheelX: 0, wheelY: -1));
 
         Router.Route(control, Events.Pointer, eventArgs);
 
@@ -386,8 +375,8 @@ public sealed class ScrollBarTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 2) };
-            ScrollBar control = new ScrollBar
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 2) };
+            ScrollBar control = new()
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
@@ -395,7 +384,7 @@ public sealed class ScrollBarTests
             };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using CaptureManager capture = new CaptureManager(root);
+            using CaptureManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(control);
@@ -417,19 +406,19 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenTrackIsTiny_DegradesWithoutEscapingBounds()
     {
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Orientation = Orientation.Horizontal,
             Maximum = 100,
             Bounds = new Rect(0, 0, 1, 1),
         };
-        using Frame one = new Frame(new Size(1, 1));
+        using Frame one = new(new Size(1, 1));
 
         control.Render(one.Canvas);
         FrameOracle.Get(one, default).ShouldBe("▓");
 
         control.Bounds = new Rect(0, 0, 2, 1);
-        using Frame two = new Frame(new Size(2, 1));
+        using Frame two = new(new Size(2, 1));
         control.Render(two.Canvas);
         Cells(two, width: 2, y: 0).ShouldBe("◀▶");
 
@@ -445,14 +434,14 @@ public sealed class ScrollBarTests
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
             (State.Focused, new ThemeOverlay(attributes: Attributes.Underline)),
             (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))));
-        ScrollBar control = new ScrollBar
+        ScrollBar control = new()
         {
             Bounds = new Rect(0, 0, 1, 3),
             Style = style,
         };
         control.SetFocused(true);
         control.SetPressed(true);
-        using Frame frame = new Frame(new Size(1, 3));
+        using Frame frame = new(new Size(1, 3));
 
         control.Render(frame.Canvas);
 
@@ -473,9 +462,9 @@ public sealed class ScrollBarTests
 
     private static string Cells(Frame frame, int width, int y)
     {
-        StringBuilder result = new StringBuilder(width);
+        StringBuilder result = new(width);
 
-        for (var x = 0; x < width; x++)
+        for (int x = 0; x < width; x++)
         {
             _ = result.Append(FrameOracle.Get(frame, new Point(x, y)));
         }

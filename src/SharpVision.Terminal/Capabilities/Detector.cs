@@ -26,11 +26,11 @@ public static class Detector
         ArgumentNullException.ThrowIfNull(environment);
 
         Capabilities capabilities = Capabilities.Conservative;
-        _ = environment.TryGetValue("TERM", out var term);
-        _ = environment.TryGetValue("COLORTERM", out var colorTerm);
-        _ = environment.TryGetValue("TERM_PROGRAM", out var program);
-        var kitty = Contains(term, "kitty");
-        var xterm = Contains(term, "xterm");
+        _ = environment.TryGetValue("TERM", out string? term);
+        _ = environment.TryGetValue("COLORTERM", out string? colorTerm);
+        _ = environment.TryGetValue("TERM_PROGRAM", out string? program);
+        bool kitty = Contains(term, "kitty");
+        bool xterm = Contains(term, "xterm");
 
         if (Contains(colorTerm, "truecolor") || Contains(colorTerm, "24bit") || kitty)
         {
@@ -51,7 +51,7 @@ public static class Detector
 
         if (kitty)
         {
-            Feature hint = new Feature(Support.Tentative, Origin.Environment);
+            Feature hint = new(Support.Tentative, Origin.Environment);
             capabilities = capabilities with
             {
                 SynchronizedOutput = hint,
@@ -70,7 +70,7 @@ public static class Detector
         }
         else if (xterm)
         {
-            Feature hint = new Feature(Support.Tentative, Origin.Environment);
+            Feature hint = new(Support.Tentative, Origin.Environment);
             capabilities = capabilities with
             {
                 FocusReporting = hint,
@@ -91,13 +91,13 @@ public static class Detector
             };
         }
 
-        var multiplexer = environment.ContainsKey("TMUX") || Contains(term, "screen");
-        var remote = environment.ContainsKey("SSH_CONNECTION") ||
+        bool multiplexer = environment.ContainsKey("TMUX") || Contains(term, "screen");
+        bool remote = environment.ContainsKey("SSH_CONNECTION") ||
             environment.ContainsKey("SSH_TTY");
 
         if (multiplexer)
         {
-            Feature unavailable = new Feature(Support.Unsupported, Origin.Environment);
+            Feature unavailable = new(Support.Unsupported, Origin.Environment);
             capabilities = capabilities with
             {
                 KittyClipboard = unavailable,

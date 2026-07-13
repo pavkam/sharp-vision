@@ -3,11 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies third-party control extensibility through custom style properties.</summary>
 public sealed class ThirdPartyControlTests
@@ -16,8 +12,8 @@ public sealed class ThirdPartyControlTests
     [Fact]
     public void SetValue_RaisesPropertyChangedWithClrName()
     {
-        DemoPanel panel = new DemoPanel();
-        List<string?> names = new List<string?>();
+        DemoPanel panel = new();
+        List<string?> names = [];
         panel.PropertyChanged += (_, args) => names.Add(args.PropertyName);
 
         panel.LabelPlacement = DemoLabelPlacement.Right;
@@ -31,11 +27,11 @@ public sealed class ThirdPartyControlTests
     [Fact]
     public void Resolve_WhenThemeDefinesCustomProperty_UsesThemedValue()
     {
-        Theme theme = new Theme();
-        ControlStyle<DemoPanel> style = new ControlStyle<DemoPanel>();
+        Theme theme = new();
+        ControlStyle<DemoPanel> style = new();
         style.Set(DemoPanel.LabelPlacementProperty, State.Normal, DemoLabelPlacement.Right);
         theme.SetStyle(style);
-        DemoPanel panel = new DemoPanel();
+        DemoPanel panel = new();
         ThemeTestSupport.ApplyTheme(panel, theme);
 
         panel.LabelPlacement.ShouldBe(DemoLabelPlacement.Right);
@@ -45,11 +41,11 @@ public sealed class ThirdPartyControlTests
     [Fact]
     public void Resolve_WhenLocalOverrideExists_WinsOverTheme()
     {
-        Theme theme = new Theme();
-        ControlStyle<DemoPanel> style = new ControlStyle<DemoPanel>();
+        Theme theme = new();
+        ControlStyle<DemoPanel> style = new();
         style.Set(DemoPanel.LabelPlacementProperty, State.Normal, DemoLabelPlacement.Right);
         theme.SetStyle(style);
-        DemoPanel panel = new DemoPanel();
+        DemoPanel panel = new();
         ThemeTestSupport.ApplyTheme(panel, theme);
         panel.LabelPlacement = DemoLabelPlacement.Left;
 
@@ -60,11 +56,11 @@ public sealed class ThirdPartyControlTests
     [Fact]
     public void ClearValue_WhenLocalOverrideIsRemoved_RestoresTheme()
     {
-        Theme theme = new Theme();
-        ControlStyle<DemoPanel> style = new ControlStyle<DemoPanel>();
+        Theme theme = new();
+        ControlStyle<DemoPanel> style = new();
         style.Set(DemoPanel.LabelPlacementProperty, State.Normal, DemoLabelPlacement.Right);
         theme.SetStyle(style);
-        DemoPanel panel = new DemoPanel();
+        DemoPanel panel = new();
         ThemeTestSupport.ApplyTheme(panel, theme);
         panel.LabelPlacement = DemoLabelPlacement.Left;
         panel.ClearValue(DemoPanel.LabelPlacementProperty);
@@ -76,15 +72,15 @@ public sealed class ThirdPartyControlTests
     [Fact]
     public void RefreshTheme_WhenThemeChanges_UpdatesCustomProperty()
     {
-        Theme dark = new Theme();
-        ControlStyle<DemoPanel> darkStyle = new ControlStyle<DemoPanel>();
+        Theme dark = new();
+        ControlStyle<DemoPanel> darkStyle = new();
         darkStyle.Set(DemoPanel.LabelPlacementProperty, State.Normal, DemoLabelPlacement.Left);
         dark.SetStyle(darkStyle);
-        Theme light = new Theme();
-        ControlStyle<DemoPanel> lightStyle = new ControlStyle<DemoPanel>();
+        Theme light = new();
+        ControlStyle<DemoPanel> lightStyle = new();
         lightStyle.Set(DemoPanel.LabelPlacementProperty, State.Normal, DemoLabelPlacement.Right);
         light.SetStyle(lightStyle);
-        DemoPanel panel = new DemoPanel();
+        DemoPanel panel = new();
         ThemeTestSupport.ApplyTheme(panel, dark);
 
         ThemeTestSupport.RefreshTheme(panel, light);

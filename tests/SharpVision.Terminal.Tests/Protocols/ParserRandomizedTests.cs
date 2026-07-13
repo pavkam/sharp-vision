@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Tests.Support;
 
-using Shouldly;
 
 /// <summary>
 /// Verifies deterministic randomized parser invariants.
@@ -22,11 +19,11 @@ public sealed class ParserRandomizedTests
     [Fact]
     public void Parse_WhenValidSequencesAreRandomized_MatchesEveryFragmentation()
     {
-        Random random = new Random(_validSeed);
+        Random random = new(_validSeed);
 
-        for (var index = 0; index < 64; index++)
+        for (int index = 0; index < 64; index++)
         {
-            var input = CreateValid(random);
+            byte[] input = CreateValid(random);
 
             try
             {
@@ -47,21 +44,21 @@ public sealed class ParserRandomizedTests
     [Fact]
     public void Parse_WhenHostileBytesAreRandomized_RecoversKnownTrailingCsi()
     {
-        Random random = new Random(_hostileSeed);
+        Random random = new(_hostileSeed);
 
-        for (var index = 0; index < 256; index++)
+        for (int index = 0; index < 256; index++)
         {
-            var input = new byte[69];
+            byte[] input = new byte[69];
             random.NextBytes(input.AsSpan(0, 64));
             input[64] = 0x18;
             "\u001b[2J"u8.CopyTo(input.AsSpan(65));
-            using Parser parser = new Parser(Limits.Default with
+            using Parser parser = new(Limits.Default with
             {
                 MaxParameterBytes = 16,
                 MaxIntermediateBytes = 4,
                 MaxStringBytes = 64,
             });
-            RecordingSink sink = new RecordingSink();
+            RecordingSink sink = new();
 
             parser.Parse(input, ref sink);
             parser.Complete(ref sink);
@@ -79,8 +76,8 @@ public sealed class ParserRandomizedTests
 
     private static byte[] CreateValid(Random random)
     {
-        var selector = random.Next(4);
-        var value = random.Next(1, 10_000);
+        int selector = random.Next(4);
+        int value = random.Next(1, 10_000);
 
         return selector switch
         {

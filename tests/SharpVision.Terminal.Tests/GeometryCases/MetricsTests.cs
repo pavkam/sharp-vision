@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.GeometryCases;
 
-using SharpVision.Terminal.Geometry;
 
-using Shouldly;
 
 /// <summary>Verifies exact rational and uniform pixel-to-cell grid mapping.</summary>
 public sealed class MetricsTests
@@ -17,15 +15,15 @@ public sealed class MetricsTests
     public void TryMap_WhenGridIsUneven_MapsEveryPixelExactly()
     {
         // Arrange
-        Size cells = new Size(10, 3);
-        Size pixels = new Size(101, 31);
-        Metrics metrics = new Metrics(cells, pixels);
-        Point previous = default(Point);
+        Size cells = new(10, 3);
+        Size pixels = new(101, 31);
+        Metrics metrics = new(cells, pixels);
+        Point previous = default;
 
         // Act / Assert
-        for (var y = 0; y < pixels.Height; y++)
+        for (int y = 0; y < pixels.Height; y++)
         {
-            for (var x = 0; x < pixels.Width; x++)
+            for (int x = 0; x < pixels.Width; x++)
             {
                 metrics.TryMap(new Point(x, y), out Point actual).ShouldBeTrue();
                 actual.ShouldBe(new Point(
@@ -49,7 +47,7 @@ public sealed class MetricsTests
     public void TryMap_WhenCoordinateReachesBoundary_RejectsOutsideDomain()
     {
         // Arrange
-        Metrics metrics = new Metrics(new Size(10, 3), new Size(101, 31));
+        Metrics metrics = new(new Size(10, 3), new Size(101, 31));
 
         // Act / Assert
         metrics.TryMap(new Point(0, 0), out Point first).ShouldBeTrue();
@@ -69,7 +67,7 @@ public sealed class MetricsTests
     public void TryMap_WhenMetricsAreUniform_UsesExactCellExtents()
     {
         // Arrange
-        Metrics metrics = new Metrics(8, 16);
+        Metrics metrics = new(8, 16);
 
         // Act / Assert
         metrics.TryMap(new Point(16, 32), out Point cells).ShouldBeTrue();
@@ -93,21 +91,21 @@ public sealed class MetricsTests
     public void TryMap_WhenGridsAreRandomized_RemainsExactAndBounded()
     {
         // Arrange
-        Random random = new Random(_seed);
+        Random random = new(_seed);
 
         // Act / Assert
-        for (var item = 0; item < 1_000; item++)
+        for (int item = 0; item < 1_000; item++)
         {
-            var cellWidth = random.Next(1, 21);
-            var cellHeight = random.Next(1, 21);
-            var pixelWidth = random.Next(cellWidth, (cellWidth * 8) + 1);
-            var pixelHeight = random.Next(cellHeight, (cellHeight * 8) + 1);
-            Metrics metrics = new Metrics(
+            int cellWidth = random.Next(1, 21);
+            int cellHeight = random.Next(1, 21);
+            int pixelWidth = random.Next(cellWidth, (cellWidth * 8) + 1);
+            int pixelHeight = random.Next(cellHeight, (cellHeight * 8) + 1);
+            Metrics metrics = new(
                 new Size(cellWidth, cellHeight),
                 new Size(pixelWidth, pixelHeight));
-            var y = random.Next(pixelHeight);
+            int y = random.Next(pixelHeight);
 
-            for (var x = 0; x < pixelWidth; x++)
+            for (int x = 0; x < pixelWidth; x++)
             {
                 metrics.TryMap(new Point(x, y), out Point actual).ShouldBeTrue(
                     $"Seed {_seed}, grid {item}, pixel ({x},{y}).");
@@ -125,9 +123,9 @@ public sealed class MetricsTests
     public void TryMap_WhenTotalsAreMaximum_DoesNotOverflow()
     {
         // Arrange
-        Size maximum = new Size(int.MaxValue, int.MaxValue);
-        Metrics metrics = new Metrics(maximum, maximum);
-        Point edge = new Point(int.MaxValue - 1, int.MaxValue - 1);
+        Size maximum = new(int.MaxValue, int.MaxValue);
+        Metrics metrics = new(maximum, maximum);
+        Point edge = new(int.MaxValue - 1, int.MaxValue - 1);
 
         // Act / Assert
         metrics.TryMap(edge, out Point actual).ShouldBeTrue();

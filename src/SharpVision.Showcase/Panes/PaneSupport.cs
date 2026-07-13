@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Text;
@@ -36,7 +34,7 @@ internal static class PaneSupport
             document.Inlines.Add(new LineBreak());
         }
 
-        document.Inlines.Add(new ControlRun($"{label}: ") { Foreground = Palette.Muted });
+        document.Inlines.Add(new ControlRun($"{label}: ") { Attributes = Attributes.Dim });
         document.Inlines.Add(new ControlRun(sample)
         {
             Attributes = attributes,
@@ -69,8 +67,6 @@ internal static class PaneSupport
             Child = new ControlText(content),
             BorderThickness = new Thickness(1),
             Glyphs = glyphs,
-            BorderColor = Palette.Accent,
-            Background = Palette.Surface,
             Padding = new Thickness(1, 0),
         };
     }
@@ -88,21 +84,18 @@ internal static class PaneSupport
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(sample);
         ControlStack section = Vertical();
-        ControlRichText text = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlRichText text = new() { Wrapping = Wrapping.Word };
         text.Inlines.Add(new ControlRun(heading)
         {
-            Foreground = Palette.Warning,
             Attributes = Attributes.Bold,
         });
         text.Inlines.Add(new LineBreak());
-        text.Inlines.Add(new ControlRun(description) { Foreground = Palette.Muted });
+        text.Inlines.Add(new ControlRun(description) { Attributes = Attributes.Dim });
         section.Children.Add(text);
         section.Children.Add(new ControlBorder
         {
             BorderThickness = new Thickness(1),
             Glyphs = Glyphs.Light,
-            BorderColor = Palette.Border,
-            Background = Palette.Panel,
             Child = sample,
         });
         return section;
@@ -114,14 +107,13 @@ internal static class PaneSupport
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(sample);
         ControlStack section = Vertical();
-        ControlRichText text = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlRichText text = new() { Wrapping = Wrapping.Word };
         text.Inlines.Add(new ControlRun(heading)
         {
-            Foreground = Palette.Success,
             Attributes = Attributes.Bold,
         });
         text.Inlines.Add(new LineBreak());
-        text.Inlines.Add(new ControlRun(description) { Foreground = Palette.Muted });
+        text.Inlines.Add(new ControlRun(description) { Attributes = Attributes.Dim });
         section.Children.Add(text);
         section.Children.Add(sample);
         return section;
@@ -130,7 +122,7 @@ internal static class PaneSupport
     internal static ControlBorder ShadowStage(ControlShadow shadow)
     {
         ArgumentNullException.ThrowIfNull(shadow);
-        ControlCanvas stage = new ControlCanvas
+        ControlCanvas stage = new()
         {
             Width = Length.Cells(28),
             Height = Length.Cells(5),
@@ -143,8 +135,6 @@ internal static class PaneSupport
         {
             BorderThickness = new Thickness(1),
             Glyphs = Glyphs.Light,
-            BorderColor = Palette.Border,
-            Background = Palette.Panel,
             Child = stage,
         };
     }

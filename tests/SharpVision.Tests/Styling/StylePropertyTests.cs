@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Tests.Support;
 
-using Shouldly;
 
 /// <summary>Verifies style-property registration and class defaults.</summary>
 public sealed class StylePropertyTests
@@ -29,7 +24,7 @@ public sealed class StylePropertyTests
     {
         StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-class-host", 0, Impact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(7);
-        ProbeControl control = new ProbeControl();
+        ProbeControl control = new();
 
         ThemeTestSupport.Resolve(control, property, State.Normal).ShouldBe(7);
     }
@@ -42,7 +37,7 @@ public sealed class StylePropertyTests
         _ = property.RegisterClassDefault<Control>(1);
         _ = property.RegisterClassDefault<ProbeControl>(2);
 
-        property.TryGetClassDefault(typeof(ProbeControl), out var value).ShouldBeTrue();
+        property.TryGetClassDefault(typeof(ProbeControl), out object? value).ShouldBeTrue();
         value.ShouldBe(2);
     }
 
@@ -68,12 +63,29 @@ public sealed class StylePropertyTests
         StylePropertyRegistry.FindProperty(typeof(DemoPanel), "missing").ShouldBeNull();
     }
 
+    /// <summary>Verifies a theme's per-control style overrides a class default, which remains the themeless baseline.</summary>
+    [Fact]
+    public void Resolve_WhenThemeDefinesPerControlDefault_OverridesClassDefault()
+    {
+        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-theme-vs-class", 0, Impact.Render);
+        _ = property.RegisterClassDefault<ProbeControl>(1);
+        Theme theme = new();
+        ControlStyle<ProbeControl> style = new();
+        style.Set(property, State.Normal, 2);
+        theme.SetStyle(style);
+        ProbeControl themed = new();
+        ThemeTestSupport.ApplyTheme(themed, theme);
+
+        themed.GetValue(property).ShouldBe(2);
+        new ProbeControl().GetValue(property).ShouldBe(1);
+    }
+
     /// <summary>Verifies control-free resolution applies class defaults and the theme cascade.</summary>
     [Fact]
     public void Resolve_WithoutControl_UsesThemeCascadeForType()
     {
-        Theme theme = new Theme();
-        ControlStyle<Control> style = new ControlStyle<Control>();
+        Theme theme = new();
+        ControlStyle<Control> style = new();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(7));
         theme.SetStyle(style);
 

@@ -20,7 +20,7 @@ public sealed class FigletCatalog
     {
         Assembly assembly = typeof(FigletCatalog).Assembly;
         _archive = ReadResource(assembly, _archiveResource);
-        var manifest = ReadResource(assembly, _manifestResource);
+        byte[] manifest = ReadResource(assembly, _manifestResource);
         _entries = ParseManifest(manifest);
         Names = _entries.Keys.Order(StringComparer.Ordinal).ToArray();
 
@@ -59,7 +59,7 @@ public sealed class FigletCatalog
     public FigletFont Load(string name)
     {
         FigletFontInfo info = GetInfo(name);
-        using ZipArchive archive = new ZipArchive(
+        using ZipArchive archive = new(
             new MemoryStream(_archive, writable: false),
             ZipArchiveMode.Read,
             leaveOpen: false);
@@ -71,8 +71,8 @@ public sealed class FigletCatalog
             throw new InvalidDataException($"The archive length for '{info.File}' is invalid.");
         }
 
-        var bytes = ReadEntry(entry, checked((int) entry.Length));
-        var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        byte[] bytes = ReadEntry(entry, checked((int) entry.Length));
+        string hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
 
         if (!hash.Equals(info.Sha256, StringComparison.Ordinal))
         {
@@ -87,14 +87,14 @@ public sealed class FigletCatalog
     {
         using Stream stream = assembly.GetManifestResourceStream(name) ??
             throw new InvalidDataException($"Embedded resource '{name}' is missing.");
-        using MemoryStream buffer = new MemoryStream();
+        using MemoryStream buffer = new();
         stream.CopyTo(buffer);
         return buffer.ToArray();
     }
 
     private static byte[] ReadEntry(ZipArchiveEntry entry, int length)
     {
-        var bytes = new byte[length];
+        byte[] bytes = new byte[length];
         using Stream stream = entry.Open();
         stream.ReadExactly(bytes);
 
@@ -115,7 +115,7 @@ public sealed class FigletCatalog
             return bytes;
         }
 
-        using ZipArchive nested = new ZipArchive(
+        using ZipArchive nested = new(
             new MemoryStream(bytes, writable: false),
             ZipArchiveMode.Read,
             leaveOpen: false);
@@ -143,11 +143,11 @@ public sealed class FigletCatalog
             throw new InvalidDataException("The embedded FIGlet manifest count is invalid.");
         }
 
-        Dictionary<string, FigletFontInfo> result = new Dictionary<string, FigletFontInfo>(StringComparer.Ordinal);
+        Dictionary<string, FigletFontInfo> result = new(StringComparer.Ordinal);
 
         foreach (JsonElement element in root.GetProperty("fonts").EnumerateArray())
         {
-            FigletFontInfo info = new FigletFontInfo(
+            FigletFontInfo info = new(
                 element.GetProperty("name").GetString()!,
                 element.GetProperty("file").GetString()!,
                 element.GetProperty("format").GetString()!,

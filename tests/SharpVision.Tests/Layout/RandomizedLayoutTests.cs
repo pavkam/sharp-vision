@@ -3,15 +3,8 @@
 
 namespace SharpVision.Tests.Layout;
 
-using SharpVision.Input;
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Tests.Support;
-using SharpVision.Threading;
 
-using Shouldly;
 
 /// <summary>Exercises hostile fixed-seed tree, state, layout, focus, and capture mutation.</summary>
 public sealed class RandomizedLayoutTests
@@ -30,22 +23,22 @@ public sealed class RandomizedLayoutTests
 
     private static void Run(Dispatcher dispatcher)
     {
-        Random random = new Random(_seed);
-        ProbeContainer root = new ProbeContainer
+        Random random = new(_seed);
+        ProbeContainer root = new()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
         root.Attach(dispatcher);
-        using FocusManager focus = new FocusManager(root);
-        using CaptureManager capture = new CaptureManager(root);
-        List<ProbeControl> controls = new List<ProbeControl>();
-        Engine engine = new Engine();
-        Size size = new Size(80, 24);
+        using FocusManager focus = new(root);
+        using CaptureManager capture = new(root);
+        List<ProbeControl> controls = [];
+        Engine engine = new();
+        Size size = new(80, 24);
 
-        for (var sample = 0; sample < _caseCount; sample++)
+        for (int sample = 0; sample < _caseCount; sample++)
         {
-            var operation = random.Next(0, 10);
+            int operation = random.Next(0, 10);
             Apply(operation, random, root, controls, focus, capture, ref size);
             engine.Layout(root, size);
 
@@ -58,7 +51,7 @@ public sealed class RandomizedLayoutTests
 
             if (sample % 25 == 0)
             {
-                using Frame frame = new Frame(size);
+                using Frame frame = new(size);
                 root.Render(frame.Canvas);
                 AssertWideOwnership(sample, operation, frame);
             }
@@ -81,7 +74,7 @@ public sealed class RandomizedLayoutTests
         switch (operation)
         {
             case 0 when controls.Count < 32:
-                ProbeControl added = new ProbeControl(new Size(random.Next(0, 20), random.Next(0, 8)))
+                ProbeControl added = new(new Size(random.Next(0, 20), random.Next(0, 8)))
                 {
                     CanFocus = random.Next(0, 2) == 0,
                     Content = random.Next(0, 2) == 0 ? "界".AsMemory() : "x".AsMemory(),
@@ -153,7 +146,7 @@ public sealed class RandomizedLayoutTests
         CaptureManager capture,
         Size size)
     {
-        var context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}, size={size}";
+        string context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}, size={size}";
         root.Bounds.Width.ShouldBe(size.Width, context);
         root.Bounds.Height.ShouldBe(size.Height, context);
         root.Children.Count.ShouldBe(controls.Count, context);
@@ -186,13 +179,13 @@ public sealed class RandomizedLayoutTests
 
     private static void AssertWideOwnership(int sample, int operation, Frame frame)
     {
-        var context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}";
+        string context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}";
 
-        for (var y = 0; y < frame.Size.Height; y++)
+        for (int y = 0; y < frame.Size.Height; y++)
         {
-            for (var x = 0; x < frame.Size.Width; x++)
+            for (int x = 0; x < frame.Size.Width; x++)
             {
-                Point point = new Point(x, y);
+                Point point = new(x, y);
                 CellInfo cell = frame.GetCell(point);
 
                 if (!cell.IsContinuation)

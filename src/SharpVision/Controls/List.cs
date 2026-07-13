@@ -4,19 +4,13 @@
 namespace SharpVision.Controls;
 
 using System.Collections.ObjectModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
-using SharpVision.Input;
-using SharpVision.Layout;
 using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
 using GenericList = List<object?>;
-using KeyAction = KeyAction;
 using Label = Text;
-using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a focusable fully realized item selection control with scrolling.</summary>
 [SuppressMessage(
@@ -77,7 +71,7 @@ public sealed class List: Container, IStyleScope
         {
             ArgumentNullException.ThrowIfNull(value);
             VerifyMutable();
-            var copied = Copy(value);
+            object?[] copied = Copy(value);
             ListItem[] realized = Build(copied, ItemTemplate);
             Replace(copied, realized, replaceItems: true);
         }
@@ -128,7 +122,7 @@ public sealed class List: Container, IStyleScope
                 return;
             }
 
-            HashSet<int> normalized = new HashSet<int>(_selection);
+            HashSet<int> normalized = [.. _selection];
 
             if (value == SelectionMode.None)
             {
@@ -136,7 +130,7 @@ public sealed class List: Container, IStyleScope
             }
             else if (value == SelectionMode.Single && normalized.Count > 1)
             {
-                var retained = normalized.Min();
+                int retained = normalized.Min();
                 normalized.Clear();
                 _ = normalized.Add(retained);
             }
@@ -290,7 +284,7 @@ public sealed class List: Container, IStyleScope
         }
 
         VerifyMutable();
-        HashSet<int> next = new HashSet<int>(_selection);
+        HashSet<int> next = [.. _selection];
 
         if (selected)
         {
@@ -306,7 +300,7 @@ public sealed class List: Container, IStyleScope
             _ = next.Remove(index);
         }
 
-        var changed = ApplySelection(next, cancellable: true);
+        bool changed = ApplySelection(next, cancellable: true);
 
         if (changed && selected)
         {
@@ -402,9 +396,9 @@ public sealed class List: Container, IStyleScope
 
     private static object?[] Copy(IReadOnlyList<object?> values)
     {
-        var result = new object?[values.Count];
+        object?[] result = new object?[values.Count];
 
-        for (var index = 0; index < result.Length; index++)
+        for (int index = 0; index < result.Length; index++)
         {
             result[index] = values[index];
         }
@@ -415,11 +409,11 @@ public sealed class List: Container, IStyleScope
     private static ListItem[] Build(IReadOnlyList<object?> items, ItemTemplate template)
     {
         Control[] controls = new Control[items.Count];
-        HashSet<Control> unique = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        HashSet<Control> unique = new(ReferenceEqualityComparer.Instance);
 
         try
         {
-            for (var index = 0; index < controls.Length; index++)
+            for (int index = 0; index < controls.Length; index++)
             {
                 Control? control = template(items[index]);
 
@@ -439,7 +433,7 @@ public sealed class List: Container, IStyleScope
 
             ListItem[] result = new ListItem[controls.Length];
 
-            for (var index = 0; index < result.Length; index++)
+            for (int index = 0; index < result.Length; index++)
             {
                 result[index] = new ListItem(index, controls[index]);
             }
@@ -474,7 +468,7 @@ public sealed class List: Container, IStyleScope
         {
             _items.Clear();
 
-            for (var index = 0; index < items.Count; index++)
+            for (int index = 0; index < items.Count; index++)
             {
                 _items.Add(items[index]);
             }
@@ -487,11 +481,11 @@ public sealed class List: Container, IStyleScope
             item.CommitSelection(_selection.Contains(item.Index));
         }
 
-        HashSet<int> normalized = new HashSet<int>(_selection.Where(index => index < Items.Count));
+        HashSet<int> normalized = [.. _selection.Where(index => index < Items.Count)];
 
         if (SelectionMode == SelectionMode.Single && normalized.Count > 1)
         {
-            var retained = normalized.Min();
+            int retained = normalized.Min();
             normalized.Clear();
             _ = normalized.Add(retained);
         }
@@ -505,19 +499,19 @@ public sealed class List: Container, IStyleScope
 
     private bool ApplySelection(HashSet<int> next, bool cancellable)
     {
-        var added = next.Except(_selection).Order().ToArray();
-        var removed = _selection.Except(next).Order().ToArray();
+        int[] added = [.. next.Except(_selection).Order()];
+        int[] removed = [.. _selection.Except(next).Order()];
 
         if (added.Length == 0 && removed.Length == 0)
         {
             return false;
         }
 
-        var version = _selectionVersion;
+        int version = _selectionVersion;
 
         if (cancellable)
         {
-            ListSelectionChangingEventArgs changing = new ListSelectionChangingEventArgs(added, removed);
+            ListSelectionChangingEventArgs changing = new(added, removed);
             SelectionChanging?.Invoke(this, changing);
 
             if (changing.Cancel || version != _selectionVersion)
@@ -530,7 +524,7 @@ public sealed class List: Container, IStyleScope
         _selection.UnionWith(next);
         _selectionVersion++;
 
-        for (var index = 0; index < _stack.Children.Count; index++)
+        for (int index = 0; index < _stack.Children.Count; index++)
         {
             ((ListItem) _stack.Children[index]).CommitSelection(_selection.Contains(index));
         }
@@ -547,7 +541,7 @@ public sealed class List: Container, IStyleScope
     {
         _selectedItems.Clear();
 
-        foreach (var index in _selection.Order())
+        foreach (int index in _selection.Order())
         {
             if (index < Items.Count)
             {
@@ -582,15 +576,15 @@ public sealed class List: Container, IStyleScope
             return;
         }
 
-        HashSet<int> next = new HashSet<int>(_selection);
-        var control = (modifiers & Modifiers.Control) != 0;
-        var shift = (modifiers & Modifiers.Shift) != 0;
+        HashSet<int> next = [.. _selection];
+        bool control = (modifiers & Modifiers.Control) != 0;
+        bool shift = (modifiers & Modifiers.Shift) != 0;
 
         if (SelectionMode == SelectionMode.Multiple && shift && _selectionAnchor >= 0)
         {
             next.Clear();
 
-            for (var item = Math.Min(index, _selectionAnchor); item <= Math.Max(index, _selectionAnchor); item++)
+            for (int item = Math.Min(index, _selectionAnchor); item <= Math.Max(index, _selectionAnchor); item++)
             {
                 _ = next.Add(item);
             }
@@ -665,7 +659,7 @@ public sealed class List: Container, IStyleScope
             return FindEligible(Items.Count - 1, -1);
         }
 
-        var page = Math.Max(1, _scroll.Viewport.Height);
+        int page = Math.Max(1, _scroll.Viewport.Height);
 
         return code == Code.PageUp
             ? FindEligible(current.Index - page, -1)
@@ -676,7 +670,7 @@ public sealed class List: Container, IStyleScope
 
     private ListItem? FindEligible(int start, int direction)
     {
-        for (var index = Math.Clamp(start, 0, Math.Max(0, Items.Count - 1));
+        for (int index = Math.Clamp(start, 0, Math.Max(0, Items.Count - 1));
             index >= 0 && index < Items.Count;
             index += direction)
         {

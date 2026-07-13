@@ -3,11 +3,8 @@
 
 namespace SharpVision.Controls;
 
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Consumes physical edges in child order and optionally fills the remainder.</summary>
 public sealed class Dock: Container
@@ -85,15 +82,15 @@ public sealed class Dock: Container
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var remainingWidth = constraint.Width;
-        var remainingHeight = constraint.Height;
-        var usedWidth = 0;
-        var usedHeight = 0;
-        var desiredWidth = 0;
-        var desiredHeight = 0;
-        var last = LastParticipant();
+        int? remainingWidth = constraint.Width;
+        int? remainingHeight = constraint.Height;
+        int usedWidth = 0;
+        int usedHeight = 0;
+        int desiredWidth = 0;
+        int desiredHeight = 0;
+        int last = LastParticipant();
 
-        for (var index = 0; index < Children.Count; index++)
+        for (int index = 0; index < Children.Count; index++)
         {
             Control child = Children[index];
             child.Measure(new Constraint(remainingWidth, remainingHeight));
@@ -103,8 +100,8 @@ public sealed class Dock: Container
                 continue;
             }
 
-            var outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
-            var outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
+            int outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
+            int outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
             desiredWidth = Math.Max(desiredWidth, Add(usedWidth, outerWidth));
             desiredHeight = Math.Max(desiredHeight, Add(usedHeight, outerHeight));
 
@@ -113,17 +110,17 @@ public sealed class Dock: Container
                 continue;
             }
 
-            var spacing = index == last ? 0 : Spacing;
+            int spacing = index == last ? 0 : Spacing;
 
             if (GetSide(child) is Side.Left or Side.Right)
             {
-                var consumed = Add(outerWidth, spacing);
+                int consumed = Add(outerWidth, spacing);
                 usedWidth = Add(usedWidth, consumed);
                 remainingWidth = Subtract(remainingWidth, consumed);
             }
             else
             {
-                var consumed = Add(outerHeight, spacing);
+                int consumed = Add(outerHeight, spacing);
                 usedHeight = Add(usedHeight, consumed);
                 remainingHeight = Subtract(remainingHeight, consumed);
             }
@@ -138,9 +135,9 @@ public sealed class Dock: Container
     protected override void ArrangeCore(Rect bounds)
     {
         Rect remaining = bounds;
-        var last = LastParticipant();
+        int last = LastParticipant();
 
-        for (var index = 0; index < Children.Count; index++)
+        for (int index = 0; index < Children.Count; index++)
         {
             Control child = Children[index];
 
@@ -157,11 +154,11 @@ public sealed class Dock: Container
             }
 
             Side side = GetSide(child);
-            var horizontal = side is Side.Left or Side.Right;
-            var axis = horizontal ? remaining.Width : remaining.Height;
-            var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
-            var border = Resolve(child, axis, horizontal);
-            var outer = Math.Min(axis, Add(border, margin));
+            bool horizontal = side is Side.Left or Side.Right;
+            int axis = horizontal ? remaining.Width : remaining.Height;
+            int margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+            int border = Resolve(child, axis, horizontal);
+            int outer = Math.Min(axis, Add(border, margin));
             Rect slot = side switch
             {
                 Side.Left => new Rect(remaining.X, remaining.Y, outer, remaining.Height),
@@ -186,7 +183,7 @@ public sealed class Dock: Container
 
     private static int Add(int left, int right)
     {
-        var result = (long) left + right;
+        long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
@@ -206,12 +203,12 @@ public sealed class Dock: Container
     private static int Resolve(Control child, int available, bool horizontal)
     {
         Length length = horizontal ? child.Width : child.Height;
-        var desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
-        var minimum = horizontal ? child.MinWidth : child.MinHeight;
-        var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
-        var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
-        var space = Math.Max(0, available - margin);
-        var requested = length.Kind switch
+        int desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
+        int minimum = horizontal ? child.MinWidth : child.MinHeight;
+        int maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+        int margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+        int space = Math.Max(0, available - margin);
+        int requested = length.Kind switch
         {
             Kind.Auto => desired,
             Kind.Cells => (int) length.Value,
@@ -225,13 +222,13 @@ public sealed class Dock: Container
 
     private static int Percent(int axis, double value)
     {
-        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
+        double result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private int LastParticipant()
     {
-        for (var index = Children.Count - 1; index >= 0; index--)
+        for (int index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].Visibility != Visibility.Collapsed)
             {

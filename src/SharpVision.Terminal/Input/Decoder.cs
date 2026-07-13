@@ -32,7 +32,7 @@ public sealed class Decoder: IDisposable
     private readonly byte[] _x10 = new byte[12];
     private byte[]? _paste;
     private DateTimeOffset _escapeDeadline;
-    private Geometry.Metrics? _cellMetrics;
+    private Metrics? _cellMetrics;
     private Modifiers _nextTextModifiers;
     private int _utf8Length;
     private int _pasteLength;
@@ -82,12 +82,12 @@ public sealed class Decoder: IDisposable
             throw new InvalidOperationException("The input stream is already complete.");
         }
 
-        Adapter adapter = new Adapter(this);
-        var position = 0;
+        Adapter adapter = new(this);
+        int position = 0;
 
         while (position < input.Length)
         {
-            var value = input[position];
+            byte value = input[position];
 
             if (_pasteMode)
             {
@@ -200,13 +200,13 @@ public sealed class Decoder: IDisposable
             Report(DiagnosticCode.Truncated, SequenceKind.Csi);
         }
 
-        Adapter adapter = new Adapter(this);
+        Adapter adapter = new(this);
         _parser.Complete(ref adapter);
     }
 
     /// <summary>Updates pixel-to-cell inference after an ordered resize event.</summary>
     /// <param name="value">Positive cell metrics, or null when unavailable.</param>
-    internal void SetCellMetrics(Geometry.Metrics? value)
+    internal void SetCellMetrics(Metrics? value)
     {
         ThrowIfDisposed();
         _cellMetrics = value;
@@ -243,7 +243,7 @@ public sealed class Decoder: IDisposable
 
     private void DecodeText(ReadOnlySpan<byte> value)
     {
-        var position = 0;
+        int position = 0;
 
         while (position < value.Length)
         {
@@ -255,7 +255,7 @@ public sealed class Decoder: IDisposable
                 continue;
             }
 
-            OperationStatus status = Rune.DecodeFromUtf8(value[position..], out Rune rune, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf8(value[position..], out Rune rune, out int consumed);
 
             if (status == OperationStatus.Done)
             {
@@ -285,7 +285,7 @@ public sealed class Decoder: IDisposable
             OperationStatus status = Rune.DecodeFromUtf8(
                 _utf8.AsSpan(0, _utf8Length),
                 out Rune rune,
-                out var consumed);
+                out int consumed);
 
             if (status == OperationStatus.NeedMoreData)
             {
@@ -430,13 +430,13 @@ public sealed class Decoder: IDisposable
 
         if (intermediates.IsEmpty && parameters.IsEmpty && final is (byte) 'I' or (byte) 'O')
         {
-            Focus focus = new Focus(final == (byte) 'I');
+            Focus focus = new(final == (byte) 'I');
             _sink.Input(in focus);
             return;
         }
 
         if (intermediates.IsEmpty && final == (byte) '~' &&
-            TryReadSingle(parameters, out var native) && native == 200)
+            TryReadSingle(parameters, out int native) && native == 200)
         {
             BeginPaste();
             return;
@@ -456,7 +456,7 @@ public sealed class Decoder: IDisposable
 
         Span<int> values = stackalloc int[3];
 
-        if (!TryReadParameters(parameters, values, out var count))
+        if (!TryReadParameters(parameters, values, out int count))
         {
             Report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return;
@@ -507,7 +507,7 @@ public sealed class Decoder: IDisposable
             return;
         }
 
-        var native = values[0];
+        int native = values[0];
         Code code = native switch
         {
             1 or 7 => Code.Home,
@@ -597,7 +597,7 @@ public sealed class Decoder: IDisposable
         FlushUtf8();
         EndX10IfPending();
         EndSs3IfPending();
-        Diagnostic adjusted = new Diagnostic(
+        Diagnostic adjusted = new(
             value.Code,
             value.Kind,
             checked(value.Offset + _skippedBytes),
@@ -610,7 +610,7 @@ public sealed class Decoder: IDisposable
         Modifiers combined = modifiers | _nextTextModifiers;
         _nextTextModifiers = Modifiers.None;
         EmitStroke(Code.Character, rune, 0, combined);
-        Text text = new Text(rune);
+        Text text = new(rune);
         _sink.Input(in text);
     }
 
@@ -620,13 +620,13 @@ public sealed class Decoder: IDisposable
         int nativeCode = 0,
         Modifiers modifiers = Modifiers.None)
     {
-        Stroke stroke = new Stroke(code, character, nativeCode, modifiers, InputAction.Press);
+        Stroke stroke = new(code, character, nativeCode, modifiers, InputAction.Press);
         _sink.Input(in stroke);
     }
 
     private void Report(DiagnosticCode code, SequenceKind kind)
     {
-        Diagnostic diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new(
             code,
             kind,
             checked(_parser.Offset + _skippedBytes),
@@ -647,7 +647,7 @@ public sealed class Decoder: IDisposable
 
     private static bool TryReadSingle(ReadOnlySpan<byte> input, out int value)
     {
-        Parameters parameters = new Parameters(input, 2, int.MaxValue);
+        Parameters parameters = new(input, 2, int.MaxValue);
         ParameterStatus status = parameters.Read(out value, out ParameterSeparator separator);
         return parameters.PrivateMarker == 0 &&
             status == ParameterStatus.Value &&
@@ -673,7 +673,7 @@ public sealed class Decoder: IDisposable
     private static bool TryGetModifier(int value, out Modifiers modifiers)
     {
         value = value < 0 ? 1 : value;
-        var flags = value - 1;
+        int flags = value - 1;
         modifiers = (Modifiers) flags;
         return value is >= 1 and <= 16;
     }
@@ -683,7 +683,7 @@ public sealed class Decoder: IDisposable
         Span<int> destination,
         out int count)
     {
-        Parameters parameters = new Parameters(input, destination.Length + 1);
+        Parameters parameters = new(input, destination.Length + 1);
         count = 0;
 
         if (parameters.PrivateMarker != 0)
@@ -693,7 +693,7 @@ public sealed class Decoder: IDisposable
 
         while (true)
         {
-            ParameterStatus status = parameters.Read(out var value, out ParameterSeparator separator);
+            ParameterStatus status = parameters.Read(out int value, out ParameterSeparator separator);
 
             if (status == ParameterStatus.End)
             {
@@ -720,10 +720,10 @@ public sealed class Decoder: IDisposable
                 out ReadOnlySpan<byte> keyGroup,
                 out ReadOnlySpan<byte> modifierGroup,
                 out ReadOnlySpan<byte> textGroup,
-                out var hasText) ||
+                out bool hasText) ||
             !TryReadKey(
                 keyGroup,
-                out var native,
+                out int native,
                 out Rune? shifted,
                 out Rune? baseLayout) ||
             !TryReadModifiers(modifierGroup, out Modifiers modifiers, out InputAction action) ||
@@ -734,7 +734,7 @@ public sealed class Decoder: IDisposable
         }
 
         Code code = MapKittyCode(native, out Rune? character);
-        Stroke stroke = new Stroke(
+        Stroke stroke = new(
             code,
             character,
             native,
@@ -754,14 +754,14 @@ public sealed class Decoder: IDisposable
     {
         while (!input.IsEmpty)
         {
-            var separator = input.IndexOf((byte) ':');
+            int separator = input.IndexOf((byte) ':');
             ReadOnlySpan<byte> field = separator < 0 ? input : input[..separator];
-            var parsed = TryDecimal(field, allowEmpty: false, out var value);
-            var scalar = Rune.TryCreate(value, out Rune rune);
+            bool parsed = TryDecimal(field, allowEmpty: false, out int value);
+            bool scalar = Rune.TryCreate(value, out Rune rune);
             Debug.Assert(
                 parsed && scalar,
                 "Associated text is fully validated before emission.");
-            Text text = new Text(rune);
+            Text text = new(rune);
             _sink.Input(in text);
             input = separator < 0 ? [] : input[(separator + 1)..];
         }
@@ -819,7 +819,7 @@ public sealed class Decoder: IDisposable
         out ReadOnlySpan<byte> text,
         out bool hasText)
     {
-        var first = input.IndexOf((byte) ';');
+        int first = input.IndexOf((byte) ';');
 
         if (first < 0)
         {
@@ -832,7 +832,7 @@ public sealed class Decoder: IDisposable
 
         key = input[..first];
         input = input[(first + 1)..];
-        var second = input.IndexOf((byte) ';');
+        int second = input.IndexOf((byte) ';');
 
         if (second < 0)
         {
@@ -856,7 +856,7 @@ public sealed class Decoder: IDisposable
     {
         shifted = null;
         baseLayout = null;
-        var first = input.IndexOf((byte) ':');
+        int first = input.IndexOf((byte) ':');
         ReadOnlySpan<byte> main = first < 0 ? input : input[..first];
 
         if (!TryDecimal(main, allowEmpty: false, out native) ||
@@ -871,7 +871,7 @@ public sealed class Decoder: IDisposable
         }
 
         input = input[(first + 1)..];
-        var second = input.IndexOf((byte) ':');
+        int second = input.IndexOf((byte) ':');
         ReadOnlySpan<byte> shiftedField = second < 0 ? input : input[..second];
 
         if (!TryOptionalRune(shiftedField, out shifted))
@@ -894,10 +894,10 @@ public sealed class Decoder: IDisposable
         out Modifiers modifiers,
         out InputAction action)
     {
-        var separator = input.IndexOf((byte) ':');
+        int separator = input.IndexOf((byte) ':');
         ReadOnlySpan<byte> modifierField = separator < 0 ? input : input[..separator];
 
-        if (!TryDecimal(modifierField, allowEmpty: true, out var encoded))
+        if (!TryDecimal(modifierField, allowEmpty: true, out int encoded))
         {
             modifiers = default;
             action = default;
@@ -924,7 +924,7 @@ public sealed class Decoder: IDisposable
         ReadOnlySpan<byte> eventField = input[(separator + 1)..];
 
         if (eventField.IndexOf((byte) ':') >= 0 ||
-            !TryDecimal(eventField, allowEmpty: false, out var eventType) ||
+            !TryDecimal(eventField, allowEmpty: false, out int eventType) ||
             eventType is < 1 or > 3)
         {
             return false;
@@ -936,15 +936,15 @@ public sealed class Decoder: IDisposable
 
     private static bool ValidateText(ReadOnlySpan<byte> input)
     {
-        var count = 0;
+        int count = 0;
 
         while (!input.IsEmpty)
         {
-            var separator = input.IndexOf((byte) ':');
+            int separator = input.IndexOf((byte) ':');
             ReadOnlySpan<byte> field = separator < 0 ? input : input[..separator];
 
             if (++count > _maxAssociatedText ||
-                !TryDecimal(field, allowEmpty: false, out var value) ||
+                !TryDecimal(field, allowEmpty: false, out int value) ||
                 !Rune.TryCreate(value, out _) ||
                 value < 0x20 ||
                 value is >= 0x7f and <= 0x9f)
@@ -966,7 +966,7 @@ public sealed class Decoder: IDisposable
             return true;
         }
 
-        if (TryDecimal(input, allowEmpty: false, out var value) &&
+        if (TryDecimal(input, allowEmpty: false, out int value) &&
             Rune.TryCreate(value, out Rune parsed))
         {
             rune = parsed;
@@ -986,7 +986,7 @@ public sealed class Decoder: IDisposable
             return allowEmpty;
         }
 
-        foreach (var item in input)
+        foreach (byte item in input)
         {
             if (item is < (byte) '0' or > (byte) '9')
             {
@@ -994,7 +994,7 @@ public sealed class Decoder: IDisposable
                 return false;
             }
 
-            var digit = item - (byte) '0';
+            int digit = item - (byte) '0';
 
             if (value > int.MaxValue / 10 ||
                 (value == int.MaxValue / 10 && digit > int.MaxValue % 10))
@@ -1048,7 +1048,7 @@ public sealed class Decoder: IDisposable
 
     private void AppendPaste(ReadOnlySpan<byte> value)
     {
-        foreach (var item in value)
+        foreach (byte item in value)
         {
             AppendPaste(item);
         }
@@ -1089,10 +1089,10 @@ public sealed class Decoder: IDisposable
             return;
         }
 
-        var size = _paste is null
+        int size = _paste is null
             ? Math.Min(_options.MaxPasteBytes, Math.Max(256, required))
             : Math.Min(_options.MaxPasteBytes, Math.Max(required, _paste.Length * 2));
-        var replacement = ArrayPool<byte>.Shared.Rent(size);
+        byte[] replacement = ArrayPool<byte>.Shared.Rent(size);
 
         if (_paste is not null)
         {
@@ -1114,7 +1114,7 @@ public sealed class Decoder: IDisposable
         }
         else
         {
-            var owned = NormalizeUtf8(_paste.AsSpan(0, _pasteLength));
+            byte[] owned = NormalizeUtf8(_paste.AsSpan(0, _pasteLength));
             Paste paste = Paste.Take(owned);
             _sink.Input(paste);
         }
@@ -1138,7 +1138,7 @@ public sealed class Decoder: IDisposable
 
     private void Report(DiagnosticCode code, SequenceKind kind, long discardedBytes)
     {
-        Diagnostic diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new(
             code,
             kind,
             checked(_parser.Offset + _skippedBytes),
@@ -1148,12 +1148,12 @@ public sealed class Decoder: IDisposable
 
     private static byte[] NormalizeUtf8(ReadOnlySpan<byte> input)
     {
-        var valid = true;
-        var position = 0;
+        bool valid = true;
+        int position = 0;
 
         while (position < input.Length)
         {
-            OperationStatus status = Rune.DecodeFromUtf8(input[position..], out _, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf8(input[position..], out _, out int consumed);
 
             if (status != OperationStatus.Done)
             {
@@ -1169,10 +1169,10 @@ public sealed class Decoder: IDisposable
             return input.ToArray();
         }
 
-        var maximum = checked(Math.Max(1, input.Length * 3));
-        var rented = ArrayPool<byte>.Shared.Rent(maximum);
+        int maximum = checked(Math.Max(1, input.Length * 3));
+        byte[] rented = ArrayPool<byte>.Shared.Rent(maximum);
         position = 0;
-        var written = 0;
+        int written = 0;
 
         try
         {
@@ -1181,7 +1181,7 @@ public sealed class Decoder: IDisposable
                 OperationStatus status = Rune.DecodeFromUtf8(
                     input[position..],
                     out Rune rune,
-                    out var consumed);
+                    out int consumed);
 
                 if (status != OperationStatus.Done)
                 {
@@ -1212,7 +1212,7 @@ public sealed class Decoder: IDisposable
             return true;
         }
 
-        if (!TryReadMouse(parameters, out var marker, out var code, out var x, out var y))
+        if (!TryReadMouse(parameters, out byte marker, out int code, out int x, out int y))
         {
             Report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return true;
@@ -1236,7 +1236,7 @@ public sealed class Decoder: IDisposable
 
     private int ConsumeX10(ReadOnlySpan<byte> value)
     {
-        var consumed = 0;
+        int consumed = 0;
 
         while (_x10Pending && consumed < value.Length)
         {
@@ -1248,7 +1248,7 @@ public sealed class Decoder: IDisposable
 
             _x10[_x10Length++] = value[consumed++];
 
-            if (TryReadX10(out var code, out var x, out var y))
+            if (TryReadX10(out int code, out int x, out int y))
             {
                 _x10Pending = false;
                 _x10.AsSpan(0, _x10Length).Clear();
@@ -1263,14 +1263,14 @@ public sealed class Decoder: IDisposable
     private bool TryReadX10(out int code, out int x, out int y)
     {
         Span<int> values = stackalloc int[3];
-        var position = 0;
+        int position = 0;
 
-        for (var index = 0; index < values.Length; index++)
+        for (int index = 0; index < values.Length; index++)
         {
             OperationStatus status = Rune.DecodeFromUtf8(
                 _x10.AsSpan(position, _x10Length - position),
                 out Rune rune,
-                out var consumed);
+                out int consumed);
 
             if (status == OperationStatus.NeedMoreData)
             {
@@ -1314,8 +1314,8 @@ public sealed class Decoder: IDisposable
 
     private void EmitPointer(int code, int wireX, int wireY, bool release)
     {
-        var motion = (code & 32) != 0;
-        var low = code & 3;
+        bool motion = (code & 32) != 0;
+        int low = code & 3;
 
         if (code is < 0 or > 255 ||
             ((code & 128) != 0 && ((code & 64) != 0 || low > 1)))
@@ -1326,7 +1326,7 @@ public sealed class Decoder: IDisposable
 
         if (wireX == 0 && wireY == 0 && motion && low == 3)
         {
-            Pointer leave = new Pointer(
+            Pointer leave = new(
                 null,
                 null,
                 Buttons.None,
@@ -1346,10 +1346,10 @@ public sealed class Decoder: IDisposable
             return;
         }
 
-        Point source = new Geometry.Point(wireX - 1, wireY - 1);
-        Geometry.Point? cells = source;
-        Geometry.Point? pixels = null;
-        var inferred = false;
+        Point source = new(wireX - 1, wireY - 1);
+        Point? cells = source;
+        Point? pixels = null;
+        bool inferred = false;
 
         if (_pixelMouse)
         {
@@ -1366,8 +1366,8 @@ public sealed class Decoder: IDisposable
         Modifiers modifiers = DecodeMouseModifiers(code);
         Buttons buttons = DecodeButtons(code);
         PointerAction action = PointerAction.Press;
-        var wheelX = 0;
-        var wheelY = 0;
+        int wheelX = 0;
+        int wheelY = 0;
 
         if ((code & 64) != 0)
         {
@@ -1401,7 +1401,7 @@ public sealed class Decoder: IDisposable
             action = PointerAction.Release;
         }
 
-        Pointer pointer = new Pointer(
+        Pointer pointer = new(
             cells,
             pixels,
             buttons,
@@ -1416,7 +1416,7 @@ public sealed class Decoder: IDisposable
 
     private static Buttons DecodeButtons(int code)
     {
-        var selector = code & 3;
+        int selector = code & 3;
         return (code & 64) != 0 || selector == 3
             ? Buttons.None
             : (code & 128) != 0
@@ -1464,7 +1464,7 @@ public sealed class Decoder: IDisposable
         out int x,
         out int y)
     {
-        Parameters parameters = new Parameters(input, 4, int.MaxValue);
+        Parameters parameters = new(input, 4, int.MaxValue);
         marker = parameters.PrivateMarker;
         x = 0;
         y = 0;

@@ -3,10 +3,6 @@
 
 namespace SharpVision.Tests.Support;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
-using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 
 using TerminalCanvas = Terminal.Rendering.Canvas;
 

@@ -3,16 +3,13 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Controls;
 using SharpVision.Runtime;
 using SharpVision.Showcase.Panes;
 using SharpVision.Styling;
-using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
 
-using Shouldly;
 
-using ControlText = Controls.Text;
+using ControlText = SharpVision.Controls.Text;
 using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
@@ -22,10 +19,10 @@ public sealed class ThemeGalleryTests
     [Fact]
     public async Task Theme_WhenLightIsSelected_PublishesWhiteThemeAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
-        using Gallery gallery = new Gallery();
-        await using Application application = new Application(
+        using Gallery gallery = new();
+        await using Application application = new(
             gallery,
             terminal,
             terminal,
@@ -54,10 +51,10 @@ public sealed class ThemeGalleryTests
     [Fact]
     public async Task Navigation_WhenThemingPageIsSelected_ShowsShowcasePanelAsync()
     {
-        await using FakeTerminal terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
-        using Gallery gallery = new Gallery();
-        await using Application application = new Application(
+        using Gallery gallery = new();
+        await using Application application = new(
             gallery,
             terminal,
             terminal,
@@ -65,7 +62,7 @@ public sealed class ThemeGalleryTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        var themingIndex = gallery.Pages.ToList().FindIndex(static page => page.Name == "Theming");
+        int themingIndex = gallery.Pages.ToList().FindIndex(static page => page == "Theming");
         themingIndex.ShouldBeGreaterThan(-1);
 
         await application.Dispatcher.InvokeAsync(
@@ -120,7 +117,7 @@ public sealed class ThemeGalleryTests
         Application application,
         string description)
     {
-        for (var attempt = 0; attempt < 200; attempt++)
+        for (int attempt = 0; attempt < 200; attempt++)
         {
             if (await application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
             {

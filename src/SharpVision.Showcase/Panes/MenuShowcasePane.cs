@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Controls;
-using SharpVision.Layout;
 
 /// <summary>Documents and demonstrates the Menu control.</summary>
 internal sealed class MenuShowcasePane: ShowcasePane
@@ -39,12 +37,11 @@ internal sealed class MenuShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        ControlText status = new ControlText("Choose an action.") { Foreground = Palette.Muted };
-        ControlMenu menu = new ControlMenu
+        ControlText status = new("Choose an action.");
+        ControlMenu menu = new()
         {
             Orientation = Orientation.Vertical,
             Spacing = 0,
-            Style = Palette.Interactive(),
         };
         menu.Items.Add(new MenuItem { Header = "New project" });
         menu.Items.Add(new MenuItem { Header = "Open recent" });
@@ -60,8 +57,6 @@ internal sealed class MenuShowcasePane: ShowcasePane
             {
                 BorderThickness = new Thickness(1),
                 Glyphs = Glyphs.Rounded,
-                BorderColor = Palette.Border,
-                Background = Palette.Surface,
                 Child = menu,
             }));
         examples.Children.Add(status);

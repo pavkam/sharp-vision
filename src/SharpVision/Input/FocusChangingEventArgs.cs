@@ -3,7 +3,6 @@
 
 namespace SharpVision.Input;
 
-using SharpVision.Controls;
 
 /// <summary>Provides cancellable state before one focus transaction commits.</summary>
 public sealed class FocusChangingEventArgs: EventArgs

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Text;
 
 using SharpVision.Terminal.Unicode;
 
@@ -37,7 +36,7 @@ public readonly record struct Marks
     private static Rune Validate(Rune value, string name)
     {
         Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
+        int length = value.EncodeToUtf16(buffer);
         Measurement measurement = Width.Measure(buffer[..length]);
         return measurement.Cells == 1 && measurement.Controls == 0
             ? value
