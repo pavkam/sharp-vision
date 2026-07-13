@@ -28,6 +28,7 @@ public abstract class View: Container
     /// <summary>Produces this view's content root. Called once, after attachment and before the first
     /// layout pass. Must return a non-null control; return a layout container for multiple children.</summary>
     /// <returns>The non-null content root installed as this view's only child.</returns>
+    /// <exception cref="InvalidOperationException">This method returned null.</exception>
     protected abstract Control Build();
 
     /// <inheritdoc/>
@@ -42,8 +43,8 @@ public abstract class View: Container
 
         child.Measure(constraint);
         return new Size(
-            child.DesiredSize.Width + child.Margin.Horizontal,
-            child.DesiredSize.Height + child.Margin.Vertical);
+            Add(child.DesiredSize.Width, child.Margin.Horizontal),
+            Add(child.DesiredSize.Height, child.Margin.Vertical));
     }
 
     /// <inheritdoc/>
@@ -55,8 +56,20 @@ public abstract class View: Container
     // attached, laid-out tree, so this is the first point where building is both safe and meaningful.
     private void EnsureBuilt()
     {
-        if (_built || Dispatcher is null)
+        if (_built)
         {
+            return;
+        }
+
+        if (Dispatcher is null)
+        {
+            // A detached measure must not poison the measure cache. Without this,
+            // measuring while detached records LastMeasureConstraint and clears the
+            // measure-dirty bit; a later measure with the same constraint after
+            // attachment would hit the cache early-return, skip MeasureOverride, and
+            // never build. Re-marking measure-dirty guarantees the first measure
+            // after attachment runs and builds.
+            Invalidate(Invalidation.Measure);
             return;
         }
 
@@ -64,5 +77,11 @@ public abstract class View: Container
             throw new InvalidOperationException("View.Build must return a non-null control.");
         Children.SetOnly(content);
         _built = true;
+    }
+
+    private static int Add(int left, int right)
+    {
+        long result = (long) left + right;
+        return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 }
