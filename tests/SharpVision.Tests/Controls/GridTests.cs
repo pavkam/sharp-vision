@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Controls;
@@ -18,8 +21,8 @@ public sealed class GridTests
     [Fact]
     public void Layout_WhenDefinitionsAreEmpty_UsesOneImplicitAutoTrack()
     {
-        var grid = new Grid();
-        var child = new ProbeControl(new Size(3, 2));
+        Grid grid = new Grid();
+        ProbeControl child = new ProbeControl(new Size(3, 2));
         grid.Children.Add(child);
 
         new Engine().Layout(grid, new Size(8, 5));
@@ -32,15 +35,15 @@ public sealed class GridTests
     [Fact]
     public void Layout_WhenColumnsMixKinds_ResolvesExactTracksAndSpacing()
     {
-        var grid = new Grid { ColumnSpacing = 1 };
+        Grid grid = new Grid { ColumnSpacing = 1 };
         grid.Columns.Add(Track.Cells(3));
         grid.Columns.Add(Track.Percent(25));
         grid.Columns.Add(Track.Auto());
         grid.Columns.Add(Track.Star(1));
-        var fixedChild = Child(column: 0);
-        var percentChild = Child(column: 1);
-        var autoChild = new ProbeControl(new Size(2, 1));
-        var starChild = Child(column: 3);
+        ProbeControl fixedChild = Child(column: 0);
+        ProbeControl percentChild = Child(column: 1);
+        ProbeControl autoChild = new ProbeControl(new Size(2, 1));
+        ProbeControl starChild = Child(column: 3);
         Grid.SetColumn(autoChild, 2);
         grid.Children.Add(fixedChild);
         grid.Children.Add(percentChild);
@@ -59,10 +62,10 @@ public sealed class GridTests
     [Fact]
     public void Measure_WhenChildrenShareAutoTrack_UsesMaximumRequest()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Columns.Add(Track.Auto());
-        var narrow = new ProbeControl(new Size(2, 1));
-        var wide = new ProbeControl(new Size(5, 2));
+        ProbeControl narrow = new ProbeControl(new Size(2, 1));
+        ProbeControl wide = new ProbeControl(new Size(5, 2));
         grid.Children.Add(narrow);
         grid.Children.Add(wide);
 
@@ -77,10 +80,10 @@ public sealed class GridTests
     [Fact]
     public void Measure_WhenChildSpansAutoTracks_ExcludesInternalSpacingFromTracks()
     {
-        var grid = new Grid { ColumnSpacing = 1 };
+        Grid grid = new Grid { ColumnSpacing = 1 };
         grid.Columns.Add(Track.Auto());
         grid.Columns.Add(Track.Auto());
-        var child = new ProbeControl(new Size(5, 1));
+        ProbeControl child = new ProbeControl(new Size(5, 1));
         Grid.SetColumnSpan(child, 2);
         grid.Children.Add(child);
 
@@ -94,11 +97,11 @@ public sealed class GridTests
     [Fact]
     public void Layout_WhenStarTrackHasMaximum_RedistributesRemainder()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Columns.Add(Track.Star(1, maximum: 2));
         grid.Columns.Add(Track.Star(1));
-        var first = Child(column: 0);
-        var second = Child(column: 1);
+        ProbeControl first = Child(column: 0);
+        ProbeControl second = Child(column: 1);
         grid.Children.Add(first);
         grid.Children.Add(second);
 
@@ -112,9 +115,9 @@ public sealed class GridTests
     [Fact]
     public void Measure_WhenLargeChildIsCollapsed_IgnoresItsRequest()
     {
-        var grid = new Grid();
-        var visible = new ProbeControl(new Size(2, 1));
-        var collapsed = new ProbeControl(new Size(20, 10))
+        Grid grid = new Grid();
+        ProbeControl visible = new ProbeControl(new Size(2, 1));
+        ProbeControl collapsed = new ProbeControl(new Size(20, 10))
         {
             Visibility = Visibility.Collapsed,
         };
@@ -131,10 +134,10 @@ public sealed class GridTests
     [Fact]
     public void Layout_WhenFinalTrackConstraintChanges_RemeasuresChildForSpan()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Columns.Add(Track.Percent(50));
         grid.Columns.Add(Track.Star(1));
-        var child = new ProbeControl(new Size(8, 1));
+        ProbeControl child = new ProbeControl(new Size(8, 1));
         Grid.SetColumnSpan(child, 2);
         grid.Children.Add(child);
 
@@ -148,9 +151,9 @@ public sealed class GridTests
     [Fact]
     public void Layout_WhenStarColumnNarrowsWrappedText_GrowsAutoRowForEveryLine()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Columns.Add(Track.Star(1));
-        var text = new ControlText("One two three four five six") { Wrapping = Wrapping.Word };
+        ControlText text = new ControlText("One two three four five six") { Wrapping = Wrapping.Word };
         grid.Children.Add(text);
 
         new Engine().Layout(grid, new Size(10, 10));
@@ -163,14 +166,14 @@ public sealed class GridTests
     [Fact]
     public void Layout_WhenViewportResizes_RecomputesDeferredTrackGeometry()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Columns.Add(Track.Percent(50));
         grid.Columns.Add(Track.Star(1));
-        var percent = Child(column: 0);
-        var star = Child(column: 1);
+        ProbeControl percent = Child(column: 0);
+        ProbeControl star = Child(column: 1);
         grid.Children.Add(percent);
         grid.Children.Add(star);
-        var engine = new Engine();
+        Engine engine = new Engine();
 
         engine.Layout(grid, new Size(9, 1));
         percent.Bounds.Width.ShouldBe(5);
@@ -184,11 +187,11 @@ public sealed class GridTests
     [Fact]
     public void Layout_WhenSpacingExceedsViewport_ContainsEveryChild()
     {
-        var grid = new Grid { ColumnSpacing = 9 };
+        Grid grid = new Grid { ColumnSpacing = 9 };
         grid.Columns.Add(Track.Cells(4));
         grid.Columns.Add(Track.Cells(4));
-        var first = Child(column: 0);
-        var second = Child(column: 1);
+        ProbeControl first = Child(column: 0);
+        ProbeControl second = Child(column: 1);
         grid.Children.Add(first);
         grid.Children.Add(second);
 
@@ -204,10 +207,10 @@ public sealed class GridTests
     [Fact]
     public void RemoveAt_WhenChildWouldBecomeOutOfRange_ThrowsBeforeMutation()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Rows.Add(Track.Auto());
         grid.Rows.Add(Track.Auto());
-        var child = new ProbeControl();
+        ProbeControl child = new ProbeControl();
         grid.Children.Add(child);
         Grid.SetRow(child, 1);
 
@@ -221,15 +224,15 @@ public sealed class GridTests
     [Fact]
     public void Render_WhenCellsAreArranged_WritesExpectedGridPositions()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Columns.Add(Track.Cells(1));
         grid.Columns.Add(Track.Cells(1));
-        var first = Child(column: 0, content: "A");
-        var second = Child(column: 1, content: "B");
+        ProbeControl first = Child(column: 0, content: "A");
+        ProbeControl second = Child(column: 1, content: "B");
         grid.Children.Add(first);
         grid.Children.Add(second);
         new Engine().Layout(grid, new Size(2, 1));
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
 
         grid.Render(frame.Canvas);
 
@@ -239,7 +242,7 @@ public sealed class GridTests
 
     private static ProbeControl Child(int column, string content = "")
     {
-        var child = new ProbeControl(new Size(1, 1)) { Content = content.AsMemory() };
+        ProbeControl child = new ProbeControl(new Size(1, 1)) { Content = content.AsMemory() };
         Grid.SetColumn(child, column);
         return child;
     }

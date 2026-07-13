@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Controls;
@@ -10,7 +13,7 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using Panel = SharpVision.Controls.Stack;
+using Panel = Stack;
 
 /// <summary>Verifies sequential panel measurement, allocation, ordering, and rendering.</summary>
 public sealed class StackTests
@@ -19,7 +22,7 @@ public sealed class StackTests
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {
-        var panel = new Panel();
+        Panel panel = new Panel();
 
         panel.Orientation.ShouldBe(Orientation.Vertical);
         panel.Spacing.ShouldBe(0);
@@ -35,9 +38,9 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenVerticalChildrenAreAutomatic_ArrangesSequentialIntrinsicHeights()
     {
-        var panel = new Panel { Spacing = 1 };
-        var first = new ProbeControl(new Size(3, 2));
-        var second = new ProbeControl(new Size(4, 1));
+        Panel panel = new Panel { Spacing = 1 };
+        ProbeControl first = new ProbeControl(new Size(3, 2));
+        ProbeControl second = new ProbeControl(new Size(4, 1));
         panel.Children.Add(first);
         panel.Children.Add(second);
 
@@ -52,15 +55,15 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenHorizontalLengthsAreMixed_AllocatesFinalAxisExactly()
     {
-        var panel = new Panel
+        Panel panel = new Panel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        var fixedChild = new ProbeControl { Width = Length.Cells(3) };
-        var percentChild = new ProbeControl { Width = Length.Percent(25) };
-        var starChild = new ProbeControl { Width = Length.Star(1) };
+        ProbeControl fixedChild = new ProbeControl { Width = Length.Cells(3) };
+        ProbeControl percentChild = new ProbeControl { Width = Length.Percent(25) };
+        ProbeControl starChild = new ProbeControl { Width = Length.Star(1) };
         panel.Children.Add(fixedChild);
         panel.Children.Add(percentChild);
         panel.Children.Add(starChild);
@@ -76,13 +79,13 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenMiddleChildIsCollapsed_RemovesItsTrackAndSpacing()
     {
-        var panel = new Panel { Spacing = 1 };
-        var first = new ProbeControl(new Size(1, 1));
-        var collapsed = new ProbeControl(new Size(1, 4))
+        Panel panel = new Panel { Spacing = 1 };
+        ProbeControl first = new ProbeControl(new Size(1, 1));
+        ProbeControl collapsed = new ProbeControl(new Size(1, 4))
         {
             Visibility = Visibility.Collapsed,
         };
-        var last = new ProbeControl(new Size(1, 1));
+        ProbeControl last = new ProbeControl(new Size(1, 1));
         panel.Children.Add(first);
         panel.Children.Add(collapsed);
         panel.Children.Add(last);
@@ -99,9 +102,9 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenChildrenHaveMargins_ConsumesOuterEdgesWithoutCollapsing()
     {
-        var panel = new Panel { Spacing = 1 };
-        var first = new ProbeControl(new Size(1, 1)) { Margin = new Thickness(1) };
-        var second = new ProbeControl(new Size(1, 1));
+        Panel panel = new Panel { Spacing = 1 };
+        ProbeControl first = new ProbeControl(new Size(1, 1)) { Margin = new Thickness(1) };
+        ProbeControl second = new ProbeControl(new Size(1, 1));
         panel.Children.Add(first);
         panel.Children.Add(second);
 
@@ -115,14 +118,14 @@ public sealed class StackTests
     [Fact]
     public async Task Reverse_WhenEnabled_ReversesVisualAndNavigationOrderAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var panel = new Panel { Reverse = true };
-        var first = new ProbeControl(new Size(1, 1))
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        Panel panel = new Panel { Reverse = true };
+        ProbeControl first = new ProbeControl(new Size(1, 1))
         {
             CanFocus = true,
             Content = "A".AsMemory(),
         };
-        var second = new ProbeControl(new Size(1, 1))
+        ProbeControl second = new ProbeControl(new Size(1, 1))
         {
             CanFocus = true,
             Content = "B".AsMemory(),
@@ -130,7 +133,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
         new Engine().Layout(panel, new Size(1, 2));
-        using var frame = new Frame(new Size(1, 2));
+        using Frame frame = new Frame(new Size(1, 2));
         panel.Render(frame.Canvas);
 
         first.Bounds.Y.ShouldBe(1);
@@ -141,7 +144,7 @@ public sealed class StackTests
         await dispatcher.InvokeAsync(() =>
         {
             panel.Attach(dispatcher);
-            using var focus = new FocusManager(panel);
+            using FocusManager focus = new FocusManager(panel);
             focus.MoveNext().ShouldBeTrue();
             focus.Focused.ShouldBeSameAs(second);
             focus.MoveNext().ShouldBeTrue();
@@ -153,16 +156,16 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenViewportChanges_ReallocatesDeferredLengths()
     {
-        var panel = new Panel
+        Panel panel = new Panel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        var percent = new ProbeControl { Width = Length.Percent(50) };
-        var star = new ProbeControl { Width = Length.Star(1) };
+        ProbeControl percent = new ProbeControl { Width = Length.Percent(50) };
+        ProbeControl star = new ProbeControl { Width = Length.Star(1) };
         panel.Children.Add(percent);
         panel.Children.Add(star);
-        var engine = new Engine();
+        Engine engine = new Engine();
 
         engine.Layout(panel, new Size(9, 1));
         percent.Bounds.Width.ShouldBe(5);
@@ -177,9 +180,9 @@ public sealed class StackTests
     [Fact]
     public void Layout_WhenFixedTracksOverflowTinyBounds_ContainsEveryChild()
     {
-        var panel = new Panel { Orientation = Orientation.Horizontal };
-        var first = new ProbeControl { Width = Length.Cells(5) };
-        var second = new ProbeControl { Width = Length.Cells(5) };
+        Panel panel = new Panel { Orientation = Orientation.Horizontal };
+        ProbeControl first = new ProbeControl { Width = Length.Cells(5) };
+        ProbeControl second = new ProbeControl { Width = Length.Cells(5) };
         panel.Children.Add(first);
         panel.Children.Add(second);
 
@@ -195,7 +198,7 @@ public sealed class StackTests
     [Fact]
     public void PropertySetter_WhenStackPolicyChanges_InvalidatesPrecisePhase()
     {
-        var panel = new Panel();
+        Panel panel = new Panel();
         panel.Clear(Invalidation.All);
 
         panel.Spacing = 1;

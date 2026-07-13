@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Support;
 
 using System.Globalization;
@@ -10,7 +13,7 @@ using SharpVision.Terminal.Unicode;
 
 using Shouldly;
 
-using TerminalColor = Terminal.Protocols.Color;
+using TerminalColor = Color;
 
 /// <summary>
 /// Applies emitted terminal bytes to an independent semantic screen model.
@@ -49,8 +52,8 @@ internal sealed class VirtualScreen: ISequenceSink
     /// <param name="value">The encoded bytes.</param>
     internal void Apply(ReadOnlySpan<byte> value)
     {
-        using var parser = new Parser();
-        var sink = this;
+        using Parser parser = new Parser();
+        VirtualScreen sink = this;
         parser.Parse(value, ref sink);
         parser.Complete(ref sink);
     }
@@ -65,9 +68,9 @@ internal sealed class VirtualScreen: ISequenceSink
         {
             for (var x = 0; x < Size.Width; x++)
             {
-                var point = new Point(x, y);
-                var expected = frame.GetCell(point);
-                var actual = _cells[Index(point)];
+                Point point = new Point(x, y);
+                CellInfo expected = frame.GetCell(point);
+                ModelCell actual = _cells[Index(point)];
                 var expectedText = FrameText(frame, point);
 
                 actual.Text.ShouldBe(expectedText.Length == 0 ? " " : expectedText);
@@ -96,9 +99,9 @@ internal sealed class VirtualScreen: ISequenceSink
     {
         var text = Encoding.UTF8.GetString(value);
 
-        foreach (var segment in Graphemes.Enumerate(text.AsSpan()))
+        foreach (Grapheme segment in Graphemes.Enumerate(text.AsSpan()))
         {
-            var cluster = text.AsSpan(segment.Offset, segment.Length);
+            ReadOnlySpan<char> cluster = text.AsSpan(segment.Offset, segment.Length);
             var width = (int) Width.GetCluster(cluster, Ambiguous.Narrow, segment.HasInvalidData);
 
             if (width > 0)
@@ -154,7 +157,7 @@ internal sealed class VirtualScreen: ISequenceSink
 
         if (separator >= 0)
         {
-            var uri = value[(separator + 3)..];
+            ReadOnlySpan<byte> uri = value[(separator + 3)..];
             _hyperlink = uri.IsEmpty ? null : Encoding.UTF8.GetString(uri);
         }
     }
@@ -288,7 +291,7 @@ internal sealed class VirtualScreen: ISequenceSink
             Repair(_position.X + 1, _position.Y);
         }
 
-        var style = CurrentStyle;
+        Style style = CurrentStyle;
         _cells[Index(_position)] = new ModelCell(value, style, width, false, _position.X);
 
         if (width == 2 && _position.X + 1 < Size.Width)
@@ -302,9 +305,9 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private void Repair(int x, int y)
     {
-        var cell = _cells[Index(new Point(x, y))];
+        ModelCell cell = _cells[Index(new Point(x, y))];
         var leadX = cell.IsContinuation ? cell.LeadX : x;
-        var lead = _cells[Index(new Point(leadX, y))];
+        ModelCell lead = _cells[Index(new Point(leadX, y))];
 
         for (var offset = 0; offset < Math.Max(1, lead.Width) && leadX + offset < Size.Width; offset++)
         {

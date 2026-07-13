@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
@@ -17,14 +20,14 @@ public sealed class ProtocolRoutingTests
     [Fact]
     public async Task Input_WhenDeviceAttributesResponseArrives_PublishesTypedDispatcherEventAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var received = new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<Response> received = new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
             application.Dispatcher.CheckAccess().ShouldBeTrue();
@@ -34,7 +37,7 @@ public sealed class ProtocolRoutingTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         terminal.QueueInput("\u001b[?1;2c"u8);
 
-        var response = await received.Task.WaitAsync(
+        Response response = await received.Task.WaitAsync(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken);
 
@@ -47,14 +50,14 @@ public sealed class ProtocolRoutingTests
     [Fact]
     public async Task Input_WhenUnknownOscArrives_PublishesRedactedDiagnosticAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var received = new TaskCompletionSource<Diagnostic>(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<Diagnostic> received = new TaskCompletionSource<Diagnostic>(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Diagnostic += (_, eventArgs) =>
         {
             application.Dispatcher.CheckAccess().ShouldBeTrue();
@@ -64,7 +67,7 @@ public sealed class ProtocolRoutingTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         terminal.QueueInput("\u001b]777;secret\u001b\\"u8);
 
-        var diagnostic = await received.Task.WaitAsync(
+        Diagnostic diagnostic = await received.Task.WaitAsync(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken);
 
@@ -80,14 +83,14 @@ public sealed class ProtocolRoutingTests
     public async Task Input_WhenUnknownDcsArrives_CountsAllOwnedSequenceBytesAsync()
     {
         // Arrange
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var received = new TaskCompletionSource<Diagnostic>(
+        TaskCompletionSource<Diagnostic> received = new TaskCompletionSource<Diagnostic>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.Diagnostic += (_, eventArgs) =>
             _ = received.TrySetResult(eventArgs.Diagnostic);
@@ -95,7 +98,7 @@ public sealed class ProtocolRoutingTests
 
         // Act
         terminal.QueueInput("\u001bP1;2$qpayload\u001b\\"u8);
-        var diagnostic = await received.Task.WaitAsync(
+        Diagnostic diagnostic = await received.Task.WaitAsync(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken);
 

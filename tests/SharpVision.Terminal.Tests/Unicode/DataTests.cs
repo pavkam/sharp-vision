@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Unicode;
 
 using SharpVision.Terminal.Unicode;
@@ -60,7 +63,7 @@ public sealed class DataTests
 
         for (var index = 0; index < ranges.Length; index++)
         {
-            var current = ranges[index];
+            PropertyRange current = ranges[index];
 
             current.Start.ShouldBeLessThanOrEqualTo(current.End);
 

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -12,8 +15,8 @@ public sealed class ThemeContextPropagationTests
 {
     private static Theme ForegroundTheme(int index)
     {
-        var theme = new Theme();
-        var style = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(index));
         theme.SetStyle(style);
         return theme;
@@ -23,10 +26,10 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Add_WhenChildAttachedToThemedParent_InheritsThemeContext()
     {
-        var root = new ProbeContainer();
+        ProbeContainer root = new ProbeContainer();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(3));
 
-        var child = new ProbeControl();
+        ProbeControl child = new ProbeControl();
         root.Children.Add(child);
 
         child.Foreground.ShouldBe(Color.Indexed(3));
@@ -36,10 +39,10 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Add_WhenSubtreeAttachedToThemedParent_InheritsThemeContext()
     {
-        var root = new ProbeContainer();
+        ProbeContainer root = new ProbeContainer();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(5));
-        var branch = new ProbeContainer();
-        var leaf = new ProbeControl();
+        ProbeContainer branch = new ProbeContainer();
+        ProbeControl leaf = new ProbeControl();
         branch.Children.Add(leaf);
 
         root.Children.Add(branch);
@@ -51,9 +54,9 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Remove_WhenChildDetached_ClearsInheritedThemeContext()
     {
-        var root = new ProbeContainer();
+        ProbeContainer root = new ProbeContainer();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(3));
-        var child = new ProbeControl();
+        ProbeControl child = new ProbeControl();
         root.Children.Add(child);
 
         _ = root.Children.Remove(child);

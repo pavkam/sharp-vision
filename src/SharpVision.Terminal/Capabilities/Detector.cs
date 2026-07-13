@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>
@@ -22,7 +25,7 @@ public static class Detector
     {
         ArgumentNullException.ThrowIfNull(environment);
 
-        var capabilities = Capabilities.Conservative;
+        Capabilities capabilities = Capabilities.Conservative;
         _ = environment.TryGetValue("TERM", out var term);
         _ = environment.TryGetValue("COLORTERM", out var colorTerm);
         _ = environment.TryGetValue("TERM_PROGRAM", out var program);
@@ -48,7 +51,7 @@ public static class Detector
 
         if (kitty)
         {
-            var hint = new Feature(Support.Tentative, Origin.Environment);
+            Feature hint = new Feature(Support.Tentative, Origin.Environment);
             capabilities = capabilities with
             {
                 SynchronizedOutput = hint,
@@ -67,7 +70,7 @@ public static class Detector
         }
         else if (xterm)
         {
-            var hint = new Feature(Support.Tentative, Origin.Environment);
+            Feature hint = new Feature(Support.Tentative, Origin.Environment);
             capabilities = capabilities with
             {
                 FocusReporting = hint,
@@ -94,7 +97,7 @@ public static class Detector
 
         if (multiplexer)
         {
-            var unavailable = new Feature(Support.Unsupported, Origin.Environment);
+            Feature unavailable = new Feature(Support.Unsupported, Origin.Environment);
             capabilities = capabilities with
             {
                 KittyClipboard = unavailable,

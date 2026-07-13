@@ -1,11 +1,15 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Terminal.Rendering;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>
 /// Demonstrates third-party control styling with a custom style property outside the core theme catalog.
@@ -69,7 +73,7 @@ public sealed class ShowcasePanel: Control
             return;
         }
 
-        var style = ResolvedStyle;
+        Style style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         _ = canvas.Draw(Caption.AsSpan(), ResolveCaptionPoint(Caption), style);
         _ = canvas.Draw("Themed body".AsSpan(), ResolveBodyPoint(Caption), style);

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Support;
 
 using SharpVision.Controls;
@@ -55,8 +58,8 @@ internal sealed class DemoPanel: Control
             return;
         }
 
-        var style = ResolvedStyle;
-        var captionPoint = LabelPlacement == DemoLabelPlacement.Right
+        Style style = ResolvedStyle;
+        Point captionPoint = LabelPlacement == DemoLabelPlacement.Right
             ? new Point(Bounds.Right - Caption.Length, Bounds.Y)
             : new Point(Bounds.X, Bounds.Y);
         _ = canvas.Draw(Caption.AsSpan(), captionPoint, style);

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase;
 
 using SharpVision.Controls;
@@ -5,7 +8,7 @@ using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Renders one stateful, focusable control-page entry in the dashboard sidebar.</summary>
 internal sealed class NavigationItem: Pressable
@@ -65,7 +68,7 @@ internal sealed class NavigationItem: Pressable
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var style = ResolvedStyle;
+        Terminal.Rendering.Style style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         var marker = IsSelected || IsHovered ? "›" : "·";
         _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);

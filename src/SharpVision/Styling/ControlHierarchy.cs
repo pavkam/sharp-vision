@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 using SharpVision.Controls;
@@ -15,9 +18,9 @@ internal static class ControlHierarchy
     /// <returns>Control types ordered base-first so derived declarations win when applied in order.</returns>
     internal static List<Type> BaseToDerived(Type controlType)
     {
-        var chain = new List<Type>();
+        List<Type> chain = [];
 
-        for (var current = controlType;
+        for (Type? current = controlType;
             current is not null && typeof(Control).IsAssignableFrom(current);
             current = current.BaseType)
         {

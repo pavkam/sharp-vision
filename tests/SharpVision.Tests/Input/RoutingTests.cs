@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Input;
 
 using System.Runtime.CompilerServices;
@@ -21,19 +24,19 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenTreeIsNested_InvokesPreviewThenBubbleAndDefault()
     {
-        var order = new List<string>();
-        var root = new RecordingControl("root", order);
-        var middle = new RecordingControl("middle", order);
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl root = new RecordingControl("root", order);
+        RecordingControl middle = new RecordingControl("middle", order);
+        RecordingControl target = new RecordingControl("target", order);
         root.Children.Add(middle);
         middle.Children.Add(target);
-        var stroke = CreateStroke();
+        Stroke stroke = CreateStroke();
 
         AddRecorder(root, target, stroke, order);
         AddRecorder(middle, target, stroke, order);
         AddRecorder(target, target, stroke, order);
 
-        var eventArgs = new KeyEventArgs(stroke);
+        KeyEventArgs eventArgs = new KeyEventArgs(stroke);
         Router.Route(target, Events.Key, eventArgs);
 
         order.ShouldBe([
@@ -55,19 +58,19 @@ public sealed class RoutingTests
     [Fact]
     public async Task Route_WhenShiftTabIsPressed_MovesFocusToPreviousTabStopAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer();
-            var first = new ProbeControl { CanFocus = true };
-            var second = new ProbeControl { CanFocus = true };
+            ProbeContainer root = new ProbeContainer();
+            ProbeControl first = new ProbeControl { CanFocus = true };
+            ProbeControl second = new ProbeControl { CanFocus = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
-            using var focus = new FocusManager(root);
+            using FocusManager focus = new FocusManager(root);
             focus.Focus(second).ShouldBeTrue();
-            var eventArgs = new KeyEventArgs(new Stroke(
+            KeyEventArgs eventArgs = new KeyEventArgs(new Stroke(
                 Code.Tab,
                 character: null,
                 nativeCode: 0,
@@ -85,9 +88,9 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenHandled_InvokesOnlyOptedInHandlersAfterward()
     {
-        var order = new List<string>();
-        var root = new RecordingControl("root", order);
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl root = new RecordingControl("root", order);
+        RecordingControl target = new RecordingControl("target", order);
         root.Children.Add(target);
         _ = root.AddHandler(Events.Key, (_, eventArgs) =>
             order.Add($"root-ordinary-{eventArgs.Phase}"));
@@ -123,10 +126,10 @@ public sealed class RoutingTests
     [Fact]
     public void AddHandler_WhenDuplicateOrDisposed_RejectsDuplicateAndStopsLaterRoutes()
     {
-        var order = new List<string>();
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl target = new RecordingControl("target", order);
         var calls = 0;
-        var registration = target.AddHandler(Events.Key, Handle);
+        IDisposable registration = target.AddHandler(Events.Key, Handle);
 
         _ = Should.Throw<ArgumentException>(() => target.AddHandler(Events.Key, Handle));
         Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
@@ -148,10 +151,10 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenPreviewReparentsTarget_KeepsCurrentSnapshot()
     {
-        var order = new List<string>();
-        var root = new RecordingControl("old", order);
-        var replacement = new RecordingControl("new", order);
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl root = new RecordingControl("old", order);
+        RecordingControl replacement = new RecordingControl("new", order);
+        RecordingControl target = new RecordingControl("target", order);
         root.Children.Add(target);
         var moved = false;
         _ = root.AddHandler(Events.Key, (_, eventArgs) =>
@@ -196,8 +199,8 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenHandlerIsAddedDuringDispatch_UsesHandlerSnapshot()
     {
-        var order = new List<string>();
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl target = new RecordingControl("target", order);
         var added = false;
         _ = target.AddHandler(Events.Key, (_, eventArgs) =>
         {
@@ -229,12 +232,12 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenStrategyDiffers_UsesConfiguredAncestry()
     {
-        var order = new List<string>();
-        var root = new RecordingControl("root", order);
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl root = new RecordingControl("root", order);
+        RecordingControl target = new RecordingControl("target", order);
         root.Children.Add(target);
-        var bubble = new Event<KeyEventArgs>("BubbleOnly", Strategy.Bubble);
-        var direct = new Event<KeyEventArgs>("Direct", Strategy.Direct);
+        Event<KeyEventArgs> bubble = new Event<KeyEventArgs>("BubbleOnly", Strategy.Bubble);
+        Event<KeyEventArgs> direct = new Event<KeyEventArgs>("Direct", Strategy.Direct);
         _ = root.AddHandler(bubble, (_, eventArgs) =>
             order.Add($"root-{eventArgs.Phase}"));
         _ = target.AddHandler(bubble, (_, eventArgs) =>
@@ -261,8 +264,8 @@ public sealed class RoutingTests
     [Fact]
     public void Constructor_WhenPayloadIsValid_PreservesTypedTerminalValue()
     {
-        var text = new TerminalText(new Rune('λ'));
-        var pointer = new Pointer(
+        TerminalText text = new TerminalText(new Rune('λ'));
+        Pointer pointer = new Pointer(
             new Point(2, 3),
             pixels: new Point(16, 48),
             Buttons.Primary,
@@ -272,8 +275,8 @@ public sealed class RoutingTests
             Modifiers.Shift,
             isMotion: true,
             isCellPositionInferred: false);
-        var paste = new Paste("hello"u8);
-        var focus = new Focus(gained: true);
+        Paste paste = new Paste("hello"u8);
+        Focus focus = new Focus(gained: true);
 
         new TextEventArgs(text).Text.ShouldBe(text);
         new PointerEventArgs(pointer).Pointer.ShouldBe(pointer);
@@ -295,9 +298,9 @@ public sealed class RoutingTests
     [Fact]
     public void Retarget_WhenCalledDuringRoute_ChangesOnlySource()
     {
-        var order = new List<string>();
-        var root = new RecordingControl("root", order);
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl root = new RecordingControl("root", order);
+        RecordingControl target = new RecordingControl("target", order);
         root.Children.Add(target);
         _ = root.AddHandler(Events.Key, (_, eventArgs) =>
         {
@@ -306,7 +309,7 @@ public sealed class RoutingTests
                 eventArgs.Retarget(root);
             }
         });
-        var eventArgs = new KeyEventArgs(CreateStroke());
+        KeyEventArgs eventArgs = new KeyEventArgs(CreateStroke());
 
         Router.Route(target, Events.Key, eventArgs);
 
@@ -319,9 +322,9 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenHandlerThrows_CleansStateBeforeRethrow()
     {
-        var order = new List<string>();
-        var target = new RecordingControl("target", order);
-        var failure = new InvalidOperationException("handler");
+        List<string> order = new List<string>();
+        RecordingControl target = new RecordingControl("target", order);
+        InvalidOperationException failure = new InvalidOperationException("handler");
         var shouldThrow = true;
         _ = target.AddHandler(Events.Key, (_, _) =>
         {
@@ -331,7 +334,7 @@ public sealed class RoutingTests
                 throw failure;
             }
         });
-        var eventArgs = new KeyEventArgs(CreateStroke());
+        KeyEventArgs eventArgs = new KeyEventArgs(CreateStroke());
 
         Should.Throw<InvalidOperationException>(() =>
             Router.Route(target, Events.Key, eventArgs)).ShouldBeSameAs(failure);
@@ -344,8 +347,8 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenArgumentsAreInvalid_ThrowsBeforeHandlers()
     {
-        var order = new List<string>();
-        var target = new RecordingControl("target", order);
+        List<string> order = new List<string>();
+        RecordingControl target = new RecordingControl("target", order);
 
         _ = Should.Throw<ArgumentException>(() =>
             new Event<KeyEventArgs>(" ", Strategy.TunnelBubble));
@@ -365,9 +368,9 @@ public sealed class RoutingTests
     [Fact]
     public async Task Route_WhenAttachedOffThread_ThrowsBeforeHandlersAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var order = new List<string>();
-        var target = new RecordingControl("target", order);
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        List<string> order = new List<string>();
+        RecordingControl target = new RecordingControl("target", order);
         await dispatcher.InvokeAsync(
             () => target.Attach(dispatcher),
             TestContext.Current.CancellationToken);
@@ -384,7 +387,7 @@ public sealed class RoutingTests
     [Fact]
     public void Route_WhenRegistrationIsDisposed_DoesNotRetainHandlerOrControl()
     {
-        var (control, listener) = CreateCollectibleRoute();
+        (WeakReference? control, WeakReference? listener) = CreateCollectibleRoute();
 
         for (var attempt = 0; attempt < 5 && (control.IsAlive || listener.IsAlive); attempt++)
         {
@@ -414,12 +417,12 @@ public sealed class RoutingTests
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static (WeakReference Control, WeakReference Listener) CreateCollectibleRoute()
     {
-        var order = new List<string>();
-        var root = new RecordingControl("root", order);
-        var target = new RecordingControl("target", order);
-        var listener = new Listener();
+        List<string> order = new List<string>();
+        RecordingControl root = new RecordingControl("root", order);
+        RecordingControl target = new RecordingControl("target", order);
+        Listener listener = new Listener();
         root.Children.Add(target);
-        var registration = target.AddHandler(Events.Key, listener.Handle);
+        IDisposable registration = target.AddHandler(Events.Key, listener.Handle);
         Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
         registration.Dispose();
         _ = root.Children.Remove(target);

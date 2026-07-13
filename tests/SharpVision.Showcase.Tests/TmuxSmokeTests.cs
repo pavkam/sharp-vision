@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using System.Diagnostics;
@@ -20,7 +23,7 @@ public sealed class TmuxSmokeTests
 
         var session = $"sharpvision-geometry-{Environment.ProcessId}";
         var root = RepositoryRoot();
-        var build = new ProcessStartInfo
+        ProcessStartInfo build = new ProcessStartInfo
         {
             FileName = "dotnet",
             Arguments = "build src/SharpVision.Showcase/SharpVision.Showcase.csproj --configuration Release --verbosity quiet /p:RunAnalyzersDuringBuild=false /p:EnforceCodeStyleInBuild=false",
@@ -30,13 +33,13 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        var buildProcess = Process.Start(build).ShouldNotBeNull();
+        Process buildProcess = Process.Start(build).ShouldNotBeNull();
         await buildProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
         buildProcess.ExitCode.ShouldBe(0);
 
         try
         {
-            var start = new ProcessStartInfo
+            ProcessStartInfo start = new ProcessStartInfo
             {
                 FileName = "tmux",
                 Arguments =
@@ -47,13 +50,13 @@ public sealed class TmuxSmokeTests
                 UseShellExecute = false,
             };
 
-            var startProcess = Process.Start(start).ShouldNotBeNull();
+            Process startProcess = Process.Start(start).ShouldNotBeNull();
             await startProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
             startProcess.ExitCode.ShouldBe(0);
 
             _ = await WaitForPaneTextAsync(session, "Overview", TimeSpan.FromSeconds(15));
 
-            var navigate = new ProcessStartInfo
+            ProcessStartInfo navigate = new ProcessStartInfo
             {
                 FileName = "tmux",
                 Arguments = $"send-keys -t {session} " + string.Join(' ', Enumerable.Repeat("Down", 19)),
@@ -62,7 +65,7 @@ public sealed class TmuxSmokeTests
                 UseShellExecute = false,
             };
 
-            var navigateProcess = Process.Start(navigate).ShouldNotBeNull();
+            Process navigateProcess = Process.Start(navigate).ShouldNotBeNull();
             await navigateProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
             navigateProcess.ExitCode.ShouldBe(0);
 
@@ -77,7 +80,7 @@ public sealed class TmuxSmokeTests
 
     private static async Task<string> ReadPaneAsync(string session)
     {
-        var capture = new ProcessStartInfo
+        ProcessStartInfo capture = new ProcessStartInfo
         {
             FileName = "tmux",
             Arguments = $"capture-pane -t {session} -p -J",
@@ -86,7 +89,7 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        var process = Process.Start(capture).ShouldNotBeNull();
+        Process process = Process.Start(capture).ShouldNotBeNull();
         var text = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
         await process.WaitForExitAsync(TestContext.Current.CancellationToken);
         process.ExitCode.ShouldBe(0);
@@ -122,7 +125,7 @@ public sealed class TmuxSmokeTests
 
     private static bool SessionExists(string session)
     {
-        var probe = new ProcessStartInfo
+        ProcessStartInfo probe = new ProcessStartInfo
         {
             FileName = "tmux",
             Arguments = $"has-session -t {session}",
@@ -131,13 +134,13 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        using var process = Process.Start(probe);
+        using Process? process = Process.Start(probe);
         return process is not null && process.WaitForExit(1000) && process.ExitCode == 0;
     }
 
     private static void KillSession(string session)
     {
-        var kill = new ProcessStartInfo
+        ProcessStartInfo kill = new ProcessStartInfo
         {
             FileName = "tmux",
             Arguments = $"kill-session -t {session}",
@@ -146,7 +149,7 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        using var process = Process.Start(kill);
+        using Process? process = Process.Start(kill);
         _ = process?.WaitForExit(1000);
     }
 
@@ -167,7 +170,7 @@ public sealed class TmuxSmokeTests
 
     private static string RepositoryRoot()
     {
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        DirectoryInfo? current = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (current is not null)
         {

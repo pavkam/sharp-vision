@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Controls;
@@ -20,13 +23,13 @@ public sealed class MenuTests
     [Fact]
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {
-        var menu = new Menu { Orientation = Orientation.Vertical };
+        Menu menu = new Menu { Orientation = Orientation.Vertical };
         menu.Items.Add(new MenuItem { Header = "Open" });
         menu.Items.Add(new MenuItem { Header = "Pinned", Kind = MenuItemKind.Check, IsChecked = true });
         menu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });
-        var size = new Size(12, 5);
+        Size size = new Size(12, 5);
         new Engine().Layout(menu, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
 
         menu.Render(frame.Canvas);
 
@@ -42,19 +45,19 @@ public sealed class MenuTests
     [Fact]
     public async Task Dispatch_WhenDirectionalKeyArrives_SkipsSeparatorAndFocusesNextItemAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var menu = new Menu { Orientation = Orientation.Vertical };
-            var first = new MenuItem { Header = "First" };
-            var separator = new MenuItem { Kind = MenuItemKind.Separator };
-            var second = new MenuItem { Header = "Second" };
+            Menu menu = new Menu { Orientation = Orientation.Vertical };
+            MenuItem first = new MenuItem { Header = "First" };
+            MenuItem separator = new MenuItem { Kind = MenuItemKind.Separator };
+            MenuItem second = new MenuItem { Header = "Second" };
             menu.Items.Add(first);
             menu.Items.Add(separator);
             menu.Items.Add(second);
             menu.Attach(dispatcher);
-            using var focus = new FocusManager(menu);
+            using FocusManager focus = new FocusManager(menu);
             focus.Focus(first).ShouldBeTrue();
 
             Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
@@ -73,11 +76,11 @@ public sealed class MenuTests
     [Fact]
     public void PerformInvoke_WhenCheckAndRadioItemsActivate_CommitsStateBeforeEvent()
     {
-        var menu = new Menu();
-        var check = new MenuItem { Header = "Auto save", Kind = MenuItemKind.Check };
-        var first = new MenuItem { Header = "Small", Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
-        var second = new MenuItem { Header = "Large", Kind = MenuItemKind.Radio, GroupName = "size" };
-        var observed = new List<string>();
+        Menu menu = new Menu();
+        MenuItem check = new MenuItem { Header = "Auto save", Kind = MenuItemKind.Check };
+        MenuItem first = new MenuItem { Header = "Small", Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        MenuItem second = new MenuItem { Header = "Large", Kind = MenuItemKind.Radio, GroupName = "size" };
+        List<string> observed = new List<string>();
         menu.Items.Add(check);
         menu.Items.Add(first);
         menu.Items.Add(second);

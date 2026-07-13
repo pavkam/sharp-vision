@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -41,16 +44,16 @@ internal sealed class PopupShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var status = new ControlText("Choose an item with the mouse, arrows, or Enter.")
+        ControlText status = new ControlText("Choose an item with the mouse, arrows, or Enter.")
         {
             Foreground = Palette.Muted,
         };
-        var trigger = new ControlButton
+        ControlButton trigger = new ControlButton
         {
             Content = new ControlText("Actions ▼"),
             Style = Palette.Interactive(),
         };
-        var choices = new ControlList
+        ControlList choices = new ControlList
         {
             Width = Length.Cells(24),
             Height = Length.Cells(5),
@@ -58,7 +61,7 @@ internal sealed class PopupShowcasePane: ShowcasePane
             SelectedIndex = 0,
             Style = Palette.Interactive(),
         };
-        var popup = new ControlPopup
+        ControlPopup popup = new ControlPopup
         {
             Anchor = trigger,
             Placement = PopupPlacement.Below,
@@ -75,13 +78,13 @@ internal sealed class PopupShowcasePane: ShowcasePane
                 : "No action selected.";
             popup.IsOpen = false;
         };
-        var content = PaneSupport.Vertical();
+        ControlStack content = PaneSupport.Vertical();
         content.Children.Add(PaneSupport.SampleSection(
             "Anchored action menu",
             "Open the compact menu, then select with the mouse or keyboard. Escape closes it without selecting anything.",
             PaneSupport.ButtonSpecimen(trigger)));
         content.Children.Add(status);
-        var overlay = new ControlOverlay { ClipToBounds = false };
+        ControlOverlay overlay = new ControlOverlay { ClipToBounds = false };
         overlay.Children.Add(content);
         ControlOverlay.SetZIndex(popup, 10);
         overlay.Children.Add(popup);

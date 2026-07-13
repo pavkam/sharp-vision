@@ -26,6 +26,7 @@ insert_final_newline = false
 trim_trailing_whitespace = false
 
 [*.cs]
+file_header_template = Copyright (c) SharpVision contributors. All rights reserved.\nLicensed under the MIT License. See LICENSE in the project root for license information.
 dotnet_analyzer_diagnostic.category-Style.severity = warning
 dotnet_diagnostic.CS1591.severity = error
 dotnet_diagnostic.IDE0005.severity = error
@@ -142,6 +143,9 @@ csharp_style_throw_expression = true
 csharp_style_unused_value_assignment_preference = discard_variable
 csharp_style_unused_value_expression_statement_preference = discard_variable
 csharp_using_directive_placement = inside_namespace:error
+
+[**/GlobalUsings.cs]
+dotnet_diagnostic.IDE0005.severity = none
 
 csharp_style_var_elsewhere = true
 csharp_style_var_for_built_in_types = true

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Layout;
 
 /// <summary>Selects compact track-only or full button-and-track scrollbar chrome.</summary>

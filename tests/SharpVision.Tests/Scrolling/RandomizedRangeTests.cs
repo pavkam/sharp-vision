@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Scrolling;
 
 using SharpVision.Scrolling;
@@ -16,7 +19,7 @@ public sealed class RandomizedRangeTests
     [Fact]
     public void Resolve_WhenInputsAreRandomized_PreservesGeometryInvariants()
     {
-        var random = new Random(_seed);
+        Random random = new Random(_seed);
 
         for (var sample = 0; sample < _caseCount; sample++)
         {
@@ -26,9 +29,9 @@ public sealed class RandomizedRangeTests
             var value = random.NextInt64(minimum, (long) maximum + 1);
             var viewport = random.Next(0, 1_000_000);
             var track = random.Next(0, 501);
-            var range = new ScrollRange(minimum, maximum, (int) value, viewport);
-            var first = Thumb.Resolve(range, track);
-            var second = Thumb.Resolve(range, track);
+            ScrollRange range = new ScrollRange(minimum, maximum, (int) value, viewport);
+            Thumb first = Thumb.Resolve(range, track);
+            Thumb second = Thumb.Resolve(range, track);
             var context = $"seed=0x{_seed:X8}, case={sample}, range={range}, track={track}";
 
             second.ShouldBe(first, context);
@@ -38,8 +41,8 @@ public sealed class RandomizedRangeTests
             first.Length.ShouldBeLessThanOrEqualTo(track, context);
             var mapped = Thumb.ValueAt(range, track, first.Start);
             mapped.ShouldBeInRange(minimum, maximum, context);
-            var low = Thumb.Resolve(new ScrollRange(minimum, maximum, minimum, viewport), track);
-            var high = Thumb.Resolve(new ScrollRange(minimum, maximum, maximum, viewport), track);
+            Thumb low = Thumb.Resolve(new ScrollRange(minimum, maximum, minimum, viewport), track);
+            Thumb high = Thumb.Resolve(new ScrollRange(minimum, maximum, maximum, viewport), track);
             first.Start.ShouldBeGreaterThanOrEqualTo(low.Start, context);
             first.Start.ShouldBeLessThanOrEqualTo(high.Start, context);
 

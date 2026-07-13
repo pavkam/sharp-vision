@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -14,8 +17,8 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsIsComplete_DeliversHeaderAndPayload()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001bP1;2$qdata\u001b\\"u8, ref sink);
 
@@ -30,8 +33,8 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsContainsBell_PreservesBellUntilSt()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001bPqa\ab\u001b\\"u8, ref sink);
 
@@ -47,9 +50,9 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenDcsHeaderExceedsLimit_ReportsAtStAndRecovers()
     {
-        var limits = Limits.Default with { MaxParameterBytes = 2 };
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        Limits limits = Limits.Default with { MaxParameterBytes = 2 };
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001bP123qsecret\u001b\\X"u8, ref sink);
 
@@ -63,9 +66,9 @@ public sealed class ParserDcsTests
     [Fact]
     public void Parse_WhenStringPayloadExceedsLimit_ReportsAtStAndRecovers()
     {
-        var limits = Limits.Default with { MaxStringBytes = 4 };
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        Limits limits = Limits.Default with { MaxStringBytes = 4 };
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b]12345\u001b\\X"u8, ref sink);
 

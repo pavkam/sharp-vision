@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Fonts;
 
 using System.Diagnostics;
@@ -21,26 +24,26 @@ internal static class FigletRenderer
     /// <returns>The composed output.</returns>
     internal static string Render(FigletFont font, string text, FigletOptions options)
     {
-        var direction = options.Direction ?? font.Direction;
-        var layout = options.Layout ?? font.Layout;
+        FigletDirection direction = options.Direction ?? font.Direction;
+        FigletLayout layout = options.Layout ?? font.Layout;
         var logicalLines = text.ReplaceLineEndings("\n").Split('\n');
-        var composed = new List<StringBuilder>();
+        List<StringBuilder> composed = [];
 
         for (var lineIndex = 0; lineIndex < logicalLines.Length; lineIndex++)
         {
-            var runes = logicalLines[lineIndex].EnumerateRunes().ToArray();
+            Rune[] runes = [.. logicalLines[lineIndex].EnumerateRunes()];
 
             if (direction == FigletDirection.RightToLeft)
             {
                 Array.Reverse(runes);
             }
 
-            var rows = RenderLine(font, runes, layout);
+            StringBuilder[] rows = RenderLine(font, runes, layout);
             TrimLeading(rows);
             AppendVertical(composed, rows, layout, font.Hardblank);
         }
 
-        var output = new StringBuilder();
+        StringBuilder output = new StringBuilder();
 
         for (var row = 0; row < composed.Count; row++)
         {
@@ -61,16 +64,16 @@ internal static class FigletRenderer
         ReadOnlySpan<Rune> runes,
         FigletLayout layout)
     {
-        var rows = new StringBuilder[font.Height];
+        StringBuilder[] rows = new StringBuilder[font.Height];
 
         for (var row = 0; row < rows.Length; row++)
         {
             rows[row] = new StringBuilder();
         }
 
-        foreach (var rune in runes)
+        foreach (Rune rune in runes)
         {
-            var glyph = font.GetGlyph(rune.Value);
+            FigletGlyph glyph = font.GetGlyph(rune.Value);
             var overlap = GetOverlap(rows, glyph, layout, font.Hardblank);
 
             for (var row = 0; row < rows.Length; row++)
@@ -159,7 +162,7 @@ internal static class FigletRenderer
             return '\0';
         }
 
-        var rules = layout & _horizontalRules;
+        FigletLayout rules = layout & _horizontalRules;
 
         if (rules == 0)
         {
@@ -254,7 +257,7 @@ internal static class FigletRenderer
     {
         var count = rows.Length == 0 ? 0 : rows[0].Length;
 
-        foreach (var row in rows)
+        foreach (StringBuilder row in rows)
         {
             var leading = 0;
 
@@ -271,7 +274,7 @@ internal static class FigletRenderer
             return;
         }
 
-        foreach (var row in rows)
+        foreach (StringBuilder row in rows)
         {
             _ = row.Remove(0, count);
         }
@@ -289,7 +292,7 @@ internal static class FigletRenderer
             return;
         }
 
-        var vertical = layout & (FigletLayout.VerticalFitting | FigletLayout.VerticalSmushing);
+        FigletLayout vertical = layout & (FigletLayout.VerticalFitting | FigletLayout.VerticalSmushing);
 
         if (vertical == 0)
         {
@@ -367,7 +370,7 @@ internal static class FigletRenderer
         char hardblank)
     {
         var width = Math.Max(top.Length, bottom.Length);
-        var result = new StringBuilder(width);
+        StringBuilder result = new StringBuilder(width);
 
         for (var column = 0; column < width; column++)
         {
@@ -398,7 +401,7 @@ internal static class FigletRenderer
             return '\0';
         }
 
-        var rules = layout &
+        FigletLayout rules = layout &
             (FigletLayout.VerticalEqual |
                 FigletLayout.VerticalUnderscore |
                 FigletLayout.VerticalHierarchy |

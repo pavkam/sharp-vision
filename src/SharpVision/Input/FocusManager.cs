@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Input;
 
 using SharpVision.Controls;
@@ -73,7 +76,7 @@ public sealed class FocusManager: IDisposable
     public bool MoveNext(bool reverse = false)
     {
         VerifyAccess();
-        var candidates = new List<(Control Control, int Order)>();
+        List<(Control Control, int Order)> candidates = [];
         var order = 0;
         Collect(Root, candidates, ref order);
         candidates.Sort(static (left, right) =>
@@ -159,7 +162,7 @@ public sealed class FocusManager: IDisposable
 
         try
         {
-            var preview = new FocusChangingEventArgs(Focused, control);
+            FocusChangingEventArgs preview = new FocusChangingEventArgs(Focused, control);
 
             if (cancellable)
             {
@@ -171,11 +174,11 @@ public sealed class FocusManager: IDisposable
                 return false;
             }
 
-            var previous = Focused;
+            Control? previous = Focused;
             Focused = control;
             previous?.SetFocused(false);
             control?.SetFocused(true);
-            var changed = new FocusChangedEventArgs(previous, control);
+            FocusChangedEventArgs changed = new FocusChangedEventArgs(previous, control);
 
             if (previous is not null)
             {
@@ -242,7 +245,7 @@ public sealed class FocusManager: IDisposable
 
     private bool IsMember(Control control)
     {
-        for (var current = control; current is not null; current = current.Parent)
+        for (Control? current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, Root))
             {
@@ -255,7 +258,7 @@ public sealed class FocusManager: IDisposable
 
     private static bool IsWithin(Control control, Control subtree)
     {
-        for (var current = control; current is not null; current = current.Parent)
+        for (Control? current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, subtree))
             {

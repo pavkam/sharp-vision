@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Rendering;
 
 using System.Buffers;
@@ -42,7 +45,7 @@ public sealed class Renderer: IDisposable
         TimeProvider? timeProvider = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOutputBytes);
-        var timeout = cleanupTimeout ?? TimeSpan.FromSeconds(1);
+        TimeSpan timeout = cleanupTimeout ?? TimeSpan.FromSeconds(1);
 
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
         {
@@ -123,7 +126,7 @@ public sealed class Renderer: IDisposable
             }
 
             _buffer.Reset();
-            var encoded = Encoder.Encode(_front, back, _buffer, capabilities, forceFull);
+            EncodeResult encoded = Encoder.Encode(_front, back, _buffer, capabilities, forceFull);
 
             if (_buffer.WrittenCount == 0)
             {
@@ -208,7 +211,7 @@ public sealed class Renderer: IDisposable
             // Only fully transferred and flushed terminal state becomes the new front.
             if (replacement is not null)
             {
-                var previous = _front;
+                Frame? previous = _front;
                 _front = replacement;
                 replacement = null;
                 previous?.Dispose();
@@ -251,7 +254,7 @@ public sealed class Renderer: IDisposable
     {
         try
         {
-            using var timeout = new CancellationTokenSource(_cleanupTimeout, _timeProvider);
+            using CancellationTokenSource timeout = new CancellationTokenSource(_cleanupTimeout, _timeProvider);
             await transport.WriteAsync(_synchronizedEnd, timeout.Token).ConfigureAwait(false);
             await transport.FlushAsync(timeout.Token).ConfigureAwait(false);
         }

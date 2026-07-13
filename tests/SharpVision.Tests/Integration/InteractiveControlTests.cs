@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Integration;
 
 using System.Text;
@@ -15,7 +18,7 @@ using Shouldly;
 
 using Label = SharpVision.Controls.Text;
 using TerminalOptions = Terminal.Runtime.Options;
-using UiList = SharpVision.Controls.List;
+using UiList = List;
 
 /// <summary>Proves real terminal text, paste, keys, focus, frames, and bytes through TextInput.</summary>
 public sealed class InteractiveControlTests
@@ -24,31 +27,31 @@ public sealed class InteractiveControlTests
     [Fact]
     public async Task Input_WhenInteractiveControlsCompose_CommitsStateEventsCellsAndDamageAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(32, 16)));
-        var root = CreateControls(
-            out var button,
-            out var checkBox,
-            out var firstRadio,
-            out var secondRadio,
-            out var input,
-            out var scrollBar,
-            out var scrollView,
-            out var list);
-        var order = new List<string>();
+        Stack root = CreateControls(
+            out Button? button,
+            out CheckBox? checkBox,
+            out RadioButton? firstRadio,
+            out RadioButton? secondRadio,
+            out TextInput? input,
+            out ScrollBar? scrollBar,
+            out ScrollView? scrollView,
+            out UiList? list);
+        List<string> order = new List<string>();
         button.Click += (_, _) => order.Add("button");
         checkBox.Checked += (_, _) => order.Add("check-checked");
         checkBox.StateChanged += (_, _) => order.Add("check-changed");
         firstRadio.Unchecked += (_, _) => order.Add("radio-a-unchecked");
         secondRadio.Checked += (_, _) => order.Add("radio-b-checked");
         secondRadio.SelectionChanged += (_, _) => order.Add("radio-b-changed");
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var points = await application.Dispatcher.InvokeAsync(
+        Point[] points = await application.Dispatcher.InvokeAsync(
             () => new[]
             {
                 Center(button),
@@ -127,7 +130,7 @@ public sealed class InteractiveControlTests
             list.SelectedItem.ShouldBe("B");
             application.Focus.Focused.ShouldBeSameAs(input);
             application.Capture.Captured.ShouldBeNull();
-            using var frame = new Frame(application.Size);
+            using Frame frame = new Frame(application.Size);
             root.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(secondRadio.Bounds.X, secondRadio.Bounds.Y))
                 .ShouldBe("◉");
@@ -141,7 +144,7 @@ public sealed class InteractiveControlTests
             .IndexOf(Encoding.UTF8.GetBytes("界"))
             .ShouldBeGreaterThanOrEqualTo(0);
         var previousWrites = terminal.Writes.Count;
-        var rendered = NextFrame(application);
+        Task rendered = NextFrame(application);
         await application.Dispatcher.InvokeAsync(
             () =>
             {
@@ -152,7 +155,7 @@ public sealed class InteractiveControlTests
 
         await application.Dispatcher.InvokeAsync(() =>
         {
-            using var frame = new Frame(application.Size);
+            using Frame frame = new Frame(application.Size);
             root.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("O");
             FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y + 1)).ShouldBeEmpty();
@@ -175,10 +178,10 @@ public sealed class InteractiveControlTests
     [Fact]
     public async Task Input_WhenTextPasteAndLegacyKeysArrive_CommitsExactEditorFrameAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(12, 2)));
-        var input = new TextInput();
-        await using var application = new Application(input, terminal, terminal, TerminalOptions.Minimal);
+        TextInput input = new TextInput();
+        await using Application application = new Application(input, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(() =>
             application.Focus.Focus(input).ShouldBeTrue(),
@@ -207,7 +210,7 @@ public sealed class InteractiveControlTests
         {
             input.Text.ShouldBe("e\u0301");
             input.CaretIndex.ShouldBe(0);
-            using var frame = new Frame(application.Size);
+            using Frame frame = new Frame(application.Size);
             input.Render(frame.Canvas);
             FrameOracle.Get(frame, default).ShouldBe("e\u0301");
             frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeFalse();
@@ -215,7 +218,7 @@ public sealed class InteractiveControlTests
         terminal.Writes.SelectMany(static bytes => bytes)
             .Contains((byte) 'e').ShouldBeTrue();
 
-        var focusLost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource focusLost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await application.Dispatcher.InvokeAsync(() =>
         {
             _ = input.AddHandler(Events.Focus, (_, eventArgs) =>
@@ -303,7 +306,7 @@ public sealed class InteractiveControlTests
             Width = Length.Cells(20),
             Height = Length.Cells(3),
         };
-        var root = new Stack();
+        Stack root = new Stack();
         root.Children.Add(button);
         root.Children.Add(checkBox);
         root.Children.Add(firstRadio);
@@ -332,7 +335,7 @@ public sealed class InteractiveControlTests
 
     private static Task NextFrame(Application application)
     {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 

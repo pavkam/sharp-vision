@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Integration;
 
 using SharpVision.Runtime;
@@ -16,17 +19,17 @@ public sealed class ResizeRenderTests
     [Fact]
     public async Task Resize_WhenSuspendedHostBecomesPositive_LayoutsBeforeFrameAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(0, 0)));
-        var root = new ProbeControl();
-        await using var application = new Application(
+        ProbeControl root = new ProbeControl();
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var order = new List<string>();
-        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        List<string> order = new List<string>();
+        TaskCompletionSource rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Resize += (_, eventArgs) =>
         {
             root.Bounds.Width.ShouldBe(eventArgs.Dimensions.Cells.Width);

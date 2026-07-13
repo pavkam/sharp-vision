@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -36,8 +39,8 @@ internal sealed class MenuShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var status = new ControlText("Choose an action.") { Foreground = Palette.Muted };
-        var menu = new ControlMenu
+        ControlText status = new ControlText("Choose an action.") { Foreground = Palette.Muted };
+        ControlMenu menu = new ControlMenu
         {
             Orientation = Orientation.Vertical,
             Spacing = 0,

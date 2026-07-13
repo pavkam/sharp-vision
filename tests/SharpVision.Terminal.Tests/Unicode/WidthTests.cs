@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Unicode;
 
 using SharpVision.Terminal.Unicode;
@@ -15,7 +18,7 @@ public sealed class WidthTests
     [Fact]
     public void Measure_WhenTextMixesAsciiCjkAndEmoji_ReturnsCellTotal()
     {
-        var result = Width.Measure("A界👩‍💻".AsSpan(), Ambiguous.Narrow);
+        Measurement result = Width.Measure("A界👩‍💻".AsSpan(), Ambiguous.Narrow);
 
         result.Cells.ShouldBe(5);
         result.Graphemes.ShouldBe(3);

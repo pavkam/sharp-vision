@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Runtime;
 
 using System.Diagnostics;
@@ -82,7 +85,7 @@ public sealed class ConsoleInputMode: IDisposable
 
     private static string Run(params string[] arguments)
     {
-        var start = new ProcessStartInfo("/bin/stty")
+        ProcessStartInfo start = new ProcessStartInfo("/bin/stty")
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
@@ -94,7 +97,7 @@ public sealed class ConsoleInputMode: IDisposable
             start.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(start)
+        using Process process = Process.Start(start)
             ?? throw new IOException("The terminal raw-mode utility could not start.");
         var output = process.StandardOutput.ReadToEnd();
         var error = process.StandardError.ReadToEnd();

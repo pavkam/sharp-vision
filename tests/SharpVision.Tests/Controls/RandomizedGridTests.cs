@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Controls;
@@ -17,16 +20,16 @@ public sealed class RandomizedGridTests
     [Fact]
     public void Layout_WhenGridsAreRandomized_RemainsDeterministicAndContained()
     {
-        var seeds = new Random(_seed);
+        Random seeds = new Random(_seed);
 
         for (var sample = 0; sample < _caseCount; sample++)
         {
             var caseSeed = seeds.Next();
-            var first = CreateGrid(new Random(caseSeed), out var firstColumns, out var firstRows);
-            var second = CreateGrid(new Random(caseSeed), out var secondColumns, out var secondRows);
-            var size = new Size(caseSeed % 31, caseSeed / 31 % 17);
+            Grid first = CreateGrid(new Random(caseSeed), out List<ProbeControl>? firstColumns, out List<ProbeControl>? firstRows);
+            Grid second = CreateGrid(new Random(caseSeed), out List<ProbeControl>? secondColumns, out List<ProbeControl>? secondRows);
+            Size size = new Size(caseSeed % 31, caseSeed / 31 % 17);
             var context = $"seed=0x{_seed:X8}, case={sample}, caseSeed={caseSeed}, size={size}";
-            var engine = new Engine();
+            Engine engine = new Engine();
 
             engine.Layout(first, size);
             engine.Layout(second, size);
@@ -55,7 +58,7 @@ public sealed class RandomizedGridTests
 
         for (var index = 0; index < controls.Count; index++)
         {
-            var bounds = controls[index].Bounds;
+            Rect bounds = controls[index].Bounds;
             var origin = horizontal ? bounds.X : bounds.Y;
             var extent = horizontal ? bounds.Width : bounds.Height;
             origin.ShouldBeGreaterThanOrEqualTo(previousEnd, context);
@@ -77,7 +80,7 @@ public sealed class RandomizedGridTests
 
     private static void AssertContained(Grid grid, string context)
     {
-        foreach (var child in grid.Children)
+        foreach (Control child in grid.Children)
         {
             child.Bounds.Width.ShouldBeGreaterThanOrEqualTo(0, context);
             child.Bounds.Height.ShouldBeGreaterThanOrEqualTo(0, context);
@@ -95,7 +98,7 @@ public sealed class RandomizedGridTests
     {
         var columnCount = random.Next(1, 6);
         var rowCount = random.Next(1, 6);
-        var grid = new Grid
+        Grid grid = new Grid
         {
             ColumnSpacing = random.Next(0, 4),
             RowSpacing = random.Next(0, 4),
@@ -108,7 +111,7 @@ public sealed class RandomizedGridTests
 
         for (var column = 0; column < columnCount; column++)
         {
-            var child = new ProbeControl(new Size(random.Next(0, 9), random.Next(0, 5)));
+            ProbeControl child = new ProbeControl(new Size(random.Next(0, 9), random.Next(0, 5)));
             Grid.SetColumn(child, column);
             grid.Children.Add(child);
             columnControls.Add(child);
@@ -116,7 +119,7 @@ public sealed class RandomizedGridTests
 
         for (var row = 0; row < rowCount; row++)
         {
-            var child = new ProbeControl(new Size(random.Next(0, 9), random.Next(0, 5)));
+            ProbeControl child = new ProbeControl(new Size(random.Next(0, 9), random.Next(0, 5)));
             Grid.SetRow(child, row);
             grid.Children.Add(child);
             rowControls.Add(child);
@@ -128,7 +131,7 @@ public sealed class RandomizedGridTests
         {
             var row = random.Next(rowCount);
             var column = random.Next(columnCount);
-            var child = new ProbeControl(new Size(random.Next(0, 17), random.Next(0, 9)))
+            ProbeControl child = new ProbeControl(new Size(random.Next(0, 17), random.Next(0, 9)))
             {
                 Visibility = random.Next(0, 5) == 0 ? Visibility.Collapsed : Visibility.Visible,
             };
@@ -154,7 +157,7 @@ public sealed class RandomizedGridTests
 
             var minimum = random.Next(0, 4);
             var maximum = random.Next(minimum, minimum + 10);
-            var track = random.Next(0, 4) switch
+            Track track = random.Next(0, 4) switch
             {
                 0 => Track.Auto(minimum, maximum),
                 1 => Track.Cells(random.Next(0, 13), minimum, maximum),

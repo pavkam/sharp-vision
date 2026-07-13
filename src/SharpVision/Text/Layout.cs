@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Text;
 
 using System.Buffers;
@@ -120,7 +123,7 @@ public static class Layout
 
         while (position < value.Length)
         {
-            var grapheme = Next(value[position..]);
+            Grapheme grapheme = Next(value[position..]);
             var cells = ClusterCells(value.Slice(position, grapheme.Length), result, ambiguous);
             result = SaturatingAdd(result, cells);
             position += grapheme.Length;
@@ -199,8 +202,8 @@ public static class Layout
 
         while (position < value.Length)
         {
-            var grapheme = Next(value[position..]);
-            var cluster = value.Slice(position, grapheme.Length);
+            Grapheme grapheme = Next(value[position..]);
+            ReadOnlySpan<char> cluster = value.Slice(position, grapheme.Length);
             var clusterCells = ClusterCells(cluster, cells, ambiguous);
 
             if (clusterCells > limit - cells)
@@ -259,8 +262,8 @@ public static class Layout
 
         while (position < value.Length)
         {
-            var grapheme = Next(value[position..]);
-            var cluster = value.Slice(position, grapheme.Length);
+            Grapheme grapheme = Next(value[position..]);
+            ReadOnlySpan<char> cluster = value.Slice(position, grapheme.Length);
             var clusterCells = ClusterCells(cluster, cells, ambiguous);
 
             if (clusterCells <= width - cells)
@@ -340,7 +343,7 @@ public static class Layout
 
     private static bool IsWhitespace(ReadOnlySpan<char> value)
     {
-        var status = Rune.DecodeFromUtf16(value, out var rune, out _);
+        OperationStatus status = Rune.DecodeFromUtf16(value, out Rune rune, out _);
         return status == OperationStatus.Done && Rune.IsWhiteSpace(rune);
     }
 
@@ -352,7 +355,7 @@ public static class Layout
 
     private static Grapheme Next(ReadOnlySpan<char> value)
     {
-        var enumerator = Graphemes.Enumerate(value).GetEnumerator();
+        GraphemeEnumerator enumerator = Graphemes.Enumerate(value).GetEnumerator();
         var moved = enumerator.MoveNext();
         Debug.Assert(moved, "A non-empty source suffix must contain one grapheme.");
         return enumerator.Current;

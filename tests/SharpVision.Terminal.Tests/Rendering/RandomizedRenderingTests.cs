@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using System.Buffers;
@@ -26,19 +29,19 @@ public sealed class RandomizedRenderingTests
     [Fact]
     public void Encode_WhenFramesAreRandomized_MatchesFullRender()
     {
-        var random = new Random(_seed);
+        Random random = new Random(_seed);
 
         for (var testCase = 0; testCase < 128; testCase++)
         {
-            using var front = Create(random);
-            using var back = Create(random);
+            using Frame front = Create(random);
+            using Frame back = Create(random);
 
             try
             {
-                var incremental = new VirtualScreen(back.Size);
+                VirtualScreen incremental = new VirtualScreen(back.Size);
                 incremental.Apply(Encode(null, front));
                 incremental.Apply(Encode(front, back));
-                var full = new VirtualScreen(back.Size);
+                VirtualScreen full = new VirtualScreen(back.Size);
                 full.Apply(Encode(null, back));
                 incremental.ShouldMatch(back);
                 incremental.ShouldMatch(full);
@@ -54,14 +57,14 @@ public sealed class RandomizedRenderingTests
 
     private static Frame Create(Random random)
     {
-        var frame = new Frame(new Size(10, 4));
+        Frame frame = new Frame(new Size(10, 4));
         var values = new[] { "a", "Z", "界", "語", "e\u0301", "👩‍💻", " " };
         var links = new string?[] { null, "https://one.test", "https://two.test" };
 
         for (var index = 0; index < 24; index++)
         {
-            var point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
-            var attributes = random.Next(8) switch
+            Point point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
+            Attributes attributes = random.Next(8) switch
             {
                 0 => Attributes.None,
                 1 => Attributes.Bold,
@@ -72,7 +75,7 @@ public sealed class RandomizedRenderingTests
                 6 => Attributes.Overline,
                 _ => Attributes.RapidBlink | Attributes.Overline,
             };
-            var underline = random.Next(6) == 0
+            Underline underline = random.Next(6) == 0
                 ? (Underline) random.Next((int) Underline.Straight, (int) Underline.Dashed + 1)
                 : Underline.None;
 
@@ -81,13 +84,13 @@ public sealed class RandomizedRenderingTests
                 attributes &= ~Attributes.Underline;
             }
 
-            var foreground = random.Next(3) == 0
+            Color foreground = random.Next(3) == 0
                 ? Color.Indexed(random.Next(16))
                 : Color.Default;
-            var underlineColor = underline != Underline.None && random.Next(2) == 0
+            Color underlineColor = underline != Underline.None && random.Next(2) == 0
                 ? Color.Rgb(random.Next(256), random.Next(256), random.Next(256))
                 : Color.Default;
-            var style = new Style(
+            Style style = new Style(
                 foreground,
                 attributes: attributes,
                 hyperlink: links[random.Next(links.Length)],
@@ -108,7 +111,7 @@ public sealed class RandomizedRenderingTests
 
     private static byte[] Encode(Frame? front, Frame back)
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
         _ = Encoder.Encode(
             front,
             back,

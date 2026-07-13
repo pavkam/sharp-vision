@@ -1,8 +1,11 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalAttributes = TerminalAttributes;
 
 /// <summary>Defines one styled mutable UTF-16 text run.</summary>
 public sealed class Run: Inline

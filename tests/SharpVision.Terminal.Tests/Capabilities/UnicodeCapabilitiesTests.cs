@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
@@ -16,7 +19,7 @@ public sealed class UnicodeCapabilitiesTests
     [Fact]
     public void Conservative_WhenRead_ReportsPinnedUnicodePolicy()
     {
-        var capabilities = Capabilities.Conservative;
+        Capabilities capabilities = Capabilities.Conservative;
 
         capabilities.UnicodeVersion.ShouldBe(Info.Version);
         capabilities.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
@@ -28,7 +31,7 @@ public sealed class UnicodeCapabilitiesTests
     [Fact]
     public void Detect_WhenAmbiguousWidthIsOverridden_AppliesOverrideLast()
     {
-        var capabilities = Detector.Detect(
+        Capabilities capabilities = Detector.Detect(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             overrides: new Settings { AmbiguousWidth = Ambiguous.Wide });
 

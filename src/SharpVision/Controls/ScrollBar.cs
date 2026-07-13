@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -8,12 +11,13 @@ using SharpVision.Layout;
 using SharpVision.Scrolling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Unicode;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using KeyAction = Terminal.Input.Action;
+using BackgroundMode = BackgroundMode;
+using KeyAction = KeyAction;
 using ScrollRange = Scrolling.Range;
-using TerminalCanvas = Terminal.Rendering.Canvas;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalCanvas = TerminalCanvas;
+using TerminalStyle = TerminalStyle;
 using UnicodeWidth = Terminal.Unicode.Width;
 
 /// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
@@ -202,7 +206,7 @@ public sealed class ScrollBar: Control
         get => DefaultDecrementGlyph;
         set
         {
-            var glyph = Validate(value, nameof(value));
+            Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
             var wasCustom = _hasDecrementGlyph;
             _hasDecrementGlyph = true;
@@ -231,7 +235,7 @@ public sealed class ScrollBar: Control
         get => DefaultIncrementGlyph;
         set
         {
-            var glyph = Validate(value, nameof(value));
+            Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
             var wasCustom = _hasIncrementGlyph;
             _hasIncrementGlyph = true;
@@ -260,7 +264,7 @@ public sealed class ScrollBar: Control
         get => DefaultTrackGlyph;
         set
         {
-            var glyph = Validate(value, nameof(value));
+            Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
             var wasCustom = _hasTrackGlyph;
             _hasTrackGlyph = true;
@@ -289,7 +293,7 @@ public sealed class ScrollBar: Control
         get => DefaultThumbGlyph;
         set
         {
-            var glyph = Validate(value, nameof(value));
+            Rune glyph = Validate(value, nameof(value));
             VerifyMutable();
             var wasCustom = _hasThumbGlyph;
             _hasThumbGlyph = true;
@@ -320,7 +324,7 @@ public sealed class ScrollBar: Control
     {
         Validate(cause);
         VerifyMutable();
-        var range = CurrentRange();
+        ScrollRange range = CurrentRange();
         return Commit(range.Move(delta), cause);
     }
 
@@ -379,7 +383,7 @@ public sealed class ScrollBar: Control
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var bounds = ContentBounds;
+        Rect bounds = ContentBounds;
         var length = AxisLength(bounds);
 
         if (length == 0)
@@ -389,8 +393,8 @@ public sealed class ScrollBar: Control
 
         var buttons = ButtonCount(length);
         var trackLength = Math.Max(0, length - (buttons * 2));
-        var thumb = Thumb.Resolve(CurrentRange(), trackLength);
-        var style = ResolvedStyle;
+        Thumb thumb = Thumb.Resolve(CurrentRange(), trackLength);
+        TerminalStyle style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
@@ -399,7 +403,7 @@ public sealed class ScrollBar: Control
 
         for (var position = 0; position < length; position++)
         {
-            var glyph = ResolveGlyph(position, length, buttons, thumb);
+            Rune glyph = ResolveGlyph(position, length, buttons, thumb);
             Draw(canvas, PointAt(bounds, position), glyph, style);
         }
     }
@@ -426,9 +430,9 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        var code = eventArgs.Stroke.Code;
-        var decrement = Orientation == Orientation.Vertical ? Code.Up : Code.Left;
-        var increment = Orientation == Orientation.Vertical ? Code.Down : Code.Right;
+        Code code = eventArgs.Stroke.Code;
+        Code decrement = Orientation == Orientation.Vertical ? Code.Up : Code.Left;
+        Code increment = Orientation == Orientation.Vertical ? Code.Down : Code.Right;
 
         if (code == decrement)
         {
@@ -464,7 +468,7 @@ public sealed class ScrollBar: Control
 
     private void Handle(PointerEventArgs eventArgs)
     {
-        var pointer = eventArgs.Pointer;
+        Pointer pointer = eventArgs.Pointer;
 
         if (pointer.Action == PointerAction.Wheel)
         {
@@ -486,7 +490,7 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        var bounds = ContentBounds;
+        Rect bounds = ContentBounds;
         var length = AxisLength(bounds);
         var position = Axis(cells) - AxisOrigin(bounds);
 
@@ -514,8 +518,8 @@ public sealed class ScrollBar: Control
 
         var trackLength = Math.Max(0, length - (buttons * 2));
         var trackPosition = position - buttons;
-        var range = CurrentRange();
-        var thumb = Thumb.Resolve(range, trackLength);
+        ScrollRange range = CurrentRange();
+        Thumb thumb = Thumb.Resolve(range, trackLength);
 
         if (trackPosition < thumb.Start)
         {
@@ -557,7 +561,7 @@ public sealed class ScrollBar: Control
         Thumb thumb,
         ScrollRange range)
     {
-        var capture = CaptureOwner;
+        CaptureManager? capture = CaptureOwner;
 
         if (capture is null || !capture.Capture(this))
         {
@@ -576,7 +580,7 @@ public sealed class ScrollBar: Control
 
     private void Drag(PointerEventArgs eventArgs)
     {
-        var pointer = eventArgs.Pointer;
+        Pointer pointer = eventArgs.Pointer;
 
         if (pointer.Cells is not { } cells)
         {
@@ -590,7 +594,7 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        var bounds = ContentBounds;
+        Rect bounds = ContentBounds;
         var buttons = ButtonCount(AxisLength(bounds));
         var position = Axis(cells) - AxisOrigin(bounds) - buttons;
         var delta = Difference(position, _dragPointerStart);
@@ -743,7 +747,7 @@ public sealed class ScrollBar: Control
     {
         Span<char> buffer = stackalloc char[2];
         var length = value.EncodeToUtf16(buffer);
-        var measurement = UnicodeWidth.Measure(buffer[..length]);
+        Measurement measurement = UnicodeWidth.Measure(buffer[..length]);
 
         return measurement.Cells == 1 && measurement.Controls == 0
             ? value

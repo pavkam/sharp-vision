@@ -17,8 +17,8 @@ flowchart LR
 
 Each concrete control lives in `src/SharpVision.Showcase/Panes/<Control>/`. That
 directory owns the pane metadata, live example factory, and any pane-specific
-probe controls. `PaneCatalog` aggregates every `*ShowcasePane.Create()` entry;
-`PaneSupport` and `PaneMetadata` hold shared composition helpers.
+probe controls. `PaneCatalog` lists every `*ShowcasePane` factory; `PaneSupport`
+holds shared composition helpers.
 
 The sidebar contains one entry for each concrete shipped control: Border,
 Button, Canvas, CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu, Overlay,

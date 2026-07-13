@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using System.Text;
@@ -17,7 +20,7 @@ using SharpVision.Threading;
 using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalStyle = Style;
 
 /// <summary>Verifies ScrollBar range, input, capture, geometry, and semantic rendering.</summary>
 public sealed class ScrollBarTests
@@ -26,7 +29,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Properties_WhenAssignmentIsInvalid_PreservePreviousState()
     {
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Maximum = 100,
             Value = 50,
@@ -60,8 +63,8 @@ public sealed class ScrollBarTests
     [Fact]
     public void ScrollBy_WhenDeltaExceedsRange_ClampsAndRaisesOrderedEvent()
     {
-        var control = new ScrollBar { Maximum = 100, Value = 40 };
-        var changes = new List<string>();
+        ScrollBar control = new ScrollBar { Maximum = 100, Value = 40 };
+        List<string> changes = new List<string>();
         control.ValueChanged += (_, eventArgs) =>
             changes.Add($"{eventArgs.PreviousValue}>{eventArgs.Value}:{eventArgs.Cause}:{control.Value}");
 
@@ -81,7 +84,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void ScrollBy_WhenMaximumIsIntegerBoundary_DoesNotOverflow()
     {
-        var control = new ScrollBar { Maximum = int.MaxValue, Value = int.MaxValue - 1 };
+        ScrollBar control = new ScrollBar { Maximum = int.MaxValue, Value = int.MaxValue - 1 };
 
         control.ScrollBy(int.MaxValue).ShouldBeTrue();
 
@@ -92,18 +95,18 @@ public sealed class ScrollBarTests
     [Fact]
     public async Task Dispatch_WhenRangeChangesDuringThumbDrag_ClampsAgainstCurrentRangeAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var control = new ScrollBar
+            ScrollBar control = new ScrollBar
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using var capture = new CaptureManager(control);
+            using CaptureManager capture = new CaptureManager(control);
             control.ValueChanged += NarrowOnFirstChange;
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
@@ -128,7 +131,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenHorizontal_WritesButtonsTrackAndExactThumbCells()
     {
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
             Maximum = 80,
@@ -137,7 +140,7 @@ public sealed class ScrollBarTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         new Engine().Layout(control, new Size(10, 1));
-        using var frame = new Frame(new Size(10, 1));
+        using Frame frame = new Frame(new Size(10, 1));
 
         control.Render(frame.Canvas);
 
@@ -149,7 +152,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenThinLineChromeIsSelected_UsesCanonicalTrackAndThumb()
     {
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
             Chrome = ScrollBarStyle.Thin,
@@ -160,7 +163,7 @@ public sealed class ScrollBarTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         new Engine().Layout(control, new Size(10, 1));
-        using var frame = new Frame(new Size(10, 1));
+        using Frame frame = new Frame(new Size(10, 1));
 
         control.Render(frame.Canvas);
 
@@ -172,9 +175,9 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
-        var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
+        ControlStyle<ScrollBar> style = ThemeTestSupport.OverlayStyle<ScrollBar>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Bounds = new Rect(0, 0, 3, 1),
             Orientation = Orientation.Horizontal,
@@ -182,7 +185,7 @@ public sealed class ScrollBarTests
             Fill = ScrollBarFill.Line,
             Style = style,
         };
-        using var frame = new Frame(new Size(3, 1));
+        using Frame frame = new Frame(new Size(3, 1));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
 
         control.Render(frame.Canvas);
@@ -194,7 +197,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenLegacyTrackGlyphIsAssigned_UsesAssignedGlyph()
     {
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
             Maximum = 80,
@@ -204,7 +207,7 @@ public sealed class ScrollBarTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         new Engine().Layout(control, new Size(10, 1));
-        using var frame = new Frame(new Size(10, 1));
+        using Frame frame = new Frame(new Size(10, 1));
 
         control.Render(frame.Canvas);
 
@@ -215,7 +218,7 @@ public sealed class ScrollBarTests
     [Fact]
     public void Dispatch_WhenKeyboardCommandsArrive_AppliesOrientationAndPageMappings()
     {
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Maximum = 100,
             Value = 50,
@@ -242,11 +245,11 @@ public sealed class ScrollBarTests
     [Fact]
     public async Task Dispatch_WhenPointerPressesButtonsAndTrack_AppliesExpectedChangesAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var control = new ScrollBar
+            ScrollBar control = new ScrollBar
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
@@ -257,8 +260,8 @@ public sealed class ScrollBarTests
                 LargeChange = 20,
             };
             control.Attach(dispatcher);
-            using var focus = new FocusManager(control);
-            using var capture = new CaptureManager(control);
+            using FocusManager focus = new FocusManager(control);
+            using CaptureManager capture = new CaptureManager(control);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press));
             control.Value.ShouldBe(48);
@@ -276,18 +279,18 @@ public sealed class ScrollBarTests
     [Fact]
     public async Task Dispatch_WhenThumbDragsByCells_UsesCaptureAndOriginalGeometryAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var control = new ScrollBar
+            ScrollBar control = new ScrollBar
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using var capture = new CaptureManager(control);
+            using CaptureManager capture = new CaptureManager(control);
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(control);
@@ -304,18 +307,18 @@ public sealed class ScrollBarTests
     [Fact]
     public async Task Dispatch_WhenPixelThumbDragIsCancelled_ReleasesCaptureWithoutSpuriousChangeAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var control = new ScrollBar
+            ScrollBar control = new ScrollBar
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using var capture = new CaptureManager(control);
+            using CaptureManager capture = new CaptureManager(control);
             var changes = 0;
             control.ValueChanged += (_, _) => changes++;
 
@@ -344,13 +347,13 @@ public sealed class ScrollBarTests
     [Fact]
     public void Dispatch_WhenWheelMoves_AppliesAxisSpecificSmallChange()
     {
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Maximum = 100,
             Value = 50,
             SmallChange = 2,
         };
-        var causes = new List<Cause>();
+        List<Cause> causes = new List<Cause>();
         control.ValueChanged += (_, eventArgs) => causes.Add(eventArgs.Cause);
 
         Route(control, Wheel(wheelX: 0, wheelY: 3));
@@ -366,8 +369,8 @@ public sealed class ScrollBarTests
     [Fact]
     public void Dispatch_WhenWheelCannotMoveRange_LeavesEventUnhandled()
     {
-        var control = new ScrollBar { Maximum = 10, Value = 10 };
-        var eventArgs = new PointerEventArgs(Wheel(wheelX: 0, wheelY: -1));
+        ScrollBar control = new ScrollBar { Maximum = 10, Value = 10 };
+        PointerEventArgs eventArgs = new PointerEventArgs(Wheel(wheelX: 0, wheelY: -1));
 
         Router.Route(control, Events.Pointer, eventArgs);
 
@@ -379,12 +382,12 @@ public sealed class ScrollBarTests
     [Fact]
     public async Task Dispatch_WhenCaptureBecomesUnavailable_CancelsDragWithoutChangingValueAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 2) };
-            var control = new ScrollBar
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 2) };
+            ScrollBar control = new ScrollBar
             {
                 Bounds = new Rect(0, 0, 12, 1),
                 Orientation = Orientation.Horizontal,
@@ -392,7 +395,7 @@ public sealed class ScrollBarTests
             };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using var capture = new CaptureManager(root);
+            using CaptureManager capture = new CaptureManager(root);
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(control);
@@ -414,19 +417,19 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenTrackIsTiny_DegradesWithoutEscapingBounds()
     {
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
             Maximum = 100,
             Bounds = new Rect(0, 0, 1, 1),
         };
-        using var one = new Frame(new Size(1, 1));
+        using Frame one = new Frame(new Size(1, 1));
 
         control.Render(one.Canvas);
         FrameOracle.Get(one, default).ShouldBe("▓");
 
         control.Bounds = new Rect(0, 0, 2, 1);
-        using var two = new Frame(new Size(2, 1));
+        using Frame two = new Frame(new Size(2, 1));
         control.Render(two.Canvas);
         Cells(two, width: 2, y: 0).ShouldBe("◀▶");
 
@@ -438,18 +441,18 @@ public sealed class ScrollBarTests
     [Fact]
     public void Render_WhenBehaviorStateChanges_UsesResolvedVisualStyle()
     {
-        var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
+        ControlStyle<ScrollBar> style = ThemeTestSupport.OverlayStyle<ScrollBar>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
             (State.Focused, new ThemeOverlay(attributes: Attributes.Underline)),
             (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))));
-        var control = new ScrollBar
+        ScrollBar control = new ScrollBar
         {
             Bounds = new Rect(0, 0, 1, 3),
             Style = style,
         };
         control.SetFocused(true);
         control.SetPressed(true);
-        using var frame = new Frame(new Size(1, 3));
+        using Frame frame = new Frame(new Size(1, 3));
 
         control.Render(frame.Canvas);
 
@@ -470,7 +473,7 @@ public sealed class ScrollBarTests
 
     private static string Cells(Frame frame, int width, int y)
     {
-        var result = new StringBuilder(width);
+        StringBuilder result = new StringBuilder(width);
 
         for (var x = 0; x < width; x++)
         {

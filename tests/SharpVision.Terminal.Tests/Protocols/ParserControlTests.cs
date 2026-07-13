@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -16,8 +19,8 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenInputIsUtf8Text_DeliversBorrowedBytes()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
         var input = "A🦄"u8.ToArray();
 
         parser.Parse(input, ref sink);
@@ -34,8 +37,8 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenInputContainsC0Control_DeliversOrderedEvents()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("a\nb"u8, ref sink);
 
@@ -54,8 +57,8 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenEscapeHasFinal_DeliversEscape()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b7"u8, ref sink);
 
@@ -71,8 +74,8 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenEscapeHasIntermediate_DeliversIntermediateAndFinal()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b(B"u8, ref sink);
 
@@ -88,8 +91,8 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenEightBitControlsAreDisabled_DeliversBytesAsText()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
         byte[] input = [0xdb, 0x9b, (byte) '3', (byte) 'A'];
 
         parser.Parse(input, ref sink);
@@ -103,8 +106,8 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenEightBitControlsAreEnabled_DeliversCsi()
     {
-        using var parser = new Parser(Limits.Default with { AcceptEightBitControls = true });
-        var sink = new RecordingSink();
+        using Parser parser = new Parser(Limits.Default with { AcceptEightBitControls = true });
+        RecordingSink sink = new RecordingSink();
         byte[] input = [0x9b, (byte) '3', (byte) 'A'];
 
         parser.Parse(input, ref sink);
@@ -121,8 +124,8 @@ public sealed class ParserControlTests
     [Fact]
     public void Parse_WhenEightBitC1IsEnabled_DeliversControl()
     {
-        using var parser = new Parser(Limits.Default with { AcceptEightBitControls = true });
-        var sink = new RecordingSink();
+        using Parser parser = new Parser(Limits.Default with { AcceptEightBitControls = true });
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse([0x85], ref sink);
 

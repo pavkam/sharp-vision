@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -16,7 +19,7 @@ public sealed class DiagnosticTests
     public void ToString_WhenDiagnosticIsSensitive_DoesNotExposePayload()
     {
         const string secret = "clipboard-password-do-not-log";
-        var diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new Diagnostic(
             DiagnosticCode.StringLimit,
             SequenceKind.Osc,
             42,

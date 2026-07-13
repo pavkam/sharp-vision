@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Fonts;
@@ -35,15 +38,15 @@ internal sealed class FigletTextShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var catalog = FigletCatalog.Default;
-        var text = new ControlTextInput
+        FigletCatalog catalog = FigletCatalog.Default;
+        ControlTextInput text = new ControlTextInput
         {
             Width = Length.Cells(30),
             Text = "SharpVision",
             Style = Palette.Editor(),
         };
         var fontNames = catalog.Names.ToArray();
-        var picker = new ControlComboBox
+        ControlComboBox picker = new ControlComboBox
         {
             Width = Length.Cells(30),
             Items = fontNames,
@@ -55,12 +58,12 @@ internal sealed class FigletTextShowcasePane: ShowcasePane
             ScrollBarFill = ScrollBarFill.Line,
             Style = Palette.List(),
         };
-        var preview = new ControlFigletText(catalog.Load("Standard"))
+        ControlFigletText preview = new ControlFigletText(catalog.Load("Standard"))
         {
             Content = text.Text,
             Foreground = Palette.Accent,
         };
-        var status = new ControlText("Type text, then choose a font from the dropdown.")
+        ControlText status = new ControlText("Type text, then choose a font from the dropdown.")
         {
             Foreground = Palette.Muted,
         };

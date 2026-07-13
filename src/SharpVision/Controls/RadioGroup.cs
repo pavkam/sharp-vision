@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Input;
@@ -15,7 +18,7 @@ internal static class RadioGroup
             return;
         }
 
-        var eventArgs = new SelectionChangedEventArgs(value, current: null, cause);
+        SelectionChangedEventArgs eventArgs = new SelectionChangedEventArgs(value, current: null, cause);
         value.RaiseUnchecked(eventArgs);
         value.RaiseSelectionChanged(eventArgs);
     }
@@ -26,7 +29,7 @@ internal static class RadioGroup
         ArgumentNullException.ThrowIfNull(value);
         RadioButton? previous = null;
 
-        foreach (var member in Members(value))
+        foreach (RadioButton member in Members(value))
         {
             if (!ReferenceEquals(member, value) && member.IsChecked)
             {
@@ -44,7 +47,7 @@ internal static class RadioGroup
             return;
         }
 
-        var eventArgs = new SelectionChangedEventArgs(previous, value, cause);
+        SelectionChangedEventArgs eventArgs = new SelectionChangedEventArgs(previous, value, cause);
         previous?.RaiseUnchecked(eventArgs);
 
         if (!value.IsChecked)
@@ -67,8 +70,8 @@ internal static class RadioGroup
     internal static bool Move(RadioButton value, bool reverse)
     {
         ArgumentNullException.ThrowIfNull(value);
-        var members = Members(value);
-        var eligible = members.FindAll(static member =>
+        List<RadioButton> members = Members(value);
+        List<RadioButton> eligible = members.FindAll(static member =>
             !member.IsDisposed &&
             member.EffectiveIsEnabled &&
             member.EffectiveIsVisible &&
@@ -83,7 +86,7 @@ internal static class RadioGroup
         var next = reverse
             ? (current <= 0 ? eligible.Count - 1 : current - 1)
             : (current < 0 || current == eligible.Count - 1 ? 0 : current + 1);
-        var target = eligible[next];
+        RadioButton target = eligible[next];
 
         if (target.FocusOwner?.Focus(target) == false)
         {
@@ -96,7 +99,7 @@ internal static class RadioGroup
 
     private static List<RadioButton> Members(RadioButton value)
     {
-        var result = new List<RadioButton>();
+        List<RadioButton> result = [];
 
         if (value.GroupName is null)
         {
@@ -106,7 +109,7 @@ internal static class RadioGroup
             }
             else
             {
-                foreach (var child in value.Parent.Children)
+                foreach (Control child in value.Parent.Children)
                 {
                     if (child is RadioButton { GroupName: null } member)
                     {
@@ -145,7 +148,7 @@ internal static class RadioGroup
 
         if (control is Container container)
         {
-            foreach (var child in container.Children)
+            foreach (Control child in container.Children)
             {
                 Collect(child, groupName, result);
             }

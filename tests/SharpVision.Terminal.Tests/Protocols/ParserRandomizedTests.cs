@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -19,7 +22,7 @@ public sealed class ParserRandomizedTests
     [Fact]
     public void Parse_WhenValidSequencesAreRandomized_MatchesEveryFragmentation()
     {
-        var random = new Random(_validSeed);
+        Random random = new Random(_validSeed);
 
         for (var index = 0; index < 64; index++)
         {
@@ -44,7 +47,7 @@ public sealed class ParserRandomizedTests
     [Fact]
     public void Parse_WhenHostileBytesAreRandomized_RecoversKnownTrailingCsi()
     {
-        var random = new Random(_hostileSeed);
+        Random random = new Random(_hostileSeed);
 
         for (var index = 0; index < 256; index++)
         {
@@ -52,13 +55,13 @@ public sealed class ParserRandomizedTests
             random.NextBytes(input.AsSpan(0, 64));
             input[64] = 0x18;
             "\u001b[2J"u8.CopyTo(input.AsSpan(65));
-            using var parser = new Parser(Limits.Default with
+            using Parser parser = new Parser(Limits.Default with
             {
                 MaxParameterBytes = 16,
                 MaxIntermediateBytes = 4,
                 MaxStringBytes = 64,
             });
-            var sink = new RecordingSink();
+            RecordingSink sink = new RecordingSink();
 
             parser.Parse(input, ref sink);
             parser.Complete(ref sink);

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Capabilities;
 
 using System.Collections.ObjectModel;
@@ -18,9 +21,9 @@ public sealed class NegotiationOptions
         Limits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        var copy = new Dictionary<string, string?>(StringComparer.Ordinal);
+        Dictionary<string, string?> copy = new Dictionary<string, string?>(StringComparer.Ordinal);
 
-        foreach (var pair in environment)
+        foreach (KeyValuePair<string, string?> pair in environment)
         {
             copy.Add(pair.Key, pair.Value);
         }

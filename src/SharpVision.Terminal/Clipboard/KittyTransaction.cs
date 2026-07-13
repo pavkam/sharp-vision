@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Clipboard;
 
 using System.Diagnostics;
@@ -245,7 +248,7 @@ public sealed class KittyTransaction: IDisposable
                 packet.Data.Length));
         }
 
-        if (!_builders.TryGetValue(mime, out var builder))
+        if (!_builders.TryGetValue(mime, out Builder? builder))
         {
             builder = new Builder();
             _builders.Add(mime, builder);
@@ -290,7 +293,7 @@ public sealed class KittyTransaction: IDisposable
 
     private void ClearBuilders()
     {
-        foreach (var builder in _builders.Values)
+        foreach (Builder builder in _builders.Values)
         {
             builder.Dispose();
         }
@@ -306,7 +309,7 @@ public sealed class KittyTransaction: IDisposable
     {
         Debug.Assert(!IsTerminal, "Only an active transaction can complete.");
 
-        var items = new KittyMimeData[_mimeOrder.Count];
+        KittyMimeData[] items = new KittyMimeData[_mimeOrder.Count];
 
         for (var index = 0; index < _mimeOrder.Count; index++)
         {

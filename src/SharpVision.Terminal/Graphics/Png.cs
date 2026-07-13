@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Graphics;
 
 using System.Buffers.Binary;
@@ -35,8 +38,8 @@ internal static class Png
             }
 
             var count = (int) length;
-            var type = source.Slice(offset + 4, 4);
-            var data = source.Slice(offset + 8, count);
+            ReadOnlySpan<byte> type = source.Slice(offset + 4, 4);
+            ReadOnlySpan<byte> data = source.Slice(offset + 8, count);
             offset = checked(offset + count + 12);
 
             if (first)

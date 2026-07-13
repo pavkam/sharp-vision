@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 /// <summary>Selects the preferred side of an anchor used by a Popup.</summary>

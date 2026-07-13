@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 using SharpVision.Controls;
@@ -48,7 +51,7 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
         EnsureProperty(property);
         property.ValidateValue(value);
 
-        var key = (property, state);
+        (StyleProperty<T> property, State state) key = (property, state);
 
         lock (_gate)
         {
@@ -123,9 +126,9 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     {
         lock (_gate)
         {
-            var clone = new ControlStyle<TControl>();
+            ControlStyle<TControl> clone = new ControlStyle<TControl>();
 
-            foreach (var entry in _values)
+            foreach (KeyValuePair<(IStyleProperty Property, State State), object> entry in _values)
             {
                 clone._values[entry.Key] = entry.Value;
             }
@@ -186,10 +189,10 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
 
     private ControlStyleSnapshot BuildSnapshot()
     {
-        var copy = new Dictionary<(IStyleProperty Property, State State), object>(_values);
-        var aggregate = Impact.Render;
+        Dictionary<(IStyleProperty Property, State State), object> copy = new Dictionary<(IStyleProperty Property, State State), object>(_values);
+        Impact aggregate = Impact.Render;
 
-        foreach (var entry in copy.Keys)
+        foreach ((IStyleProperty Property, State State) entry in copy.Keys)
         {
             if (entry.Property.Impact == Impact.Measure)
             {

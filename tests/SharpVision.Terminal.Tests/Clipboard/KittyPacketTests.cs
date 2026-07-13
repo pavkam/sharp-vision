@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Clipboard;
 
 using SharpVision.Terminal.Clipboard;
@@ -16,7 +19,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenDataReplyIsValid_ReturnsTypedPacket()
     {
-        var packet = KittyPacket.Parse(
+        KittyPacket packet = KittyPacket.Parse(
             "5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;AAEC"u8);
 
         packet.IsValid.ShouldBeTrue();
@@ -49,7 +52,7 @@ public sealed class KittyPacketTests
     {
         var input = Encoding.ASCII.GetBytes($"5522;type=write:status={wire}");
 
-        var packet = KittyPacket.Parse(input);
+        KittyPacket packet = KittyPacket.Parse(input);
 
         packet.IsValid.ShouldBeTrue();
         packet.ReplyStatus.ShouldBe(expected);
@@ -61,7 +64,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenCredentialsAreValid_DecodesButRedactsText()
     {
-        var packet = KittyPacket.Parse(
+        KittyPacket packet = KittyPacket.Parse(
             "5522;type=read:pw=cGFzc3dvcmQ=:name=ZnJpZW5kbHk=;Lg=="u8);
 
         packet.IsValid.ShouldBeTrue();
@@ -78,7 +81,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenMetadataKeyIsUnknown_PreservesKeyName()
     {
-        var packet = KittyPacket.Parse("5522;type=read:future=secret;Lg=="u8);
+        KittyPacket packet = KittyPacket.Parse("5522;type=read:future=secret;Lg=="u8);
 
         packet.IsValid.ShouldBeTrue();
         packet.UnknownKeys.ShouldBe(["future"]);
@@ -92,7 +95,7 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenPayloadDecodeIsDisabled_PreservesPresenceOnly()
     {
-        var packet = KittyPacket.Parse(
+        KittyPacket packet = KittyPacket.Parse(
             "5522;type=wdata:mime=dGV4dC9wbGFpbg==;AAEC"u8,
             decodePayload: false);
 
@@ -116,7 +119,7 @@ public sealed class KittyPacketTests
     [InlineData("5522;type=read;***", DiagnosticCode.InvalidBase64)]
     public void Parse_WhenPacketIsMalformed_ReturnsDiagnostic(string input, DiagnosticCode code)
     {
-        var packet = KittyPacket.Parse(Encoding.ASCII.GetBytes(input));
+        KittyPacket packet = KittyPacket.Parse(Encoding.ASCII.GetBytes(input));
 
         packet.IsValid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(code);
@@ -130,9 +133,9 @@ public sealed class KittyPacketTests
     [Fact]
     public void Parse_WhenMetadataExceedsLimit_ReturnsInvalidMetadata()
     {
-        var limits = Limits.Default with { MaxMetadataBytes = 8 };
+        Limits limits = Limits.Default with { MaxMetadataBytes = 8 };
 
-        var packet = KittyPacket.Parse("5522;type=read:id=abc"u8, limits);
+        KittyPacket packet = KittyPacket.Parse("5522;type=read:id=abc"u8, limits);
 
         packet.IsValid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidMetadata);

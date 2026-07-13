@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Windows.Input;
@@ -5,9 +8,10 @@ using System.Windows.Input;
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
+using SharpVision.Threading;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalAttributes = TerminalAttributes;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
 public sealed partial class Button: Pressable
@@ -122,7 +126,7 @@ public sealed partial class Button: Pressable
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {
-        var command = Command;
+        ICommand? command = Command;
         var parameter = CommandParameter;
 
         if (command is not null && !command.CanExecute(parameter))
@@ -130,7 +134,7 @@ public sealed partial class Button: Pressable
             return;
         }
 
-        var eventArgs = new ActivationEventArgs(cause);
+        ActivationEventArgs eventArgs = new ActivationEventArgs(cause);
         Click?.Invoke(this, eventArgs);
         command?.Execute(parameter);
     }
@@ -138,7 +142,7 @@ public sealed partial class Button: Pressable
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var content = Content;
+        Control? content = Content;
 
         if (content is null)
         {
@@ -162,7 +166,7 @@ public sealed partial class Button: Pressable
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var face = FaceBounds;
+        Rect face = FaceBounds;
         ControlChrome.Render(
             this,
             canvas,
@@ -235,7 +239,7 @@ public sealed partial class Button: Pressable
             return;
         }
 
-        var dispatcher = Dispatcher;
+        Dispatcher? dispatcher = Dispatcher;
 
         if (dispatcher is not null && !dispatcher.CheckAccess())
         {

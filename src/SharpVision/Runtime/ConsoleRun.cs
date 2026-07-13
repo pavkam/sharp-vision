@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Runtime;
 
 using SharpVision.Terminal.Capabilities;
@@ -12,8 +15,8 @@ internal static class ConsoleRun
     /// <returns>The validated terminal session policy.</returns>
     internal static TerminalOptions CreateTerminalOptions()
     {
-        var environment = CaptureEnvironment();
-        var overrides = new Settings { CellMouse = true };
+        Dictionary<string, string?> environment = CaptureEnvironment();
+        Settings overrides = new Settings { CellMouse = true };
         return new TerminalOptions
         {
             Capabilities = Detector.Detect(new Dictionary<string, string?>(), overrides: overrides),
@@ -27,7 +30,7 @@ internal static class ConsoleRun
     /// <returns>A mutable dictionary copy of the current environment.</returns>
     internal static Dictionary<string, string?> CaptureEnvironment()
     {
-        var environment = new Dictionary<string, string?>(StringComparer.Ordinal);
+        Dictionary<string, string?> environment = new Dictionary<string, string?>(StringComparer.Ordinal);
 
         foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
         {

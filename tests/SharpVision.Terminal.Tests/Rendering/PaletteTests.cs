@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
@@ -44,9 +47,9 @@ public sealed class PaletteTests
     {
         for (var index = 0; index <= byte.MaxValue; index++)
         {
-            var source = Color.Indexed(index);
-            var basic = Palette.Project(source, ColorDepth.Basic16);
-            var indexed = Palette.Project(source, ColorDepth.Indexed256);
+            Color source = Color.Indexed(index);
+            Color basic = Palette.Project(source, ColorDepth.Basic16);
+            Color indexed = Palette.Project(source, ColorDepth.Indexed256);
 
             basic.Kind.ShouldBe(ColorKind.Indexed);
             basic.Red.ShouldBeLessThan((byte) 16);
@@ -58,16 +61,16 @@ public sealed class PaletteTests
     [Fact]
     public void Project_WhenRandomColorsAreRepeated_IsDeterministicAndIdempotent()
     {
-        var random = new Random(0x00C01012);
+        Random random = new Random(0x00C01012);
 
         for (var iteration = 0; iteration < 2_000; iteration++)
         {
-            var source = Color.Rgb(random.Next(256), random.Next(256), random.Next(256));
+            Color source = Color.Rgb(random.Next(256), random.Next(256), random.Next(256));
 
-            foreach (var depth in Enum.GetValues<ColorDepth>())
+            foreach (ColorDepth depth in Enum.GetValues<ColorDepth>())
             {
-                var first = Palette.Project(source, depth);
-                var second = Palette.Project(source, depth);
+                Color first = Palette.Project(source, depth);
+                Color second = Palette.Project(source, depth);
 
                 second.ShouldBe(first);
                 Palette.Project(first, depth).ShouldBe(first);

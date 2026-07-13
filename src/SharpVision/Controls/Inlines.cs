@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Collections;
@@ -30,7 +33,7 @@ public sealed class Inlines: IList<Inline>
         {
             ArgumentNullException.ThrowIfNull(value);
             _owner.VerifyMutable();
-            var previous = _items[index];
+            Inline previous = _items[index];
 
             if (ReferenceEquals(previous, value))
             {
@@ -58,7 +61,7 @@ public sealed class Inlines: IList<Inline>
             return;
         }
 
-        foreach (var item in _items)
+        foreach (Inline item in _items)
         {
             item.Detach();
         }
@@ -120,7 +123,7 @@ public sealed class Inlines: IList<Inline>
     public void RemoveAt(int index)
     {
         _owner.VerifyMutable();
-        var item = _items[index];
+        Inline item = _items[index];
         _items.RemoveAt(index);
         item.Detach();
         _owner.InlineChanged();

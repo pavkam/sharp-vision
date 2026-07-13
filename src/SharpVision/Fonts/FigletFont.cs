@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Fonts;
 
 using System.Buffers;
@@ -80,7 +83,7 @@ public sealed class FigletFont
             throw new ArgumentException("The limits must be explicitly initialized.", nameof(limits));
         }
 
-        using var buffer = new MemoryStream();
+        using MemoryStream buffer = new MemoryStream();
         var rented = ArrayPool<byte>.Shared.Rent(8192);
 
         try
@@ -133,7 +136,7 @@ public sealed class FigletFont
     /// <param name="value">The Unicode scalar value.</param>
     /// <returns>The matching immutable glyph.</returns>
     internal FigletGlyph GetGlyph(int value) =>
-        _glyphs.TryGetValue(value, out var glyph)
+        _glyphs.TryGetValue(value, out FigletGlyph? glyph)
             ? glyph
             : _glyphs['?'];
 

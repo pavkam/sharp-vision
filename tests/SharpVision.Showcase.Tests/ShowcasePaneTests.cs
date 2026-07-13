@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using SharpVision.Controls;
@@ -5,22 +8,18 @@ using SharpVision.Layout;
 using SharpVision.Showcase.Panes;
 using SharpVision.Terminal.Geometry;
 
-using Shouldly;
+using ControlStack = Stack;
+using ControlText = Controls.Text;
 
-using ControlStack = SharpVision.Controls.Stack;
-using ControlText = SharpVision.Controls.Text;
-
-/// <summary>Verifies one reusable documentation page and its live example ownership.</summary>
-public sealed class PageTests
+/// <summary>Verifies showcase pane documentation chrome and live example ownership.</summary>
+public sealed class ShowcasePaneTests
 {
-    /// <summary>Verifies page creation returns fresh examples and all documentation sections.</summary>
+    /// <summary>Verifies pane construction returns fresh trees and all documentation sections.</summary>
     [Fact]
-    public void CreateContent_WhenPageIsValid_BuildsCompleteFreshDocumentationTrees()
+    public void Constructor_WhenPaneIsValid_BuildsCompleteFreshDocumentationTrees()
     {
-        var page = CreatePage();
-
-        using var first = page.CreateContent();
-        using var second = page.CreateContent();
+        using TestPane first = CreatePane();
+        using TestPane second = CreatePane();
 
         first.ShouldNotBeSameAs(second);
         FindText(first).ShouldContain("Sample");
@@ -37,65 +36,49 @@ public sealed class PageTests
         FindAll<Table>(first)[1].Columns.Select(static column => column.Header)
             .ShouldBe(["Input", "Behavior", "Result"]);
 
-        var narrative = FindAll<RichText>(first)
+        RichText narrative = FindAll<RichText>(first)
             .Single(value => InlineText(value).StartsWith("Use this control when", StringComparison.Ordinal));
         narrative.Parent.ShouldNotBeOfType<Border>();
     }
 
     /// <summary>Verifies interaction metadata renders as a standalone table without a prose card.</summary>
     [Fact]
-    public void CreateContent_WhenInteractionsAreStructured_RendersDedicatedInteractionTable()
+    public void Constructor_WhenInteractionsAreStructured_RendersDedicatedInteractionTable()
     {
-        var page = new Page(
+        using TestPane content = new TestPane(
             "Sample",
             "Summary",
             [new InteractionDescription("Keyboard", "Press Enter", "Activates the command.")],
-            [new PropertyDescription("Content", "Control?", "null", "Description")],
-            static () => new TestPane(
-                "Sample",
-                "Summary",
-                [new InteractionDescription("Keyboard", "Press Enter", "Activates the command.")],
-                [new PropertyDescription("Content", "Control?", "null", "Description")]));
-
-        using var content = page.CreateContent();
+            [new PropertyDescription("Content", "Control?", "null", "Description")]);
 
         FindText(content).ShouldContain("Keyboard");
         FindText(content).ShouldContain("Press Enter");
         FindText(content).ShouldContain("Activates the command.");
-        var tables = FindAll<Table>(content);
+        List<Table> tables = FindAll<Table>(content);
         tables.Count.ShouldBe(2);
         tables[1].Rows.Count.ShouldBe(1);
     }
 
     /// <summary>Verifies the borderless narrative remeasures and wraps at the committed page width.</summary>
     [Fact]
-    public void CreateContent_WhenNarrativeIsNarrow_WrapsRichTextBeyondOneContentLine()
+    public void Constructor_WhenNarrativeIsNarrow_WrapsRichTextBeyondOneContentLine()
     {
-        var page = new Page(
+        using TestPane content = new TestPane(
             "Sample",
             "Use this control when a long explanation needs to remain readable in a narrow terminal page.",
             [new InteractionDescription(
                 "General",
                 "Open the live example, resize the terminal, and confirm that the guidance stays readable.",
                 "Open the live example, resize the terminal, and confirm that the guidance stays readable.")],
-            [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")],
-            static () => new TestPane(
-                "Sample",
-                "Use this control when a long explanation needs to remain readable in a narrow terminal page.",
-                [new InteractionDescription(
-                    "General",
-                    "Open the live example, resize the terminal, and confirm that the guidance stays readable.",
-                    "Open the live example, resize the terminal, and confirm that the guidance stays readable.")],
-                [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")]));
-        using var content = page.CreateContent();
+            [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")]);
         new Engine().Layout(content, new Size(72, 40));
-        var recipe = FindAll<RichText>(content).Single(value => InlineText(value).StartsWith("Use this control when", StringComparison.Ordinal));
+        RichText recipe = FindAll<RichText>(content).Single(value => InlineText(value).StartsWith("Use this control when", StringComparison.Ordinal));
 
         recipe.Bounds.Height.ShouldBeGreaterThan(2);
         recipe.Parent.ShouldNotBeOfType<Border>();
     }
 
-    /// <summary>Verifies page identity and documentation values reject blanks and missing content.</summary>
+    /// <summary>Verifies pane identity and documentation values reject blanks and missing content.</summary>
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
@@ -105,48 +88,33 @@ public sealed class PageTests
         var values = new[] { "Sample", "Summary", "Interaction" };
         values[field] = " ";
 
-        _ = Should.Throw<ArgumentException>(() => new Page(
+        _ = Should.Throw<ArgumentException>(() => new TestPane(
             values[0],
             values[1],
             [new InteractionDescription("General", "Use the documented control interaction.", values[2])],
-            [new PropertyDescription("Content", "Control?", "null", "Description")],
-            static () => new TestPane()));
+            [new PropertyDescription("Content", "Control?", "null", "Description")]));
     }
 
-    /// <summary>Verifies a page requires property documentation.</summary>
+    /// <summary>Verifies a pane requires property documentation.</summary>
     [Fact]
     public void Constructor_WhenPropertiesAreEmpty_ThrowsArgumentException()
     {
-        _ = Should.Throw<ArgumentException>(() => new Page(
+        _ = Should.Throw<ArgumentException>(() => new TestPane(
             "Sample",
             "Summary",
             [new InteractionDescription("General", "Use the documented control interaction.", "Interaction")],
-            [],
-            static () => new TestPane()));
+            []));
     }
 
-    /// <summary>Verifies a page requires a live example factory.</summary>
-    [Fact]
-    public void Constructor_WhenFactoryIsNull_ThrowsArgumentNullException()
-    {
-        _ = Should.Throw<ArgumentNullException>(() => new Page(
-            "Sample",
-            "Summary",
-            [new InteractionDescription("General", "Use the documented control interaction.", "Interaction")],
-            [new PropertyDescription("Content", "Control?", "null", "Description")],
-            null!));
-    }
-
-    private static Page CreatePage() => new(
+    private static TestPane CreatePane() => new(
         "Sample",
         "Explains a sample control.",
         [new InteractionDescription("General", "Use the documented control interaction.", "Use the keyboard or pointer.")],
-        [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")],
-        static () => new TestPane());
+        [new PropertyDescription("Content", "Control?", "null", "Owns the displayed content.")]);
 
     private static List<T> FindAll<T>(Control control) where T : Control
     {
-        var matches = new List<T>();
+        List<T> matches = new List<T>();
         Visit(control, matches);
         return matches;
     }
@@ -160,7 +128,7 @@ public sealed class PageTests
 
         if (control is Container container)
         {
-            foreach (var child in container.Children)
+            foreach (Control child in container.Children)
             {
                 Visit(child, matches);
             }
@@ -169,7 +137,7 @@ public sealed class PageTests
 
     private static string FindText(Control control)
     {
-        var text = new List<string>();
+        List<string> text = new List<string>();
         Visit(control, text);
         return string.Join('\n', text);
     }
@@ -177,9 +145,9 @@ public sealed class PageTests
     private static string InlineText(RichText text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        var values = new List<string>();
+        List<string> values = new List<string>();
 
-        foreach (var inline in text.Inlines)
+        foreach (Inline inline in text.Inlines)
         {
             switch (inline)
             {
@@ -201,7 +169,7 @@ public sealed class PageTests
     {
         if (control is RichText richText)
         {
-            foreach (var inline in richText.Inlines)
+            foreach (Inline inline in richText.Inlines)
             {
                 switch (inline)
                 {
@@ -226,7 +194,7 @@ public sealed class PageTests
             return;
         }
 
-        foreach (var child in container.Children)
+        foreach (Control child in container.Children)
         {
             Visit(child, text);
         }

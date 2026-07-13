@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Fonts;
 
 using System.Text;
@@ -15,9 +18,9 @@ public sealed class FigletFontTests
     [Fact]
     public void Load_WhenFontIsValid_ExposesHeaderAndGlyphs()
     {
-        using var stream = Stream(CreateFont());
+        using MemoryStream stream = Stream(CreateFont());
 
-        var font = FigletFont.Load(stream, "test");
+        FigletFont font = FigletFont.Load(stream, "test");
 
         font.Name.ShouldBe("test");
         font.Height.ShouldBe(1);
@@ -30,9 +33,9 @@ public sealed class FigletFontTests
     [Fact]
     public void Load_WhenFontHasCodeTag_RendersUnicodeScalar()
     {
-        using var stream = Stream($"{CreateFont()}9731 snowman\n☃@@\n");
+        using MemoryStream stream = Stream($"{CreateFont()}9731 snowman\n☃@@\n");
 
-        var font = FigletFont.Load(stream, "unicode");
+        FigletFont font = FigletFont.Load(stream, "unicode");
 
         font.Render("☃").ShouldBe("☃");
     }
@@ -41,7 +44,7 @@ public sealed class FigletFontTests
     [Fact]
     public void Load_WhenSignatureIsInvalid_ThrowsFormatException()
     {
-        using var stream = Stream("not-a-font\n");
+        using MemoryStream stream = Stream("not-a-font\n");
 
         _ = Should.Throw<FormatException>(() => FigletFont.Load(stream, "bad"));
     }
@@ -50,8 +53,8 @@ public sealed class FigletFontTests
     [Fact]
     public void Load_WhenInputExceedsLimit_ThrowsInvalidDataException()
     {
-        using var stream = Stream(CreateFont());
-        var limits = new FigletLimits(maxInputBytes: 16);
+        using MemoryStream stream = Stream(CreateFont());
+        FigletLimits limits = new FigletLimits(maxInputBytes: 16);
 
         _ = Should.Throw<InvalidDataException>(() => FigletFont.Load(stream, "large", limits));
     }
@@ -64,9 +67,9 @@ public sealed class FigletFontTests
     [Fact]
     public void Render_WhenDirectionIsRightToLeft_ReversesGlyphOrder()
     {
-        using var stream = Stream(CreateFont());
-        var font = FigletFont.Load(stream, "test");
-        var options = new FigletOptions(FigletDirection.RightToLeft);
+        using MemoryStream stream = Stream(CreateFont());
+        FigletFont font = FigletFont.Load(stream, "test");
+        FigletOptions options = new FigletOptions(FigletDirection.RightToLeft);
 
         font.Render("ABC", options).ShouldBe("CBA");
     }
@@ -75,8 +78,8 @@ public sealed class FigletFontTests
     [Fact]
     public void Render_WhenGlyphIsMissing_UsesQuestionMarkFallback()
     {
-        using var stream = Stream(CreateFont());
-        var font = FigletFont.Load(stream, "test");
+        using MemoryStream stream = Stream(CreateFont());
+        FigletFont font = FigletFont.Load(stream, "test");
 
         font.Render("😀").ShouldBe("?");
     }
@@ -85,8 +88,8 @@ public sealed class FigletFontTests
     [Fact]
     public void Render_WhenGlyphContainsHardblank_ReplacesItAfterComposition()
     {
-        using var stream = Stream(CreateFont(code => code == 'A' ? "$A" : RuneFor(code)));
-        var font = FigletFont.Load(stream, "hardblank");
+        using MemoryStream stream = Stream(CreateFont(code => code == 'A' ? "$A" : RuneFor(code)));
+        FigletFont font = FigletFont.Load(stream, "hardblank");
 
         font.Render("A").ShouldBe(" A");
     }
@@ -95,8 +98,8 @@ public sealed class FigletFontTests
     [Fact]
     public void Render_WhenVerticalFittingIsEnabled_OverlapsBlankBoundaryRows()
     {
-        using var stream = Stream(CreateTallFont());
-        var font = FigletFont.Load(stream, "vertical");
+        using MemoryStream stream = Stream(CreateTallFont());
+        FigletFont font = FigletFont.Load(stream, "vertical");
 
         font.Render("A\nA").ShouldBe("A\nA\n ");
     }
@@ -109,14 +112,14 @@ public sealed class FigletFontTests
         string content,
         string expected)
     {
-        using var stream = Stream(CreateFont(code => code switch
+        using MemoryStream stream = Stream(CreateFont(code => code switch
         {
             'A' => "/",
             'B' => "\\",
             _ => RuneFor(code),
         }));
-        var font = FigletFont.Load(stream, "big-x");
-        var options = new FigletOptions(
+        FigletFont font = FigletFont.Load(stream, "big-x");
+        FigletOptions options = new FigletOptions(
             layout: FigletLayout.HorizontalSmushing | FigletLayout.BigX);
 
         font.Render(content, options).ShouldBe(expected);
@@ -127,7 +130,7 @@ public sealed class FigletFontTests
     private static string CreateFont(Func<int, string>? glyph = null)
     {
         glyph ??= RuneFor;
-        var builder = new StringBuilder("flf2a$ 1 1 80 -1 1 0\nTest font by SharpVision\n");
+        StringBuilder builder = new StringBuilder("flf2a$ 1 1 80 -1 1 0\nTest font by SharpVision\n");
 
         for (var code = 32; code <= 126; code++)
         {
@@ -146,7 +149,7 @@ public sealed class FigletFontTests
 
     private static string CreateTallFont()
     {
-        var builder = new StringBuilder(
+        StringBuilder builder = new StringBuilder(
             "flf2a$ 2 2 80 -1 1 0 8192\nTest font by SharpVision\n");
 
         for (var code = 32; code <= 126; code++)

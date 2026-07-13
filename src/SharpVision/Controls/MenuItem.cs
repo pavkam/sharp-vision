@@ -1,11 +1,14 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using BackgroundMode = BackgroundMode;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines one focusable command, check, radio, or separator entry in a <see cref="Menu"/>.</summary>
 public sealed class MenuItem: Pressable
@@ -161,7 +164,7 @@ public sealed class MenuItem: Pressable
             return;
         }
 
-        var style = ResolvedStyle;
+        TerminalStyle style = ResolvedStyle;
 
         if (Kind == MenuItemKind.Separator)
         {

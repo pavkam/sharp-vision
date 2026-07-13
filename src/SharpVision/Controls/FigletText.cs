@@ -1,11 +1,14 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Fonts;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = Terminal.Rendering.Canvas;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalCanvas = TerminalCanvas;
+using TerminalStyle = TerminalStyle;
 
 /// <summary>Displays cached FIGlet output through grapheme-safe semantic cells.</summary>
 public sealed class FigletText: Control
@@ -88,8 +91,8 @@ public sealed class FigletText: Control
     protected override void RenderCore(TerminalCanvas canvas)
     {
         EnsureOutput();
-        var bounds = ContentBounds;
-        var style = ResolveTextStyle();
+        Rect bounds = ContentBounds;
+        TerminalStyle style = ResolveTextStyle();
 
         for (var row = 0; row < _lines.Length && row < bounds.Height; row++)
         {

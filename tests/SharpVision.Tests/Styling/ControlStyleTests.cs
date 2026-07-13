@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -14,10 +17,10 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenValueIsStored_TryGetReturnsIt()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(3));
 
-        style.TryGet(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
+        style.TryGet(Control.ForegroundProperty, State.Normal, out Color? value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(3));
         style.Remove(Control.ForegroundProperty, State.Normal).ShouldBeTrue();
         style.TryGet(Control.ForegroundProperty, State.Normal, out _).ShouldBeFalse();
@@ -27,12 +30,12 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenOverlayStatesAreCombined_StoresValue()
     {
-        var style = new ControlStyle<Control>();
-        var combined = State.Hovered | State.Focused;
+        ControlStyle<Control> style = new ControlStyle<Control>();
+        State combined = State.Hovered | State.Focused;
 
         style.Set(Control.ForegroundProperty, combined, Color.Indexed(1));
 
-        style.TryGet(Control.ForegroundProperty, combined, out var value).ShouldBeTrue();
+        style.TryGet(Control.ForegroundProperty, combined, out Color? value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(1));
     }
 
@@ -40,7 +43,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenStateHasUnknownFlags_Throws()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             style.Set(Control.ForegroundProperty, (State) (1 << 20), Color.Indexed(1)));
@@ -50,11 +53,11 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenMeasurePropertyUsesOverlayState_StoresValue()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
 
         style.Set(Control.PaddingProperty, State.Pressed, new Thickness(1));
 
-        style.TryGet(Control.PaddingProperty, State.Pressed, out var value).ShouldBeTrue();
+        style.TryGet(Control.PaddingProperty, State.Pressed, out Thickness value).ShouldBeTrue();
         value.ShouldBe(new Thickness(1));
     }
 
@@ -62,9 +65,9 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenStyleIsFrozen_Throws()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
-        var frozen = style.FreezeCopy();
+        ControlStyle<Control> frozen = style.FreezeCopy();
 
         _ = Should.Throw<InvalidOperationException>(() =>
             frozen.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4)));
@@ -74,12 +77,12 @@ public sealed class ControlStyleTests
     [Fact]
     public void Clone_WhenSourceMutatesAfterCopy_DoesNotAffectClone()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
-        var clone = style.Clone();
+        ControlStyle<Control> clone = style.Clone();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(5));
 
-        clone.TryGet(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
+        clone.TryGet(Control.ForegroundProperty, State.Normal, out Color? value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(1));
     }
 
@@ -87,7 +90,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void TryGetValue_ThroughPublicInterface_ReadsStoredValue()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
 
         style.TryGetValue(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
@@ -98,7 +101,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenValueChanges_RaisesChanged()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         var raised = 0;
         style.Changed += (_, _) => raised++;
 
@@ -111,13 +114,13 @@ public sealed class ControlStyleTests
     [Fact]
     public async Task Set_WhenHandlerReentersStyle_DoesNotDeadlockAsync()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Changed += (_, _) => _ = style.Clone();
 
-        var work = Task.Run(
+        Task work = Task.Run(
             () => style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1)),
             TestContext.Current.CancellationToken);
-        var finished = await Task.WhenAny(
+        Task finished = await Task.WhenAny(
             work,
             Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
 

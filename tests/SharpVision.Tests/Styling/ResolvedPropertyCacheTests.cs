@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -13,7 +16,7 @@ public sealed class ResolvedPropertyCacheTests
     [Fact]
     public void Foreground_WhenNoValueResolves_CachesNullAndUpdatesAfterSetAndClear()
     {
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
 
         control.Foreground.ShouldBeNull();
         control.Foreground.ShouldBeNull();

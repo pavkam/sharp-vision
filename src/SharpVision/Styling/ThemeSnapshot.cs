@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 /// <summary>Immutable theme contents used during value resolution.</summary>
@@ -18,16 +21,16 @@ internal sealed class ThemeSnapshot
 
     internal IReadOnlyList<IControlStyle> GetStyleChain(Type controlType)
     {
-        if (_styleChains.TryGetValue(controlType, out var cached))
+        if (_styleChains.TryGetValue(controlType, out IReadOnlyList<IControlStyle>? cached))
         {
             return cached;
         }
 
-        var chain = new List<IControlStyle>();
+        List<IControlStyle> chain = [];
 
-        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
+        foreach (Type type in ControlHierarchy.BaseToDerived(controlType))
         {
-            if (_styles.TryGetValue(type, out var style))
+            if (_styles.TryGetValue(type, out IControlStyle? style))
             {
                 chain.Add(style);
             }

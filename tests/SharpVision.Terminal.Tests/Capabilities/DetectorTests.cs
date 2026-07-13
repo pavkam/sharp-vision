@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
@@ -17,13 +20,13 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenKittyEnvironmentIsPresent_RecordsTentativeFeatures()
     {
-        var environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new Dictionary<string, string?>
         {
             ["TERM"] = "xterm-kitty",
             ["COLORTERM"] = "truecolor",
         };
 
-        var capabilities = Detector.Detect(environment);
+        Capabilities capabilities = Detector.Detect(environment);
 
         capabilities.KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
@@ -41,14 +44,14 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenTmuxAndQueryArePresent_QueryWinsNarrowing()
     {
-        var environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new Dictionary<string, string?>
         {
             ["TERM"] = "xterm-kitty",
             ["TMUX"] = "/tmp/tmux-1000/default,1,0",
         };
-        var queries = new Queries { KittyClipboard = true };
+        Queries queries = new Queries { KittyClipboard = true };
 
-        var capabilities = Detector.Detect(environment, queries);
+        Capabilities capabilities = Detector.Detect(environment, queries);
 
         capabilities.KittyClipboard.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Query));
@@ -61,13 +64,13 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenSessionIsRemoteOrScreen_NarrowsClipboardHints()
     {
-        var environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new Dictionary<string, string?>
         {
             ["TERM"] = "screen-256color",
             ["SSH_CONNECTION"] = "client server",
         };
 
-        var capabilities = Detector.Detect(environment);
+        Capabilities capabilities = Detector.Detect(environment);
 
         capabilities.Osc52.State.ShouldBe(CapabilitySupport.Unknown);
         capabilities.KittyClipboard.State.ShouldBe(CapabilitySupport.Unsupported);
@@ -80,8 +83,8 @@ public sealed class DetectorTests
     [Fact]
     public void Detect_WhenOverridesAreProvided_OverridesWinLast()
     {
-        var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" };
-        var queries = new Queries
+        Dictionary<string, string?> environment = new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" };
+        Queries queries = new Queries
         {
             KittyClipboard = true,
             SynchronizedOutput = true,
@@ -89,7 +92,7 @@ public sealed class DetectorTests
             UnderlineColor = false,
             Overline = false,
         };
-        var overrides = new Settings
+        Settings overrides = new Settings
         {
             KittyClipboard = false,
             SynchronizedOutput = false,
@@ -100,7 +103,7 @@ public sealed class DetectorTests
             Overline = true,
         };
 
-        var capabilities = Detector.Detect(environment, queries, overrides);
+        Capabilities capabilities = Detector.Detect(environment, queries, overrides);
 
         capabilities.KittyClipboard.ShouldBe(
             new Feature(CapabilitySupport.Unsupported, Origin.Override));

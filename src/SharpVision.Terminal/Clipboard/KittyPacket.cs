@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Clipboard;
 
 using System.Buffers;
@@ -92,17 +95,17 @@ public sealed class KittyPacket
         Limits? limits = null,
         bool decodePayload = true)
     {
-        var effectiveLimits = limits ?? Limits.Default;
+        Limits effectiveLimits = limits ?? Limits.Default;
 
         if (!value.StartsWith("5522;"u8))
         {
             return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
         }
 
-        var body = value[5..];
+        ReadOnlySpan<byte> body = value[5..];
         var separator = body.IndexOf((byte) ';');
-        var metadata = separator < 0 ? body : body[..separator];
-        var payload = separator < 0 ? [] : body[(separator + 1)..];
+        ReadOnlySpan<byte> metadata = separator < 0 ? body : body[..separator];
+        ReadOnlySpan<byte> payload = separator < 0 ? [] : body[(separator + 1)..];
         var hasPayload = separator >= 0;
 
         if (metadata.IsEmpty || metadata.Length > effectiveLimits.MaxMetadataBytes)
@@ -110,14 +113,14 @@ public sealed class KittyPacket
             return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
         }
 
-        var operation = KittyOperation.None;
-        var replyStatus = KittyReplyStatus.None;
-        var selection = Selection.Clipboard;
+        KittyOperation operation = KittyOperation.None;
+        KittyReplyStatus replyStatus = KittyReplyStatus.None;
+        Selection selection = Selection.Clipboard;
         string? id = null;
         byte[] mime = [];
         byte[] password = [];
         byte[] name = [];
-        var unknownKeys = new List<string>();
+        List<string> unknownKeys = new List<string>();
         var seenType = false;
         var seenStatus = false;
         var seenLocation = false;
@@ -129,7 +132,7 @@ public sealed class KittyPacket
         while (!metadata.IsEmpty)
         {
             var next = metadata.IndexOf((byte) ':');
-            var field = next < 0 ? metadata : metadata[..next];
+            ReadOnlySpan<byte> field = next < 0 ? metadata : metadata[..next];
             metadata = next < 0 ? [] : metadata[(next + 1)..];
             var equals = field.IndexOf((byte) '=');
 
@@ -138,8 +141,8 @@ public sealed class KittyPacket
                 return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
             }
 
-            var key = field[..equals];
-            var fieldValue = field[(equals + 1)..];
+            ReadOnlySpan<byte> key = field[..equals];
+            ReadOnlySpan<byte> fieldValue = field[(equals + 1)..];
 
             if (!IsMetadataAscii(key) || !IsMetadataAscii(fieldValue))
             {
@@ -274,7 +277,7 @@ public sealed class KittyPacket
 
     private static KittyPacket Invalid(DiagnosticCode code, int discarded)
     {
-        var diagnostic = new Diagnostic(code, SequenceKind.Osc, 0, discarded);
+        Diagnostic diagnostic = new Diagnostic(code, SequenceKind.Osc, 0, discarded);
 
         return new KittyPacket(
             isValid: false,
@@ -398,7 +401,7 @@ public sealed class KittyPacket
 
         try
         {
-            var status = Base64.DecodeFromUtf8(
+            OperationStatus status = Base64.DecodeFromUtf8(
                 encoded,
                 buffer,
                 out var consumed,

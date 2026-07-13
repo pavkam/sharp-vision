@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Text;
@@ -6,8 +9,9 @@ using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
+using SharpVision.Terminal.Unicode;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalAttributes = TerminalAttributes;
 
 public abstract partial class Control
 {
@@ -300,7 +304,7 @@ public abstract partial class Control
     {
         Span<char> buffer = stackalloc char[2];
         var length = value.EncodeToUtf16(buffer);
-        var measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
+        Measurement measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
 
         if (measurement.Cells != 1 || measurement.Controls != 0)
         {

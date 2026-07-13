@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Performance;
 
 using System.Diagnostics;
@@ -24,12 +27,12 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public void Layout_WhenConstraintAndStateAreUnchanged_AllocatesZeroBytes()
     {
-        var engine = new Engine();
-        var control = new ProbeControl(new Size(20, 4));
-        var size = new Size(80, 24);
+        Engine engine = new Engine();
+        ProbeControl control = new ProbeControl(new Size(20, 4));
+        Size size = new Size(80, 24);
         engine.Layout(control, size);
 
-        var (allocated, elapsed) = Measure(() => engine.Layout(control, size), 10_000);
+        (long allocated, TimeSpan elapsed) = Measure(() => engine.Layout(control, size), 10_000);
 
         allocated.ShouldBe(0);
         Report("unchanged layout", elapsed, 50_000);
@@ -39,15 +42,15 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public void Render_WhenFrameAndTreeAreReused_AllocatesZeroBytes()
     {
-        var control = new ProbeControl
+        ProbeControl control = new ProbeControl
         {
             Bounds = new Rect(0, 0, 80, 24),
             Content = "e\u0301 · 界 · 👩‍💻".AsMemory(),
         };
-        using var frame = new Frame(new Size(80, 24));
+        using Frame frame = new Frame(new Size(80, 24));
         Render();
 
-        var (allocated, elapsed) = Measure(Render, 1_000);
+        (long allocated, TimeSpan elapsed) = Measure(Render, 1_000);
 
         allocated.ShouldBe(0);
         Report("80x24 control rendering", elapsed, 5_000);
@@ -64,20 +67,20 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public void Route_WhenAncestryIsDeepAndStable_AllocatesZeroBytes()
     {
-        var root = new ProbeContainer();
-        var current = root;
+        ProbeContainer root = new ProbeContainer();
+        ProbeContainer current = root;
 
         for (var depth = 1; depth < 20; depth++)
         {
-            var child = new ProbeContainer();
+            ProbeContainer child = new ProbeContainer();
             current.Children.Add(child);
             current = child;
         }
 
-        var target = new ProbeControl();
+        ProbeControl target = new ProbeControl();
         current.Children.Add(target);
         _ = target.AddHandler(Events.Key, static (_, _) => { });
-        var eventArgs = new KeyEventArgs(new Stroke(
+        KeyEventArgs eventArgs = new KeyEventArgs(new Stroke(
             Code.Enter,
             character: null,
             nativeCode: 0,
@@ -85,7 +88,7 @@ public sealed class InfrastructurePerformanceTests
             KeyAction.Press));
         Router.Route(target, Events.Key, eventArgs);
 
-        var (allocated, elapsed) = Measure(
+        (long allocated, TimeSpan elapsed) = Measure(
             () => Router.Route(target, Events.Key, eventArgs),
             10_000);
 
@@ -97,12 +100,12 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public async Task Post_WhenDispatcherIsWarm_StaysWithinAllocationBudgetAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var warmed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        TaskCompletionSource warmed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.Post(warmed.SetResult);
         await warmed.Task.WaitAsync(TestContext.Current.CancellationToken);
         const int iterations = 1_000;
-        var watch = Stopwatch.StartNew();
+        Stopwatch watch = Stopwatch.StartNew();
         var before = GC.GetAllocatedBytesForCurrentThread();
 
         for (var index = 0; index < iterations; index++)
@@ -111,7 +114,7 @@ public sealed class InfrastructurePerformanceTests
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.Post(completed.SetResult);
         await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
         watch.Stop();
@@ -128,7 +131,7 @@ public sealed class InfrastructurePerformanceTests
         }
 
         var minimum = long.MaxValue;
-        var watch = Stopwatch.StartNew();
+        Stopwatch watch = Stopwatch.StartNew();
 
         for (var sample = 0; sample < 5; sample++)
         {

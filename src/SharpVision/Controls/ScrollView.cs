@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -8,8 +11,8 @@ using SharpVision.Scrolling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using KeyAction = Terminal.Input.Action;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using KeyAction = KeyAction;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a clipped one-child viewport with independent automatic scrollbars.</summary>
 public sealed class ScrollView: Container
@@ -123,7 +126,7 @@ public sealed class ScrollView: Container
                 return;
             }
 
-            var visibility = value switch
+            ScrollBarVisibility visibility = value switch
             {
                 ShowScrollBars.Never => ScrollBarVisibility.Hidden,
                 ShowScrollBars.WhenNeeded => ScrollBarVisibility.Auto,
@@ -313,12 +316,12 @@ public sealed class ScrollView: Container
     {
         ArgumentNullException.ThrowIfNull(visitor);
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             visitor(child);
         }
 
-        foreach (var child in _chrome)
+        foreach (Control child in _chrome)
         {
             visitor(child);
         }
@@ -334,7 +337,7 @@ public sealed class ScrollView: Container
 
         while (_chrome.Count > 0)
         {
-            var child = _chrome[^1];
+            Control child = _chrome[^1];
             _chrome.RemoveAt(_chrome.Count - 1);
             child.Dispose();
         }
@@ -361,7 +364,7 @@ public sealed class ScrollView: Container
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var content = Content;
+        Control? content = Content;
 
         if (content is null)
         {
@@ -379,7 +382,7 @@ public sealed class ScrollView: Container
                 Add(content.DesiredSize.Height, content.Margin.Vertical));
         }
 
-        var available = new Size(
+        Size available = new Size(
             constraint.Width ?? _measuredExtent.Width,
             constraint.Height ?? _measuredExtent.Height);
         Resolve(available, _measuredExtent, out var horizontal, out var vertical, out _);
@@ -396,7 +399,7 @@ public sealed class ScrollView: Container
             _measuredExtent,
             out var horizontal,
             out var vertical,
-            out var viewport);
+            out Size viewport);
         _viewportBounds = new Rect(bounds.X, bounds.Y, viewport.Width, viewport.Height);
         var extentChanged = _extent != _measuredExtent;
         var viewportChanged = _viewport != viewport;
@@ -465,7 +468,7 @@ public sealed class ScrollView: Container
     {
         x = Math.Clamp(x, 0, MaximumX());
         y = Math.Clamp(y, 0, MaximumY());
-        var previous = new Point(HorizontalOffset, VerticalOffset);
+        Point previous = new Point(HorizontalOffset, VerticalOffset);
         var changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
         var changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
 
@@ -542,7 +545,7 @@ public sealed class ScrollView: Container
         }
 
         var page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
-        var code = eventArgs.Stroke.Code;
+        Code code = eventArgs.Stroke.Code;
 
         if (code == Code.Left)
         {
@@ -586,7 +589,7 @@ public sealed class ScrollView: Container
 
     private void Handle(PointerEventArgs eventArgs)
     {
-        var pointer = eventArgs.Pointer;
+        Pointer pointer = eventArgs.Pointer;
 
         if (pointer.Action != PointerAction.Wheel)
         {
@@ -598,7 +601,7 @@ public sealed class ScrollView: Container
         var remainingX = x;
         var remainingY = y;
 
-        for (var current = this; current is not null && (remainingX != 0 || remainingY != 0);
+        for (ScrollView? current = this; current is not null && (remainingX != 0 || remainingY != 0);
             current = Ancestor(current))
         {
             var previousX = current.HorizontalOffset;
@@ -613,7 +616,7 @@ public sealed class ScrollView: Container
 
     private static ScrollView? Ancestor(Control control)
     {
-        for (var current = control.Parent; current is not null; current = current.Parent)
+        for (Container? current = control.Parent; current is not null; current = current.Parent)
         {
             if (current is ScrollView view)
             {
@@ -626,7 +629,7 @@ public sealed class ScrollView: Container
 
     private bool IsContentDescendant(Control value)
     {
-        for (var current = value; current is not null; current = current.Parent)
+        for (Control? current = value; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, Content))
             {

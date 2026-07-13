@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using System.Buffers;
@@ -17,8 +20,8 @@ public sealed class OscTests
     [Fact]
     public void Title_WhenTextIsValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Osc.IconAndTitle(writer, "both"u8);
         Osc.Title(writer, "title"u8);
@@ -33,8 +36,8 @@ public sealed class OscTests
     [Fact]
     public void Hyperlink_WhenValuesAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Osc.OpenHyperlink(writer, "https://example.test"u8, "docs"u8);
         Osc.CloseHyperlink(writer);
@@ -49,8 +52,8 @@ public sealed class OscTests
     [Fact]
     public void ColorQuery_WhenIndexIsValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Osc.QueryPalette(writer, 15);
         Osc.QueryForeground(writer);
@@ -66,8 +69,8 @@ public sealed class OscTests
     [Fact]
     public void Command_WhenValueIsInvalid_ThrowsBeforeWriting()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentException>(
             () => Osc.Title(writer, [(byte) 'a', 0x07]));

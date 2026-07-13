@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Layout;
 
 using System.Diagnostics;
@@ -294,7 +297,7 @@ public static class Tracks
     {
         ReadOnlySpan<Kind> priority = [Kind.Percent, Kind.Auto, Kind.Cells, Kind.Star];
 
-        foreach (var kind in priority)
+        foreach (Kind kind in priority)
         {
             for (var index = lengths.Length - 1; index >= 0 && deficit > 0; index--)
             {

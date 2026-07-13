@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -5,7 +8,7 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Rendering;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Demonstrates low-level Canvas topology, shade, and quadrant primitives.</summary>
 internal sealed class CanvasSample: Control

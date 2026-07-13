@@ -1,10 +1,13 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.ComponentModel;
 
 using SharpVision.Styling;
 
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalStyle = TerminalStyle;
 
 public abstract partial class Control
 {
@@ -62,14 +65,14 @@ public abstract partial class Control
     internal T ResolveProperty<T>(StyleProperty<T> property, State visualState)
     {
         EnsureThemeProperty(property);
-        var key = (Property: (IStyleProperty) property, State: visualState);
+        (IStyleProperty Property, State State) key = (Property: property, State: visualState);
 
         if (_resolvedPropertyCache.TryGetValue(key, out var cached))
         {
             return (T) cached!;
         }
 
-        var value = ThemeResolver.Resolve(this, property, visualState);
+        T? value = ThemeResolver.Resolve(this, property, visualState);
         _resolvedPropertyCache[key] = value;
         return value;
     }
@@ -152,7 +155,7 @@ public abstract partial class Control
             };
         }
 
-        var resolved = ControlAppearance.Resolve(this, visualState);
+        ResolvedAppearance resolved = ControlAppearance.Resolve(this, visualState);
         _cachedResolvedStyle = resolved.Style;
         _cachedHasOpaqueFill = resolved.HasOpaqueFill;
         _cachedResolvedVisualState = visualState;

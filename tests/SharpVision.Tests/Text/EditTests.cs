@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Text;
 
 using System.Text;
@@ -13,7 +16,7 @@ public sealed class EditTests
     [Fact]
     public void Constructor_WhenSelectionIsBackward_PreservesDirectionAndRange()
     {
-        var selection = new Selection(anchor: 8, caret: 2);
+        Selection selection = new Selection(anchor: 8, caret: 2);
 
         selection.Anchor.ShouldBe(8);
         selection.Caret.ShouldBe(2);
@@ -42,8 +45,8 @@ public sealed class EditTests
     public void MoveNext_WhenTextHasInvalidUtf16_PreservesSourceUnitBoundaries()
     {
         var value = "A\uD800\uDC00\uD800B";
-        var first = Edit.MoveNext(value, new Selection(1, 1), extend: false);
-        var second = Edit.MoveNext(value, first.Selection, extend: false);
+        EditResult first = Edit.MoveNext(value, new Selection(1, 1), extend: false);
+        EditResult second = Edit.MoveNext(value, first.Selection, extend: false);
 
         first.Selection.Caret.ShouldBe(3);
         second.Selection.Caret.ShouldBe(4);
@@ -55,8 +58,8 @@ public sealed class EditTests
     public void MovePrevious_WhenExtendingRepeatedly_PreservesAnchorAndCaretDirection()
     {
         const string value = "Ae\u0301界";
-        var first = Edit.MovePrevious(value, new Selection(value.Length, value.Length), extend: true);
-        var second = Edit.MovePrevious(value, first.Selection, extend: true);
+        EditResult first = Edit.MovePrevious(value, new Selection(value.Length, value.Length), extend: true);
+        EditResult second = Edit.MovePrevious(value, first.Selection, extend: true);
 
         first.Selection.ShouldBe(new Selection(value.Length, 3));
         second.Selection.ShouldBe(new Selection(value.Length, 1));
@@ -68,8 +71,8 @@ public sealed class EditTests
     public void Delete_WhenCaretTouchesComplexClusters_RemovesCompleteCluster()
     {
         const string value = "A👩‍💻e\u0301Z";
-        var afterBackspace = Edit.Backspace(value, new Selection(8, 8));
-        var afterDelete = Edit.Delete(afterBackspace.Text, new Selection(1, 1));
+        EditResult afterBackspace = Edit.Backspace(value, new Selection(8, 8));
+        EditResult afterDelete = Edit.Delete(afterBackspace.Text, new Selection(1, 1));
 
         afterBackspace.Text.ShouldBe("A👩‍💻Z");
         afterBackspace.Selection.ShouldBe(new Selection(6, 6));
@@ -81,7 +84,7 @@ public sealed class EditTests
     [Fact]
     public void Replace_WhenSelectionExists_ReplacesAtomicallyAndCollapsesCaret()
     {
-        var result = Edit.Replace(
+        EditResult result = Edit.Replace(
             "A界Z",
             new Selection(anchor: 2, caret: 1),
             "e\u0301");
@@ -95,7 +98,7 @@ public sealed class EditTests
     [Fact]
     public void Replace_WhenMaximumWouldBeExceeded_TruncatesAtGraphemeBoundary()
     {
-        var result = Edit.Replace(
+        EditResult result = Edit.Replace(
             "AB",
             new Selection(2, 2),
             "e\u0301界Z",
@@ -146,8 +149,8 @@ public sealed class EditTests
     {
         const string value = "one,  世界!";
 
-        var next = Edit.MoveNextWord(value, new Selection(0, 0), extend: false);
-        var nextAgain = Edit.MoveNextWord(value, next.Selection, extend: false);
+        EditResult next = Edit.MoveNextWord(value, new Selection(0, 0), extend: false);
+        EditResult nextAgain = Edit.MoveNextWord(value, next.Selection, extend: false);
 
         next.Selection.Caret.ShouldBe(6);
         nextAgain.Selection.Caret.ShouldBe(9);
@@ -168,8 +171,8 @@ public sealed class EditTests
     [Fact]
     public void Replace_WhenSnapshotsAreRetained_RemainsDeterministicAndIndependent()
     {
-        var original = new EditResult("A", new Selection(1, 1), changed: false);
-        var edited = Edit.Replace(original.Text, original.Selection, "界");
+        EditResult original = new EditResult("A", new Selection(1, 1), changed: false);
+        EditResult edited = Edit.Replace(original.Text, original.Selection, "界");
 
         original.Text.ShouldBe("A");
         original.Selection.ShouldBe(new Selection(1, 1));

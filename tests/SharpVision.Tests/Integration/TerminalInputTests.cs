@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Integration;
 
 using System.Text;
@@ -23,20 +26,20 @@ public sealed class TerminalInputTests
     [Fact]
     public async Task Input_WhenTabIsPressedOnFocusedEditor_FocusMovesToNextEditorAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 4)));
-        var root = new ProbeContainer();
-        var first = new TextInput();
-        var second = new TextInput();
+        ProbeContainer root = new ProbeContainer();
+        TextInput first = new TextInput();
+        TextInput second = new TextInput();
         root.Children.Add(first);
         root.Children.Add(second);
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var focused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource focused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await application.Dispatcher.InvokeAsync(() =>
         {
@@ -68,25 +71,25 @@ public sealed class TerminalInputTests
     [Fact]
     public async Task Input_WhenUtf8TextArrives_ChangesFocusedControlAndFinalOutputAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 3)));
-        var root = new ProbeContainer();
-        var child = new ProbeControl
+        ProbeContainer root = new ProbeContainer();
+        ProbeControl child = new ProbeControl
         {
             Bounds = new Rect(0, 0, 4, 1),
             CanFocus = true,
         };
         root.Children.Add(child);
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var handled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource handled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var expected = Encoding.UTF8.GetBytes("λ");
-        var written = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource written = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += value =>
         {
             if (value.Span.IndexOf(expected) >= 0)
@@ -130,16 +133,16 @@ public sealed class TerminalInputTests
     [Fact]
     public async Task Input_WhenExtendedSequencesArrive_PreservesTypedPayloadsAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4), new Size(80, 64)));
-        var root = new ProbeContainer();
-        var child = new ProbeControl
+        ProbeContainer root = new ProbeContainer();
+        ProbeControl child = new ProbeControl
         {
             Bounds = new Rect(0, 0, 5, 4),
             CanFocus = true,
         };
         root.Children.Add(child);
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
@@ -149,7 +152,7 @@ public sealed class TerminalInputTests
         Paste? paste = null;
         Focus? focus = null;
         Stroke? stroke = null;
-        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await application.Dispatcher.InvokeAsync(() =>
         {
             application.Focus.Focus(child).ShouldBeTrue();

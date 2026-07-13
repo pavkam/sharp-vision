@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using System.Text;
@@ -16,7 +19,7 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = Terminal.Input.Action;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalStyle = Style;
 
 /// <summary>Verifies CheckBox transitions, events, ownership, styling, and cells.</summary>
 public sealed class CheckBoxTests
@@ -25,7 +28,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Activate_WhenTwoState_CyclesFalseAndTrue()
     {
-        var checkBox = new CheckBox();
+        CheckBox checkBox = new CheckBox();
 
         checkBox.IsChecked.ShouldBe(false);
         checkBox.IsThreeState.ShouldBeFalse();
@@ -41,7 +44,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Activate_WhenThreeState_CyclesInDocumentedOrder()
     {
-        var checkBox = new CheckBox { IsThreeState = true };
+        CheckBox checkBox = new CheckBox { IsThreeState = true };
 
         checkBox.PerformToggle();
         checkBox.PerformToggle();
@@ -55,7 +58,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void IsChecked_WhenNullInTwoState_ThrowsBeforeMutation()
     {
-        var checkBox = new CheckBox { IsChecked = true };
+        CheckBox checkBox = new CheckBox { IsChecked = true };
 
         _ = Should.Throw<ArgumentException>(() => checkBox.IsChecked = null);
 
@@ -66,8 +69,8 @@ public sealed class CheckBoxTests
     [Fact]
     public void IsThreeState_WhenDisabledFromNull_CommitsFalseBeforeEvents()
     {
-        var checkBox = new CheckBox { IsThreeState = true, IsChecked = null };
-        var order = new List<string>();
+        CheckBox checkBox = new CheckBox { IsThreeState = true, IsChecked = null };
+        List<string> order = new List<string>();
         checkBox.Unchecked += (_, eventArgs) =>
         {
             checkBox.IsThreeState.ShouldBeFalse();
@@ -86,8 +89,8 @@ public sealed class CheckBoxTests
     [Fact]
     public void IsChecked_WhenChangedProgrammatically_RaisesSpecificThenGeneral()
     {
-        var checkBox = new CheckBox();
-        var order = new List<string>();
+        CheckBox checkBox = new CheckBox();
+        List<string> order = new List<string>();
         checkBox.Checked += (_, eventArgs) =>
         {
             checkBox.IsChecked.ShouldBe(true);
@@ -105,7 +108,7 @@ public sealed class CheckBoxTests
     [Fact]
     public void Route_WhenSpaceCompletes_TogglesWithKeyboardCause()
     {
-        var checkBox = new CheckBox();
+        CheckBox checkBox = new CheckBox();
         ActivationCause? cause = null;
         checkBox.Checked += (_, eventArgs) => cause = eventArgs.Cause;
 
@@ -120,10 +123,10 @@ public sealed class CheckBoxTests
     [Fact]
     public void Foreground_WhenChecked_IncludesCheckedOverlay()
     {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
+        ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(1))),
             (State.Checked, new ThemeOverlay(foreground: Color.Indexed(5))));
-        var checkBox = new CheckBox { Style = style, IsChecked = true };
+        CheckBox checkBox = new CheckBox { Style = style, IsChecked = true };
 
         checkBox.Foreground.ShouldBe(Color.Indexed(5));
     }
@@ -132,10 +135,10 @@ public sealed class CheckBoxTests
     [Fact]
     public void Render_WhenCheckedWithContent_WritesExactMarkAndUnicodeCells()
     {
-        var content = new ControlText("界");
-        var checkBox = new CheckBox { Content = content, IsChecked = true };
+        ControlText content = new ControlText("界");
+        CheckBox checkBox = new CheckBox { Content = content, IsChecked = true };
         new Engine().Layout(checkBox, new Size(4, 1));
-        using var frame = new Frame(new Size(4, 1));
+        using Frame frame = new Frame(new Size(4, 1));
 
         checkBox.Render(frame.Canvas);
 
@@ -149,11 +152,11 @@ public sealed class CheckBoxTests
     [Fact]
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
+        ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var checkBox = new CheckBox { Style = style };
+        CheckBox checkBox = new CheckBox { Style = style };
         new Engine().Layout(checkBox, new Size(1, 1));
-        using var frame = new Frame(new Size(1, 1));
+        using Frame frame = new Frame(new Size(1, 1));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
 
         checkBox.Render(frame.Canvas);
@@ -170,16 +173,16 @@ public sealed class CheckBoxTests
         string mark,
         int width)
     {
-        var content = new ControlText("Go");
-        var checkBox = new CheckBox
+        ControlText content = new ControlText("Go");
+        CheckBox checkBox = new CheckBox
         {
             Content = content,
             IsChecked = true,
             MarkStyle = style,
         };
-        var size = new Size(width, 1);
+        Size size = new Size(width, 1);
         new Engine().Layout(checkBox, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
 
         checkBox.Render(frame.Canvas);
 

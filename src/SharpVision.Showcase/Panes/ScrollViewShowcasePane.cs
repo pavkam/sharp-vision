@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Layout;
@@ -37,7 +40,7 @@ internal sealed class ScrollViewShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var content = PaneSupport.Vertical();
+        ControlStack content = PaneSupport.Vertical();
 
         for (var index = 1; index <= 14; index++)
         {

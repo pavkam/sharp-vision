@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -18,9 +21,9 @@ public sealed class ParserPerformanceTests
     public void Parse_WhenOscIsHostile_BoundsAllocationAndRecovers()
     {
         const int maxPayload = 1_024;
-        var limits = Limits.Default with { MaxStringBytes = maxPayload };
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        Limits limits = Limits.Default with { MaxStringBytes = maxPayload };
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
         var input = new byte[2 * 1_024 * 1_024];
         input[0] = 0x1b;
         input[1] = (byte) ']';
@@ -47,9 +50,9 @@ public sealed class ParserPerformanceTests
     [Fact]
     public void Parse_WhenCsiLoopIsWarm_AllocatesNoManagedBytes()
     {
-        using var parser = new Parser();
-        var sink = new CountingSink();
-        var input = "\u001b[2J"u8;
+        using Parser parser = new Parser();
+        CountingSink sink = new CountingSink();
+        ReadOnlySpan<byte> input = "\u001b[2J"u8;
 
         for (var index = 0; index < 100; index++)
         {

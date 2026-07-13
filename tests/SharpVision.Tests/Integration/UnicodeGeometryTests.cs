@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Integration;
 
 using SharpVision.Controls;
@@ -13,13 +16,13 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using ComboBoxControl = SharpVision.Controls.ComboBox;
-using Dispatcher = SharpVision.Threading.Dispatcher;
-using RichTextControl = SharpVision.Controls.RichText;
-using RunInline = SharpVision.Controls.Run;
+using ComboBoxControl = ComboBox;
+using Dispatcher = Dispatcher;
+using RichTextControl = RichText;
+using RunInline = Run;
 using TerminalOptions = Terminal.Runtime.Options;
 using TextControl = SharpVision.Controls.Text;
-using TextInputControl = SharpVision.Controls.TextInput;
+using TextInputControl = TextInput;
 using TextWrapping = SharpVision.Text.Wrapping;
 
 /// <summary>Verifies end-to-end Unicode geometry across controls, frames, and pointer routing.</summary>
@@ -30,20 +33,20 @@ public sealed class UnicodeGeometryTests
     public async Task Layout_WhenAmbiguousWidthIsWide_AgreesAcrossTextConsumersAsync()
     {
         // Arrange
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var policy = new Policy(Ambiguous.Wide);
-            var text = new TextControl { Content = "·" };
-            var rich = new RichTextControl { Wrapping = TextWrapping.None };
+            Policy policy = new Policy(Ambiguous.Wide);
+            TextControl text = new TextControl { Content = "·" };
+            RichTextControl rich = new RichTextControl { Wrapping = TextWrapping.None };
             rich.Inlines.Add(new RunInline("·"));
-            var input = new TextInputControl { Text = "·" };
-            var table = new Table();
+            TextInputControl input = new TextInputControl { Text = "·" };
+            Table table = new Table();
             table.Columns.Add(TableColumn.Fixed("Value", 4));
             table.Rows.Add(new TableRow([new TextControl("·")]));
-            var combo = new ComboBoxControl { Items = ["·"] };
-            var stack = new Stack();
+            ComboBoxControl combo = new ComboBoxControl { Items = ["·"] };
+            Stack stack = new Stack();
             stack.Children.Add(text);
             stack.Children.Add(rich);
             stack.Children.Add(input);
@@ -68,14 +71,14 @@ public sealed class UnicodeGeometryTests
     {
         // Arrange
         const string source = "\u0301";
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var input = new TextInputControl { Text = source, Width = Length.Cells(2) };
+            TextInputControl input = new TextInputControl { Text = source, Width = Length.Cells(2) };
             input.Attach(dispatcher, Policy.Default);
             new Engine().Layout(input, new Size(2, 1));
-            using var frame = new Frame(new Size(2, 1));
+            using Frame frame = new Frame(new Size(2, 1));
 
             // Act
             input.Render(frame.Canvas);
@@ -91,10 +94,10 @@ public sealed class UnicodeGeometryTests
     public async Task Input_WhenUnevenPixelGridMaps_RoutesExactCellsWithoutFabricationAsync()
     {
         // Arrange
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4), new Size(101, 31)));
-        var hits = new List<Point?>();
-        var root = new ProbePressable
+        List<Point?> hits = new List<Point?>();
+        ProbePressable root = new ProbePressable
         {
             Width = Length.Cells(10),
             Height = Length.Cells(4),
@@ -106,12 +109,12 @@ public sealed class UnicodeGeometryTests
                 hits.Add(pointer.LocalCells);
             }
         });
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
-        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
             if (eventArgs.Response.Kind == ResponseKind.PrimaryAttributes)

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -8,7 +11,7 @@ using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalStyle = TerminalStyle;
 using TextLayout = SharpVision.Text.Layout;
 
 /// <summary>Displays cached grapheme-safe text through semantic terminal cells.</summary>
@@ -143,7 +146,7 @@ public sealed class Text: Control
         EnsureLayout(constraint.Width ?? int.MaxValue);
         var width = 0;
 
-        foreach (var line in Lines.Span)
+        foreach (Line line in Lines.Span)
         {
             width = Math.Max(width, line.Cells);
         }
@@ -155,18 +158,18 @@ public sealed class Text: Control
     protected override void ArrangeCore(Rect bounds) => EnsureLayout(bounds.Width);
 
     /// <inheritdoc/>
-    protected override void RenderCore(Terminal.Rendering.Canvas canvas)
+    protected override void RenderCore(TerminalCanvas canvas)
     {
-        var bounds = ContentBounds;
+        Rect bounds = ContentBounds;
         EnsureLayout(bounds.Width);
-        var style = ResolveStyle();
-        var lines = Lines.Span;
+        TerminalStyle style = ResolveStyle();
+        ReadOnlySpan<Line> lines = Lines.Span;
 
         for (var index = 0; index < lines.Length && index < bounds.Height; index++)
         {
-            var line = lines[index];
-            var origin = new Point(bounds.X + line.Leading, bounds.Y + index);
-            var result = canvas.Draw(
+            Line line = lines[index];
+            Point origin = new Point(bounds.X + line.Leading, bounds.Y + index);
+            DrawResult result = canvas.Draw(
                 Content.AsSpan(line.Offset, line.Length),
                 origin,
                 style,
@@ -238,7 +241,7 @@ public sealed class Text: Control
     {
         for (var index = 0; index < _lineCount; index++)
         {
-            var line = _lines[index];
+            Line line = _lines[index];
             var remaining = Math.Max(0, width - line.Cells);
             var leading = TextAlignment switch
             {

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using System.Buffers;
@@ -13,7 +16,7 @@ public sealed class ScreenTests
     [Fact]
     public void WritePassthrough_WhenSequenceContainsEsc_WritesExactDcsEnvelope()
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         Screen.WritePassthrough(destination, "\u001b]52;c;YQ==\u001b\\"u8);
 

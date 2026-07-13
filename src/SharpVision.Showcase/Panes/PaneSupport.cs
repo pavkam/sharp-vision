@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -84,8 +87,8 @@ internal static class PaneSupport
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(sample);
-        var section = Vertical();
-        var text = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlStack section = Vertical();
+        ControlRichText text = new ControlRichText { Wrapping = Wrapping.Word };
         text.Inlines.Add(new ControlRun(heading)
         {
             Foreground = Palette.Warning,
@@ -110,8 +113,8 @@ internal static class PaneSupport
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(sample);
-        var section = Vertical();
-        var text = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlStack section = Vertical();
+        ControlRichText text = new ControlRichText { Wrapping = Wrapping.Word };
         text.Inlines.Add(new ControlRun(heading)
         {
             Foreground = Palette.Success,
@@ -127,7 +130,7 @@ internal static class PaneSupport
     internal static ControlBorder ShadowStage(ControlShadow shadow)
     {
         ArgumentNullException.ThrowIfNull(shadow);
-        var stage = new ControlCanvas
+        ControlCanvas stage = new ControlCanvas
         {
             Width = Length.Cells(28),
             Height = Length.Cells(5),
@@ -151,7 +154,7 @@ internal static class PaneSupport
 
     internal static void AddGrid(ControlGrid grid, string text, int row, int column)
     {
-        var child = Card(new ControlText(text), Glyphs.Light);
+        ControlBorder child = Card(new ControlText(text), Glyphs.Light);
         ControlGrid.SetRow(child, row);
         ControlGrid.SetColumn(child, column);
         grid.Children.Add(child);

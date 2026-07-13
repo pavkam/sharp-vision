@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using System.Text;
@@ -17,7 +20,7 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = Terminal.Input.Action;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalStyle = Style;
 
 /// <summary>Verifies RadioButton grouping, transactions, navigation, ownership, and cells.</summary>
 public sealed class RadioButtonTests
@@ -26,7 +29,7 @@ public sealed class RadioButtonTests
     [Fact]
     public void PerformSelect_WhenGroupStartsEmpty_SelectsOnlyOnce()
     {
-        var radio = new RadioButton();
+        RadioButton radio = new RadioButton();
         var checkedEvents = 0;
         radio.Checked += (_, _) => checkedEvents++;
 
@@ -41,12 +44,12 @@ public sealed class RadioButtonTests
     [Fact]
     public void IsChecked_WhenSiblingSelectionChanges_CommitsExclusiveStateBeforeEvents()
     {
-        var parent = new Stack();
-        var first = new RadioButton { IsChecked = true };
-        var second = new RadioButton();
+        Stack parent = new Stack();
+        RadioButton first = new RadioButton { IsChecked = true };
+        RadioButton second = new RadioButton();
         parent.Children.Add(first);
         parent.Children.Add(second);
-        var order = new List<string>();
+        List<string> order = new List<string>();
         first.Unchecked += (_, eventArgs) =>
         {
             first.IsChecked.ShouldBeFalse();
@@ -67,14 +70,14 @@ public sealed class RadioButtonTests
     [Fact]
     public void IsChecked_WhenNamedMembersAreInDifferentContainers_UsesRootScope()
     {
-        var root = new Stack();
-        var left = new Stack();
-        var right = new Stack();
+        Stack root = new Stack();
+        Stack left = new Stack();
+        Stack right = new Stack();
         root.Children.Add(left);
         root.Children.Add(right);
-        var first = new RadioButton { GroupName = "density", IsChecked = true };
-        var second = new RadioButton { GroupName = "density" };
-        var unrelated = new RadioButton { GroupName = "theme", IsChecked = true };
+        RadioButton first = new RadioButton { GroupName = "density", IsChecked = true };
+        RadioButton second = new RadioButton { GroupName = "density" };
+        RadioButton unrelated = new RadioButton { GroupName = "theme", IsChecked = true };
         left.Children.Add(first);
         right.Children.Add(second);
         right.Children.Add(unrelated);
@@ -90,9 +93,9 @@ public sealed class RadioButtonTests
     [Fact]
     public void Add_WhenCheckedMemberJoinsGroup_UnchecksExistingMember()
     {
-        var parent = new Stack();
-        var first = new RadioButton { IsChecked = true };
-        var second = new RadioButton { IsChecked = true };
+        Stack parent = new Stack();
+        RadioButton first = new RadioButton { IsChecked = true };
+        RadioButton second = new RadioButton { IsChecked = true };
         parent.Children.Add(first);
 
         parent.Children.Add(second);
@@ -105,9 +108,9 @@ public sealed class RadioButtonTests
     [Fact]
     public void GroupName_WhenCheckedMemberMoves_ResolvesNewGroupAfterCommit()
     {
-        var parent = new Stack();
-        var first = new RadioButton { GroupName = "a", IsChecked = true };
-        var second = new RadioButton { GroupName = "b", IsChecked = true };
+        Stack parent = new Stack();
+        RadioButton first = new RadioButton { GroupName = "a", IsChecked = true };
+        RadioButton second = new RadioButton { GroupName = "b", IsChecked = true };
         parent.Children.Add(first);
         parent.Children.Add(second);
 
@@ -121,10 +124,10 @@ public sealed class RadioButtonTests
     [Fact]
     public void IsChecked_WhenUncheckedHandlerReselects_DoesNotReportStaleSelection()
     {
-        var parent = new Stack();
-        var first = new RadioButton { IsChecked = true };
-        var second = new RadioButton();
-        var third = new RadioButton();
+        Stack parent = new Stack();
+        RadioButton first = new RadioButton { IsChecked = true };
+        RadioButton second = new RadioButton();
+        RadioButton third = new RadioButton();
         parent.Children.Add(first);
         parent.Children.Add(second);
         parent.Children.Add(third);
@@ -148,19 +151,19 @@ public sealed class RadioButtonTests
     [Fact]
     public async Task Route_WhenArrowMoves_UsesEligibleGroupOrderAndWrapsAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new Stack();
-            var first = new RadioButton();
-            var skipped = new RadioButton { IsEnabled = false };
-            var third = new RadioButton();
+            Stack root = new Stack();
+            RadioButton first = new RadioButton();
+            RadioButton skipped = new RadioButton { IsEnabled = false };
+            RadioButton third = new RadioButton();
             root.Children.Add(first);
             root.Children.Add(skipped);
             root.Children.Add(third);
             root.Attach(dispatcher);
-            using var focus = new FocusManager(root);
+            using FocusManager focus = new FocusManager(root);
             focus.Focus(first).ShouldBeTrue();
 
             Key(first, Code.Right);
@@ -178,13 +181,13 @@ public sealed class RadioButtonTests
     [Fact]
     public void Render_WhenSelectedWithUnicodeContent_WritesExactCells()
     {
-        var radio = new RadioButton
+        RadioButton radio = new RadioButton
         {
             IsChecked = true,
             Content = new ControlText("界"),
         };
         new Engine().Layout(radio, new Size(4, 1));
-        using var frame = new Frame(new Size(4, 1));
+        using Frame frame = new Frame(new Size(4, 1));
 
         radio.Render(frame.Canvas);
 
@@ -197,11 +200,11 @@ public sealed class RadioButtonTests
     [Fact]
     public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
     {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
+        ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var radio = new RadioButton { Style = style };
+        RadioButton radio = new RadioButton { Style = style };
         new Engine().Layout(radio, new Size(2, 1));
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
 
         radio.Render(frame.Canvas);
@@ -213,7 +216,7 @@ public sealed class RadioButtonTests
     [Fact]
     public void IsChecked_WhenSetFalse_AllowsNoSelection()
     {
-        var radio = new RadioButton { IsChecked = true };
+        RadioButton radio = new RadioButton { IsChecked = true };
 
         radio.IsChecked = false;
 

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using Shouldly;
@@ -9,7 +12,7 @@ public sealed class PropertyDescriptionTests
     [Fact]
     public void Constructor_WhenValuesAreValid_PreservesDocumentation()
     {
-        var description = new PropertyDescription(
+        PropertyDescription description = new PropertyDescription(
             "Content",
             "Control?",
             "null",

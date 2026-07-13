@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Support;
 
 using SharpVision.Terminal.Protocols;
@@ -32,10 +35,10 @@ public static class Fragmentation
 
     private static string[] Normalize(IEnumerable<Observation> observations)
     {
-        var normalized = new List<string>();
-        var text = new List<byte>();
+        List<string> normalized = new List<string>();
+        List<byte> text = new List<byte>();
 
-        foreach (var observation in observations)
+        foreach (Observation observation in observations)
         {
             if (observation.Type == "Text")
             {
@@ -65,8 +68,8 @@ public static class Fragmentation
 
     private static string[] Parse(IEnumerable<byte[]> reads, Limits? limits)
     {
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
 
         foreach (var read in reads)
         {

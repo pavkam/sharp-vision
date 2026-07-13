@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -36,14 +39,14 @@ internal sealed class StackShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var horizontal = PaneSupport.Horizontal();
-        var fixedCard = PaneSupport.Card(new ControlText("Fixed 10"), Glyphs.Light);
+        ControlStack horizontal = PaneSupport.Horizontal();
+        ControlBorder fixedCard = PaneSupport.Card(new ControlText("Fixed 10"), Glyphs.Light);
         fixedCard.Width = Length.Cells(10);
         horizontal.Children.Add(fixedCard);
-        var percentCard = PaneSupport.Card(new ControlText("35%"), Glyphs.Heavy);
+        ControlBorder percentCard = PaneSupport.Card(new ControlText("35%"), Glyphs.Heavy);
         percentCard.Width = Length.Percent(35);
         horizontal.Children.Add(percentCard);
-        var starCard = PaneSupport.Card(new ControlText("1*"), Glyphs.Paired);
+        ControlBorder starCard = PaneSupport.Card(new ControlText("1*"), Glyphs.Paired);
         starCard.Width = Length.Star(1);
         horizontal.Children.Add(starCard);
         horizontal.Width = Length.Cells(40);
@@ -51,7 +54,7 @@ internal sealed class StackShowcasePane: ShowcasePane
             "Mixed horizontal tracks",
             "Fixed cells, percentage sizing, and proportional remainder can coexist in one horizontal ControlStack.",
             horizontal));
-        var reversed = PaneSupport.Horizontal();
+        ControlStack reversed = PaneSupport.Horizontal();
         reversed.Reverse = true;
         reversed.Children.Add(PaneSupport.Card(new ControlText("First"), Glyphs.Light));
         reversed.Children.Add(PaneSupport.Card(new ControlText("Second"), Glyphs.Heavy));
@@ -61,7 +64,7 @@ internal sealed class StackShowcasePane: ShowcasePane
             "Reverse changes visual and keyboard-navigation order without changing the source child collection.",
             reversed));
 
-        var vertical = PaneSupport.Vertical();
+        ControlStack vertical = PaneSupport.Vertical();
         vertical.Children.Add(PaneSupport.Card(new ControlText("Top"), Glyphs.Rounded));
         vertical.Children.Add(PaneSupport.Card(new ControlText("Spacing = 1"), Glyphs.Light));
         vertical.Children.Add(PaneSupport.Card(new ControlText("Bottom"), Glyphs.Heavy));

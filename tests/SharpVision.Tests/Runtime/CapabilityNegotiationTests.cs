@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Runtime;
 
 using System.Text;
@@ -24,16 +27,16 @@ public sealed class CapabilityNegotiationTests
     public async Task StartAsync_WhenNegotiationCompletes_AppliesProfileBeforeFirstFrameAsync()
     {
         // Arrange
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        var root = new ProbeControl { Content = "x".AsMemory() };
-        var options = TerminalOptions.Minimal with
+        ProbeControl root = new ProbeControl { Content = "x".AsMemory() };
+        TerminalOptions options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
         };
-        await using var application = new Application(root, terminal, terminal, options);
-        var order = new List<string>();
-        var queryWritten = new TaskCompletionSource(
+        await using Application application = new Application(root, terminal, terminal, options);
+        List<string> order = new List<string>();
+        TaskCompletionSource queryWritten = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         CapabilitiesChangedEventArgs? changed = null;
         terminal.Written += value =>
@@ -53,7 +56,7 @@ public sealed class CapabilityNegotiationTests
         application.FrameRendered += (_, _) => order.Add("frame");
 
         // Act
-        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        Task starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
         await queryWritten.Task.WaitAsync(TestContext.Current.CancellationToken);
         starting.IsCompleted.ShouldBeFalse();
         terminal.Writes.Count.ShouldBe(1);
@@ -63,7 +66,7 @@ public sealed class CapabilityNegotiationTests
         await starting;
 
         // Assert
-        var eventArgs = changed.ShouldNotBeNull();
+        CapabilitiesChangedEventArgs eventArgs = changed.ShouldNotBeNull();
         eventArgs.Previous.ShouldBeSameAs(TerminalCapabilities.Conservative);
         eventArgs.Current.ShouldBeSameAs(application.Capabilities);
         application.Capabilities.SynchronizedOutput.IsSupported.ShouldBeTrue();
@@ -79,21 +82,21 @@ public sealed class CapabilityNegotiationTests
     public async Task Profile_WhenRenderIsPaused_CoalescesIntoNextFrameAsync()
     {
         // Arrange
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        var root = new ProbeControl { Content = "·".AsMemory() };
-        await using var application = new Application(
+        ProbeControl root = new ProbeControl { Content = "·".AsMemory() };
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var changes = new List<CapabilitiesChangedEventArgs>();
+        List<CapabilitiesChangedEventArgs> changes = new List<CapabilitiesChangedEventArgs>();
         application.CapabilitiesChanged += (_, eventArgs) => changes.Add(eventArgs);
         await application.StartAsync(TestContext.Current.CancellationToken);
         terminal.PauseFlush();
-        var synchronizedWrite = new TaskCompletionSource(
+        TaskCompletionSource synchronizedWrite = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        var thirdFrame = new TaskCompletionSource(
+        TaskCompletionSource thirdFrame = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var frames = 1;
         terminal.Written += value =>
@@ -112,13 +115,13 @@ public sealed class CapabilityNegotiationTests
                 _ = thirdFrame.TrySetResult();
             }
         };
-        var supported = new Feature(CapabilitySupport.Supported, CapabilityOrigin.Override);
-        var unsupported = new Feature(CapabilitySupport.Unsupported, CapabilityOrigin.Override);
-        var first = TerminalCapabilities.Conservative with
+        Feature supported = new Feature(CapabilitySupport.Supported, CapabilityOrigin.Override);
+        Feature unsupported = new Feature(CapabilitySupport.Unsupported, CapabilityOrigin.Override);
+        TerminalCapabilities first = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = supported,
         };
-        var second = TerminalCapabilities.Conservative with
+        TerminalCapabilities second = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = unsupported,
             AmbiguousWidth = Ambiguous.Wide,

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Runtime;
 
 using System.Diagnostics;
@@ -7,6 +10,7 @@ using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Styling;
+using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Runtime;
@@ -158,7 +162,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
                 return;
             }
 
-            var dispatcher = Dispatcher;
+            Dispatcher? dispatcher = Dispatcher;
 
             if (dispatcher is not null && !dispatcher.CheckAccess())
             {
@@ -246,7 +250,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
         _sessionTask = _session.RunAsync(_lifetime.Token).AsTask();
         _ = ObserveSessionAsync();
-        var completed = await Task.WhenAny(_started.Task, _completion.Task)
+        Task completed = await Task.WhenAny(_started.Task, _completion.Task)
             .WaitAsync(cancellationToken);
         await completed.WaitAsync(cancellationToken);
     }
@@ -408,7 +412,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        var eventArgs = new StoppingEventArgs();
+        StoppingEventArgs eventArgs = new StoppingEventArgs();
         Stopping?.Invoke(this, eventArgs);
 
         if (eventArgs.Cancel && !forced)
@@ -667,7 +671,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        var previous = Capabilities;
+        TerminalCapabilities previous = Capabilities;
         var measure = previous.AmbiguousWidth != value.AmbiguousWidth;
         Capabilities = value;
         CellPolicy = new UnicodePolicy(value.AmbiguousWidth);
@@ -702,7 +706,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
     private void OnThemeChanged(object? sender, ThemeChangedEventArgs eventArgs)
     {
-        var dispatcher = Dispatcher;
+        Dispatcher? dispatcher = Dispatcher;
 
         if (dispatcher is not null && !dispatcher.CheckAccess())
         {
@@ -876,7 +880,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private void Report(Exception exception)
     {
         Failure ??= exception;
-        var eventArgs = new UnhandledEventArgs(exception);
+        UnhandledEventArgs eventArgs = new UnhandledEventArgs(exception);
         UnhandledException?.Invoke(this, eventArgs);
 
         if (!eventArgs.Handled)
@@ -895,7 +899,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        var frame = new Frame(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
+        Frame frame = new Frame(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
 
         try
         {
@@ -907,12 +911,12 @@ public sealed partial class Application: ISink, IAsyncDisposable
             throw;
         }
 
-        var hold = Dispatcher.Hold();
-        var completion = new TaskCompletionSource(
+        IDisposable hold = Dispatcher.Hold();
+        TaskCompletionSource completion = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         _renderTask = completion.Task;
         _rendering = true;
-        var operation = _renderer.RenderAsync(
+        ValueTask<Metrics> operation = _renderer.RenderAsync(
             frame,
             _transport,
             Capabilities,

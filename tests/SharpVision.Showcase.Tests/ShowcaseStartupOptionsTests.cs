@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using System.Text;
@@ -10,8 +13,8 @@ using SharpVision.Terminal.Runtime;
 
 using Shouldly;
 
-using CapabilityOrigin = SharpVision.Terminal.Capabilities.Origin;
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
+using CapabilityOrigin = Terminal.Capabilities.Origin;
+using CapabilitySupport = Terminal.Capabilities.Support;
 
 /// <summary>Verifies the executable showcase explicitly requests its interactive terminal modes.</summary>
 public sealed class StartupOptionsTests
@@ -21,7 +24,7 @@ public sealed class StartupOptionsTests
     public void Create_WhenNegotiationIsEnabled_OwnsEnvironmentAndPreservesOverride()
     {
         // Arrange
-        var environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new Dictionary<string, string?>
         {
             ["TERM"] = "xterm-kitty",
         };
@@ -44,14 +47,14 @@ public sealed class StartupOptionsTests
     public async Task Create_WhenNegotiatedShowcaseStarts_EnablesMouseAfterQueryBatchAsync()
     {
         // Arrange
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using var gallery = new Gallery();
+        using Gallery gallery = new Gallery();
         var options = StartupOptions.Create(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             negotiate: true);
-        await using var application = new Application(gallery, terminal, terminal, options);
-        var queryWritten = new TaskCompletionSource(
+        await using Application application = new Application(gallery, terminal, terminal, options);
+        TaskCompletionSource queryWritten = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += value =>
         {
@@ -62,7 +65,7 @@ public sealed class StartupOptionsTests
         };
 
         // Act
-        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        Task starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
         await queryWritten.Task.WaitAsync(TestContext.Current.CancellationToken);
         terminal.QueueInput(
             "\u001b[?1016;2$y\u001b[?1006;1$y\u001b[?2004;1$y"u8.ToArray());
@@ -86,14 +89,14 @@ public sealed class StartupOptionsTests
     [Fact]
     public async Task Create_WhenShowcaseStarts_EnablesSgrAnyEventMouseAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using var gallery = new Gallery();
+        using Gallery gallery = new Gallery();
         var options = StartupOptions.Create(new Dictionary<string, string?>
         {
             ["TERM"] = "xterm-256color",
         });
-        await using var application = new Application(gallery, terminal, terminal, options);
+        await using Application application = new Application(gallery, terminal, terminal, options);
 
         options.Tracking.ShouldBe(MouseTracking.Any);
         options.Coordinates.ShouldBe(MouseCoordinates.Sgr);

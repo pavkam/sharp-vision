@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using System.Text;
@@ -28,11 +31,11 @@ public sealed class CanvasTests
         string value)
     {
         // Arrange
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("a".AsSpan(), new Point(0, 0));
 
         // Act
-        var result = frame.Canvas.Draw(value.AsSpan(), new Point(1, 0));
+        DrawResult result = frame.Canvas.Draw(value.AsSpan(), new Point(1, 0));
 
         // Assert
         FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
@@ -46,9 +49,9 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
-        using var frame = new Frame(new Size(1, 1));
-        var surface = new Style(Color.Indexed(255), Color.Indexed(238));
-        var text = new Style(
+        using Frame frame = new Frame(new Size(1, 1));
+        Style surface = new Style(Color.Indexed(255), Color.Indexed(238));
+        Style text = new Style(
             Color.Indexed(45),
             Color.Default,
             Attributes.Bold | Attributes.Overline,
@@ -72,7 +75,7 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenAmbiguousPolicyIsWide_OwnsTwoCells()
     {
-        using var frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
 
         _ = frame.Canvas.Draw("·".AsSpan(), new Point(0, 0));
 
@@ -86,9 +89,9 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenTextContainsNarrowAndWideClusters_AssignsCellOwnership()
     {
-        using var frame = new Frame(new Size(4, 1));
+        using Frame frame = new Frame(new Size(4, 1));
 
-        var result = frame.Canvas.Draw("A界".AsSpan(), new Point(0, 0));
+        DrawResult result = frame.Canvas.Draw("A界".AsSpan(), new Point(0, 0));
 
         result.Final.ShouldBe(new Point(3, 0));
         result.Graphemes.ShouldBe(2);
@@ -105,7 +108,7 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenContinuationIsOverwritten_RepairsWholeWideCluster()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("界".AsSpan(), new Point(0, 0));
 
         _ = frame.Canvas.Draw("x".AsSpan(), new Point(1, 0));
@@ -121,7 +124,7 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenWideLeadIsOverwritten_RepairsContinuation()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("界".AsSpan(), new Point(0, 0));
 
         _ = frame.Canvas.Draw("x".AsSpan(), new Point(0, 0));
@@ -136,7 +139,7 @@ public sealed class CanvasTests
     [Fact]
     public void Clear_WhenRegionTouchesContinuation_RepairsWholeWideCluster()
     {
-        using var frame = new Frame(new Size(3, 1));
+        using Frame frame = new Frame(new Size(3, 1));
         _ = frame.Canvas.Draw("界z".AsSpan(), new Point(0, 0));
 
         frame.Canvas.Clear(new Rect(1, 0, 1, 1));
@@ -152,9 +155,9 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenWideClusterHitsEdgeAndPolicyIsClip_SkipsWholeCluster()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
 
-        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Clip);
+        DrawResult result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Clip);
 
         result.Clipped.ShouldBe(1);
         FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
@@ -167,9 +170,9 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenWideClusterHitsEdgeAndPolicyIsWrap_MovesWholeCluster()
     {
-        using var frame = new Frame(new Size(2, 2));
+        using Frame frame = new Frame(new Size(2, 2));
 
-        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Wrap);
+        DrawResult result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Wrap);
 
         result.Final.ShouldBe(new Point(2, 1));
         FrameTests.GetText(frame, new Point(0, 1)).ShouldBe("界");
@@ -182,9 +185,9 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenWideClusterHitsEdgeAndPolicyIsReplace_WritesReplacement()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
 
-        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Replace);
+        DrawResult result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Replace);
 
         result.Replaced.ShouldBe(1);
         FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("�");
@@ -197,7 +200,7 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenClusterHasMultipleRunes_StoresCompleteGrapheme()
     {
-        using var frame = new Frame(new Size(3, 1));
+        using Frame frame = new Frame(new Size(3, 1));
 
         _ = frame.Canvas.Draw("e\u0301👩‍💻".AsSpan(), new Point(0, 0));
 
@@ -212,7 +215,7 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenUtf16IsInvalid_StoresReplacementRune()
     {
-        using var frame = new Frame(new Size(1, 1));
+        using Frame frame = new Frame(new Size(1, 1));
 
         _ = frame.Canvas.Draw("\ud800".AsSpan(), new Point(0, 0));
 
@@ -226,7 +229,7 @@ public sealed class CanvasTests
     [Fact]
     public void Draw_WhenTextExceedsArenaLimit_ThrowsBeforeMutation()
     {
-        using var frame = new Frame(new Size(2, 1), maxTextBytes: 1);
+        using Frame frame = new Frame(new Size(2, 1), maxTextBytes: 1);
 
         _ = Should.Throw<InvalidOperationException>(
             () => frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0)));
@@ -241,8 +244,8 @@ public sealed class CanvasTests
     [Fact]
     public void Clip_WhenDrawingCrossesIntersection_PreservesOutsideCells()
     {
-        using var frame = new Frame(new Size(4, 1));
-        var canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
+        using Frame frame = new Frame(new Size(4, 1));
+        Canvas canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
 
         _ = canvas.Draw("abcd".AsSpan(), new Point(0, 0));
 

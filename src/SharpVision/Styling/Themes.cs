@@ -1,9 +1,12 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 using SharpVision.Controls;
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalAttributes = TerminalAttributes;
 
 /// <summary>Exposes frozen standard themes built from the public theme API.</summary>
 public static class Themes
@@ -16,7 +19,7 @@ public static class Themes
 
     private static Theme CreateWhite()
     {
-        var theme = new Theme();
+        Theme theme = new Theme();
         theme.SetStyle(CreateBaseControlStyle(
             foreground: Color.Indexed(0),
             background: Color.Indexed(15),
@@ -27,7 +30,7 @@ public static class Themes
 
     private static Theme CreateDark()
     {
-        var theme = new Theme();
+        Theme theme = new Theme();
         theme.SetStyle(CreateBaseControlStyle(
             foreground: Color.Indexed(15),
             background: Color.Indexed(0),
@@ -41,12 +44,12 @@ public static class Themes
         Color background,
         Color hoverForeground)
     {
-        var style = new ControlStyle<Control>();
-        var border = Color.Indexed(8);
-        var shadowForeground = Color.Indexed(8);
-        var selectedForeground = Color.Indexed(15);
-        var selectedBackground = Color.Indexed(4);
-        var disabledForeground = Color.Indexed(8);
+        ControlStyle<Control> style = new ControlStyle<Control>();
+        Color border = Color.Indexed(8);
+        Color shadowForeground = Color.Indexed(8);
+        Color selectedForeground = Color.Indexed(15);
+        Color selectedBackground = Color.Indexed(4);
+        Color disabledForeground = Color.Indexed(8);
 
         style.Set(Control.ForegroundProperty, State.Normal, foreground);
         style.Set(Control.BackgroundProperty, State.Normal, background);

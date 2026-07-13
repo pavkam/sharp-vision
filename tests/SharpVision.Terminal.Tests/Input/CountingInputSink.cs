@@ -1,8 +1,11 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
 
-using InputDiagnostic = Terminal.Protocols.Diagnostic;
+using InputDiagnostic = Diagnostic;
 using InputText = Terminal.Input.Text;
 
 /// <summary>Counts every decoded terminal input value.</summary>

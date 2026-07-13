@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Unicode;
 
 using SharpVision.Terminal.Unicode;
@@ -50,7 +53,7 @@ public sealed class MeasurementTests
     [Fact]
     public void Measure_WhenTextContainsControls_ReportsThemSeparately()
     {
-        var result = Width.Measure("\t\r\n".AsSpan(), Ambiguous.Narrow);
+        Measurement result = Width.Measure("\t\r\n".AsSpan(), Ambiguous.Narrow);
 
         result.Cells.ShouldBe(0);
         result.Graphemes.ShouldBe(2);

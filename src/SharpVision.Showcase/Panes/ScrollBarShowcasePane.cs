@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -37,7 +40,7 @@ internal sealed class ScrollBarShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var horizontal = new ControlScrollBar
+        ControlScrollBar horizontal = new ControlScrollBar
         {
             Width = Length.Cells(28),
             Orientation = Orientation.Horizontal,
@@ -49,13 +52,13 @@ internal sealed class ScrollBarShowcasePane: ShowcasePane
             TrackGlyph = new Rune('─'),
             ThumbGlyph = new Rune('█'),
         };
-        var status = new ControlText($"Thumb value: {horizontal.Value}")
+        ControlText status = new ControlText($"Thumb value: {horizontal.Value}")
         {
             Foreground = Palette.Muted,
         };
         horizontal.ValueChanged += (_, eventArgs) =>
             status.Content = $"Thumb value: {eventArgs.Value}";
-        var full = PaneSupport.Vertical();
+        ControlStack full = PaneSupport.Vertical();
         full.Children.Add(horizontal);
         full.Children.Add(status);
         examples.Children.Add(PaneSupport.SampleSection(
@@ -63,7 +66,7 @@ internal sealed class ScrollBarShowcasePane: ShowcasePane
             "Drag the solid thumb, click the shaded track for page movement, or use the arrow buttons for line movement.",
             PaneSupport.Card(full, Glyphs.Rounded)));
 
-        var vertical = new ControlScrollBar
+        ControlScrollBar vertical = new ControlScrollBar
         {
             Height = Length.Cells(8),
             Maximum = 40,

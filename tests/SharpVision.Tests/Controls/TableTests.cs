@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using System.Text;
@@ -13,7 +16,7 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalStyle = Style;
 
 /// <summary>Verifies table ownership, track geometry, headers, grid cells, and row validation.</summary>
 public sealed class TableTests
@@ -22,10 +25,10 @@ public sealed class TableTests
     [Fact]
     public void Layout_WhenColumnsMixFixedPercentAndFill_ResolvesContainedCellSlots()
     {
-        var first = new ControlText("Alpha");
-        var second = new ControlText("Ready");
-        var third = new ControlText("Details");
-        var table = new Table();
+        ControlText first = new ControlText("Alpha");
+        ControlText second = new ControlText("Ready");
+        ControlText third = new ControlText("Details");
+        Table table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Percent("Status", 50));
         table.Columns.Add(TableColumn.Fill("Details"));
@@ -43,13 +46,13 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenHeaderAndGridLinesAreEnabled_WritesHeaderCellsAndIntersections()
     {
-        var table = new Table();
+        Table table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
-        var size = new Size(14, 4);
+        Size size = new Size(14, 4);
         new Engine().Layout(table, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
 
         table.Render(frame.Canvas);
 
@@ -65,15 +68,15 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenTableStyleHasForegroundOnly_PreservesSurfaceBackgroundOnDividers()
     {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
+        ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var table = new Table { Style = style };
+        Table table = new Table { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
-        var size = new Size(14, 4);
+        Size size = new Size(14, 4);
         new Engine().Layout(table, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
 
         table.Render(frame.Canvas);
@@ -86,22 +89,22 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
-        var style = ThemeTestSupport.OverlayStyle<Table>(
+        ControlStyle<Table> style = ThemeTestSupport.OverlayStyle<Table>(
             (State.Normal, new ThemeOverlay(
                 attributes: Attributes.RapidBlink,
                 underline: Underline.Dashed,
                 underlineColor: Color.Indexed(5))));
-        var table = new Table { Style = style };
+        Table table = new Table { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Rows.Add(new TableRow([new ControlText("A")]));
-        var size = new Size(6, 3);
+        Size size = new Size(6, 3);
         new Engine().Layout(table, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
 
         table.Render(frame.Canvas);
 
-        var header = frame.GetCell(default).Style;
-        var grid = frame.GetCell(new Point(0, 1)).Style;
+        TerminalStyle header = frame.GetCell(default).Style;
+        TerminalStyle grid = frame.GetCell(new Point(0, 1)).Style;
         header.Attributes.ShouldBe(Attributes.RapidBlink);
         header.Underline.ShouldBe(Underline.Dashed);
         header.UnderlineColor.ShouldBe(Color.Indexed(5));
@@ -112,13 +115,13 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenTableIsOffset_DrawsHeaderDividerBelowItsOwnHeader()
     {
-        var table = new Table();
+        Table table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
         table.Measure(new Constraint(width: 14, height: 4));
         table.Arrange(new Rect(2, 3, 14, 4));
-        using var frame = new Frame(new Size(20, 10));
+        using Frame frame = new Frame(new Size(20, 10));
 
         table.Render(frame.Canvas);
 
@@ -130,12 +133,12 @@ public sealed class TableTests
     [Fact]
     public void Layout_WhenTableHasNoRows_UsesOnlyTheHeaderHeight()
     {
-        var table = new Table();
+        Table table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fixed("Value", 5));
-        var size = new Size(12, 4);
+        Size size = new Size(12, 4);
         new Engine().Layout(table, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
 
         table.Render(frame.Canvas);
 
@@ -148,11 +151,11 @@ public sealed class TableTests
     [Fact]
     public void Rows_WhenCellCountDiffersFromColumns_RejectsRowWithoutOwnershipTransfer()
     {
-        var table = new Table();
+        Table table = new Table();
         table.Columns.Add(TableColumn.Auto("One"));
         table.Columns.Add(TableColumn.Auto("Two"));
-        var cell = new ControlText("Only one");
-        var row = new TableRow([cell]);
+        ControlText cell = new ControlText("Only one");
+        TableRow row = new TableRow([cell]);
 
         _ = Should.Throw<ArgumentException>(() => table.Rows.Add(row));
 

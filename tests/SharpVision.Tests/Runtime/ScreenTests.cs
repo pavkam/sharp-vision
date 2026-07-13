@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Controls;
@@ -17,10 +20,10 @@ public sealed class ScreenTests
     [Fact]
     public async Task Attach_WhenApplicationStarts_RunsHooksInOrderAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        using var screen = new ProbeScreen();
-        await using var application = new Application(
+        using ProbeScreen screen = new ProbeScreen();
+        await using Application application = new Application(
             screen,
             terminal,
             terminal,

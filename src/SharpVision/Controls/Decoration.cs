@@ -1,9 +1,12 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalAttributes = TerminalAttributes;
+using TerminalStyle = TerminalStyle;
 
 /// <summary>Validates one complete optional inline-decoration proposal before mutation.</summary>
 internal static class Decoration
@@ -20,8 +23,8 @@ internal static class Decoration
         Underline? underline = null,
         Color? underlineColor = null)
     {
-        var resolvedAttributes = attributes ?? inherited.Attributes;
-        var resolvedUnderline = underline ?? inherited.Underline;
+        TerminalAttributes resolvedAttributes = attributes ?? inherited.Attributes;
+        Underline resolvedUnderline = underline ?? inherited.Underline;
 
         if ((resolvedAttributes & TerminalAttributes.Underline) != 0)
         {
@@ -32,7 +35,7 @@ internal static class Decoration
             resolvedAttributes &= ~TerminalAttributes.Underline;
         }
 
-        var resolvedColor = underlineColor ?? inherited.UnderlineColor;
+        Color resolvedColor = underlineColor ?? inherited.UnderlineColor;
 
         if ((resolvedAttributes & TerminalAttributes.Underline) == 0 &&
             resolvedUnderline == Underline.None)

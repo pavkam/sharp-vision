@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Text;
 
 using SharpVision.Terminal.Unicode;
@@ -25,16 +28,16 @@ public sealed class RandomizedEditTests
     [Fact]
     public void Apply_WhenOperationsAreRandomized_PreservesEveryEditInvariant()
     {
-        var first = Replay(_seed);
-        var second = Replay(_seed);
+        EditResult first = Replay(_seed);
+        EditResult second = Replay(_seed);
 
         second.ShouldBe(first);
     }
 
     private static EditResult Replay(int seed)
     {
-        var random = new Random(seed);
-        var state = new EditResult(string.Empty, new Selection(0, 0), changed: false);
+        Random random = new Random(seed);
+        EditResult state = new EditResult(string.Empty, new Selection(0, 0), changed: false);
 
         for (var sample = 0; sample < _caseCount; sample++)
         {
@@ -68,7 +71,7 @@ public sealed class RandomizedEditTests
             return true;
         }
 
-        foreach (var grapheme in Graphemes.Enumerate(value))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(value))
         {
             if (grapheme.Offset == index)
             {

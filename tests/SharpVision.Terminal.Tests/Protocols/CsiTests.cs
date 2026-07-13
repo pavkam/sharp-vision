@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using System.Buffers;
@@ -23,8 +26,8 @@ public sealed class CsiTests
     [InlineData(Movement.Back, "\u001b[3D")]
     public void Move_WhenCountIsValid_WritesExactBytes(Movement operation, string expected)
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Csi.Move(writer, operation, 3);
 
@@ -37,7 +40,7 @@ public sealed class CsiTests
     [Fact]
     public void Position_WhenCoordinatesAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         Csi.Position(new Writer(destination), row: 12, column: 4);
 
@@ -50,8 +53,8 @@ public sealed class CsiTests
     [Fact]
     public void Erase_WhenAreasAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Csi.EraseDisplay(writer, EraseArea.Scrollback);
         Csi.EraseLine(writer, EraseArea.All);
@@ -65,8 +68,8 @@ public sealed class CsiTests
     [Fact]
     public void Edit_WhenCountsAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Csi.InsertCharacters(writer, 2);
         Csi.DeleteCharacters(writer, 3);
@@ -85,8 +88,8 @@ public sealed class CsiTests
     [Fact]
     public void Query_WhenRequested_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Csi.SaveCursor(writer);
         Csi.RestoreCursor(writer);
@@ -105,8 +108,8 @@ public sealed class CsiTests
     [Fact]
     public void Command_WhenArgumentIsInvalid_ThrowsBeforeWriting()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Csi.Move(writer, Movement.Up, 0));

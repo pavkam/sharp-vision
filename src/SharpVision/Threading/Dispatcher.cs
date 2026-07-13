@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Threading;
 
 using System.Diagnostics;
@@ -27,7 +30,7 @@ public sealed class Dispatcher: IAsyncDisposable
     private Dispatcher(int capacity, string name)
     {
         _capacity = capacity;
-        using var started = new ManualResetEventSlim();
+        using ManualResetEventSlim started = new ManualResetEventSlim();
         _thread = new Thread(() => Run(started))
         {
             IsBackground = true,
@@ -128,7 +131,7 @@ public sealed class Dispatcher: IAsyncDisposable
             }
         }
 
-        var work = new ActionWork(action, cancellationToken);
+        ActionWork work = new ActionWork(action, cancellationToken);
         Enqueue(work);
         return new ValueTask(work.Completion);
     }
@@ -164,7 +167,7 @@ public sealed class Dispatcher: IAsyncDisposable
             }
         }
 
-        var work = new FunctionWork<T>(function, cancellationToken);
+        FunctionWork<T> work = new FunctionWork<T>(function, cancellationToken);
         Enqueue(work);
         return new ValueTask<T>(work.Completion);
     }
@@ -207,7 +210,7 @@ public sealed class Dispatcher: IAsyncDisposable
             Monitor.PulseAll(_gate);
         }
 
-        foreach (var work in cancelled)
+        foreach (Work work in cancelled)
         {
             work.Cancel();
         }
@@ -241,7 +244,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
         try
         {
-            while (TryTake(out var work, out var raiseIdle))
+            while (TryTake(out Work? work, out var raiseIdle))
             {
                 if (work is not null)
                 {
@@ -309,7 +312,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
     private void Report(Exception exception)
     {
-        var eventArgs = new UnhandledEventArgs(exception);
+        UnhandledEventArgs eventArgs = new UnhandledEventArgs(exception);
 
         try
         {
@@ -343,7 +346,7 @@ public sealed class Dispatcher: IAsyncDisposable
             Monitor.PulseAll(_gate);
         }
 
-        foreach (var work in cancelled)
+        foreach (Work work in cancelled)
         {
             work.Cancel();
         }

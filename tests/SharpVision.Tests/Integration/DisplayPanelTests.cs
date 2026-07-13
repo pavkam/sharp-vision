@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Integration;
 
 using System.Text;
@@ -23,10 +26,10 @@ public sealed class DisplayPanelTests
     [Fact]
     public async Task Render_WhenDisplayPanelsCompose_PreservesGeometryCellsAndDamageAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var root = Create(out var label, out var canvas);
-        await using var application = new Application(
+        Grid root = Create(out ControlText? label, out ControlCanvas? canvas);
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
@@ -41,7 +44,7 @@ public sealed class DisplayPanelTests
         Bytes(terminal).AsSpan().IndexOf(Encoding.UTF8.GetBytes("界"))
             .ShouldBeGreaterThanOrEqualTo(0);
         var writes = terminal.Writes.Count;
-        var rendered = NextFrame(application);
+        Task rendered = NextFrame(application);
 
         await application.Dispatcher.InvokeAsync(
             () =>
@@ -75,7 +78,7 @@ public sealed class DisplayPanelTests
         string expectedLabel,
         bool hasCanvasText)
     {
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
         root.Render(frame.Canvas);
         FrameOracle.Get(frame, default).ShouldBe("┌");
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBe(expectedLabel);
@@ -93,13 +96,13 @@ public sealed class DisplayPanelTests
 
     private static Grid Create(out ControlText label, out ControlCanvas canvas)
     {
-        var root = new Grid();
+        Grid root = new Grid();
         root.Columns.Add(Track.Star(1));
         root.Rows.Add(Track.Star(1));
-        var dock = new Dock();
+        Dock dock = new Dock();
         root.Children.Add(dock);
         label = new ControlText("界");
-        var border = new Border
+        Border border = new Border
         {
             Width = Length.Cells(6),
             BorderThickness = new Thickness(1),
@@ -107,13 +110,13 @@ public sealed class DisplayPanelTests
         };
         Dock.SetSide(border, Side.Left);
         dock.Children.Add(border);
-        var stack = new Stack();
+        Stack stack = new Stack();
         dock.Children.Add(stack);
-        var overlay = new Overlay { Height = Length.Cells(2) };
+        Overlay overlay = new Overlay { Height = Length.Cells(2) };
         overlay.Children.Add(new ControlText("O"));
         stack.Children.Add(overlay);
         canvas = new ControlCanvas();
-        var canvasText = new ControlText("C");
+        ControlText canvasText = new ControlText("C");
         ControlCanvas.SetLeft(canvasText, Length.Cells(1));
         canvas.Children.Add(canvasText);
         stack.Children.Add(canvas);
@@ -122,7 +125,7 @@ public sealed class DisplayPanelTests
 
     private static Task NextFrame(Application application)
     {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 

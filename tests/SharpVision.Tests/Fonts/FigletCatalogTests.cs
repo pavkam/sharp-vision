@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Fonts;
 
 using SharpVision.Fonts;
@@ -13,7 +16,7 @@ public sealed class FigletCatalogTests
     [Fact]
     public void Names_WhenCatalogLoads_ContainsFourHundredSortedFonts()
     {
-        var names = FigletCatalog.Default.Names;
+        IReadOnlyList<string> names = FigletCatalog.Default.Names;
 
         names.Count.ShouldBe(400);
         names.ShouldBe(names.Order(StringComparer.Ordinal).ToArray());
@@ -24,7 +27,7 @@ public sealed class FigletCatalogTests
     [Fact]
     public void GetInfo_WhenFontExists_ReturnsAuditedMetadata()
     {
-        var info = FigletCatalog.Default.GetInfo("Standard");
+        FigletFontInfo info = FigletCatalog.Default.GetInfo("Standard");
 
         info.File.ShouldBe("Standard.flf");
         info.Sha256.Length.ShouldBe(64);
@@ -48,7 +51,7 @@ public sealed class FigletCatalogTests
     [Fact]
     public void Load_WhenStandardIsSelected_RendersText()
     {
-        var font = FigletCatalog.Default.Load("Standard");
+        FigletFont font = FigletCatalog.Default.Load("Standard");
 
         var output = font.Render("Hi");
 
@@ -65,7 +68,7 @@ public sealed class FigletCatalogTests
     [Fact]
     public void Load_WhenEveryCatalogEntryIsSelected_ParsesAllFonts()
     {
-        var catalog = FigletCatalog.Default;
+        FigletCatalog catalog = FigletCatalog.Default;
 
         foreach (var name in catalog.Names)
         {

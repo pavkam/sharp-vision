@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -40,7 +43,7 @@ public sealed class LimitsTests
     [Fact]
     public void Default_WhenRead_HasFiniteInteractiveBounds()
     {
-        var limits = Limits.Default;
+        Limits limits = Limits.Default;
 
         limits.MaxParameterBytes.ShouldBeInRange(1, 4_096);
         limits.MaxIntermediateBytes.ShouldBeInRange(1, 256);

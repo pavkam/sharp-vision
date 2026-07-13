@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Transport;
 
 using SharpVision.Terminal.Transport;
@@ -15,9 +18,9 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task ReadWriteAsync_WhenStreamsAreValid_TransfersExactBytesAsync()
     {
-        await using var input = new MemoryStream("input"u8.ToArray());
-        await using var output = new MemoryStream();
-        await using var transport = new StreamTransport(input, output, leaveOpen: true);
+        await using MemoryStream input = new MemoryStream("input"u8.ToArray());
+        await using MemoryStream output = new MemoryStream();
+        await using StreamTransport transport = new StreamTransport(input, output, leaveOpen: true);
         var destination = new byte[5];
 
         var read = await transport.ReadAsync(destination, TestContext.Current.CancellationToken);
@@ -35,8 +38,8 @@ public sealed class StreamTransportTests
     [Fact]
     public void Constructor_WhenStreamCapabilityIsInvalid_ThrowsArgumentException()
     {
-        using var unreadable = new WriteOnlyStream();
-        using var unwritable = new ReadOnlyStream();
+        using WriteOnlyStream unreadable = new WriteOnlyStream();
+        using ReadOnlyStream unwritable = new ReadOnlyStream();
 
         _ = Should.Throw<ArgumentException>(
             () => new StreamTransport(unreadable, Stream.Null));
@@ -50,12 +53,12 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task WriteAsync_WhenCallsOverlap_SerializesWritesAsync()
     {
-        await using var output = new BlockingStream();
-        await using var transport = new StreamTransport(Stream.Null, output, leaveOpen: true);
+        await using BlockingStream output = new BlockingStream();
+        await using StreamTransport transport = new StreamTransport(Stream.Null, output, leaveOpen: true);
 
-        var first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
+        ValueTask first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
         await output.FirstStarted;
-        var second = transport.WriteAsync("two"u8.ToArray(), TestContext.Current.CancellationToken);
+        ValueTask second = transport.WriteAsync("two"u8.ToArray(), TestContext.Current.CancellationToken);
 
         output.MaximumActive.ShouldBe(1);
         output.Release();
@@ -71,11 +74,11 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task WriteAsync_WhenWaitingCallerIsCancelled_ThrowsOperationCanceledExceptionAsync()
     {
-        await using var output = new BlockingStream();
-        await using var transport = new StreamTransport(Stream.Null, output, leaveOpen: true);
-        var first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
+        await using BlockingStream output = new BlockingStream();
+        await using StreamTransport transport = new StreamTransport(Stream.Null, output, leaveOpen: true);
+        ValueTask first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
         await output.FirstStarted;
-        using var cancellation = new CancellationTokenSource();
+        using CancellationTokenSource cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
         _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
@@ -92,10 +95,10 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task DisposeAsync_WhenLeaveOpenVaries_UsesDocumentedOwnershipAsync()
     {
-        var owned = new TrackingStream();
-        var borrowed = new TrackingStream();
-        var ownedTransport = new StreamTransport(Stream.Null, owned);
-        var borrowedTransport = new StreamTransport(Stream.Null, borrowed, leaveOpen: true);
+        TrackingStream owned = new TrackingStream();
+        TrackingStream borrowed = new TrackingStream();
+        StreamTransport ownedTransport = new StreamTransport(Stream.Null, owned);
+        StreamTransport borrowedTransport = new StreamTransport(Stream.Null, borrowed, leaveOpen: true);
 
         await ownedTransport.DisposeAsync();
         await ownedTransport.DisposeAsync();

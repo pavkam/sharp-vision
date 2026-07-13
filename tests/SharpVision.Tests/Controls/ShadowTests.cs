@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using System.Text;
@@ -20,7 +23,7 @@ public sealed class ShadowTests
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
-        var shadow = new Shadow();
+        Shadow shadow = new Shadow();
 
         shadow.Child.ShouldBeNull();
         shadow.Mode.ShouldBe(ShadowMode.Composite);
@@ -33,7 +36,7 @@ public sealed class ShadowTests
     [Fact]
     public void Properties_WhenValueIsInvalid_ThrowBeforeMutation()
     {
-        var shadow = new Shadow();
+        Shadow shadow = new Shadow();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             shadow.Mode = (ShadowMode) 99);
@@ -47,8 +50,8 @@ public sealed class ShadowTests
     [Fact]
     public void Layout_WhenChildIsPresent_DoesNotReserveShadowOffset()
     {
-        var child = new ProbeControl(new Size(3, 2));
-        var shadow = new Shadow { Child = child };
+        ProbeControl child = new ProbeControl(new Size(3, 2));
+        Shadow shadow = new Shadow { Child = child };
 
         new Engine().Layout(shadow, new Size(3, 2));
 
@@ -65,8 +68,8 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenModeIsBlockGlyph_DrawsTurboVisionFootprint()
     {
-        var shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
-        using var frame = new Frame(new Size(5, 3));
+        Shadow shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
+        using Frame frame = new Frame(new Size(5, 3));
 
         shadow.Render(frame.Canvas);
 
@@ -82,9 +85,9 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenModeIsComposite_PreservesUnderlyingGlyphs()
     {
-        var shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
+        Shadow shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
         shadow.Background = Color.Indexed(4);
-        using var frame = new Frame(new Size(5, 3));
+        using Frame frame = new Frame(new Size(5, 3));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
 
         shadow.Render(frame.Canvas);
@@ -98,9 +101,9 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenShadowTouchesWideGlyph_StylesCompleteOwner()
     {
-        var shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
+        Shadow shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
         shadow.Background = Color.Indexed(4);
-        using var frame = new Frame(new Size(5, 3));
+        using Frame frame = new Frame(new Size(5, 3));
         _ = frame.Canvas.Draw("界", new Point(3, 1));
 
         shadow.Render(frame.Canvas);
@@ -114,7 +117,7 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenOffsetIsNegative_DrawsVisualOverflowWithoutHitTarget()
     {
-        var shadow = new Shadow
+        Shadow shadow = new Shadow
         {
             Child = new ProbeControl(new Size(3, 2)),
             Mode = ShadowMode.BlockGlyph,
@@ -122,7 +125,7 @@ public sealed class ShadowTests
         };
         shadow.Measure(new Constraint(3, 2));
         shadow.Arrange(new Rect(1, 1, 3, 2));
-        using var frame = new Frame(new Size(4, 3));
+        using Frame frame = new Frame(new Size(4, 3));
 
         shadow.Render(frame.Canvas);
 
@@ -136,8 +139,8 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenAncestorCanvasClipsShadow_DoesNotEscapeClip()
     {
-        var shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
-        using var frame = new Frame(new Size(5, 3));
+        Shadow shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
+        using Frame frame = new Frame(new Size(5, 3));
 
         shadow.Render(frame.Canvas.Clip(new Rect(0, 0, 4, 3)));
 
@@ -150,7 +153,7 @@ public sealed class ShadowTests
 
     private static Shadow CreateArranged(ShadowMode mode, Point offset)
     {
-        var shadow = new Shadow
+        Shadow shadow = new Shadow
         {
             Child = new ProbeControl(new Size(3, 2)),
             Mode = mode,

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Input;
@@ -5,9 +8,9 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using KeyAction = Terminal.Input.Action;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using BackgroundMode = BackgroundMode;
+using KeyAction = KeyAction;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Displays one selected list value and opens an owned popup-style list for keyboard or pointer choice.</summary>
 public sealed class ComboBox: Pressable
@@ -242,14 +245,14 @@ public sealed class ComboBox: Pressable
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var style = ResolvedStyle;
+        TerminalStyle style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
             canvas.Clear(Bounds, style);
         }
 
-        var label = canvas.Clip(new Rect(Bounds.X, Bounds.Y, Math.Max(0, Bounds.Width - 2), 1));
+        TerminalCanvas label = canvas.Clip(new Rect(Bounds.X, Bounds.Y, Math.Max(0, Bounds.Width - 2), 1));
         _ = label.Draw(SelectedText().AsSpan(), new Point(Bounds.X, Bounds.Y), style, background: BackgroundMode.Transparent);
         _ = canvas.Draw(" ▼".AsSpan(), new Point(Math.Max(Bounds.X, Bounds.Right - 2), Bounds.Y), style, background: BackgroundMode.Transparent);
     }
@@ -348,7 +351,7 @@ public sealed class ComboBox: Pressable
 
         // A standalone field may deliberately be one cell high. Its popup is
         // still constrained by the measure viewport, not by that field box.
-        var viewport = LastMeasureConstraint;
+        Constraint? viewport = LastMeasureConstraint;
         return new Rect(
             fallback.X,
             fallback.Y,
@@ -358,7 +361,7 @@ public sealed class ComboBox: Pressable
 
     private static bool IsWithin(Control ancestor, Control? candidate)
     {
-        for (var current = candidate; current is not null; current = current.Parent)
+        for (Control? current = candidate; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, ancestor))
             {

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Layout;
 
 using SharpVision.Input;
@@ -20,25 +23,25 @@ public sealed class RandomizedLayoutTests
     [Fact]
     public async Task Layout_WhenTreeMutatesRandomly_PreservesInfrastructureInvariantsAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() => Run(dispatcher), TestContext.Current.CancellationToken);
     }
 
     private static void Run(Dispatcher dispatcher)
     {
-        var random = new Random(_seed);
-        var root = new ProbeContainer
+        Random random = new Random(_seed);
+        ProbeContainer root = new ProbeContainer
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
         root.Attach(dispatcher);
-        using var focus = new FocusManager(root);
-        using var capture = new CaptureManager(root);
-        var controls = new List<ProbeControl>();
-        var engine = new Engine();
-        var size = new Size(80, 24);
+        using FocusManager focus = new FocusManager(root);
+        using CaptureManager capture = new CaptureManager(root);
+        List<ProbeControl> controls = new List<ProbeControl>();
+        Engine engine = new Engine();
+        Size size = new Size(80, 24);
 
         for (var sample = 0; sample < _caseCount; sample++)
         {
@@ -46,7 +49,7 @@ public sealed class RandomizedLayoutTests
             Apply(operation, random, root, controls, focus, capture, ref size);
             engine.Layout(root, size);
 
-            foreach (var control in controls)
+            foreach (ProbeControl control in controls)
             {
                 engine.Layout(control, size);
             }
@@ -55,7 +58,7 @@ public sealed class RandomizedLayoutTests
 
             if (sample % 25 == 0)
             {
-                using var frame = new Frame(size);
+                using Frame frame = new Frame(size);
                 root.Render(frame.Canvas);
                 AssertWideOwnership(sample, operation, frame);
             }
@@ -73,12 +76,12 @@ public sealed class RandomizedLayoutTests
         CaptureManager capture,
         ref Size size)
     {
-        var control = controls.Count == 0 ? null : controls[random.Next(controls.Count)];
+        ProbeControl? control = controls.Count == 0 ? null : controls[random.Next(controls.Count)];
 
         switch (operation)
         {
             case 0 when controls.Count < 32:
-                var added = new ProbeControl(new Size(random.Next(0, 20), random.Next(0, 8)))
+                ProbeControl added = new ProbeControl(new Size(random.Next(0, 20), random.Next(0, 8)))
                 {
                     CanFocus = random.Next(0, 2) == 0,
                     Content = random.Next(0, 2) == 0 ? "界".AsMemory() : "x".AsMemory(),
@@ -155,7 +158,7 @@ public sealed class RandomizedLayoutTests
         root.Bounds.Height.ShouldBe(size.Height, context);
         root.Children.Count.ShouldBe(controls.Count, context);
 
-        foreach (var control in controls)
+        foreach (ProbeControl control in controls)
         {
             control.Parent.ShouldBeSameAs(root, context);
             control.Dispatcher.ShouldBeSameAs(root.Dispatcher, context);
@@ -189,8 +192,8 @@ public sealed class RandomizedLayoutTests
         {
             for (var x = 0; x < frame.Size.Width; x++)
             {
-                var point = new Point(x, y);
-                var cell = frame.GetCell(point);
+                Point point = new Point(x, y);
+                CellInfo cell = frame.GetCell(point);
 
                 if (!cell.IsContinuation)
                 {
@@ -198,7 +201,7 @@ public sealed class RandomizedLayoutTests
                 }
 
                 cell.Lead.X.ShouldBeLessThan(x, context);
-                var lead = frame.GetCell(cell.Lead);
+                CellInfo lead = frame.GetCell(cell.Lead);
                 lead.IsContinuation.ShouldBeFalse(context);
                 lead.Width.ShouldBe(2, context);
             }

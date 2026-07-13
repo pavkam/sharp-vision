@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
@@ -9,13 +12,13 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using Dispatcher = SharpVision.Threading.Dispatcher;
-using LayoutEngine = SharpVision.Layout.Engine;
-using RichTextControl = SharpVision.Controls.RichText;
-using RunInline = SharpVision.Controls.Run;
+using Dispatcher = Dispatcher;
+using LayoutEngine = Engine;
+using RichTextControl = RichText;
+using RunInline = Run;
 using TerminalOptions = Terminal.Runtime.Options;
 using TextControl = SharpVision.Controls.Text;
-using TextInputControl = SharpVision.Controls.TextInput;
+using TextInputControl = TextInput;
 using TextWrapping = SharpVision.Text.Wrapping;
 
 /// <summary>Verifies one immutable Unicode cell policy reaches the complete tree.</summary>
@@ -26,14 +29,14 @@ public sealed class CellPolicyTests
     public async Task StartAsync_WhenAmbiguousWidthIsWide_MeasuresTextAsWideAsync()
     {
         // Arrange
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(4, 1)));
-        var text = new TextControl { Content = "·" };
-        var capabilities = Capabilities.Conservative with
+        TextControl text = new TextControl { Content = "·" };
+        Capabilities capabilities = Capabilities.Conservative with
         {
             AmbiguousWidth = Ambiguous.Wide,
         };
-        await using var application = new Application(
+        await using Application application = new Application(
             text,
             terminal,
             terminal,
@@ -54,14 +57,14 @@ public sealed class CellPolicyTests
     public async Task Children_WhenAddedAfterAttachment_InheritCurrentPolicyAsync()
     {
         // Arrange
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer();
-            var policy = new Policy(Ambiguous.Wide);
+            ProbeContainer root = new ProbeContainer();
+            Policy policy = new Policy(Ambiguous.Wide);
             root.Attach(dispatcher, policy);
-            var child = new ProbeControl();
+            ProbeControl child = new ProbeControl();
 
             // Act
             root.Children.Add(child);
@@ -77,17 +80,17 @@ public sealed class CellPolicyTests
     public async Task Layout_WhenTextConsumersInheritWidePolicy_MeasuresConsistentlyAsync()
     {
         // Arrange
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var policy = new Policy(Ambiguous.Wide);
-            var rich = new RichTextControl { Wrapping = TextWrapping.None };
+            Policy policy = new Policy(Ambiguous.Wide);
+            RichTextControl rich = new RichTextControl { Wrapping = TextWrapping.None };
             rich.Inlines.Add(new RunInline("·"));
-            var input = new TextInputControl { Text = "·" };
+            TextInputControl input = new TextInputControl { Text = "·" };
             rich.Attach(dispatcher, policy);
             input.Attach(dispatcher, policy);
-            var engine = new LayoutEngine();
+            LayoutEngine engine = new LayoutEngine();
 
             // Act
             engine.Layout(rich, new Size(10, 2));
@@ -104,20 +107,20 @@ public sealed class CellPolicyTests
     public async Task Profile_WhenGeometryChanges_ReplacesTreePolicyAndRemeasuresAsync()
     {
         // Arrange
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(4, 1)));
-        var text = new TextControl { Content = "·" };
-        await using var application = new Application(
+        TextControl text = new TextControl { Content = "·" };
+        await using Application application = new Application(
             text,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var previous = application.CellPolicy;
-        var frames = new TaskCompletionSource(
+        Policy previous = application.CellPolicy;
+        TaskCompletionSource frames = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += (_, _) => _ = frames.TrySetResult();
-        var wide = Capabilities.Conservative with
+        Capabilities wide = Capabilities.Conservative with
         {
             AmbiguousWidth = Ambiguous.Wide,
         };

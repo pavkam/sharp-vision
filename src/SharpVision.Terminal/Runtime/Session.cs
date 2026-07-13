@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Runtime;
 
 using System.Buffers;
@@ -70,7 +73,7 @@ public sealed class Session: IAsyncDisposable
 
         try
         {
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+            using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
                 _lifetime.Token);
             await StartAsync(linked.Token).ConfigureAwait(false);
@@ -170,17 +173,17 @@ public sealed class Session: IAsyncDisposable
 
     private async ValueTask EventsAsync(CancellationToken cancellationToken)
     {
-        var inputOptions = _options.Input with
+        Input.Options inputOptions = _options.Input with
         {
             PixelMouse = _options.Coordinates == MouseCoordinates.Pixel,
         };
-        var negotiator = _options.Negotiation is null
+        Negotiator? negotiator = _options.Negotiation is null
             ? null
             : new Negotiator(_options.Negotiation, _timeProvider);
         IProtocolSink routeSink = negotiator is null
             ? _sink
             : new NegotiationSink(_sink, negotiator);
-        using var router = new ProtocolRouter(routeSink, inputOptions, _timeProvider);
+        using ProtocolRouter router = new ProtocolRouter(routeSink, inputOptions, _timeProvider);
 
         if (negotiator is null)
         {
@@ -189,7 +192,7 @@ public sealed class Session: IAsyncDisposable
         }
         else
         {
-            var queries = new ArrayBufferWriter<byte>();
+            ArrayBufferWriter<byte> queries = new ArrayBufferWriter<byte>();
             negotiator.Start(queries);
             await _transport.WriteAsync(queries.WrittenMemory, cancellationToken)
                 .ConfigureAwait(false);
@@ -197,24 +200,24 @@ public sealed class Session: IAsyncDisposable
         }
 
         var buffer = ArrayPool<byte>.Shared.Rent(_options.ReadBufferSize);
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var deadline = negotiator is null
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task? deadline = negotiator is null
             ? null
             : DelayUntilAsync(negotiator.Deadline, linked.Token);
         var ready = negotiator is null;
         var hasPendingResize = false;
-        var pendingResize = default(Dimensions);
+        Dimensions pendingResize = default(Dimensions);
 
         try
         {
-            var read = _transport.ReadAsync(
+            Task<int> read = _transport.ReadAsync(
                 buffer.AsMemory(0, _options.ReadBufferSize),
                 linked.Token).AsTask();
-            var resize = _resize.ReadAsync(linked.Token).AsTask();
+            Task<Dimensions> resize = _resize.ReadAsync(linked.Token).AsTask();
 
             while (true)
             {
-                var completed = deadline is null
+                Task completed = deadline is null
                     ? await Task.WhenAny(read, resize).ConfigureAwait(false)
                     : await Task.WhenAny(read, resize, deadline).ConfigureAwait(false);
 
@@ -222,7 +225,7 @@ public sealed class Session: IAsyncDisposable
                 {
                     await deadline.ConfigureAwait(false);
                     _ = negotiator!.Expire();
-                    var capabilities = negotiator.Capabilities;
+                    TerminalCapabilities capabilities = negotiator.Capabilities;
                     _sink.Profile(capabilities);
                     await EnableOptionalAsync(capabilities, linked.Token)
                         .ConfigureAwait(false);
@@ -240,7 +243,7 @@ public sealed class Session: IAsyncDisposable
 
                 if (ReferenceEquals(completed, resize))
                 {
-                    var dimensions = await resize.ConfigureAwait(false);
+                    Dimensions dimensions = await resize.ConfigureAwait(false);
                     router.SetCellMetrics(dimensions.CellMetrics);
 
                     if (ready)
@@ -285,7 +288,7 @@ public sealed class Session: IAsyncDisposable
 
                 if (!ready && negotiator!.IsComplete)
                 {
-                    var capabilities = negotiator.Capabilities;
+                    TerminalCapabilities capabilities = negotiator.Capabilities;
                     _sink.Profile(capabilities);
                     await EnableOptionalAsync(capabilities, linked.Token)
                         .ConfigureAwait(false);
@@ -313,7 +316,7 @@ public sealed class Session: IAsyncDisposable
 
     private Task DelayUntilAsync(DateTimeOffset deadline, CancellationToken cancellationToken)
     {
-        var delay = deadline - _timeProvider.GetUtcNow();
+        TimeSpan delay = deadline - _timeProvider.GetUtcNow();
 
         if (delay < TimeSpan.Zero)
         {
@@ -325,7 +328,7 @@ public sealed class Session: IAsyncDisposable
 
     private async ValueTask CleanupAsync()
     {
-        using var timeout = new CancellationTokenSource(
+        using CancellationTokenSource timeout = new CancellationTokenSource(
             _options.CleanupTimeout,
             _timeProvider);
 
@@ -350,8 +353,8 @@ public sealed class Session: IAsyncDisposable
         bool enabled,
         CancellationToken cancellationToken)
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         switch (lease)
         {

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Graphics;
 
 using SharpVision.Terminal.Geometry;
@@ -37,7 +40,7 @@ public sealed class Image
     /// <exception cref="ArgumentException"><paramref name="source"/> is not exactly four bytes per pixel.</exception>
     public static Image FromRgba(Size size, ReadOnlySpan<byte> source, Limits? limits = null)
     {
-        var policy = limits ?? Limits.Default;
+        Limits policy = limits ?? Limits.Default;
         policy.Validate(size, source.Length);
         var expected = checked((long) size.Width * size.Height * 4);
 
@@ -56,7 +59,7 @@ public sealed class Image
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
     public static Image FromPng(ReadOnlySpan<byte> source, Limits? limits = null)
     {
-        var policy = limits ?? Limits.Default;
+        Limits policy = limits ?? Limits.Default;
 
         if (source.Length > policy.MaxSourceBytes)
         {
@@ -66,7 +69,7 @@ public sealed class Image
                 "The image source byte count exceeds policy.");
         }
 
-        var size = Png.ReadSize(source);
+        Size size = Png.ReadSize(source);
         policy.Validate(size, source.Length);
         return new Image(size, Format.Png, source);
     }

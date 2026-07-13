@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Input;
 
 using System.Diagnostics.CodeAnalysis;
@@ -99,10 +102,10 @@ public sealed class CaptureManager: IDisposable
     public Control? Dispatch(Pointer pointer)
     {
         VerifyAccess();
-        var physical = pointer.Action == PointerAction.Leave || pointer.Cells is not { } cells
+        Control? physical = pointer.Action == PointerAction.Leave || pointer.Cells is not { } cells
             ? null
             : Root.HitTest(cells);
-        var target = IsEligible(Captured) ? Captured : physical;
+        Control? target = IsEligible(Captured) ? Captured : physical;
 
         // Capture governs routed input, while hover tracks the physical pointer
         // position so a drag never leaves stale visual feedback behind.
@@ -180,7 +183,7 @@ public sealed class CaptureManager: IDisposable
 
     private void Cancel(ReleaseReason reason, Control subtree)
     {
-        var cancelled = IsWithin(Captured, subtree) ? Captured : Pressed;
+        Control? cancelled = IsWithin(Captured, subtree) ? Captured : Pressed;
 
         if (IsWithin(Captured, subtree))
         {
@@ -209,7 +212,7 @@ public sealed class CaptureManager: IDisposable
 
     private bool IsMember(Control control)
     {
-        for (var current = control; current is not null; current = current.Parent)
+        for (Control? current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, Root))
             {
@@ -222,7 +225,7 @@ public sealed class CaptureManager: IDisposable
 
     private static bool IsWithin(Control? control, Control subtree)
     {
-        for (var current = control; current is not null; current = current.Parent)
+        for (Control? current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, subtree))
             {
@@ -247,7 +250,7 @@ public sealed class CaptureManager: IDisposable
 
     private static Control? ResolveHover(Control? physical)
     {
-        for (var current = physical; current is not null; current = current.Parent)
+        for (Control? current = physical; current is not null; current = current.Parent)
         {
             if (current.OwnsHover)
             {
@@ -260,7 +263,7 @@ public sealed class CaptureManager: IDisposable
 
     private static void FocusTarget(Control? target)
     {
-        for (var current = target; current is not null; current = current.Parent)
+        for (Control? current = target; current is not null; current = current.Parent)
         {
             if (current.CanFocus)
             {

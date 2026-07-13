@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Text;
@@ -35,7 +38,7 @@ public readonly record struct Marks
     {
         Span<char> buffer = stackalloc char[2];
         var length = value.EncodeToUtf16(buffer);
-        var measurement = Width.Measure(buffer[..length]);
+        Measurement measurement = Width.Measure(buffer[..length]);
         return measurement.Cells == 1 && measurement.Controls == 0
             ? value
             : throw new ArgumentException(

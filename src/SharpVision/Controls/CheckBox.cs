@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -7,8 +10,8 @@ using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using BackgroundMode = BackgroundMode;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a focusable two- or three-state toggle with optional content.</summary>
 public sealed class CheckBox: Pressable
@@ -127,7 +130,7 @@ public sealed class CheckBox: Pressable
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var content = Content;
+        Control? content = Content;
 
         if (content is null)
         {
@@ -161,7 +164,7 @@ public sealed class CheckBox: Pressable
             return;
         }
 
-        var style = ResolvedStyle;
+        TerminalStyle style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
@@ -222,7 +225,7 @@ public sealed class CheckBox: Pressable
             return;
         }
 
-        var eventArgs = new CheckChangedEventArgs(previous, value, cause);
+        CheckChangedEventArgs eventArgs = new CheckChangedEventArgs(previous, value, cause);
 
         if (value == true)
         {

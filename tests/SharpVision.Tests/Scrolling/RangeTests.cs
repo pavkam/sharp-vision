@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Scrolling;
 
 using SharpVision.Scrolling;
@@ -23,7 +26,7 @@ public sealed class RangeTests
     [Fact]
     public void Move_WhenDeltaExceedsRange_ClampsToEndpoints()
     {
-        var range = new ScrollRange(10, 20, 15, viewport: 4);
+        ScrollRange range = new ScrollRange(10, 20, 15, viewport: 4);
 
         range.Move(int.MinValue).ShouldBe(10);
         range.Move(int.MaxValue).ShouldBe(20);
@@ -43,9 +46,9 @@ public sealed class RangeTests
     [Fact]
     public void Resolve_WhenRangeScrolls_ComputesExactThumb()
     {
-        var range = new ScrollRange(0, 80, 40, viewport: 20);
+        ScrollRange range = new ScrollRange(0, 80, 40, viewport: 20);
 
-        var thumb = Thumb.Resolve(range, trackLength: 10);
+        Thumb thumb = Thumb.Resolve(range, trackLength: 10);
 
         thumb.ShouldBe(new Thumb(4, 2));
         Thumb.ValueAt(range, trackLength: 10, thumbStart: 4).ShouldBe(40);
@@ -63,9 +66,9 @@ public sealed class RangeTests
     [Fact]
     public void Resolve_WhenRangeUsesIntegerBoundary_AvoidsOverflow()
     {
-        var range = new ScrollRange(0, int.MaxValue, int.MaxValue, int.MaxValue);
+        ScrollRange range = new ScrollRange(0, int.MaxValue, int.MaxValue, int.MaxValue);
 
-        var thumb = Thumb.Resolve(range, trackLength: 500);
+        Thumb thumb = Thumb.Resolve(range, trackLength: 500);
 
         thumb.ShouldBe(new Thumb(250, 250));
         Thumb.ValueAt(range, trackLength: 500, thumb.Start).ShouldBe(int.MaxValue);
@@ -75,7 +78,7 @@ public sealed class RangeTests
     [Fact]
     public void Resolve_WhenViewportExceedsRange_UsesCumulativeRoundedEdges()
     {
-        var range = new ScrollRange(0, 10, 5, viewport: 100);
+        ScrollRange range = new ScrollRange(0, 10, 5, viewport: 100);
 
         Thumb.Resolve(range, trackLength: 11).ShouldBe(new Thumb(1, 10));
     }
@@ -87,9 +90,9 @@ public sealed class RangeTests
     [InlineData(500)]
     public void Resolve_WhenTrackResizes_PreservesContainedEndpointGeometry(int trackLength)
     {
-        var range = new ScrollRange(3, 103, 103, viewport: 25);
+        ScrollRange range = new ScrollRange(3, 103, 103, viewport: 25);
 
-        var thumb = Thumb.Resolve(range, trackLength);
+        Thumb thumb = Thumb.Resolve(range, trackLength);
 
         (thumb.Start + thumb.Length).ShouldBe(trackLength);
         Thumb.ValueAt(range, trackLength, thumb.Start).ShouldBe(103);
@@ -101,8 +104,8 @@ public sealed class RangeTests
     [InlineData(1)]
     public void Resolve_WhenTrackIsTiny_RemainsContained(int trackLength)
     {
-        var range = new ScrollRange(3, 9, 9, viewport: 2);
-        var thumb = Thumb.Resolve(range, trackLength);
+        ScrollRange range = new ScrollRange(3, 9, 9, viewport: 2);
+        Thumb thumb = Thumb.Resolve(range, trackLength);
 
         thumb.Start.ShouldBeGreaterThanOrEqualTo(0);
         thumb.Start.ShouldBeLessThanOrEqualTo(trackLength);

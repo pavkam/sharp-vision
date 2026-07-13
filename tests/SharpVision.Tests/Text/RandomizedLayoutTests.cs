@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Text;
 
 using SharpVision.Terminal.Unicode;
@@ -17,28 +20,28 @@ public sealed class RandomizedLayoutTests
     [Fact]
     public void Format_WhenInputsAreRandomized_PreservesGraphemeAndCellInvariants()
     {
-        var random = new Random(_seed);
+        Random random = new Random(_seed);
 
         for (var sample = 0; sample < _caseCount; sample++)
         {
             var content = Content(random);
             var width = random.Next(0, 21);
-            var wrapping = (Wrapping) random.Next(0, 3);
-            var trimming = (Trimming) random.Next(0, 4);
-            var alignment = (Alignment) random.Next(0, 3);
-            var ambiguous = (Ambiguous) random.Next(0, 2);
+            Wrapping wrapping = (Wrapping) random.Next(0, 3);
+            Trimming trimming = (Trimming) random.Next(0, 4);
+            Alignment alignment = (Alignment) random.Next(0, 3);
+            Ambiguous ambiguous = (Ambiguous) random.Next(0, 2);
             var context = $"seed=0x{_seed:X8}, case={sample}, width={width}, " +
                 $"wrapping={wrapping}, trimming={trimming}, alignment={alignment}, " +
-                $"utf16={Convert.ToHexString(System.Text.Encoding.Unicode.GetBytes(content))}";
-            var first = Format(content, width, wrapping, trimming, alignment, ambiguous);
-            var second = Format(content, width, wrapping, trimming, alignment, ambiguous);
-            var boundaries = Boundaries(content);
+                $"utf16={Convert.ToHexString(Encoding.Unicode.GetBytes(content))}";
+            Line[] first = Format(content, width, wrapping, trimming, alignment, ambiguous);
+            Line[] second = Format(content, width, wrapping, trimming, alignment, ambiguous);
+            HashSet<int> boundaries = Boundaries(content);
             var previous = 0;
 
             second.ShouldBe(first, context);
             first.ShouldNotBeEmpty(context);
 
-            foreach (var line in first)
+            foreach (Line line in first)
             {
                 line.Offset.ShouldBeGreaterThanOrEqualTo(previous, context);
                 line.Offset.ShouldBeLessThanOrEqualTo(content.Length, context);
@@ -62,9 +65,9 @@ public sealed class RandomizedLayoutTests
 
     private static HashSet<int> Boundaries(string content)
     {
-        var result = new HashSet<int> { 0, content.Length };
+        HashSet<int> result = new HashSet<int> { 0, content.Length };
 
-        foreach (var grapheme in Graphemes.Enumerate(content))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(content))
         {
             _ = result.Add(grapheme.Offset);
             _ = result.Add(grapheme.Offset + grapheme.Length);
@@ -77,9 +80,9 @@ public sealed class RandomizedLayoutTests
     {
         var result = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(value))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(value))
         {
-            var cluster = value.Slice(grapheme.Offset, grapheme.Length);
+            ReadOnlySpan<char> cluster = value.Slice(grapheme.Offset, grapheme.Length);
             result += cluster.Length == 1 && cluster[0] == '\t'
                 ? 4 - (result % 4)
                 : Width.Measure(cluster, ambiguous).Cells;
@@ -95,7 +98,7 @@ public sealed class RandomizedLayoutTests
             "a", " ", "\t", "\r", "\n", "\r\n", "e\u0301", "界", "·", "👩‍💻", "\uFE0F",
             "\uD800", "\uDC00",
         ];
-        var result = new System.Text.StringBuilder();
+        StringBuilder result = new StringBuilder();
         var count = random.Next(0, 25);
 
         for (var index = 0; index < count; index++)
@@ -122,7 +125,7 @@ public sealed class RandomizedLayoutTests
             alignment,
             ambiguous,
             []);
-        var result = new Line[required];
+        Line[] result = new Line[required];
         _ = TextLayout.Format(
             content,
             width,

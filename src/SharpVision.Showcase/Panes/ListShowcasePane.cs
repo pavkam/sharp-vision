@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Layout;
@@ -38,11 +41,11 @@ internal sealed class ListShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var status = new ControlText("Selected item: Beta. Use Up or Down to move the selection.")
+        ControlText status = new ControlText("Selected item: Beta. Use Up or Down to move the selection.")
         {
             Foreground = Palette.Muted,
         };
-        var active = new ControlList
+        ControlList active = new ControlList
         {
             Width = Length.Cells(18),
             Height = Length.Cells(6),
@@ -66,7 +69,7 @@ internal sealed class ListShowcasePane: ShowcasePane
         active.ItemInvoked += (_, eventArgs) =>
             status.Content = $"Activated {eventArgs.Item} via {eventArgs.Cause}.";
 
-        var disabled = new ControlList
+        ControlList disabled = new ControlList
         {
             Width = Length.Cells(18),
             Height = Length.Cells(4),

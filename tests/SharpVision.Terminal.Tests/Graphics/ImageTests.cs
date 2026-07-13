@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Graphics;
 
 using SharpVision.Terminal.Geometry;
@@ -16,7 +19,7 @@ public sealed class ImageTests
     {
         var source = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
 
-        var image = GraphicsImage.FromRgba(new Size(2, 1), source);
+        GraphicsImage image = GraphicsImage.FromRgba(new Size(2, 1), source);
         source.AsSpan().Clear();
         var copied = new byte[image.ByteCount];
         var written = image.CopyTo(copied);
@@ -47,7 +50,7 @@ public sealed class ImageTests
     [Fact]
     public void CopyTo_WhenDestinationIsShort_ThrowsBeforeMutation()
     {
-        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 4]);
+        GraphicsImage image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 4]);
         byte[] destination = [9, 9, 9];
 
         _ = Should.Throw<ArgumentException>(() => image.CopyTo(destination));

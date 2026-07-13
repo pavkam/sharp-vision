@@ -1,9 +1,12 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests.Support;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 
-using RuntimeOptions = SharpVision.Terminal.Runtime.Options;
+using RuntimeOptions = Terminal.Runtime.Options;
 
 /// <summary>Creates terminal session options for interactive showcase tests.</summary>
 internal static class ShowcaseStartupOptions
@@ -20,8 +23,8 @@ internal static class ShowcaseStartupOptions
         bool negotiate = false)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        var overrides = new Settings { CellMouse = true };
-        var capabilities = negotiate
+        Settings overrides = new Settings { CellMouse = true };
+        Capabilities capabilities = negotiate
             ? Detector.Detect(new Dictionary<string, string?>(), overrides: overrides)
             : Detector.Detect(environment, overrides: overrides);
 

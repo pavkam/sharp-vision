@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 using System.Diagnostics.CodeAnalysis;
@@ -82,7 +85,7 @@ public sealed class StyleProperty<T>: IStyleProperty
 
         validate?.Invoke(defaultValue);
 
-        var property = new StyleProperty<T>(
+        StyleProperty<T> property = new StyleProperty<T>(
             typeof(TControl),
             name,
             clrName ?? DeriveClrName(name),
@@ -95,7 +98,7 @@ public sealed class StyleProperty<T>: IStyleProperty
 
     private static string DeriveClrName(string name)
     {
-        var builder = new StringBuilder(name.Length);
+        StringBuilder builder = new StringBuilder(name.Length);
         var capitalizeNext = true;
 
         foreach (var character in name)
@@ -149,9 +152,9 @@ public sealed class StyleProperty<T>: IStyleProperty
     {
         ArgumentNullException.ThrowIfNull(controlType);
 
-        for (var current = controlType; current is not null; current = current.BaseType)
+        for (Type? current = controlType; current is not null; current = current.BaseType)
         {
-            if (_classDefaults.TryGetValue(current, out var candidate))
+            if (_classDefaults.TryGetValue(current, out T? candidate))
             {
                 value = candidate;
                 return true;

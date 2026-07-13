@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using System.Text;
@@ -17,7 +20,7 @@ public sealed class CanvasPrimitiveTests
     [Fact]
     public void DrawRune_WhenRuneIsWide_ThrowsBeforeMutation()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
 
         _ = Should.Throw<ArgumentException>(() =>
             frame.Canvas.DrawRune(new Rune('界'), default));
@@ -30,8 +33,8 @@ public sealed class CanvasPrimitiveTests
     [Fact]
     public void DrawRune_WhenRuneIsNarrow_WritesExactCell()
     {
-        using var frame = new Frame(new Size(1, 1));
-        var style = new Style(Color.Indexed(2), Color.Indexed(4));
+        using Frame frame = new Frame(new Size(1, 1));
+        Style style = new Style(Color.Indexed(2), Color.Indexed(4));
 
         frame.Canvas.DrawRune(new Rune('┼'), default, style);
 
@@ -43,8 +46,8 @@ public sealed class CanvasPrimitiveTests
     [Fact]
     public void DrawRune_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
-        using var frame = new Frame(new Size(1, 1));
-        var surface = new Style(Color.Indexed(255), Color.Indexed(238));
+        using Frame frame = new Frame(new Size(1, 1));
+        Style surface = new Style(Color.Indexed(255), Color.Indexed(238));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
 
         frame.Canvas.DrawRune(
@@ -64,8 +67,8 @@ public sealed class CanvasPrimitiveTests
     [Fact]
     public void Fill_WhenRegionIsClipped_WritesOnlyIntersection()
     {
-        using var frame = new Frame(new Size(4, 1));
-        var canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
+        using Frame frame = new Frame(new Size(4, 1));
+        Canvas canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
 
         canvas.Fill(new Rect(0, 0, 4, 1), new Rune('x'));
 
@@ -79,9 +82,9 @@ public sealed class CanvasPrimitiveTests
     [Fact]
     public void ApplyStyle_WhenRegionTouchesWideGlyph_StylesCompleteOwner()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("界", default);
-        var style = new Style(background: Color.Indexed(5));
+        Style style = new Style(background: Color.Indexed(5));
 
         frame.Canvas.ApplyStyle(new Rect(1, 0, 1, 1), style);
 
@@ -94,7 +97,7 @@ public sealed class CanvasPrimitiveTests
     [Fact]
     public void ApplyStyle_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
-        using var frame = new Frame(new Size(1, 1));
+        using Frame frame = new Frame(new Size(1, 1));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new Style(Color.Indexed(255), Color.Indexed(238)));
 
         frame.Canvas.ApplyStyle(
@@ -109,9 +112,9 @@ public sealed class CanvasPrimitiveTests
     [Fact]
     public void ApplyStyle_WhenClipExcludesWideLead_SkipsCompleteOwner()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("界", default);
-        var style = new Style(background: Color.Indexed(5));
+        Style style = new Style(background: Color.Indexed(5));
 
         frame.Canvas.Clip(new Rect(1, 0, 1, 1)).ApplyStyle(new Rect(1, 0, 1, 1), style);
 

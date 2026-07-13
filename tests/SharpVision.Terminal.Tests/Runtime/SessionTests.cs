@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Capabilities;
@@ -23,17 +26,17 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiationEndsAtEof_PublishesWithoutOptionalModesAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Focus = true,
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" }),
         };
         transport.Close();
-        await using var session = new Session(transport, resize, sink, options);
+        await using Session session = new Session(transport, resize, sink, options);
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -52,29 +55,29 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiationTimesOut_PublishesAndReleasesResizeAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var clock = new ManualTimeProvider();
-        var limits = Limits.Default with
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        ManualTimeProvider clock = new ManualTimeProvider();
+        Limits limits = Limits.Default with
         {
             QueryTimeout = TimeSpan.FromSeconds(1),
         };
-        var options = RuntimeOptions.Minimal with
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
                 limits: limits),
         };
-        await using var session = new Session(
+        await using Session session = new Session(
             transport,
             resize,
             sink,
             options,
             clock);
-        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        Task running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var dimensions = new Dimensions(new Geometry.Size(80, 24));
+        Dimensions dimensions = new Dimensions(new Size(80, 24));
 
         // Act
         resize.Resize(dimensions);
@@ -97,10 +100,10 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiationCapacityIsOne_CompletesFromDeviceAttributesAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
@@ -108,7 +111,7 @@ public sealed class SessionTests
         };
         transport.Input("\u001b[?1;2c"u8.ToArray());
         transport.Close();
-        await using var session = new Session(transport, resize, sink, options);
+        await using Session session = new Session(transport, resize, sink, options);
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -124,25 +127,25 @@ public sealed class SessionTests
     public async Task RunAsync_WhenResizeStormPrecedesDeadline_ForwardsOnlyNewestAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource { SignalAfterReads = 3 };
-        var sink = new RuntimeSink();
-        var clock = new ManualTimeProvider();
-        var limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource { SignalAfterReads = 3 };
+        RuntimeSink sink = new RuntimeSink();
+        ManualTimeProvider clock = new ManualTimeProvider();
+        Limits limits = Limits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>(),
                 limits: limits),
         };
-        var first = new Dimensions(new Geometry.Size(80, 24));
-        var second = new Dimensions(new Geometry.Size(100, 30));
-        var newest = new Dimensions(new Geometry.Size(120, 40));
+        Dimensions first = new Dimensions(new Size(80, 24));
+        Dimensions second = new Dimensions(new Size(100, 30));
+        Dimensions newest = new Dimensions(new Size(120, 40));
         resize.Resize(first);
         resize.Resize(second);
         resize.Resize(newest);
-        await using var session = new Session(transport, resize, sink, options, clock);
-        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await using Session session = new Session(transport, resize, sink, options, clock);
+        Task running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         await resize.ReadsObserved.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         // Act
@@ -161,18 +164,18 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiationRepliesComplete_PublishesBeforeResizeAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(
                 new Dictionary<string, string?>()),
         };
-        await using var session = new Session(transport, resize, sink, options);
-        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await using Session session = new Session(transport, resize, sink, options);
+        Task running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var dimensions = new Dimensions(new Geometry.Size(80, 24));
+        Dimensions dimensions = new Dimensions(new Size(80, 24));
 
         // Act
         transport.Input(Encoding.ASCII.GetBytes(
@@ -199,10 +202,10 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiationProvesModes_EnablesAndRestoresExactlyAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Focus = true,
             Paste = true,
@@ -214,7 +217,7 @@ public sealed class SessionTests
             "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
             "\u001b[?1004;1$y\u001b[?2026;1$y\u001b[?3u\u001b[?1;2c"));
         transport.Close();
-        await using var session = new Session(transport, resize, sink, options);
+        await using Session session = new Session(transport, resize, sink, options);
 
         // Act
         await session.RunAsync(TestContext.Current.CancellationToken);
@@ -233,17 +236,17 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiationQueryWriteFails_PreservesExceptionAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport { FailWriteAt = 1 };
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport { FailWriteAt = 1 };
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
         };
-        await using var session = new Session(transport, resize, sink, options);
+        await using Session session = new Session(transport, resize, sink, options);
 
         // Act
-        var thrown = await Should.ThrowAsync<IOException>(async () =>
+        IOException thrown = await Should.ThrowAsync<IOException>(async () =>
             await session.RunAsync(TestContext.Current.CancellationToken));
 
         // Assert
@@ -258,10 +261,10 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiatedModeWriteFails_RestoresAndPreservesExceptionAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport { FailWriteAt = 2 };
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport { FailWriteAt = 2 };
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             Focus = true,
             Negotiation = new NegotiationOptions(
@@ -269,12 +272,12 @@ public sealed class SessionTests
                 new Settings { FocusReporting = true },
                 Limits.Default with { QueryTimeout = TimeSpan.FromMilliseconds(20) }),
         };
-        await using var session = new Session(transport, resize, sink, options);
-        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await using Session session = new Session(transport, resize, sink, options);
+        Task running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         // Act
-        var thrown = await Should.ThrowAsync<IOException>(running);
+        IOException thrown = await Should.ThrowAsync<IOException>(running);
 
         // Assert
         thrown.ShouldBeSameAs(transport.WriteFailure);
@@ -287,18 +290,18 @@ public sealed class SessionTests
     public async Task RunAsync_WhenNegotiationIsCancelled_RestoresBaseModesWithoutProfileAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var options = RuntimeOptions.Minimal with
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        RuntimeOptions options = RuntimeOptions.Minimal with
         {
             AlternateScreen = true,
             HideCursor = true,
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
         };
-        await using var session = new Session(transport, resize, sink, options);
-        using var cancellation = new CancellationTokenSource();
-        var running = session.RunAsync(cancellation.Token).AsTask();
+        await using Session session = new Session(transport, resize, sink, options);
+        using CancellationTokenSource cancellation = new CancellationTokenSource();
+        Task running = session.RunAsync(cancellation.Token).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         // Act
@@ -317,12 +320,12 @@ public sealed class SessionTests
     public async Task RunAsync_WhenReplyPrecedesText_RoutesBothInOrderAsync()
     {
         // Arrange
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
         transport.Input("\u001b[?1;2cx"u8.ToArray());
         transport.Close();
-        await using var session = new Session(
+        await using Session session = new Session(
             transport,
             resize,
             sink,
@@ -343,13 +346,13 @@ public sealed class SessionTests
     [Fact]
     public async Task RunAsync_WhenInputCloses_EnablesForwardsAndRestoresAsync()
     {
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
         transport.Input("x"u8.ToArray());
         transport.Close();
-        var capabilities = Supported();
-        await using var session = new Session(
+        TerminalCapabilities capabilities = Supported();
+        await using Session session = new Session(
             transport,
             resize,
             sink,
@@ -372,18 +375,18 @@ public sealed class SessionTests
     [Fact]
     public async Task RunAsync_WhenResizeArrives_ForwardsDimensionsAsync()
     {
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        await using var session = new Session(
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        await using Session session = new Session(
             transport,
             resize,
             sink,
             RuntimeOptions.Minimal);
-        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
-        var expected = new Dimensions(
-            new Geometry.Size(120, 40),
-            new Geometry.Size(1200, 800));
+        Task running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        Dimensions expected = new Dimensions(
+            new Size(120, 40),
+            new Size(1200, 800));
 
         resize.Resize(expected);
         await sink.ResizeReceived.Task.WaitAsync(TestContext.Current.CancellationToken);
@@ -399,17 +402,17 @@ public sealed class SessionTests
     [Fact]
     public async Task RunAsync_WhenStartupWriteFails_RestoresAndPreservesExceptionAsync()
     {
-        await using var transport = new SessionTransport { FailWriteAt = 3 };
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        var failure = transport.WriteFailure;
-        await using var session = new Session(
+        await using SessionTransport transport = new SessionTransport { FailWriteAt = 3 };
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        IOException failure = transport.WriteFailure;
+        await using Session session = new Session(
             transport,
             resize,
             sink,
             new RuntimeOptions { Capabilities = Supported() });
 
-        var thrown = await Should.ThrowAsync<IOException>(async () =>
+        IOException thrown = await Should.ThrowAsync<IOException>(async () =>
             await session.RunAsync(TestContext.Current.CancellationToken));
 
         thrown.ShouldBeSameAs(failure);
@@ -422,16 +425,16 @@ public sealed class SessionTests
     [Fact]
     public async Task RunAsync_WhenCancelled_RestoresModesAsync()
     {
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        await using var session = new Session(
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        await using Session session = new Session(
             transport,
             resize,
             sink,
             new RuntimeOptions { Capabilities = Supported() });
-        using var cancellation = new CancellationTokenSource();
-        var running = session.RunAsync(cancellation.Token).AsTask();
+        using CancellationTokenSource cancellation = new CancellationTokenSource();
+        Task running = session.RunAsync(cancellation.Token).AsTask();
         await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         cancellation.Cancel();
@@ -446,20 +449,20 @@ public sealed class SessionTests
     [Fact]
     public async Task RunAsync_WhenReadAndCleanupFail_PreservesReadExceptionAsync()
     {
-        await using var transport = new SessionTransport
+        await using SessionTransport transport = new SessionTransport
         {
             ReadFailure = new IOException("read failed"),
             FailWriteAt = 7,
         };
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
-        await using var session = new Session(
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
+        await using Session session = new Session(
             transport,
             resize,
             sink,
             new RuntimeOptions { Capabilities = Supported() });
 
-        var thrown = await Should.ThrowAsync<IOException>(async () =>
+        IOException thrown = await Should.ThrowAsync<IOException>(async () =>
             await session.RunAsync(TestContext.Current.CancellationToken));
 
         thrown.ShouldBeSameAs(transport.ReadFailure);
@@ -473,17 +476,17 @@ public sealed class SessionTests
     [Fact]
     public async Task RunAsync_WhenInputHandlerFails_PreservesHandlerExceptionAsync()
     {
-        await using var transport = new SessionTransport();
-        await using var resize = new FakeResizeSource();
-        var sink = new RuntimeSink { TextFailure = new InvalidOperationException("handler") };
+        await using SessionTransport transport = new SessionTransport();
+        await using FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink { TextFailure = new InvalidOperationException("handler") };
         transport.Input("x"u8.ToArray());
-        await using var session = new Session(
+        await using Session session = new Session(
             transport,
             resize,
             sink,
             new RuntimeOptions { Capabilities = Supported() });
 
-        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+        InvalidOperationException thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
             await session.RunAsync(TestContext.Current.CancellationToken));
 
         thrown.ShouldBeSameAs(sink.TextFailure);
@@ -496,11 +499,11 @@ public sealed class SessionTests
     [Fact]
     public async Task DisposeAsync_WhenCalledTwice_IsIdempotentAsync()
     {
-        var transport = new SessionTransport();
-        var resize = new FakeResizeSource();
-        var sink = new RuntimeSink();
+        SessionTransport transport = new SessionTransport();
+        FakeResizeSource resize = new FakeResizeSource();
+        RuntimeSink sink = new RuntimeSink();
         transport.Close();
-        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        Session session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
         await session.RunAsync(TestContext.Current.CancellationToken);
 
         await session.DisposeAsync();
@@ -509,7 +512,7 @@ public sealed class SessionTests
 
     private static TerminalCapabilities Supported()
     {
-        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        Feature supported = new Feature(CapabilitySupport.Supported, Origin.Override);
         return TerminalCapabilities.Conservative with
         {
             FocusReporting = supported,

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.ComponentModel;
@@ -12,10 +15,10 @@ using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Threading;
 
-using KeyAction = Terminal.Input.Action;
+using KeyAction = KeyAction;
 
-using TerminalCanvas = Terminal.Rendering.Canvas;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalCanvas = TerminalCanvas;
+using TerminalStyle = TerminalStyle;
 
 /// <summary>
 /// Defines a traditional mutable UI element with dispatcher affinity and box layout.
@@ -178,7 +181,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set
         {
             Validate(value);
-            var invalidation = value == Visibility.Collapsed || field == Visibility.Collapsed
+            Invalidation invalidation = value == Visibility.Collapsed || field == Visibility.Collapsed
                 ? Invalidation.Measure
                 : Invalidation.Render;
 
@@ -375,7 +378,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 nameof(handler));
         }
 
-        var registration = new Registration<TArgs>(
+        Registration<TArgs> registration = new Registration<TArgs>(
             this,
             routedEvent,
             handler,
@@ -423,7 +426,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Detaches this subtree from its dispatcher.</summary>
     internal void Detach()
     {
-        var dispatcher = Dispatcher;
+        Dispatcher? dispatcher = Dispatcher;
 
         if (dispatcher is null)
         {
@@ -488,9 +491,9 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            var contentConstraint = CreateContentConstraint(constraint);
-            var content = MeasureCore(contentConstraint);
-            var desired = ResolveDesiredSize(constraint, content);
+            Constraint contentConstraint = CreateContentConstraint(constraint);
+            Size content = MeasureCore(contentConstraint);
+            Size desired = ResolveDesiredSize(constraint, content);
 
             DesiredSize = desired;
             LastMeasureConstraint = constraint;
@@ -554,7 +557,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            var available = Margin.Deflate(slot);
+            Rect available = Margin.Deflate(slot);
             var width = widthResolved
                 ? available.Width
                 : ResolveArrangeAxis(
@@ -577,7 +580,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                     MaxHeight);
             var x = Align(available.X, available.Width, width, HorizontalAlignment);
             var y = Align(available.Y, available.Height, height, VerticalAlignment);
-            var bounds = new Rect(x, y, width, height);
+            Rect bounds = new Rect(x, y, width, height);
 
             Bounds = bounds;
             LastArrangeSlot = slot;
@@ -626,8 +629,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             // coordinate system remains absolute, so no transform can drift.
             // Panels may deliberately retain the ancestor clip for children,
             // while their own drawing always remains inside their bounds.
-            var visual = canvas.Clip(VisualBounds);
-            var clipped = canvas.Clip(Bounds);
+            TerminalCanvas visual = canvas.Clip(VisualBounds);
+            TerminalCanvas clipped = canvas.Clip(Bounds);
             RenderCore(visual);
             RenderChildren(ClipsChildren ? clipped : canvas);
         }
@@ -646,8 +649,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="value">The earliest dirty phase.</param>
     internal void Invalidate(Invalidation value)
     {
-        var expanded = Expand(value);
-        var added = expanded & ~Pending;
+        Invalidation expanded = Expand(value);
+        Invalidation added = expanded & ~Pending;
 
         if (added == Invalidation.None)
         {
@@ -710,7 +713,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="value">The new parent or null.</param>
     internal void SetParent(Container? value)
     {
-        var previous = Parent;
+        Container? previous = Parent;
         Parent = value;
         InvalidateSubtreeResolvedStyleCache();
         OnParentChanged(previous, value);
@@ -728,7 +731,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(routedEvent);
         ArgumentNullException.ThrowIfNull(eventArgs);
-        var handlers = Handlers;
+        List<IHandler>? handlers = Handlers;
 
         if (handlers is null || handlers.Count == 0)
         {
@@ -740,7 +743,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             pointer.SetLocal(this);
         }
 
-        var snapshot = System.Buffers.ArrayPool<IHandler>.Shared.Rent(handlers.Count);
+        IHandler[] snapshot = System.Buffers.ArrayPool<IHandler>.Shared.Rent(handlers.Count);
         handlers.CopyTo(snapshot);
         var count = handlers.Count;
 
@@ -970,7 +973,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <returns>The current defined visual-state flags.</returns>
     protected virtual State GetVisualState()
     {
-        var result = State.Normal;
+        State result = State.Normal;
 
         if (IsHovered)
         {
@@ -1043,7 +1046,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         if (ThemeContext is { } context)
         {
-            foreach (var style in context.GetStyleChain(GetType()))
+            foreach (IControlStyle style in context.GetStyleChain(GetType()))
             {
                 if (style.AggregateImpact == Impact.Measure)
                 {
@@ -1052,7 +1055,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             }
         }
 
-        for (var current = Parent; current is not null; current = current.Parent)
+        for (Container? current = Parent; current is not null; current = current.Parent)
         {
             if (current is IStyleScope && current.InstanceStyle?.AggregateImpact == Impact.Measure)
             {
@@ -1244,7 +1247,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private void OnInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs)
     {
-        var dispatcher = Dispatcher;
+        Dispatcher? dispatcher = Dispatcher;
         if (dispatcher is not null && !dispatcher.CheckAccess())
         {
             dispatcher.Post(() => ApplyInstanceStyleChanged(sender, eventArgs)); return;
@@ -1261,7 +1264,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         InvalidateResolvedStyleCache();
 
-        var invalidation = eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
+        Invalidation invalidation = eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
         Invalidate(invalidation);
         CascadeStyleScopeInvalidation(invalidation);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
@@ -1274,7 +1277,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             return;
         }
 
-        foreach (var handler in handlers)
+        foreach (IHandler handler in handlers)
         {
             handler.Detach();
         }
@@ -1285,8 +1288,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     internal void NotifyUnavailable(ReleaseReason reason)
     {
-        var focus = FocusOwner;
-        var capture = CaptureOwner;
+        FocusManager? focus = FocusOwner;
+        CaptureManager? capture = CaptureOwner;
         focus?.Unavailable(this);
         capture?.Unavailable(this, reason);
         OnUnavailable(reason);

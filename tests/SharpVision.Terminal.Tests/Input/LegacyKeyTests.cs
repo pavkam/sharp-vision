@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
@@ -24,7 +27,7 @@ public sealed class LegacyKeyTests
     [InlineData("\u007f", Code.Backspace)]
     public void Decode_WhenByteIsNamedControl_EmitsNamedStroke(string input, Code code)
     {
-        var sink = Decode(Encoding.UTF8.GetBytes(input));
+        RecordingInputSink sink = Decode(Encoding.UTF8.GetBytes(input));
 
         sink.Strokes.ShouldBe(
         [
@@ -62,8 +65,8 @@ public sealed class LegacyKeyTests
 
         for (var split = 0; split <= bytes.Length; split++)
         {
-            var sink = new RecordingInputSink();
-            using var decoder = new Decoder(sink);
+            RecordingInputSink sink = new RecordingInputSink();
+            using Decoder decoder = new Decoder(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
             decoder.Complete();
@@ -94,7 +97,7 @@ public sealed class LegacyKeyTests
     [InlineData(24, Code.F12)]
     public void Decode_WhenTildeFunctionKeyIsKnown_MapsLogicalCode(int native, Code code)
     {
-        var sink = Decode(Encoding.UTF8.GetBytes($"\u001b[{native}~"));
+        RecordingInputSink sink = Decode(Encoding.UTF8.GetBytes($"\u001b[{native}~"));
 
         sink.Strokes.ShouldBe(
         [
@@ -108,7 +111,7 @@ public sealed class LegacyKeyTests
     [Fact]
     public void Decode_WhenCsiKeyIsUnknown_EmitsUnknownAndRecovers()
     {
-        var sink = Decode("\u001b[99~x"u8.ToArray());
+        RecordingInputSink sink = Decode("\u001b[99~x"u8.ToArray());
 
         sink.Strokes[0].ShouldBe(
             new Stroke(Code.Unknown, null, 99, Modifiers.None, InputAction.Press));
@@ -122,7 +125,7 @@ public sealed class LegacyKeyTests
     [Fact]
     public void Decode_WhenCsiParametersAreMalformed_ReportsAndRecovers()
     {
-        var sink = Decode("\u001b[1:x\u001b[B"u8.ToArray());
+        RecordingInputSink sink = Decode("\u001b[1:x\u001b[B"u8.ToArray());
 
         sink.Diagnostics.Count.ShouldBe(1);
         sink.Strokes.ShouldContain(static item => item.Code == Code.Down);
@@ -134,7 +137,7 @@ public sealed class LegacyKeyTests
     [Fact]
     public void Decode_WhenKeysAreAdjacent_PreservesOrder()
     {
-        var sink = Decode("\u001b[A\u001b[B\u001b[C\u001b[D"u8.ToArray());
+        RecordingInputSink sink = Decode("\u001b[A\u001b[B\u001b[C\u001b[D"u8.ToArray());
 
         sink.Strokes.Select(static item => item.Code)
             .ShouldBe([Code.Up, Code.Down, Code.Right, Code.Left]);
@@ -146,7 +149,7 @@ public sealed class LegacyKeyTests
     [Fact]
     public void Decode_WhenSs3IsInterrupted_ReportsAndRecovers()
     {
-        var sink = Decode("\u001bO\u001b[Ax"u8.ToArray());
+        RecordingInputSink sink = Decode("\u001bO\u001b[Ax"u8.ToArray());
 
         sink.Diagnostics.Count.ShouldBe(1);
         sink.Strokes.Select(static item => item.Code)
@@ -156,9 +159,9 @@ public sealed class LegacyKeyTests
 
     private static RecordingInputSink Decode(byte[] input)
     {
-        var sink = new RecordingInputSink();
+        RecordingInputSink sink = new RecordingInputSink();
 
-        using (var decoder = new Decoder(sink))
+        using (Decoder decoder = new Decoder(sink))
         {
             decoder.Decode(input);
             decoder.Complete();

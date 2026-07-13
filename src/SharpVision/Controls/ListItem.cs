@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Input;
@@ -5,8 +8,8 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using KeyAction = Terminal.Input.Action;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using KeyAction = KeyAction;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Owns one realized List template control and its selection behavior.</summary>
 internal sealed class ListItem: Pressable

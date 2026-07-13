@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Protocols;
 
 using System.Buffers;
@@ -56,7 +59,7 @@ public readonly struct Writer
         ValidateFinal(final, 0x30, nameof(final));
 
         var length = checked(intermediates.Length + 2);
-        var destination = _destination.GetSpan(length);
+        Span<byte> destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
@@ -88,7 +91,7 @@ public readonly struct Writer
         ValidateFinal(final, 0x40, nameof(final));
 
         var length = checked(parameters.Length + intermediates.Length + 3);
-        var destination = _destination.GetSpan(length);
+        Span<byte> destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
@@ -118,7 +121,7 @@ public readonly struct Writer
 
         var selectorLength = CountDecimalBytes(selector);
         var length = checked(selectorLength + payload.Length + 5);
-        var destination = _destination.GetSpan(length);
+        Span<byte> destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
@@ -166,7 +169,7 @@ public readonly struct Writer
         ValidatePayload(payload, nameof(payload));
 
         var length = checked(payload.Length + 4);
-        var destination = _destination.GetSpan(length);
+        Span<byte> destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
@@ -202,7 +205,7 @@ public readonly struct Writer
         ValidatePayload(payload, nameof(payload));
 
         var length = checked(parameters.Length + intermediates.Length + payload.Length + 5);
-        var destination = _destination.GetSpan(length);
+        Span<byte> destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;

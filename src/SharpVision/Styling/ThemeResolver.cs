@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 using System.Numerics;
@@ -25,22 +28,22 @@ public static class ThemeResolver
         ArgumentNullException.ThrowIfNull(property);
         EnsureApplies(control, property);
 
-        if (control.TryGetLocalValue(property, out var local))
+        if (control.TryGetLocalValue(property, out T? local))
         {
             return local;
         }
 
-        var value = property.DefaultValue;
+        T? value = property.DefaultValue;
 
         if (property.TryGetClassDefault(control.GetType(), out var classDefault))
         {
             value = (T) classDefault!;
         }
 
-        var context = control.ThemeContext;
-        var scopes = CollectStyleScopes(control);
+        ThemeContext? context = control.ThemeContext;
+        List<Control> scopes = CollectStyleScopes(control);
 
-        foreach (var state in ResolutionOrder(visualState))
+        foreach (State state in ResolutionOrder(visualState))
         {
             ApplyState(control, property, state, context, scopes, ref value);
         }
@@ -74,14 +77,14 @@ public static class ThemeResolver
                 nameof(property));
         }
 
-        var value = property.DefaultValue;
+        T? value = property.DefaultValue;
 
         if (property.TryGetClassDefault(controlType, out var classDefault))
         {
             value = (T) classDefault!;
         }
 
-        foreach (var state in ResolutionOrder(visualState))
+        foreach (State state in ResolutionOrder(visualState))
         {
             ApplyChain(theme.GetStyleChain(controlType), property, state, ref value);
         }
@@ -98,10 +101,10 @@ public static class ThemeResolver
     /// </returns>
     private static List<State> ResolutionOrder(State visualState)
     {
-        var order = new List<State> { State.Normal };
-        var active = new List<State>();
+        List<State> order = [State.Normal];
+        List<State> active = [];
 
-        foreach (var overlay in VisualStates.PrecedenceOrder)
+        foreach (State overlay in VisualStates.PrecedenceOrder)
         {
             if ((visualState & overlay) != 0)
             {
@@ -114,11 +117,11 @@ public static class ThemeResolver
             return order;
         }
 
-        var combos = new List<State>();
+        List<State> combos = [];
 
         for (var mask = 1; mask < 1 << active.Count; mask++)
         {
-            var combo = State.Normal;
+            State combo = State.Normal;
 
             for (var index = 0; index < active.Count; index++)
             {
@@ -146,7 +149,7 @@ public static class ThemeResolver
     {
         var rank = -1;
 
-        foreach (var overlay in VisualStates.PrecedenceOrder)
+        foreach (State overlay in VisualStates.PrecedenceOrder)
         {
             if ((state & overlay) != 0)
             {
@@ -197,7 +200,7 @@ public static class ThemeResolver
         State state,
         ref T value)
     {
-        foreach (var style in chain)
+        foreach (IControlStyle style in chain)
         {
             if (TryGetSnapshotValue(style, property, state, out var themed))
             {
@@ -210,7 +213,7 @@ public static class ThemeResolver
     {
         List<Control>? scopes = null;
 
-        for (var current = control.Parent; current is not null; current = current.Parent)
+        for (Container? current = control.Parent; current is not null; current = current.Parent)
         {
             if (current is IStyleScope)
             {

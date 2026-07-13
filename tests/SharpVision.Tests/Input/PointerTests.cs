@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Input;
 
 using SharpVision.Controls;
@@ -18,16 +21,16 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerHasNoCells_DoesNotFabricateHitAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 5) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl { Bounds = new Rect(0, 0, 10, 5) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
-            var pointer = new Pointer(
+            using CaptureManager manager = new CaptureManager(root);
+            Pointer pointer = new Pointer(
                 null,
                 new Point(5, 5),
                 Buttons.None,
@@ -48,15 +51,15 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPixelOnlyPointerIsCaptured_RoutesWithoutLocalCellsAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 5) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl { Bounds = new Rect(0, 0, 10, 5) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using CaptureManager manager = new CaptureManager(root);
             Point? local = default;
             var routed = false;
             _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
@@ -68,7 +71,7 @@ public sealed class PointerTests
                 }
             });
             manager.Capture(child).ShouldBeTrue();
-            var pointer = new Pointer(
+            Pointer pointer = new Pointer(
                 null,
                 new Point(15, 8),
                 Buttons.Primary,
@@ -90,9 +93,9 @@ public sealed class PointerTests
     [Fact]
     public void HitTest_WhenChildrenOverlap_ReturnsHighestEligibleClippedControl()
     {
-        var root = new ProbeContainer { Bounds = new Rect(0, 0, 10, 6) };
-        var lower = new ProbeControl { Bounds = new Rect(1, 1, 8, 4) };
-        var higher = new ProbeControl { Bounds = new Rect(2, 1, 8, 4) };
+        ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 10, 6) };
+        ProbeControl lower = new ProbeControl { Bounds = new Rect(1, 1, 8, 4) };
+        ProbeControl higher = new ProbeControl { Bounds = new Rect(2, 1, 8, 4) };
         root.Children.Add(lower);
         root.Children.Add(higher);
 
@@ -106,16 +109,16 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerHitsChild_ProvidesLocalCoordinatesAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl { Bounds = new Rect(4, 3, 8, 4) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl { Bounds = new Rect(4, 3, 8, 4) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
-            var observed = new List<(Control Sender, Point? Local)>();
+            using CaptureManager manager = new CaptureManager(root);
+            List<(Control Sender, Point? Local)> observed = new List<(Control Sender, Point? Local)>();
             _ = root.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
                 if (eventArgs.Phase == Phase.Bubble)
@@ -147,12 +150,12 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPrimaryPointerPressesFocusableControl_FocusesItAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl
             {
                 Bounds = new Rect(4, 3, 8, 4),
                 CanFocus = true,
@@ -160,8 +163,8 @@ public sealed class PointerTests
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var focus = new FocusManager(root);
-            using var capture = new CaptureManager(root);
+            using FocusManager focus = new FocusManager(root);
+            using CaptureManager capture = new CaptureManager(root);
 
             capture.Dispatch(CreatePointer(new Point(6, 5), PointerAction.Press))
                 .ShouldBeSameAs(child);
@@ -176,17 +179,17 @@ public sealed class PointerTests
     [Fact]
     public async Task Capture_WhenActive_TakesPrecedenceUntilReleasedAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var first = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
-            var second = new ProbeControl { Bounds = new Rect(10, 0, 10, 10) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl first = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
+            ProbeControl second = new ProbeControl { Bounds = new Rect(10, 0, 10, 10) };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using CaptureManager manager = new CaptureManager(root);
 
             manager.Capture(first).ShouldBeTrue();
             manager.Dispatch(CreatePointer(new Point(15, 5), PointerAction.Move))
@@ -201,18 +204,18 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenCaptureIsActive_HoversPhysicalTargetAndRoutesToCaptureAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var first = new ProbePressable { Bounds = new Rect(0, 0, 10, 10) };
-            var second = new ProbePressable { Bounds = new Rect(10, 0, 10, 10) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbePressable first = new ProbePressable { Bounds = new Rect(0, 0, 10, 10) };
+            ProbePressable second = new ProbePressable { Bounds = new Rect(10, 0, 10, 10) };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
-            var routed = new List<Control>();
+            using CaptureManager manager = new CaptureManager(root);
+            List<Control> routed = new List<Control>();
             _ = first.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
                 if (eventArgs.Phase == Phase.Bubble)
@@ -237,16 +240,16 @@ public sealed class PointerTests
     [Fact]
     public async Task Capture_WhenStateBecomesInvalid_ReleasesWithReasonAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
-            var reasons = new List<ReleaseReason>();
+            using CaptureManager manager = new CaptureManager(root);
+            List<ReleaseReason> reasons = new List<ReleaseReason>();
             manager.Cancelled += (_, eventArgs) => reasons.Add(eventArgs.Reason);
             manager.Capture(child).ShouldBeTrue();
 
@@ -266,23 +269,23 @@ public sealed class PointerTests
     [Fact]
     public async Task Capture_WhenTargetDisablesOrHides_CancelsImmediatelyAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
-            var reasons = new List<ReleaseReason>();
+            using CaptureManager manager = new CaptureManager(root);
+            List<ReleaseReason> reasons = new List<ReleaseReason>();
             manager.Cancelled += (_, eventArgs) => reasons.Add(eventArgs.Reason);
             manager.Capture(child).ShouldBeTrue();
 
             child.IsEnabled = false;
             child.IsEnabled = true;
             manager.Capture(child).ShouldBeTrue();
-            child.Visibility = SharpVision.Layout.Visibility.Hidden;
+            child.Visibility = Visibility.Hidden;
 
             manager.Captured.ShouldBeNull();
             reasons.ShouldBe([ReleaseReason.Disabled, ReleaseReason.Hidden]);
@@ -293,20 +296,20 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispose_WhenRootOwnsManagers_SeversAllReferencesAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl
             {
                 Bounds = new Rect(0, 0, 10, 10),
                 CanFocus = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            var focus = new FocusManager(root);
-            var capture = new CaptureManager(root);
+            FocusManager focus = new FocusManager(root);
+            CaptureManager capture = new CaptureManager(root);
             focus.Focus(child).ShouldBeTrue();
             capture.Capture(child).ShouldBeTrue();
 
@@ -325,15 +328,15 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerMovesPressesAndLeaves_UpdatesVisualStatesAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
+            ProbeContainer root = new ProbeContainer { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new ProbeControl { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using CaptureManager manager = new CaptureManager(root);
 
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move));
             child.IsHovered.ShouldBeTrue();

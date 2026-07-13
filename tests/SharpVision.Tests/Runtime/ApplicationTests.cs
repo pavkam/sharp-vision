@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
@@ -16,15 +19,15 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenFirstResizeArrives_UsesDocumentedOrderingAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var order = new List<string>();
-        var root = new ProbeControl
+        List<string> order = new List<string>();
+        ProbeControl root = new ProbeControl
         {
             Measuring = _ => order.Add("layout"),
             Rendering = _ => order.Add("control-frame"),
         };
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
@@ -53,10 +56,10 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenFlushIsPaused_DoesNotCommitFrameEarlyAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.PauseFlush();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
@@ -64,7 +67,7 @@ public sealed class ApplicationTests
         var rendered = false;
         application.FrameRendered += (_, _) => rendered = true;
 
-        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        Task starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
         await application.Dispatcher.InvokeAsync(
             static () => { },
             TestContext.Current.CancellationToken);
@@ -81,9 +84,9 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenSizeIsSuspended_StartsWithoutRenderingFrameAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(0, 0)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
@@ -102,9 +105,9 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StopAsync_WhenCalledRepeatedly_StopsAndCleansOnceAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
@@ -127,9 +130,9 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StopAsync_WhenPreviewCancels_LeavesApplicationRunningAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
@@ -155,20 +158,20 @@ public sealed class ApplicationTests
     [Fact]
     public async Task StartAsync_WhenResizeHandlerThrows_PreservesPrimaryExceptionAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        var cleanup = new IOException("cleanup");
+        IOException cleanup = new IOException("cleanup");
         terminal.FailWriteNumber = 2;
         terminal.WriteFailure = cleanup;
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal with { AlternateScreen = true });
-        var failure = new InvalidOperationException("resize-handler");
+        InvalidOperationException failure = new InvalidOperationException("resize-handler");
         application.Resize += (_, _) => throw failure;
 
-        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+        InvalidOperationException thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
             await application.StartAsync(TestContext.Current.CancellationToken));
 
         thrown.ShouldBeSameAs(failure);
@@ -181,9 +184,9 @@ public sealed class ApplicationTests
     [Fact]
     public async Task DisposeAsync_WhenNeverStarted_ReleasesOwnedResourcesAsync()
     {
-        await using var terminal = new FakeTerminal();
-        var root = new ProbeControl();
-        var application = new Application(
+        await using FakeTerminal terminal = new FakeTerminal();
+        ProbeControl root = new ProbeControl();
+        Application application = new Application(
             root,
             terminal,
             terminal,

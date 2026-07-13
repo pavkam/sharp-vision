@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -8,9 +11,9 @@ using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = Terminal.Rendering.Canvas;
-using TerminalStyle = Terminal.Rendering.Style;
+using BackgroundMode = BackgroundMode;
+using TerminalCanvas = TerminalCanvas;
+using TerminalStyle = TerminalStyle;
 using TextLayout = SharpVision.Text.Layout;
 
 /// <summary>Displays owned styled runs, line breaks, and semantic hyperlinks.</summary>
@@ -67,7 +70,7 @@ public sealed class RichText: Control
 
         if (Wrapping == Wrapping.Word)
         {
-            var wordLines = GetWordLines(limit);
+            Line[] wordLines = GetWordLines(limit);
             var wordWidth = wordLines.Length == 0 ? 0 : wordLines.Max(static line => line.Cells);
             return new Size(wordWidth, wordLines.Length);
         }
@@ -80,7 +83,7 @@ public sealed class RichText: Control
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var bounds = ContentBounds;
+        Rect bounds = ContentBounds;
 
         if (Wrapping == Wrapping.Word)
         {
@@ -93,7 +96,7 @@ public sealed class RichText: Control
         var line = 0;
         var cells = 0;
 
-        foreach (var inline in Inlines)
+        foreach (Inline inline in Inlines)
         {
             switch (inline)
             {
@@ -139,11 +142,11 @@ public sealed class RichText: Control
 
     private int[] GetLineWidths(int limit)
     {
-        var widths = new List<int>();
+        List<int> widths = [];
         var cells = 0;
         var hasContent = false;
 
-        foreach (var inline in Inlines)
+        foreach (Inline inline in Inlines)
         {
             if (inline is LineBreak)
             {
@@ -182,7 +185,7 @@ public sealed class RichText: Control
             return [];
         }
 
-        var buffer = new Line[document.Length + 1];
+        Line[] buffer = new Line[document.Length + 1];
         var count = TextLayout.Format(
             document,
             width,
@@ -196,9 +199,9 @@ public sealed class RichText: Control
 
     private string GetDocument()
     {
-        var builder = new StringBuilder();
+        StringBuilder builder = new StringBuilder();
 
-        foreach (var inline in Inlines)
+        foreach (Inline inline in Inlines)
         {
             _ = builder.Append(inline switch
             {
@@ -214,9 +217,9 @@ public sealed class RichText: Control
 
     private void MeasureText(string content, int limit, List<int> widths, ref int cells)
     {
-        foreach (var segment in Graphemes.Enumerate(content))
+        foreach (Grapheme segment in Graphemes.Enumerate(content))
         {
-            var cluster = content.AsSpan(segment.Offset, segment.Length);
+            ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
 
             if (cluster.Contains('\r') || cluster.Contains('\n'))
             {
@@ -249,9 +252,9 @@ public sealed class RichText: Control
         ref int line,
         ref int cells)
     {
-        foreach (var segment in Graphemes.Enumerate(content))
+        foreach (Grapheme segment in Graphemes.Enumerate(content))
         {
-            var cluster = content.AsSpan(segment.Offset, segment.Length);
+            ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
 
             if (cluster.Contains('\r') || cluster.Contains('\n'))
             {
@@ -289,12 +292,12 @@ public sealed class RichText: Control
     private void RenderWordWrapped(TerminalCanvas canvas, Rect bounds)
     {
         // Reuse the shared source offsets from Text.Layout while applying each inline's own rendition.
-        var lines = GetWordLines(bounds.Width);
+        Line[] lines = GetWordLines(bounds.Width);
         var sourceOffset = 0;
         var line = 0;
         var cells = 0;
 
-        foreach (var inline in Inlines)
+        foreach (Inline inline in Inlines)
         {
             switch (inline)
             {
@@ -345,9 +348,9 @@ public sealed class RichText: Control
         ref int line,
         ref int cells)
     {
-        foreach (var segment in Graphemes.Enumerate(content))
+        foreach (Grapheme segment in Graphemes.Enumerate(content))
         {
-            var cluster = content.AsSpan(segment.Offset, segment.Length);
+            ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
             var offset = sourceOffset + segment.Offset;
 
             if (cluster.Contains('\r') || cluster.Contains('\n'))
@@ -380,8 +383,8 @@ public sealed class RichText: Control
 
     private TerminalStyle ResolveInlineStyle(Run run)
     {
-        var inherited = ResolvedStyle;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(
+        TerminalStyle inherited = ResolvedStyle;
+        (TerminalAttributes attributes, Terminal.Protocols.Underline underline, Terminal.Protocols.Color underlineColor) = Decoration.Resolve(
             inherited,
             run.Attributes,
             run.Underline,
@@ -397,8 +400,8 @@ public sealed class RichText: Control
 
     private TerminalStyle ResolveInlineStyle(Hyperlink hyperlink)
     {
-        var inherited = ResolvedStyle;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(
+        TerminalStyle inherited = ResolvedStyle;
+        (TerminalAttributes attributes, Terminal.Protocols.Underline underline, Terminal.Protocols.Color underlineColor) = Decoration.Resolve(
             inherited,
             hyperlink.Attributes,
             hyperlink.Underline,

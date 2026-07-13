@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 using System.Buffers;
@@ -18,22 +21,22 @@ public sealed class NegotiatorTests
     public void Accept_WhenDaPrecedesKeyboard_PublishesUnsupportedKeyboard()
     {
         // Arrange
-        var limits = Limits.Default with { MaxConcurrentQueries = 2 };
-        var negotiator = new Negotiator(new NegotiationOptions(
+        Limits limits = Limits.Default with { MaxConcurrentQueries = 2 };
+        Negotiator negotiator = new Negotiator(new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
             limits: limits));
         negotiator.Start(new ArrayBufferWriter<byte>());
-        var attributes = Response("?1;2"u8, [], (byte) 'c');
+        Response attributes = Response("?1;2"u8, [], (byte) 'c');
 
         // Act
         negotiator.Accept(in attributes).ShouldBe(QueryMatch.Matched);
 
         // Assert
         negotiator.IsComplete.ShouldBeTrue();
-        var published = negotiator.Capabilities;
+        Capabilities published = negotiator.Capabilities;
         published.KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Unsupported, Origin.Query));
-        var keyboard = Response("?3"u8, [], (byte) 'u');
+        Response keyboard = Response("?3"u8, [], (byte) 'u');
         negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Late);
         negotiator.Capabilities.ShouldBeSameAs(published);
     }
@@ -43,11 +46,11 @@ public sealed class NegotiatorTests
     public void Accept_WhenModeIsRepeatedOrUnknown_ClassifiesWithoutMutation()
     {
         // Arrange
-        var negotiator = new Negotiator(
+        Negotiator negotiator = new Negotiator(
             new NegotiationOptions(new Dictionary<string, string?>()));
         negotiator.Start(new ArrayBufferWriter<byte>());
-        var synchronized = PrivateMode(2026, state: 1);
-        var unknown = PrivateMode(25, state: 1);
+        Response synchronized = PrivateMode(2026, state: 1);
+        Response unknown = PrivateMode(25, state: 1);
 
         // Act / Assert
         negotiator.Accept(in synchronized).ShouldBe(QueryMatch.Matched);
@@ -63,16 +66,16 @@ public sealed class NegotiatorTests
     public void Expire_WhenDeadlineElapses_PublishesOnceAndClassifiesLateReply()
     {
         // Arrange
-        var clock = new ManualTimeProvider();
-        var limits = Limits.Default with
+        ManualTimeProvider clock = new ManualTimeProvider();
+        Limits limits = Limits.Default with
         {
             QueryTimeout = TimeSpan.FromSeconds(1),
         };
-        var options = new NegotiationOptions(
+        NegotiationOptions options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
             new Settings { SynchronizedOutput = false },
             limits);
-        var negotiator = new Negotiator(options, clock);
+        Negotiator negotiator = new Negotiator(options, clock);
         negotiator.Start(new ArrayBufferWriter<byte>());
 
         // Act / Assert
@@ -80,7 +83,7 @@ public sealed class NegotiatorTests
         negotiator.IsComplete.ShouldBeFalse();
         clock.Advance(TimeSpan.FromSeconds(1));
         negotiator.Expire().ShouldBeTrue();
-        var published = negotiator.Capabilities;
+        Capabilities published = negotiator.Capabilities;
         published.KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
         published.SynchronizedOutput.ShouldBe(
@@ -88,7 +91,7 @@ public sealed class NegotiatorTests
         negotiator.Expire().ShouldBeFalse();
         negotiator.Capabilities.ShouldBeSameAs(published);
 
-        var late = PrivateMode(2026, state: 1);
+        Response late = PrivateMode(2026, state: 1);
         negotiator.Accept(in late).ShouldBe(QueryMatch.Late);
         negotiator.Capabilities.ShouldBeSameAs(published);
     }
@@ -98,7 +101,7 @@ public sealed class NegotiatorTests
     public void Accept_WhenRepliesArriveOutOfOrder_PublishesCompleteProfile()
     {
         // Arrange
-        var negotiator = new Negotiator(
+        Negotiator negotiator = new Negotiator(
             new NegotiationOptions(new Dictionary<string, string?>()));
         negotiator.Start(new ArrayBufferWriter<byte>());
 
@@ -107,17 +110,17 @@ public sealed class NegotiatorTests
 
         foreach (var mode in modes)
         {
-            var response = PrivateMode(mode, state: 1);
+            Response response = PrivateMode(mode, state: 1);
             negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);
         }
 
-        var keyboard = Response("?3"u8, [], (byte) 'u');
+        Response keyboard = Response("?3"u8, [], (byte) 'u');
         negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
-        var attributes = Response("?1;2"u8, [], (byte) 'c');
+        Response attributes = Response("?1;2"u8, [], (byte) 'c');
         negotiator.Accept(in attributes).ShouldBe(QueryMatch.Matched);
 
         negotiator.IsComplete.ShouldBeTrue();
-        var capabilities = negotiator.Capabilities;
+        Capabilities capabilities = negotiator.Capabilities;
         capabilities.SynchronizedOutput.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Query));
         capabilities.FocusReporting.ShouldBe(
@@ -148,15 +151,15 @@ public sealed class NegotiatorTests
         string expected)
     {
         // Arrange
-        var limits = Limits.Default with
+        Limits limits = Limits.Default with
         {
             MaxConcurrentQueries = capacity,
         };
-        var options = new NegotiationOptions(
+        NegotiationOptions options = new NegotiationOptions(
             new Dictionary<string, string?>(),
             limits: limits);
-        var negotiator = new Negotiator(options, new ManualTimeProvider());
-        var output = new ArrayBufferWriter<byte>();
+        Negotiator negotiator = new Negotiator(options, new ManualTimeProvider());
+        ArrayBufferWriter<byte> output = new ArrayBufferWriter<byte>();
 
         // Act
         negotiator.Start(output);
@@ -170,10 +173,10 @@ public sealed class NegotiatorTests
     public void Start_WhenDefaultCapacityIsAvailable_WritesSafeQueriesInOrder()
     {
         // Arrange
-        var options = new NegotiationOptions(
+        NegotiationOptions options = new NegotiationOptions(
             new Dictionary<string, string?>());
-        var negotiator = new Negotiator(options, new ManualTimeProvider());
-        var output = new ArrayBufferWriter<byte>();
+        Negotiator negotiator = new Negotiator(options, new ManualTimeProvider());
+        ArrayBufferWriter<byte> output = new ArrayBufferWriter<byte>();
 
         // Act
         negotiator.Start(output);
@@ -190,17 +193,17 @@ public sealed class NegotiatorTests
     public void Start_WhenStateIsInvalid_ThrowsDeterministically()
     {
         // Arrange
-        var negotiator = new Negotiator(
+        Negotiator negotiator = new Negotiator(
             new NegotiationOptions(new Dictionary<string, string?>()));
 
         // Act / Assert
         _ = Should.Throw<ArgumentNullException>(() => negotiator.Start(null!));
         negotiator.IsStarted.ShouldBeFalse();
         _ = Should.Throw<InvalidOperationException>(() => _ = negotiator.Capabilities);
-        var response = PrivateMode(2026, state: 1);
+        Response response = PrivateMode(2026, state: 1);
         _ = Should.Throw<InvalidOperationException>(() => negotiator.Accept(in response));
         _ = Should.Throw<InvalidOperationException>(() => negotiator.Expire());
-        var output = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> output = new ArrayBufferWriter<byte>();
         negotiator.Start(output);
         _ = Should.Throw<InvalidOperationException>(() => negotiator.Start(output));
     }
@@ -220,7 +223,7 @@ public sealed class NegotiatorTests
             parameters,
             intermediates,
             final,
-            out var response).ShouldBeTrue();
+            out Response response).ShouldBeTrue();
         return response;
     }
 }

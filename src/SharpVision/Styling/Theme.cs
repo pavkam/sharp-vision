@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 using SharpVision.Controls;
@@ -44,7 +47,7 @@ public sealed class Theme
 
         lock (_gate)
         {
-            if (_styles.TryGetValue(typeof(TControl), out var existing))
+            if (_styles.TryGetValue(typeof(TControl), out IControlStyle? existing))
             {
                 Unsubscribe(existing);
             }
@@ -70,7 +73,7 @@ public sealed class Theme
 
         lock (_gate)
         {
-            if (!_styles.Remove(typeof(TControl), out var existing))
+            if (!_styles.Remove(typeof(TControl), out IControlStyle? existing))
             {
                 return false;
             }
@@ -92,7 +95,7 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            return _styles.TryGetValue(typeof(TControl), out var style) ? (ControlStyle<TControl>) style : null;
+            return _styles.TryGetValue(typeof(TControl), out IControlStyle? style) ? (ControlStyle<TControl>) style : null;
         }
     }
 
@@ -121,11 +124,11 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            var clone = new Theme();
+            Theme clone = new Theme();
 
-            foreach (var entry in _styles)
+            foreach (KeyValuePair<Type, IControlStyle> entry in _styles)
             {
-                var cloned = CloneStyle(entry.Value);
+                IControlStyle cloned = CloneStyle(entry.Value);
                 clone._styles[entry.Key] = cloned;
                 clone.Subscribe(cloned);
             }
@@ -143,7 +146,7 @@ public sealed class Theme
 
         lock (_gate)
         {
-            foreach (var entry in _styles.ToArray())
+            foreach (KeyValuePair<Type, IControlStyle> entry in _styles.ToArray())
             {
                 Unsubscribe(entry.Value);
                 _styles[entry.Key] = FreezeStyle(entry.Value);
@@ -167,12 +170,12 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            if (_styleChains.TryGetValue(controlType, out var cached))
+            if (_styleChains.TryGetValue(controlType, out IReadOnlyList<IControlStyle>? cached))
             {
                 return cached;
             }
 
-            var chain = BuildChain(controlType);
+            List<IControlStyle> chain = BuildChain(controlType);
             _styleChains[controlType] = chain;
             return chain;
         }
@@ -180,11 +183,11 @@ public sealed class Theme
 
     private List<IControlStyle> BuildChain(Type controlType)
     {
-        var chain = new List<IControlStyle>();
+        List<IControlStyle> chain = [];
 
-        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
+        foreach (Type type in ControlHierarchy.BaseToDerived(controlType))
         {
-            if (_styles.TryGetValue(type, out var style))
+            if (_styles.TryGetValue(type, out IControlStyle? style))
             {
                 chain.Add(style);
             }

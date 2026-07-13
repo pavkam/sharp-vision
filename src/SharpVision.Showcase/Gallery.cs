@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase;
 
 using System.Diagnostics;
@@ -10,17 +13,17 @@ using SharpVision.Showcase.Panes;
 using SharpVision.Styling;
 using SharpVision.Terminal.Input;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
+using KeyAction = Terminal.Input.Action;
+using TerminalAttributes = Terminal.Rendering.Attributes;
 
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
 {
-    private readonly ScrollView _main;
-    private readonly ScrollView _navigationScroll;
+    private readonly ControlScrollView _main;
+    private readonly ControlScrollView _navigationScroll;
     private readonly NavigationItem[] _navigation;
-    private readonly Button _lightTheme;
-    private readonly Button _darkTheme;
+    private readonly ControlButton _lightTheme;
+    private readonly ControlButton _darkTheme;
     private FocusManager? _focus;
 
     #region Construction and navigation
@@ -29,7 +32,7 @@ public sealed class Gallery: Screen
     public Gallery()
     {
         Pages = PaneCatalog.Pages;
-        _main = new ScrollView
+        _main = new ControlScrollView
         {
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
@@ -39,7 +42,7 @@ public sealed class Gallery: Screen
             ConstrainContentToViewport = true,
         };
         _navigation = new NavigationItem[Pages.Count];
-        var entries = new Stack { Padding = new Thickness(1, 0) };
+        ControlStack entries = new ControlStack { Padding = new Thickness(1, 0) };
         entries.Children.Add(new ControlText("Components")
         {
             Foreground = Palette.Accent,
@@ -49,7 +52,7 @@ public sealed class Gallery: Screen
 
         for (var index = 0; index < Pages.Count; index++)
         {
-            var item = new NavigationItem(index, Pages[index].Name)
+            NavigationItem item = new NavigationItem(index, Pages[index].Name)
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
@@ -58,7 +61,7 @@ public sealed class Gallery: Screen
             entries.Children.Add(item);
         }
 
-        _navigationScroll = new ScrollView
+        _navigationScroll = new ControlScrollView
         {
             Content = entries,
             ScrollBars = ScrollBars.Both,
@@ -66,19 +69,19 @@ public sealed class Gallery: Screen
             ScrollBarChrome = ScrollBarStyle.Thin,
             ScrollBarFill = ScrollBarFill.Line,
         };
-        var sidebarLayout = new Dock();
-        var header = CreateSidebarHeader();
-        _lightTheme = new Button { Content = new ControlText("Light") };
-        _darkTheme = new Button { Content = new ControlText("Dark") };
+        ControlDock sidebarLayout = new ControlDock();
+        ControlStack header = CreateSidebarHeader();
+        _lightTheme = new ControlButton { Content = new ControlText("Light") };
+        _darkTheme = new ControlButton { Content = new ControlText("Dark") };
         _lightTheme.Click += (_, _) => SetTheme(Themes.White);
         _darkTheme.Click += (_, _) => SetTheme(Themes.Dark);
-        var footer = CreateSidebarFooter(_lightTheme, _darkTheme);
-        Dock.SetSide(header, Side.Top);
-        Dock.SetSide(footer, Side.Bottom);
+        ControlStack footer = CreateSidebarFooter(_lightTheme, _darkTheme);
+        ControlDock.SetSide(header, Side.Top);
+        ControlDock.SetSide(footer, Side.Bottom);
         sidebarLayout.Children.Add(header);
         sidebarLayout.Children.Add(footer);
         sidebarLayout.Children.Add(_navigationScroll);
-        Sidebar = new Border
+        Sidebar = new ControlBorder
         {
             Width = Length.Cells(28),
             BorderThickness = new Thickness(1),
@@ -88,17 +91,17 @@ public sealed class Gallery: Screen
             Child = sidebarLayout,
         };
         _ = Sidebar.AddHandler(Events.Key, OnNavigationKey);
-        var surface = new Border
+        ControlBorder surface = new ControlBorder
         {
             Background = Palette.Canvas,
             Child = _main,
         };
-        var layout = new Dock
+        ControlDock layout = new ControlDock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
-        Dock.SetSide(Sidebar, Side.Left);
+        ControlDock.SetSide(Sidebar, Side.Left);
         layout.Children.Add(Sidebar);
         layout.Children.Add(surface);
         Children.Add(layout);
@@ -107,7 +110,7 @@ public sealed class Gallery: Screen
     }
 
     /// <summary>Gets the framed keyboard- and pointer-enabled component navigation sidebar.</summary>
-    public Border Sidebar { get; }
+    public ControlBorder Sidebar { get; }
 
     /// <summary>Gets the current documentation page content.</summary>
     public Control Content => _main.Content!;
@@ -130,7 +133,7 @@ public sealed class Gallery: Screen
     /// <inheritdoc/>
     protected override void OnAttach(Application application)
     {
-        var theme = Themes.Dark.Clone();
+        Theme theme = Themes.Dark.Clone();
         theme.SetStyle(Palette.ListForTheme());
         application.Theme = theme;
     }
@@ -161,7 +164,7 @@ public sealed class Gallery: Screen
         }
 
         Debug.Assert(_navigation[index].Label == Pages[index].Name);
-        var previous = _main.Content;
+        Control? previous = _main.Content;
         Selected = Pages[index];
         SelectedIndex = index;
 
@@ -187,9 +190,9 @@ public sealed class Gallery: Screen
         previous?.Dispose();
     }
 
-    private static Stack CreateSidebarHeader()
+    private static ControlStack CreateSidebarHeader()
     {
-        var header = new Stack
+        ControlStack header = new ControlStack
         {
             Height = Length.Cells(4),
             Padding = new Thickness(1, 0),
@@ -213,9 +216,9 @@ public sealed class Gallery: Screen
         return header;
     }
 
-    private static Stack CreateSidebarFooter(Button lightTheme, Button darkTheme)
+    private static ControlStack CreateSidebarFooter(ControlButton lightTheme, ControlButton darkTheme)
     {
-        var footer = new Stack
+        ControlStack footer = new ControlStack
         {
             Height = Length.Cells(4),
             Padding = new Thickness(1, 0),
@@ -227,7 +230,7 @@ public sealed class Gallery: Screen
             Background = Palette.Panel,
             Attributes = TerminalAttributes.Dim,
         });
-        footer.Children.Add(new Stack
+        footer.Children.Add(new ControlStack
         {
             Orientation = Orientation.Horizontal,
             Spacing = 1,
@@ -269,7 +272,7 @@ public sealed class Gallery: Screen
             return;
         }
 
-        var current = FindNavigation(eventArgs.OriginalSource) ?? _navigation[SelectedIndex];
+        NavigationItem current = FindNavigation(eventArgs.OriginalSource) ?? _navigation[SelectedIndex];
         var target = ResolveNavigation(current.Index, eventArgs.Stroke);
 
         if (target < 0)
@@ -319,7 +322,7 @@ public sealed class Gallery: Screen
 
     private static NavigationItem? FindNavigation(Control? source)
     {
-        for (var current = source; current is not null; current = current.Parent)
+        for (Control? current = source; current is not null; current = current.Parent)
         {
             if (current is NavigationItem item)
             {
@@ -333,7 +336,7 @@ public sealed class Gallery: Screen
     /// <inheritdoc/>
     protected override void OnDispose()
     {
-        foreach (var item in _navigation)
+        foreach (NavigationItem item in _navigation)
         {
             item.Invoked -= OnNavigationInvoked;
         }

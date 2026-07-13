@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Protocols;
 
 using System.Buffers;
@@ -47,7 +50,7 @@ public static class Osc
         var rented = length > _stackPayloadLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
-        var payload = rented is null
+        Span<byte> payload = rented is null
             ? stackalloc byte[length]
             : rented.AsSpan();
 

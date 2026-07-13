@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using System.Text;
@@ -15,7 +18,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void DrawRune_WhenAmbiguousRuneIsWideForFrame_ThrowsBeforeMutation()
     {
-        using var frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
 
         _ = Should.Throw<ArgumentException>(() =>
             frame.Canvas.DrawRune(new Rune('·'), default));
@@ -28,7 +31,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void DrawBox_WhenAmbiguousWidthIsWide_WritesSingleCellAsciiTopology()
     {
-        using var frame = new Frame(new Size(3, 3), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new Frame(new Size(3, 3), ambiguousWidth: Ambiguous.Wide);
 
         frame.Canvas.DrawBox(frame.Canvas.Bounds, LineStyle.Light);
 
@@ -42,7 +45,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void FillShade_WhenAmbiguousWidthIsWide_WritesPortableAsciiShade()
     {
-        using var frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new Frame(new Size(2, 1), ambiguousWidth: Ambiguous.Wide);
 
         frame.Canvas.FillShade(frame.Canvas.Bounds, Shade.Medium);
 
@@ -54,7 +57,7 @@ public sealed class AmbiguousWidthPrimitiveTests
     [Fact]
     public void DrawQuadrants_WhenAmbiguousWidthIsWide_WritesPortableAsciiBlock()
     {
-        using var frame = new Frame(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new Frame(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
 
         frame.Canvas.DrawQuadrants(default, Quadrants.UpperLeft);
 

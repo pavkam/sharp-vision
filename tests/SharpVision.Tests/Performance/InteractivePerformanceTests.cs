@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Performance;
 
 using System.Diagnostics;
@@ -16,7 +19,7 @@ using SharpVision.Threading;
 using Shouldly;
 
 using Label = SharpVision.Controls.Text;
-using UiList = SharpVision.Controls.List;
+using UiList = List;
 
 /// <summary>Gates interactive control allocation reuse and detached-item retention.</summary>
 [Collection(PerformanceGroup.Name)]
@@ -28,13 +31,13 @@ public sealed class InteractivePerformanceTests
     [InlineData(200, 60)]
     public void Render_WhenInteractiveTreeIsWarm_AllocatesNoManagedMemory(int width, int height)
     {
-        var root = Representative();
-        var size = new Size(width, height);
-        var engine = new Engine();
-        using var frame = new Frame(size);
+        Grid root = Representative();
+        Size size = new Size(width, height);
+        Engine engine = new Engine();
+        using Frame frame = new Frame(size);
         Render();
 
-        var allocated = Minimum(Render, iterations: 200, out var elapsed);
+        var allocated = Minimum(Render, iterations: 200, out TimeSpan elapsed);
 
         allocated.ShouldBe(0);
         Report($"interactive {width}x{height}", elapsed, 200);
@@ -52,11 +55,11 @@ public sealed class InteractivePerformanceTests
     [Fact]
     public void Text_WhenRepeatedlyEdited_HasBoundedManagedAllocation()
     {
-        var input = new TextInput { UndoLimit = 32 };
+        TextInput input = new TextInput { UndoLimit = 32 };
         var toggle = false;
         Edit();
 
-        var allocated = Minimum(Edit, iterations: 1_000, out var elapsed);
+        var allocated = Minimum(Edit, iterations: 1_000, out TimeSpan elapsed);
 
         allocated.ShouldBeLessThanOrEqualTo(1_024L * 1_000);
         input.CanUndo.ShouldBeTrue();
@@ -73,23 +76,23 @@ public sealed class InteractivePerformanceTests
     [Fact]
     public async Task Dispatch_WhenThumbIsDragged_HasBoundedManagedAllocationAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var bar = new ScrollBar
+            ScrollBar bar = new ScrollBar
             {
                 Bounds = new Rect(0, 0, 102, 1),
                 Orientation = Orientation.Horizontal,
                 Maximum = 10_000,
             };
             bar.Attach(dispatcher);
-            using var capture = new CaptureManager(bar);
+            using CaptureManager capture = new CaptureManager(bar);
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             var position = 2;
             Drag();
 
-            var allocated = Minimum(Drag, iterations: 1_000, out var elapsed);
+            var allocated = Minimum(Drag, iterations: 1_000, out TimeSpan elapsed);
 
             allocated.ShouldBeLessThanOrEqualTo(768L * 1_000);
             bar.Value.ShouldBeInRange(0, bar.Maximum);
@@ -108,13 +111,13 @@ public sealed class InteractivePerformanceTests
     [Fact]
     public void Items_WhenOneThousandAreReplaced_AllocatesNoUnchangedLayoutAndRetainsNone()
     {
-        var list = new UiList();
-        var weak = PopulateAndReplace(list, count: 1_000);
-        var engine = new Engine();
-        var size = new Size(200, 60);
+        UiList list = new UiList();
+        WeakReference<Control>[] weak = PopulateAndReplace(list, count: 1_000);
+        Engine engine = new Engine();
+        Size size = new Size(200, 60);
         engine.Layout(list, size);
 
-        var allocated = Minimum(() => engine.Layout(list, size), 1_000, out var elapsed);
+        var allocated = Minimum(() => engine.Layout(list, size), 1_000, out TimeSpan elapsed);
         ForceCollection();
 
         allocated.ShouldBe(0);
@@ -127,21 +130,21 @@ public sealed class InteractivePerformanceTests
     [Fact]
     public void Dispatch_WhenNestedScrollCommandsRepeat_HasBoundedManagedAllocation()
     {
-        var leaf = new Label(string.Join('\n', Enumerable.Range(0, 20)))
+        Label leaf = new Label(string.Join('\n', Enumerable.Range(0, 20)))
         {
             Width = Length.Cells(5),
         };
-        var inner = Hidden(leaf);
+        ScrollView inner = Hidden(leaf);
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
-        var outer = Hidden(inner);
+        ScrollView outer = Hidden(inner);
         new Engine().Layout(outer, new Size(5, 4));
-        var down = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: -20));
-        var up = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: 20));
+        PointerEventArgs down = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: -20));
+        PointerEventArgs up = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: 20));
         var descending = true;
         Dispatch();
 
-        var allocated = Minimum(Dispatch, iterations: 1_000, out var elapsed);
+        var allocated = Minimum(Dispatch, iterations: 1_000, out TimeSpan elapsed);
 
         allocated.ShouldBeLessThanOrEqualTo(256L * 1_000);
         Report("1,000 nested scroll commands", elapsed, 1_000);
@@ -156,11 +159,11 @@ public sealed class InteractivePerformanceTests
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference<Control>[] PopulateAndReplace(UiList list, int count)
     {
-        var weak = new WeakReference<Control>[count];
+        WeakReference<Control>[] weak = new WeakReference<Control>[count];
         var created = 0;
         list.ItemTemplate = item =>
         {
-            var control = new Label(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
+            Label control = new Label(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
             weak[created++] = new WeakReference<Control>(control);
             return control;
         };
@@ -171,15 +174,15 @@ public sealed class InteractivePerformanceTests
 
     private static Grid Representative()
     {
-        var root = new Grid();
+        Grid root = new Grid();
         root.Columns.Add(Track.Cells(24));
         root.Columns.Add(Track.Star(1));
-        var list = new UiList
+        UiList list = new UiList
         {
             Items = Enumerable.Range(0, 20).Select(static value => (object?) $"Item {value}").ToArray(),
         };
         Grid.SetColumn(list, 0);
-        var content = new Stack();
+        Stack content = new Stack();
         Grid.SetColumn(content, 1);
         content.Children.Add(new TextInput { Text = "e\u0301 · 界 · 👩‍💻" });
         content.Children.Add(new ScrollBar
@@ -224,7 +227,7 @@ public sealed class InteractivePerformanceTests
         }
 
         var minimum = long.MaxValue;
-        var watch = Stopwatch.StartNew();
+        Stopwatch watch = Stopwatch.StartNew();
 
         for (var sample = 0; sample < 5; sample++)
         {

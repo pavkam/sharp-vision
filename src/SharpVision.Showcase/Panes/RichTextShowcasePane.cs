@@ -1,10 +1,14 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
 using SharpVision.Layout;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Text;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
+using TerminalAttributes = Terminal.Rendering.Attributes;
 
 /// <summary>Documents and demonstrates the RichText control.</summary>
 internal sealed class RichTextShowcasePane: ShowcasePane
@@ -38,7 +42,7 @@ internal sealed class RichTextShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var introductory = new ControlRichText
+        ControlRichText introductory = new ControlRichText
         {
             Wrapping = Wrapping.Word,
             TextAlignment = Alignment.Start,
@@ -61,7 +65,7 @@ internal sealed class RichTextShowcasePane: ShowcasePane
             "Runs carry independent foreground, attributes, and hyperlink metadata. The link is explicitly underlined as well as semantic; compatible terminals expose it on hover or open it with their configured gesture.",
             PaneSupport.Card(introductory, Glyphs.Rounded)));
 
-        var attributes = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlRichText attributes = new ControlRichText { Wrapping = Wrapping.Word };
         PaneSupport.AddAttributeLine(attributes, "Bold", "increased intensity", TerminalAttributes.Bold, Palette.Text);
         PaneSupport.AddAttributeLine(attributes, "Dim", "reduced intensity", TerminalAttributes.Dim, Palette.Muted);
         PaneSupport.AddAttributeLine(attributes, "Italic", "slanted presentation", TerminalAttributes.Italic, Palette.Accent);
@@ -92,30 +96,30 @@ internal sealed class RichTextShowcasePane: ShowcasePane
             "Every row below is a real RichText run. Modern underline shape/color and overline use proved terminal capabilities; unsupported underline shapes become straight and unsupported color or overline is omitted.",
             PaneSupport.Card(attributes, Glyphs.Light)));
 
-        var wrapped = new ControlRichText { Width = Length.Cells(30), Wrapping = Wrapping.Word };
+        ControlRichText wrapped = new ControlRichText { Width = Length.Cells(30), Wrapping = Wrapping.Word };
         wrapped.Inlines.Add(new ControlRun("Resize this narrow reading column. RichText wraps between words while keeping Unicode graphemes intact. "));
         wrapped.Inlines.Add(new Hyperlink("Read the protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
 
-        var activity = new ControlText("Activity log: waiting for an inline mutation.")
+        ControlText activity = new ControlText("Activity log: waiting for an inline mutation.")
         {
             Foreground = Palette.Muted,
         };
-        var append = new ControlButton
+        ControlButton append = new ControlButton
         {
             Content = new ControlText("Append a Run"),
             Style = Palette.Interactive(),
         };
         var mutation = 0;
-        var mutationStyles = new[]
-        {
+        (string Name, TerminalAttributes Value, Color Color)[] mutationStyles =
+        [
             (Name: "underline", Value: TerminalAttributes.Underline, Color: Palette.Success),
             (Name: "strikethrough", Value: TerminalAttributes.Strike, Color: Palette.Warning),
             (Name: "reverse", Value: TerminalAttributes.Reverse, Color: Palette.Accent),
             (Name: "bold + italic", Value: TerminalAttributes.Bold | TerminalAttributes.Italic, Color: Palette.Text),
-        };
+        ];
         append.Click += (_, eventArgs) =>
         {
-            var selectedStyle = mutationStyles[mutation % mutationStyles.Length];
+            (string Name, TerminalAttributes Value, Color Color) selectedStyle = mutationStyles[mutation % mutationStyles.Length];
             mutation++;
             wrapped.Inlines.Add(new LineBreak());
             wrapped.Inlines.Add(new ControlRun(
@@ -127,7 +131,7 @@ internal sealed class RichTextShowcasePane: ShowcasePane
             activity.Content = $"Activity log: {eventArgs.Cause} appended {selectedStyle.Name} Run {mutation}.";
         };
 
-        var readingExample = PaneSupport.Vertical();
+        ControlStack readingExample = PaneSupport.Vertical();
         readingExample.Children.Add(wrapped);
         readingExample.Children.Add(PaneSupport.ButtonSpecimen(append));
         readingExample.Children.Add(activity);

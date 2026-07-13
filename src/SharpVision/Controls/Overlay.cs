@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Buffers;
@@ -6,7 +9,7 @@ using System.Runtime.CompilerServices;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Arranges owned children in one shared box with stable layering.</summary>
 public sealed class Overlay: Container
@@ -35,7 +38,7 @@ public sealed class Overlay: Container
     public static int GetZIndex(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return _orders.TryGetValue(control, out var order) ? order.Value : 0;
+        return _orders.TryGetValue(control, out ZOrder? order) ? order.Value : 0;
     }
 
     /// <summary>Sets one control's attached signed z-order.</summary>
@@ -48,7 +51,7 @@ public sealed class Overlay: Container
     {
         ArgumentNullException.ThrowIfNull(control);
         control.VerifyMutable();
-        var order = _orders.GetOrCreateValue(control);
+        ZOrder order = _orders.GetOrCreateValue(control);
 
         if (order.Value == value)
         {
@@ -80,7 +83,7 @@ public sealed class Overlay: Container
             return popup;
         }
 
-        var rented = RentOrdered();
+        Control[] rented = RentOrdered();
 
         try
         {
@@ -106,7 +109,7 @@ public sealed class Overlay: Container
         var width = 0;
         var height = 0;
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.Measure(constraint);
 
@@ -125,7 +128,7 @@ public sealed class Overlay: Container
     /// <inheritdoc/>
     protected override void ArrangeCore(Rect bounds)
     {
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.Arrange(bounds);
         }
@@ -134,7 +137,7 @@ public sealed class Overlay: Container
     /// <inheritdoc/>
     internal override void RenderChildren(TerminalCanvas canvas)
     {
-        var rented = RentOrdered();
+        Control[] rented = RentOrdered();
 
         try
         {
@@ -162,7 +165,7 @@ public sealed class Overlay: Container
 
     private Control[] RentOrdered()
     {
-        var result = ArrayPool<Control>.Shared.Rent(Children.Count);
+        Control[] result = ArrayPool<Control>.Shared.Rent(Children.Count);
 
         for (var index = 0; index < Children.Count; index++)
         {
@@ -173,7 +176,7 @@ public sealed class Overlay: Container
         // tuple allocation for the small layer sets common in terminal UIs.
         for (var index = 1; index < Children.Count; index++)
         {
-            var current = result[index];
+            Control current = result[index];
             var currentZ = GetZIndex(current);
             var insertion = index - 1;
 

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Rendering;
 
 using System.Diagnostics;
@@ -14,11 +17,11 @@ internal static class LineResolver
     /// <returns>The deterministic combined topology.</returns>
     internal static Topology Merge(Topology left, Topology right)
     {
-        var connections = left.Connections | right.Connections;
-        var weight = (LineWeight) Math.Max((int) left.Line.Weight, (int) right.Line.Weight);
+        Connections connections = left.Connections | right.Connections;
+        LineWeight weight = (LineWeight) Math.Max((int) left.Line.Weight, (int) right.Line.Weight);
         var straight = connections is (Connections.Left | Connections.Right) or
             (Connections.Up | Connections.Down);
-        var pattern = straight && left.Line.Pattern == right.Line.Pattern
+        LinePattern pattern = straight && left.Line.Pattern == right.Line.Pattern
             ? left.Line.Pattern
             : LinePattern.Solid;
         var rounded = left.Line.HasRoundedCorners && right.Line.HasRoundedCorners;
@@ -45,7 +48,7 @@ internal static class LineResolver
     /// <returns>Whether the Rune belongs to a supported line family.</returns>
     internal static bool TryDecode(Rune value, out Topology topology)
     {
-        var decoded = value.Value switch
+        Topology decoded = value.Value switch
         {
             '-' => new Topology(Connections.Left | Connections.Right, LineStyle.Ascii),
             '|' => new Topology(Connections.Up | Connections.Down, LineStyle.Ascii),

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
@@ -28,7 +31,7 @@ public sealed class CapabilitiesTests
     [Fact]
     public void Conservative_WhenRead_EnablesNoOptionalFeature()
     {
-        var capabilities = Capabilities.Conservative;
+        Capabilities capabilities = Capabilities.Conservative;
 
         capabilities.OptionalFeatures.ShouldAllBe(
             static feature => feature.State != CapabilitySupport.Supported);
@@ -42,9 +45,9 @@ public sealed class CapabilitiesTests
     [Fact]
     public void With_WhenProfileIsDerived_DoesNotMutateOriginal()
     {
-        var original = Capabilities.Conservative;
+        Capabilities original = Capabilities.Conservative;
 
-        var derived = original with
+        Capabilities derived = original with
         {
             Osc52 = new Feature(CapabilitySupport.Supported, Origin.Override),
         };

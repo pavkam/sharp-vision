@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Integration;
 
 using System.Text;
@@ -24,11 +27,11 @@ public sealed class ScrollingTests
     [Fact]
     public async Task Input_WhenNestedAutomaticViewsUsePixelMouse_PreservesExactOffsetsAndThumbsAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(8, 5), new Size(80, 50)));
-        var content = new ControlCanvas { Width = Length.Cells(14), Height = Length.Cells(9) };
-        var label = new Label("界Z");
-        var target = new Button
+        ControlCanvas content = new ControlCanvas { Width = Length.Cells(14), Height = Length.Cells(9) };
+        Label label = new Label("界Z");
+        Button target = new Button
         {
             Content = new Label("Go"),
             Width = Length.Cells(2),
@@ -38,14 +41,14 @@ public sealed class ScrollingTests
         ControlCanvas.SetTop(target, Length.Cells(8));
         content.Children.Add(label);
         content.Children.Add(target);
-        var inner = new ScrollView
+        ScrollView inner = new ScrollView
         {
             Content = content,
             Width = Length.Cells(12),
             Height = Length.Cells(7),
         };
-        var outer = new ScrollView { Content = inner };
-        await using var application = new Application(
+        ScrollView outer = new ScrollView { Content = inner };
+        await using Application application = new Application(
             outer,
             terminal,
             terminal,
@@ -62,7 +65,7 @@ public sealed class ScrollingTests
             "pixel thumb drag",
             TestContext.Current.CancellationToken);
 
-        var rendered = NextFrame(application);
+        Task rendered = NextFrame(application);
         await application.Dispatcher.InvokeAsync(() =>
         {
             outer.HorizontalOffset = 0;
@@ -83,7 +86,7 @@ public sealed class ScrollingTests
 
         await application.Dispatcher.InvokeAsync(() =>
         {
-            using var frame = new Frame(application.Size);
+            using Frame frame = new Frame(application.Size);
             outer.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(5, 4)).ShouldBe("▓");
             FrameOracle.Get(frame, new Point(7, 2)).ShouldBe("▓");
@@ -120,7 +123,7 @@ public sealed class ScrollingTests
         outer.Viewport.ShouldBe(new Size(16, 11));
         await application.Dispatcher.InvokeAsync(() =>
         {
-            using var frame = new Frame(application.Size);
+            using Frame frame = new Frame(application.Size);
             outer.Render(frame.Canvas);
             FrameOracle.Get(frame, new Point(15, 10)).ShouldBeEmpty();
         }, TestContext.Current.CancellationToken);
@@ -131,16 +134,16 @@ public sealed class ScrollingTests
     [Fact]
     public async Task Input_WhenNestedViewsReceiveWheel_ConsumesRemainderAndClampsAfterResizeAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(5, 4), new Size(50, 40)));
-        var leaf = new Label(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
-        var inner = Hidden(leaf);
+        Label leaf = new Label(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
+        ScrollView inner = Hidden(leaf);
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
-        var outer = Hidden(inner);
-        await using var application = new Application(outer, terminal, terminal, TerminalOptions.Minimal);
+        ScrollView outer = Hidden(inner);
+        await using Application application = new Application(outer, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         outer.ScrollChanged += (_, _) =>
         {
             if (outer.VerticalOffset == 4)
@@ -155,7 +158,7 @@ public sealed class ScrollingTests
 
         inner.VerticalOffset.ShouldBe(12);
         outer.VerticalOffset.ShouldBe(4);
-        var rendered = NextFrame(application);
+        Task rendered = NextFrame(application);
         terminal.QueueResize(new Dimensions(new Size(5, 8), new Size(50, 80)));
         await rendered.WaitAsync(TestContext.Current.CancellationToken);
         outer.VerticalOffset.ShouldBe(0);
@@ -171,7 +174,7 @@ public sealed class ScrollingTests
 
     private static Task NextFrame(Application application)
     {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Text;
@@ -7,9 +10,9 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using KeyAction = Terminal.Input.Action;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using BackgroundMode = BackgroundMode;
+using KeyAction = KeyAction;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a focusable mutually exclusive selection control.</summary>
 public sealed class RadioButton: Pressable
@@ -95,7 +98,7 @@ public sealed class RadioButton: Pressable
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var content = Content;
+        Control? content = Content;
 
         if (content is null)
         {
@@ -129,10 +132,10 @@ public sealed class RadioButton: Pressable
             return;
         }
 
-        var glyph = new Rune(IsChecked ? '◉' : '○');
+        Rune glyph = new Rune(IsChecked ? '◉' : '○');
         Span<char> buffer = stackalloc char[2];
         var length = glyph.EncodeToUtf16(buffer);
-        var style = ResolvedStyle;
+        TerminalStyle style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {

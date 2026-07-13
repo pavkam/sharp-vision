@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Input;
@@ -27,7 +30,7 @@ public abstract class Screen: Container
         var width = 0;
         var height = 0;
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.Measure(constraint);
 
@@ -46,7 +49,7 @@ public abstract class Screen: Container
     /// <inheritdoc/>
     protected override void ArrangeCore(Rect bounds)
     {
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.Arrange(bounds);
         }

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -35,26 +38,26 @@ internal sealed class DockShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var dock = new ControlDock
+        ControlDock dock = new ControlDock
         {
             Width = Length.Cells(38),
             Height = Length.Cells(9),
             LastChildFills = true,
             Spacing = 1,
         };
-        var left = PaneSupport.Card(new ControlText("Left"), Glyphs.Light);
+        ControlBorder left = PaneSupport.Card(new ControlText("Left"), Glyphs.Light);
         left.Width = Length.Cells(7);
         ControlDock.SetSide(left, Side.Left);
         dock.Children.Add(left);
-        var top = PaneSupport.Card(new ControlText("Top"), Glyphs.Heavy);
+        ControlBorder top = PaneSupport.Card(new ControlText("Top"), Glyphs.Heavy);
         top.Height = Length.Cells(2);
         ControlDock.SetSide(top, Side.Top);
         dock.Children.Add(top);
-        var right = PaneSupport.Card(new ControlText("Right"), Glyphs.Paired);
+        ControlBorder right = PaneSupport.Card(new ControlText("Right"), Glyphs.Paired);
         right.Width = Length.Cells(8);
         ControlDock.SetSide(right, Side.Right);
         dock.Children.Add(right);
-        var bottom = PaneSupport.Card(new ControlText("Bottom"), Glyphs.Ascii);
+        ControlBorder bottom = PaneSupport.Card(new ControlText("Bottom"), Glyphs.Ascii);
         bottom.Height = Length.Cells(2);
         ControlDock.SetSide(bottom, Side.Bottom);
         dock.Children.Add(bottom);

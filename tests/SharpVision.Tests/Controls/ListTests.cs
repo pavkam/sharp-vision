@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using System.Text;
@@ -17,8 +20,8 @@ using Shouldly;
 
 using KeyAction = Terminal.Input.Action;
 using Label = SharpVision.Controls.Text;
-using TerminalStyle = Terminal.Rendering.Style;
-using UiList = SharpVision.Controls.List;
+using TerminalStyle = Style;
+using UiList = List;
 
 /// <summary>Verifies realized List ownership, selection, input, scrolling, and rendering.</summary>
 public sealed class ListTests
@@ -27,14 +30,14 @@ public sealed class ListTests
     [Fact]
     public void Items_WhenAssigned_RealizesOwnedControlsAndExactCells()
     {
-        var realized = new List<Label>();
-        var control = new UiList
+        List<Label> realized = new List<Label>();
+        UiList control = new UiList
         {
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
             Items = new object?[] { "One", "界", null },
         };
         new Engine().Layout(control, new Size(5, 3));
-        using var frame = new Frame(new Size(5, 3));
+        using Frame frame = new Frame(new Size(5, 3));
 
         control.Render(frame.Canvas);
 
@@ -54,10 +57,10 @@ public sealed class ListTests
     [Fact]
     public void Render_WhenStyledAndSelected_PaintsSurfaceAndSelectedRow()
     {
-        var style = ThemeTestSupport.OverlayStyle<UiList>(
+        ControlStyle<UiList> style = ThemeTestSupport.OverlayStyle<UiList>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
             (State.Selected, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(99))));
-        var control = new UiList
+        UiList control = new UiList
         {
             Items = new object?[] { "One", "Two" },
             SelectedIndex = 1,
@@ -65,9 +68,9 @@ public sealed class ListTests
             Style = style,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        var size = new Size(8, 2);
+        Size size = new Size(8, 2);
         new Engine().Layout(control, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(234)));
 
         control.Render(frame.Canvas);
@@ -80,7 +83,7 @@ public sealed class ListTests
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardCommonPolicyToComposedViewport()
     {
-        var control = Create("one", "two", "three", "four", "five", "six");
+        UiList control = Create("one", "two", "three", "four", "five", "six");
         control.HorizontalAlignment = HorizontalAlignment.Stretch;
         control.ScrollBars = ScrollBars.Vertical;
         control.ShowScrollBars = ShowScrollBars.Always;
@@ -92,7 +95,7 @@ public sealed class ListTests
         control.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
         control.ScrollBarChrome.ShouldBe(ScrollBarStyle.Thin);
         control.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
-        var rail = control.HitTest(new Point(5, 0)).ShouldBeOfType<ScrollBar>();
+        ScrollBar rail = control.HitTest(new Point(5, 0)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.Chrome.ShouldBe(ScrollBarStyle.Thin);
         rail.Fill.ShouldBe(ScrollBarFill.Line);
@@ -108,7 +111,7 @@ public sealed class ListTests
     [Fact]
     public void ShowScrollBars_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
     {
-        var control = new UiList();
+        UiList control = new UiList();
         var notifications = 0;
         control.PropertyChanged += (_, eventArgs) =>
         {
@@ -129,14 +132,14 @@ public sealed class ListTests
     [Fact]
     public void ItemTemplate_WhenCandidateIsInvalid_PreservesItemsTemplateAndOwnership()
     {
-        var previous = new List<Label>();
+        List<Label> previous = new List<Label>();
         ItemTemplate valid = item => Add(previous, new Label((string) item!));
-        var control = new UiList
+        UiList control = new UiList
         {
             ItemTemplate = valid,
             Items = new object?[] { "A", "B" },
         };
-        var duplicate = new Label("bad");
+        Label duplicate = new Label("bad");
 
         _ = Should.Throw<ArgumentNullException>(() => control.Items = null!);
         _ = Should.Throw<ArgumentNullException>(() => control.ItemTemplate = null!);
@@ -152,13 +155,13 @@ public sealed class ListTests
     [Fact]
     public void Items_WhenReplaced_DisposesPreviousRealizationWithoutStateLeakage()
     {
-        var realized = new List<Label>();
-        var control = new UiList
+        List<Label> realized = new List<Label>();
+        UiList control = new UiList
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B" },
         };
-        var previous = realized.ToArray();
+        Label[] previous = [.. realized];
 
         control.Items = new object?[] { "C" };
 
@@ -171,7 +174,7 @@ public sealed class ListTests
     [Fact]
     public void SetSelected_WhenModesDiffer_EnforcesModeAndIndexContracts()
     {
-        var control = Create("A", "B", "C");
+        UiList control = Create("A", "B", "C");
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SelectedIndex = 3);
         control.SelectedIndex = 1;
@@ -192,9 +195,9 @@ public sealed class ListTests
     [Fact]
     public void SelectedIndex_WhenChangingIsCancelled_PreservesStateAndStableSelectedView()
     {
-        var control = Create("A", "B", "C");
-        var view = control.SelectedItems;
-        var order = new List<string>();
+        UiList control = Create("A", "B", "C");
+        IReadOnlyList<object?> view = control.SelectedItems;
+        List<string> order = new List<string>();
         control.SelectionChanging += (_, eventArgs) =>
         {
             order.Add($"changing:{Join(eventArgs.AddedIndexes)}:{Join(eventArgs.RemovedIndexes)}");
@@ -221,21 +224,21 @@ public sealed class ListTests
     [Fact]
     public async Task Dispatch_WhenKeyboardNavigates_UsesStableRealizedOrderAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var realized = new List<Label>();
-        var control = new UiList
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        List<Label> realized = new List<Label>();
+        UiList control = new UiList
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B", "C" },
         };
         realized[1].IsEnabled = false;
-        var invoked = new List<int>();
+        List<int> invoked = new List<int>();
         control.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
 
         await dispatcher.InvokeAsync(() =>
         {
             control.Attach(dispatcher);
-            using var focus = new FocusManager(control);
+            using FocusManager focus = new FocusManager(control);
             focus.Focus(realized[0].Parent!).ShouldBeTrue();
             Key(realized[0].Parent!, Code.Down);
             focus.Focused.ShouldBeSameAs(realized[2].Parent);
@@ -255,8 +258,8 @@ public sealed class ListTests
     [Fact]
     public async Task Dispatch_WhenPointerUsesModifiers_AppliesToggleAndRangeSelectionAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var control = Create("A", "B", "C", "D");
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        UiList control = Create("A", "B", "C", "D");
         control.Bounds = new Rect(0, 0, 4, 4);
         control.SelectionMode = SelectionMode.Multiple;
         new Engine().Layout(control, new Size(4, 4));
@@ -264,7 +267,7 @@ public sealed class ListTests
         await dispatcher.InvokeAsync(() =>
         {
             control.Attach(dispatcher);
-            using var capture = new CaptureManager(control);
+            using CaptureManager capture = new CaptureManager(control);
             Click(capture, new Point(0, 1), Modifiers.Control);
             Click(capture, new Point(0, 3), Modifiers.Shift);
         }, TestContext.Current.CancellationToken);
@@ -276,9 +279,9 @@ public sealed class ListTests
     [Fact]
     public async Task Dispatch_WhenActiveItemMovesBeyondViewport_BringsItIntoViewAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var realized = new List<Label>();
-        var control = new UiList
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        List<Label> realized = new List<Label>();
+        UiList control = new UiList
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
@@ -288,7 +291,7 @@ public sealed class ListTests
         await dispatcher.InvokeAsync(() =>
         {
             control.Attach(dispatcher);
-            using var focus = new FocusManager(control);
+            using FocusManager focus = new FocusManager(control);
             focus.Focus(realized[0].Parent!).ShouldBeTrue();
 
             for (var index = 0; index < 7; index++)
@@ -305,13 +308,13 @@ public sealed class ListTests
     [Fact]
     public void Render_WhenItemIsSelected_UsesSelectedStyleWithoutChangingTemplateContent()
     {
-        var style = ThemeTestSupport.OverlayStyle<UiList>(
+        ControlStyle<UiList> style = ThemeTestSupport.OverlayStyle<UiList>(
             (State.Selected, new ThemeOverlay(attributes: Attributes.Reverse)));
-        var control = Create("界", "B");
+        UiList control = Create("界", "B");
         control.Style = style;
         control.SelectedIndex = 0;
         new Engine().Layout(control, new Size(3, 2));
-        using var frame = new Frame(new Size(3, 2));
+        using Frame frame = new Frame(new Size(3, 2));
 
         control.Render(frame.Canvas);
 

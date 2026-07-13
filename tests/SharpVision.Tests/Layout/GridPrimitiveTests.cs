@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Layout;
 
 using SharpVision.Controls;
@@ -36,7 +39,7 @@ public sealed class GridPrimitiveTests
     [Fact]
     public void Definitions_WhenCollectionMutates_InvalidatesMeasureOncePerChange()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
 
         _ = grid.Rows.ShouldNotBeNull();
         _ = grid.Columns.ShouldNotBeNull();
@@ -58,8 +61,8 @@ public sealed class GridPrimitiveTests
     [Fact]
     public void Constructor_WhenCreated_HasDocumentedGridDefaults()
     {
-        var grid = new Grid();
-        var child = new ProbeControl();
+        Grid grid = new Grid();
+        ProbeControl child = new ProbeControl();
 
         grid.RowSpacing.ShouldBe(0);
         grid.ColumnSpacing.ShouldBe(0);
@@ -73,8 +76,8 @@ public sealed class GridPrimitiveTests
     [Fact]
     public void Setter_WhenValueIsInvalid_ThrowsBeforeMutation()
     {
-        var grid = new Grid();
-        var child = new ProbeControl();
+        Grid grid = new Grid();
+        ProbeControl child = new ProbeControl();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => grid.RowSpacing = -1);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => grid.ColumnSpacing = -1);
@@ -95,8 +98,8 @@ public sealed class GridPrimitiveTests
     [Fact]
     public void SetPlacement_WhenChildIsOwned_ValidatesCommittedTrackRange()
     {
-        var grid = new Grid();
-        var child = new ProbeControl();
+        Grid grid = new Grid();
+        ProbeControl child = new ProbeControl();
         grid.Children.Add(child);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Grid.SetRow(child, 1));
@@ -113,11 +116,11 @@ public sealed class GridPrimitiveTests
     [Fact]
     public async Task SetRow_WhenChildIsAttachedOffThread_ThrowsBeforeMutationAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var grid = new Grid();
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        Grid grid = new Grid();
         grid.Rows.Add(Track.Auto());
         grid.Rows.Add(Track.Auto());
-        var child = new ProbeControl();
+        ProbeControl child = new ProbeControl();
         grid.Children.Add(child);
         grid.Clear(Invalidation.All);
         Grid.SetRow(child, 1);
@@ -135,8 +138,8 @@ public sealed class GridPrimitiveTests
     [Fact]
     public async Task Add_WhenGridIsAttachedOffThread_ThrowsBeforeCollectionMutationAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var grid = new Grid();
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        Grid grid = new Grid();
         await dispatcher.InvokeAsync(() =>
         {
             grid.Attach(dispatcher);

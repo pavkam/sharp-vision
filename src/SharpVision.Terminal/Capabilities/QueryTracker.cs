@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Capabilities;
 
 using SharpVision.Terminal.Protocols;
@@ -40,10 +43,10 @@ public sealed class QueryTracker
     public bool TryRegister(QueryKind kind, string? id, out QueryToken token)
     {
         Validate(kind, id);
-        var now = _timeProvider.GetUtcNow();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
-        var key = new Key(kind, id);
+        Key key = new Key(kind, id);
 
         if (_active.Count >= _limits.MaxConcurrentQueries ||
             _active.ContainsKey(key) ||
@@ -71,12 +74,12 @@ public sealed class QueryTracker
     public QueryMatch Match(QueryKind kind, string? id = null)
     {
         Validate(kind, id);
-        var now = _timeProvider.GetUtcNow();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
-        var key = new Key(kind, id);
+        Key key = new Key(kind, id);
 
-        if (_active.Remove(key, out var active))
+        if (_active.Remove(key, out Active active))
         {
             _ = _tokens.Remove(active.Token.Value);
             AddHistory(key, Outcome.Completed, now);
@@ -84,7 +87,7 @@ public sealed class QueryTracker
             return QueryMatch.Matched;
         }
 
-        if (_history.TryGetValue(key, out var history))
+        if (_history.TryGetValue(key, out History history))
         {
             if (history.Outcome == Outcome.Completed)
             {
@@ -106,7 +109,7 @@ public sealed class QueryTracker
     /// <exception cref="ArgumentOutOfRangeException">The response kind is not query-trackable.</exception>
     public QueryMatch Match(Response response)
     {
-        var kind = response.Kind switch
+        QueryKind kind = response.Kind switch
         {
             ResponseKind.PrimaryAttributes => QueryKind.PrimaryAttributes,
             ResponseKind.SecondaryAttributes => QueryKind.SecondaryAttributes,
@@ -126,7 +129,7 @@ public sealed class QueryTracker
         };
         var keyboardUnsupported = kind == QueryKind.PrimaryAttributes &&
             CompleteUnsupported(QueryKind.Keyboard);
-        var result = Match(kind);
+        QueryMatch result = Match(kind);
 
         if (keyboardUnsupported)
         {
@@ -141,11 +144,11 @@ public sealed class QueryTracker
     /// <returns>Whether an active query was cancelled.</returns>
     public bool Cancel(QueryToken token)
     {
-        var now = _timeProvider.GetUtcNow();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
 
-        if (!_tokens.Remove(token.Value, out var key) || !_active.Remove(key))
+        if (!_tokens.Remove(token.Value, out Key key) || !_active.Remove(key))
         {
             return false;
         }
@@ -158,7 +161,7 @@ public sealed class QueryTracker
     /// <returns>The number of queries expired by this call.</returns>
     public int Expire()
     {
-        var now = _timeProvider.GetUtcNow();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
         var expired = ExpireCore(now);
         PruneHistory(now);
         return expired;
@@ -168,7 +171,7 @@ public sealed class QueryTracker
     {
         while (_history.Count >= _limits.MaxConcurrentQueries && _historyOrder.Count > 0)
         {
-            var oldest = _historyOrder.Dequeue();
+            Key oldest = _historyOrder.Dequeue();
             _ = _history.Remove(oldest);
         }
 
@@ -178,9 +181,9 @@ public sealed class QueryTracker
 
     private bool CompleteUnsupported(QueryKind kind)
     {
-        var key = new Key(kind, null);
+        Key key = new Key(kind, null);
 
-        if (!_active.Remove(key, out var active))
+        if (!_active.Remove(key, out Active active))
         {
             return false;
         }
@@ -192,14 +195,13 @@ public sealed class QueryTracker
 
     private int ExpireCore(DateTimeOffset now)
     {
-        var expired = _active
+        Key[] expired = [.. _active
             .Where(pair => pair.Value.Deadline <= now)
-            .Select(static pair => pair.Key)
-            .ToArray();
+            .Select(static pair => pair.Key)];
 
-        foreach (var key in expired)
+        foreach (Key key in expired)
         {
-            var active = _active[key];
+            Active active = _active[key];
             _ = _active.Remove(key);
             _ = _tokens.Remove(active.Token.Value);
             AddHistory(key, Outcome.TimedOut, now);
@@ -212,9 +214,9 @@ public sealed class QueryTracker
     {
         while (_historyOrder.Count > 0)
         {
-            var key = _historyOrder.Peek();
+            Key key = _historyOrder.Peek();
 
-            if (!_history.TryGetValue(key, out var history))
+            if (!_history.TryGetValue(key, out History history))
             {
                 _ = _historyOrder.Dequeue();
                 continue;

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Geometry;
@@ -18,9 +21,9 @@ public sealed class FrameRandomizedTests
     [Fact]
     public void Mutate_WhenOperationsAreRandomized_PreservesOwnership()
     {
-        var random = new Random(_seed);
-        var values = new[]
-        {
+        Random random = new Random(_seed);
+        (string Source, string Presentation)[] values =
+        [
             (Source: "a", Presentation: "a"),
             (Source: "界", Presentation: "界"),
             (Source: "e\u0301", Presentation: "e\u0301"),
@@ -30,12 +33,12 @@ public sealed class FrameRandomizedTests
             (Source: "\u200d", Presentation: "�"),
             (Source: "\ufe0f", Presentation: "�"),
             (Source: "🏽", Presentation: "�"),
-        };
-        using var frame = new Frame(new Size(20, 5));
+        ];
+        using Frame frame = new Frame(new Size(20, 5));
 
         for (var operation = 0; operation < 1_000; operation++)
         {
-            var point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
+            Point point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
 
             if (random.Next(4) == 0)
             {
@@ -43,8 +46,8 @@ public sealed class FrameRandomizedTests
             }
             else
             {
-                var (source, presentation) = values[random.Next(values.Length)];
-                var edge = (Edge) random.Next(3);
+                (string? source, string? presentation) = values[random.Next(values.Length)];
+                Edge edge = (Edge) random.Next(3);
                 _ = frame.Canvas.Draw(source.AsSpan(), point, edge: edge);
 
                 if (presentation == "�")
@@ -65,22 +68,22 @@ public sealed class FrameRandomizedTests
         {
             for (var x = 0; x < frame.Size.Width; x++)
             {
-                var point = new Point(x, y);
-                var cell = frame.GetCell(point);
+                Point point = new Point(x, y);
+                CellInfo cell = frame.GetCell(point);
                 var message = $"Seed {_seed}, operation {operation}, cell ({x},{y}).";
 
                 if (cell.IsContinuation)
                 {
                     cell.Lead.Y.ShouldBe(y, message);
                     cell.Lead.X.ShouldBe(x - 1, message);
-                    var lead = frame.GetCell(cell.Lead);
+                    CellInfo lead = frame.GetCell(cell.Lead);
                     lead.IsContinuation.ShouldBeFalse(message);
                     lead.Width.ShouldBe(2, message);
                 }
                 else if (cell.Width == 2)
                 {
                     x.ShouldBeLessThan(frame.Size.Width - 1, message);
-                    var continuation = frame.GetCell(new Point(x + 1, y));
+                    CellInfo continuation = frame.GetCell(new Point(x + 1, y));
                     continuation.IsContinuation.ShouldBeTrue(message);
                     continuation.Lead.ShouldBe(point, message);
                 }

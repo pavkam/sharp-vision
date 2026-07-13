@@ -1,7 +1,11 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Runtime;
 
 using SharpVision.Controls;
 using SharpVision.Terminal.Runtime;
+using SharpVision.Terminal.Transport;
 
 public sealed partial class Application
 {
@@ -34,17 +38,17 @@ public sealed partial class Application
             return ConsoleRunStatus.Redirected;
         }
 
-        using var inputMode = ConsoleInputMode.Enter();
-        var transport = ConsoleHost.CreateTransport();
-        var resize = new ConsoleResizeSource(TimeSpan.FromMilliseconds(100));
-        await using var application = new Application(
+        using ConsoleInputMode inputMode = ConsoleInputMode.Enter();
+        StreamTransport transport = ConsoleHost.CreateTransport();
+        ConsoleResizeSource resize = new ConsoleResizeSource(TimeSpan.FromMilliseconds(100));
+        await using Application application = new Application(
             screen,
             transport,
             resize,
             ConsoleRun.CreateTerminalOptions());
         screen.Attach(application);
 
-        using var cancellation = new CancellationTokenSource();
+        using CancellationTokenSource cancellation = new CancellationTokenSource();
         void OnCancel(object? sender, ConsoleCancelEventArgs eventArgs)
         {
             eventArgs.Cancel = true;

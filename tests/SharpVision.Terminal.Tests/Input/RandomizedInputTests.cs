@@ -1,7 +1,11 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Input;
 
 using System.Text;
 
+using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
@@ -20,14 +24,14 @@ public sealed class RandomizedInputTests
     [Fact]
     public void Decode_WhenBytesAreHostile_RemainsBoundedAndRecoversKnownKey()
     {
-        var random = new Random(_seed);
+        Random random = new Random(_seed);
 
         for (var testCase = 0; testCase < 256; testCase++)
         {
             var hostile = new byte[random.Next(1, 513)];
             random.NextBytes(hostile);
-            var sink = new RecordingInputSink();
-            var options = Terminal.Input.Options.Default with
+            RecordingInputSink sink = new RecordingInputSink();
+            Options options = Options.Default with
             {
                 MaxPasteBytes = 32,
                 Limits = Limits.Default with
@@ -40,9 +44,9 @@ public sealed class RandomizedInputTests
 
             try
             {
-                using var decoder = new InputDecoder(sink, options);
+                using InputDecoder decoder = new InputDecoder(sink, options);
 
-                foreach (var fragment in Fragment(hostile, random))
+                foreach (ReadOnlyMemory<byte> fragment in Fragment(hostile, random))
                 {
                     decoder.Decode(fragment.Span);
                 }

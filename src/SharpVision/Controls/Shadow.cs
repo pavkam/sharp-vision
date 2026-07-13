@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Text;
@@ -5,9 +8,9 @@ using System.Text;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using TerminalAttributes = Terminal.Rendering.Attributes;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using BackgroundMode = BackgroundMode;
+using TerminalAttributes = TerminalAttributes;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Decorates one child with composite or block-glyph visual overflow.</summary>
 public sealed partial class Shadow: Container
@@ -71,7 +74,7 @@ public sealed partial class Shadow: Container
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var child = Child;
+        Control? child = Child;
 
         if (child is null)
         {
@@ -95,7 +98,7 @@ public sealed partial class Shadow: Container
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var background = ControlAppearance.HasOpaqueFill(this, GetVisualState())
+        BackgroundMode background = ControlAppearance.HasOpaqueFill(this, GetVisualState())
             ? BackgroundMode.Opaque
             : BackgroundMode.Transparent;
         ControlChrome.DrawShadow(

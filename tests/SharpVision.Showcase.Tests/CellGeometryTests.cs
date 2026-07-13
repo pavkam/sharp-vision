@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using SharpVision.Layout;
@@ -9,7 +12,7 @@ using SharpVision.Terminal.Runtime;
 
 using Shouldly;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies the Text page geometry specimens render and explain the active contract.</summary>
 public sealed class CellGeometryTests
@@ -18,13 +21,13 @@ public sealed class CellGeometryTests
     [Fact]
     public void Render_WhenTextPageIsSelected_ShowsGeometrySpecimen()
     {
-        using var gallery = new Gallery();
+        using Gallery gallery = new Gallery();
         gallery.Select(IndexOf(gallery, "Text"));
-        var size = new Size(120, 80);
+        Size size = new Size(120, 80);
         new Engine().Layout(gallery, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
         gallery.Render(frame.Canvas);
-        var screen = new Screen(frame);
+        Screen screen = new Screen(frame);
 
         screen.Text.ShouldContain("Cell geometry specimen");
         screen.Text.ShouldContain("orphan");
@@ -35,10 +38,10 @@ public sealed class CellGeometryTests
     [Fact]
     public async Task Input_WhenPixelMetricsAreMissing_ShowsUnavailableCellsAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(120, 80)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -48,11 +51,11 @@ public sealed class CellGeometryTests
             () => gallery.Select(IndexOf(gallery, "Text")),
             TestContext.Current.CancellationToken);
 
-        using var frame = new Frame(application.Size);
+        using Frame frame = new Frame(application.Size);
         await application.Dispatcher.InvokeAsync(
             () => gallery.Render(frame.Canvas),
             TestContext.Current.CancellationToken);
-        var screen = new Screen(frame);
+        Screen screen = new Screen(frame);
 
         screen.Text.ShouldContain("Pixels: unavailable");
         screen.Text.ShouldContain("Cells: unavailable");

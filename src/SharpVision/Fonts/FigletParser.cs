@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Fonts;
 
 using System.Globalization;
@@ -68,7 +71,7 @@ internal static class FigletParser
             throw new InvalidDataException("The FIGfont comment count exceeds the configured limit.");
         }
 
-        var direction = header.Length > 6 &&
+        FigletDirection direction = header.Length > 6 &&
             int.TryParse(header[6], NumberStyles.Integer, CultureInfo.InvariantCulture, out var directionValue)
                 ? Direction(directionValue)
                 : FigletDirection.LeftToRight;
@@ -76,14 +79,14 @@ internal static class FigletParser
             int.TryParse(header[7], NumberStyles.Integer, CultureInfo.InvariantCulture, out var layoutValue)
                 ? layoutValue
                 : -1;
-        var layout = fullLayout >= 0 ? Layout(fullLayout) : Layout(oldLayout);
+        FigletLayout layout = fullLayout >= 0 ? Layout(fullLayout) : Layout(oldLayout);
 
         for (var index = 0; index < comments; index++)
         {
             _ = ReadLine(lines, ref cursor, "comment");
         }
 
-        var glyphs = new Dictionary<int, FigletGlyph>();
+        Dictionary<int, FigletGlyph> glyphs = [];
         for (var code = 32; code <= 126; code++)
         {
             glyphs.Add(code, ReadGlyph(lines, ref cursor, height, limits));
@@ -109,7 +112,7 @@ internal static class FigletParser
             var separator = tag.IndexOfAny([' ', '\t']);
             var token = separator < 0 ? tag : tag[..separator];
             var code = CodePoint(token);
-            var glyph = ReadGlyph(lines, ref cursor, height, limits);
+            FigletGlyph glyph = ReadGlyph(lines, ref cursor, height, limits);
 
             // Negative code tags are FIGlet extension records such as legacy
             // character maps. They own normal glyph rows but do not identify a
@@ -205,7 +208,7 @@ internal static class FigletParser
     private static int CodePoint(string value)
     {
         var sign = 1;
-        var token = value.AsSpan();
+        ReadOnlySpan<char> token = value.AsSpan();
 
         if (!token.IsEmpty && token[0] == '-')
         {
@@ -213,7 +216,7 @@ internal static class FigletParser
             token = token[1..];
         }
 
-        var style = NumberStyles.Integer;
+        NumberStyles style = NumberStyles.Integer;
         var radix = 10;
 
         if (token.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
@@ -264,7 +267,7 @@ internal static class FigletParser
             return FigletLayout.HorizontalFitting;
         }
 
-        var layout = (FigletLayout) value;
+        FigletLayout layout = (FigletLayout) value;
 
         if (value is > 0 and < 64)
         {

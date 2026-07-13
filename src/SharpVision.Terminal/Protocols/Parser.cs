@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Protocols;
 
 using System.Buffers;
@@ -118,7 +121,7 @@ public sealed class Parser: IDisposable
                     position++;
                 }
 
-                var text = input[start..position];
+                ReadOnlySpan<byte> text = input[start..position];
                 Offset = checked(Offset + text.Length);
                 sink.Text(text);
                 continue;
@@ -154,7 +157,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                var diagnostic = new Diagnostic(
+                Diagnostic diagnostic = new Diagnostic(
                     DiagnosticCode.Truncated,
                     CurrentKind,
                     Offset,
@@ -300,8 +303,8 @@ public sealed class Parser: IDisposable
     private void EmitCsi<TSink>(byte final, ref TSink sink)
         where TSink : ISequenceSink
     {
-        var parameters = _parameters.AsSpan(0, _parameterLength);
-        var intermediates = _intermediates.AsSpan(0, _intermediateLength);
+        Span<byte> parameters = _parameters.AsSpan(0, _parameterLength);
+        Span<byte> intermediates = _intermediates.AsSpan(0, _intermediateLength);
         _state = State.Ground;
 
         try
@@ -317,7 +320,7 @@ public sealed class Parser: IDisposable
     private void EmitEscape<TSink>(byte final, ref TSink sink)
         where TSink : ISequenceSink
     {
-        var intermediates = _intermediates.AsSpan(0, _intermediateLength);
+        Span<byte> intermediates = _intermediates.AsSpan(0, _intermediateLength);
         _state = State.Ground;
 
         try
@@ -333,10 +336,10 @@ public sealed class Parser: IDisposable
     private void EmitString<TSink>(StringTerminator terminator, ref TSink sink)
         where TSink : ISequenceSink
     {
-        var payload = _payload.AsSpan(0, _payloadLength);
-        var kind = _stringKind;
-        var parameters = _parameters.AsSpan(0, _parameterLength);
-        var intermediates = _intermediates.AsSpan(0, _intermediateLength);
+        Span<byte> payload = _payload.AsSpan(0, _payloadLength);
+        SequenceKind kind = _stringKind;
+        Span<byte> parameters = _parameters.AsSpan(0, _parameterLength);
+        Span<byte> intermediates = _intermediates.AsSpan(0, _intermediateLength);
         var final = _dcsFinal;
         _state = State.Ground;
 
@@ -399,7 +402,7 @@ public sealed class Parser: IDisposable
 
     private void BeginStringIgnore(DiagnosticCode code, long currentOffset)
     {
-        var kind = _stringKind;
+        SequenceKind kind = _stringKind;
         ClearPayload();
         BeginIgnore(code, kind, currentOffset, State.StringIgnore);
     }
@@ -442,7 +445,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                var diagnostic = new Diagnostic(
+                Diagnostic diagnostic = new Diagnostic(
                     DiagnosticCode.Cancelled,
                     CurrentKind,
                     currentOffset,
@@ -554,7 +557,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        var diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new Diagnostic(
             DiagnosticCode.Malformed,
             SequenceKind.Csi,
             currentOffset,
@@ -632,7 +635,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        var diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new Diagnostic(
             DiagnosticCode.Malformed,
             SequenceKind.Dcs,
             currentOffset,
@@ -665,7 +668,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                var diagnostic = new Diagnostic(
+                Diagnostic diagnostic = new Diagnostic(
                     DiagnosticCode.Cancelled,
                     CurrentKind,
                     currentOffset,
@@ -834,7 +837,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        var diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new Diagnostic(
             DiagnosticCode.Malformed,
             SequenceKind.Escape,
             currentOffset,
@@ -899,7 +902,7 @@ public sealed class Parser: IDisposable
     {
         Debug.Assert(IsIgnoring, "A pending diagnostic belongs to an ignore state.");
 
-        var diagnostic = new Diagnostic(
+        Diagnostic diagnostic = new Diagnostic(
             _pendingCode,
             _pendingKind,
             _pendingOffset,

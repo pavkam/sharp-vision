@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Controls;
@@ -21,16 +24,16 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenTitleAndChildArePresent_DrawsFramedChromeAndInterior()
     {
-        var child = new ProbeControl(new Size(3, 1)) { Content = "app".AsMemory() };
-        var window = new Window
+        ProbeControl child = new ProbeControl(new Size(3, 1)) { Content = "app".AsMemory() };
+        Window window = new Window
         {
             Title = "Tools",
             Child = child,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        var size = new Size(10, 4);
+        Size size = new Size(10, 4);
         new Engine().Layout(window, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
 
         window.Render(frame.Canvas);
 
@@ -48,22 +51,22 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
-        var style = ThemeTestSupport.OverlayStyle<Window>(
+        ControlStyle<Window> style = ThemeTestSupport.OverlayStyle<Window>(
             (State.Normal, new ThemeOverlay(
                 attributes: Attributes.Overline,
                 underline: Underline.Paired,
                 underlineColor: Color.Indexed(6))));
-        var window = new Window
+        Window window = new Window
         {
             Bounds = new Rect(0, 0, 4, 3),
             Background = Color.Indexed(0),
             Style = style,
         };
-        using var frame = new Frame(new Size(4, 3));
+        using Frame frame = new Frame(new Size(4, 3));
 
         window.Render(frame.Canvas);
 
-        var rendered = frame.GetCell(default).Style;
+        Style rendered = frame.GetCell(default).Style;
         rendered.Attributes.ShouldBe(Attributes.Overline);
         rendered.Underline.ShouldBe(Underline.Paired);
         rendered.UnderlineColor.ShouldBe(Color.Indexed(6));
@@ -73,14 +76,14 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenBlockShadowIsEnabled_DrawsOutsideBodyWithoutCoveringContent()
     {
-        var window = new Window
+        Window window = new Window
         {
             Bounds = new Rect(0, 0, 4, 3),
             HasShadow = true,
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowOffset = new Point(1, 1),
         };
-        using var frame = new Frame(new Size(6, 5));
+        using Frame frame = new Frame(new Size(6, 5));
 
         window.Render(frame.Canvas);
 
@@ -94,10 +97,10 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenTitleExceedsFrameWidth_PreservesTopCorners()
     {
-        var window = new Window { Title = "A deliberately long title" };
-        var size = new Size(6, 2);
+        Window window = new Window { Title = "A deliberately long title" };
+        Size size = new Size(6, 2);
         new Engine().Layout(window, size);
-        using var frame = new Frame(size);
+        using Frame frame = new Frame(size);
 
         window.Render(frame.Canvas);
 
@@ -113,13 +116,13 @@ public sealed class WindowTests
         WindowTitlePlacement placement,
         int expectedTitleColumn)
     {
-        var window = new Window
+        Window window = new Window
         {
             Bounds = new Rect(0, 0, 20, 3),
             Title = "Hi",
             TitlePlacement = placement,
         };
-        using var frame = new Frame(new Size(20, 3));
+        using Frame frame = new Frame(new Size(20, 3));
 
         window.Render(frame.Canvas);
 
@@ -134,14 +137,14 @@ public sealed class WindowTests
     {
         var defaults = 0;
         var cancels = 0;
-        var content = new Stack();
-        var accept = new Button { IsDefault = true };
-        var cancel = new Button { IsCancel = true };
+        Stack content = new Stack();
+        Button accept = new Button { IsDefault = true };
+        Button cancel = new Button { IsCancel = true };
         accept.Click += (_, _) => defaults++;
         cancel.Click += (_, _) => cancels++;
         content.Children.Add(accept);
         content.Children.Add(cancel);
-        var window = new Window { Child = content };
+        Window window = new Window { Child = content };
 
         Router.Route(window, Events.Key, Key(Code.Enter));
         Router.Route(window, Events.Key, Key(Code.Escape));

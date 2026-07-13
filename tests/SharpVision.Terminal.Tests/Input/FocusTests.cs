@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Input;
 
 using SharpVision.Terminal.Input;
@@ -20,8 +23,8 @@ public sealed class FocusTests
 
         for (var split = 0; split <= bytes.Length; split++)
         {
-            var sink = new RecordingInputSink();
-            using var decoder = new Decoder(sink);
+            RecordingInputSink sink = new RecordingInputSink();
+            using Decoder decoder = new Decoder(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
             decoder.Complete();

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Unicode;
 
 using System.Globalization;
@@ -35,10 +38,10 @@ public sealed class ConformanceTests
                 continue;
             }
 
-            var test = Parse(content);
-            var actual = new List<int> { 0 };
+            Case test = Parse(content);
+            List<int> actual = new List<int> { 0 };
 
-            foreach (var segment in Graphemes.Enumerate(test.Value.AsSpan()))
+            foreach (Grapheme segment in Graphemes.Enumerate(test.Value.AsSpan()))
             {
                 actual.Add(segment.Offset + segment.Length);
             }
@@ -51,8 +54,8 @@ public sealed class ConformanceTests
     private static Case Parse(string content)
     {
         var tokens = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var value = new StringBuilder();
-        var boundaries = new List<int>();
+        StringBuilder value = new StringBuilder();
+        List<int> boundaries = new List<int>();
 
         for (var index = 0; index < tokens.Length; index += 2)
         {

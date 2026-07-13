@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Geometry;
 
 /// <summary>Represents a signed zero-based cell or pixel coordinate.</summary>

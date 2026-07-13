@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Layout;
@@ -34,16 +37,16 @@ internal sealed class ThemingShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var panel = new ShowcasePanel
+        ShowcasePanel panel = new ShowcasePanel
         {
             Foreground = Palette.Text,
             Background = Palette.Surface,
             BorderColor = Palette.Border,
         };
-        var placement = new ControlStack { Spacing = 1 };
+        ControlStack placement = new ControlStack { Spacing = 1 };
         placement.Children.Add(new ControlText("Label placement") { Foreground = Palette.Muted });
-        var left = new ControlButton { Content = new ControlText("Left") };
-        var right = new ControlButton { Content = new ControlText("Right") };
+        ControlButton left = new ControlButton { Content = new ControlText("Left") };
+        ControlButton right = new ControlButton { Content = new ControlText("Right") };
         left.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Left;
         right.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Right;
         placement.Children.Add(new ControlStack

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Collections;
@@ -32,7 +35,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
         {
             ArgumentNullException.ThrowIfNull(value);
             _owner.VerifyMutable();
-            var previous = _items[index];
+            Control previous = _items[index];
 
             if (ReferenceEquals(previous, value))
             {
@@ -134,7 +137,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
             throw new InvalidOperationException("Only a capacity-one collection supports SetOnly.");
         }
 
-        var previous = _items.Count == 0 ? null : _items[0];
+        Control? previous = _items.Count == 0 ? null : _items[0];
 
         if (ReferenceEquals(previous, item))
         {
@@ -192,7 +195,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
     public void RemoveAt(int index)
     {
         _owner.VerifyMutable();
-        var item = _items[index];
+        Control item = _items[index];
         _items.RemoveAt(index);
         Detach(item);
         _owner.Invalidate(Invalidation.Measure);

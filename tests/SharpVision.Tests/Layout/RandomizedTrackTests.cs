@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Layout;
 
 using SharpVision.Layout;
@@ -12,13 +15,13 @@ public sealed class RandomizedTrackTests
     public void Resolve_WhenInputsAreRandomized_PreservesBoundedInvariants()
     {
         const int caseCount = 20_000;
-        var random = new Random(0x4A70);
+        Random random = new Random(0x4A70);
 
         for (var sample = 0; sample < caseCount; sample++)
         {
             var count = random.Next(1, 17);
             var available = random.Next(0, 501);
-            var lengths = new Length[count];
+            Length[] lengths = new Length[count];
             var automatic = new int[count];
             var minimum = new int[count];
             var maximum = new int[count];

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Rendering;
 
 /// <summary>Identifies the center-to-edge connections owned by one line cell.</summary>

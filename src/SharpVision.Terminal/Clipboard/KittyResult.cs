@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Clipboard;
 
 /// <summary>Owns completed Kitty clipboard MIME data until disposal.</summary>
@@ -20,7 +23,7 @@ public sealed class KittyResult: IDisposable
             return;
         }
 
-        foreach (var item in Items)
+        foreach (KittyMimeData item in Items)
         {
             item.Clear();
         }

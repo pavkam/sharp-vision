@@ -1,9 +1,12 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalAttributes = TerminalAttributes;
+using TerminalStyle = TerminalStyle;
 
 /// <summary>Defines styled text carrying a semantic terminal hyperlink target.</summary>
 public sealed class Hyperlink: Inline

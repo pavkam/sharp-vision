@@ -1,11 +1,14 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Showcase;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using Wrapping = SharpVision.Text.Wrapping;
+using TerminalAttributes = Terminal.Rendering.Attributes;
+using Wrapping = Text.Wrapping;
 
 /// <summary>
 /// Base documentation page control. Subclasses add live specimens by overriding
@@ -33,8 +36,8 @@ internal abstract class ShowcasePane: ControlStack
         ArgumentException.ThrowIfNullOrWhiteSpace(summary);
         ArgumentNullException.ThrowIfNull(interactions);
         ArgumentNullException.ThrowIfNull(properties);
-        var copiedInteractions = interactions.ToArray();
-        var copiedProperties = properties.ToArray();
+        InteractionDescription[] copiedInteractions = [.. interactions];
+        PropertyDescription[] copiedProperties = [.. properties];
         ValidateMetadata(copiedInteractions, copiedProperties);
 
         Name = name;
@@ -49,7 +52,7 @@ internal abstract class ShowcasePane: ControlStack
         Children.Add(Section("Practical recipe"));
         Children.Add(Narrative(summary, _interactions));
         Children.Add(Section("Examples"));
-        var examples = new ControlStack { Spacing = 1 };
+        ControlStack examples = new ControlStack { Spacing = 1 };
         BuildExamples(examples);
         Children.Add(Card(examples));
         Children.Add(Section("Technical details"));
@@ -106,7 +109,7 @@ internal abstract class ShowcasePane: ControlStack
 
     private static ControlBorder Heading(string title, string summary)
     {
-        var text = new ControlRichText
+        ControlRichText text = new ControlRichText
         {
             Padding = new Thickness(1, 0),
             Style = Palette.HeaderText(),
@@ -136,7 +139,7 @@ internal abstract class ShowcasePane: ControlStack
 
     private static ControlRichText Section(string title)
     {
-        var text = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlRichText text = new ControlRichText { Wrapping = Wrapping.Word };
         text.Inlines.Add(new ControlRun(title)
         {
             Foreground = Palette.Warning,
@@ -165,7 +168,7 @@ internal abstract class ShowcasePane: ControlStack
         ArgumentException.ThrowIfNullOrWhiteSpace(summary);
         ArgumentNullException.ThrowIfNull(interactions);
 
-        var text = new ControlRichText
+        ControlRichText text = new ControlRichText
         {
             Padding = new Thickness(1, 0),
             Style = Palette.HeaderText(),
@@ -186,7 +189,7 @@ internal abstract class ShowcasePane: ControlStack
 
         for (var index = 0; index < interactions.Length; index++)
         {
-            var interaction = interactions[index];
+            InteractionDescription interaction = interactions[index];
             if (index > 0)
             {
                 text.Inlines.Add(new ControlRun(" "));
@@ -210,7 +213,7 @@ internal abstract class ShowcasePane: ControlStack
 
     private ControlTable TechnicalDetails()
     {
-        var table = new ControlTable
+        ControlTable table = new ControlTable
         {
             ShowGridLines = true,
             GridLineColor = Palette.Border,
@@ -223,7 +226,7 @@ internal abstract class ShowcasePane: ControlStack
         table.Columns.Add(TableColumn.Fixed("Default", 18));
         table.Columns.Add(TableColumn.Fill("Meaning"));
 
-        foreach (var property in _properties)
+        foreach (PropertyDescription property in _properties)
         {
             table.Rows.Add(new TableRow([
                 new ControlText(property.Name) { Foreground = Palette.Accent, Attributes = TerminalAttributes.Bold },
@@ -238,7 +241,7 @@ internal abstract class ShowcasePane: ControlStack
 
     private ControlTable InteractionTable()
     {
-        var table = new ControlTable
+        ControlTable table = new ControlTable
         {
             ShowGridLines = true,
             GridLineColor = Palette.Border,
@@ -250,7 +253,7 @@ internal abstract class ShowcasePane: ControlStack
         table.Columns.Add(TableColumn.Fixed("Behavior", 28));
         table.Columns.Add(TableColumn.Fill("Result"));
 
-        foreach (var interaction in _interactions)
+        foreach (InteractionDescription interaction in _interactions)
         {
             table.Rows.Add(new TableRow([
                 new ControlText(interaction.Input) { Foreground = Palette.Accent, Attributes = TerminalAttributes.Bold },

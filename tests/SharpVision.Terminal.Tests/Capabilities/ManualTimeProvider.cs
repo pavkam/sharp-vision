@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 /// <summary>Provides deterministic query-deadline time.</summary>
@@ -26,7 +29,7 @@ internal sealed class ManualTimeProvider: TimeProvider
         ArgumentNullException.ThrowIfNull(callback);
         ValidateDuration(dueTime, nameof(dueTime));
         ValidateDuration(period, nameof(period));
-        var timer = new ManualTimer(this, callback, state);
+        ManualTimer timer = new ManualTimer(this, callback, state);
 
         lock (_gate)
         {
@@ -51,7 +54,7 @@ internal sealed class ManualTimeProvider: TimeProvider
             due = [.. _timers.Where(timer => timer.Prepare(_now))];
         }
 
-        foreach (var timer in due)
+        foreach (ManualTimer timer in due)
         {
             timer.Invoke();
         }

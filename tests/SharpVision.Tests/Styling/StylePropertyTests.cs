@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -14,7 +17,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void RegisterClassDefault_WhenTypeIsDuplicated_ThrowsBeforePublication()
     {
-        var property = StyleProperty<int>.Register<Control>("probe-default-dup", 0, Impact.Render);
+        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-default-dup", 0, Impact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(7);
 
         _ = Should.Throw<ArgumentException>(() => property.RegisterClassDefault<ProbeControl>(8));
@@ -24,9 +27,9 @@ public sealed class StylePropertyTests
     [Fact]
     public void Resolve_WhenClassDefaultExists_UsesMostDerivedDefault()
     {
-        var property = StyleProperty<int>.Register<Control>("probe-class-host", 0, Impact.Render);
+        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-class-host", 0, Impact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(7);
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
 
         ThemeTestSupport.Resolve(control, property, State.Normal).ShouldBe(7);
     }
@@ -35,7 +38,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void TryGetClassDefault_WhenBaseAndDerivedRegistered_PrefersMostDerived()
     {
-        var property = StyleProperty<int>.Register<Control>("probe-derived-precedence", 0, Impact.Render);
+        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-derived-precedence", 0, Impact.Render);
         _ = property.RegisterClassDefault<Control>(1);
         _ = property.RegisterClassDefault<ProbeControl>(2);
 
@@ -47,9 +50,9 @@ public sealed class StylePropertyTests
     [Fact]
     public void GetProperties_IncludesInheritedAndDeclaredProperties()
     {
-        var declared = DemoPanel.LabelPlacementProperty;
+        StyleProperty<DemoLabelPlacement> declared = DemoPanel.LabelPlacementProperty;
 
-        var properties = StylePropertyRegistry.GetProperties(typeof(DemoPanel));
+        IReadOnlyList<IStyleProperty> properties = StylePropertyRegistry.GetProperties(typeof(DemoPanel));
 
         properties.ShouldContain(declared);
         properties.ShouldContain(Control.ForegroundProperty);
@@ -59,7 +62,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void FindProperty_ReturnsRegisteredPropertyByName()
     {
-        var declared = DemoPanel.LabelPlacementProperty;
+        StyleProperty<DemoLabelPlacement> declared = DemoPanel.LabelPlacementProperty;
 
         StylePropertyRegistry.FindProperty(typeof(DemoPanel), "label-placement").ShouldBeSameAs(declared);
         StylePropertyRegistry.FindProperty(typeof(DemoPanel), "missing").ShouldBeNull();
@@ -69,8 +72,8 @@ public sealed class StylePropertyTests
     [Fact]
     public void Resolve_WithoutControl_UsesThemeCascadeForType()
     {
-        var theme = new Theme();
-        var style = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(7));
         theme.SetStyle(style);
 

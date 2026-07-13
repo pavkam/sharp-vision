@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using System.Text;
@@ -20,10 +23,10 @@ public sealed class FrameTests
     public void Clone_WhenTextExceedsInitialArena_PreservesEveryGrapheme()
     {
         const int length = 300;
-        using var frame = new Frame(new Size(length, 1));
+        using Frame frame = new Frame(new Size(length, 1));
         _ = frame.Canvas.Draw(new string('x', length), default, Style.Default);
 
-        using var clone = frame.Clone();
+        using Frame clone = frame.Clone();
 
         clone.Size.ShouldBe(frame.Size);
         clone.GetGraphemeByteCount(new Point(0, 0)).ShouldBe(1);
@@ -61,7 +64,7 @@ public sealed class FrameTests
     [Fact]
     public void Constructor_WhenSizeIsZero_CreatesSuspendedFrame()
     {
-        using var frame = new Frame(new Size(0, 0));
+        using Frame frame = new Frame(new Size(0, 0));
 
         frame.Size.ShouldBe(new Size(0, 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(
@@ -74,7 +77,7 @@ public sealed class FrameTests
     [Fact]
     public void GetCell_WhenPointIsOutsideFrame_ThrowsArgumentOutOfRangeException()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => frame.GetCell(new Point(-1, 0)));
@@ -88,7 +91,7 @@ public sealed class FrameTests
     [Fact]
     public void CopyGrapheme_WhenDestinationIsTooSmall_ThrowsArgumentException()
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("界".AsSpan(), new Point(0, 0));
 
         frame.GetGraphemeByteCount(new Point(0, 0)).ShouldBe(3);
@@ -106,8 +109,8 @@ public sealed class FrameTests
     [Fact]
     public void Clear_WhenFrameContainsText_ResetsEveryCell()
     {
-        using var frame = new Frame(new Size(2, 1));
-        var style = new Style(attributes: Attributes.Bold);
+        using Frame frame = new Frame(new Size(2, 1));
+        Style style = new Style(attributes: Attributes.Bold);
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
 
         frame.Clear();
@@ -123,7 +126,7 @@ public sealed class FrameTests
     [Fact]
     public void Dispose_WhenCalled_RejectsFurtherAccess()
     {
-        var frame = new Frame(new Size(1, 1));
+        Frame frame = new Frame(new Size(1, 1));
 
         frame.Dispose();
         frame.Dispose();

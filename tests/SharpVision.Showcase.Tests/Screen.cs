@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using System.Text;
@@ -50,7 +53,7 @@ internal sealed class Screen
         {
             for (var x = 0; x < _frame.Size.Width; x++)
             {
-                var cell = _frame.GetCell(new Point(x, y));
+                CellInfo cell = _frame.GetCell(new Point(x, y));
 
                 if (cell.Style.Foreground != Color.Default || cell.Style.Background != Color.Default)
                 {
@@ -70,8 +73,8 @@ internal sealed class Screen
         {
             for (var x = 0; x < _frame.Size.Width; x++)
             {
-                var point = new Point(x, y);
-                var cell = _frame.GetCell(point);
+                Point point = new Point(x, y);
+                CellInfo cell = _frame.GetCell(point);
 
                 if (!cell.IsContinuation)
                 {
@@ -83,7 +86,7 @@ internal sealed class Screen
                     throw new InvalidDataException($"Continuation {point} has invalid lead {cell.Lead}.");
                 }
 
-                var lead = _frame.GetCell(cell.Lead);
+                CellInfo lead = _frame.GetCell(cell.Lead);
 
                 if (lead.IsContinuation || lead.Width != 2)
                 {
@@ -95,7 +98,7 @@ internal sealed class Screen
 
     private static string CopyText(Frame frame)
     {
-        var text = new StringBuilder();
+        StringBuilder text = new StringBuilder();
 
         for (var y = 0; y < frame.Size.Height; y++)
         {
@@ -106,8 +109,8 @@ internal sealed class Screen
 
             for (var x = 0; x < frame.Size.Width; x++)
             {
-                var point = new Point(x, y);
-                var cell = frame.GetCell(point);
+                Point point = new Point(x, y);
+                CellInfo cell = frame.GetCell(point);
 
                 if (cell.IsContinuation)
                 {

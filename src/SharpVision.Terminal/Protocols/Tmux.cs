@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Protocols;
 
 using System.Buffers;
@@ -34,7 +37,7 @@ public static class Tmux
         }
 
         var length = checked(Header.Length + sequence.Length + escapeCount + Terminator.Length);
-        var output = destination.GetSpan(length);
+        Span<byte> output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
         var written = 0;
         Header.CopyTo(output);
@@ -68,7 +71,7 @@ public static class Tmux
             return false;
         }
 
-        var source = payload[Prefix.Length..];
+        ReadOnlySpan<byte> source = payload[Prefix.Length..];
         var length = 0;
 
         for (var index = 0; index < source.Length; index++)
@@ -87,7 +90,7 @@ public static class Tmux
             length++;
         }
 
-        var output = destination.GetSpan(length);
+        Span<byte> output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
         var written = 0;
 

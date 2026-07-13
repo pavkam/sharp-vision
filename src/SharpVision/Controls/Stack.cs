@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Buffers;
@@ -7,7 +10,7 @@ using System.Diagnostics.CodeAnalysis;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Arranges owned children sequentially on one terminal-cell axis.</summary>
 [SuppressMessage(
@@ -71,7 +74,7 @@ public class Stack: Container
         var cross = 0;
         var count = 0;
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.Measure(Orientation == Orientation.Vertical
                 ? new Constraint(constraint.Width, height: null)
@@ -109,18 +112,18 @@ public class Stack: Container
             return;
         }
 
-        var rentedChildren = ArrayPool<Control>.Shared.Rent(count);
-        var rentedLengths = ArrayPool<Length>.Shared.Rent(count);
+        Control[] rentedChildren = ArrayPool<Control>.Shared.Rent(count);
+        Length[] rentedLengths = ArrayPool<Length>.Shared.Rent(count);
         var rentedAutomatic = ArrayPool<int>.Shared.Rent(count);
         var rentedMinimum = ArrayPool<int>.Shared.Rent(count);
         var rentedMaximum = ArrayPool<int>.Shared.Rent(count);
         var rentedExtents = ArrayPool<int>.Shared.Rent(count);
-        var children = rentedChildren.AsSpan(0, count);
-        var lengths = rentedLengths.AsSpan(0, count);
-        var automatic = rentedAutomatic.AsSpan(0, count);
-        var minimum = rentedMinimum.AsSpan(0, count);
-        var maximum = rentedMaximum.AsSpan(0, count);
-        var extents = rentedExtents.AsSpan(0, count);
+        Span<Control> children = rentedChildren.AsSpan(0, count);
+        Span<Length> lengths = rentedLengths.AsSpan(0, count);
+        Span<int> automatic = rentedAutomatic.AsSpan(0, count);
+        Span<int> minimum = rentedMinimum.AsSpan(0, count);
+        Span<int> maximum = rentedMaximum.AsSpan(0, count);
+        Span<int> extents = rentedExtents.AsSpan(0, count);
 
         try
         {
@@ -197,7 +200,7 @@ public class Stack: Container
     {
         var count = 0;
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             if (child.Visibility != Visibility.Collapsed)
             {
@@ -220,7 +223,7 @@ public class Stack: Container
         for (var offset = 0; offset < Children.Count; offset++)
         {
             var index = Reverse ? Children.Count - offset - 1 : offset;
-            var child = Children[index];
+            Control child = Children[index];
 
             if (child.Visibility == Visibility.Collapsed)
             {
@@ -244,7 +247,7 @@ public class Stack: Container
     {
         var result = 0;
 
-        foreach (var child in children)
+        foreach (Control child in children)
         {
             result = Add(
                 result,
@@ -267,12 +270,12 @@ public class Stack: Container
 
         for (var index = 0; index < children.Length; index++)
         {
-            var child = children[index];
+            Control child = children[index];
             var margin = Orientation == Orientation.Vertical
                 ? child.Margin.Vertical
                 : child.Margin.Horizontal;
             var outer = Add(extents[index], margin);
-            var slot = Orientation == Orientation.Vertical
+            Rect slot = Orientation == Orientation.Vertical
                 ? new Rect(bounds.X, origin, bounds.Width, outer)
                 : new Rect(origin, bounds.Y, outer, bounds.Height);
             child.Arrange(

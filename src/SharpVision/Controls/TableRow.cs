@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 /// <summary>Owns one ordered detached sequence of Table cell controls until a Table takes ownership.</summary>
@@ -19,9 +22,9 @@ public sealed class TableRow
             throw new ArgumentException("A table row requires at least one cell.", nameof(cells));
         }
 
-        var seen = new HashSet<Control>();
+        HashSet<Control> seen = [];
 
-        foreach (var cell in _cells)
+        foreach (Control cell in _cells)
         {
             ArgumentNullException.ThrowIfNull(cell);
 

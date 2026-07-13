@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Capabilities;
 
 using System.Buffers;
@@ -88,7 +91,7 @@ public sealed class Negotiator
 
         IsStarted = true;
         Deadline = _timeProvider.GetUtcNow() + _options.Limits.QueryTimeout;
-        var writer = new Writer(destination);
+        Writer writer = new Writer(destination);
 
         if (queryKeyboard)
         {
@@ -121,7 +124,7 @@ public sealed class Negotiator
             return AcceptPrivateMode(in response);
         }
 
-        var match = _tracker.Match(response);
+        QueryMatch match = _tracker.Match(response);
         LastDiagnostic = _tracker.LastDiagnostic;
 
         if (match == QueryMatch.Matched)
@@ -198,7 +201,7 @@ public sealed class Negotiator
 
     private QueryMatch AcceptPrivateMode(in Response response)
     {
-        var values = response.Values.Span;
+        ReadOnlySpan<int> values = response.Values.Span;
 
         if (values.Length != 2)
         {
@@ -274,7 +277,7 @@ public sealed class Negotiator
 
     private void Publish()
     {
-        var queries = new Queries
+        Queries queries = new Queries
         {
             SynchronizedOutput = _synchronizedOutput,
             FocusReporting = _focusReporting,

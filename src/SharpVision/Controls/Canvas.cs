@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -60,7 +63,7 @@ public sealed class Canvas: Container
     public static void SetLeft(Control control, Length? value)
     {
         Validate(control, value);
-        var position = _positions.GetOrCreateValue(control);
+        Position position = _positions.GetOrCreateValue(control);
 
         if (position.Left != value)
         {
@@ -79,7 +82,7 @@ public sealed class Canvas: Container
     public static void SetTop(Control control, Length? value)
     {
         Validate(control, value);
-        var position = _positions.GetOrCreateValue(control);
+        Position position = _positions.GetOrCreateValue(control);
 
         if (position.Top != value)
         {
@@ -98,7 +101,7 @@ public sealed class Canvas: Container
     public static void SetRight(Control control, Length? value)
     {
         Validate(control, value);
-        var position = _positions.GetOrCreateValue(control);
+        Position position = _positions.GetOrCreateValue(control);
 
         if (position.Right != value)
         {
@@ -117,7 +120,7 @@ public sealed class Canvas: Container
     public static void SetBottom(Control control, Length? value)
     {
         Validate(control, value);
-        var position = _positions.GetOrCreateValue(control);
+        Position position = _positions.GetOrCreateValue(control);
 
         if (position.Bottom != value)
         {
@@ -161,7 +164,7 @@ public sealed class Canvas: Container
         var width = 0;
         var height = 0;
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.Measure(new Constraint(width: null, height: null));
 
@@ -170,7 +173,7 @@ public sealed class Canvas: Container
                 continue;
             }
 
-            var position = GetPosition(child);
+            Position? position = GetPosition(child);
             var outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
             var outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
             width = Math.Max(width, Add(Add(Fixed(position?.Left), outerWidth), Fixed(position?.Right)));
@@ -185,7 +188,7 @@ public sealed class Canvas: Container
     /// <inheritdoc/>
     protected override void ArrangeCore(Rect bounds)
     {
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
             {
@@ -193,7 +196,7 @@ public sealed class Canvas: Container
                 continue;
             }
 
-            var position = GetPosition(child);
+            Position? position = GetPosition(child);
             var left = Resolve(position?.Left, bounds.Width);
             var right = Resolve(position?.Right, bounds.Width);
             var top = Resolve(position?.Top, bounds.Height);
@@ -230,7 +233,7 @@ public sealed class Canvas: Container
     private static Position? GetPosition(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return _positions.TryGetValue(control, out var position) ? position : null;
+        return _positions.TryGetValue(control, out Position? position) ? position : null;
     }
 
     private static void InvalidateParent(Control control)
@@ -248,7 +251,7 @@ public sealed class Canvas: Container
         int leading,
         int trailing)
     {
-        var length = horizontal ? child.Width : child.Height;
+        Length length = horizontal ? child.Width : child.Height;
         var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
 
         if (length.Kind == Kind.Auto &&

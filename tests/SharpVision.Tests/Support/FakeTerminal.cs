@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Support;
 
 using System.Threading.Channels;
@@ -100,7 +103,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     /// <inheritdoc/>
     public ValueTask FlushAsync(CancellationToken cancellationToken)
     {
-        var gate = _flushGate;
+        TaskCompletionSource? gate = _flushGate;
         return gate is null
             ? ValueTask.CompletedTask
             : new ValueTask(gate.Task.WaitAsync(cancellationToken));

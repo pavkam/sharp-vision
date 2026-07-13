@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Input;
@@ -5,10 +8,10 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using KeyAction = Terminal.Input.Action;
-using TerminalAttributes = Terminal.Rendering.Attributes;
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using BackgroundMode = BackgroundMode;
+using KeyAction = KeyAction;
+using TerminalAttributes = TerminalAttributes;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Frames one owned child as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
 public sealed partial class Window: Container
@@ -89,7 +92,7 @@ public sealed partial class Window: Container
     /// <inheritdoc/>
     protected override Size MeasureCore(Constraint constraint)
     {
-        var child = Child;
+        Control? child = Child;
         var titleWidth = Title.Length == 0 ? 0 : Add(2, Terminal.Unicode.Width.Measure(Title).Cells);
 
         if (child is null)
@@ -122,8 +125,8 @@ public sealed partial class Window: Container
             return;
         }
 
-        var border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
-        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        TerminalStyle border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        BackgroundMode background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, background);
 
         if (!string.IsNullOrEmpty(Title) && Bounds.Width > 3)
@@ -138,7 +141,7 @@ public sealed partial class Window: Container
                 WindowTitlePlacement.Right => Math.Max(0, available - cells),
                 _ => throw new InvalidOperationException("The validated title placement is unknown."),
             };
-            var title = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, available, 1));
+            TerminalCanvas title = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, available, 1));
             _ = title.Draw(
                 text.AsSpan(),
                 new Point(Bounds.X + 1 + offset, Bounds.Y),
@@ -162,7 +165,7 @@ public sealed partial class Window: Container
             return;
         }
 
-        var button = key.Stroke.Code == Code.Enter
+        Button? button = key.Stroke.Code == Code.Enter
             ? FindButton(this, static candidate => candidate.IsDefault)
             : key.Stroke.Code == Code.Escape
                 ? FindButton(this, static candidate => candidate.IsCancel)

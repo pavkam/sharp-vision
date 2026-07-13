@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using System.Buffers;
@@ -17,8 +20,8 @@ public sealed class ModesTests
     [Fact]
     public void Mode_WhenToggled_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Modes.CursorVisible(writer, true);
         Modes.CursorVisible(writer, false);
@@ -41,7 +44,7 @@ public sealed class ModesTests
     [Fact]
     public void SetPrivate_WhenModeIsNotPositive_ThrowsBeforeWriting()
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Modes.SetPrivate(new Writer(destination), 0, enabled: true));
@@ -59,8 +62,8 @@ public sealed class ModesTests
     [InlineData(MouseTracking.Any, 1003)]
     public void Mouse_WhenTrackingVaries_WritesExactMode(MouseTracking tracking, int mode)
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Modes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: true);
         Modes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: false);
@@ -83,7 +86,7 @@ public sealed class ModesTests
         MouseCoordinates coordinates,
         int mode)
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         Modes.Mouse(new Writer(destination), MouseTracking.Press, coordinates, enabled: true);
 
@@ -98,8 +101,8 @@ public sealed class ModesTests
     [Fact]
     public void Mouse_WhenValueIsInvalid_ThrowsBeforeWriting()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Modes.Mouse(writer, 0, MouseCoordinates.Sgr, enabled: true));

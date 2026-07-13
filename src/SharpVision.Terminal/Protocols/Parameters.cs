@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
@@ -90,7 +93,7 @@ public ref struct Parameters
 
         _count++;
         var start = _position;
-        var status = ParameterStatus.Value;
+        ParameterStatus status = ParameterStatus.Value;
 
         // Preserve the delimiter kind because colon fields have different
         // semantics from independent semicolon parameters.

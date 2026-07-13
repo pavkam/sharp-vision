@@ -17,6 +17,7 @@
     <Product>SharpVision</Product>
     <Description>High-performance terminal protocols and user interface toolkit for .NET.</Description>
     <Copyright>Copyright (c) SharpVision contributors.</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsTestProject)' == 'true' Or '$(OutputType)' == 'Exe'">

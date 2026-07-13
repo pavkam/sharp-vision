@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -14,8 +17,8 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenOscEndsWithSt_DeliversPayloadAndTerminator()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b]2;title\u001b\\"u8, ref sink);
 
@@ -28,8 +31,8 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenOscEndsWithAllowedBell_DeliversBellTerminator()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b]2;title\a"u8, ref sink);
 
@@ -42,9 +45,9 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenOscContainsDisallowedBell_ReportsMalformedAtSt()
     {
-        var limits = Limits.Default with { AcceptBellTerminatedOsc = false };
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        Limits limits = Limits.Default with { AcceptBellTerminatedOsc = false };
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b]2;secret\aignored\u001b\\X"u8, ref sink);
 
@@ -66,8 +69,8 @@ public sealed class ParserStringTests
         string input,
         SequenceKind kind)
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse(Encoding.ASCII.GetBytes(input), ref sink);
 
@@ -80,8 +83,8 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenApcContainsBell_PreservesBellUntilSt()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b_a\ab\u001b\\"u8, ref sink);
 
@@ -92,8 +95,8 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenStringContainsNonTerminatingEscape_PreservesBothBytes()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b]2;a\u001bXb\u001b\\"u8, ref sink);
 
@@ -105,8 +108,8 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenCanCancelsOsc_ReportsAndRecoversToText()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
         byte[] input = [0x1b, (byte) ']', (byte) '2', (byte) ';', (byte) 'x', 0x18, (byte) 'Y'];
 
         parser.Parse(input, ref sink);
@@ -121,8 +124,8 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenStringsAreAdjacent_DeliversEachSequence()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b]2;a\u001b\\\u001b_b\u001b\\"u8, ref sink);
 
@@ -142,9 +145,9 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenEightBitStringsAreEnabled_DeliversOsc()
     {
-        var limits = Limits.Default with { AcceptEightBitControls = true };
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        Limits limits = Limits.Default with { AcceptEightBitControls = true };
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
         byte[] input = [0x9d, (byte) '2', (byte) ';', (byte) 'x', 0x9c];
 
         parser.Parse(input, ref sink);

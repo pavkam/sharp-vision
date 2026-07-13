@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Layout;
@@ -38,8 +41,8 @@ internal sealed class ComboBoxShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var status = new ControlText("Selected: Comfortable") { Foreground = Palette.Muted };
-        var comboBox = new ControlComboBox
+        ControlText status = new ControlText("Selected: Comfortable") { Foreground = Palette.Muted };
+        ControlComboBox comboBox = new ControlComboBox
         {
             Width = Length.Cells(28),
             Items = ["Compact", "Comfortable", "Spacious"],
@@ -53,7 +56,7 @@ internal sealed class ComboBoxShowcasePane: ShowcasePane
                 ? $"Selected: {comboBox.Items[comboBox.SelectedIndex]}."
                 : "No selection.";
         };
-        var stage = new ControlCanvas
+        ControlCanvas stage = new ControlCanvas
         {
             Width = Length.Cells(30),
             Height = Length.Cells(6),

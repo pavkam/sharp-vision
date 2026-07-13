@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using System.Text;
@@ -20,26 +23,26 @@ public sealed class StyleTests
     [Fact]
     public async Task Style_WhenResourcesChange_InvalidatesOnlyCurrentDependentsAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var theme = new Theme();
-            var inherited = ThemeTestSupport.CreateControlStyle();
+            Theme theme = new Theme();
+            ControlStyle<Control> inherited = ThemeTestSupport.CreateControlStyle();
             inherited.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
             theme.SetStyle(inherited);
-            var direct = ThemeTestSupport.OverlayStyle<Control>(
+            ControlStyle<Control> direct = ThemeTestSupport.OverlayStyle<Control>(
                 (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))));
-            var replacement = ThemeTestSupport.OverlayStyle<Control>(
+            ControlStyle<Control> replacement = ThemeTestSupport.OverlayStyle<Control>(
                 (State.Normal, new ThemeOverlay(foreground: Color.Indexed(3))));
-            var root = new ProbeContainer();
+            ProbeContainer root = new ProbeContainer();
             ThemeTestSupport.ApplyTheme(root, theme);
             theme.Changed += (_, args) =>
             {
                 ThemeTestSupport.RefreshTheme(root, theme);
                 InvalidateThemeDependents(root, args.Impact);
             };
-            var child = new ProbeControl();
+            ProbeControl child = new ProbeControl();
             root.Children.Add(child);
             root.Attach(dispatcher);
             root.Clear(Invalidation.All);
@@ -74,12 +77,12 @@ public sealed class StyleTests
     [Fact]
     public async Task Set_WhenImpactDiffers_InvalidatesRequiredControlPhaseAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            var style = ThemeTestSupport.CreateStyle<Control>();
-            var control = new ProbeControl { Style = style };
+            ControlStyle<Control> style = ThemeTestSupport.CreateStyle<Control>();
+            ProbeControl control = new ProbeControl { Style = style };
             control.Attach(dispatcher);
             control.Clear(Invalidation.All);
 
@@ -95,9 +98,9 @@ public sealed class StyleTests
     [Fact]
     public void Foreground_WhenDisabledOverlayExists_DoesNotControlBehavior()
     {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
+        ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Disabled, new ThemeOverlay(foreground: Color.Indexed(8))));
-        var control = new ProbeControl { Style = style };
+        ProbeControl control = new ProbeControl { Style = style };
 
         control.IsEnabled.ShouldBeTrue();
         control.Foreground.ShouldBeNull();
@@ -110,22 +113,22 @@ public sealed class StyleTests
     [Fact]
     public void Draw_WhenStatesCombine_WritesResolvedCellStyle()
     {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
+        ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
             (State.Focused, new ThemeOverlay(attributes: Attributes.Underline)),
             (State.Disabled, new ThemeOverlay(foreground: Color.Indexed(8))));
-        var control = new ProbeControl
+        ProbeControl control = new ProbeControl
         {
             Bounds = new Rect(0, 0, 1, 1),
             Style = style,
         };
         control.SetFocused(true);
         control.IsEnabled = false;
-        using var frame = new Frame(new Size(1, 1));
+        using Frame frame = new Frame(new Size(1, 1));
 
         control.Draw(frame.Canvas, new Rune('A'));
 
-        var cell = frame.GetCell(default);
+        CellInfo cell = frame.GetCell(default);
         cell.Style.Foreground.ShouldBe(Color.Indexed(8));
         cell.Style.Attributes.ShouldBe(Attributes.Underline);
     }
@@ -134,8 +137,8 @@ public sealed class StyleTests
     [Fact]
     public void Style_WhenTargetTypeMismatched_Throws()
     {
-        var control = new ProbeControl();
-        var foreign = new ControlStyle<Button>();
+        ProbeControl control = new ProbeControl();
+        ControlStyle<Button> foreign = new ControlStyle<Button>();
 
         _ = Should.Throw<ArgumentException>(() => control.Style = foreign);
     }
@@ -144,8 +147,8 @@ public sealed class StyleTests
     [Fact]
     public void Style_WhenTargetTypeIsBase_Accepted()
     {
-        var control = new ProbeControl();
-        var baseStyle = new ControlStyle<Control>();
+        ProbeControl control = new ProbeControl();
+        ControlStyle<Control> baseStyle = new ControlStyle<Control>();
 
         control.Style = baseStyle;
 
@@ -156,7 +159,7 @@ public sealed class StyleTests
     [Fact]
     public void GetValueSetValueClearValue_ArePublicAndConsistent()
     {
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
 
         control.SetValue(Control.ForegroundProperty, Color.Indexed(5));
         control.GetValue(Control.ForegroundProperty).ShouldBe(Color.Indexed(5));
@@ -167,7 +170,7 @@ public sealed class StyleTests
 
     private static void InvalidateThemeDependents(Control control, Impact impact)
     {
-        var invalidation = impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
+        Invalidation invalidation = impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
 
         if (control.InstanceStyle is null)
         {

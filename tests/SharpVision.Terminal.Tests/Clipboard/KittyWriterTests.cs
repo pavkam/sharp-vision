@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Clipboard;
 
 using System.Buffers;
@@ -19,8 +22,8 @@ public sealed class KittyWriterTests
     [Fact]
     public void Read_WhenValuesAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         KittyWriter.Read(writer, "text/plain image/png"u8, id: "req-1"u8);
         KittyWriter.List(writer, Selection.Primary);
@@ -37,7 +40,7 @@ public sealed class KittyWriterTests
     [Fact]
     public void WriteStart_WhenValuesAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         KittyWriter.WriteStart(
             new Writer(destination),
@@ -57,8 +60,8 @@ public sealed class KittyWriterTests
     [Fact]
     public void WriteAliasAndEnd_WhenValuesAreValid_WriteExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         KittyWriter.WriteAlias(writer, "text/plain"u8, "text/plain text/utf8"u8);
         KittyWriter.WriteEnd(writer);
@@ -76,8 +79,8 @@ public sealed class KittyWriterTests
     [Fact]
     public void Modes_WhenRequested_WriteExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         KittyWriter.QuerySupport(writer);
         KittyWriter.PasteEvents(writer, enabled: true);
@@ -101,16 +104,14 @@ public sealed class KittyWriterTests
     public void WriteData_WhenSizeVaries_ChunksAndPadsIndependently(int size)
     {
         var data = Enumerable.Range(0, size).Select(static value => (byte) value).ToArray();
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         KittyWriter.WriteData(new Writer(destination), "application/octet-stream"u8, data);
 
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
         parser.Parse(destination.WrittenSpan, ref sink);
-        var packets = sink.Observations
-            .Select(static observation => KittyPacket.Parse(observation.First))
-            .ToArray();
+        KittyPacket[] packets = [.. sink.Observations.Select(static observation => KittyPacket.Parse(observation.First))];
 
         packets.Length.ShouldBe(Math.Max(1, (size + 4095) / 4096));
         packets.ShouldAllBe(static packet => packet.IsValid);
@@ -118,7 +119,7 @@ public sealed class KittyWriterTests
         packets.ShouldAllBe(static packet => packet.Data.Length <= 4096);
         packets.SelectMany(static packet => packet.Data.ToArray()).ToArray().ShouldBe(data);
 
-        foreach (var observation in sink.Observations)
+        foreach (Observation observation in sink.Observations)
         {
             var separator = observation.First.LastIndexOf((byte) ';');
             var encoded = observation.First[(separator + 1)..];
@@ -139,8 +140,8 @@ public sealed class KittyWriterTests
     [Fact]
     public void Write_WhenArgumentIsInvalid_ThrowsBeforeWriting()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentException>(
             () => KittyWriter.Read(writer, "text/plain"u8, id: "bad!"u8));

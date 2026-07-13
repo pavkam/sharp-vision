@@ -1,10 +1,13 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase;
 
 using SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
-using Attributes = SharpVision.Terminal.Rendering.Attributes;
+using Attributes = Terminal.Rendering.Attributes;
 
 /// <summary>Defines the small semantic terminal palette used by the showcase dashboard.</summary>
 internal static class Palette
@@ -57,7 +60,7 @@ internal static class Palette
     /// <summary>Creates a style for a self-rendering navigation entry.</summary>
     internal static ControlStyle<Control> Navigation()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Text);
         style.Set(Control.BackgroundProperty, State.Normal, Panel);
         style.Set(Control.BackgroundProperty, State.Hovered, Hover);
@@ -78,7 +81,7 @@ internal static class Palette
     /// <summary>Creates a style for text that lives inside the page heading surface.</summary>
     internal static ControlStyle<Control> HeaderText()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Text);
         style.Set(Control.BackgroundProperty, State.Normal, Canvas);
         return style;
@@ -87,7 +90,7 @@ internal static class Palette
     /// <summary>Creates a style for text that lives inside a raised card surface.</summary>
     internal static ControlStyle<Control> CardText()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Text);
         style.Set(Control.BackgroundProperty, State.Normal, Surface);
         return style;
@@ -96,7 +99,7 @@ internal static class Palette
     /// <summary>Creates a full-surface style for editable text controls.</summary>
     internal static ControlStyle<Control> Editor()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Text);
         style.Set(Control.BackgroundProperty, State.Normal, InputSurface);
         style.Set(Control.BackgroundProperty, State.Hovered, Hover);
@@ -112,7 +115,7 @@ internal static class Palette
     /// <summary>Creates a visibly stateful style for interactive live samples.</summary>
     internal static ControlStyle<Control> Interactive()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Text);
         style.Set(Control.BackgroundProperty, State.Normal, Surface);
         style.Set(Control.ForegroundProperty, State.Hovered, Text);
@@ -133,15 +136,15 @@ internal static class Palette
     /// <summary>Creates the contrasting surface and selected-row treatment used by list controls.</summary>
     internal static ControlStyle<Control> List()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         ApplyListStyle(style);
         return style;
     }
 
     /// <summary>Creates a list-targeted style for application theme publication.</summary>
-    internal static ControlStyle<List> ListForTheme()
+    internal static ControlStyle<ControlList> ListForTheme()
     {
-        var style = new ControlStyle<List>();
+        ControlStyle<ControlList> style = new ControlStyle<ControlList>();
         ApplyListStyle(style);
         return style;
     }
@@ -171,7 +174,7 @@ internal static class Palette
     /// <summary>Creates a style for a low-emphasis dashboard label.</summary>
     internal static ControlStyle<Control> MutedText()
     {
-        var style = new ControlStyle<Control>();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Muted);
         style.Set(Control.BackgroundProperty, State.Normal, Panel);
         return style;

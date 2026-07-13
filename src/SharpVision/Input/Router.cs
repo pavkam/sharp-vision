@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Input;
 
 using System.Buffers;
@@ -29,15 +32,15 @@ public static class Router
 
         var depth = 0;
 
-        for (var current = (Control?) target; current is not null; current = current.Parent)
+        for (Control? current = (Control?) target; current is not null; current = current.Parent)
         {
             depth++;
         }
 
-        var route = ArrayPool<Control>.Shared.Rent(depth);
+        Control[] route = ArrayPool<Control>.Shared.Rent(depth);
         var index = 0;
 
-        for (var current = (Control?) target; current is not null; current = current.Parent)
+        for (Control? current = (Control?) target; current is not null; current = current.Parent)
         {
             route[index++] = current;
         }

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -14,11 +17,11 @@ public sealed class ThemeResolverTests
     [Fact]
     public void Resolve_WhenLocalValueExists_WinsOverThemeAndInstanceStyle()
     {
-        var theme = new Theme();
-        var themed = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> themed = new ControlStyle<Control>();
         themed.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
         theme.SetStyle(themed);
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
         control.Foreground = Color.Indexed(9);
 
@@ -30,15 +33,15 @@ public sealed class ThemeResolverTests
     [Fact]
     public void Resolve_WhenInstanceStyleExists_OverlaysThemeWithoutInheritance()
     {
-        var theme = new Theme();
-        var themed = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> themed = new ControlStyle<Control>();
         themed.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
         theme.SetStyle(themed);
-        var root = new ProbeContainer();
-        var child = new ProbeControl();
+        ProbeContainer root = new ProbeContainer();
+        ProbeControl child = new ProbeControl();
         root.Children.Add(child);
         ThemeTestSupport.ApplyTheme(root, theme);
-        var overlay = new ControlStyle<Control>();
+        ControlStyle<Control> overlay = new ControlStyle<Control>();
         overlay.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
         child.Style = overlay;
 

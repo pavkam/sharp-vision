@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -39,7 +42,7 @@ internal sealed class TableShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var primary = new ControlTable
+        ControlTable primary = new ControlTable
         {
             Width = Length.Cells(58),
             HeaderForeground = Palette.Text,
@@ -56,7 +59,7 @@ internal sealed class TableShowcasePane: ShowcasePane
             new ControlText("Stable") { Foreground = Palette.Success },
             new ControlText("ANSI, OSC, CSI, and input decoding."),
         ]));
-        var linked = new ControlRichText { Wrapping = Wrapping.Word };
+        ControlRichText linked = new ControlRichText { Wrapping = Wrapping.Word };
         linked.Inlines.Add(new ControlRun("Open "));
         linked.Inlines.Add(new Hyperlink("protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
         primary.Rows.Add(new TableRow([
@@ -65,7 +68,7 @@ internal sealed class TableShowcasePane: ShowcasePane
             linked,
         ]));
 
-        var compact = new ControlTable
+        ControlTable compact = new ControlTable
         {
             Width = Length.Cells(42),
             ShowHeader = false,

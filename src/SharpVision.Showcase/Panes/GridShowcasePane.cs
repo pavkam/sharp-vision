@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -36,7 +39,7 @@ internal sealed class GridShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var grid = new ControlGrid
+        ControlGrid grid = new ControlGrid
         {
             Width = Length.Cells(40),
             Height = Length.Cells(9),
@@ -52,7 +55,7 @@ internal sealed class GridShowcasePane: ShowcasePane
         PaneSupport.AddGrid(grid, "Fixed", 0, 0);
         PaneSupport.AddGrid(grid, "35%", 0, 1);
         PaneSupport.AddGrid(grid, "Star", 0, 2);
-        var spanning = PaneSupport.Card(new ControlText("ColumnSpan = 2"), Glyphs.Rounded);
+        ControlBorder spanning = PaneSupport.Card(new ControlText("ColumnSpan = 2"), Glyphs.Rounded);
         ControlGrid.SetRow(spanning, 1);
         ControlGrid.SetColumn(spanning, 0);
         ControlGrid.SetColumnSpan(spanning, 2);

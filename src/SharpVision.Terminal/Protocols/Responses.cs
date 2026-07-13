@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
@@ -21,8 +24,8 @@ public static class Responses
 
         if (final == (byte) 'c' && intermediates.IsEmpty)
         {
-            var reader = new Parameters(parameters, maxCount: 32, maxValue: int.MaxValue);
-            var kind = reader.PrivateMarker switch
+            Parameters reader = new Parameters(parameters, maxCount: 32, maxValue: int.MaxValue);
+            ResponseKind kind = reader.PrivateMarker switch
             {
                 (byte) '?' => ResponseKind.PrimaryAttributes,
                 (byte) '>' => ResponseKind.SecondaryAttributes,
@@ -40,7 +43,7 @@ public static class Responses
 
         if (final == (byte) 'R' && intermediates.IsEmpty)
         {
-            var reader = new Parameters(parameters, maxCount: 2, maxValue: int.MaxValue);
+            Parameters reader = new Parameters(parameters, maxCount: 2, maxValue: int.MaxValue);
 
             if (reader.PrivateMarker != 0 ||
                 !TryReadValues(ref reader, minimum: 2, out var values) ||
@@ -57,7 +60,7 @@ public static class Responses
 
         if (final == (byte) 'y' && intermediates.SequenceEqual("$"u8))
         {
-            var reader = new Parameters(parameters, maxCount: 2, maxValue: int.MaxValue);
+            Parameters reader = new Parameters(parameters, maxCount: 2, maxValue: int.MaxValue);
 
             if (reader.PrivateMarker != (byte) '?' ||
                 !TryReadValues(ref reader, minimum: 2, out var values) ||
@@ -77,7 +80,7 @@ public static class Responses
 
         if (final == (byte) 'u' && intermediates.IsEmpty)
         {
-            var reader = new Parameters(parameters, maxCount: 1, maxValue: 31);
+            Parameters reader = new Parameters(parameters, maxCount: 1, maxValue: 31);
 
             if (reader.PrivateMarker != (byte) '?' ||
                 !TryReadValues(ref reader, minimum: 1, out var values) ||
@@ -122,7 +125,7 @@ public static class Responses
         for (var index = 0; index < values.Length; index++)
         {
             var separator = value.IndexOf((byte) '/');
-            var field = separator < 0 ? value : value[..separator];
+            ReadOnlySpan<byte> field = separator < 0 ? value : value[..separator];
 
             if (!TryHex(field, out values[index]) ||
                 (index < values.Length - 1 && separator < 0) ||
@@ -179,11 +182,11 @@ public static class Responses
         int minimum,
         out int[] values)
     {
-        var collected = new List<int>();
+        List<int> collected = new List<int>();
 
         while (true)
         {
-            var status = reader.Read(out var value, out var separator);
+            ParameterStatus status = reader.Read(out var value, out ParameterSeparator separator);
 
             if (status == ParameterStatus.End)
             {

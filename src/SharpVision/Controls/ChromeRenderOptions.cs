@@ -1,8 +1,11 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Geometry;
 
-using TerminalStyle = Terminal.Rendering.Style;
+using TerminalStyle = TerminalStyle;
 
 /// <summary>Overrides one control chrome render pass.</summary>
 internal readonly struct ChromeRenderOptions

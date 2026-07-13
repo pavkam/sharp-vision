@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
@@ -18,10 +21,10 @@ public sealed class ConsoleRunTests
     public void CreateTerminalOptions_WhenCalled_EnablesNegotiatedCellMouse()
     {
         // Act
-        var terminal = ConsoleRun.CreateTerminalOptions();
+        Options terminal = ConsoleRun.CreateTerminalOptions();
 
         // Assert
-        var negotiation = terminal.Negotiation.ShouldNotBeNull();
+        NegotiationOptions negotiation = terminal.Negotiation.ShouldNotBeNull();
         negotiation.Overrides.ShouldNotBeNull().CellMouse.ShouldBe(true);
         terminal.Capabilities.CellMouse.ShouldBe(
             new Feature(CapabilitySupport.Supported, CapabilityOrigin.Override));
@@ -38,7 +41,7 @@ public sealed class ConsoleRunTests
             return;
         }
 
-        using var mode = ConsoleInputMode.Enter();
+        using ConsoleInputMode mode = ConsoleInputMode.Enter();
         _ = mode.ShouldNotBeNull();
     }
 }

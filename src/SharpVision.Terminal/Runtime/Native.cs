@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Runtime;
 
 using System.ComponentModel;
@@ -17,7 +20,7 @@ internal static partial class Native
     internal static unsafe Dimensions GetDimensions(int fileDescriptor)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(fileDescriptor);
-        var value = default(WindowSize);
+        WindowSize value = default(WindowSize);
         var result = OperatingSystem.IsMacOS()
             ? GetWindowSize(fileDescriptor, out value)
             : OperatingSystem.IsLinux()
@@ -32,7 +35,7 @@ internal static partial class Native
                 new Win32Exception(Marshal.GetLastPInvokeError()));
         }
 
-        var cells = new Size(value.Columns, value.Rows);
+        Size cells = new Size(value.Columns, value.Rows);
         Size? pixels = value.PixelWidth > 0 && value.PixelHeight > 0
             ? new Size(value.PixelWidth, value.PixelHeight)
             : null;

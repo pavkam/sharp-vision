@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Threading;
 
 using SharpVision.Threading;
@@ -11,9 +14,9 @@ public sealed class DispatcherTests
     [Fact]
     public async Task Start_WhenCreated_OwnsDedicatedThreadAsync()
     {
-        await using var dispatcher = Dispatcher.Start(name: "SharpVision.Test");
+        await using Dispatcher dispatcher = Dispatcher.Start(name: "SharpVision.Test");
 
-        var (ownerThreadId, ownerName, isBackground) = await dispatcher.InvokeAsync(
+        (int ownerThreadId, string? ownerName, bool isBackground) = await dispatcher.InvokeAsync(
             static () =>
                 (Environment.CurrentManagedThreadId,
                  Thread.CurrentThread.Name,
@@ -30,7 +33,7 @@ public sealed class DispatcherTests
     [Fact]
     public async Task VerifyAccess_WhenCalledOffThread_ThrowsInvalidOperationExceptionAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         _ = Should.Throw<InvalidOperationException>(dispatcher.VerifyAccess);
         var allowed = await dispatcher.InvokeAsync(
@@ -48,9 +51,9 @@ public sealed class DispatcherTests
     [Fact]
     public async Task Post_WhenCallbacksAreQueued_ExecutesFifoAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var order = new List<int>();
-        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        List<int> order = new List<int>();
+        TaskCompletionSource completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         for (var index = 0; index < 1_000; index++)
         {
@@ -68,9 +71,9 @@ public sealed class DispatcherTests
     [Fact]
     public async Task Post_WhenQueueIsFull_ThrowsBeforeEnqueueAsync()
     {
-        await using var dispatcher = Dispatcher.Start(capacity: 1);
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var release = new ManualResetEventSlim();
+        await using Dispatcher dispatcher = Dispatcher.Start(capacity: 1);
+        TaskCompletionSource entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new ManualResetEventSlim();
         dispatcher.Post(() =>
         {
             entered.SetResult();
@@ -87,13 +90,13 @@ public sealed class DispatcherTests
     [Fact]
     public async Task InvokeAsync_WhenCallbackCompletes_TransfersResultOrExceptionAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var failure = new InvalidOperationException("callback");
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        InvalidOperationException failure = new InvalidOperationException("callback");
 
         var result = await dispatcher.InvokeAsync(
             static () => 42,
             TestContext.Current.CancellationToken);
-        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+        InvalidOperationException thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
             await dispatcher.InvokeAsync<int>(
                 () => throw failure,
                 TestContext.Current.CancellationToken));
@@ -106,18 +109,18 @@ public sealed class DispatcherTests
     [Fact]
     public async Task InvokeAsync_WhenCancelledBeforeExecution_DoesNotInvokeAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var release = new ManualResetEventSlim();
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        TaskCompletionSource entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new ManualResetEventSlim();
         dispatcher.Post(() =>
         {
             entered.SetResult();
             release.Wait();
         });
         await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
-        using var cancellation = new CancellationTokenSource();
+        using CancellationTokenSource cancellation = new CancellationTokenSource();
         var invoked = false;
-        var pending = dispatcher.InvokeAsync(
+        Task<bool> pending = dispatcher.InvokeAsync(
             () => invoked = true,
             cancellation.Token).AsTask();
 
@@ -132,11 +135,11 @@ public sealed class DispatcherTests
     [Fact]
     public async Task Post_WhenCallbackThrows_ReportsAndCanPostFromHandlerAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var failure = new InvalidOperationException("post");
-        var observed = new TaskCompletionSource<Exception>(
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        InvalidOperationException failure = new InvalidOperationException("post");
+        TaskCompletionSource<Exception> observed = new TaskCompletionSource<Exception>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        var reposted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource reposted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.UnhandledException += (_, eventArgs) =>
         {
             eventArgs.Handled = true;
@@ -155,10 +158,10 @@ public sealed class DispatcherTests
     [Fact]
     public async Task Idle_WhenHandlerPostsWork_DrainsBeforeNextIdleAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
         var idleCount = 0;
-        var posted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var secondIdle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource posted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource secondIdle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.Idle += (_, _) =>
         {
             if (Interlocked.Increment(ref idleCount) == 1)
@@ -182,11 +185,11 @@ public sealed class DispatcherTests
     [Fact]
     public async Task Idle_WhenPendingLeaseExists_WaitsForReleaseAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        TaskCompletionSource idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.Idle += (_, _) => _ = idle.TrySetResult();
 
-        var lease = await dispatcher.InvokeAsync(
+        IDisposable lease = await dispatcher.InvokeAsync(
             dispatcher.Hold,
             TestContext.Current.CancellationToken);
 
@@ -199,20 +202,20 @@ public sealed class DispatcherTests
     [Fact]
     public async Task DisposeAsync_WhenInvocationIsQueued_CancelsAndStopsAsync()
     {
-        var dispatcher = Dispatcher.Start();
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var release = new ManualResetEventSlim();
+        Dispatcher dispatcher = Dispatcher.Start();
+        TaskCompletionSource entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new ManualResetEventSlim();
         dispatcher.Post(() =>
         {
             entered.SetResult();
             release.Wait();
         });
         await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var pending = dispatcher.InvokeAsync(
+        Task<int> pending = dispatcher.InvokeAsync(
             static () => 42,
             TestContext.Current.CancellationToken).AsTask();
 
-        var disposal = dispatcher.DisposeAsync().AsTask();
+        Task disposal = dispatcher.DisposeAsync().AsTask();
         _ = await Should.ThrowAsync<OperationCanceledException>(pending);
         release.Set();
         await disposal;
@@ -227,7 +230,7 @@ public sealed class DispatcherTests
     {
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Dispatcher.Start(capacity: 0));
         _ = Should.Throw<ArgumentException>(() => Dispatcher.Start(name: " "));
-        await using var dispatcher = Dispatcher.Start();
+        await using Dispatcher dispatcher = Dispatcher.Start();
 
         _ = Should.Throw<ArgumentNullException>(() => dispatcher.Post(null!));
         _ = await Should.ThrowAsync<ArgumentNullException>(async () =>

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using System.Buffers;
@@ -13,7 +16,7 @@ public sealed class TmuxTests
     [Fact]
     public void WritePassthrough_WhenSequenceContainsEsc_WritesExactDcsEnvelope()
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         Tmux.WritePassthrough(destination, "\u001b]52;c;YQ==\u001b\\"u8);
 
@@ -25,7 +28,7 @@ public sealed class TmuxTests
     [Fact]
     public void WritePassthrough_WhenSequenceIsEmpty_WritesEmptyDcsEnvelope()
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         Tmux.WritePassthrough(destination, []);
 
@@ -36,7 +39,7 @@ public sealed class TmuxTests
     [Fact]
     public void TryUnwrap_WhenPayloadIsValid_RestoresOuterSequence()
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         var unwrapped = Tmux.TryUnwrap("tmux;\u001b\u001b]52;c;YQ==\u001b\u001b\\"u8, destination);
 
@@ -50,7 +53,7 @@ public sealed class TmuxTests
     [InlineData("tmux;\u001b]52")]
     public void TryUnwrap_WhenPayloadIsInvalid_RejectsWithoutWriting(string value)
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         var unwrapped = Tmux.TryUnwrap(Encoding.UTF8.GetBytes(value), destination);
 

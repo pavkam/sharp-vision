@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -10,10 +13,10 @@ using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using KeyAction = Terminal.Input.Action;
-using TerminalAttributes = Terminal.Rendering.Attributes;
-using TerminalCanvas = Terminal.Rendering.Canvas;
-using TerminalStyle = Terminal.Rendering.Style;
+using KeyAction = KeyAction;
+using TerminalAttributes = TerminalAttributes;
+using TerminalCanvas = TerminalCanvas;
+using TerminalStyle = TerminalStyle;
 using UnicodeWidth = Terminal.Unicode.Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
@@ -69,7 +72,7 @@ public sealed class TextInput: Container
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            var validated = Edit.Replace(
+            EditResult validated = Edit.Replace(
                 string.Empty,
                 default,
                 value,
@@ -383,7 +386,7 @@ public sealed class TextInput: Container
     {
         ArgumentNullException.ThrowIfNull(visitor);
 
-        foreach (var child in _chrome)
+        foreach (Control child in _chrome)
         {
             visitor(child);
         }
@@ -394,7 +397,7 @@ public sealed class TextInput: Container
     {
         while (_chrome.Count > 0)
         {
-            var child = _chrome[^1];
+            Control child = _chrome[^1];
             _chrome.RemoveAt(_chrome.Count - 1);
             child.Dispose();
         }
@@ -410,7 +413,7 @@ public sealed class TextInput: Container
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var bounds = _editorBounds;
+        Rect bounds = _editorBounds;
 
         if (bounds.Width == 0 || bounds.Height == 0)
         {
@@ -424,9 +427,9 @@ public sealed class TextInput: Container
         var x = 0;
         var y = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(Text))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(Text))
         {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+            ReadOnlySpan<char> cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
 
             if (IsLineBreak(cluster))
             {
@@ -436,12 +439,12 @@ public sealed class TextInput: Container
             }
 
             var width = ClusterWidth(cluster, x);
-            var point = new Point(
+            Point point = new Point(
                 bounds.X + x - HorizontalOffset,
                 bounds.Y + y - VerticalOffset);
             var selected = grapheme.Offset < _selection.End &&
                 grapheme.Offset + grapheme.Length > _selection.Start;
-            var style = selected ? SelectedStyle() : ResolvedStyle;
+            TerminalStyle style = selected ? SelectedStyle() : ResolvedStyle;
 
             if (PasswordCharacter is { } mask)
             {
@@ -462,7 +465,7 @@ public sealed class TextInput: Container
         if (IsFocused)
         {
             Position(_selection.Caret, out var caretX, out var caretY);
-            var position = new Point(
+            Point position = new Point(
                 bounds.X + caretX - HorizontalOffset,
                 bounds.Y + caretY - VerticalOffset);
 
@@ -544,7 +547,7 @@ public sealed class TextInput: Container
 
         if (textChanged)
         {
-            var changing = new TextChangingEventArgs(proposal);
+            TextChangingEventArgs changing = new TextChangingEventArgs(proposal);
             TextChanging?.Invoke(this, changing);
 
             if (changing.Cancel)
@@ -554,7 +557,7 @@ public sealed class TextInput: Container
         }
 
         var previousText = Text;
-        var previousSelection = _selection;
+        Selection previousSelection = _selection;
 
         if (recordHistory && textChanged)
         {
@@ -641,7 +644,7 @@ public sealed class TextInput: Container
 
         if (word && eventArgs.Stroke is { Code: Code.Character, Character: { } character })
         {
-            var value = Rune.ToLowerInvariant(character);
+            Rune value = Rune.ToLowerInvariant(character);
 
             if (value == new Rune('a'))
             {
@@ -733,7 +736,7 @@ public sealed class TextInput: Container
 
     private void Handle(PointerEventArgs eventArgs)
     {
-        var pointer = eventArgs.Pointer;
+        Pointer pointer = eventArgs.Pointer;
 
         if (pointer.Action == PointerAction.Wheel)
         {
@@ -748,7 +751,7 @@ public sealed class TextInput: Container
             pointer.Cells is { } pressedCells &&
             Bounds.Contains(pressedCells))
         {
-            var capture = CaptureOwner;
+            CaptureManager? capture = CaptureOwner;
 
             if (capture is null || !capture.Capture(this))
             {
@@ -797,9 +800,9 @@ public sealed class TextInput: Container
         var x = 0;
         var y = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(Text))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(Text))
         {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+            ReadOnlySpan<char> cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
 
             if (IsLineBreak(cluster))
             {
@@ -840,7 +843,7 @@ public sealed class TextInput: Container
         var caret = IndexAt(new Point(
             _editorBounds.X + x - HorizontalOffset,
             _editorBounds.Y + targetY - VerticalOffset));
-        var selection = extend
+        Selection selection = extend
             ? new Selection(_selection.Anchor, caret)
             : new Selection(caret, caret);
         return new EditResult(Text, selection, selection != _selection);
@@ -858,7 +861,7 @@ public sealed class TextInput: Container
     private bool ScrollBy(int horizontal, int vertical)
     {
         MeasureText(out _contentWidth, out _contentHeight);
-        var bounds = _editorBounds;
+        Rect bounds = _editorBounds;
         var nextHorizontal = Move(
             HorizontalOffset,
             horizontal,
@@ -886,12 +889,12 @@ public sealed class TextInput: Container
     private void ArrangeChrome()
     {
         MeasureText(out _contentWidth, out _contentHeight);
-        var bounds = ContentBounds;
+        Rect bounds = ContentBounds;
         var horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
             ShowScrollBars == ShowScrollBars.Always;
         var vertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
             ShowScrollBars == ShowScrollBars.Always;
-        var viewport = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vertical ? 1 : 0)), Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
+        Rect viewport = new Rect(bounds.X, bounds.Y, Math.Max(0, bounds.Width - (vertical ? 1 : 0)), Math.Max(0, bounds.Height - (horizontal ? 1 : 0)));
 
         if (ShowScrollBars == ShowScrollBars.WhenNeeded)
         {
@@ -944,9 +947,9 @@ public sealed class TextInput: Container
         x = 0;
         y = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(Text.AsSpan(0, index)))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(Text.AsSpan(0, index)))
         {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+            ReadOnlySpan<char> cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
 
             if (IsLineBreak(cluster))
             {
@@ -966,9 +969,9 @@ public sealed class TextInput: Container
         width = 0;
         height = 1;
 
-        foreach (var grapheme in Graphemes.Enumerate(Text))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(Text))
         {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+            ReadOnlySpan<char> cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
 
             if (IsLineBreak(cluster))
             {
@@ -1003,7 +1006,7 @@ public sealed class TextInput: Container
 
     private TerminalStyle SelectedStyle()
     {
-        var style = ResolvedStyle;
+        TerminalStyle style = ResolvedStyle;
         return new TerminalStyle(
             style.Foreground,
             style.Background,
@@ -1077,8 +1080,8 @@ public sealed class TextInput: Container
             return false;
         }
 
-        var snapshot = source[^1];
-        var current = new EditResult(Text, _selection, false);
+        EditResult snapshot = source[^1];
+        EditResult current = new EditResult(Text, _selection, false);
 
         if (!Commit(new EditResult(snapshot.Text, snapshot.Selection, true), false))
         {

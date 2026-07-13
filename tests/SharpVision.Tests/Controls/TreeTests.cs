@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Input;
@@ -13,9 +16,9 @@ public sealed class TreeTests
     [Fact]
     public void Add_WhenTreeIsDetached_AssignsParentAndOrder()
     {
-        var parent = new ProbeContainer();
-        var first = new ProbeControl();
-        var second = new ProbeControl();
+        ProbeContainer parent = new ProbeContainer();
+        ProbeControl first = new ProbeControl();
+        ProbeControl second = new ProbeControl();
 
         parent.Children.Add(first);
         parent.Children.Insert(0, second);
@@ -30,9 +33,9 @@ public sealed class TreeTests
     [Fact]
     public void Add_WhenOwnershipIsInvalid_ThrowsBeforeMutation()
     {
-        var firstParent = new ProbeContainer();
-        var secondParent = new ProbeContainer();
-        var child = new ProbeContainer();
+        ProbeContainer firstParent = new ProbeContainer();
+        ProbeContainer secondParent = new ProbeContainer();
+        ProbeContainer child = new ProbeContainer();
         firstParent.Children.Add(child);
 
         _ = Should.Throw<ArgumentNullException>(() => firstParent.Children.Add(null!));
@@ -49,10 +52,10 @@ public sealed class TreeTests
     [Fact]
     public async Task Attach_WhenTreeIsNested_PropagatesAndDetachesDispatcherAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var root = new ProbeContainer();
-        var middle = new ProbeContainer();
-        var leaf = new ProbeControl();
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        ProbeContainer root = new ProbeContainer();
+        ProbeContainer middle = new ProbeContainer();
+        ProbeControl leaf = new ProbeControl();
         middle.Children.Add(leaf);
         root.Children.Add(middle);
 
@@ -77,9 +80,9 @@ public sealed class TreeTests
     [Fact]
     public async Task Add_WhenParentIsAttachedOffThread_ThrowsBeforeMutationAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var root = new ProbeContainer();
-        var child = new ProbeControl();
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        ProbeContainer root = new ProbeContainer();
+        ProbeControl child = new ProbeControl();
         await dispatcher.InvokeAsync(
             () => root.Attach(dispatcher),
             TestContext.Current.CancellationToken);
@@ -95,10 +98,10 @@ public sealed class TreeTests
     [Fact]
     public void Indexer_WhenReplacingAndClearing_DetachesOldChildren()
     {
-        var parent = new ProbeContainer();
-        var first = new ProbeControl();
-        var second = new ProbeControl();
-        var replacement = new ProbeControl();
+        ProbeContainer parent = new ProbeContainer();
+        ProbeControl first = new ProbeControl();
+        ProbeControl second = new ProbeControl();
+        ProbeControl replacement = new ProbeControl();
         parent.Children.Add(first);
         parent.Children.Add(second);
 
@@ -115,9 +118,9 @@ public sealed class TreeTests
     [Fact]
     public void Add_WhenCollectionCapacityIsOne_ThrowsBeforeMutation()
     {
-        var parent = new ProbeContainer(capacity: 1);
-        var first = new ProbeControl();
-        var second = new ProbeControl();
+        ProbeContainer parent = new ProbeContainer(capacity: 1);
+        ProbeControl first = new ProbeControl();
+        ProbeControl second = new ProbeControl();
         parent.Children.Add(first);
 
         _ = Should.Throw<InvalidOperationException>(() => parent.Children.Add(second));
@@ -131,10 +134,10 @@ public sealed class TreeTests
     [Fact]
     public void SetOnly_WhenReplacementIsInvalid_PreservesExistingOwnership()
     {
-        var parent = new ProbeContainer(capacity: 1);
-        var other = new ProbeContainer();
-        var first = new ProbeControl();
-        var invalid = new ProbeControl();
+        ProbeContainer parent = new ProbeContainer(capacity: 1);
+        ProbeContainer other = new ProbeContainer();
+        ProbeControl first = new ProbeControl();
+        ProbeControl invalid = new ProbeControl();
         parent.Children.SetOnly(first);
         other.Children.Add(invalid);
 
@@ -149,9 +152,9 @@ public sealed class TreeTests
     [Fact]
     public void SetOnly_WhenReplacementIsValid_TransfersOnlyAfterValidation()
     {
-        var parent = new ProbeContainer(capacity: 1);
-        var first = new ProbeControl();
-        var replacement = new ProbeControl();
+        ProbeContainer parent = new ProbeContainer(capacity: 1);
+        ProbeControl first = new ProbeControl();
+        ProbeControl replacement = new ProbeControl();
         parent.Children.SetOnly(first);
 
         parent.Children.SetOnly(replacement);
@@ -165,19 +168,19 @@ public sealed class TreeTests
     [Fact]
     public async Task SetOnly_WhenReplacementIsInvalid_PreservesManagerOwnershipAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
-        var parent = new ProbeContainer(capacity: 1);
-        var other = new ProbeContainer();
-        var first = new ProbeControl { CanFocus = true };
-        var invalid = new ProbeControl();
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        ProbeContainer parent = new ProbeContainer(capacity: 1);
+        ProbeContainer other = new ProbeContainer();
+        ProbeControl first = new ProbeControl { CanFocus = true };
+        ProbeControl invalid = new ProbeControl();
         parent.Children.SetOnly(first);
         other.Children.Add(invalid);
 
         await dispatcher.InvokeAsync(() =>
         {
             parent.Attach(dispatcher);
-            using var focus = new FocusManager(parent);
-            using var capture = new CaptureManager(parent);
+            using FocusManager focus = new FocusManager(parent);
+            using CaptureManager capture = new CaptureManager(parent);
             focus.Focus(first).ShouldBeTrue();
             capture.Capture(first).ShouldBeTrue();
 
@@ -194,9 +197,9 @@ public sealed class TreeTests
     [Fact]
     public void Dispose_WhenTreeIsDetached_DisposesOwnedChildrenOnce()
     {
-        var root = new ProbeContainer();
-        var child = new ProbeContainer();
-        var leaf = new ProbeControl();
+        ProbeContainer root = new ProbeContainer();
+        ProbeContainer child = new ProbeContainer();
+        ProbeControl leaf = new ProbeControl();
         child.Children.Add(leaf);
         root.Children.Add(child);
 

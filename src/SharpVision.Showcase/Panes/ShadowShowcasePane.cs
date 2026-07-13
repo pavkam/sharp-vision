@@ -1,9 +1,12 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
 using SharpVision.Terminal.Geometry;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
+using TerminalAttributes = Terminal.Rendering.Attributes;
 
 /// <summary>Documents and demonstrates the Shadow control.</summary>
 internal sealed class ShadowShowcasePane: ShowcasePane

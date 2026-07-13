@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using SharpVision.Controls;
@@ -9,8 +12,8 @@ using SharpVision.Terminal.Runtime;
 
 using Shouldly;
 
-using ControlText = SharpVision.Controls.Text;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
+using ControlText = Controls.Text;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
 public sealed class ThemeGalleryTests
@@ -19,10 +22,10 @@ public sealed class ThemeGalleryTests
     [Fact]
     public async Task Theme_WhenLightIsSelected_PublishesWhiteThemeAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -30,10 +33,10 @@ public sealed class ThemeGalleryTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        var light = await application.Dispatcher.InvokeAsync(
+        Button? light = await application.Dispatcher.InvokeAsync(
             () => Find<Button>(gallery.Sidebar, static value => value.Content is ControlText { Content: "Light" }),
             TestContext.Current.CancellationToken);
-        var button = light.ShouldNotBeNull();
+        Button button = light.ShouldNotBeNull();
 
         await application.Dispatcher.InvokeAsync(
             button.PerformClick,
@@ -51,10 +54,10 @@ public sealed class ThemeGalleryTests
     [Fact]
     public async Task Navigation_WhenThemingPageIsSelected_ShowsShowcasePanelAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -85,7 +88,7 @@ public sealed class ThemeGalleryTests
             return match;
         }
 
-        foreach (var child in Visit(root))
+        foreach (Control child in Visit(root))
         {
             if (child is T typed && predicate(typed))
             {
@@ -100,11 +103,11 @@ public sealed class ThemeGalleryTests
     {
         if (control is Container container)
         {
-            foreach (var child in container.Children)
+            foreach (Control child in container.Children)
             {
                 yield return child;
 
-                foreach (var descendant in Visit(child))
+                foreach (Control descendant in Visit(child))
                 {
                     yield return descendant;
                 }

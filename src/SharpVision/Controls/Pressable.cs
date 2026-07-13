@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -6,7 +9,7 @@ using System.Text;
 using SharpVision.Input;
 using SharpVision.Terminal.Input;
 
-using KeyAction = Terminal.Input.Action;
+using KeyAction = KeyAction;
 
 /// <summary>Provides shared focus, keyboard, pointer, capture, and pressed behavior.</summary>
 public abstract class Pressable: Container
@@ -80,7 +83,7 @@ public abstract class Pressable: Container
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        var stroke = eventArgs.Stroke;
+        Stroke stroke = eventArgs.Stroke;
         var space = stroke.Code == Code.Character && stroke.Character == new Rune(' ');
 
         if (space)
@@ -115,7 +118,7 @@ public abstract class Pressable: Container
 
     private void Handle(PointerEventArgs eventArgs)
     {
-        var pointer = eventArgs.Pointer;
+        Pointer pointer = eventArgs.Pointer;
 
         if ((pointer.Buttons & Buttons.Primary) == 0)
         {
@@ -131,7 +134,7 @@ public abstract class Pressable: Container
 
         if (pointer.Action == PointerAction.Press && inside)
         {
-            var capture = CaptureOwner;
+            CaptureManager? capture = CaptureOwner;
 
             if (capture is null || !capture.Capture(this))
             {

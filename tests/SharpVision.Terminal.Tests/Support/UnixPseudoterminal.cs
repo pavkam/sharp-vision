@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Support;
 
 using System.ComponentModel;
@@ -69,7 +72,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
             throw NativeFailure("The pseudoterminal master could not be opened.");
         }
 
-        var masterHandle = new SafeFileHandle(masterDescriptor, ownsHandle: true);
+        SafeFileHandle masterHandle = new SafeFileHandle(masterDescriptor, ownsHandle: true);
 
         try
         {
@@ -91,24 +94,24 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
                 throw NativeFailure("The pseudoterminal slave could not be opened.");
             }
 
-            var slaveHandle = new SafeFileHandle(slaveDescriptor, ownsHandle: true);
+            SafeFileHandle slaveHandle = new SafeFileHandle(slaveDescriptor, ownsHandle: true);
 
             try
             {
                 // Keep the slave open while changing its line discipline. Darwin
                 // resets the settings when the temporary stty descriptor is last.
                 ConfigureRaw(slaveName);
-                var master = new FileStream(
+                FileStream master = new FileStream(
                     masterHandle,
                     FileAccess.ReadWrite,
                     bufferSize: 4096,
                     isAsync: false);
-                var slave = new FileStream(
+                FileStream slave = new FileStream(
                     slaveHandle,
                     FileAccess.ReadWrite,
                     bufferSize: 4096,
                     isAsync: false);
-                var terminal = new UnixPseudoterminal(
+                UnixPseudoterminal terminal = new UnixPseudoterminal(
                     master,
                     slave,
                     slaveDescriptor,
@@ -154,7 +157,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
             return;
         }
 
-        var window = new WindowSize
+        WindowSize window = new WindowSize
         {
             Rows = checked((ushort) value.Cells.Height),
             Columns = checked((ushort) value.Cells.Width),
@@ -184,7 +187,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
     /// <summary>Closes the master endpoint exactly once.</summary>
     internal async ValueTask CloseMasterAsync()
     {
-        var master = Interlocked.Exchange(ref _master, null);
+        FileStream? master = Interlocked.Exchange(ref _master, null);
 
         if (master is not null)
         {
@@ -201,7 +204,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
 
     private static void ConfigureRaw(string slaveName)
     {
-        var start = new ProcessStartInfo("/bin/stty")
+        ProcessStartInfo start = new ProcessStartInfo("/bin/stty")
         {
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -210,7 +213,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
         start.ArgumentList.Add(slaveName);
         start.ArgumentList.Add("raw");
         start.ArgumentList.Add("-echo");
-        using var process = Process.Start(start)
+        using Process process = Process.Start(start)
             ?? throw new IOException("The raw-mode utility could not start.");
         var error = process.StandardError.ReadToEnd();
         process.WaitForExit();
@@ -223,7 +226,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
 
     private static void ConfigureSize(string slaveName, Dimensions value)
     {
-        var start = new ProcessStartInfo("/bin/stty")
+        ProcessStartInfo start = new ProcessStartInfo("/bin/stty")
         {
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -234,7 +237,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
         start.ArgumentList.Add(value.Cells.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
         start.ArgumentList.Add("columns");
         start.ArgumentList.Add(value.Cells.Width.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        using var process = Process.Start(start)
+        using Process process = Process.Start(start)
             ?? throw new IOException("The resize utility could not start.");
         var error = process.StandardError.ReadToEnd();
         process.WaitForExit();
@@ -250,7 +253,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
         var masterDescriptor = -1;
         var slaveDescriptor = -1;
         Span<byte> name = stackalloc byte[1024];
-        var window = CreateWindow(dimensions);
+        WindowSize window = CreateWindow(dimensions);
 
         fixed (byte* namePointer = name)
         {
@@ -273,18 +276,18 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
         }
 
         var slaveName = Encoding.UTF8.GetString(name[..nameLength]);
-        var masterHandle = new SafeFileHandle(masterDescriptor, ownsHandle: true);
-        var slaveHandle = new SafeFileHandle(slaveDescriptor, ownsHandle: true);
+        SafeFileHandle masterHandle = new SafeFileHandle(masterDescriptor, ownsHandle: true);
+        SafeFileHandle slaveHandle = new SafeFileHandle(slaveDescriptor, ownsHandle: true);
 
         try
         {
             ConfigureRaw(slaveName);
-            var master = new FileStream(
+            FileStream master = new FileStream(
                 masterHandle,
                 FileAccess.ReadWrite,
                 bufferSize: 4096,
                 isAsync: false);
-            var slave = new FileStream(
+            FileStream slave = new FileStream(
                 slaveHandle,
                 FileAccess.ReadWrite,
                 bufferSize: 4096,

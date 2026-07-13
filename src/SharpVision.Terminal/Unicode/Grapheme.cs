@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Unicode;
 
 /// <summary>Identifies one extended grapheme cluster inside a borrowed UTF-16 span.</summary>

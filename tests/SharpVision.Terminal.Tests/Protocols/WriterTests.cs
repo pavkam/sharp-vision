@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using System.Buffers;
@@ -17,8 +20,8 @@ public sealed class WriterTests
     [Fact]
     public void Escape_WhenFinalIsValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         writer.Escape([], (byte) '7');
 
@@ -31,8 +34,8 @@ public sealed class WriterTests
     [Fact]
     public void Csi_WhenParametersAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         writer.Csi("12;4"u8, [], (byte) 'H');
 
@@ -46,8 +49,8 @@ public sealed class WriterTests
     [Fact]
     public void Osc_WhenPayloadIsValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         writer.Osc(2, "title"u8);
 
@@ -78,8 +81,8 @@ public sealed class WriterTests
     [InlineData(SequenceKind.Sos, (byte) 'X')]
     public void Command_WhenKindIsValid_WritesExactBytes(SequenceKind kind, byte introducer)
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         writer.Command(kind, "payload"u8);
 
@@ -105,8 +108,8 @@ public sealed class WriterTests
     [Fact]
     public void Dcs_WhenHeaderAndPayloadAreValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         writer.Dcs("1;2"u8, "$"u8, (byte) 'q', "data"u8);
 
@@ -134,8 +137,8 @@ public sealed class WriterTests
     [Fact]
     public void Write_WhenGrammarIsInvalid_ThrowsBeforeWriting()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => writer.Escape([], 0x2f));

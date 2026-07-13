@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Performance;
 
 using System.Buffers;
@@ -34,7 +37,7 @@ public sealed class PhaseThreePerformanceTests
             Count(values);
         }
 
-        var (allocated, elapsed) = Measure(static state => Count(state), values);
+        (long allocated, TimeSpan elapsed) = Measure(static state => Count(state), values);
 
         allocated.ShouldBe(0);
         Report("segmentation", elapsed, 10_000);
@@ -44,9 +47,9 @@ public sealed class PhaseThreePerformanceTests
     [Fact]
     public void Encode_WhenRepresentativeFramesAreWarm_AllocatesZeroBytes()
     {
-        using var front = new Frame(new Size(80, 24));
-        using var sparse = new Frame(new Size(80, 24));
-        using var dense = new Frame(new Size(80, 24));
+        using Frame front = new Frame(new Size(80, 24));
+        using Frame sparse = new Frame(new Size(80, 24));
+        using Frame dense = new Frame(new Size(80, 24));
         _ = sparse.Canvas.Draw("x".AsSpan(), new Point(40, 12));
         var row = new string('x', 80);
 
@@ -55,7 +58,7 @@ public sealed class PhaseThreePerformanceTests
             _ = dense.Canvas.Draw(row.AsSpan(), new Point(0, y));
         }
 
-        var destination = new ArrayBufferWriter<byte>(8192);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>(8192);
 
         for (var index = 0; index < 10_000; index++)
         {
@@ -63,7 +66,7 @@ public sealed class PhaseThreePerformanceTests
         }
 
         var minimum = long.MaxValue;
-        var watch = Stopwatch.StartNew();
+        Stopwatch watch = Stopwatch.StartNew();
 
         for (var sample = 0; sample < 5; sample++)
         {
@@ -88,8 +91,8 @@ public sealed class PhaseThreePerformanceTests
     [Fact]
     public void Decode_WhenRepresentativeInputIsWarm_AllocatesZeroBytes()
     {
-        var sink = new CountingSink();
-        using var decoder = new InputDecoder(sink);
+        CountingSink sink = new CountingSink();
+        using InputDecoder decoder = new InputDecoder(sink);
 
         for (var index = 0; index < 20_000; index++)
         {
@@ -97,7 +100,7 @@ public sealed class PhaseThreePerformanceTests
         }
 
         var minimum = long.MaxValue;
-        var watch = Stopwatch.StartNew();
+        Stopwatch watch = Stopwatch.StartNew();
 
         for (var sample = 0; sample < 5; sample++)
         {
@@ -124,7 +127,7 @@ public sealed class PhaseThreePerformanceTests
         TState state)
     {
         var minimum = long.MaxValue;
-        var watch = Stopwatch.StartNew();
+        Stopwatch watch = Stopwatch.StartNew();
 
         for (var sample = 0; sample < 5; sample++)
         {
@@ -148,7 +151,7 @@ public sealed class PhaseThreePerformanceTests
     {
         foreach (var value in values)
         {
-            foreach (var unused in Graphemes.Enumerate(value.AsSpan()))
+            foreach (Grapheme unused in Graphemes.Enumerate(value.AsSpan()))
             {
                 _ = unused;
             }

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -19,9 +22,9 @@ public sealed class ThemeApplicationTests
     [Fact]
     public async Task StartAsync_WhenNoThemeIsAssigned_UsesDarkThemeAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
@@ -37,10 +40,10 @@ public sealed class ThemeApplicationTests
     [Fact]
     public async Task Theme_WhenSwitchedToWhite_RepublishesResolvedForegroundAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var root = new ProbeControl();
-        await using var application = new Application(
+        ProbeControl root = new ProbeControl();
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
@@ -69,9 +72,9 @@ public sealed class ThemeApplicationTests
     [Fact]
     public async Task Theme_WhenAssignedOffDispatcher_PostsChangeAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,

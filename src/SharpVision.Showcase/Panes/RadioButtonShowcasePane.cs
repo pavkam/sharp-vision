@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -34,7 +37,7 @@ internal sealed class RadioButtonShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var group = PaneSupport.Vertical();
+        ControlStack group = PaneSupport.Vertical();
         group.Children.Add(new ControlRadioButton
         {
             Content = new ControlText("Fast"),
@@ -60,7 +63,7 @@ internal sealed class RadioButtonShowcasePane: ShowcasePane
             "Pick one mode. Arrow keys move selection between available members; the disabled member remains visibly unavailable.",
             PaneSupport.Card(group, Glyphs.Rounded)));
 
-        var independent = new ControlRadioButton
+        ControlRadioButton independent = new ControlRadioButton
         {
             Content = new ControlText("Independent selection group"),
             GroupName = "delivery",

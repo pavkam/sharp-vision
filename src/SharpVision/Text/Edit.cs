@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Text;
 
 using System.Buffers;
@@ -54,7 +57,7 @@ public static class Edit
             return true;
         }
 
-        foreach (var grapheme in Graphemes.Enumerate(text))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(text))
         {
             if (grapheme.Offset == index)
             {
@@ -275,7 +278,7 @@ public static class Edit
             replacement.AsSpan(0, replacementLength),
             text.AsSpan(selection.End));
         var caret = checked(selection.Start + replacementLength);
-        var nextSelection = new Selection(caret, caret);
+        Selection nextSelection = new Selection(caret, caret);
         var changed = !string.Equals(text, next, StringComparison.Ordinal) || selection != nextSelection;
 
         return changed
@@ -295,7 +298,7 @@ public static class Edit
         ArgumentNullException.ThrowIfNull(text);
         Span<char> encoded = stackalloc char[2];
         var encodedLength = mask.EncodeToUtf16(encoded);
-        var measurement = Width.Measure(encoded[..encodedLength]);
+        Measurement measurement = Width.Measure(encoded[..encodedLength]);
 
         if (measurement.Controls != 0 || measurement.Cells != 1)
         {
@@ -317,7 +320,7 @@ public static class Edit
 
     private static EditResult Move(string text, Selection previous, int caret, bool extend)
     {
-        var next = extend ? new Selection(previous.Anchor, caret) : new Selection(caret, caret);
+        Selection next = extend ? new Selection(previous.Anchor, caret) : new Selection(caret, caret);
         return next == previous
             ? Unchanged(text, previous)
             : new EditResult(text, next, changed: true);
@@ -330,7 +333,7 @@ public static class Edit
     {
         var previous = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(text.AsSpan(0, index)))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(text.AsSpan(0, index)))
         {
             previous = grapheme.Offset;
         }
@@ -345,7 +348,7 @@ public static class Edit
             return text.Length;
         }
 
-        var enumerator = Graphemes.Enumerate(text.AsSpan(index)).GetEnumerator();
+        GraphemeEnumerator enumerator = Graphemes.Enumerate(text.AsSpan(index)).GetEnumerator();
         var moved = enumerator.MoveNext();
         Debug.Assert(moved, "A non-empty valid suffix contains one grapheme.");
         return index + enumerator.Current.Length;
@@ -363,7 +366,7 @@ public static class Edit
 
     private static int Kind(string text, int position)
     {
-        var status = Rune.DecodeFromUtf16(text.AsSpan(position), out var rune, out _);
+        OperationStatus status = Rune.DecodeFromUtf16(text.AsSpan(position), out Rune rune, out _);
 
         return status != OperationStatus.Done ? 0 : Rune.IsLetterOrDigit(rune) || rune.Value == '_' ? 2 : Rune.IsWhiteSpace(rune) ? 1 : 0;
     }
@@ -372,7 +375,7 @@ public static class Edit
     {
         var count = 0;
 
-        foreach (var unused in Graphemes.Enumerate(value))
+        foreach (Grapheme unused in Graphemes.Enumerate(value))
         {
             _ = unused;
             count = checked(count + 1);
@@ -386,7 +389,7 @@ public static class Edit
         var count = 0;
         var length = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(value))
+        foreach (Grapheme grapheme in Graphemes.Enumerate(value))
         {
             if (count == allowed)
             {

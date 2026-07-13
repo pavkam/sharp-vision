@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -40,12 +43,12 @@ internal sealed class WindowShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var chromeOptions = PaneSupport.Horizontal();
+        ControlStack chromeOptions = PaneSupport.Horizontal();
         chromeOptions.Children.Add(WindowVariant("Left", Glyphs.Rounded, WindowTitlePlacement.Left));
         chromeOptions.Children.Add(WindowVariant("Center", Glyphs.Paired, WindowTitlePlacement.Center));
         chromeOptions.Children.Add(WindowVariant("Right", Glyphs.Ascii, WindowTitlePlacement.Right));
 
-        var form = PaneSupport.Vertical();
+        ControlStack form = PaneSupport.Vertical();
         form.Children.Add(new ControlText("Choose how this project opens.")
         {
             Foreground = Palette.Text,
@@ -63,7 +66,7 @@ internal sealed class WindowShowcasePane: ShowcasePane
             MarkStyle = CheckBoxStyle.Brackets,
             Style = Palette.Interactive(),
         });
-        var actions = PaneSupport.Horizontal();
+        ControlStack actions = PaneSupport.Horizontal();
         actions.HorizontalAlignment = HorizontalAlignment.Center;
         actions.Children.Add(PaneSupport.ButtonSpecimen(new ControlButton
         {
@@ -78,7 +81,7 @@ internal sealed class WindowShowcasePane: ShowcasePane
             Style = Palette.Interactive(),
         }));
         form.Children.Add(actions);
-        var window = new ControlWindow
+        ControlWindow window = new ControlWindow
         {
             Width = Length.Cells(42),
             Height = Length.Auto,
@@ -90,7 +93,7 @@ internal sealed class WindowShowcasePane: ShowcasePane
             ShadowOffset = new Point(2, 1),
             Child = form,
         };
-        var stage = new ControlCanvas
+        ControlCanvas stage = new ControlCanvas
         {
             Width = Length.Cells(48),
             Height = Length.Cells(13),

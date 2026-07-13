@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -14,12 +17,12 @@ public sealed class ThemeTests
     [Fact]
     public void SetStyle_WhenControlStyleIsRegistered_GetStyleReturnsIt()
     {
-        var theme = new Theme();
-        var style = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(7));
         theme.SetStyle(style);
 
-        theme.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out var value)
+        theme.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out Color? value)
             .ShouldBeTrue();
         value.ShouldBe(Color.Indexed(7));
     }
@@ -28,11 +31,11 @@ public sealed class ThemeTests
     [Fact]
     public void GetStyleChain_WhenOnlyBaseStyleExists_ResolvesOnDerivedControl()
     {
-        var theme = new Theme();
-        var baseStyle = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> baseStyle = new ControlStyle<Control>();
         baseStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
         theme.SetStyle(baseStyle);
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
@@ -43,14 +46,14 @@ public sealed class ThemeTests
     [Fact]
     public void GetStyleChain_WhenDerivedStyleExists_OverlaysBaseStyle()
     {
-        var theme = new Theme();
-        var baseStyle = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> baseStyle = new ControlStyle<Control>();
         baseStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
-        var derivedStyle = new ControlStyle<ProbeControl>();
+        ControlStyle<ProbeControl> derivedStyle = new ControlStyle<ProbeControl>();
         derivedStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
         theme.SetStyle(baseStyle);
         theme.SetStyle(derivedStyle);
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
@@ -61,7 +64,7 @@ public sealed class ThemeTests
     [Fact]
     public void SetStyle_WhenThemeIsFrozen_Throws()
     {
-        var theme = new Theme();
+        Theme theme = new Theme();
         theme.Freeze();
 
         _ = Should.Throw<InvalidOperationException>(() => theme.SetStyle(new ControlStyle<Control>()));
@@ -71,14 +74,14 @@ public sealed class ThemeTests
     [Fact]
     public void Clone_WhenSourceMutatesAfterCopy_DoesNotAffectClone()
     {
-        var theme = new Theme();
-        var style = new ControlStyle<Control>();
+        Theme theme = new Theme();
+        ControlStyle<Control> style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(3));
         theme.SetStyle(style);
-        var clone = theme.Clone();
+        Theme clone = theme.Clone();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(9));
 
-        clone.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out var value)
+        clone.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out Color? value)
             .ShouldBeTrue();
         value.ShouldBe(Color.Indexed(3));
     }

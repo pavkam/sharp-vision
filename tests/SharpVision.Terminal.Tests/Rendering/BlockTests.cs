@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Geometry;
@@ -18,7 +21,7 @@ public sealed class BlockTests
     [InlineData(Shade.Solid, "█")]
     public void FillShade_WhenShadeIsSelected_WritesExactGlyph(Shade shade, string expected)
     {
-        using var frame = new Frame(new Size(2, 1));
+        using Frame frame = new Frame(new Size(2, 1));
 
         frame.Canvas.FillShade(new Rect(0, 0, 2, 1), shade);
 
@@ -37,7 +40,7 @@ public sealed class BlockTests
         Quadrants quadrants,
         string expected)
     {
-        using var frame = new Frame(new Size(1, 1));
+        using Frame frame = new Frame(new Size(1, 1));
 
         frame.Canvas.DrawQuadrants(default, quadrants);
 
@@ -48,7 +51,7 @@ public sealed class BlockTests
     [Fact]
     public void DrawQuadrants_WhenSeparateMasksShareCell_MergesBits()
     {
-        using var frame = new Frame(new Size(1, 1));
+        using Frame frame = new Frame(new Size(1, 1));
 
         frame.Canvas.DrawQuadrants(default, Quadrants.UpperLeft);
         frame.Canvas.DrawQuadrants(default, Quadrants.LowerRight);

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Scrolling;
 
 /// <summary>Describes one contained integer scrollbar thumb.</summary>
@@ -60,7 +63,7 @@ public readonly record struct Thumb
     public static int ValueAt(Range range, int trackLength, int thumbStart)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(trackLength);
-        var thumb = Resolve(range, trackLength);
+        Thumb thumb = Resolve(range, trackLength);
         var travel = trackLength - thumb.Length;
 
         if (travel == 0 || range.Span == 0)

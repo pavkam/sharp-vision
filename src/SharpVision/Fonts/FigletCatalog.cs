@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Fonts;
 
 using System.IO.Compression;
@@ -15,7 +18,7 @@ public sealed class FigletCatalog
 
     private FigletCatalog()
     {
-        var assembly = typeof(FigletCatalog).Assembly;
+        Assembly assembly = typeof(FigletCatalog).Assembly;
         _archive = ReadResource(assembly, _archiveResource);
         var manifest = ReadResource(assembly, _manifestResource);
         _entries = ParseManifest(manifest);
@@ -41,7 +44,7 @@ public sealed class FigletCatalog
     public FigletFontInfo GetInfo(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
-        return _entries.TryGetValue(name, out var value)
+        return _entries.TryGetValue(name, out FigletFontInfo value)
             ? value
             : throw new KeyNotFoundException($"The FIGlet catalog does not contain '{name}'.");
     }
@@ -55,12 +58,12 @@ public sealed class FigletCatalog
     /// <exception cref="FormatException">The selected entry is not a supported FIGfont.</exception>
     public FigletFont Load(string name)
     {
-        var info = GetInfo(name);
-        using var archive = new ZipArchive(
+        FigletFontInfo info = GetInfo(name);
+        using ZipArchive archive = new ZipArchive(
             new MemoryStream(_archive, writable: false),
             ZipArchiveMode.Read,
             leaveOpen: false);
-        var entry = archive.GetEntry(info.File) ??
+        ZipArchiveEntry entry = archive.GetEntry(info.File) ??
             throw new InvalidDataException($"The archive is missing audited entry '{info.File}'.");
 
         if (entry.Length != info.Bytes || entry.Length > FigletLimits.Default.MaxInputBytes)
@@ -82,9 +85,9 @@ public sealed class FigletCatalog
 
     private static byte[] ReadResource(Assembly assembly, string name)
     {
-        using var stream = assembly.GetManifestResourceStream(name) ??
+        using Stream stream = assembly.GetManifestResourceStream(name) ??
             throw new InvalidDataException($"Embedded resource '{name}' is missing.");
-        using var buffer = new MemoryStream();
+        using MemoryStream buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();
     }
@@ -92,7 +95,7 @@ public sealed class FigletCatalog
     private static byte[] ReadEntry(ZipArchiveEntry entry, int length)
     {
         var bytes = new byte[length];
-        using var stream = entry.Open();
+        using Stream stream = entry.Open();
         stream.ReadExactly(bytes);
 
         return stream.ReadByte() == -1
@@ -112,7 +115,7 @@ public sealed class FigletCatalog
             return bytes;
         }
 
-        using var nested = new ZipArchive(
+        using ZipArchive nested = new ZipArchive(
             new MemoryStream(bytes, writable: false),
             ZipArchiveMode.Read,
             leaveOpen: false);
@@ -122,7 +125,7 @@ public sealed class FigletCatalog
             throw new InvalidDataException($"Nested font archive '{file}' must have exactly one entry.");
         }
 
-        var entry = nested.Entries[0];
+        ZipArchiveEntry entry = nested.Entries[0];
 
         return entry.Length > 0 && entry.Length <= FigletLimits.Default.MaxInputBytes
             ? ReadEntry(entry, checked((int) entry.Length))
@@ -132,19 +135,19 @@ public sealed class FigletCatalog
 
     private static Dictionary<string, FigletFontInfo> ParseManifest(byte[] bytes)
     {
-        using var document = JsonDocument.Parse(bytes);
-        var root = document.RootElement;
+        using JsonDocument document = JsonDocument.Parse(bytes);
+        JsonElement root = document.RootElement;
 
         if (root.GetProperty("count").GetInt32() != 400)
         {
             throw new InvalidDataException("The embedded FIGlet manifest count is invalid.");
         }
 
-        var result = new Dictionary<string, FigletFontInfo>(StringComparer.Ordinal);
+        Dictionary<string, FigletFontInfo> result = new Dictionary<string, FigletFontInfo>(StringComparer.Ordinal);
 
-        foreach (var element in root.GetProperty("fonts").EnumerateArray())
+        foreach (JsonElement element in root.GetProperty("fonts").EnumerateArray())
         {
-            var info = new FigletFontInfo(
+            FigletFontInfo info = new FigletFontInfo(
                 element.GetProperty("name").GetString()!,
                 element.GetProperty("file").GetString()!,
                 element.GetProperty("format").GetString()!,

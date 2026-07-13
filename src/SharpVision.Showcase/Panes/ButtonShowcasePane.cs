@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Layout;
@@ -40,15 +43,15 @@ internal sealed class ButtonShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var status = new ControlText("Activation log: waiting");
-        var active = new ControlButton
+        ControlText status = new ControlText("Activation log: waiting");
+        ControlButton active = new ControlButton
         {
             Content = new ControlText("Click or press Enter"),
             Style = Palette.Interactive(),
         };
         active.Click += (_, eventArgs) =>
             status.Content = $"Activation log: {eventArgs.Cause}";
-        var primary = new ControlStack();
+        ControlStack primary = new ControlStack();
         primary.Children.Add(PaneSupport.ButtonSpecimen(active));
         primary.Children.Add(status);
         examples.Children.Add(PaneSupport.SampleSection(
@@ -56,7 +59,7 @@ internal sealed class ButtonShowcasePane: ShowcasePane
             "A raised, bordered action surface responds to hover, focus, press, Enter, Space, and a primary pointer click.",
             primary));
 
-        var roles = new ControlStack { Orientation = Orientation.Horizontal, Spacing = 2 };
+        ControlStack roles = new ControlStack { Orientation = Orientation.Horizontal, Spacing = 2 };
         roles.Children.Add(PaneSupport.ButtonSpecimen(new ControlButton
         {
             Content = new ControlText("Default action"),
@@ -80,7 +83,7 @@ internal sealed class ButtonShowcasePane: ShowcasePane
             PaneSupport.ButtonSpecimen(new ControlButton
             {
                 Content = new ControlText("Block glyph shadow"),
-                ShadowMode = Controls.ShadowMode.BlockGlyph,
+                ShadowMode = ShadowMode.BlockGlyph,
                 ShadowGlyph = new Rune('░'),
                 Style = Palette.Interactive(),
             })));

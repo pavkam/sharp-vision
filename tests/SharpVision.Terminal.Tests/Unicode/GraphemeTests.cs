@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Unicode;
 
 using SharpVision.Terminal.Unicode;
@@ -33,7 +36,7 @@ public sealed class GraphemeTests
     public void Enumerate_WhenRegionalIndicatorCountIsOdd_PairsByParity()
     {
         var value = "🇵🇹🇬";
-        var segments = GetSegments(value);
+        (int Offset, int Length, bool Invalid)[] segments = GetSegments(value);
 
         segments.ShouldBe([(0, 4, false), (4, 2, false)]);
     }
@@ -45,7 +48,7 @@ public sealed class GraphemeTests
     public void Enumerate_WhenUtf16IsInvalid_ReportsReplacementSegment()
     {
         var value = "\ud800a\udc00";
-        var segments = GetSegments(value);
+        (int Offset, int Length, bool Invalid)[] segments = GetSegments(value);
 
         segments.ShouldBe(
         [
@@ -84,7 +87,7 @@ public sealed class GraphemeTests
     {
         var count = 0;
 
-        foreach (var unused in value)
+        foreach (Grapheme unused in value)
         {
             _ = unused;
             count++;
@@ -95,9 +98,9 @@ public sealed class GraphemeTests
 
     private static (int Offset, int Length, bool Invalid)[] GetSegments(string value)
     {
-        var result = new List<(int, int, bool)>();
+        List<(int, int, bool)> result = new List<(int, int, bool)>();
 
-        foreach (var segment in Graphemes.Enumerate(value.AsSpan()))
+        foreach (Grapheme segment in Graphemes.Enumerate(value.AsSpan()))
         {
             result.Add((segment.Offset, segment.Length, segment.HasInvalidData));
         }

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -5,8 +8,9 @@ using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
+using SharpVision.Terminal.Rendering;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Displays live pixel and optional mapped-cell coordinates for pointer input.</summary>
 internal sealed class PointerProbe: Control
@@ -39,7 +43,7 @@ internal sealed class PointerProbe: Control
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        var style = ResolvedStyle;
+        Style style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         _ = canvas.Draw(_pixelText.AsSpan(), new Point(Bounds.X, Bounds.Y), style);
         _ = canvas.Draw(_cellText.AsSpan(), new Point(Bounds.X, Bounds.Y + 1), style);

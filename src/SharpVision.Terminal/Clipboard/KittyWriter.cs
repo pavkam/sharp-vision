@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Clipboard;
 
 using System.Buffers;
@@ -106,14 +109,14 @@ public static class KittyWriter
         var rented = metadataLength > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(metadataLength)
             : null;
-        var metadata = rented is null
+        Span<byte> metadata = rented is null
             ? stackalloc byte[metadataLength]
             : rented.AsSpan();
 
         try
         {
             "type=wdata:mime="u8.CopyTo(metadata);
-            var mimeStatus = Base64.EncodeToUtf8(
+            OperationStatus mimeStatus = Base64.EncodeToUtf8(
                 mime,
                 metadata["type=wdata:mime="u8.Length..],
                 out _,
@@ -173,14 +176,14 @@ public static class KittyWriter
         var rented = metadataLength > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(metadataLength)
             : null;
-        var metadata = rented is null
+        Span<byte> metadata = rented is null
             ? stackalloc byte[metadataLength]
             : rented.AsSpan();
 
         try
         {
             "type=walias:mime="u8.CopyTo(metadata);
-            var status = Base64.EncodeToUtf8(
+            OperationStatus status = Base64.EncodeToUtf8(
                 targetMime,
                 metadata["type=walias:mime="u8.Length..],
                 out _,
@@ -218,7 +221,7 @@ public static class KittyWriter
 
     private static int AppendBase64(ReadOnlySpan<byte> value, Span<byte> destination)
     {
-        var status = Base64.EncodeToUtf8(value, destination, out _, out var written);
+        OperationStatus status = Base64.EncodeToUtf8(value, destination, out _, out var written);
 
         return status == OperationStatus.Done
             ? written
@@ -296,12 +299,12 @@ public static class KittyWriter
             throw new ArgumentException("A MIME list cannot be empty.", parameterName);
         }
 
-        var remaining = value;
+        ReadOnlySpan<byte> remaining = value;
 
         while (!remaining.IsEmpty)
         {
             var separator = remaining.IndexOf((byte) ' ');
-            var mime = separator < 0 ? remaining : remaining[..separator];
+            ReadOnlySpan<byte> mime = separator < 0 ? remaining : remaining[..separator];
             ValidateMime(mime, parameterName);
             remaining = separator < 0 ? [] : remaining[(separator + 1)..];
 
@@ -344,7 +347,7 @@ public static class KittyWriter
         var rented = length > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
-        var packet = rented is null
+        Span<byte> packet = rented is null
             ? stackalloc byte[length]
             : rented.AsSpan();
 
@@ -407,7 +410,7 @@ public static class KittyWriter
         var rented = length > _stackLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
-        var metadata = rented is null
+        Span<byte> metadata = rented is null
             ? stackalloc byte[length]
             : rented.AsSpan();
 

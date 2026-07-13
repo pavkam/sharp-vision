@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Input;
 
 using System.Text;
@@ -29,7 +32,7 @@ public sealed class PasteTests
     public void Constructor_WhenSourceChanges_PreservesCopiedPayload()
     {
         var source = "abc"u8.ToArray();
-        var paste = new Paste(source);
+        Paste paste = new Paste(source);
 
         source[0] = (byte) 'z';
 
@@ -50,8 +53,8 @@ public sealed class PasteTests
 
         for (var split = 0; split <= bytes.Length; split++)
         {
-            var sink = new RecordingInputSink();
-            using var decoder = new InputDecoder(sink);
+            RecordingInputSink sink = new RecordingInputSink();
+            using InputDecoder decoder = new InputDecoder(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
             decoder.Complete();
@@ -69,8 +72,8 @@ public sealed class PasteTests
     [Fact]
     public void Decode_WhenPasteUtf8IsInvalid_EmitsValidOwnedUtf8()
     {
-        var sink = new RecordingInputSink();
-        using var decoder = new InputDecoder(sink);
+        RecordingInputSink sink = new RecordingInputSink();
+        using InputDecoder decoder = new InputDecoder(sink);
         decoder.Decode("\u001b[200~"u8);
         decoder.Decode([0xF0, 0x28, 0x8C, 0x28]);
         decoder.Decode("\u001b[201~"u8);
@@ -85,8 +88,8 @@ public sealed class PasteTests
     [Fact]
     public void Decode_WhenPasteExceedsLimit_DiscardsAndRecovers()
     {
-        var sink = new RecordingInputSink();
-        using var decoder = new InputDecoder(sink, new Options { MaxPasteBytes = 3 });
+        RecordingInputSink sink = new RecordingInputSink();
+        using InputDecoder decoder = new InputDecoder(sink, new Options { MaxPasteBytes = 3 });
 
         decoder.Decode("\u001b[200~abcdef\u001b[201~x"u8);
         decoder.Complete();
@@ -102,8 +105,8 @@ public sealed class PasteTests
     [Fact]
     public void Complete_WhenPasteIsTruncated_ReportsAndDropsPayload()
     {
-        var sink = new RecordingInputSink();
-        using var decoder = new InputDecoder(sink);
+        RecordingInputSink sink = new RecordingInputSink();
+        using InputDecoder decoder = new InputDecoder(sink);
 
         decoder.Decode("\u001b[200~payload\u001b[20"u8);
         decoder.Complete();
@@ -122,8 +125,8 @@ public sealed class PasteTests
 
         for (var length = 1; length < end.Length; length++)
         {
-            var sink = new RecordingInputSink();
-            using var decoder = new InputDecoder(sink);
+            RecordingInputSink sink = new RecordingInputSink();
+            using InputDecoder decoder = new InputDecoder(sink);
             decoder.Decode("\u001b[200~payload"u8);
             decoder.Decode(end.AsSpan(0, length));
             decoder.Complete();
@@ -139,8 +142,8 @@ public sealed class PasteTests
     [Fact]
     public void Decode_WhenUnterminatedPasteIsLarge_RetainsOnlyConfiguredLimit()
     {
-        var sink = new RecordingInputSink();
-        using var decoder = new InputDecoder(sink, new Options { MaxPasteBytes = 16 });
+        RecordingInputSink sink = new RecordingInputSink();
+        using InputDecoder decoder = new InputDecoder(sink, new Options { MaxPasteBytes = 16 });
         decoder.Decode("\u001b[200~"u8);
         var chunk = new byte[1024 * 1024];
         chunk.AsSpan().Fill((byte) 'x');
@@ -160,8 +163,8 @@ public sealed class PasteTests
     [Fact]
     public void Decode_WhenMultiplePastesArrive_PreservesPriorOwnership()
     {
-        var sink = new RecordingInputSink();
-        using var decoder = new InputDecoder(sink);
+        RecordingInputSink sink = new RecordingInputSink();
+        using InputDecoder decoder = new InputDecoder(sink);
 
         decoder.Decode("\u001b[200~one\u001b[201~\u001b[200~two\u001b[201~"u8);
 

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Layout;
 
 using SharpVision.Layout;
@@ -48,7 +51,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenTracksHaveLimits_ClampsAndRedistributesRemainder()
     {
-        var lengths = new[] { Length.Auto, Length.Star(1), Length.Star(1) };
+        Length[] lengths = [Length.Auto, Length.Star(1), Length.Star(1)];
         var automatic = new[] { 10, 0, 0 };
         var minimum = new[] { 0, 4, 0 };
         var maximum = new[] { 6, 5, int.MaxValue };

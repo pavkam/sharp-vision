@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using System.Text;
@@ -54,7 +57,7 @@ public sealed class BorderTests
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
-        var border = new Border();
+        Border border = new Border();
 
         border.Child.ShouldBeNull();
         border.BorderThickness.ShouldBe(default);
@@ -68,10 +71,10 @@ public sealed class BorderTests
     [Fact]
     public void Child_WhenReplacementIsInvalid_PreservesPreviousOwnership()
     {
-        var border = new Border();
-        var previous = new ProbeControl();
-        var owner = new Overlay();
-        var invalid = new ProbeControl();
+        Border border = new Border();
+        ProbeControl previous = new ProbeControl();
+        Overlay owner = new Overlay();
+        ProbeControl invalid = new ProbeControl();
         border.Child = previous;
         owner.Children.Add(invalid);
 
@@ -88,7 +91,7 @@ public sealed class BorderTests
     [Fact]
     public void BorderThickness_WhenAnEdgeExceedsOne_ThrowsBeforeMutation()
     {
-        var border = new Border { BorderThickness = new Thickness(1) };
+        Border border = new Border { BorderThickness = new Thickness(1) };
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             border.BorderThickness = new Thickness(2, 0, 0, 0));
@@ -117,8 +120,8 @@ public sealed class BorderTests
     [Fact]
     public void Layout_WhenChildHasMarginPaddingAndBorder_ComputesExactBounds()
     {
-        var child = new ProbeControl(new Size(2, 1)) { Margin = new Thickness(1) };
-        var border = new Border
+        ProbeControl child = new ProbeControl(new Size(2, 1)) { Margin = new Thickness(1) };
+        Border border = new Border
         {
             Child = child,
             BorderThickness = new Thickness(1),
@@ -139,13 +142,13 @@ public sealed class BorderTests
     [Fact]
     public void Render_WhenBorderIsComplete_WritesCornersEdgesAndChild()
     {
-        var border = new Border
+        Border border = new Border
         {
             Child = new ControlText("界"),
             BorderThickness = new Thickness(1),
         };
         new Engine().Layout(border, new Size(4, 3));
-        using var frame = new Frame(new Size(4, 3));
+        using Frame frame = new Frame(new Size(4, 3));
 
         border.Render(frame.Canvas);
 
@@ -161,7 +164,7 @@ public sealed class BorderTests
     [Fact]
     public void Render_WhenEdgesArePartial_UsesOnlyActiveCustomGlyphsAndStyles()
     {
-        var border = new Border
+        Border border = new Border
         {
             BorderThickness = new Thickness(1, 1, 0, 0),
             Glyphs = new Glyphs(
@@ -177,7 +180,7 @@ public sealed class BorderTests
             Background = Color.Indexed(4),
         };
         new Engine().Layout(border, new Size(3, 2));
-        using var frame = new Frame(new Size(3, 2));
+        using Frame frame = new Frame(new Size(3, 2));
 
         border.Render(frame.Canvas);
 
@@ -195,9 +198,9 @@ public sealed class BorderTests
     [InlineData(1, 3)]
     public void Render_WhenBoundsAreTiny_RemainsContained(int width, int height)
     {
-        var border = new Border { BorderThickness = new Thickness(1) };
+        Border border = new Border { BorderThickness = new Thickness(1) };
         new Engine().Layout(border, new Size(width, height));
-        using var frame = new Frame(new Size(Math.Max(1, width), Math.Max(1, height)));
+        using Frame frame = new Frame(new Size(Math.Max(1, width), Math.Max(1, height)));
 
         Should.NotThrow(() => border.Render(frame.Canvas));
     }

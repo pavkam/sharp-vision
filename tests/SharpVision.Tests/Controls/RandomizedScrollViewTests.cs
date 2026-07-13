@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Controls;
@@ -17,17 +20,17 @@ public sealed class RandomizedScrollViewTests
     [Fact]
     public void Layout_WhenCasesAreRandomized_PreservesStableContainedGeometry()
     {
-        var random = new Random(_seed);
-        var engine = new Engine();
-        var view = new ScrollView { Content = new ProbeControl(new Size(50, 30)) };
+        Random random = new Random(_seed);
+        Engine engine = new Engine();
+        ScrollView view = new ScrollView { Content = new ProbeControl(new Size(50, 30)) };
 
         for (var sample = 0; sample < _caseCount; sample++)
         {
-            var size = new Size(random.Next(0, 80), random.Next(0, 50));
+            Size size = new Size(random.Next(0, 80), random.Next(0, 50));
             view.HorizontalBarVisibility = Policy(random);
             view.VerticalBarVisibility = Policy(random);
             engine.Layout(view, size);
-            var first = view.Viewport;
+            Size first = view.Viewport;
             engine.Layout(view, size);
             var context = $"seed=0x{_seed:X8}, case={sample}, size={size}";
 

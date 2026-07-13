@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Performance;
 
 using System.Diagnostics;
@@ -22,13 +25,13 @@ public sealed class DisplayPanelPerformanceTests
     [InlineData(200, 60)]
     public void Render_WhenDisplayTreeIsWarm_AllocatesNoManagedMemory(int width, int height)
     {
-        var root = Representative();
-        var size = new Size(width, height);
-        var engine = new Engine();
-        using var frame = new Frame(size);
+        Grid root = Representative();
+        Size size = new Size(width, height);
+        Engine engine = new Engine();
+        using Frame frame = new Frame(size);
         Run();
 
-        var allocated = Minimum(Run, iterations: 500, out var elapsed);
+        var allocated = Minimum(Run, iterations: 500, out TimeSpan elapsed);
 
         allocated.ShouldBe(0);
         TestContext.Current.TestOutputHelper?.WriteLine(
@@ -47,10 +50,10 @@ public sealed class DisplayPanelPerformanceTests
     [Fact]
     public void Layout_WhenTreeHasOneThousandChildren_AllocatesNoManagedMemoryAfterWarmup()
     {
-        var grid = new Grid();
+        Grid grid = new Grid();
         grid.Rows.Add(Track.Star(1));
         grid.Columns.Add(Track.Star(1));
-        var stack = new Stack();
+        Stack stack = new Stack();
         grid.Children.Add(stack);
 
         for (var index = 0; index < 1_000; index++)
@@ -58,11 +61,11 @@ public sealed class DisplayPanelPerformanceTests
             stack.Children.Add(new ControlText((index % 10).ToString(CultureInfo.InvariantCulture)));
         }
 
-        var engine = new Engine();
-        var size = new Size(200, 60);
+        Engine engine = new Engine();
+        Size size = new Size(200, 60);
         engine.Layout(grid, size);
 
-        var allocated = Minimum(() => engine.Layout(grid, size), 1_000, out var elapsed);
+        var allocated = Minimum(() => engine.Layout(grid, size), 1_000, out TimeSpan elapsed);
 
         allocated.ShouldBe(0);
         stack.Children.Count.ShouldBe(1_000);
@@ -78,7 +81,7 @@ public sealed class DisplayPanelPerformanceTests
         }
 
         var minimum = long.MaxValue;
-        var watch = Stopwatch.StartNew();
+        Stopwatch watch = Stopwatch.StartNew();
 
         for (var sample = 0; sample < 5; sample++)
         {
@@ -99,12 +102,12 @@ public sealed class DisplayPanelPerformanceTests
 
     private static Grid Representative()
     {
-        var root = new Grid();
+        Grid root = new Grid();
         root.Columns.Add(Track.Cells(24));
         root.Columns.Add(Track.Star(1));
-        var navigation = new Stack { Spacing = 1 };
+        Stack navigation = new Stack { Spacing = 1 };
         Grid.SetColumn(navigation, 0);
-        var content = new Overlay();
+        Overlay content = new Overlay();
         Grid.SetColumn(content, 1);
         root.Children.Add(navigation);
         root.Children.Add(content);

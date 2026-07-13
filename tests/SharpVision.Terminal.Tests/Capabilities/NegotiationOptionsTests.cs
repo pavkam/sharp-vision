@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
@@ -12,11 +15,11 @@ public sealed class NegotiationOptionsTests
     public void Constructor_WhenEnvironmentChanges_RetainsOwnedSnapshot()
     {
         // Arrange
-        var environment = new Dictionary<string, string?>
+        Dictionary<string, string?> environment = new Dictionary<string, string?>
         {
             ["TERM"] = "xterm-kitty",
         };
-        var options = new NegotiationOptions(environment);
+        NegotiationOptions options = new NegotiationOptions(environment);
 
         // Act
         environment["TERM"] = "dumb";

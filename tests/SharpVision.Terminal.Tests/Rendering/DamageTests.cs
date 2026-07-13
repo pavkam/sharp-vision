@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Geometry;
@@ -16,8 +19,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenFramesAreEqual_ReturnsNoSpans()
     {
-        using var front = Create("abcd");
-        using var back = Create("abcd");
+        using Frame front = Create("abcd");
+        using Frame back = Create("abcd");
 
         GetSpans(front, back).ShouldBeEmpty();
     }
@@ -28,8 +31,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenChangesAreSparse_ReturnsMergedAdjacentRuns()
     {
-        using var front = Create("abcdef");
-        using var back = Create("aXYdeZ");
+        using Frame front = Create("abcdef");
+        using Frame back = Create("aXYdeZ");
 
         GetSpans(front, back).ShouldBe(
         [
@@ -44,8 +47,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenWideGraphemeChanges_ExpandsThroughContinuation()
     {
-        using var front = Create("界x", width: 3);
-        using var back = Create("語x", width: 3);
+        using Frame front = Create("界x", width: 3);
+        using Frame back = Create("語x", width: 3);
 
         GetSpans(front, back).ShouldBe([new DamageSpan(0, 0, 2)]);
     }
@@ -56,8 +59,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenWidthChanges_IncludesRepairedRange()
     {
-        using var front = Create("界x", width: 3);
-        using var back = Create("abx", width: 3);
+        using Frame front = Create("界x", width: 3);
+        using Frame back = Create("abx", width: 3);
 
         GetSpans(front, back).ShouldBe([new DamageSpan(0, 0, 2)]);
     }
@@ -68,8 +71,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenOnlyStyleChanges_ReturnsChangedCell()
     {
-        using var front = Create("x");
-        using var back = new Frame(new Size(1, 1));
+        using Frame front = Create("x");
+        using Frame back = new Frame(new Size(1, 1));
         _ = back.Canvas.Draw(
             "x".AsSpan(),
             new Point(0, 0),
@@ -84,8 +87,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenFullOrResized_ReturnsEveryBackCell()
     {
-        using var front = new Frame(new Size(1, 1));
-        using var back = new Frame(new Size(2, 2));
+        using Frame front = new Frame(new Size(1, 1));
+        using Frame back = new Frame(new Size(2, 2));
 
         GetSpans(front, back).ShouldBe(
         [
@@ -97,9 +100,9 @@ public sealed class DamageTests
 
     internal static List<DamageSpan> GetSpans(Frame? front, Frame back, bool full = false)
     {
-        var result = new List<DamageSpan>();
+        List<DamageSpan> result = new List<DamageSpan>();
 
-        foreach (var span in Damage.Enumerate(front, back, full))
+        foreach (DamageSpan span in Damage.Enumerate(front, back, full))
         {
             result.Add(span);
         }
@@ -109,7 +112,7 @@ public sealed class DamageTests
 
     private static Frame Create(string value, int? width = null)
     {
-        var frame = new Frame(new Size(width ?? value.Length, 1));
+        Frame frame = new Frame(new Size(width ?? value.Length, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

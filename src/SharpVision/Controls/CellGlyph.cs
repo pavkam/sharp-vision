@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -17,7 +20,7 @@ internal static class CellGlyph
     {
         Span<char> valueBuffer = stackalloc char[2];
         var valueLength = value.EncodeToUtf16(valueBuffer);
-        var measurement = Width.Measure(valueBuffer[..valueLength], ambiguousWidth);
+        Measurement measurement = Width.Measure(valueBuffer[..valueLength], ambiguousWidth);
 
         if (measurement.Cells == 1 && measurement.Controls == 0)
         {
@@ -26,7 +29,7 @@ internal static class CellGlyph
 
         Span<char> fallbackBuffer = stackalloc char[2];
         var fallbackLength = fallback.EncodeToUtf16(fallbackBuffer);
-        var fallbackMeasurement = Width.Measure(fallbackBuffer[..fallbackLength], ambiguousWidth);
+        Measurement fallbackMeasurement = Width.Measure(fallbackBuffer[..fallbackLength], ambiguousWidth);
         Debug.Assert(
             fallbackMeasurement.Cells == 1 && fallbackMeasurement.Controls == 0,
             "Control chrome fallbacks must remain one printable cell under every policy.");

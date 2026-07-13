@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Styling;
 
 /// <summary>Single source of truth for overlay visual states and their resolution order.</summary>
@@ -31,9 +34,9 @@ internal static class VisualStates
 
     private static State Combine(State[] states)
     {
-        var result = State.Normal;
+        State result = State.Normal;
 
-        foreach (var state in states)
+        foreach (State state in states)
         {
             result |= state;
         }

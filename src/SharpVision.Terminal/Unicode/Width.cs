@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Unicode;
 
 using System.Buffers;
@@ -25,9 +28,9 @@ public static class Width
         var graphemes = 0;
         var controls = 0;
 
-        foreach (var segment in Graphemes.Enumerate(value))
+        foreach (Grapheme segment in Graphemes.Enumerate(value))
         {
-            var cluster = AnalyzeCluster(
+            Cluster cluster = AnalyzeCluster(
                 value.Slice(segment.Offset, segment.Length),
                 ambiguous,
                 segment.HasInvalidData);
@@ -86,7 +89,7 @@ public static class Width
 
         while (position < value.Length)
         {
-            var status = Rune.DecodeFromUtf16(value[position..], out var rune, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out var consumed);
 
             if (status != OperationStatus.Done)
             {
@@ -95,7 +98,7 @@ public static class Width
             }
 
             var scalar = rune.Value;
-            var graphemeBreak = Data.GetGraphemeBreak(scalar);
+            GraphemeBreak graphemeBreak = Data.GetGraphemeBreak(scalar);
 
             if (graphemeBreak is GraphemeBreak.Control or GraphemeBreak.Cr or GraphemeBreak.Lf)
             {
@@ -131,9 +134,9 @@ public static class Width
             return new Cluster(CellWidth.Narrow, requiresReplacement: false);
         }
 
-        var eastAsianWidth = Data.GetEastAsianWidth(baseScalar);
+        EastAsianWidth eastAsianWidth = Data.GetEastAsianWidth(baseScalar);
 
-        var width = eastAsianWidth is EastAsianWidth.Wide or EastAsianWidth.Fullwidth
+        CellWidth width = eastAsianWidth is EastAsianWidth.Wide or EastAsianWidth.Fullwidth
             ? CellWidth.Wide
             : hasTextSelector
             ? CellWidth.Narrow

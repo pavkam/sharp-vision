@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Protocols;
 
 using System.Buffers;
@@ -23,7 +26,7 @@ public static class Screen
         ArgumentNullException.ThrowIfNull(destination);
 
         var length = checked(Header.Length + sequence.Length + Terminator.Length);
-        var output = destination.GetSpan(length);
+        Span<byte> output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
         Header.CopyTo(output);
         sequence.CopyTo(output[Header.Length..]);

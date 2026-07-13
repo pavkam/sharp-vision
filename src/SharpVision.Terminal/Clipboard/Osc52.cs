@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Clipboard;
 
 using System.Buffers;
@@ -61,7 +64,7 @@ public static class Osc52
         var rented = length > _stackPayloadLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
-        var payload = rented is null
+        Span<byte> payload = rented is null
             ? stackalloc byte[length]
             : rented.AsSpan();
 
@@ -69,7 +72,7 @@ public static class Osc52
         {
             payload[0] = identifier;
             payload[1] = (byte) ';';
-            var status = Base64.EncodeToUtf8(
+            OperationStatus status = Base64.EncodeToUtf8(
                 text,
                 payload[2..],
                 out var consumed,
@@ -126,12 +129,12 @@ public static class Osc52
         if (value.Length < 5 ||
             !value.StartsWith("52;"u8) ||
             value[4] != (byte) ';' ||
-            !TryGetSelection(value[3], out var selection))
+            !TryGetSelection(value[3], out Selection selection))
         {
             return Malformed();
         }
 
-        var encoded = value[5..];
+        ReadOnlySpan<byte> encoded = value[5..];
 
         if (encoded.SequenceEqual("?"u8))
         {
@@ -154,7 +157,7 @@ public static class Osc52
 
         try
         {
-            var status = Base64.DecodeFromUtf8(
+            OperationStatus status = Base64.DecodeFromUtf8(
                 encoded,
                 rented,
                 out var consumed,
@@ -167,7 +170,7 @@ public static class Osc52
                 return Malformed(selection);
             }
 
-            var decoded = rented.AsSpan(0, written);
+            Span<byte> decoded = rented.AsSpan(0, written);
 
             return IsValidUtf8(decoded)
                 ? new ClipboardReply(
@@ -240,7 +243,7 @@ public static class Osc52
     {
         while (!value.IsEmpty)
         {
-            var status = Rune.DecodeFromUtf8(value, out _, out var consumed);
+            OperationStatus status = Rune.DecodeFromUtf8(value, out _, out var consumed);
 
             if (status != OperationStatus.Done)
             {

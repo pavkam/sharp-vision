@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Controls;
 
 using SharpVision.Controls;
@@ -16,8 +19,8 @@ public sealed class FigletTextTests
     [Fact]
     public void Constructor_WhenFontIsProvided_UsesDocumentedDefaults()
     {
-        var font = FigletCatalog.Default.Load("Standard");
-        var control = new FigletText(font);
+        FigletFont font = FigletCatalog.Default.Load("Standard");
+        FigletText control = new FigletText(font);
 
         control.Font.ShouldBeSameAs(font);
         control.Content.ShouldBe(string.Empty);
@@ -28,7 +31,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Layout_WhenContentIsSet_MeasuresRenderedFontOutput()
     {
-        var control = new FigletText(FigletCatalog.Default.Load("Standard"))
+        FigletText control = new FigletText(FigletCatalog.Default.Load("Standard"))
         {
             Content = "H",
         };
@@ -42,12 +45,12 @@ public sealed class FigletTextTests
     [Fact]
     public void Render_WhenContentIsSet_WritesExactFigletCells()
     {
-        var control = new FigletText(FigletCatalog.Default.Load("Standard"))
+        FigletText control = new FigletText(FigletCatalog.Default.Load("Standard"))
         {
             Content = "H",
         };
         new Engine().Layout(control, new Size(7, 6));
-        using var frame = new Frame(new Size(7, 6));
+        using Frame frame = new Frame(new Size(7, 6));
 
         control.Render(frame.Canvas);
 
@@ -60,8 +63,8 @@ public sealed class FigletTextTests
     [Fact]
     public void Font_WhenValueIsNull_ThrowsBeforeMutation()
     {
-        var font = FigletCatalog.Default.Load("Standard");
-        var control = new FigletText(font);
+        FigletFont font = FigletCatalog.Default.Load("Standard");
+        FigletText control = new FigletText(font);
 
         _ = Should.Throw<ArgumentNullException>(() => control.Font = null!);
 

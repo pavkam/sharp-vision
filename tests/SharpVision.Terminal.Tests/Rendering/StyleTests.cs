@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Protocols;
@@ -12,7 +15,7 @@ public sealed class StyleTests
     [Fact]
     public void Constructor_WhenDecorationsAreValid_PreservesValues()
     {
-        var style = new Style(
+        Style style = new Style(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));

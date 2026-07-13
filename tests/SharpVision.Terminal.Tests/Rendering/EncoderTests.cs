@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Rendering;
 
 using System.Buffers;
@@ -52,11 +55,11 @@ public sealed class EncoderTests
         ColorDepth depth,
         string expected)
     {
-        using var back = new Frame(new Size(1, 1));
-        var style = new Style(Color.Rgb(95, 135, 175), Color.Rgb(255, 0, 0));
+        using Frame back = new Frame(new Size(1, 1));
+        Style style = new Style(Color.Rgb(95, 135, 175), Color.Rgb(255, 0, 0));
         _ = back.Canvas.Draw("x", default, style);
-        var destination = new ArrayBufferWriter<byte>();
-        var capabilities = TerminalCapabilities.Conservative with { ColorDepth = depth };
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        TerminalCapabilities capabilities = TerminalCapabilities.Conservative with { ColorDepth = depth };
 
         _ = FrameEncoder.Encode(null, back, destination, capabilities);
 
@@ -67,10 +70,10 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenSemanticColorsProjectEqually_DoesNotEmitRedundantTransition()
     {
-        using var back = new Frame(new Size(2, 1));
+        using Frame back = new Frame(new Size(2, 1));
         _ = back.Canvas.Draw("a", default, new Style(Color.Rgb(255, 0, 0)));
         _ = back.Canvas.Draw("b", new Point(1, 0), new Style(Color.Rgb(250, 5, 5)));
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         _ = FrameEncoder.Encode(
             null,
@@ -86,8 +89,8 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenCapabilitiesAreNull_ThrowsBeforeWriting()
     {
-        using var back = Create("x");
-        var destination = new ArrayBufferWriter<byte>();
+        using Frame back = Create("x");
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         _ = Should.Throw<ArgumentNullException>(() =>
             FrameEncoder.Encode(null, back, destination, null!));
@@ -99,13 +102,13 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenModernDecorationsAreUnknown_DegradesWithoutUnsupportedBytes()
     {
-        using var back = new Frame(new Size(1, 1));
-        var style = new Style(
+        using Frame back = new Frame(new Size(1, 1));
+        Style style = new Style(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
         _ = back.Canvas.Draw("x", default, style);
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         _ = FrameEncoder.Encode(
             null,
@@ -121,15 +124,15 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenModernDecorationsAreSupported_WritesExactBytes()
     {
-        using var back = new Frame(new Size(1, 1));
-        var style = new Style(
+        using Frame back = new Frame(new Size(1, 1));
+        Style style = new Style(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
         _ = back.Canvas.Draw("x", default, style);
-        var destination = new ArrayBufferWriter<byte>();
-        var supported = new Feature(CapabilitySupport.Supported, Origin.Override);
-        var capabilities = TrueColorCapabilities with
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Feature supported = new Feature(CapabilitySupport.Supported, Origin.Override);
+        TerminalCapabilities capabilities = TrueColorCapabilities with
         {
             StyledUnderlines = supported,
             UnderlineColor = supported,
@@ -149,10 +152,10 @@ public sealed class EncoderTests
     public void Encode_WhenFrameContainsOrphanMark_WritesReplacementBytes()
     {
         // Arrange
-        using var back = new Frame(new Size(2, 1));
+        using Frame back = new Frame(new Size(2, 1));
         _ = back.Canvas.Draw("a".AsSpan(), new Point(0, 0));
         _ = back.Canvas.Draw("\u0301".AsSpan(), new Point(1, 0));
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         // Act
         _ = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
@@ -169,10 +172,10 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenFrameIsFull_WritesExactBytes()
     {
-        using var back = Create("ab");
-        var destination = new ArrayBufferWriter<byte>();
+        using Frame back = Create("ab");
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
-        var result = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
+        EncodeResult result = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             "\u001b[1;1Hab\u001b[1;1H\u001b[?25l"u8.ToArray());
@@ -185,11 +188,11 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenOneCellChanges_WritesSparseRun()
     {
-        using var front = Create("ab");
-        using var back = Create("ac");
-        var destination = new ArrayBufferWriter<byte>();
+        using Frame front = Create("ab");
+        using Frame back = Create("ac");
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
-        var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
+        EncodeResult result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             "\u001b[1;2Hc\u001b[1;1H"u8.ToArray());
@@ -203,11 +206,11 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenFrameIsUnchanged_WritesNothing()
     {
-        using var front = Create("ab");
-        using var back = Create("ab");
-        var destination = new ArrayBufferWriter<byte>();
+        using Frame front = Create("ab");
+        using Frame back = Create("ab");
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
-        var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
+        EncodeResult result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
 
         destination.WrittenCount.ShouldBe(0);
         result.ShouldBe(new EncodeResult(0, false));
@@ -219,12 +222,12 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenCellIsStyled_WritesExactTransitions()
     {
-        using var back = new Frame(new Size(1, 1));
-        var style = new Style(
+        using Frame back = new Frame(new Size(1, 1));
+        Style style = new Style(
             attributes: Attributes.Bold,
             hyperlink: "https://example.test");
         _ = back.Canvas.Draw("x".AsSpan(), new Point(0, 0), style);
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         _ = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
 
@@ -246,9 +249,9 @@ public sealed class EncoderTests
     [Fact]
     public void Encode_WhenCursorIsVisible_RestoresPositionAndVisibility()
     {
-        using var back = Create("ab");
+        using Frame back = Create("ab");
         back.SetCursor(new Point(1, 0), visible: true);
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         _ = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
 
@@ -257,7 +260,7 @@ public sealed class EncoderTests
 
     private static Frame Create(string value)
     {
-        var frame = new Frame(new Size(value.Length, 1));
+        Frame frame = new Frame(new Size(value.Length, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Rendering;
 
 using System.Buffers;
@@ -36,12 +39,12 @@ public static class Encoder
         back.ThrowIfDisposed();
         front?.ThrowIfDisposed();
         var redraw = full || front is null || front.Size != back.Size;
-        var writer = new Writer(destination);
-        var semanticStyle = Style.Default;
-        var style = Style.Default;
+        Writer writer = new Writer(destination);
+        Style semanticStyle = Style.Default;
+        Style style = Style.Default;
         var spanCount = 0;
 
-        foreach (var span in Damage.Enumerate(front, back, redraw))
+        foreach (DamageSpan span in Damage.Enumerate(front, back, redraw))
         {
             Csi.Position(writer, span.Row + 1, span.Start + 1);
             spanCount++;
@@ -50,20 +53,20 @@ public static class Encoder
             for (var column = span.Start; column < end; column++)
             {
                 var index = checked((span.Row * back.Size.Width) + column);
-                var cell = back.GetCell(index);
+                Cell cell = back.GetCell(index);
 
                 if (cell.IsContinuation)
                 {
                     continue;
                 }
 
-                var projected = cell.Style == semanticStyle
+                Style projected = cell.Style == semanticStyle
                     ? style
                     : Project(cell.Style, capabilities);
                 ApplyStyle(writer, style, projected, capabilities);
                 semanticStyle = cell.Style;
                 style = projected;
-                var grapheme = back.GetGrapheme(index);
+                ReadOnlySpan<byte> grapheme = back.GetGrapheme(index);
 
                 if (grapheme.IsEmpty)
                 {
@@ -155,7 +158,7 @@ public static class Encoder
     {
         if (capabilities.ColorDepth == Capabilities.ColorDepth.Basic16)
         {
-            var basic = (BasicColor) color.Red;
+            BasicColor basic = (BasicColor) color.Red;
 
             if (foreground)
             {
@@ -238,10 +241,10 @@ public static class Encoder
 
     private static Style Project(Style value, TerminalCapabilities capabilities)
     {
-        var attributes = capabilities.Overline.IsSupported
+        Attributes attributes = capabilities.Overline.IsSupported
             ? value.Attributes
             : value.Attributes & ~Attributes.Overline;
-        var underline = value.Underline;
+        Underline underline = value.Underline;
 
         if (underline != Underline.None && !capabilities.StyledUnderlines.IsSupported)
         {
@@ -249,7 +252,7 @@ public static class Encoder
             underline = Underline.None;
         }
 
-        var underlineColor = capabilities.UnderlineColor.IsSupported
+        Color underlineColor = capabilities.UnderlineColor.IsSupported
             ? Palette.Project(value.UnderlineColor, capabilities.ColorDepth)
             : Color.Default;
         return new Style(
@@ -267,7 +270,7 @@ public static class Encoder
         var rented = byteCount > _stackLinkBytes
             ? ArrayPool<byte>.Shared.Rent(byteCount)
             : null;
-        var bytes = rented is null
+        Span<byte> bytes = rented is null
             ? stackalloc byte[byteCount]
             : rented.AsSpan(0, byteCount);
 

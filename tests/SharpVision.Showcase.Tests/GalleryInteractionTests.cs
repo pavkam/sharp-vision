@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Tests;
 
 using System.Text;
@@ -11,9 +14,9 @@ using SharpVision.Terminal.Runtime;
 
 using Shouldly;
 
-using ControlText = SharpVision.Controls.Text;
-using ScrollRange = SharpVision.Scrolling.Range;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
+using ControlText = Controls.Text;
+using ScrollRange = Scrolling.Range;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Proves real terminal input, focus, scrolling, and resize across the running gallery.</summary>
 public sealed class GalleryInteractionTests
@@ -22,10 +25,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task StartAsync_WhenGalleryRuns_RendersAndStopsCleanlyAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -41,10 +44,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenGalleryRuns_UpdatesLiveControlsAndSurvivesResizeAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24), new Size(800, 480)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -58,10 +61,10 @@ public sealed class GalleryInteractionTests
             application,
             "Button page selection");
 
-        var button = await application.Dispatcher.InvokeAsync(
+        Button? button = await application.Dispatcher.InvokeAsync(
             () => Find<Button>(gallery.Content, static value => value.IsEnabled),
             TestContext.Current.CancellationToken);
-        var activeButton = button.ShouldNotBeNull();
+        Button activeButton = button.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
             () => application.Focus.Focus(activeButton).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
@@ -73,7 +76,7 @@ public sealed class GalleryInteractionTests
             application,
             "Button keyboard activation");
 
-        var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
         var wheel = string.Concat(Enumerable.Repeat("\u001b[<65;30;10M", 8));
         terminal.QueueInput(Encoding.ASCII.GetBytes(wheel));
         await WaitUntilAsync(
@@ -88,10 +91,10 @@ public sealed class GalleryInteractionTests
             () => gallery.SelectedPage == "TextInput",
             application,
             "TextInput page selection");
-        var input = await application.Dispatcher.InvokeAsync(
+        TextInput? input = await application.Dispatcher.InvokeAsync(
             () => Find<TextInput>(gallery.Content, static value => !value.IsReadOnly),
             TestContext.Current.CancellationToken);
-        var activeInput = input.ShouldNotBeNull();
+        TextInput activeInput = input.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
             () => application.Focus.Focus(activeInput).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
@@ -101,7 +104,7 @@ public sealed class GalleryInteractionTests
             application,
             "TextInput editing");
 
-        var rendered = NextFrame(application);
+        Task rendered = NextFrame(application);
         terminal.QueueResize(new Dimensions(new Size(100, 30), new Size(1000, 600)));
         await rendered.WaitAsync(TestContext.Current.CancellationToken);
         gallery.Bounds.ShouldBe(new Rect(0, 0, 100, 30));
@@ -115,10 +118,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenWheelTargetsShowcaseMultilineEditor_ScrollsEditorBeforePageAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 40)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -127,17 +130,17 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(
             () => gallery.Select(IndexOf(gallery, "TextInput")),
             TestContext.Current.CancellationToken);
-        var editor = await application.Dispatcher.InvokeAsync(
+        TextInput? editor = await application.Dispatcher.InvokeAsync(
             () => Find<TextInput>(
                 gallery.Content,
                 static value => value.AcceptsReturn && value.Height == Length.Cells(3)),
             TestContext.Current.CancellationToken);
-        var activeEditor = editor.ShouldNotBeNull();
+        TextInput activeEditor = editor.ShouldNotBeNull();
         await BringIntoViewAsync(activeEditor, gallery, application);
-        var target = await application.Dispatcher.InvokeAsync(
+        Point target = await application.Dispatcher.InvokeAsync(
             () => new Point(activeEditor.Bounds.X + 1, activeEditor.Bounds.Y + 1),
             TestContext.Current.CancellationToken);
-        var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
         var previousPageOffset = await application.Dispatcher.InvokeAsync(
             () => main.VerticalOffset,
             TestContext.Current.CancellationToken);
@@ -159,10 +162,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenRichTextMutationButtonIsActivated_UpdatesActivityLogAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 40)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -177,12 +180,12 @@ public sealed class GalleryInteractionTests
             application,
             "RichText page selection");
 
-        var append = await application.Dispatcher.InvokeAsync(
+        Button? append = await application.Dispatcher.InvokeAsync(
             () => Find<Button>(
                 gallery.Content,
                 static value => value.Content is ControlText { Content: "Append a Run" }),
             TestContext.Current.CancellationToken);
-        var activeAppend = append.ShouldNotBeNull();
+        Button activeAppend = append.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
             () => application.Focus.Focus(activeAppend).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
@@ -203,10 +206,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenListSelectionChanges_UpdatesSelectionStatusAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 40)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -221,12 +224,12 @@ public sealed class GalleryInteractionTests
             application,
             "List page selection");
 
-        var active = await application.Dispatcher.InvokeAsync(
+        List? active = await application.Dispatcher.InvokeAsync(
             () => Find<List>(
                 gallery.Content,
                 static value => value.IsEnabled),
             TestContext.Current.CancellationToken);
-        var selected = active.ShouldNotBeNull();
+        List selected = active.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
             () =>
             {
@@ -249,17 +252,17 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenPrimaryPointerClicksSidebarButton_SelectsButtonPageAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var button = gallery.Navigation[1];
-        var point = await application.Dispatcher.InvokeAsync(
+        NavigationItem button = gallery.Navigation[1];
+        Rect point = await application.Dispatcher.InvokeAsync(
             () => button.Bounds,
             TestContext.Current.CancellationToken);
 
@@ -296,17 +299,17 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenPointerMovesOverSidebarEntry_UsesAndClearsHoverAppearanceAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
             StartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var entry = gallery.Navigation[1];
-        var point = await application.Dispatcher.InvokeAsync(
+        NavigationItem entry = gallery.Navigation[1];
+        Rect point = await application.Dispatcher.InvokeAsync(
             () => entry.Bounds,
             TestContext.Current.CancellationToken);
 
@@ -333,10 +336,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenPointerMovesOverButtonContent_UsesHoverAppearanceAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 60)));
         var root = new ButtonShowcasePane();
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
@@ -367,10 +370,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenPrimaryPointerClicksButton_LeavesFocusedAppearanceAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 60)));
         var root = new ButtonShowcasePane();
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
@@ -405,10 +408,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenArrowDownIsPressed_SelectsAndFocusesNextSidebarPageAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -441,10 +444,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenEnterIsPressedOnFocusedSidebarEntry_SelectsThatPageAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 24)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -470,10 +473,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenShowcaseScrollBarThumbIsDragged_UpdatesValueAndStatusAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -482,15 +485,15 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(
             () => gallery.Select(IndexOf(gallery, "ScrollBar")),
             TestContext.Current.CancellationToken);
-        var scrollBar = await application.Dispatcher.InvokeAsync(
+        ScrollBar? scrollBar = await application.Dispatcher.InvokeAsync(
             () => Find<ScrollBar>(gallery.Content, static value => value.Orientation == Orientation.Horizontal),
             TestContext.Current.CancellationToken);
-        var activeScrollBar = scrollBar.ShouldNotBeNull();
+        ScrollBar activeScrollBar = scrollBar.ShouldNotBeNull();
         await BringIntoViewAsync(activeScrollBar, gallery, application);
-        var start = await application.Dispatcher.InvokeAsync(() =>
+        Point start = await application.Dispatcher.InvokeAsync(() =>
         {
             var trackLength = activeScrollBar.Bounds.Width - 2;
-            var thumb = Thumb.Resolve(
+            Thumb thumb = Thumb.Resolve(
                 new ScrollRange(
                     activeScrollBar.Minimum,
                     activeScrollBar.Maximum,
@@ -499,10 +502,10 @@ public sealed class GalleryInteractionTests
                 trackLength);
             return new Point(activeScrollBar.Bounds.X + 1 + thumb.Start, activeScrollBar.Bounds.Y);
         }, TestContext.Current.CancellationToken);
-        var end = await application.Dispatcher.InvokeAsync(
+        Point end = await application.Dispatcher.InvokeAsync(
             () => new Point(activeScrollBar.Bounds.X + activeScrollBar.Bounds.Width - 2, activeScrollBar.Bounds.Y),
             TestContext.Current.CancellationToken);
-        var middle = new Point((start.X + end.X) / 2, start.Y);
+        Point middle = new Point((start.X + end.X) / 2, start.Y);
         var initial = await application.Dispatcher.InvokeAsync(
             () => activeScrollBar.Value,
             TestContext.Current.CancellationToken);
@@ -533,10 +536,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenFigletEditorTextAndFontChange_UpdatesPreviewAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -545,20 +548,20 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(
             () => gallery.Select(IndexOf(gallery, "FigletText")),
             TestContext.Current.CancellationToken);
-        var editor = await application.Dispatcher.InvokeAsync(
+        TextInput? editor = await application.Dispatcher.InvokeAsync(
             () => Find<TextInput>(gallery.Content, static value => value.Text == "SharpVision"),
             TestContext.Current.CancellationToken);
-        var preview = await application.Dispatcher.InvokeAsync(
+        FigletText? preview = await application.Dispatcher.InvokeAsync(
             () => Find<FigletText>(gallery.Content, static value => value.Content == "SharpVision"),
             TestContext.Current.CancellationToken);
-        var picker = await application.Dispatcher.InvokeAsync(
+        ComboBox? picker = await application.Dispatcher.InvokeAsync(
             () => Find<ComboBox>(
                 gallery.Content,
                 static value => value.SelectedIndex >= 0 && value.Items[value.SelectedIndex] is "Standard"),
             TestContext.Current.CancellationToken);
-        var activeEditor = editor.ShouldNotBeNull();
-        var activePreview = preview.ShouldNotBeNull();
-        var activePicker = picker.ShouldNotBeNull();
+        TextInput activeEditor = editor.ShouldNotBeNull();
+        FigletText activePreview = preview.ShouldNotBeNull();
+        ComboBox activePicker = picker.ShouldNotBeNull();
         await BringIntoViewAsync(activeEditor, gallery, application);
         await application.Dispatcher.InvokeAsync(
             () => application.Focus.Focus(activeEditor).ShouldBeTrue(),
@@ -580,12 +583,12 @@ public sealed class GalleryInteractionTests
                 static value => value.IsOpen) is not null,
             application,
             "FIGlet dropdown open");
-        var fonts = await application.Dispatcher.InvokeAsync(
+        List? fonts = await application.Dispatcher.InvokeAsync(
             () => Find<List>(
                 gallery.Content,
                 static value => value.EffectiveIsVisible),
             TestContext.Current.CancellationToken);
-        var activeFonts = fonts.ShouldNotBeNull();
+        List activeFonts = fonts.ShouldNotBeNull();
         var invoked = false;
         await application.Dispatcher.InvokeAsync(
             () => activeFonts.ItemInvoked += (_, _) => invoked = true,
@@ -598,7 +601,7 @@ public sealed class GalleryInteractionTests
                 activeFonts.Bounds.Height.ShouldBeGreaterThan(1);
             },
             TestContext.Current.CancellationToken);
-        var fontPoint = await application.Dispatcher.InvokeAsync(
+        Point fontPoint = await application.Dispatcher.InvokeAsync(
             () => new Point(activeFonts.Bounds.X + 1, activeFonts.Bounds.Y + 1),
             TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
@@ -633,10 +636,10 @@ public sealed class GalleryInteractionTests
     [Fact]
     public async Task Input_WhenFigletPickerOpens_KeyboardSelectionChangesPreviewAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
-        using var gallery = new Gallery();
-        await using var application = new Application(
+        using Gallery gallery = new Gallery();
+        await using Application application = new Application(
             gallery,
             terminal,
             terminal,
@@ -645,16 +648,16 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(
             () => gallery.Select(IndexOf(gallery, "FigletText")),
             TestContext.Current.CancellationToken);
-        var picker = await application.Dispatcher.InvokeAsync(
+        ComboBox? picker = await application.Dispatcher.InvokeAsync(
             () => Find<ComboBox>(
                 gallery.Content,
                 static value => value.SelectedIndex >= 0 && value.Items[value.SelectedIndex] is "Standard"),
             TestContext.Current.CancellationToken);
-        var preview = await application.Dispatcher.InvokeAsync(
+        FigletText? preview = await application.Dispatcher.InvokeAsync(
             () => Find<FigletText>(gallery.Content, static value => value.Content == "SharpVision"),
             TestContext.Current.CancellationToken);
-        var activePicker = picker.ShouldNotBeNull();
-        var activePreview = preview.ShouldNotBeNull();
+        ComboBox activePicker = picker.ShouldNotBeNull();
+        FigletText activePreview = preview.ShouldNotBeNull();
         await BringIntoViewAsync(activePicker, gallery, application);
         await application.Dispatcher.InvokeAsync(
             () => application.Focus.Focus(activePicker).ShouldBeTrue(),
@@ -683,7 +686,7 @@ public sealed class GalleryInteractionTests
             return null;
         }
 
-        foreach (var child in container.Children)
+        foreach (Control child in container.Children)
         {
             if (Find(child, predicate) is { } found)
             {
@@ -705,7 +708,7 @@ public sealed class GalleryInteractionTests
     private static Task NextFrame(Application application)
     {
         ArgumentNullException.ThrowIfNull(application);
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 
@@ -726,11 +729,11 @@ public sealed class GalleryInteractionTests
         ArgumentNullException.ThrowIfNull(control);
         ArgumentNullException.ThrowIfNull(gallery);
         ArgumentNullException.ThrowIfNull(application);
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         var moved = await application.Dispatcher.InvokeAsync(() =>
         {
-            var main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+            ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
             return main.BringIntoView(control);
         }, TestContext.Current.CancellationToken);
 

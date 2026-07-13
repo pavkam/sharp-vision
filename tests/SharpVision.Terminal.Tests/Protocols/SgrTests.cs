@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using System.Buffers;
@@ -72,7 +75,7 @@ public sealed class SgrTests
         Rendition rendition,
         string expected)
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         Sgr.Apply(new Writer(destination), rendition);
 
@@ -86,8 +89,8 @@ public sealed class SgrTests
     [Fact]
     public void Apply_WhenRenditionIsKnown_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Sgr.Apply(writer, Rendition.Bold);
         Sgr.Apply(writer, Rendition.Underline);
@@ -104,8 +107,8 @@ public sealed class SgrTests
     [Fact]
     public void Foreground_WhenColorIsValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Sgr.Foreground(writer, Color.Default);
         Sgr.Foreground(writer, Color.Indexed(123));
@@ -121,8 +124,8 @@ public sealed class SgrTests
     [Fact]
     public void Background_WhenColorIsValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Sgr.Background(writer, Color.Default);
         Sgr.Background(writer, Color.Indexed(255));
@@ -143,8 +146,8 @@ public sealed class SgrTests
         string foreground,
         string background)
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Sgr.Foreground(writer, color);
         Sgr.Background(writer, color);
@@ -162,7 +165,7 @@ public sealed class SgrTests
         Underline underline,
         string expected)
     {
-        var destination = new ArrayBufferWriter<byte>();
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
 
         Sgr.Apply(new Writer(destination), underline);
 
@@ -174,8 +177,8 @@ public sealed class SgrTests
     [Fact]
     public void UnderlineColor_WhenColorIsValid_WritesExactBytes()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         Sgr.UnderlineColor(writer, Color.Default);
         Sgr.UnderlineColor(writer, Color.Indexed(123));
@@ -191,8 +194,8 @@ public sealed class SgrTests
     [Fact]
     public void Command_WhenValueIsInvalid_ThrowsBeforeWriting()
     {
-        var destination = new ArrayBufferWriter<byte>();
-        var writer = new Writer(destination);
+        ArrayBufferWriter<byte> destination = new ArrayBufferWriter<byte>();
+        Writer writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             static () => Color.Indexed(-1));

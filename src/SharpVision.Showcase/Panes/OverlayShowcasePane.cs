@@ -1,9 +1,12 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
 using SharpVision.Layout;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
+using TerminalAttributes = Terminal.Rendering.Attributes;
 
 /// <summary>Documents and demonstrates the Overlay control.</summary>
 internal sealed class OverlayShowcasePane: ShowcasePane
@@ -37,23 +40,23 @@ internal sealed class OverlayShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var overlay = new ControlOverlay
+        ControlOverlay overlay = new ControlOverlay
         {
             Width = Length.Cells(32),
             Height = Length.Cells(7),
             ClipToBounds = true,
         };
-        var back = new ControlText("Background layer")
+        ControlText back = new ControlText("Background layer")
         {
             Background = Palette.Highlight,
             Padding = new Thickness(1),
         };
         ControlOverlay.SetZIndex(back, -1);
         overlay.Children.Add(back);
-        var middle = PaneSupport.Card(new ControlText("Middle layer"), Glyphs.Heavy);
+        ControlBorder middle = PaneSupport.Card(new ControlText("Middle layer"), Glyphs.Heavy);
         middle.Margin = new Thickness(4, 2, 4, 2);
         overlay.Children.Add(middle);
-        var front = new ControlText("Front layer")
+        ControlText front = new ControlText("Front layer")
         {
             Foreground = Palette.Warning,
             Attributes = TerminalAttributes.Bold,

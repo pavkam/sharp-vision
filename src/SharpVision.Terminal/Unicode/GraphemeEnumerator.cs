@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Unicode;
 
 using System.Buffers;
@@ -32,9 +35,9 @@ public ref struct GraphemeEnumerator
         }
 
         var start = _position;
-        Decode(_position, out var previous, out var consumed, out var invalid);
+        Decode(_position, out Rune previous, out var consumed, out var invalid);
         var hasInvalidData = invalid;
-        var previousBreak = Data.GetGraphemeBreak(previous.Value);
+        GraphemeBreak previousBreak = Data.GetGraphemeBreak(previous.Value);
         var regionalIndicators = previousBreak == GraphemeBreak.RegionalIndicator ? 1 : 0;
         var extendedPictographicCandidate = Data.IsExtendedPictographic(previous.Value);
         var previousZwjAfterPictographic = false;
@@ -43,9 +46,9 @@ public ref struct GraphemeEnumerator
 
         while (_position < _value.Length)
         {
-            Decode(_position, out var current, out consumed, out invalid);
-            var currentBreak = Data.GetGraphemeBreak(current.Value);
-            var currentIndic = Data.GetIndicConjunct(current.Value);
+            Decode(_position, out Rune current, out consumed, out invalid);
+            GraphemeBreak currentBreak = Data.GetGraphemeBreak(current.Value);
+            IndicConjunct currentIndic = Data.GetIndicConjunct(current.Value);
             var currentPictographic = Data.IsExtendedPictographic(current.Value);
 
             if (ShouldBreak(
@@ -176,7 +179,7 @@ public ref struct GraphemeEnumerator
         out int consumed,
         out bool invalid)
     {
-        var status = Rune.DecodeFromUtf16(_value[offset..], out rune, out consumed);
+        OperationStatus status = Rune.DecodeFromUtf16(_value[offset..], out rune, out consumed);
         invalid = status != OperationStatus.Done;
 
         if (invalid)

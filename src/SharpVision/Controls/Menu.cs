@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Input;
@@ -5,7 +8,7 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using KeyAction = Terminal.Input.Action;
+using KeyAction = KeyAction;
 
 /// <summary>Arranges typed menu items and coordinates their keyboard selection and radio groups.</summary>
 public sealed class Menu: Container
@@ -84,9 +87,9 @@ public sealed class Menu: Container
         var cross = 0;
         var count = 0;
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
-            var item = RequireItem(child);
+            MenuItem item = RequireItem(child);
             item.Measure(Orientation == Orientation.Horizontal
                 ? new Constraint(width: null, constraint.Height)
                 : new Constraint(constraint.Width, height: null));
@@ -106,11 +109,11 @@ public sealed class Menu: Container
     {
         var position = Orientation == Orientation.Horizontal ? bounds.X : bounds.Y;
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
-            var item = RequireItem(child);
+            MenuItem item = RequireItem(child);
             var desired = Orientation == Orientation.Horizontal ? item.DesiredSize.Width : item.DesiredSize.Height;
-            var slot = Orientation == Orientation.Horizontal
+            Rect slot = Orientation == Orientation.Horizontal
                 ? new Rect(position, bounds.Y, Math.Min(desired, Math.Max(0, bounds.Right - position)), bounds.Height)
                 : new Rect(bounds.X, position, bounds.Width, Math.Min(desired, Math.Max(0, bounds.Bottom - position)));
             item.Arrange(slot, widthResolved: true, heightResolved: true);
@@ -128,8 +131,8 @@ public sealed class Menu: Container
             return;
         }
 
-        var previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
-        var next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
+        Code previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
+        Code next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
         var target = key.Stroke.Code == previous ? FindAvailable(_selectedIndex, -1) :
             key.Stroke.Code == next ? FindAvailable(_selectedIndex, 1) : -1;
 
@@ -153,7 +156,7 @@ public sealed class Menu: Container
             throw new ArgumentException("The radio item must belong to this menu.", nameof(item));
         }
 
-        foreach (var candidate in Items)
+        foreach (MenuItem candidate in Items)
         {
             if (candidate.Kind == MenuItemKind.Radio && candidate.GroupName == item.GroupName)
             {
@@ -208,7 +211,7 @@ public sealed class Menu: Container
     /// <summary>Clears items and subscriptions.</summary>
     internal void ClearItems()
     {
-        foreach (var item in Items.ToArray())
+        foreach (MenuItem? item in Items.ToArray())
         {
             item.Invoked -= OnItemInvoked;
         }
@@ -224,7 +227,7 @@ public sealed class Menu: Container
 
         if (reason == ReleaseReason.Disposed)
         {
-            foreach (var item in Items)
+            foreach (MenuItem item in Items)
             {
                 item.Invoked -= OnItemInvoked;
             }
@@ -264,7 +267,7 @@ public sealed class Menu: Container
 
         if (index >= 0)
         {
-            var item = ItemAt(index);
+            MenuItem item = ItemAt(index);
             item.CommitSelection(true);
 
             if (focus)
@@ -286,7 +289,7 @@ public sealed class Menu: Container
         for (var offset = 1; offset <= Children.Count; offset++)
         {
             var index = (start + (direction * offset) + Children.Count) % Children.Count;
-            var item = ItemAt(index);
+            MenuItem item = ItemAt(index);
 
             if (item.Kind != MenuItemKind.Separator && item.EffectiveIsEnabled && item.EffectiveIsVisible)
             {

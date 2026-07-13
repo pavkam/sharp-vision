@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Input;
@@ -19,23 +22,23 @@ public sealed class OrderingTests
     [Fact]
     public async Task Resize_WhenSeveralArriveBeforeDrain_CoalescesNewestAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        using var release = new ManualResetEventSlim();
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new ManualResetEventSlim();
+        TaskCompletionSource entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Dispatcher.Post(() =>
         {
             entered.SetResult();
             release.Wait();
         });
         await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
-        var sizes = new List<Size>();
+        List<Size> sizes = new List<Size>();
         application.Resize += (_, eventArgs) => sizes.Add(eventArgs.Dimensions.Cells);
 
         terminal.QueueResize(new Dimensions(new Size(20, 5)));
@@ -55,25 +58,25 @@ public sealed class OrderingTests
     [Fact]
     public async Task Input_WhenFocusExists_RoutesTypedKeyToFocusedControlAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        var root = new ProbeContainer();
-        var child = new ProbeControl { CanFocus = true };
+        ProbeContainer root = new ProbeContainer();
+        ProbeControl child = new ProbeControl { CanFocus = true };
         root.Children.Add(child);
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var phases = new List<Phase>();
+        List<Phase> phases = new List<Phase>();
         await application.Dispatcher.InvokeAsync(() =>
         {
             application.Focus.Focus(child).ShouldBeTrue();
             _ = child.AddHandler(Events.Key, (_, eventArgs) =>
                 phases.Add(eventArgs.Phase));
         }, TestContext.Current.CancellationToken);
-        var stroke = new Stroke(
+        Stroke stroke = new Stroke(
             Code.Enter,
             character: null,
             nativeCode: 0,
@@ -93,16 +96,16 @@ public sealed class OrderingTests
     [Fact]
     public async Task Input_WhenReceivedBeforeResize_DeliversAfterTreeAttachmentAsync()
     {
-        await using var terminal = new FakeTerminal();
-        var root = new ProbeContainer();
+        await using FakeTerminal terminal = new FakeTerminal();
+        ProbeContainer root = new ProbeContainer();
         var calls = 0;
         _ = root.AddHandler(Events.Focus, (_, _) => calls++);
-        await using var application = new Application(
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var focus = new Focus(gained: true);
+        Focus focus = new Focus(gained: true);
         application.Input(in focus);
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -118,15 +121,15 @@ public sealed class OrderingTests
     [Fact]
     public async Task Resize_WhenHandlerInvalidatesLayout_ReflowsBeforeFrameAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var root = new ProbeControl();
-        await using var application = new Application(
+        ProbeControl root = new ProbeControl();
+        await using Application application = new Application(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        application.Resize += (_, _) => root.Width = SharpVision.Layout.Length.Cells(5);
+        application.Resize += (_, _) => root.Width = Length.Cells(5);
         root.Rendering = _ => root.Bounds.Width.ShouldBe(5);
 
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -139,18 +142,18 @@ public sealed class OrderingTests
     [Fact]
     public async Task Fault_WhenSessionReportsFailure_StopsWithOriginalExceptionAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var failure = new IOException("terminal");
+        IOException failure = new IOException("terminal");
 
         application.Fault(failure);
-        var thrown = await Should.ThrowAsync<IOException>(application.Completion);
+        IOException thrown = await Should.ThrowAsync<IOException>(application.Completion);
 
         thrown.ShouldBeSameAs(failure);
         application.Failure.ShouldBeSameAs(failure);
@@ -160,15 +163,15 @@ public sealed class OrderingTests
     [Fact]
     public async Task Idle_WhenHandlerPostsWork_DrainsBeforeSecondIdleAsync()
     {
-        await using var terminal = new FakeTerminal();
+        await using FakeTerminal terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        await using var application = new Application(
+        await using Application application = new Application(
             new ProbeControl(),
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        var order = new List<string>();
-        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        List<string> order = new List<string>();
+        TaskCompletionSource completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Idle += (_, _) =>
         {
             order.Add("idle");

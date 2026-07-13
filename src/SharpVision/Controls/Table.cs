@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Layout;
@@ -5,9 +8,9 @@ using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = Terminal.Rendering.Canvas;
-using TerminalStyle = Terminal.Rendering.Style;
+using BackgroundMode = BackgroundMode;
+using TerminalCanvas = TerminalCanvas;
+using TerminalStyle = TerminalStyle;
 
 /// <summary>Arranges typed rows and columns into a terminal-safe table with optional headers and grid lines.</summary>
 public sealed class Table: Container
@@ -155,12 +158,12 @@ public sealed class Table: Container
 
         for (var rowIndex = 0; rowIndex < Rows.Count; rowIndex++)
         {
-            var row = Rows[rowIndex];
+            TableRow row = Rows[rowIndex];
             var x = bounds.X;
 
             for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
             {
-                var slot = new Rect(x, y, _columnWidths[columnIndex], _rowHeights[rowIndex]);
+                Rect slot = new Rect(x, y, _columnWidths[columnIndex], _rowHeights[rowIndex]);
                 row.Cells[columnIndex].Arrange(CellPadding.Deflate(slot), widthResolved: true, heightResolved: true);
                 x = Add(x, Add(_columnWidths[columnIndex], ColumnGap));
             }
@@ -177,16 +180,16 @@ public sealed class Table: Container
             return;
         }
 
-        var inherited = ResolvedStyle;
-        var (attributes, underline, underlineColor) = Decoration.Resolve(inherited);
-        var header = new TerminalStyle(
+        TerminalStyle inherited = ResolvedStyle;
+        (TerminalAttributes attributes, Underline underline, Color underlineColor) = Decoration.Resolve(inherited);
+        TerminalStyle header = new TerminalStyle(
             HeaderForeground ?? inherited.Foreground,
             HeaderBackground ?? inherited.Background,
             attributes,
             inherited.Hyperlink,
             underline,
             underlineColor);
-        var grid = new TerminalStyle(
+        TerminalStyle grid = new TerminalStyle(
             GridLineColor ?? inherited.Foreground,
             inherited.Background,
             attributes,
@@ -206,8 +209,8 @@ public sealed class Table: Container
 
             for (var index = 0; index < Columns.Count; index++)
             {
-                var area = new Rect(x, Bounds.Y + CellPadding.Top, _columnWidths[index], 1);
-                var text = canvas.Clip(CellPadding.Deflate(area));
+                Rect area = new Rect(x, Bounds.Y + CellPadding.Top, _columnWidths[index], 1);
+                TerminalCanvas text = canvas.Clip(CellPadding.Deflate(area));
                 _ = text.Draw(Columns[index].Header.AsSpan(), new Point(area.X + CellPadding.Left, area.Y), header, background: BackgroundMode.Transparent);
                 x = Add(x, Add(_columnWidths[index], ColumnGap));
             }
@@ -278,7 +281,7 @@ public sealed class Table: Container
         ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) Rows.Count);
         ValidateRow(row);
 
-        foreach (var cell in row.Cells)
+        foreach (Control cell in row.Cells)
         {
             Children.Add(cell);
         }
@@ -293,9 +296,9 @@ public sealed class Table: Container
     internal void RemoveRow(TableRows owner, int index)
     {
         VerifyRowsOwner(owner);
-        var row = Rows[index];
+        TableRow row = Rows[index];
 
-        foreach (var cell in row.Cells)
+        foreach (Control cell in row.Cells)
         {
             _ = Children.Remove(cell);
         }
@@ -325,14 +328,14 @@ public sealed class Table: Container
         VerifyRowsOwner(owner);
         _ = Rows[index];
         ValidateRow(row);
-        var previous = Rows[index];
+        TableRow previous = Rows[index];
 
-        foreach (var cell in previous.Cells)
+        foreach (Control cell in previous.Cells)
         {
             _ = Children.Remove(cell);
         }
 
-        foreach (var cell in row.Cells)
+        foreach (Control cell in row.Cells)
         {
             Children.Add(cell);
         }
@@ -359,7 +362,7 @@ public sealed class Table: Container
         }
 
         var automatic = new int[Columns.Count];
-        var lengths = new Length[Columns.Count];
+        Length[] lengths = new Length[Columns.Count];
 
         for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
         {
@@ -367,11 +370,11 @@ public sealed class Table: Container
             automatic[columnIndex] = Add(Terminal.Unicode.Width.Measure(Columns[columnIndex].Header).Cells, CellPadding.Horizontal);
         }
 
-        foreach (var row in Rows)
+        foreach (TableRow row in Rows)
         {
             for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
             {
-                var cell = row.Cells[columnIndex];
+                Control cell = row.Cells[columnIndex];
                 cell.Measure(new Constraint(width: null, height: null));
                 automatic[columnIndex] = Math.Max(automatic[columnIndex], Add(cell.DesiredSize.Width, Add(cell.Margin.Horizontal, CellPadding.Horizontal)));
             }
@@ -389,7 +392,7 @@ public sealed class Table: Container
 
             for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
             {
-                var cell = Rows[rowIndex].Cells[columnIndex];
+                Control cell = Rows[rowIndex].Cells[columnIndex];
                 var width = Math.Max(0, _columnWidths[columnIndex] - CellPadding.Horizontal);
                 cell.Measure(new Constraint(width, height: null));
                 height = Math.Max(height, Add(cell.DesiredSize.Height, Add(cell.Margin.Vertical, CellPadding.Vertical)));
@@ -409,7 +412,7 @@ public sealed class Table: Container
             throw new ArgumentException("Every row requires exactly one cell per defined column.", nameof(row));
         }
 
-        foreach (var cell in row.Cells)
+        foreach (Control cell in row.Cells)
         {
             if (cell.Parent is not null || cell.IsDisposed)
             {

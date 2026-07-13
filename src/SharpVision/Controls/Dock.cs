@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using System.Diagnostics;
@@ -44,7 +47,7 @@ public sealed class Dock: Container
     public static Side GetSide(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return _placements.TryGetValue(control, out var placement) ? placement.Side : Side.Left;
+        return _placements.TryGetValue(control, out DockPlacement? placement) ? placement.Side : Side.Left;
     }
 
     /// <summary>Sets one control's attached physical side.</summary>
@@ -64,7 +67,7 @@ public sealed class Dock: Container
         }
 
         control.VerifyMutable();
-        var placement = _placements.GetOrCreateValue(control);
+        DockPlacement placement = _placements.GetOrCreateValue(control);
 
         if (placement.Side == value)
         {
@@ -92,7 +95,7 @@ public sealed class Dock: Container
 
         for (var index = 0; index < Children.Count; index++)
         {
-            var child = Children[index];
+            Control child = Children[index];
             child.Measure(new Constraint(remainingWidth, remainingHeight));
 
             if (child.Visibility == Visibility.Collapsed)
@@ -134,12 +137,12 @@ public sealed class Dock: Container
     /// <inheritdoc/>
     protected override void ArrangeCore(Rect bounds)
     {
-        var remaining = bounds;
+        Rect remaining = bounds;
         var last = LastParticipant();
 
         for (var index = 0; index < Children.Count; index++)
         {
-            var child = Children[index];
+            Control child = Children[index];
 
             if (child.Visibility == Visibility.Collapsed)
             {
@@ -153,13 +156,13 @@ public sealed class Dock: Container
                 continue;
             }
 
-            var side = GetSide(child);
+            Side side = GetSide(child);
             var horizontal = side is Side.Left or Side.Right;
             var axis = horizontal ? remaining.Width : remaining.Height;
             var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
             var border = Resolve(child, axis, horizontal);
             var outer = Math.Min(axis, Add(border, margin));
-            var slot = side switch
+            Rect slot = side switch
             {
                 Side.Left => new Rect(remaining.X, remaining.Y, outer, remaining.Height),
                 Side.Top => new Rect(remaining.X, remaining.Y, remaining.Width, outer),
@@ -202,7 +205,7 @@ public sealed class Dock: Container
 
     private static int Resolve(Control child, int available, bool horizontal)
     {
-        var length = horizontal ? child.Width : child.Height;
+        Length length = horizontal ? child.Width : child.Height;
         var desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
         var minimum = horizontal ? child.MinWidth : child.MinHeight;
         var maximum = horizontal ? child.MaxWidth : child.MaxHeight;

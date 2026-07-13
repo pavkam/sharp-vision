@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.Protocols;
 
 using SharpVision.Terminal.Protocols;
@@ -39,9 +42,9 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenParameterLimitIsExceeded_ReportsOnceAndRecovers()
     {
-        var limits = Limits.Default with { MaxParameterBytes = 2 };
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        Limits limits = Limits.Default with { MaxParameterBytes = 2 };
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b[123mX"u8, ref sink);
 
@@ -57,9 +60,9 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenIntermediateLimitIsExceeded_ReportsOnceAndRecovers()
     {
-        var limits = Limits.Default with { MaxIntermediateBytes = 1 };
-        using var parser = new Parser(limits);
-        var sink = new RecordingSink();
+        Limits limits = Limits.Default with { MaxIntermediateBytes = 1 };
+        using Parser parser = new Parser(limits);
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b($BX"u8, ref sink);
 
@@ -74,8 +77,8 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenParameterFollowsIntermediate_ReportsAndRecovers()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b[$1pX"u8, ref sink);
 
@@ -90,8 +93,8 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Complete_WhenSequenceIsTruncated_ReportsOnceAndReturnsToGround()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b[12"u8, ref sink);
         parser.Complete(ref sink);
@@ -110,8 +113,8 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Reset_WhenSequenceIsPartial_DiscardsWithoutDiagnostic()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Parse("\u001b[12"u8, ref sink);
         parser.Reset();
@@ -127,8 +130,8 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenMalformedCsiPrecedesKnownCsi_RecoversKnownSequence()
     {
-        using var parser = new Parser();
-        var sink = new RecordingSink();
+        using Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
         byte[] input =
         [
             0x1b,
@@ -155,8 +158,8 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Dispose_WhenCalled_PreventsFurtherUseAndRemainsIdempotent()
     {
-        var parser = new Parser();
-        var sink = new RecordingSink();
+        Parser parser = new Parser();
+        RecordingSink sink = new RecordingSink();
 
         parser.Dispose();
         parser.Dispose();

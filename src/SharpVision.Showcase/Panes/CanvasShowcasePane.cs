@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Controls;
@@ -37,8 +40,8 @@ internal sealed class CanvasShowcasePane: ShowcasePane
     /// <inheritdoc/>
     protected override void BuildExamples(ControlStack examples)
     {
-        var fixedPlacement = PaneSupport.CanvasStage();
-        var fixedLabel = PaneSupport.DemoCard("fixed 2,1", Glyphs.Light);
+        ControlCanvas fixedPlacement = PaneSupport.CanvasStage();
+        ControlBorder fixedLabel = PaneSupport.DemoCard("fixed 2,1", Glyphs.Light);
         ControlCanvas.SetLeft(fixedLabel, Length.Cells(2));
         ControlCanvas.SetTop(fixedLabel, Length.Cells(1));
         fixedPlacement.Children.Add(fixedLabel);
@@ -47,8 +50,8 @@ internal sealed class CanvasShowcasePane: ShowcasePane
             "Cell offsets place this bordered child two cells from the left and one from the top.",
             fixedPlacement));
 
-        var percentagePlacement = PaneSupport.CanvasStage();
-        var percentLabel = PaneSupport.DemoCard("50%,50%", Glyphs.Heavy);
+        ControlCanvas percentagePlacement = PaneSupport.CanvasStage();
+        ControlBorder percentLabel = PaneSupport.DemoCard("50%,50%", Glyphs.Heavy);
         ControlCanvas.SetLeft(percentLabel, Length.Percent(50));
         ControlCanvas.SetTop(percentLabel, Length.Percent(50));
         percentagePlacement.Children.Add(percentLabel);
@@ -57,12 +60,12 @@ internal sealed class CanvasShowcasePane: ShowcasePane
             "Percentage offsets resolve against the final Canvas box, so this specimen moves when the available width changes.",
             percentagePlacement));
 
-        var constrained = PaneSupport.CanvasStage();
-        var edgeLabel = PaneSupport.DemoCard("Right 2 / Bottom 1", Glyphs.Paired);
+        ControlCanvas constrained = PaneSupport.CanvasStage();
+        ControlBorder edgeLabel = PaneSupport.DemoCard("Right 2 / Bottom 1", Glyphs.Paired);
         ControlCanvas.SetRight(edgeLabel, Length.Cells(2));
         ControlCanvas.SetBottom(edgeLabel, Length.Cells(1));
         constrained.Children.Add(edgeLabel);
-        var sizedLabel = PaneSupport.DemoCard("40% wide", Glyphs.Rounded);
+        ControlBorder sizedLabel = PaneSupport.DemoCard("40% wide", Glyphs.Rounded);
         sizedLabel.Width = Length.Percent(40);
         ControlCanvas.SetLeft(sizedLabel, Length.Cells(1));
         ControlCanvas.SetTop(sizedLabel, Length.Cells(1));
@@ -72,16 +75,16 @@ internal sealed class CanvasShowcasePane: ShowcasePane
             "Right and bottom offsets anchor one child, while a second child requests a percentage width from the same canvas.",
             constrained));
 
-        var layered = PaneSupport.CanvasStage();
-        var back = PaneSupport.DemoCard("Back", Glyphs.Light);
+        ControlCanvas layered = PaneSupport.CanvasStage();
+        ControlBorder back = PaneSupport.DemoCard("Back", Glyphs.Light);
         ControlCanvas.SetLeft(back, Length.Cells(2));
         ControlCanvas.SetTop(back, Length.Cells(1));
         layered.Children.Add(back);
-        var front = PaneSupport.DemoCard("Front", Glyphs.Heavy);
+        ControlBorder front = PaneSupport.DemoCard("Front", Glyphs.Heavy);
         ControlCanvas.SetLeft(front, Length.Cells(6));
         ControlCanvas.SetTop(front, Length.Cells(2));
         layered.Children.Add(front);
-        var clipped = PaneSupport.DemoCard("clipped", Glyphs.Ascii);
+        ControlBorder clipped = PaneSupport.DemoCard("clipped", Glyphs.Ascii);
         ControlCanvas.SetLeft(clipped, Length.Cells(29));
         ControlCanvas.SetTop(clipped, Length.Cells(5));
         layered.Children.Add(clipped);

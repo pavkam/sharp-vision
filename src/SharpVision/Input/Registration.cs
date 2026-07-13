@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Input;
 
 using SharpVision.Controls;
@@ -34,7 +37,7 @@ internal sealed class Registration<TArgs>: IHandler, IDisposable where TArgs : R
     /// <inheritdoc/>
     public void Dispose()
     {
-        var owner = Owner;
+        Control? owner = Owner;
 
         if (owner is null)
         {
@@ -55,7 +58,7 @@ internal sealed class Registration<TArgs>: IHandler, IDisposable where TArgs : R
         RoutedEventArgs eventArgs,
         long sequence)
     {
-        var handler = Handler;
+        EventHandler<TArgs>? handler = Handler;
 
         if (handler is null || Order > sequence ||
             !ReferenceEquals(RoutedEvent, routedEvent) ||

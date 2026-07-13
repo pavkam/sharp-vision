@@ -1,16 +1,19 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using BackgroundMode = BackgroundMode;
 using Code = Code;
-using KeyAction = Terminal.Input.Action;
-using KeyEventArgs = Input.KeyEventArgs;
-using ReleaseReason = Input.ReleaseReason;
-using RoutedEventArgs = Input.RoutedEventArgs;
-using TerminalCanvas = Terminal.Rendering.Canvas;
-using TerminalStyle = Terminal.Rendering.Style;
+using KeyAction = KeyAction;
+using KeyEventArgs = KeyEventArgs;
+using ReleaseReason = ReleaseReason;
+using RoutedEventArgs = RoutedEventArgs;
+using TerminalCanvas = TerminalCanvas;
+using TerminalStyle = TerminalStyle;
 
 /// <summary>Displays one owned child on an opaque, framed, anchor-relative surface.</summary>
 public sealed class Popup: Container
@@ -184,9 +187,9 @@ public sealed class Popup: Container
             return;
         }
 
-        var anchor = Anchor?.Bounds ?? bounds;
-        var desired = SurfaceSize(child, anchor.Width, bounds.Width, bounds.Height);
-        var placement = ResolvePlacement(bounds, anchor, desired);
+        Rect anchor = Anchor?.Bounds ?? bounds;
+        Size desired = SurfaceSize(child, anchor.Width, bounds.Width, bounds.Height);
+        PopupPlacement placement = ResolvePlacement(bounds, anchor, desired);
         var x = placement is PopupPlacement.Left
             ? anchor.X - desired.Width
             : placement is PopupPlacement.Right
@@ -217,7 +220,7 @@ public sealed class Popup: Container
             return;
         }
 
-        var inherited = ResolvedStyle;
+        TerminalStyle inherited = ResolvedStyle;
         canvas.Clear(SurfaceBounds, inherited);
         DrawFrame(canvas, ControlAppearance.ResolveBorderStyle(this, GetVisualState()));
     }
@@ -302,8 +305,8 @@ public sealed class Popup: Container
     {
         for (var x = SurfaceBounds.X; x < SurfaceBounds.Right; x++)
         {
-            var top = x == SurfaceBounds.X ? Glyphs.TopLeft : x == SurfaceBounds.Right - 1 ? Glyphs.TopRight : Glyphs.Top;
-            var bottom = x == SurfaceBounds.X ? Glyphs.BottomLeft : x == SurfaceBounds.Right - 1 ? Glyphs.BottomRight : Glyphs.Bottom;
+            Rune top = x == SurfaceBounds.X ? Glyphs.TopLeft : x == SurfaceBounds.Right - 1 ? Glyphs.TopRight : Glyphs.Top;
+            Rune bottom = x == SurfaceBounds.X ? Glyphs.BottomLeft : x == SurfaceBounds.Right - 1 ? Glyphs.BottomRight : Glyphs.Bottom;
             canvas.DrawRune(top, new Point(x, SurfaceBounds.Y), style, BackgroundMode.Opaque);
 
             if (SurfaceBounds.Height > 1)

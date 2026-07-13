@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Terminal.Tests.GeometryCases;
 
 using SharpVision.Terminal.Geometry;
@@ -14,17 +17,17 @@ public sealed class MetricsTests
     public void TryMap_WhenGridIsUneven_MapsEveryPixelExactly()
     {
         // Arrange
-        var cells = new Size(10, 3);
-        var pixels = new Size(101, 31);
-        var metrics = new Metrics(cells, pixels);
-        var previous = default(Point);
+        Size cells = new Size(10, 3);
+        Size pixels = new Size(101, 31);
+        Metrics metrics = new Metrics(cells, pixels);
+        Point previous = default(Point);
 
         // Act / Assert
         for (var y = 0; y < pixels.Height; y++)
         {
             for (var x = 0; x < pixels.Width; x++)
             {
-                metrics.TryMap(new Point(x, y), out var actual).ShouldBeTrue();
+                metrics.TryMap(new Point(x, y), out Point actual).ShouldBeTrue();
                 actual.ShouldBe(new Point(
                     (int) ((long) x * cells.Width / pixels.Width),
                     (int) ((long) y * cells.Height / pixels.Height)));
@@ -46,18 +49,18 @@ public sealed class MetricsTests
     public void TryMap_WhenCoordinateReachesBoundary_RejectsOutsideDomain()
     {
         // Arrange
-        var metrics = new Metrics(new Size(10, 3), new Size(101, 31));
+        Metrics metrics = new Metrics(new Size(10, 3), new Size(101, 31));
 
         // Act / Assert
-        metrics.TryMap(new Point(0, 0), out var first).ShouldBeTrue();
+        metrics.TryMap(new Point(0, 0), out Point first).ShouldBeTrue();
         first.ShouldBe(new Point(0, 0));
-        metrics.TryMap(new Point(100, 30), out var last).ShouldBeTrue();
+        metrics.TryMap(new Point(100, 30), out Point last).ShouldBeTrue();
         last.ShouldBe(new Point(9, 2));
-        metrics.TryMap(new Point(101, 30), out var right).ShouldBeFalse();
+        metrics.TryMap(new Point(101, 30), out Point right).ShouldBeFalse();
         right.ShouldBe(default);
-        metrics.TryMap(new Point(100, 31), out var bottom).ShouldBeFalse();
+        metrics.TryMap(new Point(100, 31), out Point bottom).ShouldBeFalse();
         bottom.ShouldBe(default);
-        metrics.TryMap(new Point(-1, 0), out var negative).ShouldBeFalse();
+        metrics.TryMap(new Point(-1, 0), out Point negative).ShouldBeFalse();
         negative.ShouldBe(default);
     }
 
@@ -66,10 +69,10 @@ public sealed class MetricsTests
     public void TryMap_WhenMetricsAreUniform_UsesExactCellExtents()
     {
         // Arrange
-        var metrics = new Metrics(8, 16);
+        Metrics metrics = new Metrics(8, 16);
 
         // Act / Assert
-        metrics.TryMap(new Point(16, 32), out var cells).ShouldBeTrue();
+        metrics.TryMap(new Point(16, 32), out Point cells).ShouldBeTrue();
         cells.ShouldBe(new Point(2, 2));
         metrics.Cells.ShouldBeNull();
         metrics.Pixels.ShouldBeNull();
@@ -90,7 +93,7 @@ public sealed class MetricsTests
     public void TryMap_WhenGridsAreRandomized_RemainsExactAndBounded()
     {
         // Arrange
-        var random = new Random(_seed);
+        Random random = new Random(_seed);
 
         // Act / Assert
         for (var item = 0; item < 1_000; item++)
@@ -99,14 +102,14 @@ public sealed class MetricsTests
             var cellHeight = random.Next(1, 21);
             var pixelWidth = random.Next(cellWidth, (cellWidth * 8) + 1);
             var pixelHeight = random.Next(cellHeight, (cellHeight * 8) + 1);
-            var metrics = new Metrics(
+            Metrics metrics = new Metrics(
                 new Size(cellWidth, cellHeight),
                 new Size(pixelWidth, pixelHeight));
             var y = random.Next(pixelHeight);
 
             for (var x = 0; x < pixelWidth; x++)
             {
-                metrics.TryMap(new Point(x, y), out var actual).ShouldBeTrue(
+                metrics.TryMap(new Point(x, y), out Point actual).ShouldBeTrue(
                     $"Seed {_seed}, grid {item}, pixel ({x},{y}).");
                 actual.ShouldBe(
                     new Point(
@@ -122,12 +125,12 @@ public sealed class MetricsTests
     public void TryMap_WhenTotalsAreMaximum_DoesNotOverflow()
     {
         // Arrange
-        var maximum = new Size(int.MaxValue, int.MaxValue);
-        var metrics = new Metrics(maximum, maximum);
-        var edge = new Point(int.MaxValue - 1, int.MaxValue - 1);
+        Size maximum = new Size(int.MaxValue, int.MaxValue);
+        Metrics metrics = new Metrics(maximum, maximum);
+        Point edge = new Point(int.MaxValue - 1, int.MaxValue - 1);
 
         // Act / Assert
-        metrics.TryMap(edge, out var actual).ShouldBeTrue();
+        metrics.TryMap(edge, out Point actual).ShouldBeTrue();
         actual.ShouldBe(edge);
     }
 }

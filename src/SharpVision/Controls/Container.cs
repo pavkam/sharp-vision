@@ -1,8 +1,11 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalCanvas = TerminalCanvas;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 public abstract class Container: Control
@@ -36,7 +39,7 @@ public abstract class Container: Control
             return popup;
         }
 
-        var hit = base.HitTest(point);
+        Control? hit = base.HitTest(point);
 
         if (hit is null)
         {
@@ -59,7 +62,7 @@ public abstract class Container: Control
     {
         ArgumentNullException.ThrowIfNull(visitor);
 
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             visitor(child);
         }
@@ -91,7 +94,7 @@ public abstract class Container: Control
     /// <inheritdoc/>
     internal override void RenderChildren(TerminalCanvas canvas)
     {
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.Render(canvas);
         }
@@ -108,7 +111,7 @@ public abstract class Container: Control
 
     private void RenderOwnedPopupLayer(TerminalCanvas canvas)
     {
-        foreach (var child in Children)
+        foreach (Control child in Children)
         {
             child.RenderPopupLayer(canvas);
         }

@@ -1,3 +1,6 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 namespace SharpVision.Tests.Styling;
 
 using SharpVision.Controls;
@@ -14,7 +17,7 @@ public sealed class StandardThemeTests
     [Fact]
     public void Dark_WhenResolvedOnControl_UsesIndexedSemanticCells()
     {
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, Themes.Dark);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
@@ -29,7 +32,7 @@ public sealed class StandardThemeTests
     [Fact]
     public void White_WhenResolvedOnControl_UsesIndexedSemanticCells()
     {
-        var control = new ProbeControl();
+        ProbeControl control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, Themes.White);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
