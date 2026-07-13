@@ -28,7 +28,27 @@ public sealed class ScreenTests
 
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        screen.Order.ShouldBe(["attach", "started"]);
+        screen.Order.ShouldBe(["attach", "build", "started"]);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Build runs after OnAttach and before OnStarted.</summary>
+    [Fact]
+    public async Task Build_WhenApplicationStarts_RunsAfterAttachAndBeforeStartedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        using ProbeScreen screen = new();
+        await using Application application = new(
+            screen,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        screen.Attach(application);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        screen.Order.ShouldBe(["attach", "build", "started"]);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -41,5 +61,11 @@ public sealed class ScreenTests
         protected override void OnAttach(Application application) => Order.Add("attach");
 
         protected override void OnStarted(Application application) => Order.Add("started");
+
+        protected override Control Build()
+        {
+            Order.Add("build");
+            return new ProbeControl();
+        }
     }
 }

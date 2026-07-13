@@ -6,7 +6,7 @@ namespace SharpVision.Controls;
 using SharpVision.Runtime;
 
 /// <summary>Defines the detached application root control and screen startup hooks.</summary>
-public abstract class Screen: Container
+public abstract class Screen: View
 {
     #region Construction
 
@@ -15,41 +15,6 @@ public abstract class Screen: Container
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
-    }
-
-    #endregion
-
-    #region Layout
-
-    /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        int width = 0;
-        int height = 0;
-
-        foreach (Control child in Children)
-        {
-            child.Measure(constraint);
-
-            if (child.Visibility == Visibility.Collapsed)
-            {
-                continue;
-            }
-
-            width = Math.Max(width, child.DesiredSize.Width + child.Margin.Horizontal);
-            height = Math.Max(height, child.DesiredSize.Height + child.Margin.Vertical);
-        }
-
-        return new Size(width, height);
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        foreach (Control child in Children)
-        {
-            child.Arrange(bounds);
-        }
     }
 
     #endregion

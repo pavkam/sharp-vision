@@ -50,6 +50,7 @@ public sealed class Gallery: Screen
     private readonly NavigationItem[] _navigation;
     private readonly ControlButton _lightTheme;
     private readonly ControlButton _darkTheme;
+    private readonly ControlDock _root;
     private FocusManager? _focus;
 
     #region Construction and navigation
@@ -125,7 +126,7 @@ public sealed class Gallery: Screen
         ControlDock.SetSide(Sidebar, Side.Left);
         layout.Children.Add(Sidebar);
         layout.Children.Add(surface);
-        Children.Add(layout);
+        _root = layout;
         Select(0);
     }
 
@@ -133,7 +134,9 @@ public sealed class Gallery: Screen
     public ControlBorder Sidebar { get; }
 
     /// <summary>Gets the current documentation page content.</summary>
-    public Control Content => _main.Content!;
+    /// <remarks>Deliberately hides <see cref="View.Content"/>: this is the selected showcase page,
+    /// unrelated to the protected built-content root that <see cref="View"/> exposes to subclasses.</remarks>
+    public new Control Content => _main.Content!;
 
     /// <summary>Gets the current exact concrete control name.</summary>
     public string SelectedPage => Pages[SelectedIndex];
@@ -157,6 +160,9 @@ public sealed class Gallery: Screen
             ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
             : Catalog[index].Create();
     }
+
+    /// <inheritdoc/>
+    protected override Control Build() => _root;
 
     /// <inheritdoc/>
     protected override void OnAttach(Application application) =>

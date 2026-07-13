@@ -43,8 +43,6 @@ public sealed class GalleryTests
         using Gallery gallery = new();
 
         _ = gallery.ShouldBeOfType<Gallery>();
-        gallery.Children.Count.ShouldBe(1);
-        _ = gallery.Children[0].ShouldBeOfType<Dock>();
         _ = gallery.Sidebar.ShouldBeOfType<Border>();
         gallery.Pages.ShouldBe(_controls);
         gallery.SelectedPage.ShouldBe("Border");
