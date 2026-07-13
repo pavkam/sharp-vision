@@ -64,7 +64,7 @@ public sealed class Frame: IDisposable
         MaxTextBytes = maxTextBytes;
         AmbiguousWidth = ambiguousWidth;
         Size = size;
-        FillBlank(Style.Default);
+        FillBlank(CellStyle.Default);
     }
 
     /// <summary>Gets the immutable frame dimensions in terminal cells.</summary>
@@ -151,7 +151,7 @@ public sealed class Frame: IDisposable
     /// <summary>Clears every cell and releases all active arena bytes for reuse.</summary>
     /// <param name="style">The semantic blank-cell style.</param>
     /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
-    public void Clear(Style style = default)
+    public void Clear(CellStyle style = default)
     {
         ThrowIfDisposed();
         Text[..TextLength].Clear();
@@ -366,7 +366,7 @@ public sealed class Frame: IDisposable
     /// <param name="value">The borrowed UTF-16 cluster.</param>
     /// <param name="width">The width, one or two cells.</param>
     /// <param name="style">The semantic style.</param>
-    internal void Write(Point point, ReadOnlySpan<char> value, int width, Style style)
+    internal void Write(Point point, ReadOnlySpan<char> value, int width, CellStyle style)
     {
         Debug.Assert(width is 1 or 2, "Only printable narrow and wide cells are stored.");
         int index = GetIndex(point);
@@ -407,7 +407,7 @@ public sealed class Frame: IDisposable
         int leadIndex = cell.IsContinuation ? cell.LeadIndex : index;
         Cell lead = Cells[leadIndex];
         int width = Math.Max(1, (int) lead.Width);
-        Style style = lead.Style;
+        CellStyle style = lead.Style;
 
         for (int offset = 0; offset < width && leadIndex + offset < Cells.Length; offset++)
         {
@@ -418,7 +418,7 @@ public sealed class Frame: IDisposable
     /// <summary>Sets one already-repaired cell to a semantic blank.</summary>
     /// <param name="index">The validated absolute index.</param>
     /// <param name="style">The blank style.</param>
-    internal void SetBlank(int index, Style style)
+    internal void SetBlank(int index, CellStyle style)
     {
         Debug.Assert((uint) index < (uint) Cells.Length, "Blank indexes are validated by the canvas.");
         Cells[index] = Cell.Blank(style);
@@ -429,9 +429,9 @@ public sealed class Frame: IDisposable
     /// <param name="clip">The effective frame clip.</param>
     /// <param name="style">The replacement semantic style.</param>
     /// <returns>Whether the complete owner was styled.</returns>
-    internal bool TrySetOwnerStyle(int index, Rect clip, Style style)
+    internal bool TrySetOwnerStyle(int index, Rect clip, CellStyle style)
     {
-        Debug.Assert((uint) index < (uint) Cells.Length, "Style indexes are validated by the canvas.");
+        Debug.Assert((uint) index < (uint) Cells.Length, "CellStyle indexes are validated by the canvas.");
         int leadIndex = ResolveLead(index);
         Cell lead = Cells[leadIndex];
         int width = Math.Max(1, (int) lead.Width);
@@ -548,7 +548,7 @@ public sealed class Frame: IDisposable
         }
     }
 
-    private void FillBlank(Style style)
+    private void FillBlank(CellStyle style)
     {
         Span<Cell> cells = Cells;
 

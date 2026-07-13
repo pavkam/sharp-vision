@@ -65,7 +65,7 @@ internal sealed class NavigationItem: Pressable
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        Terminal.Rendering.Style style = ResolvedStyle;
+        Terminal.Rendering.CellStyle style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         string marker = IsSelected || IsHovered ? "›" : "·";
         _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);

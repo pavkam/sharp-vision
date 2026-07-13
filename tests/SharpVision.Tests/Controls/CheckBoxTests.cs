@@ -9,7 +9,7 @@ using SharpVision.Terminal.Input;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = Terminal.Input.Action;
-using TerminalStyle = Style;
+using TerminalStyle = CellStyle;
 
 /// <summary>Verifies CheckBox transitions, events, ownership, styling, and cells.</summary>
 public sealed class CheckBoxTests

@@ -12,7 +12,7 @@ public sealed class StyleTests
     [Fact]
     public void Constructor_WhenDecorationsAreValid_PreservesValues()
     {
-        Style style = new(
+        CellStyle style = new(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
@@ -27,12 +27,12 @@ public sealed class StyleTests
     public void Constructor_WhenDecorationsConflict_ThrowsDocumentedException()
     {
         _ = Should.Throw<ArgumentException>(() =>
-            new Style(attributes: Attributes.Underline, underline: Underline.Curly));
+            new CellStyle(attributes: Attributes.Underline, underline: Underline.Curly));
         _ = Should.Throw<ArgumentException>(() =>
-            new Style(attributes: Attributes.Blink | Attributes.RapidBlink));
+            new CellStyle(attributes: Attributes.Blink | Attributes.RapidBlink));
         _ = Should.Throw<ArgumentException>(() =>
-            new Style(underlineColor: Color.Indexed(1)));
+            new CellStyle(underlineColor: Color.Indexed(1)));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new Style(underline: (Underline) 999));
+            new CellStyle(underline: (Underline) 999));
     }
 }

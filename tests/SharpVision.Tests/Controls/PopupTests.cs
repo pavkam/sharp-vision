@@ -82,7 +82,7 @@ public sealed class PopupTests
 
         popup.Render(frame.Canvas);
 
-        Style rendered = frame.GetCell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Style;
+        CellStyle rendered = frame.GetCell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Style;
         rendered.Attributes.ShouldBe(Attributes.Overline);
         rendered.Underline.ShouldBe(Underline.Dotted);
         rendered.UnderlineColor.ShouldBe(Color.Indexed(4));

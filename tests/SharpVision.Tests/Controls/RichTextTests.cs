@@ -112,7 +112,7 @@ public sealed class RichTextTests
 
         control.Render(frame.Canvas);
 
-        Style style = frame.GetCell(default).Style;
+        CellStyle style = frame.GetCell(default).Style;
         style.Attributes.ShouldBe(Attributes.RapidBlink | Attributes.Overline);
         style.Underline.ShouldBe(Underline.Curly);
         style.UnderlineColor.ShouldBe(Color.Rgb(1, 2, 3));

@@ -15,7 +15,7 @@ public readonly record struct CellInfo
     /// <param name="lead">The lead coordinate when this is a continuation.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="width"/> is outside zero through two.</exception>
     /// <exception cref="ArgumentException">The width and continuation state disagree.</exception>
-    public CellInfo(Style style, int width, bool isContinuation, Point lead)
+    public CellInfo(CellStyle style, int width, bool isContinuation, Point lead)
     {
         if (width is < 0 or > 2)
         {
@@ -36,10 +36,10 @@ public readonly record struct CellInfo
     }
 
     /// <summary>Gets the default blank semantic cell.</summary>
-    public static CellInfo Blank { get; } = new(Style.Default, 1, false, default);
+    public static CellInfo Blank { get; } = new(CellStyle.Default, 1, false, default);
 
     /// <summary>Gets the semantic cell style.</summary>
-    public Style Style { get; }
+    public CellStyle Style { get; }
 
     /// <summary>Gets the lead width, one for blank, or zero for continuation.</summary>
     public int Width { get; }
@@ -51,7 +51,7 @@ public readonly record struct CellInfo
     public Point Lead { get; }
 
     /// <summary>Deconstructs the semantic cell metadata.</summary>
-    public void Deconstruct(out Style style, out int width, out bool isContinuation, out Point lead)
+    public void Deconstruct(out CellStyle style, out int width, out bool isContinuation, out Point lead)
     {
         style = Style;
         width = Width;

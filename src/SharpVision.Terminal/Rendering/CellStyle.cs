@@ -8,7 +8,7 @@ using SharpVision.Terminal.Protocols;
 /// <summary>
 /// Represents immutable semantic cell colors, attributes, and hyperlink.
 /// </summary>
-public readonly record struct Style
+public readonly record struct CellStyle
 {
     private const Attributes _allAttributes =
         Attributes.Bold |
@@ -36,7 +36,7 @@ public readonly record struct Style
     /// Rendition fields conflict, underline color has no underline, or
     /// <paramref name="hyperlink"/> is empty or contains a control code unit.
     /// </exception>
-    public Style(
+    public CellStyle(
         Color foreground = default,
         Color background = default,
         Attributes attributes = Attributes.None,
@@ -108,7 +108,7 @@ public readonly record struct Style
     }
 
     /// <summary>Gets the default terminal style.</summary>
-    public static Style Default => default;
+    public static CellStyle Default => default;
 
     /// <summary>Gets the foreground color.</summary>
     public Color Foreground { get; }

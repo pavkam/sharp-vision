@@ -40,7 +40,7 @@ internal sealed class PointerProbe: Control
     /// <inheritdoc/>
     protected override void RenderCore(TerminalCanvas canvas)
     {
-        Terminal.Rendering.Style style = ResolvedStyle;
+        Terminal.Rendering.CellStyle style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         _ = canvas.Draw(_pixelText.AsSpan(), new Point(Bounds.X, Bounds.Y), style);
         _ = canvas.Draw(_cellText.AsSpan(), new Point(Bounds.X, Bounds.Y + 1), style);

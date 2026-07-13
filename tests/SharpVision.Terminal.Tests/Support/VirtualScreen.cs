@@ -286,7 +286,7 @@ internal sealed class VirtualScreen: ISequenceSink
             Repair(_position.X + 1, _position.Y);
         }
 
-        Style style = CurrentStyle;
+        CellStyle style = CurrentStyle;
         _cells[Index(_position)] = new ModelCell(value, style, width, false, _position.X);
 
         if (width == 2 && _position.X + 1 < Size.Width)
@@ -313,7 +313,7 @@ internal sealed class VirtualScreen: ISequenceSink
         }
     }
 
-    private Style CurrentStyle => new(
+    private CellStyle CurrentStyle => new(
         _foreground,
         _background,
         _attributes,

@@ -40,8 +40,8 @@ public static class Encoder
         front?.ThrowIfDisposed();
         bool redraw = full || front is null || front.Size != back.Size;
         Writer writer = new(destination);
-        Style semanticStyle = Style.Default;
-        Style style = Style.Default;
+        CellStyle semanticStyle = CellStyle.Default;
+        CellStyle style = CellStyle.Default;
         int spanCount = 0;
 
         foreach (DamageSpan span in Damage.Enumerate(front, back, redraw))
@@ -60,7 +60,7 @@ public static class Encoder
                     continue;
                 }
 
-                Style projected = cell.Style == semanticStyle
+                CellStyle projected = cell.Style == semanticStyle
                     ? style
                     : Project(cell.Style, capabilities);
                 ApplyStyle(writer, style, projected, capabilities);
@@ -100,8 +100,8 @@ public static class Encoder
 
     private static void ApplyStyle(
         Writer writer,
-        Style current,
-        Style target,
+        CellStyle current,
+        CellStyle target,
         TerminalCapabilities capabilities)
     {
         if (!string.Equals(current.Hyperlink, target.Hyperlink, StringComparison.Ordinal))
@@ -195,7 +195,7 @@ public static class Encoder
         ApplyAttribute(writer, attributes, Attributes.Overline, Rendition.Overline);
     }
 
-    private static void ApplyUnderline(Writer writer, Style style)
+    private static void ApplyUnderline(Writer writer, CellStyle style)
     {
         if ((style.Attributes & Attributes.Underline) != 0)
         {
@@ -219,7 +219,7 @@ public static class Encoder
         }
     }
 
-    private static void ResetStyle(Writer writer, Style style)
+    private static void ResetStyle(Writer writer, CellStyle style)
     {
         if (style.Hyperlink is not null)
         {
@@ -232,14 +232,14 @@ public static class Encoder
         }
     }
 
-    private static bool IsVisualDefault(Style style) =>
+    private static bool IsVisualDefault(CellStyle style) =>
         style.Attributes == Attributes.None &&
         style.Foreground == Color.Default &&
         style.Background == Color.Default &&
         style.Underline == Underline.None &&
         style.UnderlineColor == Color.Default;
 
-    private static Style Project(Style value, TerminalCapabilities capabilities)
+    private static CellStyle Project(CellStyle value, TerminalCapabilities capabilities)
     {
         Attributes attributes = capabilities.Overline.IsSupported
             ? value.Attributes
@@ -255,7 +255,7 @@ public static class Encoder
         Color underlineColor = capabilities.UnderlineColor.IsSupported
             ? Palette.Project(value.UnderlineColor, capabilities.ColorDepth)
             : Color.Default;
-        return new Style(
+        return new CellStyle(
             Palette.Project(value.Foreground, capabilities.ColorDepth),
             Palette.Project(value.Background, capabilities.ColorDepth),
             attributes,

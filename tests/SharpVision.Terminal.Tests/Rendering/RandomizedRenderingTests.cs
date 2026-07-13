@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
+using Encoder = SharpVision.Terminal.Rendering.Encoder;
+
 
 using SharpVision.Terminal.Capabilities;
 
@@ -84,7 +86,7 @@ public sealed class RandomizedRenderingTests
             Color underlineColor = underline != Underline.None && random.Next(2) == 0
                 ? Color.Rgb(random.Next(256), random.Next(256), random.Next(256))
                 : Color.Default;
-            Style style = new(
+            CellStyle style = new(
                 foreground,
                 attributes: attributes,
                 hyperlink: links[random.Next(links.Length)],

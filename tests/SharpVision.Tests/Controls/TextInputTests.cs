@@ -323,14 +323,14 @@ public sealed class TextInputTests
             Text = "one\ntwo\nthree\nfour\nfive",
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
-            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
         };
         new Engine().Layout(control, new Size(8, 3));
 
         ScrollBar rail = control.HitTest(new Point(7, 0)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
-        rail.Chrome.ShouldBe(ScrollBarStyle.Thin);
+        rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
         rail.Fill.ShouldBe(ScrollBarFill.Line);
     }
 

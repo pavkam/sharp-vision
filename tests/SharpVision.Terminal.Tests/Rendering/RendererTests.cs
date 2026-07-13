@@ -90,7 +90,7 @@ public sealed class RendererTests
         using Renderer renderer = new();
         await using FakeTransport transport = new();
         using Frame frame = new(new Size(1, 1));
-        _ = frame.Canvas.Draw("x", default, new Style(Color.Rgb(255, 0, 0)));
+        _ = frame.Canvas.Draw("x", default, new CellStyle(Color.Rgb(255, 0, 0)));
         TerminalCapabilities trueColor = TerminalCapabilities.Conservative with
         {
             ColorDepth = ColorDepth.TrueColor,

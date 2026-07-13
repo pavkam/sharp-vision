@@ -27,7 +27,7 @@ public sealed class ShowcasePanel: Control
         Width = Length.Cells(26);
         Height = Length.Cells(4);
         BorderThickness = new Thickness(1);
-        BorderStyle = Glyphs.Rounded;
+        BorderGlyphs = Glyphs.Rounded;
         Padding = new Thickness(1);
         FillMode = FillMode.Opaque;
         Caption = "Showcase panel";
@@ -71,7 +71,7 @@ public sealed class ShowcasePanel: Control
             return;
         }
 
-        Style style = ResolvedStyle;
+        CellStyle style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         _ = canvas.Draw(Caption.AsSpan(), ResolveCaptionPoint(Caption), style);
         _ = canvas.Draw("Themed body".AsSpan(), ResolveBodyPoint(Caption), style);

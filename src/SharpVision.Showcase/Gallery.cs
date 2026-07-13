@@ -62,7 +62,7 @@ public sealed class Gallery: Screen
         {
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
             ConstrainContentToViewport = true,
@@ -90,7 +90,7 @@ public sealed class Gallery: Screen
             Content = entries,
             ScrollBars = ScrollBars.Both,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
         };
         ControlDock sidebarLayout = new();

@@ -7,7 +7,7 @@ namespace SharpVision.Tests.Controls;
 
 
 using ControlText = SharpVision.Controls.Text;
-using TerminalStyle = Style;
+using TerminalStyle = CellStyle;
 
 /// <summary>Verifies table ownership, track geometry, headers, grid cells, and row validation.</summary>
 public sealed class TableTests

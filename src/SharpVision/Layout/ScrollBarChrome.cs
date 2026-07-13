@@ -4,7 +4,7 @@
 namespace SharpVision.Layout;
 
 /// <summary>Selects compact track-only or full button-and-track scrollbar chrome.</summary>
-public enum ScrollBarStyle
+public enum ScrollBarChrome
 {
     /// <summary>Uses the entire arranged axis as a draggable track.</summary>
     Thin,

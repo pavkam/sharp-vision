@@ -19,7 +19,7 @@ public sealed class ControlChromeTests
         {
             Bounds = new Rect(0, 0, 3, 2),
             BorderThickness = new Thickness(0, 1, 0, 0),
-            BorderStyle = Glyphs.Ascii,
+            BorderGlyphs = Glyphs.Ascii,
         };
         using Frame frame = new(new Size(3, 2));
 

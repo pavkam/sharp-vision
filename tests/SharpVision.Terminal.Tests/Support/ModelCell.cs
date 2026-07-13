@@ -8,7 +8,7 @@ namespace SharpVision.Terminal.Tests.Support;
 internal readonly record struct ModelCell
 {
     /// <summary>Initializes one validated modeled terminal cell.</summary>
-    internal ModelCell(string text, Style style, int width, bool isContinuation, int leadX)
+    internal ModelCell(string text, CellStyle style, int width, bool isContinuation, int leadX)
     {
         ArgumentNullException.ThrowIfNull(text);
 
@@ -31,13 +31,13 @@ internal readonly record struct ModelCell
     }
 
     /// <summary>Gets the default blank modeled cell.</summary>
-    internal static ModelCell Blank { get; } = new(" ", Style.Default, 1, false, 0);
+    internal static ModelCell Blank { get; } = new(" ", CellStyle.Default, 1, false, 0);
 
     /// <summary>Gets the complete grapheme text.</summary>
     internal string Text { get; }
 
     /// <summary>Gets the semantic cell style.</summary>
-    internal Style Style { get; init; }
+    internal CellStyle Style { get; init; }
 
     /// <summary>Gets the grapheme cell width.</summary>
     internal int Width { get; }

@@ -30,7 +30,7 @@ internal sealed class TextInputShowcasePane: ShowcasePane
         new PropertyDescription("SelectionStart / SelectionLength", "int", "0 / 0", "Expose a normalized UTF-16 range whose endpoints must align to grapheme boundaries."),
         new PropertyDescription("HorizontalOffset / VerticalOffset", "int", "0 / 0", "Expose the committed cell and logical-line scroll positions used by caret and wheel navigation."),
         new PropertyDescription("ScrollBars / ShowScrollBars", "ScrollBars / ShowScrollBars", "Both / WhenNeeded", "Reserve canonical rails for enabled overflowing axes while retaining wheel and caret scrolling when chrome is hidden."),
-        new PropertyDescription("ScrollBarChrome / ScrollBarFill", "ScrollBarStyle / ScrollBarFill", "Full / Block", "Configure the editor's owned rails with the same thin/full and line/block treatments as every other scrolling host."),
+        new PropertyDescription("ScrollBarChrome / ScrollBarFill", "ScrollBarChrome / ScrollBarFill", "Full / Block", "Configure the editor's owned rails with the same thin/full and line/block treatments as every other scrolling host."),
     ];
 
     /// <summary>Initializes the TextInput showcase page and composes its specimens.</summary>
@@ -74,7 +74,7 @@ internal sealed class TextInputShowcasePane: ShowcasePane
             AcceptsTab = true,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
-            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
             Text = "Multiline editor\nWheel here to scroll\nwithout losing focus\nAt the edge, the page scrolls",
         });

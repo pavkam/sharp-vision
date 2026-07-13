@@ -25,8 +25,8 @@ public sealed class Border: Container
     /// <exception cref="ObjectDisposedException">The border is disposed.</exception>
     public Glyphs Glyphs
     {
-        get => BorderStyle;
-        set => BorderStyle = value;
+        get => BorderGlyphs;
+        set => BorderGlyphs = value;
     }
 
     /// <inheritdoc/>
@@ -80,7 +80,7 @@ public sealed class Border: Container
             canvas,
             Bounds,
             BorderThickness,
-            BorderStyle,
+            BorderGlyphs,
             borderStyle,
             background,
             CellPolicy);

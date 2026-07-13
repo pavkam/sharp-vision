@@ -78,8 +78,8 @@ public sealed class LineTests
     public void DrawHorizontalLine_WhenSurfaceIsPainted_PreservesDestinationBackground()
     {
         using Frame frame = new(new Size(3, 1));
-        Style surface = new(Color.Indexed(255), Color.Indexed(238));
-        Style line = new(Color.Indexed(45), Color.Default);
+        CellStyle surface = new(Color.Indexed(255), Color.Indexed(238));
+        CellStyle line = new(Color.Indexed(45), Color.Default);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
 
         frame.Canvas.DrawHorizontalLine(default, 3, LineStyle.Light, line);
@@ -87,7 +87,7 @@ public sealed class LineTests
         for (int x = 0; x < 3; x++)
         {
             frame.GetCell(new Point(x, 0)).Style.ShouldBe(
-                new Style(Color.Indexed(45), Color.Indexed(238)));
+                new CellStyle(Color.Indexed(45), Color.Indexed(238)));
         }
     }
 

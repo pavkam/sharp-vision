@@ -25,7 +25,7 @@ internal sealed class ComboBoxShowcasePane: ShowcasePane
         new PropertyDescription("SelectedIndex", "int", "-1", "Gets or sets the exclusive selected choice while keeping List active navigation synchronized."),
         new PropertyDescription("DropDownHeight", "int", "8", "Caps the visible popup list height in non-zero terminal cells."),
         new PropertyDescription("ScrollBars / ShowScrollBars", "ScrollBars / ShowScrollBars", "Both / WhenNeeded", "Use the common overflow policy for the popup List; vertical thin rails are ideal for long option sets."),
-        new PropertyDescription("ScrollBarChrome / ScrollBarFill", "ScrollBarStyle / ScrollBarFill", "Full / Block", "Choose the same thin/full and line/block rail treatment used by Lists and ScrollViews."),
+        new PropertyDescription("ScrollBarChrome / ScrollBarFill", "ScrollBarChrome / ScrollBarFill", "Full / Block", "Choose the same thin/full and line/block rail treatment used by Lists and ScrollViews."),
         new PropertyDescription("IsOpen", "bool", "false", "Controls list arrangement, rendering, hit testing, and focus transfer into the drop-down."),
         new PropertyDescription("SelectionChanged", "event", "null", "Reports List selection commits from direct assignment, pointer, or keyboard activation."),
     ];

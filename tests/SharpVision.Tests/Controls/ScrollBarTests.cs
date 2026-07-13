@@ -9,7 +9,7 @@ using SharpVision.Terminal.Input;
 
 
 using KeyAction = Terminal.Input.Action;
-using TerminalStyle = Style;
+using TerminalStyle = CellStyle;
 
 /// <summary>Verifies ScrollBar range, input, capture, geometry, and semantic rendering.</summary>
 public sealed class ScrollBarTests
@@ -144,7 +144,7 @@ public sealed class ScrollBarTests
         ScrollBar control = new()
         {
             Orientation = Orientation.Horizontal,
-            Chrome = ScrollBarStyle.Thin,
+            Chrome = ScrollBarChrome.Thin,
             Fill = ScrollBarFill.Line,
             Maximum = 80,
             Value = 40,
@@ -170,7 +170,7 @@ public sealed class ScrollBarTests
         {
             Bounds = new Rect(0, 0, 3, 1),
             Orientation = Orientation.Horizontal,
-            Chrome = ScrollBarStyle.Thin,
+            Chrome = ScrollBarChrome.Thin,
             Fill = ScrollBarFill.Line,
             Style = style,
         };

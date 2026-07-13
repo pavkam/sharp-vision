@@ -9,7 +9,7 @@ using SharpVision.Terminal.Input;
 
 using ControlText = SharpVision.Controls.Text;
 using KeyAction = Terminal.Input.Action;
-using TerminalStyle = Style;
+using TerminalStyle = CellStyle;
 
 /// <summary>Verifies RadioButton grouping, transactions, navigation, ownership, and cells.</summary>
 public sealed class RadioButtonTests

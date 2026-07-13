@@ -86,7 +86,7 @@ public sealed class ShadowTests
 
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
         frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(Color.Indexed(4));
-        frame.GetCell(new Point(2, 1)).Style.ShouldBe(Style.Default);
+        frame.GetCell(new Point(2, 1)).Style.ShouldBe(CellStyle.Default);
     }
 
     /// <summary>Verifies composite mode restyles a complete wide owner.</summary>

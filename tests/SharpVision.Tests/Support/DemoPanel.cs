@@ -54,7 +54,7 @@ internal sealed class DemoPanel: Control
             return;
         }
 
-        Style style = ResolvedStyle;
+        CellStyle style = ResolvedStyle;
         Point captionPoint = LabelPlacement == DemoLabelPlacement.Right
             ? new Point(Bounds.Right - Caption.Length, Bounds.Y)
             : new Point(Bounds.X, Bounds.Y);

@@ -11,7 +11,7 @@ using SharpVision.Text;
 
 using ControlText = SharpVision.Controls.Text;
 using TerminalAttributes = Attributes;
-using TerminalStyle = Style;
+using TerminalStyle = CellStyle;
 
 /// <summary>Verifies cached Text measurement, rendering, validation, and styling.</summary>
 [Collection(PerformanceGroup.Name)]

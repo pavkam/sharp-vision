@@ -20,7 +20,7 @@ public sealed class FrameTests
     {
         const int length = 300;
         using Frame frame = new(new Size(length, 1));
-        _ = frame.Canvas.Draw(new string('x', length), default, Style.Default);
+        _ = frame.Canvas.Draw(new string('x', length), default, CellStyle.Default);
 
         using Frame clone = frame.Clone();
 
@@ -35,7 +35,7 @@ public sealed class FrameTests
     public void Constructor_WhenRenderingValueIsInvalid_ThrowsDocumentedException()
     {
         _ = Should.Throw<ArgumentException>(() =>
-            new CellInfo(Style.Default, width: 1, isContinuation: true, lead: default));
+            new CellInfo(CellStyle.Default, width: 1, isContinuation: true, lead: default));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             new DrawResult(default, graphemes: -1, cells: 0, clipped: 0, replaced: 0));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new EncodeResult(-1, full: false));
@@ -106,7 +106,7 @@ public sealed class FrameTests
     public void Clear_WhenFrameContainsText_ResetsEveryCell()
     {
         using Frame frame = new(new Size(2, 1));
-        Style style = new(attributes: Attributes.Bold);
+        CellStyle style = new(attributes: Attributes.Bold);
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
 
         frame.Clear();

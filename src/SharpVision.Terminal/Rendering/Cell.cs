@@ -24,7 +24,7 @@ internal struct Cell
     internal int LeadIndex { readonly get; set; }
 
     /// <summary>Gets or sets the semantic style.</summary>
-    internal Style Style { readonly get; set; }
+    internal CellStyle Style { readonly get; set; }
 
     /// <summary>Gets whether this cell continues a preceding lead.</summary>
     internal readonly bool IsContinuation => LeadIndex >= 0;
@@ -32,7 +32,7 @@ internal struct Cell
     /// <summary>Creates a blank one-cell value.</summary>
     /// <param name="style">The blank background style.</param>
     /// <returns>The blank cell.</returns>
-    internal static Cell Blank(Style style) => new()
+    internal static Cell Blank(CellStyle style) => new()
     {
         Width = 1,
         LeadIndex = -1,
@@ -43,7 +43,7 @@ internal struct Cell
     /// <param name="leadIndex">The non-negative lead index.</param>
     /// <param name="style">The lead's semantic style.</param>
     /// <returns>The continuation cell.</returns>
-    internal static Cell Continuation(int leadIndex, Style style) => new()
+    internal static Cell Continuation(int leadIndex, CellStyle style) => new()
     {
         LeadIndex = leadIndex,
         Style = style,

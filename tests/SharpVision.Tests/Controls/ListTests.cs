@@ -9,7 +9,7 @@ using SharpVision.Terminal.Input;
 
 using KeyAction = Terminal.Input.Action;
 using Label = SharpVision.Controls.Text;
-using TerminalStyle = Style;
+using TerminalStyle = CellStyle;
 using UiList = List;
 
 /// <summary>Verifies realized List ownership, selection, input, scrolling, and rendering.</summary>
@@ -76,17 +76,17 @@ public sealed class ListTests
         control.HorizontalAlignment = HorizontalAlignment.Stretch;
         control.ScrollBars = ScrollBars.Vertical;
         control.ShowScrollBars = ShowScrollBars.Always;
-        control.ScrollBarChrome = ScrollBarStyle.Thin;
+        control.ScrollBarChrome = ScrollBarChrome.Thin;
         control.ScrollBarFill = ScrollBarFill.Line;
         new Engine().Layout(control, new Size(6, 3));
 
         control.ScrollBars.ShouldBe(ScrollBars.Vertical);
         control.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
-        control.ScrollBarChrome.ShouldBe(ScrollBarStyle.Thin);
+        control.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         control.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
         ScrollBar rail = control.HitTest(new Point(5, 0)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
-        rail.Chrome.ShouldBe(ScrollBarStyle.Thin);
+        rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
         rail.Fill.ShouldBe(ScrollBarFill.Line);
 
         control.ShowScrollBars = ShowScrollBars.Never;

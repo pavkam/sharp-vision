@@ -86,7 +86,7 @@ internal sealed class ScrollBarShowcasePane: ShowcasePane
             {
                 Width = Length.Cells(28),
                 Orientation = Orientation.Horizontal,
-                Chrome = ScrollBarStyle.Thin,
+                Chrome = ScrollBarChrome.Thin,
                 Fill = ScrollBarFill.Line,
                 Maximum = 100,
                 Value = 62,

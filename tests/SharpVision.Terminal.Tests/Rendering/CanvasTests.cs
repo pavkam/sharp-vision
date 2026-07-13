@@ -45,8 +45,8 @@ public sealed class CanvasTests
     public void Draw_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
         using Frame frame = new(new Size(1, 1));
-        Style surface = new(Color.Indexed(255), Color.Indexed(238));
-        Style text = new(
+        CellStyle surface = new(Color.Indexed(255), Color.Indexed(238));
+        CellStyle text = new(
             Color.Indexed(45),
             Color.Default,
             Attributes.Bold | Attributes.Overline,
@@ -56,7 +56,7 @@ public sealed class CanvasTests
 
         _ = frame.Canvas.Draw("X".AsSpan(), new Point(0, 0), text, background: BackgroundMode.Transparent);
 
-        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new Style(
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new CellStyle(
             Color.Indexed(45),
             Color.Indexed(238),
             Attributes.Bold | Attributes.Overline,

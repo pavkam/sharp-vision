@@ -57,7 +57,7 @@ public sealed class WindowTests
 
         window.Render(frame.Canvas);
 
-        Style rendered = frame.GetCell(default).Style;
+        CellStyle rendered = frame.GetCell(default).Style;
         rendered.Attributes.ShouldBe(Attributes.Overline);
         rendered.Underline.ShouldBe(Underline.Paired);
         rendered.UnderlineColor.ShouldBe(Color.Indexed(6));

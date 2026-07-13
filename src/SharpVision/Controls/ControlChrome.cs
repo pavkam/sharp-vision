@@ -62,7 +62,7 @@ internal static class ControlChrome
         if (!settings.SkipBorder && control.BorderThickness != default)
         {
             TerminalStyle borderStyle = ControlAppearance.ResolveBorderStyle(control, visualState);
-            Glyphs glyphs = settings.BorderGlyphs ?? control.BorderStyle;
+            Glyphs glyphs = settings.BorderGlyphs ?? control.BorderGlyphs;
             DrawPartialBorder(
                 canvas,
                 body,

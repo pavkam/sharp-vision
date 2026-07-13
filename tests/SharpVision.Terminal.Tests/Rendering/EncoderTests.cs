@@ -50,7 +50,7 @@ public sealed class EncoderTests
         string expected)
     {
         using Frame back = new(new Size(1, 1));
-        Style style = new(Color.Rgb(95, 135, 175), Color.Rgb(255, 0, 0));
+        CellStyle style = new(Color.Rgb(95, 135, 175), Color.Rgb(255, 0, 0));
         _ = back.Canvas.Draw("x", default, style);
         ArrayBufferWriter<byte> destination = new();
         TerminalCapabilities capabilities = TerminalCapabilities.Conservative with { ColorDepth = depth };
@@ -65,8 +65,8 @@ public sealed class EncoderTests
     public void Encode_WhenSemanticColorsProjectEqually_DoesNotEmitRedundantTransition()
     {
         using Frame back = new(new Size(2, 1));
-        _ = back.Canvas.Draw("a", default, new Style(Color.Rgb(255, 0, 0)));
-        _ = back.Canvas.Draw("b", new Point(1, 0), new Style(Color.Rgb(250, 5, 5)));
+        _ = back.Canvas.Draw("a", default, new CellStyle(Color.Rgb(255, 0, 0)));
+        _ = back.Canvas.Draw("b", new Point(1, 0), new CellStyle(Color.Rgb(250, 5, 5)));
         ArrayBufferWriter<byte> destination = new();
 
         _ = FrameEncoder.Encode(
@@ -97,7 +97,7 @@ public sealed class EncoderTests
     public void Encode_WhenModernDecorationsAreUnknown_DegradesWithoutUnsupportedBytes()
     {
         using Frame back = new(new Size(1, 1));
-        Style style = new(
+        CellStyle style = new(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
@@ -119,7 +119,7 @@ public sealed class EncoderTests
     public void Encode_WhenModernDecorationsAreSupported_WritesExactBytes()
     {
         using Frame back = new(new Size(1, 1));
-        Style style = new(
+        CellStyle style = new(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));
@@ -217,7 +217,7 @@ public sealed class EncoderTests
     public void Encode_WhenCellIsStyled_WritesExactTransitions()
     {
         using Frame back = new(new Size(1, 1));
-        Style style = new(
+        CellStyle style = new(
             attributes: Attributes.Bold,
             hyperlink: "https://example.test");
         _ = back.Canvas.Draw("x".AsSpan(), new Point(0, 0), style);

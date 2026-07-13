@@ -234,7 +234,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBarStyle ScrollBarChrome
+    public ScrollBarChrome ScrollBarChrome
     {
         get;
         set
@@ -250,7 +250,7 @@ public sealed class TextInput: Container
                 _vertical.Chrome = value;
             }
         }
-    } = ScrollBarStyle.Full;
+    } = ScrollBarChrome.Full;
 
     /// <summary>Gets or sets the generated line or block glyph treatment requested for editor rails.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>

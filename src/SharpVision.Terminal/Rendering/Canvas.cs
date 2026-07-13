@@ -63,7 +63,7 @@ public readonly struct Canvas
     public void DrawRune(
         Rune value,
         Point origin,
-        Style style = default,
+        CellStyle style = default,
         BackgroundMode background = BackgroundMode.Opaque)
     {
         Span<char> buffer = stackalloc char[2];
@@ -80,7 +80,7 @@ public readonly struct Canvas
     /// </exception>
     /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void Fill(Rect region, Rune value, Style style = default)
+    public void Fill(Rect region, Rune value, CellStyle style = default)
     {
         Span<char> buffer = stackalloc char[2];
         int length = ValidateRune(value, buffer);
@@ -109,7 +109,7 @@ public readonly struct Canvas
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
     public void ApplyStyle(
         Rect region,
-        Style style,
+        CellStyle style,
         BackgroundMode background = BackgroundMode.Opaque)
     {
         _frame.ThrowIfDisposed();
@@ -126,8 +126,8 @@ public readonly struct Canvas
             for (int x = target.X; x < target.Right; x++)
             {
                 Point point = new(x, y);
-                Style applied = background == BackgroundMode.Transparent
-                    ? new Style(
+                CellStyle applied = background == BackgroundMode.Transparent
+                    ? new CellStyle(
                         style.Foreground,
                         _frame.GetCell(point).Style.Background,
                         style.Attributes,
@@ -147,7 +147,7 @@ public readonly struct Canvas
     /// <param name="style">The semantic cell style.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="length"/> is negative.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void DrawHorizontalLine(Point origin, int length, LineStyle line, Style style = default)
+    public void DrawHorizontalLine(Point origin, int length, LineStyle line, CellStyle style = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         _frame.ThrowIfDisposed();
@@ -169,7 +169,7 @@ public readonly struct Canvas
     /// <param name="style">The semantic cell style.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="length"/> is negative.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void DrawVerticalLine(Point origin, int length, LineStyle line, Style style = default)
+    public void DrawVerticalLine(Point origin, int length, LineStyle line, CellStyle style = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         _frame.ThrowIfDisposed();
@@ -189,7 +189,7 @@ public readonly struct Canvas
     /// <param name="line">The validated line family.</param>
     /// <param name="style">The semantic cell style.</param>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void DrawBox(Rect bounds, LineStyle line, Style style = default)
+    public void DrawBox(Rect bounds, LineStyle line, CellStyle style = default)
     {
         _frame.ThrowIfDisposed();
 
@@ -243,7 +243,7 @@ public readonly struct Canvas
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="shade"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void FillShade(Rect region, Shade shade, Style style = default)
+    public void FillShade(Rect region, Shade shade, CellStyle style = default)
     {
         if (!Enum.IsDefined(shade))
         {
@@ -262,7 +262,7 @@ public readonly struct Canvas
     /// </exception>
     /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void DrawQuadrants(Point point, Quadrants quadrants, Style style = default)
+    public void DrawQuadrants(Point point, Quadrants quadrants, CellStyle style = default)
     {
         if ((quadrants & ~Quadrants.All) != 0)
         {
@@ -306,7 +306,7 @@ public readonly struct Canvas
     public DrawResult Draw(
         ReadOnlySpan<char> value,
         Point origin,
-        Style style = default,
+        CellStyle style = default,
         Edge edge = Edge.Clip,
         BackgroundMode background = BackgroundMode.Opaque)
     {
@@ -335,7 +335,7 @@ public readonly struct Canvas
     /// <param name="region">The requested region in frame coordinates.</param>
     /// <param name="style">The semantic blank style inside the region.</param>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
-    public void Clear(Rect region, Style style = default)
+    public void Clear(Rect region, CellStyle style = default)
     {
         _frame.ThrowIfDisposed();
         Rect target = _clip.Intersect(region).Intersect(_frame.Bounds);
@@ -367,7 +367,7 @@ public readonly struct Canvas
     private DrawResult Process(
         ReadOnlySpan<char> value,
         Point origin,
-        Style style,
+        CellStyle style,
         Edge edge,
         BackgroundMode background,
         bool write,
@@ -454,8 +454,8 @@ public readonly struct Canvas
 
             if (write)
             {
-                Style applied = background == BackgroundMode.Transparent
-                    ? new Style(
+                CellStyle applied = background == BackgroundMode.Transparent
+                    ? new CellStyle(
                         style.Foreground,
                         _frame.GetCell(point).Style.Background,
                         style.Attributes,
@@ -506,7 +506,7 @@ public readonly struct Canvas
         Point point,
         Connections connections,
         LineStyle line,
-        Style style)
+        CellStyle style)
     {
         if (!_frame.Bounds.Contains(point) || !_clip.Contains(point))
         {

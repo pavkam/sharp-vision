@@ -29,13 +29,13 @@ public sealed class ScrollView: Container
         _horizontal = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
-            Chrome = ScrollBarStyle.Full,
+            Chrome = ScrollBarChrome.Full,
             Fill = ScrollBarFill.Block,
         };
         _vertical = new ScrollBar
         {
             Orientation = Orientation.Vertical,
-            Chrome = ScrollBarStyle.Full,
+            Chrome = ScrollBarChrome.Full,
             Fill = ScrollBarFill.Block,
         };
         _horizontal.ValueChanged += OnHorizontalChanged;
@@ -135,7 +135,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public ScrollBarStyle ScrollBarChrome
+    public ScrollBarChrome ScrollBarChrome
     {
         get;
         set
@@ -148,7 +148,7 @@ public sealed class ScrollView: Container
                 _vertical.Chrome = value;
             }
         }
-    } = ScrollBarStyle.Full;
+    } = ScrollBarChrome.Full;
 
     /// <summary>Gets or sets the shared generated glyph treatment used by both owned bars.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>

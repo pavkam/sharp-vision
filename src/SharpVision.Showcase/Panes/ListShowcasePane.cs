@@ -27,7 +27,7 @@ internal sealed class ListShowcasePane: ShowcasePane
         new PropertyDescription("SelectedIndex", "int", "-1", "Gets or selects the active zero-based item while keeping it visible."),
         new PropertyDescription("VerticalOffset", "int", "0", "Reports the first vertically visible item after navigation or pointer scrolling."),
         new PropertyDescription("ScrollBars / ShowScrollBars", "ScrollBars / ShowScrollBars", "Both / WhenNeeded", "Expose the same enabled-axis and visibility policy used by the canonical ScrollView."),
-        new PropertyDescription("ScrollBarChrome / ScrollBarFill", "ScrollBarStyle / ScrollBarFill", "Full / Block", "Configure the actual composed rails as thin/full and line/block without a List-only style dialect."),
+        new PropertyDescription("ScrollBarChrome / ScrollBarFill", "ScrollBarChrome / ScrollBarFill", "Full / Block", "Configure the actual composed rails as thin/full and line/block without a List-only style dialect."),
     ];
 
     /// <summary>Initializes the List showcase page and composes its specimens.</summary>
@@ -49,7 +49,7 @@ internal sealed class ListShowcasePane: ShowcasePane
             Height = Length.Cells(6),
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
-            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
             Items = new object?[]
             {

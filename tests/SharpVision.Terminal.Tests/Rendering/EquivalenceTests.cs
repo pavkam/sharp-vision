@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Rendering;
 
+using Encoder = SharpVision.Terminal.Rendering.Encoder;
+
 
 using SharpVision.Terminal.Capabilities;
 
@@ -53,7 +55,7 @@ public sealed class EquivalenceTests
         _ = back.Canvas.Draw(
             "ab".AsSpan(),
             new Point(0, 0),
-            new Style(attributes: Attributes.Bold, hyperlink: "https://example.test"));
+            new CellStyle(attributes: Attributes.Bold, hyperlink: "https://example.test"));
         back.SetCursor(new Point(1, 0), visible: true);
         VirtualScreen incremental = new(back.Size);
         incremental.Apply(Encode(null, front));
@@ -72,7 +74,7 @@ public sealed class EquivalenceTests
     public void Encode_WhenModernDecorationsAreSupported_AgreesWithFullRender()
     {
         using Frame frame = new(new Size(2, 1));
-        Style style = new(
+        CellStyle style = new(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(12, 34, 56));

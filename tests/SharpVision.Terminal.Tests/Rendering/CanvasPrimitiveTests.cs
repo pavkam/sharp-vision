@@ -29,7 +29,7 @@ public sealed class CanvasPrimitiveTests
     public void DrawRune_WhenRuneIsNarrow_WritesExactCell()
     {
         using Frame frame = new(new Size(1, 1));
-        Style style = new(Color.Indexed(2), Color.Indexed(4));
+        CellStyle style = new(Color.Indexed(2), Color.Indexed(4));
 
         frame.Canvas.DrawRune(new Rune('┼'), default, style);
 
@@ -42,16 +42,16 @@ public sealed class CanvasPrimitiveTests
     public void DrawRune_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
         using Frame frame = new(new Size(1, 1));
-        Style surface = new(Color.Indexed(255), Color.Indexed(238));
+        CellStyle surface = new(Color.Indexed(255), Color.Indexed(238));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
 
         frame.Canvas.DrawRune(
             new Rune('│'),
             default,
-            new Style(Color.Indexed(45), Color.Default),
+            new CellStyle(Color.Indexed(45), Color.Default),
             BackgroundMode.Transparent);
 
-        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new Style(Color.Indexed(45), Color.Indexed(238)));
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new CellStyle(Color.Indexed(45), Color.Indexed(238)));
     }
 
     #endregion
@@ -79,7 +79,7 @@ public sealed class CanvasPrimitiveTests
     {
         using Frame frame = new(new Size(2, 1));
         _ = frame.Canvas.Draw("界", default);
-        Style style = new(background: Color.Indexed(5));
+        CellStyle style = new(background: Color.Indexed(5));
 
         frame.Canvas.ApplyStyle(new Rect(1, 0, 1, 1), style);
 
@@ -93,14 +93,14 @@ public sealed class CanvasPrimitiveTests
     public void ApplyStyle_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
         using Frame frame = new(new Size(1, 1));
-        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new Style(Color.Indexed(255), Color.Indexed(238)));
+        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new CellStyle(Color.Indexed(255), Color.Indexed(238)));
 
         frame.Canvas.ApplyStyle(
             frame.Canvas.Bounds,
-            new Style(Color.Indexed(45), Color.Default),
+            new CellStyle(Color.Indexed(45), Color.Default),
             BackgroundMode.Transparent);
 
-        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new Style(Color.Indexed(45), Color.Indexed(238)));
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(new CellStyle(Color.Indexed(45), Color.Indexed(238)));
     }
 
     /// <summary>Verifies a clipped partial wide owner is not half-restyled.</summary>
@@ -109,12 +109,12 @@ public sealed class CanvasPrimitiveTests
     {
         using Frame frame = new(new Size(2, 1));
         _ = frame.Canvas.Draw("界", default);
-        Style style = new(background: Color.Indexed(5));
+        CellStyle style = new(background: Color.Indexed(5));
 
         frame.Canvas.Clip(new Rect(1, 0, 1, 1)).ApplyStyle(new Rect(1, 0, 1, 1), style);
 
-        frame.GetCell(new Point(0, 0)).Style.ShouldBe(Style.Default);
-        frame.GetCell(new Point(1, 0)).Style.ShouldBe(Style.Default);
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(CellStyle.Default);
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(CellStyle.Default);
     }
 
     #endregion

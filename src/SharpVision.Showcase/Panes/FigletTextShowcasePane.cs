@@ -52,7 +52,7 @@ internal sealed class FigletTextShowcasePane: ShowcasePane
             DropDownHeight = 8,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
         };
         ControlFigletText preview = new(catalog.Load("Standard"))

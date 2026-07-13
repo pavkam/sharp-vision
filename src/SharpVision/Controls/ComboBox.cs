@@ -128,7 +128,7 @@ public sealed class ComboBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public ScrollBarStyle ScrollBarChrome
+    public ScrollBarChrome ScrollBarChrome
     {
         get => _list.ScrollBarChrome;
         set

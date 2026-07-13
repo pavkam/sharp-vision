@@ -16,7 +16,7 @@ public sealed partial class Button: Pressable
         _ = PaddingProperty.RegisterClassDefault<Button>(new Thickness(1));
         _ = HasShadowProperty.RegisterClassDefault<Button>(true);
         _ = ShadowOffsetProperty.RegisterClassDefault<Button>(new Point(1, 1));
-        _ = BorderStyleProperty.RegisterClassDefault<Button>(Glyphs.Rounded);
+        _ = BorderGlyphsProperty.RegisterClassDefault<Button>(Glyphs.Rounded);
         _ = ShadowAttributesProperty.RegisterClassDefault<Button>(TerminalAttributes.Dim);
     }
 
@@ -95,8 +95,8 @@ public sealed partial class Button: Pressable
     /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
     public Glyphs Glyphs
     {
-        get => BorderStyle;
-        set => BorderStyle = value;
+        get => BorderGlyphs;
+        set => BorderGlyphs = value;
     }
 
     #endregion

@@ -7,7 +7,7 @@ using SharpVision.Terminal.Input;
 
 
 using KeyAction = Terminal.Input.Action;
-using TerminalStyle = Style;
+using TerminalStyle = CellStyle;
 
 /// <summary>Verifies popup-style combo box geometry, keyboard opening, focus, and committed selection.</summary>
 public sealed class ComboBoxTests
@@ -134,7 +134,7 @@ public sealed class ComboBoxTests
             DropDownHeight = 3,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
-            ScrollBarChrome = ScrollBarStyle.Thin,
+            ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
             IsOpen = true,
         };
@@ -142,12 +142,12 @@ public sealed class ComboBoxTests
 
         box.ScrollBars.ShouldBe(ScrollBars.Vertical);
         box.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
-        box.ScrollBarChrome.ShouldBe(ScrollBarStyle.Thin);
+        box.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         box.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
         List list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
         ScrollBar rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
-        rail.Chrome.ShouldBe(ScrollBarStyle.Thin);
+        rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
         rail.Fill.ShouldBe(ScrollBarFill.Line);
     }
 

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.GeometryCases;
 
+using Metrics = SharpVision.Terminal.Geometry.Metrics;
+
 
 
 /// <summary>Verifies exact rational and uniform pixel-to-cell grid mapping.</summary>

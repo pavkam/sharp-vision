@@ -164,7 +164,7 @@ public sealed class ScrollBar: Control
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBarStyle Chrome
+    public ScrollBarChrome Chrome
     {
         get;
         set
@@ -172,7 +172,7 @@ public sealed class ScrollBar: Control
             Validate(value);
             _ = Set(ref field, value, Invalidation.Measure);
         }
-    } = ScrollBarStyle.Full;
+    } = ScrollBarChrome.Full;
 
     /// <summary>Gets or sets the generated line or block glyph treatment.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -324,7 +324,7 @@ public sealed class ScrollBar: Control
     {
         _ = constraint.Width;
         Debug.Assert(Enum.IsDefined(Orientation), "Orientation is validated before assignment.");
-        int extent = Chrome == ScrollBarStyle.Thin ? 1 : 3;
+        int extent = Chrome == ScrollBarChrome.Thin ? 1 : 3;
         return Orientation == Orientation.Vertical ? new Size(1, extent) : new Size(extent, 1);
     }
 
@@ -666,7 +666,7 @@ public sealed class ScrollBar: Control
             : TrackRune();
     }
 
-    private int ButtonCount(int length) => Chrome == ScrollBarStyle.Full && length >= 2 ? 1 : 0;
+    private int ButtonCount(int length) => Chrome == ScrollBarChrome.Full && length >= 2 ? 1 : 0;
 
     private Rune DecrementRune() => CellGlyph.Resolve(
         _hasDecrementGlyph

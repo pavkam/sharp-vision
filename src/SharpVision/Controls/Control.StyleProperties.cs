@@ -55,7 +55,7 @@ public abstract partial class Control
             ValidateThemeBorderThickness);
 
     /// <summary>Identifies the border glyph style property.</summary>
-    public static StyleProperty<Glyphs> BorderStyleProperty { get; } =
+    public static StyleProperty<Glyphs> BorderGlyphsProperty { get; } =
         StyleProperty<Glyphs>.Register<Control>("border-glyphs", Glyphs.Default, Impact.Render);
 
     /// <summary>Identifies the border color style property.</summary>
@@ -194,10 +194,10 @@ public abstract partial class Control
     /// <summary>Gets or sets the validated physical glyph family used for border edges.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Glyphs BorderStyle
+    public Glyphs BorderGlyphs
     {
-        get => GetValue(BorderStyleProperty);
-        set => SetValue(BorderStyleProperty, value);
+        get => GetValue(BorderGlyphsProperty);
+        set => SetValue(BorderGlyphsProperty, value);
     }
 
     /// <summary>Gets or sets the optional border color.</summary>
