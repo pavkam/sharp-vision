@@ -193,7 +193,7 @@ public sealed class ButtonTests
     public void PerformClick_WhenCommandCanExecute_RaisesThenExecutesExactlyOnce()
     {
         List<string> order = [];
-        object parameter = new object();
+        object parameter = new();
         ProbeCommand command = new() { Executing = _ => order.Add("command") };
         Button button = new() { Command = command, CommandParameter = parameter };
         button.Click += (_, eventArgs) =>

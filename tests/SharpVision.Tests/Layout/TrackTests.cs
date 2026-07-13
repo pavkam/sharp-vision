@@ -50,9 +50,9 @@ public sealed class TrackTests
     public void Resolve_WhenTracksHaveLimits_ClampsAndRedistributesRemainder()
     {
         Length[] lengths = [Length.Auto, Length.Star(1), Length.Star(1)];
-        int[] automatic = new[] { 10, 0, 0 };
-        int[] minimum = new[] { 0, 4, 0 };
-        int[] maximum = new[] { 6, 5, int.MaxValue };
+        int[] automatic = [10, 0, 0];
+        int[] minimum = [0, 4, 0];
+        int[] maximum = [6, 5, int.MaxValue];
         int[] result = new int[3];
 
         Tracks.Resolve(20, lengths, automatic, minimum, maximum, result);
@@ -88,7 +88,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenInputIsInvalid_ThrowsBeforeWritingDestination()
     {
-        int[] destination = new[] { 7, 7 };
+        int[] destination = [7, 7];
 
         _ = Should.Throw<ArgumentException>(() => Tracks.Resolve(
             10,
@@ -105,7 +105,7 @@ public sealed class TrackTests
     [Fact]
     public void Satisfy_WhenSpanRequiresMoreSpace_DistributesCumulativeDeficit()
     {
-        int[] tracks = new[] { 2, 1, 2, 9 };
+        int[] tracks = [2, 1, 2, 9];
 
         Tracks.Satisfy(tracks, start: 0, count: 3, required: 11);
 
@@ -116,7 +116,7 @@ public sealed class TrackTests
     [Fact]
     public void Satisfy_WhenRangeIsInvalid_ThrowsBeforeWritingTracks()
     {
-        int[] tracks = new[] { 2, 1, 2 };
+        int[] tracks = [2, 1, 2];
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             Tracks.Satisfy(tracks, start: 2, count: 2, required: 8));
