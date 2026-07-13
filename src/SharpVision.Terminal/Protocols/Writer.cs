@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Protocols;
+
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics;
-
-namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Writes validated ECMA-48 sequence grammar directly to a byte buffer.

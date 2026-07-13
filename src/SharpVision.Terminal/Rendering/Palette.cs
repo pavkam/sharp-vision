@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Rendering;
+
 using System.Diagnostics;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
-
-namespace SharpVision.Terminal.Rendering;
 
 /// <summary>Projects semantic colors through a deterministic xterm-compatible reference palette.</summary>
 internal static class Palette

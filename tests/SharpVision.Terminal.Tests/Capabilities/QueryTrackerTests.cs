@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Capabilities;
+
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Capabilities;
 
 /// <summary>
 /// Verifies bounded query registration, correlation, and deadlines.

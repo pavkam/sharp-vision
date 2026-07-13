@@ -1,6 +1,6 @@
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
 namespace SharpVision.Controls;
+
+using TerminalStyle = Terminal.Rendering.Style;
 
 internal readonly struct ResolvedAppearance
 {

@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies typed CSI command encoding.
@@ -28,7 +28,7 @@ public sealed class CsiTests
 
         Csi.Move(writer, operation, 3);
 
-        destination.WrittenSpan.ToArray().ShouldBe(System.Text.Encoding.ASCII.GetBytes(expected));
+        destination.WrittenSpan.ToArray().ShouldBe(Encoding.ASCII.GetBytes(expected));
     }
 
     /// <summary>

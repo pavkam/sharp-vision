@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Capabilities;
+
 using SharpVision.Terminal.Capabilities;
 
 using Shouldly;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-
-namespace SharpVision.Terminal.Tests.Capabilities;
+using CapabilitySupport = Terminal.Capabilities.Support;
 
 /// <summary>
 /// Verifies capability evidence precedence and safe narrowing.

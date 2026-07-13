@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -7,8 +9,6 @@ using SharpVision.Threading;
 using Shouldly;
 
 using Panel = SharpVision.Controls.Dock;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies deterministic edge consumption and remaining-space layout.</summary>
 public sealed class DockTests

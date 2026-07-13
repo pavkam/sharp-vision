@@ -1,11 +1,11 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Controls;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Arranges typed menu items and coordinates their keyboard selection and radio groups.</summary>
 public sealed class Menu: Container

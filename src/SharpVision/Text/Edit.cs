@@ -1,10 +1,10 @@
+namespace SharpVision.Text;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Terminal.Unicode;
-
-namespace SharpVision.Text;
 
 /// <summary>Provides pure grapheme-boundary text navigation and mutation transactions.</summary>
 public static class Edit

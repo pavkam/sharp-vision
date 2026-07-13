@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Support;
+
 using System.Globalization;
 using System.Text;
 
@@ -8,9 +10,7 @@ using SharpVision.Terminal.Unicode;
 
 using Shouldly;
 
-using TerminalColor = SharpVision.Terminal.Protocols.Color;
-
-namespace SharpVision.Terminal.Tests.Support;
+using TerminalColor = Terminal.Protocols.Color;
 
 /// <summary>
 /// Applies emitted terminal bytes to an independent semantic screen model.

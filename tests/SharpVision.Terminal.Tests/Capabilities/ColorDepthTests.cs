@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Capabilities;
+
 using SharpVision.Terminal.Capabilities;
 
 using Shouldly;
 
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Capabilities;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Verifies color-depth profile validation and conservative defaults.</summary>
 public sealed class ColorDepthTests

@@ -1,6 +1,6 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Input;
+
+using SharpVision.Controls;
 
 /// <summary>Reports a committed RadioButton group selection transition.</summary>
 public sealed class SelectionChangedEventArgs: EventArgs

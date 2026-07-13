@@ -1,9 +1,9 @@
+namespace SharpVision.Runtime;
+
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Runtime;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Builds the default interactive console terminal policy.</summary>
 internal static class ConsoleRun

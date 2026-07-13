@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Runtime;
+
 using SharpVision.Controls;
 using SharpVision.Runtime;
 using SharpVision.Terminal.Geometry;
@@ -6,9 +8,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Runtime;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies screen ownership and startup hooks.</summary>
 public sealed class ScreenTests

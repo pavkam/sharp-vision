@@ -1,7 +1,7 @@
+namespace SharpVision.Terminal.Rendering;
+
 using System.Buffers;
 using System.Diagnostics;
-
-namespace SharpVision.Terminal.Rendering;
 
 /// <summary>
 /// Provides reusable bounded pooled storage for one encoded frame batch.

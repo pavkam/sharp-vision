@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Runtime;
+
 using System.Text;
 using System.Threading.Channels;
 
 using SharpVision.Terminal.Transport;
-
-namespace SharpVision.Terminal.Tests.Runtime;
 
 /// <summary>Provides deterministic terminal session input, output, and failures.</summary>
 internal sealed class SessionTransport: ITransport

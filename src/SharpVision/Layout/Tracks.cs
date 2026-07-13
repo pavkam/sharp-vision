@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace SharpVision.Layout;
+
+using System.Diagnostics;
 
 /// <summary>Allocates integer cells across fixed, intrinsic, percentage, and star tracks.</summary>
 public static class Tracks

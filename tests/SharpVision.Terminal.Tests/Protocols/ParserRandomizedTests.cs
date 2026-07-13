@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies deterministic randomized parser invariants.
@@ -81,10 +81,10 @@ public sealed class ParserRandomizedTests
 
         return selector switch
         {
-            0 => System.Text.Encoding.ASCII.GetBytes($"left\u001b[{value}Aright"),
-            1 => System.Text.Encoding.ASCII.GetBytes($"\u001b]2;title-{value}\u001b\\"),
-            2 => System.Text.Encoding.ASCII.GetBytes($"\u001bP{value}$qdata-{value}\u001b\\"),
-            _ => System.Text.Encoding.ASCII.GetBytes($"\u001b_payload-{value}\u001b\\"),
+            0 => Encoding.ASCII.GetBytes($"left\u001b[{value}Aright"),
+            1 => Encoding.ASCII.GetBytes($"\u001b]2;title-{value}\u001b\\"),
+            2 => Encoding.ASCII.GetBytes($"\u001bP{value}$qdata-{value}\u001b\\"),
+            _ => Encoding.ASCII.GetBytes($"\u001b_payload-{value}\u001b\\"),
         };
     }
 }

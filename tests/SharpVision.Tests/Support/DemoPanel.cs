@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Support;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Tests.Support;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Provides a third-party-style control with one custom style property.</summary>
 internal sealed class DemoPanel: Control

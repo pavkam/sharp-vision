@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Integration;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -12,9 +14,7 @@ using Shouldly;
 
 using ControlCanvas = SharpVision.Controls.Canvas;
 using ControlText = SharpVision.Controls.Text;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Integration;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Proves display controls compose through Application, layout, and semantic cells.</summary>
 public sealed class DisplayPanelTests

@@ -1,12 +1,11 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Input;
 using SharpVision.Layout;
-using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Defines one focusable command, check, radio, or separator entry in a <see cref="Menu"/>.</summary>
 public sealed class MenuItem: Pressable
@@ -187,8 +186,7 @@ public sealed class MenuItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override State GetVisualState() =>
-        base.GetVisualState() | (_isChecked ? State.Checked : State.Normal);
+    protected override bool IsCheckedState => _isChecked;
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

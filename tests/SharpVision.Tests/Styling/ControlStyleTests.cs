@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Styling;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Styling;
 
 /// <summary>Verifies mutable control-style storage, validation, and freezing.</summary>
 public sealed class ControlStyleTests
@@ -23,24 +23,39 @@ public sealed class ControlStyleTests
         style.TryGet(Control.ForegroundProperty, State.Normal, out _).ShouldBeFalse();
     }
 
-    /// <summary>Verifies combined overlay states are rejected during mutation.</summary>
+    /// <summary>Verifies combined overlay states are stored and read back.</summary>
     [Fact]
-    public void Set_WhenOverlayStatesAreCombined_Throws()
+    public void Set_WhenOverlayStatesAreCombined_StoresValue()
     {
         var style = new ControlStyle<Control>();
+        var combined = State.Hovered | State.Focused;
 
-        _ = Should.Throw<ArgumentException>(() =>
-            style.Set(Control.ForegroundProperty, State.Hovered | State.Focused, Color.Indexed(1)));
+        style.Set(Control.ForegroundProperty, combined, Color.Indexed(1));
+
+        style.TryGet(Control.ForegroundProperty, combined, out var value).ShouldBeTrue();
+        value.ShouldBe(Color.Indexed(1));
     }
 
-    /// <summary>Verifies measure-impact properties cannot be stored in overlay states.</summary>
+    /// <summary>Verifies unknown state flags are still rejected.</summary>
     [Fact]
-    public void Set_WhenMeasurePropertyUsesOverlayState_Throws()
+    public void Set_WhenStateHasUnknownFlags_Throws()
     {
         var style = new ControlStyle<Control>();
 
-        _ = Should.Throw<ArgumentException>(() =>
-            style.Set(Control.PaddingProperty, State.Hovered, new Thickness(1)));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            style.Set(Control.ForegroundProperty, (State) (1 << 20), Color.Indexed(1)));
+    }
+
+    /// <summary>Verifies measure-impact properties may now be stored in overlay states.</summary>
+    [Fact]
+    public void Set_WhenMeasurePropertyUsesOverlayState_StoresValue()
+    {
+        var style = new ControlStyle<Control>();
+
+        style.Set(Control.PaddingProperty, State.Pressed, new Thickness(1));
+
+        style.TryGet(Control.PaddingProperty, State.Pressed, out var value).ShouldBeTrue();
+        value.ShouldBe(new Thickness(1));
     }
 
     /// <summary>Verifies frozen styles reject further mutation.</summary>

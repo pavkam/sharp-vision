@@ -1,6 +1,6 @@
-using System.Windows.Input;
-
 namespace SharpVision.Tests.Support;
+
+using System.Windows.Input;
 
 /// <summary>Records command queries/executions and exposes deterministic executability.</summary>
 internal sealed class ProbeCommand: ICommand

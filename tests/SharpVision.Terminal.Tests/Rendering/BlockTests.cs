@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Rendering;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>Verifies shade and quadrant block drawing.</summary>
 public sealed class BlockTests

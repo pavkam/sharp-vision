@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Input;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Input;
 
 /// <summary>Verifies transactional focus, navigation, and invalid-state cleanup.</summary>
 public sealed class FocusTests

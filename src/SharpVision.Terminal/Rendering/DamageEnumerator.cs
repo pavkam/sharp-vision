@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace SharpVision.Terminal.Rendering;
+
+using System.Diagnostics;
 
 /// <summary>Finds deterministic row-major semantic damage without retaining frame memory.</summary>
 public ref struct DamageEnumerator

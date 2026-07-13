@@ -1,11 +1,11 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using InputOptions = SharpVision.Terminal.Input.Options;
-
-namespace SharpVision.Terminal.Tests.Protocols;
+using InputOptions = Terminal.Input.Options;
 
 /// <summary>Verifies typed runtime routing, ownership, and recovery.</summary>
 public sealed class RouterTests
@@ -36,7 +36,7 @@ public sealed class RouterTests
         ResponseKind expected)
     {
         // Arrange
-        var bytes = System.Text.Encoding.UTF8.GetBytes(input);
+        var bytes = Encoding.UTF8.GetBytes(input);
 
         // Act / Assert
         for (var split = 0; split <= bytes.Length; split++)

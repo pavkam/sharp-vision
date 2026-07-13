@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Input;
+
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -9,10 +11,8 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalText = SharpVision.Terminal.Input.Text;
-
-namespace SharpVision.Tests.Input;
+using KeyAction = Terminal.Input.Action;
+using TerminalText = Terminal.Input.Text;
 
 /// <summary>Verifies typed preview/bubble dispatch over stable route snapshots.</summary>
 public sealed class RoutingTests

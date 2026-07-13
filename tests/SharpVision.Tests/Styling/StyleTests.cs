@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Styling;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -10,8 +12,6 @@ using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Styling;
 
 /// <summary>Verifies theme integration with control invalidation and rendering.</summary>
 public sealed class StyleTests

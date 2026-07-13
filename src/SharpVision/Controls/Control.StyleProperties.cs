@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Text;
 
 using SharpVision.Layout;
@@ -5,9 +7,7 @@ using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-
-namespace SharpVision.Controls;
+using TerminalAttributes = Terminal.Rendering.Attributes;
 
 public abstract partial class Control
 {

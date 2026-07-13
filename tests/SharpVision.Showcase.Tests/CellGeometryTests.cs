@@ -1,3 +1,5 @@
+namespace SharpVision.Showcase.Tests;
+
 using SharpVision.Layout;
 using SharpVision.Runtime;
 using SharpVision.Terminal.Geometry;
@@ -8,8 +10,6 @@ using SharpVision.Terminal.Runtime;
 using Shouldly;
 
 using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Verifies the Text page geometry specimens render and explain the active contract.</summary>
 public sealed class CellGeometryTests

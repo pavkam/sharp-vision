@@ -1,10 +1,11 @@
+namespace SharpVision.Showcase.Tests;
+
 using System.Text;
 
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Runtime;
 using SharpVision.Scrolling;
-using SharpVision.Showcase.Panes.Button;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
 
@@ -13,8 +14,6 @@ using Shouldly;
 using ControlText = SharpVision.Controls.Text;
 using ScrollRange = SharpVision.Scrolling.Range;
 using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Proves real terminal input, focus, scrolling, and resize across the running gallery.</summary>
 public sealed class GalleryInteractionTests
@@ -336,7 +335,7 @@ public sealed class GalleryInteractionTests
     {
         await using var terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 60)));
-        var root = new ButtonPane();
+        var root = new ButtonShowcasePane();
         await using var application = new Application(
             root,
             terminal,
@@ -370,7 +369,7 @@ public sealed class GalleryInteractionTests
     {
         await using var terminal = new FakeTerminal();
         terminal.QueueResize(new Dimensions(new Size(80, 60)));
-        var root = new ButtonPane();
+        var root = new ButtonShowcasePane();
         await using var application = new Application(
             root,
             terminal,

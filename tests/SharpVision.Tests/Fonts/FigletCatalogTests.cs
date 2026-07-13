@@ -1,8 +1,8 @@
+namespace SharpVision.Tests.Fonts;
+
 using SharpVision.Fonts;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Fonts;
 
 /// <summary>Verifies the embedded audited 400-font catalog.</summary>
 public sealed class FigletCatalogTests

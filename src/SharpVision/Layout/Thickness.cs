@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Geometry;
-
 namespace SharpVision.Layout;
+
+using SharpVision.Terminal.Geometry;
 
 /// <summary>Represents non-negative physical box edges in terminal cells.</summary>
 public readonly record struct Thickness

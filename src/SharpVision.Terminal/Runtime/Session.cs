@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Runtime;
+
 using System.Buffers;
 using System.Runtime.ExceptionServices;
 
@@ -5,9 +7,7 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Transport;
 
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Runtime;
+using TerminalCapabilities = Capabilities.Capabilities;
 
 /// <summary>
 /// Owns terminal mode leases and serializes input, resize, closure, and cleanup.

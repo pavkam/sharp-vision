@@ -1,12 +1,12 @@
+namespace SharpVision.Tests.Support;
+
 using System.Text;
 
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Tests.Support;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Provides a recording leaf for shared control infrastructure tests.</summary>
 internal sealed class ProbeControl: Control

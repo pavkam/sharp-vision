@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies DCS header, payload, termination, and recovery.

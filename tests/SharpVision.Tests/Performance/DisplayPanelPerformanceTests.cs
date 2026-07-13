@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Performance;
+
 using System.Diagnostics;
 using System.Globalization;
 
@@ -9,8 +11,6 @@ using SharpVision.Terminal.Rendering;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-
-namespace SharpVision.Tests.Performance;
 
 /// <summary>Gates allocation reuse for representative and large display trees.</summary>
 [Collection(PerformanceGroup.Name)]

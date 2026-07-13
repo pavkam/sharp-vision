@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -10,8 +12,6 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies Border ownership, layout, glyph validation, styling, and cells.</summary>
 public sealed class BorderTests

@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Protocols;
-
 namespace SharpVision.Terminal.Rendering;
+
+using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Represents immutable semantic cell colors, attributes, and hyperlink.

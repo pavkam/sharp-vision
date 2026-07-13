@@ -1,8 +1,8 @@
+namespace SharpVision.Tests.Support;
+
 using SharpVision.Layout;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
-
-namespace SharpVision.Tests.Support;
 
 /// <summary>Represents optional visual fields for one themed overlay layer in tests.</summary>
 internal readonly record struct ThemeOverlay

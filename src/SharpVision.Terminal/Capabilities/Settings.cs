@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Unicode;
-
 namespace SharpVision.Terminal.Capabilities;
+
+using SharpVision.Terminal.Unicode;
 
 /// <summary>Defines explicit nullable caller overrides applied after all other evidence.</summary>
 public sealed record Settings

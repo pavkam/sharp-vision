@@ -1,10 +1,10 @@
+namespace SharpVision.Tests.Scrolling;
+
 using SharpVision.Scrolling;
 
 using Shouldly;
 
 using ScrollRange = SharpVision.Scrolling.Range;
-
-namespace SharpVision.Tests.Scrolling;
 
 /// <summary>Proves fixed-seed scroll thumb containment, monotonicity, and inversion.</summary>
 public sealed class RandomizedRangeTests

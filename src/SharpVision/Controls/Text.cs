@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 
 using SharpVision.Layout;
@@ -6,10 +8,8 @@ using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
+using TerminalStyle = Terminal.Rendering.Style;
 using TextLayout = SharpVision.Text.Layout;
-
-namespace SharpVision.Controls;
 
 /// <summary>Displays cached grapheme-safe text through semantic terminal cells.</summary>
 public sealed class Text: Control

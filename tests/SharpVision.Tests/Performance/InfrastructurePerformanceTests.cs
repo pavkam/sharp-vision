@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Performance;
+
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -12,9 +14,7 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Tests.Performance;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Gates deterministic UI infrastructure allocations and records timings.</summary>
 [Collection(PerformanceGroup.Name)]

@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Protocols;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-
-namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Parses bounded ECMA-48 terminal sequences across arbitrary input reads.

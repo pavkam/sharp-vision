@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Input;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Styling;
@@ -8,8 +10,6 @@ using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Input;
 
 /// <summary>Verifies hit testing, local coordinates, capture, and pointer state cleanup.</summary>
 public sealed class PointerTests

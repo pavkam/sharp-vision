@@ -1,10 +1,10 @@
+namespace SharpVision.Showcase.Panes;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Text;
-
-namespace SharpVision.Showcase.Panes;
 
 /// <summary>Shared layout and specimen helpers used across showcase panes.</summary>
 internal static class PaneSupport

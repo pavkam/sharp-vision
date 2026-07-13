@@ -1,6 +1,8 @@
+namespace SharpVision.Showcase.Tests;
+
 using SharpVision.Controls;
 using SharpVision.Runtime;
-using SharpVision.Showcase.Panes.Theming;
+using SharpVision.Showcase.Panes;
 using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
@@ -9,8 +11,6 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
 public sealed class ThemeGalleryTests

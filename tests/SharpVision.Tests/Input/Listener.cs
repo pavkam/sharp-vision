@@ -1,6 +1,6 @@
-using SharpVision.Input;
-
 namespace SharpVision.Tests.Input;
+
+using SharpVision.Input;
 
 /// <summary>Provides a collectible routed-handler delegate target.</summary>
 internal sealed class Listener

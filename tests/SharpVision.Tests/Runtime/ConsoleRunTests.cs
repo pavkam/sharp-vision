@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Runtime;
+
 using SharpVision.Runtime;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
@@ -5,10 +7,8 @@ using SharpVision.Terminal.Runtime;
 
 using Shouldly;
 
-using CapabilityOrigin = SharpVision.Terminal.Capabilities.Origin;
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-
-namespace SharpVision.Tests.Runtime;
+using CapabilityOrigin = Terminal.Capabilities.Origin;
+using CapabilitySupport = Terminal.Capabilities.Support;
 
 /// <summary>Verifies console host defaults and interactive run helpers.</summary>
 public sealed class ConsoleRunTests

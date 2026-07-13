@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Text;
+
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
 using Shouldly;
 
 using TextLayout = SharpVision.Text.Layout;
-
-namespace SharpVision.Tests.Text;
 
 /// <summary>Verifies grapheme-safe wrapping, trimming, alignment, and line metrics.</summary>
 public sealed class LayoutTests

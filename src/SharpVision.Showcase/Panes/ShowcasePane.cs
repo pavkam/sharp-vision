@@ -1,10 +1,11 @@
+namespace SharpVision.Showcase.Panes;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
+using SharpVision.Showcase;
 
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 using Wrapping = SharpVision.Text.Wrapping;
-
-namespace SharpVision.Showcase.Panes;
 
 /// <summary>
 /// Base documentation page control. Subclasses add live specimens by overriding
@@ -75,14 +76,6 @@ internal abstract class ShowcasePane: ControlStack
     /// <summary>Composes the live example specimens for this control.</summary>
     /// <param name="examples">The detached examples stack owned by this page.</param>
     protected abstract void BuildExamples(ControlStack examples);
-
-    /// <summary>Rebuilds only the live example specimens on a detached stack.</summary>
-    /// <param name="examples">The detached examples root owned by the caller.</param>
-    internal void PopulateExamples(ControlStack examples)
-    {
-        ArgumentNullException.ThrowIfNull(examples);
-        BuildExamples(examples);
-    }
 
     private static void ValidateMetadata(
         InteractionDescription[] interactions,

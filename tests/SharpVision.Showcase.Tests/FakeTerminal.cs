@@ -1,9 +1,9 @@
+namespace SharpVision.Showcase.Tests;
+
 using System.Threading.Channels;
 
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Provides deterministic owned transport and resize streams for the running showcase.</summary>
 internal sealed class FakeTerminal: ITransport, IResizeSource

@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Input;
-
 namespace SharpVision.Terminal.Protocols;
+
+using SharpVision.Terminal.Input;
 
 /// <summary>Receives typed input, terminal replies, and owned extension strings.</summary>
 public interface IProtocolSink: IInputSink

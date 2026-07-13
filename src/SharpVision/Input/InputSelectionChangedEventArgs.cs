@@ -1,6 +1,6 @@
-using SharpVision.Text;
-
 namespace SharpVision.Input;
+
+using SharpVision.Text;
 
 /// <summary>Reports one committed directional TextInput selection transition.</summary>
 public sealed class InputSelectionChangedEventArgs: EventArgs

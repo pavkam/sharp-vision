@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Clipboard;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Clipboard;
@@ -5,8 +7,6 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Clipboard;
 
 /// <summary>
 /// Verifies exact Kitty OSC 5522 request and data encoding.
@@ -26,7 +26,7 @@ public sealed class KittyWriterTests
         KittyWriter.List(writer, Selection.Primary);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(
+            Encoding.ASCII.GetBytes(
                 "\u001b]5522;type=read:id=req-1;dGV4dC9wbGFpbiBpbWFnZS9wbmc=\u001b\\" +
                 "\u001b]5522;type=read:loc=primary;Lg==\u001b\\"));
     }
@@ -64,7 +64,7 @@ public sealed class KittyWriterTests
         KittyWriter.WriteEnd(writer);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(
+            Encoding.ASCII.GetBytes(
                 "\u001b]5522;type=walias:mime=dGV4dC9wbGFpbg==;" +
                 "dGV4dC9wbGFpbiB0ZXh0L3V0Zjg=\u001b\\" +
                 "\u001b]5522;type=wdata\u001b\\"));
@@ -124,7 +124,7 @@ public sealed class KittyWriterTests
             var encoded = observation.First[(separator + 1)..];
             (encoded.Length % 4).ShouldBe(0);
 
-            var decoded = Convert.FromBase64String(System.Text.Encoding.ASCII.GetString(encoded));
+            var decoded = Convert.FromBase64String(Encoding.ASCII.GetString(encoded));
 
             if (decoded.Length % 3 != 0)
             {

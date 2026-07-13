@@ -1,8 +1,8 @@
+namespace SharpVision.Controls;
+
 using System.Text;
 
 using SharpVision.Terminal.Unicode;
-
-namespace SharpVision.Controls;
 
 /// <summary>Defines immutable printable narrow glyphs for CheckBox states.</summary>
 public readonly record struct Marks

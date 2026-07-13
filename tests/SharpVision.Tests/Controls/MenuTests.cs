@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -9,9 +11,7 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies typed menu ownership, selection navigation, check states, and cells.</summary>
 public sealed class MenuTests

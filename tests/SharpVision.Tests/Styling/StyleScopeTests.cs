@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Styling;
+
 using SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
@@ -5,8 +7,6 @@ using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Styling;
 
 /// <summary>Verifies generic ancestor style-scope cascade and its cache invalidation.</summary>
 public sealed class StyleScopeTests

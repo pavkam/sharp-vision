@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Fonts;
 using SharpVision.Layout;
@@ -6,8 +8,6 @@ using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies FIGletText validation, layout, caching, and exact cells.</summary>
 public sealed class FigletTextTests

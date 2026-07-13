@@ -1,7 +1,7 @@
+namespace SharpVision.Terminal.Protocols;
+
 using System.Buffers;
 using System.Diagnostics;
-
-namespace SharpVision.Terminal.Protocols;
 
 /// <summary>Writes one terminal sequence through tmux DCS passthrough framing.</summary>
 /// <remarks>

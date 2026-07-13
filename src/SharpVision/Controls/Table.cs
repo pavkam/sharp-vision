@@ -1,13 +1,13 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Arranges typed rows and columns into a terminal-safe table with optional headers and grid lines.</summary>
 public sealed class Table: Container

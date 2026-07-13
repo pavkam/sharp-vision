@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Integration;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Runtime;
@@ -8,9 +10,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Integration;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies pixel-only terminal input cannot fabricate control cells.</summary>
 public sealed class PixelPointerTests

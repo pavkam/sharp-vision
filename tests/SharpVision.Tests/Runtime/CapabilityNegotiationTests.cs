@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Runtime;
+
 using System.Text;
 
 using SharpVision.Runtime;
@@ -8,13 +10,11 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using Ambiguous = SharpVision.Terminal.Unicode.Ambiguous;
-using CapabilityOrigin = SharpVision.Terminal.Capabilities.Origin;
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Runtime;
+using Ambiguous = Terminal.Unicode.Ambiguous;
+using CapabilityOrigin = Terminal.Capabilities.Origin;
+using CapabilitySupport = Terminal.Capabilities.Support;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies negotiated profiles become active before layout and rendering.</summary>
 public sealed class CapabilityNegotiationTests

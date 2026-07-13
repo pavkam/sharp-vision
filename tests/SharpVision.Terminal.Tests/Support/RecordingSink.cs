@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Protocols;
-
 namespace SharpVision.Terminal.Tests.Support;
+
+using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Copies borrowed parser callbacks into stable ordered test observations.

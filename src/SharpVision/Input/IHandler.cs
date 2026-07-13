@@ -1,6 +1,6 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Input;
+
+using SharpVision.Controls;
 
 /// <summary>Provides a non-generic routed-handler registration contract.</summary>
 internal interface IHandler

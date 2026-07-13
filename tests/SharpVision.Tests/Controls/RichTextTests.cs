@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -8,8 +10,6 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using Wrapping = SharpVision.Text.Wrapping;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies RichText inline ownership, layout, styling, and cells.</summary>
 public sealed class RichTextTests

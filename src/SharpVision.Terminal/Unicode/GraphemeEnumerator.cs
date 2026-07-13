@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Unicode;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Text;
-
-namespace SharpVision.Terminal.Unicode;
 
 /// <summary>Segments borrowed UTF-16 text using Unicode 17 extended-grapheme rules.</summary>
 public ref struct GraphemeEnumerator

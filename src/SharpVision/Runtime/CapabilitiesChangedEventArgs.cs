@@ -1,6 +1,6 @@
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
 namespace SharpVision.Runtime;
+
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Provides one dispatcher-published capability profile change.</summary>
 public sealed class CapabilitiesChangedEventArgs: EventArgs

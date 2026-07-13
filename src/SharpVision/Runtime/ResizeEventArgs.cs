@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Runtime;
-
 namespace SharpVision.Runtime;
+
+using SharpVision.Terminal.Runtime;
 
 /// <summary>Provides a committed terminal resize after root layout.</summary>
 public sealed class ResizeEventArgs: EventArgs

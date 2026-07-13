@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies bounded OSC, APC, PM, and SOS parsing.
@@ -69,7 +69,7 @@ public sealed class ParserStringTests
         using var parser = new Parser();
         var sink = new RecordingSink();
 
-        parser.Parse(System.Text.Encoding.ASCII.GetBytes(input), ref sink);
+        parser.Parse(Encoding.ASCII.GetBytes(input), ref sink);
 
         sink.Observations.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             observation => observation.Type.ShouldBe($"{kind}:EscapeBackslash"),

@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Graphics;
+
 using System.Buffers.Binary;
 
 using SharpVision.Terminal.Geometry;
-
-namespace SharpVision.Terminal.Graphics;
 
 /// <summary>Validates the bounded PNG container subset required for owned transmission.</summary>
 internal static class Png

@@ -1,6 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace SharpVision.Input;
+
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Identifies the input path that completed one semantic activation.</summary>
 [SuppressMessage(

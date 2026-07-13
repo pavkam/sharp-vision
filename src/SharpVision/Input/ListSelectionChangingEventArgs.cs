@@ -1,6 +1,6 @@
-using System.ComponentModel;
-
 namespace SharpVision.Input;
+
+using System.ComponentModel;
 
 /// <summary>Provides a cancellable proposed List selection delta.</summary>
 public sealed class ListSelectionChangingEventArgs: CancelEventArgs

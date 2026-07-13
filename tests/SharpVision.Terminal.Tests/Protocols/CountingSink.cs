@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Protocols;
-
 namespace SharpVision.Terminal.Tests.Protocols;
+
+using SharpVision.Terminal.Protocols;
 
 /// <summary>Counts CSI callbacks in parser allocation measurements.</summary>
 internal struct CountingSink: ISequenceSink

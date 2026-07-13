@@ -1,3 +1,5 @@
+namespace SharpVision.Showcase.Tests;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Showcase.Panes;
@@ -7,8 +9,6 @@ using Shouldly;
 
 using ControlStack = SharpVision.Controls.Stack;
 using ControlText = SharpVision.Controls.Text;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Verifies one reusable documentation page and its live example ownership.</summary>
 public sealed class PageTests

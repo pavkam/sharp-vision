@@ -1,12 +1,12 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Input;
 using SharpVision.Terminal.Input;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Controls;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Provides shared focus, keyboard, pointer, capture, and pressed behavior.</summary>
 public abstract class Pressable: Container

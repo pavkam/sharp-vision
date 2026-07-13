@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Runtime;
+
 using SharpVision.Runtime;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Geometry;
@@ -11,12 +13,10 @@ using Dispatcher = SharpVision.Threading.Dispatcher;
 using LayoutEngine = SharpVision.Layout.Engine;
 using RichTextControl = SharpVision.Controls.RichText;
 using RunInline = SharpVision.Controls.Run;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
+using TerminalOptions = Terminal.Runtime.Options;
 using TextControl = SharpVision.Controls.Text;
 using TextInputControl = SharpVision.Controls.TextInput;
 using TextWrapping = SharpVision.Text.Wrapping;
-
-namespace SharpVision.Tests.Runtime;
 
 /// <summary>Verifies one immutable Unicode cell policy reaches the complete tree.</summary>
 public sealed class CellPolicyTests

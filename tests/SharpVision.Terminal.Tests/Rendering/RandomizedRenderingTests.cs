@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Capabilities;
@@ -8,10 +10,8 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Rendering;
+using CapabilitySupport = Terminal.Capabilities.Support;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>
 /// Verifies fixed-seed incremental/full frame equivalence across random states.

@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -11,10 +13,8 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Verifies popup-style combo box geometry, keyboard opening, focus, and committed selection.</summary>
 public sealed class ComboBoxTests
@@ -109,8 +109,8 @@ public sealed class ComboBoxTests
         var controlStyle = ThemeTestSupport.CreateControlStyle();
         controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
         controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(240));
-        controlStyle.Set(Control.ForegroundProperty, State.Checked, Color.Indexed(255));
-        controlStyle.Set(Control.BackgroundProperty, State.Checked, Color.Indexed(99));
+        controlStyle.Set(Control.ForegroundProperty, State.Selected, Color.Indexed(255));
+        controlStyle.Set(Control.BackgroundProperty, State.Selected, Color.Indexed(99));
         theme.SetStyle(controlStyle);
         var box = new ComboBox
         {

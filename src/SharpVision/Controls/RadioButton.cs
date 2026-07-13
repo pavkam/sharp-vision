@@ -1,16 +1,15 @@
+namespace SharpVision.Controls;
+
 using System.Text;
 
 using SharpVision.Input;
 using SharpVision.Layout;
-using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using KeyAction = Terminal.Input.Action;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Defines a focusable mutually exclusive selection control.</summary>
 public sealed class RadioButton: Pressable
@@ -177,8 +176,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override State GetVisualState() =>
-        base.GetVisualState() | (IsChecked ? State.Checked : State.Normal);
+    protected override bool IsCheckedState => IsChecked;
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

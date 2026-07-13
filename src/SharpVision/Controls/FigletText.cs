@@ -1,11 +1,11 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Fonts;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Displays cached FIGlet output through grapheme-safe semantic cells.</summary>
 public sealed class FigletText: Control

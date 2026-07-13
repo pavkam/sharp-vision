@@ -1,9 +1,9 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Runtime;
 using SharpVision.Terminal.Geometry;
-
-namespace SharpVision.Controls;
 
 /// <summary>Defines the detached application root control and screen startup hooks.</summary>
 public abstract class Screen: Container

@@ -1,15 +1,12 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Styling;
+
+using SharpVision.Controls;
 
 /// <summary>Stores typed style values for one specific control type.</summary>
 /// <typeparam name="TControl">The targeted control type.</typeparam>
 public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     where TControl : Control
 {
-    private const State _overlayStates =
-        State.Hovered | State.Focused | State.Checked | State.Pressed | State.Disabled;
-
     private readonly Lock _gate = new();
     private readonly Dictionary<(IStyleProperty Property, State State), object> _values = [];
 
@@ -37,14 +34,11 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     /// <summary>Adds or replaces one property value for a visual state.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="property">The registered style property.</param>
-    /// <param name="state">Normal or exactly one overlay flag.</param>
+    /// <param name="state">Normal or any combination of overlay flags; more specific combinations win.</param>
     /// <param name="value">The validated value.</param>
     /// <exception cref="ArgumentNullException"><paramref name="property"/> is null.</exception>
-    /// <exception cref="ArgumentException">
-    /// The property is outside the target hierarchy or a measure-impact property is used in an
-    /// overlay state.
-    /// </exception>
-    /// <exception cref="ArgumentOutOfRangeException">The state contains unknown or combined flags.</exception>
+    /// <exception cref="ArgumentException">The property is outside the target hierarchy.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The state contains unknown flags.</exception>
     /// <exception cref="InvalidOperationException">The style is frozen.</exception>
     public void Set<T>(StyleProperty<T> property, State state, T value)
     {
@@ -52,7 +46,6 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
         EnsureMutable();
         ValidateState(state);
         EnsureProperty(property);
-        EnsureStateImpact(property, state);
         property.ValidateValue(value);
 
         var key = (property, state);
@@ -74,11 +67,11 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     /// <summary>Removes one property value for a visual state.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="property">The registered style property.</param>
-    /// <param name="state">Normal or exactly one overlay flag.</param>
+    /// <param name="state">Normal or any combination of overlay flags.</param>
     /// <returns>Whether a value was removed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="property"/> is null.</exception>
     /// <exception cref="ArgumentException">The property is outside the target hierarchy.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">The state contains unknown or combined flags.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The state contains unknown flags.</exception>
     /// <exception cref="InvalidOperationException">The style is frozen.</exception>
     public bool Remove<T>(StyleProperty<T> property, State state)
     {
@@ -104,11 +97,11 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     /// <summary>Gets one stored property value for a visual state.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="property">The registered style property.</param>
-    /// <param name="state">Normal or exactly one overlay flag.</param>
+    /// <param name="state">Normal or any combination of overlay flags.</param>
     /// <param name="value">The stored value when present.</param>
     /// <returns>Whether the value exists in the current snapshot.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="property"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">The state contains unknown or combined flags.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The state contains unknown flags.</exception>
     public bool TryGet<T>(StyleProperty<T> property, State state, out T value)
     {
         ArgumentNullException.ThrowIfNull(property);
@@ -180,30 +173,11 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
         }
     }
 
-    private static void EnsureStateImpact<T>(StyleProperty<T> property, State state)
-    {
-        if (state != State.Normal && property.Impact == Impact.Measure)
-        {
-            throw new ArgumentException(
-                $"The measure-impact property '{property.Name}' cannot be set for overlay state {state}.",
-                nameof(property));
-        }
-    }
-
     private static void ValidateState(State state)
     {
-        if ((state & ~_overlayStates) != 0 && state != State.Normal)
+        if ((state & ~VisualStates.Overlays) != 0)
         {
             throw new ArgumentOutOfRangeException(nameof(state), state, "The state contains unknown flags.");
-        }
-
-        var value = (int) state;
-
-        if (state != State.Normal && value != 0 && (value & (value - 1)) != 0)
-        {
-            throw new ArgumentException(
-                "A style definition must target Normal or exactly one overlay state.",
-                nameof(state));
         }
     }
 

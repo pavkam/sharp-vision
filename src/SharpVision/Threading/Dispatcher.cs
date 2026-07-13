@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace SharpVision.Threading;
+
+using System.Diagnostics;
 
 /// <summary>
 /// Serializes UI work, callbacks, and idle transitions on one dedicated thread.

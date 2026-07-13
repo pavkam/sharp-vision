@@ -1,6 +1,6 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Input;
+
+using SharpVision.Controls;
 
 /// <summary>Owns transactional keyboard focus within one attached control tree.</summary>
 public sealed class FocusManager: IDisposable

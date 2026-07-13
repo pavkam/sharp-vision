@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies typed DEC private mode encoding.
@@ -30,7 +30,7 @@ public sealed class ModesTests
         Modes.ClipboardPasteEvents(writer, false);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(
+            Encoding.ASCII.GetBytes(
                 "\u001b[?25h\u001b[?25l\u001b[?1049h\u001b[?2004h" +
                 "\u001b[?1004h\u001b[?2026h\u001b[?5522h\u001b[?5522l"));
     }
@@ -66,7 +66,7 @@ public sealed class ModesTests
         Modes.Mouse(writer, tracking, MouseCoordinates.Sgr, enabled: false);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(
+            Encoding.ASCII.GetBytes(
                 $"\u001b[?{mode}h\u001b[?1006h\u001b[?1006l\u001b[?{mode}l"));
     }
 
@@ -89,7 +89,7 @@ public sealed class ModesTests
 
         var suffix = mode == 0 ? string.Empty : $"\u001b[?{mode}h";
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes($"\u001b[?1000h{suffix}"));
+            Encoding.ASCII.GetBytes($"\u001b[?1000h{suffix}"));
     }
 
     /// <summary>

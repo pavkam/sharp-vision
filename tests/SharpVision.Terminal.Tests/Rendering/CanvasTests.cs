@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
@@ -6,8 +8,6 @@ using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>
 /// Verifies grapheme-safe canvas drawing, clipping, wrapping, and repair.

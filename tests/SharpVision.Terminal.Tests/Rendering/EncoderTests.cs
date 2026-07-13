@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using System.Buffers;
 using System.Text;
 
@@ -8,11 +10,9 @@ using SharpVision.Terminal.Rendering;
 
 using Shouldly;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Rendering;
+using CapabilitySupport = Terminal.Capabilities.Support;
+using FrameEncoder = Terminal.Rendering.Encoder;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>
 /// Verifies deterministic exact bytes for full and incremental frame encoding.

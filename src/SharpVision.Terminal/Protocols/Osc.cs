@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Protocols;
+
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics;
-
-namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Encodes typed operating system commands used by the terminal runtime.

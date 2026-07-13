@@ -1,6 +1,6 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Input;
+
+using SharpVision.Controls;
 
 /// <summary>Describes one committed focus transition.</summary>
 public sealed class FocusChangedEventArgs: EventArgs

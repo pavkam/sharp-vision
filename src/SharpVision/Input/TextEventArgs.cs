@@ -1,6 +1,6 @@
-using TerminalText = SharpVision.Terminal.Input.Text;
-
 namespace SharpVision.Input;
+
+using TerminalText = Terminal.Input.Text;
 
 /// <summary>Provides one immutable Unicode text scalar.</summary>
 public sealed class TextEventArgs: RoutedEventArgs

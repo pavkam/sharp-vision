@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Clipboard;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Clipboard;
@@ -5,8 +7,6 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Clipboard;
 
 /// <summary>
 /// Verifies byte-exact OSC 52 text clipboard behavior.
@@ -34,7 +34,7 @@ public sealed class Osc52Tests
         Osc52.Write(new Writer(destination), selection, []);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes($"\u001b]52;{identifier};\u001b\\"));
+            Encoding.ASCII.GetBytes($"\u001b]52;{identifier};\u001b\\"));
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ public sealed class Osc52Tests
         Osc52.Write(writer, Selection.Primary, "🦄"u8);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(
+            Encoding.ASCII.GetBytes(
                 "\u001b]52;c;aGVsbG8=\u001b\\" +
                 "\u001b]52;p;8J+mhA==\u001b\\"));
     }
@@ -129,7 +129,7 @@ public sealed class Osc52Tests
     public void Decode_WhenReplyIsInvalid_ReturnsMalformed(string payload, int maximum)
     {
         var result = Osc52.Decode(
-            System.Text.Encoding.ASCII.GetBytes(payload),
+            Encoding.ASCII.GetBytes(payload),
             maximum);
 
         result.Status.ShouldBe(ClipboardStatus.Malformed);
@@ -147,7 +147,7 @@ public sealed class Osc52Tests
         using var parser = new Parser();
         var sink = new RecordingSink();
 
-        parser.Parse(System.Text.Encoding.ASCII.GetBytes(sequence), ref sink);
+        parser.Parse(Encoding.ASCII.GetBytes(sequence), ref sink);
         var observation = sink.Observations.ShouldHaveSingleItem();
         var result = Osc52.Decode(observation.First, maxBytes: 16);
 

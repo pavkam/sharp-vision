@@ -1,11 +1,11 @@
+namespace SharpVision.Runtime;
+
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 
-using TerminalDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
-using TerminalFocus = SharpVision.Terminal.Input.Focus;
-using TerminalText = SharpVision.Terminal.Input.Text;
-
-namespace SharpVision.Runtime;
+using TerminalDiagnostic = Terminal.Protocols.Diagnostic;
+using TerminalFocus = Focus;
+using TerminalText = Terminal.Input.Text;
 
 /// <summary>Stores one copied terminal input queue value without borrowed memory.</summary>
 internal readonly record struct Record

@@ -1,10 +1,10 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalStyle = Terminal.Rendering.Style;
 
 internal static class ControlAppearance
 {

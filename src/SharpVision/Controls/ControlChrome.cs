@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Text;
 
@@ -6,11 +8,9 @@ using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Draws shared control border, shadow, and body-fill chrome into semantic cells.</summary>
 internal static class ControlChrome

@@ -1,9 +1,9 @@
+namespace SharpVision.Tests.Layout;
+
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Layout;
 
 /// <summary>Verifies immutable layout units and saturated box-model geometry.</summary>
 public sealed class PrimitiveTests

@@ -1,6 +1,6 @@
-using System.Buffers;
-
 namespace SharpVision.Terminal.Clipboard;
+
+using System.Buffers;
 
 /// <summary>Builds one bounded Kitty clipboard MIME value in pooled storage.</summary>
 internal sealed class Builder: IDisposable

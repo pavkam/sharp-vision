@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Capabilities;
@@ -6,10 +8,8 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Tests.Support;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Rendering;
+using CapabilitySupport = Terminal.Capabilities.Support;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>
 /// Verifies incremental output reaches the same semantic terminal state as full output.

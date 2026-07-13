@@ -1,9 +1,9 @@
+namespace SharpVision.Tests.Support;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Rendering;
-
-namespace SharpVision.Tests.Support;
 
 /// <summary>Reads exact semantic frame graphemes for control-render assertions.</summary>
 internal static class FrameOracle

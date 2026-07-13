@@ -13,7 +13,7 @@ public enum State
     /// <summary>The control owns keyboard focus.</summary>
     Focused = 1 << 1,
 
-    /// <summary>The control has a checked or selected value.</summary>
+    /// <summary>The control has an explicitly checked value (for example a checkbox or radio).</summary>
     Checked = 1 << 2,
 
     /// <summary>An active pointer or keyboard press targets the control.</summary>
@@ -21,4 +21,10 @@ public enum State
 
     /// <summary>The control does not accept behavior input.</summary>
     Disabled = 1 << 4,
+
+    /// <summary>The control is the selected member of an owning collection (for example a list row).</summary>
+    Selected = 1 << 5,
+
+    /// <summary>The control has a mixed or indeterminate value (for example a tri-state checkbox).</summary>
+    Indeterminate = 1 << 6,
 }

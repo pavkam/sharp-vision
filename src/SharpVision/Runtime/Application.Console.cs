@@ -1,7 +1,7 @@
+namespace SharpVision.Runtime;
+
 using SharpVision.Controls;
 using SharpVision.Terminal.Runtime;
-
-namespace SharpVision.Runtime;
 
 public sealed partial class Application
 {

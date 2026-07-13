@@ -1,6 +1,6 @@
-using SharpVision.Layout;
-
 namespace SharpVision.Controls;
+
+using SharpVision.Layout;
 
 /// <summary>Defines one titled Table column and its fixed, automatic, percentage, or proportional width.</summary>
 public readonly record struct TableColumn

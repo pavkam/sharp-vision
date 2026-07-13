@@ -1,3 +1,5 @@
+namespace SharpVision.Runtime;
+
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -11,18 +13,16 @@ using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
 using SharpVision.Threading;
 
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-using TerminalDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
-using TerminalDiagnosticCode = SharpVision.Terminal.Protocols.DiagnosticCode;
-using TerminalFocus = SharpVision.Terminal.Input.Focus;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-using TerminalResponse = SharpVision.Terminal.Protocols.Response;
-using TerminalSequence = SharpVision.Terminal.Protocols.ProtocolSequence;
-using TerminalSequenceKind = SharpVision.Terminal.Protocols.SequenceKind;
-using TerminalText = SharpVision.Terminal.Input.Text;
-using UnicodePolicy = SharpVision.Terminal.Unicode.Policy;
-
-namespace SharpVision.Runtime;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
+using TerminalDiagnostic = Terminal.Protocols.Diagnostic;
+using TerminalDiagnosticCode = Terminal.Protocols.DiagnosticCode;
+using TerminalFocus = Focus;
+using TerminalOptions = Terminal.Runtime.Options;
+using TerminalResponse = Terminal.Protocols.Response;
+using TerminalSequence = Terminal.Protocols.ProtocolSequence;
+using TerminalSequenceKind = Terminal.Protocols.SequenceKind;
+using TerminalText = Terminal.Input.Text;
+using UnicodePolicy = Terminal.Unicode.Policy;
 
 /// <summary>Owns the dispatcher-affine UI tree and asynchronous terminal runtime.</summary>
 public sealed partial class Application: ISink, IAsyncDisposable
@@ -201,7 +201,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         throw new InvalidOperationException("Capture is available after the first resize.");
 
     /// <summary>Gets the latest committed terminal size.</summary>
-    public Terminal.Geometry.Size Size { get; private set; }
+    public Size Size { get; private set; }
 
     /// <summary>Gets the immutable capability profile used by layout and rendering.</summary>
     public TerminalCapabilities Capabilities { get; private set; }

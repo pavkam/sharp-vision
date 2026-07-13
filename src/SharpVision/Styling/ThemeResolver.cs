@@ -1,19 +1,12 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Styling;
+
+using System.Numerics;
+
+using SharpVision.Controls;
 
 /// <summary>Resolves effective style-property values through the theme cascade.</summary>
 public static class ThemeResolver
 {
-    private static readonly State[] _overlayOrder =
-    [
-        State.Hovered,
-        State.Focused,
-        State.Checked,
-        State.Pressed,
-        State.Disabled,
-    ];
-
     private static readonly List<Control> _noScopes = [];
 
     /// <summary>Resolves one property for a control using theme, style, and local values.</summary>
@@ -47,14 +40,9 @@ public static class ThemeResolver
         var context = control.ThemeContext;
         var scopes = CollectStyleScopes(control);
 
-        ApplyState(control, property, State.Normal, context, scopes, ref value);
-
-        foreach (var overlay in _overlayOrder)
+        foreach (var state in ResolutionOrder(visualState))
         {
-            if ((visualState & overlay) != 0)
-            {
-                ApplyState(control, property, overlay, context, scopes, ref value);
-            }
+            ApplyState(control, property, state, context, scopes, ref value);
         }
 
         return value;
@@ -93,17 +81,80 @@ public static class ThemeResolver
             value = (T) classDefault!;
         }
 
-        ApplyChain(theme.GetStyleChain(controlType), property, State.Normal, ref value);
-
-        foreach (var overlay in _overlayOrder)
+        foreach (var state in ResolutionOrder(visualState))
         {
-            if ((visualState & overlay) != 0)
-            {
-                ApplyChain(theme.GetStyleChain(controlType), property, overlay, ref value);
-            }
+            ApplyChain(theme.GetStyleChain(controlType), property, state, ref value);
         }
 
         return value;
+    }
+
+    /// <summary>Builds the ordered list of state keys to apply for one active visual state.</summary>
+    /// <param name="visualState">The active visual-state flags.</param>
+    /// <returns>
+    /// Normal first, then every non-empty subset of the active overlays ordered by ascending
+    /// specificity so a more specific (multi-flag) definition wins, with single-flag ties broken by
+    /// <see cref="VisualStates.PrecedenceOrder"/>.
+    /// </returns>
+    private static List<State> ResolutionOrder(State visualState)
+    {
+        var order = new List<State> { State.Normal };
+        var active = new List<State>();
+
+        foreach (var overlay in VisualStates.PrecedenceOrder)
+        {
+            if ((visualState & overlay) != 0)
+            {
+                active.Add(overlay);
+            }
+        }
+
+        if (active.Count == 0)
+        {
+            return order;
+        }
+
+        var combos = new List<State>();
+
+        for (var mask = 1; mask < 1 << active.Count; mask++)
+        {
+            var combo = State.Normal;
+
+            for (var index = 0; index < active.Count; index++)
+            {
+                if ((mask & (1 << index)) != 0)
+                {
+                    combo |= active[index];
+                }
+            }
+
+            combos.Add(combo);
+        }
+
+        combos.Sort(CompareSpecificity);
+        order.AddRange(combos);
+        return order;
+    }
+
+    private static int CompareSpecificity(State left, State right)
+    {
+        var byCount = BitOperations.PopCount((uint) left).CompareTo(BitOperations.PopCount((uint) right));
+        return byCount != 0 ? byCount : MaxRank(left).CompareTo(MaxRank(right));
+    }
+
+    private static int MaxRank(State state)
+    {
+        var rank = -1;
+
+        foreach (var overlay in VisualStates.PrecedenceOrder)
+        {
+            if ((state & overlay) != 0)
+            {
+                rank = VisualStates.RankOf(overlay);
+            }
+        }
+
+        return rank;
     }
 
     private static void ApplyState<T>(

@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Unicode;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Text;
-
-namespace SharpVision.Terminal.Unicode;
 
 /// <summary>
 /// Measures Unicode 17 extended grapheme clusters in terminal cells.

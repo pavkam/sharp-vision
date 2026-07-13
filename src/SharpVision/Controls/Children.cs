@@ -1,8 +1,8 @@
+namespace SharpVision.Controls;
+
 using System.Collections;
 
 using SharpVision.Input;
-
-namespace SharpVision.Controls;
 
 /// <summary>Owns one container's validated ordered child controls.</summary>
 public sealed class Children: IList<Control>, IReadOnlyList<Control>

@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Rendering;
-
 namespace SharpVision.Terminal.Tests.Support;
+
+using SharpVision.Terminal.Rendering;
 
 /// <summary>Stores one independently modeled terminal cell.</summary>
 internal readonly record struct ModelCell

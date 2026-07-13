@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Input;
+
 using System.Text;
 
 using SharpVision.Terminal.Input;
@@ -5,10 +7,8 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using InputAction = SharpVision.Terminal.Input.Action;
-using InputDecoder = SharpVision.Terminal.Input.Decoder;
-
-namespace SharpVision.Terminal.Tests.Input;
+using InputAction = Terminal.Input.Action;
+using InputDecoder = Terminal.Input.Decoder;
 
 /// <summary>
 /// Verifies Kitty CSI-u key identity, modifiers, events, text, and recovery.

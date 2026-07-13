@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Capabilities;
+
 using System.Buffers;
 using System.Text;
 
@@ -6,9 +8,7 @@ using SharpVision.Terminal.Protocols;
 
 using Shouldly;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-
-namespace SharpVision.Terminal.Tests.Capabilities;
+using CapabilitySupport = Terminal.Capabilities.Support;
 
 /// <summary>Verifies bounded startup query encoding and profile publication.</summary>
 public sealed class NegotiatorTests

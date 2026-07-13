@@ -1,9 +1,9 @@
+namespace SharpVision.Styling;
+
 using SharpVision.Controls;
 using SharpVision.Terminal.Protocols;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-
-namespace SharpVision.Styling;
+using TerminalAttributes = Terminal.Rendering.Attributes;
 
 /// <summary>Exposes frozen standard themes built from the public theme API.</summary>
 public static class Themes
@@ -55,6 +55,8 @@ public static class Themes
         style.Set(Control.AttributesProperty, State.Focused, TerminalAttributes.Underline);
         style.Set(Control.ForegroundProperty, State.Checked, selectedForeground);
         style.Set(Control.BackgroundProperty, State.Checked, selectedBackground);
+        style.Set(Control.ForegroundProperty, State.Selected, selectedForeground);
+        style.Set(Control.BackgroundProperty, State.Selected, selectedBackground);
         style.Set(Control.ForegroundProperty, State.Disabled, disabledForeground);
         style.Set(Control.ShadowForegroundProperty, State.Normal, shadowForeground);
 

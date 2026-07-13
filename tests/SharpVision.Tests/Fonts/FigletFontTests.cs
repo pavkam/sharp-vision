@@ -1,10 +1,10 @@
+namespace SharpVision.Tests.Fonts;
+
 using System.Text;
 
 using SharpVision.Fonts;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Fonts;
 
 /// <summary>Verifies bounded FIGfont parsing and deterministic text rendering.</summary>
 public sealed class FigletFontTests

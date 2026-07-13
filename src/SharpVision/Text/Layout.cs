@@ -1,10 +1,10 @@
+namespace SharpVision.Text;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Terminal.Unicode;
-
-namespace SharpVision.Text;
 
 /// <summary>Formats borrowed UTF-16 text into grapheme-safe terminal-cell lines.</summary>
 public static class Layout

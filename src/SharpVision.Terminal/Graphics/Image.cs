@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Geometry;
-
 namespace SharpVision.Terminal.Graphics;
+
+using SharpVision.Terminal.Geometry;
 
 /// <summary>Owns one immutable bounded RGBA or encoded PNG terminal image.</summary>
 public sealed class Image

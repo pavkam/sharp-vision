@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Text;
 
@@ -8,13 +10,11 @@ using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-using UnicodeWidth = SharpVision.Terminal.Unicode.Width;
-
-namespace SharpVision.Controls;
+using KeyAction = Terminal.Input.Action;
+using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
+using UnicodeWidth = Terminal.Unicode.Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
 public sealed class TextInput: Container

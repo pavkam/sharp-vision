@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Runtime;
+
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 using SharpVision.Terminal.Geometry;
-
-namespace SharpVision.Terminal.Runtime;
 
 /// <summary>Provides the Unix terminal-size native boundary.</summary>
 internal static partial class Native

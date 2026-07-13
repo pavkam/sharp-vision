@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -8,8 +10,6 @@ using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
 using Wrapping = SharpVision.Text.Wrapping;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies Grid track resolution, spacing, spans, resize, and semantic cells.</summary>
 public sealed class GridTests

@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Performance;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -9,11 +11,9 @@ using SharpVision.Terminal.Unicode;
 
 using Shouldly;
 
-using FrameEncoder = SharpVision.Terminal.Rendering.Encoder;
-using InputDecoder = SharpVision.Terminal.Input.Decoder;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Performance;
+using FrameEncoder = Terminal.Rendering.Encoder;
+using InputDecoder = Terminal.Input.Decoder;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>
 /// Gates deterministic Phase 3 allocations and reports non-gating local timings.

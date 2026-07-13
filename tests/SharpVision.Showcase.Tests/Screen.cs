@@ -1,10 +1,10 @@
+namespace SharpVision.Showcase.Tests;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Copies a terminal frame into a deterministic text and continuation-cell test oracle.</summary>
 internal sealed class Screen

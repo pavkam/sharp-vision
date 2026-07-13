@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -8,12 +10,10 @@ using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using GenericList = System.Collections.Generic.List<object?>;
-using KeyAction = SharpVision.Terminal.Input.Action;
-using Label = SharpVision.Controls.Text;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using GenericList = List<object?>;
+using KeyAction = Terminal.Input.Action;
+using Label = Text;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Defines a focusable fully realized item selection control with scrolling.</summary>
 [SuppressMessage(

@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Transport;
-
 namespace SharpVision.Terminal.Tests.Support;
+
+using SharpVision.Terminal.Transport;
 
 /// <summary>
 /// Provides deterministic writes, failures, and backpressure for terminal tests.

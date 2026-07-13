@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -14,10 +16,8 @@ using SharpVision.Text;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Tests.Controls;
+using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Verifies cached Text measurement, rendering, validation, and styling.</summary>
 [Collection(PerformanceGroup.Name)]

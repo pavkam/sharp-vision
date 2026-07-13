@@ -1,8 +1,8 @@
+namespace SharpVision.Tests.Layout;
+
 using SharpVision.Layout;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Layout;
 
 /// <summary>Proves seeded track allocation invariants and the span hot path.</summary>
 public sealed class RandomizedTrackTests

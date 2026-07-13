@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Integration;
+
 using SharpVision.Runtime;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
@@ -5,9 +7,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Integration;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies suspension and resize ordering across session, layout, and renderer.</summary>
 public sealed class ResizeRenderTests

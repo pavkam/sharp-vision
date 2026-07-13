@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Integration;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -13,9 +15,7 @@ using Shouldly;
 
 using ControlCanvas = SharpVision.Controls.Canvas;
 using Label = SharpVision.Controls.Text;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Integration;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Proves raw terminal wheel input consumes nested scrolling locally then outward.</summary>
 public sealed class ScrollingTests

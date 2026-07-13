@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Integration;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -11,10 +13,8 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Integration;
+using KeyAction = Terminal.Input.Action;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Proves real terminal bytes through routing, rendering, and output transport.</summary>
 public sealed class TerminalInputTests

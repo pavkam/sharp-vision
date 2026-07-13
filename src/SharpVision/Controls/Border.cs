@@ -1,10 +1,10 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Owns one child and draws validated physical border edges around it.</summary>
 public sealed class Border: Container

@@ -1,13 +1,13 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using KeyAction = Terminal.Input.Action;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Displays one selected list value and opens an owned popup-style list for keyboard or pointer choice.</summary>
 public sealed class ComboBox: Pressable

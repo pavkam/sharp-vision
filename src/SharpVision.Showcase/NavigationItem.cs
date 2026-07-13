@@ -1,12 +1,11 @@
+namespace SharpVision.Showcase;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
-using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 
 using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Showcase;
 
 /// <summary>Renders one stateful, focusable control-page entry in the dashboard sidebar.</summary>
 internal sealed class NavigationItem: Pressable
@@ -73,8 +72,7 @@ internal sealed class NavigationItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override State GetVisualState() =>
-        base.GetVisualState() | (IsSelected ? State.Checked : State.Normal);
+    protected override bool IsSelectedState => IsSelected;
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

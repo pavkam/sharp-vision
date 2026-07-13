@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Styling;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -9,8 +11,6 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-
-namespace SharpVision.Tests.Styling;
 
 /// <summary>Verifies shared control chrome rasterization and geometry.</summary>
 public sealed class ControlChromeTests

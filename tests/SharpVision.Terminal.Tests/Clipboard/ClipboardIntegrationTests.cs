@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Clipboard;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Clipboard;
@@ -5,8 +7,6 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Clipboard;
 
 /// <summary>
 /// Verifies complete typed-writer, parser, packet, and transaction paths.

@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Capabilities;
+
 using System.Buffers;
 using System.Diagnostics;
 
 using SharpVision.Terminal.Protocols;
-
-namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>Coordinates one bounded terminal capability query batch.</summary>
 public sealed class Negotiator

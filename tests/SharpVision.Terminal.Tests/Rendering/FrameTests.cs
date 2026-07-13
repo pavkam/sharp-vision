@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
@@ -5,10 +7,8 @@ using SharpVision.Terminal.Rendering;
 
 using Shouldly;
 
-using CellMetrics = SharpVision.Terminal.Geometry.Metrics;
-using RenderingMetrics = SharpVision.Terminal.Rendering.Metrics;
-
-namespace SharpVision.Terminal.Tests.Rendering;
+using CellMetrics = Geometry.Metrics;
+using RenderingMetrics = Terminal.Rendering.Metrics;
 
 /// <summary>
 /// Verifies semantic frame geometry, ownership, validation, and disposal.

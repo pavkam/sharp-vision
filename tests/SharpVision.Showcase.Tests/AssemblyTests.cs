@@ -1,6 +1,6 @@
-using Shouldly;
-
 namespace SharpVision.Showcase.Tests;
+
+using Shouldly;
 
 /// <summary>
 /// Verifies the showcase project test harness and assembly reference.

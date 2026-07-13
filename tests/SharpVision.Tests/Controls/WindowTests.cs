@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -10,9 +12,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies framed terminal window layout, title chrome, and visual shadow behavior.</summary>
 public sealed class WindowTests

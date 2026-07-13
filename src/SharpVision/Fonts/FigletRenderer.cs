@@ -1,7 +1,7 @@
+namespace SharpVision.Fonts;
+
 using System.Diagnostics;
 using System.Text;
-
-namespace SharpVision.Fonts;
 
 /// <summary>Composes FIGfont glyph rows using version 2 horizontal rules.</summary>
 internal static class FigletRenderer

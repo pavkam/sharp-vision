@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Capabilities;
+
 using SharpVision.Terminal.Capabilities;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Capabilities;
 
 /// <summary>Verifies negotiation policy ownership and validation.</summary>
 public sealed class NegotiationOptionsTests

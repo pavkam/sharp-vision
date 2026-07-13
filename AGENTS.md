@@ -43,6 +43,9 @@ in the protocol document.
 
 - Target .NET 10 and C# 14.
 - Use file-scoped namespaces and `var` for local variables.
+- Place `using` directives after the file-scoped `namespace` declaration, not
+  before it. Put shared standard and project-wide imports in each project's
+  `GlobalUsings.cs` instead of repeating them in individual source files.
 - Put every named C# type in its own file named exactly after the type, with the
   generic arity omitted: `Button` belongs in `Button.cs`. This applies to
   classes, structs, records, interfaces, enums, delegates, production code,

@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -11,9 +13,7 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Tests.Controls;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Verifies table ownership, track geometry, headers, grid cells, and row validation.</summary>
 public sealed class TableTests

@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Unicode;
-
 namespace SharpVision.Terminal.Capabilities;
+
+using SharpVision.Terminal.Unicode;
 
 /// <summary>
 /// Publishes an immutable terminal feature profile.

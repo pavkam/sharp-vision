@@ -1,6 +1,6 @@
-using System.Collections;
-
 namespace SharpVision.Controls;
+
+using System.Collections;
 
 /// <summary>Owns validated mutable column definitions for one Table.</summary>
 public sealed class TableColumns: IList<TableColumn>, IReadOnlyList<TableColumn>

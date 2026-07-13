@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 
 using SharpVision.Input;
@@ -6,10 +8,8 @@ using SharpVision.Scrolling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using KeyAction = Terminal.Input.Action;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Defines a clipped one-child viewport with independent automatic scrollbars.</summary>
 public sealed class ScrollView: Container

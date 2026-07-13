@@ -1,10 +1,10 @@
+namespace SharpVision.Tests.Text;
+
 using System.Text;
 
 using SharpVision.Text;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Text;
 
 /// <summary>Verifies grapheme-boundary editing, policy, movement, and projection.</summary>
 public sealed class EditTests

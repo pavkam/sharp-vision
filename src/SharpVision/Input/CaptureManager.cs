@@ -1,9 +1,9 @@
+namespace SharpVision.Input;
+
 using System.Diagnostics.CodeAnalysis;
 
 using SharpVision.Controls;
 using SharpVision.Terminal.Input;
-
-namespace SharpVision.Input;
 
 /// <summary>Owns hit targeting, hover, press, and exclusive pointer capture.</summary>
 public sealed class CaptureManager: IDisposable

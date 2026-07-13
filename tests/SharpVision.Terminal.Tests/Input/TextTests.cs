@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Input;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
@@ -6,12 +8,10 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using DiagnosticCode = SharpVision.Terminal.Protocols.DiagnosticCode;
-using InputAction = SharpVision.Terminal.Input.Action;
-using InputDecoder = SharpVision.Terminal.Input.Decoder;
-using InputText = SharpVision.Terminal.Input.Text;
-
-namespace SharpVision.Terminal.Tests.Input;
+using DiagnosticCode = Terminal.Protocols.DiagnosticCode;
+using InputAction = Terminal.Input.Action;
+using InputDecoder = Terminal.Input.Decoder;
+using InputText = Terminal.Input.Text;
 
 /// <summary>
 /// Verifies streaming UTF-8, Alt text, Escape ambiguity, and allocation behavior.

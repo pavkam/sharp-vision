@@ -1,12 +1,12 @@
+namespace SharpVision.Terminal.Input;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Terminal.Protocols;
 
-using InputAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Terminal.Input;
+using InputAction = Action;
 
 /// <summary>
 /// Incrementally decodes UTF-8 and legacy VT keyboard input into stable values.

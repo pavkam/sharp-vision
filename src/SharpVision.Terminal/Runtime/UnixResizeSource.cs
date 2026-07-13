@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Runtime;
+
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading.Channels;
-
-namespace SharpVision.Terminal.Runtime;
 
 /// <summary>
 /// Coalesces Unix SIGWINCH wakeups and reads newest cell/pixel dimensions.

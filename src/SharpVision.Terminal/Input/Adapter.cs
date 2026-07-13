@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Protocols;
-
 namespace SharpVision.Terminal.Input;
+
+using SharpVision.Terminal.Protocols;
 
 /// <summary>Adapts borrowed parser callbacks to one stateful input decoder.</summary>
 internal readonly struct Adapter: ISequenceSink

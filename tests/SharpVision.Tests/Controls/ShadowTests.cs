@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -8,8 +10,6 @@ using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies Shadow ownership, layout, overflow, clipping, and compositing.</summary>
 public sealed class ShadowTests

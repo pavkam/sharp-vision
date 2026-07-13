@@ -1,7 +1,7 @@
+namespace SharpVision.Tests.Support;
+
 using SharpVision.Controls;
 using SharpVision.Styling;
-
-namespace SharpVision.Tests.Support;
 
 /// <summary>Provides helpers for theme and control-style test setup.</summary>
 internal static class ThemeTestSupport

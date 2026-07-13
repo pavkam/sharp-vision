@@ -1,8 +1,8 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Terminal.Geometry;
 
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Overrides one control chrome render pass.</summary>
 internal readonly struct ChromeRenderOptions

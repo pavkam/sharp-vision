@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace SharpVision.Terminal.Capabilities;
+
+using System.Diagnostics;
 
 /// <summary>Identifies one query family and optional correlation ID.</summary>
 internal readonly record struct Key

@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Rendering;
+
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Terminal.Unicode;
-
-namespace SharpVision.Terminal.Rendering;
 
 /// <summary>Maps line-cell topology to and from Unicode or ASCII glyphs.</summary>
 internal static class LineResolver

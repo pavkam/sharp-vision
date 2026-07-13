@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace SharpVision.Terminal.Capabilities;
+
+using System.Diagnostics;
 
 /// <summary>Stores one active query token and deadline.</summary>
 internal readonly record struct Active

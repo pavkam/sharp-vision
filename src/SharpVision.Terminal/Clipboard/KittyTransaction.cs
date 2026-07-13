@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Clipboard;
+
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Terminal.Protocols;
-
-namespace SharpVision.Terminal.Clipboard;
 
 /// <summary>
 /// Enforces bounded Kitty OSC 5522 read or write response ordering.

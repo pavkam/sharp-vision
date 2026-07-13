@@ -1,14 +1,14 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using KeyAction = Terminal.Input.Action;
+using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Frames one owned child as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
 public sealed partial class Window: Container

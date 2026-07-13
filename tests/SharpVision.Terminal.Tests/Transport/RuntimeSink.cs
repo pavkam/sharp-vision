@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Transport;
+
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Transport;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Records one expected pseudoterminal resize and runtime faults.</summary>
 internal sealed class RuntimeSink: ISink

@@ -1,6 +1,6 @@
-using Shouldly;
-
 namespace SharpVision.Showcase.Tests;
+
+using Shouldly;
 
 /// <summary>
 /// Verifies the temporary repository-foundation startup message.

@@ -1,10 +1,10 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-
-namespace SharpVision.Controls;
 
 /// <summary>Owns row/column definitions and attached placement for a track Grid.</summary>
 public sealed class Grid: Container

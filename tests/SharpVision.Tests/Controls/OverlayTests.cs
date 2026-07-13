@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -9,8 +11,6 @@ using SharpVision.Threading;
 using Shouldly;
 
 using Layer = SharpVision.Controls.Overlay;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies layered layout, stable z-order, clipping, and targeting.</summary>
 public sealed class OverlayTests

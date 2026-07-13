@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Text;
 
@@ -6,12 +8,10 @@ using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
 using TextLayout = SharpVision.Text.Layout;
-
-namespace SharpVision.Controls;
 
 /// <summary>Displays owned styled runs, line breaks, and semantic hyperlinks.</summary>
 public sealed class RichText: Control

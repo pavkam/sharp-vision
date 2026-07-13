@@ -1,6 +1,6 @@
-using SharpVision.Input;
-
 namespace SharpVision.Controls;
+
+using SharpVision.Input;
 
 /// <summary>Coordinates RadioButton selection by scanning the current owned tree.</summary>
 internal static class RadioGroup

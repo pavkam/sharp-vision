@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies structured protocol diagnostics.

@@ -1,6 +1,6 @@
-using SharpVision.Scrolling;
-
 namespace SharpVision.Input;
+
+using SharpVision.Scrolling;
 
 /// <summary>Reports one committed ScrollBar value transition.</summary>
 public sealed class ScrollEventArgs: EventArgs

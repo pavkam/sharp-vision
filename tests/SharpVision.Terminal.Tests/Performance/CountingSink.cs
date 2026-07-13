@@ -1,7 +1,7 @@
+namespace SharpVision.Terminal.Tests.Performance;
+
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
-
-namespace SharpVision.Terminal.Tests.Performance;
 
 /// <summary>Counts every input callback in allocation measurements.</summary>
 internal sealed class CountingSink: IInputSink

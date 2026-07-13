@@ -1,9 +1,9 @@
+namespace SharpVision.Tests.Text;
+
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Text;
 
 /// <summary>Proves deterministic grapheme-safe editing across mixed Unicode sequences.</summary>
 public sealed class RandomizedEditTests

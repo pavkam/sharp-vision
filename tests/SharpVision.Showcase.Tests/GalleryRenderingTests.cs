@@ -1,3 +1,5 @@
+namespace SharpVision.Showcase.Tests;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Styling;
@@ -8,8 +10,6 @@ using SharpVision.Terminal.Rendering;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Proves every showcase page lays out and renders into semantic terminal cells.</summary>
 public sealed class GalleryRenderingTests

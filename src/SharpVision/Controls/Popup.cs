@@ -1,16 +1,16 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using Code = SharpVision.Terminal.Input.Code;
-using KeyAction = SharpVision.Terminal.Input.Action;
-using KeyEventArgs = SharpVision.Input.KeyEventArgs;
-using ReleaseReason = SharpVision.Input.ReleaseReason;
-using RoutedEventArgs = SharpVision.Input.RoutedEventArgs;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using Code = Code;
+using KeyAction = Terminal.Input.Action;
+using KeyEventArgs = Input.KeyEventArgs;
+using ReleaseReason = Input.ReleaseReason;
+using RoutedEventArgs = Input.RoutedEventArgs;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Displays one owned child on an opaque, framed, anchor-relative surface.</summary>
 public sealed class Popup: Container

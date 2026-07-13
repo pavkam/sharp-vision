@@ -1,8 +1,8 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 public abstract class Container: Control

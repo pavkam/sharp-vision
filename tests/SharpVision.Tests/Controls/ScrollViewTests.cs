@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -11,9 +13,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies ScrollView ownership, convergent layout, offsets, clipping, and commands.</summary>
 public sealed class ScrollViewTests

@@ -1,12 +1,12 @@
+namespace SharpVision.Controls;
+
 using System.Buffers;
 using System.Runtime.CompilerServices;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Arranges owned children in one shared box with stable layering.</summary>
 public sealed class Overlay: Container

@@ -1,11 +1,11 @@
+namespace SharpVision.Terminal.Tests.Input;
+
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using Rune = System.Text.Rune;
-
-namespace SharpVision.Terminal.Tests.Input;
+using Rune = Rune;
 
 /// <summary>Verifies terminal focus transitions and adjacent input.</summary>
 public sealed class FocusTests

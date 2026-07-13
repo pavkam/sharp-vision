@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Text;
 
@@ -7,14 +9,12 @@ using SharpVision.Scrolling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using KeyAction = SharpVision.Terminal.Input.Action;
-using ScrollRange = SharpVision.Scrolling.Range;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-using UnicodeWidth = SharpVision.Terminal.Unicode.Width;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using KeyAction = Terminal.Input.Action;
+using ScrollRange = Scrolling.Range;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
+using UnicodeWidth = Terminal.Unicode.Width;
 
 /// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
 public sealed class ScrollBar: Control

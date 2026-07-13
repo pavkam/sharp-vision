@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
@@ -6,11 +8,9 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-using RenderMetrics = SharpVision.Terminal.Rendering.Metrics;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Rendering;
+using CapabilitySupport = Terminal.Capabilities.Support;
+using RenderMetrics = Terminal.Rendering.Metrics;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>
 /// Verifies commit-on-success rendering, invalidation, cleanup, and backpressure.

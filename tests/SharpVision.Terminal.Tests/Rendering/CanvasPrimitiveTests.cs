@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
@@ -5,8 +7,6 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>Verifies validated Rune, fill, and grapheme-preserving style primitives.</summary>
 public sealed class CanvasPrimitiveTests

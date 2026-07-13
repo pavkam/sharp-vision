@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Capabilities;
+
 using SharpVision.Terminal.Capabilities;
 
 using Shouldly;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-
-namespace SharpVision.Terminal.Tests.Capabilities;
+using CapabilitySupport = Terminal.Capabilities.Support;
 
 /// <summary>
 /// Verifies immutable conservative capability profiles.
@@ -28,7 +28,7 @@ public sealed class CapabilitiesTests
     [Fact]
     public void Conservative_WhenRead_EnablesNoOptionalFeature()
     {
-        var capabilities = Terminal.Capabilities.Capabilities.Conservative;
+        var capabilities = Capabilities.Conservative;
 
         capabilities.OptionalFeatures.ShouldAllBe(
             static feature => feature.State != CapabilitySupport.Supported);
@@ -42,7 +42,7 @@ public sealed class CapabilitiesTests
     [Fact]
     public void With_WhenProfileIsDerived_DoesNotMutateOriginal()
     {
-        var original = Terminal.Capabilities.Capabilities.Conservative;
+        var original = Capabilities.Conservative;
 
         var derived = original with
         {

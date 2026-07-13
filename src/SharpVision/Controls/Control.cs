@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -10,12 +12,10 @@ using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Unicode;
 using SharpVision.Threading;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
+using KeyAction = Terminal.Input.Action;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using TerminalCanvas = Terminal.Rendering.Canvas;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>
 /// Defines a traditional mutable UI element with dispatcher affinity and box layout.
@@ -820,7 +820,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         IsFocused = value;
 
         InvalidateResolvedStyleCache();
-        Invalidate(Invalidation.Render);
+        Invalidate(VisualStateInvalidation());
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused)));
         OnFocusChanged(value);
     }
@@ -838,7 +838,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         IsHovered = value;
 
         InvalidateResolvedStyleCache();
-        Invalidate(Invalidation.Render);
+        Invalidate(VisualStateInvalidation());
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsHovered)));
     }
 
@@ -854,7 +854,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         IsPressed = value;
         InvalidateResolvedStyleCache();
-        Invalidate(Invalidation.Render);
+        Invalidate(VisualStateInvalidation());
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed)));
         OnPressedChanged(value);
     }
@@ -871,7 +871,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         HasSelectedState = value;
-        Invalidate(Invalidation.Render);
+        Invalidate(VisualStateInvalidation());
         VisitChildren(child => child.SetSelectedState(value));
     }
 
@@ -992,12 +992,75 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             result |= State.Disabled;
         }
 
-        if (HasSelectedState)
+        if (IsSelectedState)
+        {
+            result |= State.Selected;
+        }
+
+        if (IsCheckedState)
         {
             result |= State.Checked;
         }
 
+        if (IsIndeterminateState)
+        {
+            result |= State.Indeterminate;
+        }
+
         return result;
+    }
+
+    /// <summary>Gets whether the control currently holds a checked value.</summary>
+    /// <remarks>
+    /// Overridden by checkable controls (checkbox, radio, menu item) to drive <see cref="State.Checked"/>.
+    /// This is the supported seam for participating in checked styling without overriding
+    /// <see cref="GetVisualState"/>.
+    /// </remarks>
+    protected virtual bool IsCheckedState => false;
+
+    /// <summary>Gets whether the control is the selected member of an owning collection.</summary>
+    /// <remarks>
+    /// Defaults to inherited collection selection propagated by an owning list; a control with its
+    /// own selection concept overrides this to drive <see cref="State.Selected"/>.
+    /// </remarks>
+    protected virtual bool IsSelectedState => HasSelectedState;
+
+    /// <summary>Gets whether the control holds a mixed or indeterminate value.</summary>
+    /// <remarks>Overridden by tri-state controls to drive <see cref="State.Indeterminate"/>.</remarks>
+    protected virtual bool IsIndeterminateState => false;
+
+    /// <summary>Gets the invalidation a visual-state change requires for this control.</summary>
+    /// <remarks>
+    /// A change is render-only unless an applicable style contains a measure-impact property (for
+    /// example padding or border thickness that differs by state), in which case layout must rerun.
+    /// </remarks>
+    private Invalidation VisualStateInvalidation()
+    {
+        if (InstanceStyle?.AggregateImpact == Impact.Measure)
+        {
+            return Invalidation.Measure;
+        }
+
+        if (ThemeContext is { } context)
+        {
+            foreach (var style in context.GetStyleChain(GetType()))
+            {
+                if (style.AggregateImpact == Impact.Measure)
+                {
+                    return Invalidation.Measure;
+                }
+            }
+        }
+
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (current is IStyleScope && current.InstanceStyle?.AggregateImpact == Impact.Measure)
+            {
+                return Invalidation.Measure;
+            }
+        }
+
+        return Invalidation.Render;
     }
 
     /// <summary>Gets the committed content rectangle after padding deflation.</summary>

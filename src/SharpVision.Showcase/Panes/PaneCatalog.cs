@@ -1,59 +1,37 @@
+namespace SharpVision.Showcase.Panes;
+
 using System.Collections.ObjectModel;
 
-using SharpVision.Showcase.Panes.Border;
-using SharpVision.Showcase.Panes.Button;
-using SharpVision.Showcase.Panes.Canvas;
-using SharpVision.Showcase.Panes.CheckBox;
-using SharpVision.Showcase.Panes.ComboBox;
-using SharpVision.Showcase.Panes.Dock;
-using SharpVision.Showcase.Panes.FigletText;
-using SharpVision.Showcase.Panes.Grid;
-using SharpVision.Showcase.Panes.List;
-using SharpVision.Showcase.Panes.Menu;
-using SharpVision.Showcase.Panes.Overlay;
-using SharpVision.Showcase.Panes.Popup;
-using SharpVision.Showcase.Panes.RadioButton;
-using SharpVision.Showcase.Panes.RichText;
-using SharpVision.Showcase.Panes.ScrollBar;
-using SharpVision.Showcase.Panes.ScrollView;
-using SharpVision.Showcase.Panes.Shadow;
-using SharpVision.Showcase.Panes.Stack;
-using SharpVision.Showcase.Panes.Table;
-using SharpVision.Showcase.Panes.Text;
-using SharpVision.Showcase.Panes.TextInput;
-using SharpVision.Showcase.Panes.Theming;
-using SharpVision.Showcase.Panes.Window;
-
-namespace SharpVision.Showcase.Panes;
+using SharpVision.Showcase;
 
 /// <summary>Aggregates every showcase pane into one immutable navigation catalog.</summary>
 internal static class PaneCatalog
 {
-    /// <summary>Gets one immutable page per concrete shipped control.</summary>
-    internal static IReadOnlyList<Page> Pages { get; } = new ReadOnlyCollection<Page>(
+    /// <summary>Gets one immutable gallery entry per concrete shipped control.</summary>
+    internal static IReadOnlyList<GalleryEntry> Pages { get; } = new ReadOnlyCollection<GalleryEntry>(
     [
-        BorderPane.Create(),
-        ButtonPane.Create(),
-        CanvasPane.Create(),
-        CheckBoxPane.Create(),
-        ComboBoxPane.Create(),
-        DockPane.Create(),
-        FigletTextPane.Create(),
-        GridPane.Create(),
-        ListPane.Create(),
-        MenuPane.Create(),
-        OverlayPane.Create(),
-        PopupPane.Create(),
-        RadioButtonPane.Create(),
-        RichTextPane.Create(),
-        ScrollBarPane.Create(),
-        ScrollViewPane.Create(),
-        ShadowPane.Create(),
-        StackPane.Create(),
-        TablePane.Create(),
-        TextPane.Create(),
-        TextInputPane.Create(),
-        WindowPane.Create(),
-        ThemingPane.Create(),
+        new(BorderShowcasePane.Title, static () => new BorderShowcasePane()),
+        new(ButtonShowcasePane.Title, static () => new ButtonShowcasePane()),
+        new(CanvasShowcasePane.Title, static () => new CanvasShowcasePane()),
+        new(CheckBoxShowcasePane.Title, static () => new CheckBoxShowcasePane()),
+        new(ComboBoxShowcasePane.Title, static () => new ComboBoxShowcasePane()),
+        new(DockShowcasePane.Title, static () => new DockShowcasePane()),
+        new(FigletTextShowcasePane.Title, static () => new FigletTextShowcasePane()),
+        new(GridShowcasePane.Title, static () => new GridShowcasePane()),
+        new(ListShowcasePane.Title, static () => new ListShowcasePane()),
+        new(MenuShowcasePane.Title, static () => new MenuShowcasePane()),
+        new(OverlayShowcasePane.Title, static () => new OverlayShowcasePane()),
+        new(PopupShowcasePane.Title, static () => new PopupShowcasePane()),
+        new(RadioButtonShowcasePane.Title, static () => new RadioButtonShowcasePane()),
+        new(RichTextShowcasePane.Title, static () => new RichTextShowcasePane()),
+        new(ScrollBarShowcasePane.Title, static () => new ScrollBarShowcasePane()),
+        new(ScrollViewShowcasePane.Title, static () => new ScrollViewShowcasePane()),
+        new(ShadowShowcasePane.Title, static () => new ShadowShowcasePane()),
+        new(StackShowcasePane.Title, static () => new StackShowcasePane()),
+        new(TableShowcasePane.Title, static () => new TableShowcasePane()),
+        new(TextShowcasePane.Title, static () => new TextShowcasePane()),
+        new(TextInputShowcasePane.Title, static () => new TextInputShowcasePane()),
+        new(ThemingShowcasePane.Title, static () => new ThemingShowcasePane()),
+        new(WindowShowcasePane.Title, static () => new WindowShowcasePane()),
     ]);
 }

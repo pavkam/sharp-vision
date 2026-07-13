@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Layout;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -5,8 +7,6 @@ using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Layout;
 
 /// <summary>Verifies deterministic border-box measure and arrange behavior.</summary>
 public sealed class BoxLayoutTests

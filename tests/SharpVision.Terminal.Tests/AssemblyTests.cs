@@ -1,6 +1,6 @@
-using Shouldly;
-
 namespace SharpVision.Terminal.Tests;
+
+using Shouldly;
 
 /// <summary>
 /// Verifies the terminal project test harness and assembly reference.

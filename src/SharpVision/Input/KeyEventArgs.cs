@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Input;
-
 namespace SharpVision.Input;
+
+using SharpVision.Terminal.Input;
 
 /// <summary>Provides an immutable decoded keyboard transition.</summary>
 public sealed class KeyEventArgs: RoutedEventArgs

@@ -1,6 +1,6 @@
-using System.Collections;
-
 namespace SharpVision.Layout;
+
+using System.Collections;
 
 /// <summary>Owns validated Grid track definitions and reports actual mutations.</summary>
 public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>

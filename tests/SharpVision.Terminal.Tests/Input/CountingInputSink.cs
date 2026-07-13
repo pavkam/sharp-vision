@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Input;
+
 using SharpVision.Terminal.Input;
 
-using InputDiagnostic = SharpVision.Terminal.Protocols.Diagnostic;
-using InputText = SharpVision.Terminal.Input.Text;
-
-namespace SharpVision.Terminal.Tests.Input;
+using InputDiagnostic = Terminal.Protocols.Diagnostic;
+using InputText = Terminal.Input.Text;
 
 /// <summary>Counts every decoded terminal input value.</summary>
 internal sealed class CountingInputSink: IInputSink

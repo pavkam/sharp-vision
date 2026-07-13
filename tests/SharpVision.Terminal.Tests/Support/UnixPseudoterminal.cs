@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Support;
+
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -7,8 +9,6 @@ using Microsoft.Win32.SafeHandles;
 
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
-
-namespace SharpVision.Terminal.Tests.Support;
 
 /// <summary>Owns one raw Unix pseudoterminal master/slave pair for integration tests.</summary>
 internal sealed partial class UnixPseudoterminal: IAsyncDisposable
@@ -272,7 +272,7 @@ internal sealed partial class UnixPseudoterminal: IAsyncDisposable
             throw new IOException("The Darwin pseudoterminal slave name was invalid.");
         }
 
-        var slaveName = System.Text.Encoding.UTF8.GetString(name[..nameLength]);
+        var slaveName = Encoding.UTF8.GetString(name[..nameLength]);
         var masterHandle = new SafeFileHandle(masterDescriptor, ownsHandle: true);
         var slaveHandle = new SafeFileHandle(slaveDescriptor, ownsHandle: true);
 

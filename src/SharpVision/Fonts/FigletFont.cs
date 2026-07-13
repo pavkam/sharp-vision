@@ -1,6 +1,6 @@
-using System.Buffers;
-
 namespace SharpVision.Fonts;
+
+using System.Buffers;
 
 /// <summary>Represents one validated immutable FIGfont version 2 definition.</summary>
 public sealed class FigletFont

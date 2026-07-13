@@ -1,10 +1,10 @@
+namespace SharpVision.Controls;
+
 using System.ComponentModel;
 
 using SharpVision.Styling;
 
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Controls;
+using TerminalStyle = Terminal.Rendering.Style;
 
 public abstract partial class Control
 {

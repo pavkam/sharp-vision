@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Unicode;
+
 using SharpVision.Terminal.Unicode;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Unicode;
 
 /// <summary>
 /// Verifies terminal cell width for curated Unicode cluster families.

@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.GeometryCases;
+
 using SharpVision.Terminal.Geometry;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.GeometryCases;
 
 /// <summary>Verifies exact rational and uniform pixel-to-cell grid mapping.</summary>
 public sealed class MetricsTests

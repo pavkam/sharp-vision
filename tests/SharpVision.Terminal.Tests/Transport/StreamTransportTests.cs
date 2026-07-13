@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Transport;
+
 using SharpVision.Terminal.Transport;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Transport;
 
 /// <summary>
 /// Verifies memory-based stream transport ownership and write serialization.

@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Runtime;
+
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 
-using InputText = SharpVision.Terminal.Input.Text;
-
-namespace SharpVision.Terminal.Runtime;
+using InputText = Input.Text;
 
 /// <summary>Updates capability negotiation before forwarding ordered protocol events.</summary>
 internal sealed class NegotiationSink: IProtocolSink

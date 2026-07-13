@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies byte-exact ECMA-48 sequence encoding.

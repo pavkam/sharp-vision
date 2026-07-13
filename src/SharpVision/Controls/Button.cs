@@ -1,13 +1,13 @@
+namespace SharpVision.Controls;
+
 using System.Windows.Input;
 
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
 public sealed partial class Button: Pressable

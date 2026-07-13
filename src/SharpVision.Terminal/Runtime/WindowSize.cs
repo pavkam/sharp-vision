@@ -1,6 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace SharpVision.Terminal.Runtime;
+
+using System.Runtime.InteropServices;
 
 /// <summary>Mirrors the native terminal window-size structure.</summary>
 [StructLayout(LayoutKind.Sequential)]

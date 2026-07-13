@@ -1,6 +1,6 @@
-using SharpVision.Layout;
-
 namespace SharpVision.Controls;
+
+using SharpVision.Layout;
 
 /// <summary>Stores weakly attached optional Canvas offsets.</summary>
 internal sealed class Position

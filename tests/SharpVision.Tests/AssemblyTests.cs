@@ -1,6 +1,6 @@
-using Shouldly;
-
 namespace SharpVision.Tests;
+
+using Shouldly;
 
 /// <summary>
 /// Verifies the user interface project test harness and assembly reference.

@@ -1,9 +1,9 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Terminal.Unicode;
-
-namespace SharpVision.Controls;
 
 /// <summary>Resolves fixed-cell control chrome against an inherited Unicode width policy.</summary>
 internal static class CellGlyph

@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -13,10 +15,8 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
+using TerminalStyle = Terminal.Rendering.Style;
 
 /// <summary>Verifies CheckBox transitions, events, ownership, styling, and cells.</summary>
 public sealed class CheckBoxTests

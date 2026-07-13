@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -9,8 +11,6 @@ using SharpVision.Threading;
 using Shouldly;
 
 using Panel = SharpVision.Controls.Stack;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies sequential panel measurement, allocation, ordering, and rendering.</summary>
 public sealed class StackTests

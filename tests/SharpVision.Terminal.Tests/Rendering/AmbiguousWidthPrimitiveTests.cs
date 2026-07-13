@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
@@ -5,8 +7,6 @@ using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Unicode;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>Verifies physical-cell primitives honor the frame ambiguous-width policy.</summary>
 public sealed class AmbiguousWidthPrimitiveTests

@@ -1,6 +1,6 @@
-using System.Collections;
-
 namespace SharpVision.Controls;
+
+using System.Collections;
 
 /// <summary>Owns validated rows and transfers their cell controls into one Table.</summary>
 public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>

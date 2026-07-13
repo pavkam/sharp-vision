@@ -1,7 +1,7 @@
+namespace SharpVision.Terminal.Protocols;
+
 using System.Buffers.Text;
 using System.Diagnostics;
-
-namespace SharpVision.Terminal.Protocols;
 
 /// <summary>Encodes Kitty keyboard query and mode-stack commands.</summary>
 public static class Keyboard

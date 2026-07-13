@@ -1,7 +1,7 @@
+namespace SharpVision.Tests.Support;
+
 using SharpVision.Controls;
 using SharpVision.Input;
-
-namespace SharpVision.Tests.Support;
 
 /// <summary>Provides a named container that records default routed-event behavior.</summary>
 internal sealed class RecordingControl: Container

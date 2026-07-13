@@ -1,3 +1,5 @@
+namespace SharpVision.Controls;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -5,9 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Arranges owned children sequentially on one terminal-cell axis.</summary>
 [SuppressMessage(

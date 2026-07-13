@@ -1,8 +1,8 @@
+namespace SharpVision.Tests.Threading;
+
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Threading;
 
 /// <summary>Verifies dispatcher affinity, bounded work, idle, and shutdown.</summary>
 public sealed class DispatcherTests

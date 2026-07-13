@@ -1,6 +1,6 @@
 using SharpVision.Controls;
 using SharpVision.Layout;
-using SharpVision.Showcase.Panes.Theming;
+using SharpVision.Showcase.Panes;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Text;
 
@@ -111,31 +111,31 @@ public sealed class GalleryTests
 
         for (var index = 0; index < gallery.Pages.Count; index++)
         {
-            var page = gallery.Pages[index];
+            var entry = gallery.Pages[index];
             gallery.Select(index);
             var recipe = FindRichText(gallery.Content, "Practical recipe");
 
-            _ = recipe.ShouldNotBeNull(page.Name);
-            recipe.Wrapping.ShouldBe(Wrapping.Word, page.Name);
+            _ = recipe.ShouldNotBeNull(entry.Name);
+            recipe.Wrapping.ShouldBe(Wrapping.Word, entry.Name);
         }
     }
 
-    /// <summary>Verifies every page creates fresh detached examples containing its named control.</summary>
+    /// <summary>Verifies every page creates fresh detached panes containing its named control.</summary>
     [Fact]
-    public void CreateExamples_WhenEveryPageBuildsTwice_ReturnsFreshMatchingControlTrees()
+    public void CreatePane_WhenEveryPageBuildsTwice_ReturnsFreshMatchingControlTrees()
     {
         using var gallery = new Gallery();
 
-        foreach (var page in gallery.Pages)
+        foreach (var entry in gallery.Pages)
         {
-            using var first = page.CreateExamples();
-            using var second = page.CreateExamples();
+            using var first = entry.CreatePane();
+            using var second = entry.CreatePane();
 
             first.ShouldNotBeSameAs(second);
             first.Parent.ShouldBeNull();
             second.Parent.ShouldBeNull();
-            ContainsType(first, page.Name).ShouldBeTrue(page.Name);
-            ContainsType(second, page.Name).ShouldBeTrue(page.Name);
+            ContainsType(first, entry.Name).ShouldBeTrue(entry.Name);
+            ContainsType(second, entry.Name).ShouldBeTrue(entry.Name);
         }
     }
 
@@ -145,16 +145,17 @@ public sealed class GalleryTests
     {
         using var gallery = new Gallery();
 
-        foreach (var page in gallery.Pages)
+        foreach (var entry in gallery.Pages)
         {
-            page.Properties.Count.ShouldBeGreaterThanOrEqualTo(3, page.Name);
+            using var pane = entry.CreatePane();
+            pane.Properties.Count.ShouldBeGreaterThanOrEqualTo(3, entry.Name);
 
-            foreach (var property in page.Properties)
+            foreach (var property in pane.Properties)
             {
-                property.Name.ShouldNotBeNullOrWhiteSpace(page.Name);
-                property.Type.ShouldNotBeNullOrWhiteSpace(page.Name);
-                property.Default.ShouldNotBeNullOrWhiteSpace(page.Name);
-                property.Description.Length.ShouldBeGreaterThan(24, $"{page.Name}.{property.Name}");
+                property.Name.ShouldNotBeNullOrWhiteSpace(entry.Name);
+                property.Type.ShouldNotBeNullOrWhiteSpace(entry.Name);
+                property.Default.ShouldNotBeNullOrWhiteSpace(entry.Name);
+                property.Description.Length.ShouldBeGreaterThan(24, $"{entry.Name}.{property.Name}");
             }
         }
     }
@@ -170,7 +171,7 @@ public sealed class GalleryTests
         {
             gallery.Select(index);
 
-            gallery.Selected.ShouldBeSameAs(gallery.Pages[index]);
+            gallery.Selected.ShouldBe(gallery.Pages[index]);
             gallery.SelectedPage.ShouldBe(_controls[index]);
             gallery.SelectedIndex.ShouldBe(index);
             gallery.Content.ShouldNotBeSameAs(previous);

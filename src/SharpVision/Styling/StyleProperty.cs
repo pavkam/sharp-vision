@@ -1,9 +1,9 @@
+namespace SharpVision.Styling;
+
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 using SharpVision.Controls;
-
-namespace SharpVision.Styling;
 
 /// <summary>Identifies one typed style property declared by a control type.</summary>
 /// <typeparam name="T">The validated property value type.</typeparam>

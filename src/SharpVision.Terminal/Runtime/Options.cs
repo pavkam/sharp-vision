@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Runtime;
+
 using SharpVision.Terminal.Protocols;
 
-using InputOptions = SharpVision.Terminal.Input.Options;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-using TerminalNegotiationOptions = SharpVision.Terminal.Capabilities.NegotiationOptions;
-
-namespace SharpVision.Terminal.Runtime;
+using InputOptions = Input.Options;
+using TerminalCapabilities = Capabilities.Capabilities;
+using TerminalNegotiationOptions = Capabilities.NegotiationOptions;
 
 /// <summary>Defines validated terminal session modes, bounds, and cleanup policy.</summary>
 public sealed record Options

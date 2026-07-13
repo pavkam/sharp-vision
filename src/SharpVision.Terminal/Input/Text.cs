@@ -1,6 +1,6 @@
-using System.Text;
-
 namespace SharpVision.Terminal.Input;
+
+using System.Text;
 
 /// <summary>Represents one decoded Unicode scalar intended for text input.</summary>
 public readonly record struct Text

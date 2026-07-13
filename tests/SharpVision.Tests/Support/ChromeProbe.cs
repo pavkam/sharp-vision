@@ -1,8 +1,8 @@
+namespace SharpVision.Tests.Support;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-
-namespace SharpVision.Tests.Support;
 
 /// <summary>Exposes protected content bounds for chrome layout tests.</summary>
 internal sealed class ChromeProbe: Control

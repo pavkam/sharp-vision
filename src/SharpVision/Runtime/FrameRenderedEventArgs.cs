@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Rendering;
-
 namespace SharpVision.Runtime;
+
+using SharpVision.Terminal.Rendering;
 
 /// <summary>Provides metrics for one flushed and committed terminal frame.</summary>
 public sealed class FrameRenderedEventArgs: EventArgs

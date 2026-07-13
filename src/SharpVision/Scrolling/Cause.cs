@@ -1,6 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace SharpVision.Scrolling;
+
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Identifies the source of one committed scroll change.</summary>
 [SuppressMessage(

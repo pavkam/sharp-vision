@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Layout;
+
 using SharpVision.Input;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -7,8 +9,6 @@ using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Layout;
 
 /// <summary>Exercises hostile fixed-seed tree, state, layout, focus, and capture mutation.</summary>
 public sealed class RandomizedLayoutTests

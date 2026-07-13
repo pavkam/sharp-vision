@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Protocols;
-
 namespace SharpVision.Terminal.Capabilities;
+
+using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Tracks a finite number of correlated and uncorrelated terminal queries.

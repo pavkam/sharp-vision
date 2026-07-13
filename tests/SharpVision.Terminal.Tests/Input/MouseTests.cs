@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Input;
+
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
@@ -6,11 +8,9 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using CellMetrics = SharpVision.Terminal.Geometry.Metrics;
-using InputAction = SharpVision.Terminal.Input.PointerAction;
-using InputDecoder = SharpVision.Terminal.Input.Decoder;
-
-namespace SharpVision.Terminal.Tests.Input;
+using CellMetrics = Geometry.Metrics;
+using InputAction = Terminal.Input.PointerAction;
+using InputDecoder = Terminal.Input.Decoder;
 
 /// <summary>
 /// Verifies cell, UTF-8, SGR, pixel, and urxvt pointer decoding.

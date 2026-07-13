@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Transport;
+
 using System.Runtime.Versioning;
 
 using SharpVision.Terminal.Geometry;
@@ -6,8 +8,6 @@ using SharpVision.Terminal.Tests.Support;
 using SharpVision.Terminal.Transport;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Transport;
 
 /// <summary>
 /// Verifies real Unix pseudoterminal transport, EOF, and resize behavior.

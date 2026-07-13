@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Proves fixed-seed automatic scrollbar convergence and containment.</summary>
 public sealed class RandomizedScrollViewTests

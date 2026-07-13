@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Styling;
@@ -7,8 +9,6 @@ using SharpVision.Terminal.Rendering;
 using SharpVision.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies clipped, ordered, grapheme-safe control rendering into semantic cells.</summary>
 public sealed class RenderingTests

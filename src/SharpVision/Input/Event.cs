@@ -1,6 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace SharpVision.Input;
+
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Identifies one immutable typed routed event.</summary>
 /// <typeparam name="TArgs">The exact event-argument type accepted by handlers.</typeparam>

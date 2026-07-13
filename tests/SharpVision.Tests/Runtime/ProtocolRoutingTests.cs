@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Runtime;
+
 using SharpVision.Runtime;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Protocols;
@@ -6,9 +8,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Runtime;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies terminal protocol responses traverse Session and Application onto the dispatcher.</summary>
 public sealed class ProtocolRoutingTests

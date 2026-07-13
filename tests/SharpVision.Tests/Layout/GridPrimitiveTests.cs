@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Layout;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Layout;
 
 /// <summary>Verifies immutable Grid definitions, collections, placement, and validation.</summary>
 public sealed class GridPrimitiveTests

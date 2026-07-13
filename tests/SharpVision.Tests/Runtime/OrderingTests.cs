@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Runtime;
+
 using SharpVision.Input;
 using SharpVision.Runtime;
 using SharpVision.Terminal.Geometry;
@@ -7,10 +9,8 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Runtime;
+using KeyAction = Terminal.Input.Action;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies resize coalescing, input targeting, and application idleness.</summary>
 public sealed class OrderingTests

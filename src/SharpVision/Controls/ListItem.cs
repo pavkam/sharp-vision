@@ -1,13 +1,12 @@
+namespace SharpVision.Controls;
+
 using SharpVision.Input;
 using SharpVision.Layout;
-using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using KeyAction = Terminal.Input.Action;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Owns one realized List template control and its selection behavior.</summary>
 internal sealed class ListItem: Pressable
@@ -108,10 +107,6 @@ internal sealed class ListItem: Pressable
     /// <inheritdoc/>
     protected override void ArrangeCore(Rect bounds) =>
         Content.Arrange(bounds, widthResolved: true, heightResolved: false);
-
-    /// <inheritdoc/>
-    protected override State GetVisualState() =>
-        base.GetVisualState() | (IsSelected ? State.Checked : State.Normal);
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

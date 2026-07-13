@@ -1,12 +1,12 @@
+namespace SharpVision.Terminal.Tests.Runtime;
+
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using CellMetrics = SharpVision.Terminal.Geometry.Metrics;
-
-namespace SharpVision.Terminal.Tests.Runtime;
+using CellMetrics = Geometry.Metrics;
 
 /// <summary>
 /// Verifies cell/pixel resize geometry, suspension, and asynchronous delivery.

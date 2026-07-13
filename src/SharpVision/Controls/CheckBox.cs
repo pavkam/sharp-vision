@@ -1,15 +1,14 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Input;
 using SharpVision.Layout;
-using SharpVision.Styling;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Defines a focusable two- or three-state toggle with optional content.</summary>
 public sealed class CheckBox: Pressable
@@ -177,8 +176,10 @@ public sealed class CheckBox: Pressable
     }
 
     /// <inheritdoc/>
-    protected override State GetVisualState() =>
-        base.GetVisualState() | (_isChecked == true ? State.Checked : State.Normal);
+    protected override bool IsCheckedState => _isChecked == true;
+
+    /// <inheritdoc/>
+    protected override bool IsIndeterminateState => _isChecked is null;
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

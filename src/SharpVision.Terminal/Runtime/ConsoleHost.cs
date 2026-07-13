@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Transport;
-
 namespace SharpVision.Terminal.Runtime;
+
+using SharpVision.Terminal.Transport;
 
 /// <summary>Opens interactive console streams for a SharpVision application host.</summary>
 public static class ConsoleHost

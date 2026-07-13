@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -14,10 +16,8 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-using TerminalText = SharpVision.Terminal.Input.Text;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
+using TerminalText = Terminal.Input.Text;
 
 /// <summary>Verifies TextInput validation, editing, events, input, rendering, and history.</summary>
 public sealed class TextInputTests

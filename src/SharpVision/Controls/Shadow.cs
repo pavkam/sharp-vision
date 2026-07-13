@@ -1,13 +1,13 @@
+namespace SharpVision.Controls;
+
 using System.Text;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
-using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
-using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
-
-namespace SharpVision.Controls;
+using BackgroundMode = Terminal.Rendering.BackgroundMode;
+using TerminalAttributes = Terminal.Rendering.Attributes;
+using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Decorates one child with composite or block-glyph visual overflow.</summary>
 public sealed partial class Shadow: Container

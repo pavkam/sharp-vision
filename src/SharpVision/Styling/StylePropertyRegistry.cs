@@ -1,6 +1,6 @@
-using System.Runtime.CompilerServices;
-
 namespace SharpVision.Styling;
+
+using System.Runtime.CompilerServices;
 
 /// <summary>Read-only catalog of registered style-property metadata keyed by declaring type and name.</summary>
 /// <remarks>

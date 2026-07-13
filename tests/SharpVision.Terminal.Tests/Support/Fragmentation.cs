@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Support;
+
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Support;
 
 /// <summary>
 /// Compares parser observations across whole, split, and byte-at-a-time reads.

@@ -1,11 +1,11 @@
+namespace SharpVision.Terminal.Tests.Unicode;
+
 using System.Globalization;
 using System.Text;
 
 using SharpVision.Terminal.Unicode;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Unicode;
 
 /// <summary>
 /// Verifies every official Unicode 17 extended-grapheme conformance case.

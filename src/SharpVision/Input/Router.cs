@@ -1,8 +1,8 @@
+namespace SharpVision.Input;
+
 using System.Buffers;
 
 using SharpVision.Controls;
-
-namespace SharpVision.Input;
 
 /// <summary>Dispatches typed events over stable ancestry and handler snapshots.</summary>
 public static class Router

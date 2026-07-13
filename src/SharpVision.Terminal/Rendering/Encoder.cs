@@ -1,11 +1,11 @@
+namespace SharpVision.Terminal.Rendering;
+
 using System.Buffers;
 using System.Text;
 
 using SharpVision.Terminal.Protocols;
 
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Rendering;
+using TerminalCapabilities = Capabilities.Capabilities;
 
 /// <summary>
 /// Encodes semantic frame damage into deterministic terminal control bytes.

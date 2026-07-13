@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Text;
+
 using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
 using Shouldly;
 
 using TextLayout = SharpVision.Text.Layout;
-
-namespace SharpVision.Tests.Text;
 
 /// <summary>Proves seeded text formatting invariants over mixed hostile UTF-16.</summary>
 public sealed class RandomizedLayoutTests

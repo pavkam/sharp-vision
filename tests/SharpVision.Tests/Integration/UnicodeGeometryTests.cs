@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Integration;
+
 using SharpVision.Controls;
 using SharpVision.Input;
 using SharpVision.Layout;
@@ -15,12 +17,10 @@ using ComboBoxControl = SharpVision.Controls.ComboBox;
 using Dispatcher = SharpVision.Threading.Dispatcher;
 using RichTextControl = SharpVision.Controls.RichText;
 using RunInline = SharpVision.Controls.Run;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
+using TerminalOptions = Terminal.Runtime.Options;
 using TextControl = SharpVision.Controls.Text;
 using TextInputControl = SharpVision.Controls.TextInput;
 using TextWrapping = SharpVision.Text.Wrapping;
-
-namespace SharpVision.Tests.Integration;
 
 /// <summary>Verifies end-to-end Unicode geometry across controls, frames, and pointer routing.</summary>
 public sealed class UnicodeGeometryTests

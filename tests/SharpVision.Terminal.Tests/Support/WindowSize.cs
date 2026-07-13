@@ -1,6 +1,6 @@
-using System.Runtime.InteropServices;
-
 namespace SharpVision.Terminal.Tests.Support;
+
+using System.Runtime.InteropServices;
 
 /// <summary>Mirrors the native Unix pseudoterminal window-size structure.</summary>
 [StructLayout(LayoutKind.Sequential)]

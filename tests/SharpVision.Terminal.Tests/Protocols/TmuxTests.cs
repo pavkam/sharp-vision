@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>Verifies exact tmux passthrough DCS framing.</summary>
 public sealed class TmuxTests
@@ -52,7 +52,7 @@ public sealed class TmuxTests
     {
         var destination = new ArrayBufferWriter<byte>();
 
-        var unwrapped = Tmux.TryUnwrap(System.Text.Encoding.UTF8.GetBytes(value), destination);
+        var unwrapped = Tmux.TryUnwrap(Encoding.UTF8.GetBytes(value), destination);
 
         unwrapped.ShouldBeFalse();
         destination.WrittenCount.ShouldBe(0);

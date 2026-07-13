@@ -1,11 +1,11 @@
+namespace SharpVision.Terminal.Rendering;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Text;
 
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Unicode;
-
-namespace SharpVision.Terminal.Rendering;
 
 /// <summary>
 /// Draws semantic grapheme clusters into a clipped frame cell region.

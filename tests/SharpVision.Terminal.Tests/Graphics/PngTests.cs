@@ -1,11 +1,11 @@
+namespace SharpVision.Terminal.Tests.Graphics;
+
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Graphics;
 
 using Shouldly;
 
-using GraphicsImage = SharpVision.Terminal.Graphics.Image;
-
-namespace SharpVision.Terminal.Tests.Graphics;
+using GraphicsImage = Terminal.Graphics.Image;
 
 /// <summary>Verifies bounded structural PNG ownership and recovery.</summary>
 public sealed class PngTests

@@ -1,8 +1,8 @@
+namespace SharpVision.Showcase.Tests;
+
 using System.Diagnostics;
 
 using Shouldly;
-
-namespace SharpVision.Showcase.Tests;
 
 /// <summary>Runs the Release showcase under tmux when the host provides it.</summary>
 public sealed class TmuxSmokeTests

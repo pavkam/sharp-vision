@@ -1,7 +1,7 @@
+namespace SharpVision.Fonts;
+
 using System.Globalization;
 using System.Text;
-
-namespace SharpVision.Fonts;
 
 /// <summary>Parses complete bounded FIGfont version 2 payloads.</summary>
 internal static class FigletParser

@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Clipboard;
+
 using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Clipboard;
 
 /// <summary>
 /// Verifies bounded Kitty clipboard transaction state machines.
@@ -237,6 +237,6 @@ public sealed class KittyTransactionTests
     }
 
     private static KittyPacket Packet(string wire) =>
-        KittyPacket.Parse(System.Text.Encoding.ASCII.GetBytes(wire));
+        KittyPacket.Parse(Encoding.ASCII.GetBytes(wire));
 
 }

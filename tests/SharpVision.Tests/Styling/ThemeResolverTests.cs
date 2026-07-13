@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Styling;
+
 using SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Styling;
 
 /// <summary>Verifies theme resolver precedence through the public cascade.</summary>
 public sealed class ThemeResolverTests

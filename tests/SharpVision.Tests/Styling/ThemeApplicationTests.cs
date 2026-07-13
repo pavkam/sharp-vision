@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Styling;
+
 using SharpVision.Controls;
 using SharpVision.Runtime;
 using SharpVision.Styling;
@@ -8,9 +10,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Styling;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application-wide theme ownership and propagation.</summary>
 public sealed class ThemeApplicationTests

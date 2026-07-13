@@ -1,12 +1,12 @@
+namespace SharpVision.Terminal.Rendering;
+
 using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 
 using SharpVision.Terminal.Transport;
 
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Rendering;
+using TerminalCapabilities = Capabilities.Capabilities;
 
 /// <summary>
 /// Encodes semantic frame changes and commits state only after complete output.

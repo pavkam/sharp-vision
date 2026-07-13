@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>Verifies deterministic semantic-color projection to terminal tiers.</summary>
 public sealed class PaletteTests

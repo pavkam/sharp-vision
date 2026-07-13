@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Runtime;
+
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
@@ -6,12 +8,10 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using CapabilitySupport = SharpVision.Terminal.Capabilities.Support;
-using Rune = System.Text.Rune;
-using RuntimeOptions = SharpVision.Terminal.Runtime.Options;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Runtime;
+using CapabilitySupport = Terminal.Capabilities.Support;
+using Rune = Rune;
+using RuntimeOptions = Terminal.Runtime.Options;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>
 /// Verifies terminal startup, ordered events, failure recovery, and reverse cleanup.
@@ -175,7 +175,7 @@ public sealed class SessionTests
         var dimensions = new Dimensions(new Geometry.Size(80, 24));
 
         // Act
-        transport.Input(System.Text.Encoding.ASCII.GetBytes(
+        transport.Input(Encoding.ASCII.GetBytes(
             "x" +
             "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
             "\u001b[?1004;1$y\u001b[?2026;1$y\u001b[?3u\u001b[?1;2c"));
@@ -210,7 +210,7 @@ public sealed class SessionTests
             Keyboard = Enhancement.Disambiguate | Enhancement.EventTypes,
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
         };
-        transport.Input(System.Text.Encoding.ASCII.GetBytes(
+        transport.Input(Encoding.ASCII.GetBytes(
             "\u001b[?1016;1$y\u001b[?1006;1$y\u001b[?2004;1$y" +
             "\u001b[?1004;1$y\u001b[?2026;1$y\u001b[?3u\u001b[?1;2c"));
         transport.Close();

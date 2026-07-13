@@ -1,10 +1,10 @@
+namespace SharpVision.Tests.Scrolling;
+
 using SharpVision.Scrolling;
 
 using Shouldly;
 
 using ScrollRange = SharpVision.Scrolling.Range;
-
-namespace SharpVision.Tests.Scrolling;
 
 /// <summary>Verifies immutable scroll ranges, clamping, and thumb geometry.</summary>
 public sealed class RangeTests

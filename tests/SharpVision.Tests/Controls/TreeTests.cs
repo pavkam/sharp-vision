@@ -1,10 +1,10 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Input;
 using SharpVision.Tests.Support;
 using SharpVision.Threading;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies one-parent ownership, attachment, mutation, and disposal.</summary>
 public sealed class TreeTests

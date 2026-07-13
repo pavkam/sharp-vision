@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Unicode;
+
 using SharpVision.Terminal.Unicode;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Unicode;
 
 /// <summary>
 /// Verifies whole-span measurement counters and allocation behavior.

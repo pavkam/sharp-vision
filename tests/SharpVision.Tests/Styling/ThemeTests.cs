@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Styling;
+
 using SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Styling;
 
 /// <summary>Verifies theme collection, style chains, freezing, and cloning.</summary>
 public sealed class ThemeTests

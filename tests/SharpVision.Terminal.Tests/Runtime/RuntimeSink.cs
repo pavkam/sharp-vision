@@ -1,11 +1,11 @@
+namespace SharpVision.Terminal.Tests.Runtime;
+
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
-using InputText = SharpVision.Terminal.Input.Text;
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
-
-namespace SharpVision.Terminal.Tests.Runtime;
+using InputText = Terminal.Input.Text;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Records terminal session callbacks and injected text failures.</summary>
 internal sealed class RuntimeSink: ISink

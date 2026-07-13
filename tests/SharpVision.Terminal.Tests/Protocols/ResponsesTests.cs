@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies typed capability and status response decoding.
@@ -36,7 +36,7 @@ public sealed class ResponsesTests
         string parameters,
         bool supported)
     {
-        var bytes = System.Text.Encoding.ASCII.GetBytes(parameters);
+        var bytes = Encoding.ASCII.GetBytes(parameters);
 
         Responses.TryCsi(bytes, "$"u8, (byte) 'y', out var response).ShouldBeTrue();
 
@@ -68,7 +68,7 @@ public sealed class ResponsesTests
         string value,
         ResponseKind expected)
     {
-        Responses.TryOsc(System.Text.Encoding.ASCII.GetBytes(value), out var response)
+        Responses.TryOsc(Encoding.ASCII.GetBytes(value), out var response)
             .ShouldBeTrue();
 
         response.Kind.ShouldBe(expected);
@@ -88,8 +88,8 @@ public sealed class ResponsesTests
         char final)
     {
         Responses.TryCsi(
-            System.Text.Encoding.ASCII.GetBytes(parameters),
-            System.Text.Encoding.ASCII.GetBytes(intermediates),
+            Encoding.ASCII.GetBytes(parameters),
+            Encoding.ASCII.GetBytes(intermediates),
             (byte) final,
             out _).ShouldBeFalse();
     }

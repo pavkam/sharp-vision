@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Integration;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -12,10 +14,8 @@ using SharpVision.Tests.Support;
 using Shouldly;
 
 using Label = SharpVision.Controls.Text;
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
+using TerminalOptions = Terminal.Runtime.Options;
 using UiList = SharpVision.Controls.List;
-
-namespace SharpVision.Tests.Integration;
 
 /// <summary>Proves real terminal text, paste, keys, focus, frames, and bytes through TextInput.</summary>
 public sealed class InteractiveControlTests

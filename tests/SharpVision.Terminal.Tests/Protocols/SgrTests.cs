@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using System.Buffers;
 
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies typed Select Graphic Rendition encoding.
@@ -77,7 +77,7 @@ public sealed class SgrTests
         Sgr.Apply(new Writer(destination), rendition);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(expected));
+            Encoding.ASCII.GetBytes(expected));
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ public sealed class SgrTests
         Sgr.Background(writer, color);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(foreground + background));
+            Encoding.ASCII.GetBytes(foreground + background));
     }
 
     /// <summary>Verifies every underline variant uses xterm's typed 4:x form.</summary>
@@ -167,7 +167,7 @@ public sealed class SgrTests
         Sgr.Apply(new Writer(destination), underline);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            System.Text.Encoding.ASCII.GetBytes(expected));
+            Encoding.ASCII.GetBytes(expected));
     }
 
     /// <summary>Verifies default, indexed, and RGB underline-color output.</summary>

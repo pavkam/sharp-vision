@@ -1,10 +1,10 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-
-namespace SharpVision.Controls;
 
 /// <summary>Consumes physical edges in child order and optionally fills the remainder.</summary>
 public sealed class Dock: Container

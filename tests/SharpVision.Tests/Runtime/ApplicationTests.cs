@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Runtime;
+
 using SharpVision.Runtime;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Runtime;
@@ -5,9 +7,7 @@ using SharpVision.Tests.Support;
 
 using Shouldly;
 
-using TerminalOptions = SharpVision.Terminal.Runtime.Options;
-
-namespace SharpVision.Tests.Runtime;
+using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed class ApplicationTests

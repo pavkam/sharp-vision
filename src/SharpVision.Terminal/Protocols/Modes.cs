@@ -1,7 +1,7 @@
+namespace SharpVision.Terminal.Protocols;
+
 using System.Buffers.Text;
 using System.Diagnostics;
-
-namespace SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Encodes DEC private modes required by lifecycle, input, and output handling.

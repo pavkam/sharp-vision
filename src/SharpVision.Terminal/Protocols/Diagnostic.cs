@@ -1,6 +1,6 @@
-using System.Globalization;
-
 namespace SharpVision.Terminal.Protocols;
+
+using System.Globalization;
 
 /// <summary>
 /// Describes a protocol condition without retaining untrusted or sensitive

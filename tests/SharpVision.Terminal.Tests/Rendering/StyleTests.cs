@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Rendering;
+
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Rendering;
 
 /// <summary>Verifies semantic terminal style validation for modern decorations.</summary>
 public sealed class StyleTests

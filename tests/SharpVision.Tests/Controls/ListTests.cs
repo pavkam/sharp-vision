@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -13,12 +15,10 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
+using KeyAction = Terminal.Input.Action;
 using Label = SharpVision.Controls.Text;
-using TerminalStyle = SharpVision.Terminal.Rendering.Style;
+using TerminalStyle = Terminal.Rendering.Style;
 using UiList = SharpVision.Controls.List;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies realized List ownership, selection, input, scrolling, and rendering.</summary>
 public sealed class ListTests
@@ -56,7 +56,7 @@ public sealed class ListTests
     {
         var style = ThemeTestSupport.OverlayStyle<UiList>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
-            (State.Checked, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(99))));
+            (State.Selected, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(99))));
         var control = new UiList
         {
             Items = new object?[] { "One", "Two" },
@@ -303,10 +303,10 @@ public sealed class ListTests
 
     /// <summary>Verifies selected visual state reaches exact semantic item cells.</summary>
     [Fact]
-    public void Render_WhenItemIsSelected_UsesCheckedStyleWithoutChangingTemplateContent()
+    public void Render_WhenItemIsSelected_UsesSelectedStyleWithoutChangingTemplateContent()
     {
         var style = ThemeTestSupport.OverlayStyle<UiList>(
-            (State.Checked, new ThemeOverlay(attributes: Attributes.Reverse)));
+            (State.Selected, new ThemeOverlay(attributes: Attributes.Reverse)));
         var control = Create("界", "B");
         control.Style = style;
         control.SelectedIndex = 0;

@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Support;
+
 using System.Threading.Channels;
 
 using SharpVision.Terminal.Runtime;
-
-namespace SharpVision.Terminal.Tests.Support;
 
 /// <summary>Provides deterministic queued resize changes.</summary>
 internal sealed class FakeResizeSource: IResizeSource

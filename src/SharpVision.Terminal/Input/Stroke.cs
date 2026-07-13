@@ -1,6 +1,6 @@
-using System.Text;
-
 namespace SharpVision.Terminal.Input;
+
+using System.Text;
 
 /// <summary>Represents one immutable logical keyboard transition.</summary>
 public readonly record struct Stroke

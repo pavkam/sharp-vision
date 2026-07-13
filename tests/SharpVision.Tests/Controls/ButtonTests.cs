@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -14,9 +16,7 @@ using SharpVision.Threading;
 using Shouldly;
 
 using ControlText = SharpVision.Controls.Text;
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies Button ownership, command ordering, activation, layout, and cells.</summary>
 public sealed class ButtonTests

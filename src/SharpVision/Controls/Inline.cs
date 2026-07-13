@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace SharpVision.Controls;
+
+using System.Diagnostics;
 
 /// <summary>Defines one mutable, single-owner RichText content item.</summary>
 public abstract class Inline

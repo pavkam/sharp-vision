@@ -1,9 +1,9 @@
+namespace SharpVision.Fonts;
+
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
-
-namespace SharpVision.Fonts;
 
 /// <summary>Provides case-sensitive lazy access to the audited embedded font archive.</summary>
 public sealed class FigletCatalog

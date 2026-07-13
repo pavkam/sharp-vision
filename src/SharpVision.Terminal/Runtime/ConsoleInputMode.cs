@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace SharpVision.Terminal.Runtime;
+
+using System.Diagnostics;
 
 /// <summary>Owns one best-effort Unix terminal raw-input lease for interactive console hosts.</summary>
 public sealed class ConsoleInputMode: IDisposable

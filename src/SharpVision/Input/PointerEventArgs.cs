@@ -1,10 +1,10 @@
+namespace SharpVision.Input;
+
 using System.Diagnostics.CodeAnalysis;
 
 using SharpVision.Controls;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Terminal.Input;
-
-namespace SharpVision.Input;
 
 /// <summary>Provides immutable cell and optional pixel pointer input.</summary>
 [SuppressMessage(

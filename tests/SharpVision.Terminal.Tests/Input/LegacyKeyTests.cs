@@ -1,12 +1,12 @@
+namespace SharpVision.Terminal.Tests.Input;
+
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using InputAction = SharpVision.Terminal.Input.Action;
-using Rune = System.Text.Rune;
-
-namespace SharpVision.Terminal.Tests.Input;
+using InputAction = Terminal.Input.Action;
+using Rune = Rune;
 
 /// <summary>
 /// Verifies legacy VT key mappings, modifiers, fragmentation, and recovery.
@@ -24,7 +24,7 @@ public sealed class LegacyKeyTests
     [InlineData("\u007f", Code.Backspace)]
     public void Decode_WhenByteIsNamedControl_EmitsNamedStroke(string input, Code code)
     {
-        var sink = Decode(System.Text.Encoding.UTF8.GetBytes(input));
+        var sink = Decode(Encoding.UTF8.GetBytes(input));
 
         sink.Strokes.ShouldBe(
         [
@@ -58,7 +58,7 @@ public sealed class LegacyKeyTests
         Modifiers modifiers,
         int nativeCode)
     {
-        var bytes = System.Text.Encoding.UTF8.GetBytes(input);
+        var bytes = Encoding.UTF8.GetBytes(input);
 
         for (var split = 0; split <= bytes.Length; split++)
         {
@@ -94,7 +94,7 @@ public sealed class LegacyKeyTests
     [InlineData(24, Code.F12)]
     public void Decode_WhenTildeFunctionKeyIsKnown_MapsLogicalCode(int native, Code code)
     {
-        var sink = Decode(System.Text.Encoding.UTF8.GetBytes($"\u001b[{native}~"));
+        var sink = Decode(Encoding.UTF8.GetBytes($"\u001b[{native}~"));
 
         sink.Strokes.ShouldBe(
         [

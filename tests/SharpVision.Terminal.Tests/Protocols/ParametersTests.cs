@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Tests.Protocols;
+
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Protocols;
 
 /// <summary>
 /// Verifies allocation-free CSI parameter enumeration.
@@ -80,7 +80,7 @@ public sealed class ParametersTests
     [InlineData(":?")]
     public void Read_WhenInputIsMalformed_EventuallyReturnsInvalid(string input)
     {
-        var parameters = new Parameters(System.Text.Encoding.ASCII.GetBytes(input));
+        var parameters = new Parameters(Encoding.ASCII.GetBytes(input));
         ParameterStatus status;
 
         do
@@ -102,7 +102,7 @@ public sealed class ParametersTests
     public void Read_WhenValueExceedsMaximum_ReturnsOverflow(string input, int maximum)
     {
         var parameters = new Parameters(
-            System.Text.Encoding.ASCII.GetBytes(input),
+            Encoding.ASCII.GetBytes(input),
             maxCount: 8,
             maxValue: maximum);
 

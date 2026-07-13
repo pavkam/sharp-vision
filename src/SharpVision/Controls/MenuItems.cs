@@ -1,6 +1,6 @@
-using System.Collections;
-
 namespace SharpVision.Controls;
+
+using System.Collections;
 
 /// <summary>Exposes one menu's typed managed item collection.</summary>
 public sealed class MenuItems: IReadOnlyList<MenuItem>

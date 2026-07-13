@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Clipboard;
+
 using SharpVision.Terminal.Clipboard;
 using SharpVision.Terminal.Protocols;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Clipboard;
 
 /// <summary>
 /// Verifies Kitty OSC 5522 metadata and payload parsing.
@@ -47,7 +47,7 @@ public sealed class KittyPacketTests
         string wire,
         KittyReplyStatus expected)
     {
-        var input = System.Text.Encoding.ASCII.GetBytes($"5522;type=write:status={wire}");
+        var input = Encoding.ASCII.GetBytes($"5522;type=write:status={wire}");
 
         var packet = KittyPacket.Parse(input);
 
@@ -116,7 +116,7 @@ public sealed class KittyPacketTests
     [InlineData("5522;type=read;***", DiagnosticCode.InvalidBase64)]
     public void Parse_WhenPacketIsMalformed_ReturnsDiagnostic(string input, DiagnosticCode code)
     {
-        var packet = KittyPacket.Parse(System.Text.Encoding.ASCII.GetBytes(input));
+        var packet = KittyPacket.Parse(Encoding.ASCII.GetBytes(input));
 
         packet.IsValid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(code);

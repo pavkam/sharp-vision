@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
@@ -8,8 +10,6 @@ using SharpVision.Threading;
 using Shouldly;
 
 using Panel = SharpVision.Controls.Canvas;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies attached offset validation, positioned layout, clipping, and targeting.</summary>
 public sealed class CanvasTests

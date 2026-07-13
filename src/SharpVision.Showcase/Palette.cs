@@ -1,10 +1,10 @@
+namespace SharpVision.Showcase;
+
 using SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
 using Attributes = SharpVision.Terminal.Rendering.Attributes;
-
-namespace SharpVision.Showcase;
 
 /// <summary>Defines the small semantic terminal palette used by the showcase dashboard.</summary>
 internal static class Palette
@@ -63,9 +63,9 @@ internal static class Palette
         style.Set(Control.BackgroundProperty, State.Hovered, Hover);
         style.Set(Control.ForegroundProperty, State.Focused, Accent);
         style.Set(Control.AttributesProperty, State.Focused, Attributes.Bold);
-        style.Set(Control.ForegroundProperty, State.Checked, Text);
-        style.Set(Control.BackgroundProperty, State.Checked, Highlight);
-        style.Set(Control.AttributesProperty, State.Checked, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Selected, Text);
+        style.Set(Control.BackgroundProperty, State.Selected, Highlight);
+        style.Set(Control.AttributesProperty, State.Selected, Attributes.Bold);
         style.Set(Control.ForegroundProperty, State.Pressed, Text);
         style.Set(Control.BackgroundProperty, State.Pressed, Pressed);
         style.Set(Control.AttributesProperty, State.Pressed, Attributes.Bold);
@@ -157,9 +157,9 @@ internal static class Palette
         style.Set(Control.ForegroundProperty, State.Focused, Accent);
         style.Set(Control.BackgroundProperty, State.Focused, InputSurface);
         style.Set(Control.AttributesProperty, State.Focused, Attributes.Bold);
-        style.Set(Control.ForegroundProperty, State.Checked, Text);
-        style.Set(Control.BackgroundProperty, State.Checked, Highlight);
-        style.Set(Control.AttributesProperty, State.Checked, Attributes.Bold);
+        style.Set(Control.ForegroundProperty, State.Selected, Text);
+        style.Set(Control.BackgroundProperty, State.Selected, Highlight);
+        style.Set(Control.AttributesProperty, State.Selected, Attributes.Bold);
         style.Set(Control.ForegroundProperty, State.Pressed, Text);
         style.Set(Control.BackgroundProperty, State.Pressed, Pressed);
         style.Set(Control.AttributesProperty, State.Pressed, Attributes.Bold);

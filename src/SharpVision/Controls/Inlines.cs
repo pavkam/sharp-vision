@@ -1,6 +1,6 @@
-using System.Collections;
-
 namespace SharpVision.Controls;
+
+using System.Collections;
 
 /// <summary>Owns a mutable ordered single-document inline collection.</summary>
 public sealed class Inlines: IList<Inline>

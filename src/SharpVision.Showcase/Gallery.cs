@@ -1,3 +1,5 @@
+namespace SharpVision.Showcase;
+
 using System.Diagnostics;
 
 using SharpVision.Controls;
@@ -10,8 +12,6 @@ using SharpVision.Terminal.Input;
 
 using KeyAction = SharpVision.Terminal.Input.Action;
 using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
-
-namespace SharpVision.Showcase;
 
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
@@ -119,13 +119,13 @@ public sealed class Gallery: Screen
     internal int SelectedIndex { get; private set; } = -1;
 
     /// <summary>Gets the stable complete control-page inventory.</summary>
-    internal IReadOnlyList<Page> Pages { get; }
+    internal IReadOnlyList<GalleryEntry> Pages { get; }
 
     /// <summary>Gets the stable stateful navigation entries in catalog order.</summary>
     internal IReadOnlyList<NavigationItem> Navigation => _navigation;
 
-    /// <summary>Gets the currently selected immutable page definition.</summary>
-    internal Page Selected { get; private set; }
+    /// <summary>Gets the currently selected gallery entry.</summary>
+    internal GalleryEntry Selected { get; private set; }
 
     /// <inheritdoc/>
     protected override void OnAttach(Application application)
@@ -177,7 +177,7 @@ public sealed class Gallery: Screen
             _main.VerticalOffset = 0;
         }
 
-        _main.Content = Selected.CreateContent();
+        _main.Content = Selected.CreatePane();
 
         for (var navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)
         {

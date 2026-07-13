@@ -1,8 +1,8 @@
+namespace SharpVision.Tests.Layout;
+
 using SharpVision.Layout;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Layout;
 
 /// <summary>Verifies exact fixed, intrinsic, percentage, star, and span allocation.</summary>
 public sealed class TrackTests

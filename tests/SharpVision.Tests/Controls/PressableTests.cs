@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Input;
@@ -8,9 +10,7 @@ using SharpVision.Threading;
 
 using Shouldly;
 
-using KeyAction = SharpVision.Terminal.Input.Action;
-
-namespace SharpVision.Tests.Controls;
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies shared keyboard, pointer, focus, and cancellation activation behavior.</summary>
 public sealed class PressableTests

@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Input;
-
 namespace SharpVision.Input;
+
+using SharpVision.Terminal.Input;
 
 /// <summary>Provides an owned immutable bracketed-paste payload.</summary>
 public sealed class PasteEventArgs: RoutedEventArgs

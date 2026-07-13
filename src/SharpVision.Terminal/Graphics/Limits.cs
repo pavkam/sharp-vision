@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Geometry;
-
 namespace SharpVision.Terminal.Graphics;
+
+using SharpVision.Terminal.Geometry;
 
 /// <summary>Defines immutable finite image ownership and geometry limits.</summary>
 public sealed class Limits

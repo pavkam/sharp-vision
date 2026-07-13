@@ -1,6 +1,6 @@
-using SharpVision.Controls;
-
 namespace SharpVision.Styling;
+
+using SharpVision.Controls;
 
 /// <summary>Owns one style per control type and publishes immutable style-chain snapshots.</summary>
 public sealed class Theme

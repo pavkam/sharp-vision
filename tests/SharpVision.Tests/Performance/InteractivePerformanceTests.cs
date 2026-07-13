@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Performance;
+
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -15,8 +17,6 @@ using Shouldly;
 
 using Label = SharpVision.Controls.Text;
 using UiList = SharpVision.Controls.List;
-
-namespace SharpVision.Tests.Performance;
 
 /// <summary>Gates interactive control allocation reuse and detached-item retention.</summary>
 [Collection(PerformanceGroup.Name)]

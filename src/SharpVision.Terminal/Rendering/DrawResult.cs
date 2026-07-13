@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Geometry;
-
 namespace SharpVision.Terminal.Rendering;
+
+using SharpVision.Terminal.Geometry;
 
 /// <summary>Reports observable results of one canvas draw operation.</summary>
 public readonly record struct DrawResult

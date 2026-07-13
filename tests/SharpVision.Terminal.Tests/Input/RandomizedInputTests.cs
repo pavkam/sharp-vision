@@ -1,3 +1,5 @@
+namespace SharpVision.Terminal.Tests.Input;
+
 using System.Text;
 
 using SharpVision.Terminal.Protocols;
@@ -5,9 +7,7 @@ using SharpVision.Terminal.Tests.Support;
 
 using Shouldly;
 
-using InputDecoder = SharpVision.Terminal.Input.Decoder;
-
-namespace SharpVision.Terminal.Tests.Input;
+using InputDecoder = Terminal.Input.Decoder;
 
 /// <summary>Verifies fixed-seed decoder boundedness and recovery.</summary>
 public sealed class RandomizedInputTests

@@ -1,10 +1,10 @@
+namespace SharpVision.Terminal.Clipboard;
+
 using System.Buffers;
 using System.Buffers.Text;
 using System.Text;
 
 using SharpVision.Terminal.Protocols;
-
-namespace SharpVision.Terminal.Clipboard;
 
 /// <summary>
 /// Encodes canonical Kitty OSC 5522 clipboard requests and MIME data packets.

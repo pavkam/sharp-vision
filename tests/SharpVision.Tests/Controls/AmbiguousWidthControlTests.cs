@@ -1,3 +1,5 @@
+namespace SharpVision.Tests.Controls;
+
 using System.Text;
 
 using SharpVision.Controls;
@@ -8,8 +10,6 @@ using SharpVision.Terminal.Unicode;
 using SharpVision.Tests.Support;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Controls;
 
 /// <summary>Verifies fixed-cell control chrome adapts to the inherited width policy.</summary>
 public sealed class AmbiguousWidthControlTests

@@ -1,6 +1,6 @@
-using SharpVision.Terminal.Geometry;
-
 namespace SharpVision.Terminal.Runtime;
+
+using SharpVision.Terminal.Geometry;
 
 /// <summary>Polls portable console cell dimensions at a finite non-spinning interval.</summary>
 public sealed class ConsoleResizeSource: IResizeSource

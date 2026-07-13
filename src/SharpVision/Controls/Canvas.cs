@@ -1,10 +1,10 @@
+namespace SharpVision.Controls;
+
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
-
-namespace SharpVision.Controls;
 
 /// <summary>Positions children by optional physical offsets and resolved sizes.</summary>
 public sealed class Canvas: Container

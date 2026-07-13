@@ -1,9 +1,9 @@
+namespace SharpVision.Terminal.Tests.Capabilities;
+
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Unicode;
 
 using Shouldly;
-
-namespace SharpVision.Terminal.Tests.Capabilities;
 
 /// <summary>
 /// Verifies Unicode width policy is explicit in immutable capabilities.
@@ -16,7 +16,7 @@ public sealed class UnicodeCapabilitiesTests
     [Fact]
     public void Conservative_WhenRead_ReportsPinnedUnicodePolicy()
     {
-        var capabilities = Terminal.Capabilities.Capabilities.Conservative;
+        var capabilities = Capabilities.Conservative;
 
         capabilities.UnicodeVersion.ShouldBe(Info.Version);
         capabilities.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);

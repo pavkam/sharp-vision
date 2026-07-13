@@ -1,8 +1,8 @@
+namespace SharpVision.Terminal.Capabilities;
+
 using System.Collections.ObjectModel;
 
 using SharpVision.Terminal.Protocols;
-
-namespace SharpVision.Terminal.Capabilities;
 
 /// <summary>Owns finite policy and evidence inputs for one startup negotiation.</summary>
 public sealed class NegotiationOptions

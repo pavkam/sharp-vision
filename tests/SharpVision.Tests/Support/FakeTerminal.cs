@@ -1,11 +1,11 @@
+namespace SharpVision.Tests.Support;
+
 using System.Threading.Channels;
 
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
 
 using Shouldly;
-
-namespace SharpVision.Tests.Support;
 
 /// <summary>Provides deterministic real transport and resize boundaries for host tests.</summary>
 internal sealed class FakeTerminal: ITransport, IResizeSource

@@ -1,6 +1,6 @@
-using Shouldly;
-
 namespace SharpVision.Showcase.Tests;
+
+using Shouldly;
 
 /// <summary>Verifies validated immutable showcase property documentation.</summary>
 public sealed class PropertyDescriptionTests

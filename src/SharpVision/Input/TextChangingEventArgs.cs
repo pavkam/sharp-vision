@@ -1,8 +1,8 @@
+namespace SharpVision.Input;
+
 using System.ComponentModel;
 
 using SharpVision.Text;
-
-namespace SharpVision.Input;
 
 /// <summary>Provides a cancellable immutable proposed text-edit snapshot.</summary>
 public sealed class TextChangingEventArgs: CancelEventArgs
