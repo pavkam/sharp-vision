@@ -5,9 +5,11 @@ namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Runtime;
 using SharpVision.Styling;
+using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 
-
+using CapabilityOrigin = Terminal.Capabilities.Origin;
+using CapabilitySupport = Terminal.Capabilities.Support;
 using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies <see cref="ConsoleRunOptions"/> defaults and terminal/host mapping.</summary>
@@ -26,6 +28,22 @@ public sealed class ConsoleRunOptionsTests
         options.BracketedPaste.ShouldBeTrue();
         options.FocusReporting.ShouldBeTrue();
         options.TreatControlCAsInput.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies default startup negotiates cell mouse and SGR any-event input.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenDefault_EnablesNegotiatedCellMouse()
+    {
+        // Act
+        TerminalOptions terminal = new ConsoleRunOptions().ToTerminalOptions();
+
+        // Assert
+        NegotiationOptions negotiation = terminal.Negotiation.ShouldNotBeNull();
+        negotiation.Overrides.ShouldNotBeNull().CellMouse.ShouldBe(true);
+        terminal.Capabilities.CellMouse.ShouldBe(
+            new Feature(CapabilitySupport.Supported, CapabilityOrigin.Override));
+        terminal.Tracking.ShouldBe(MouseTracking.Any);
+        terminal.Coordinates.ShouldBe(MouseCoordinates.Sgr);
     }
 
     /// <summary>Verifies disabling mouse tracking leaves the terminal tracking mode null.</summary>
