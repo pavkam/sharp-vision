@@ -74,8 +74,8 @@ mature and predictable:
 | --- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | 1   | Where the capability lives  | The `Container` base (the `ScrollableControl` role); all subclasses inherit it                                               |
 | 2   | Default                     | WinForms-faithful **opt-in**: `AutoScroll` defaults to `false` (clip); scrolling is turned on per container                  |
-| 3   | Extent model                | Natural content size (the unclamped `MeasureOverride` result); no unbounded re-measure. Star/percent/stretch **fill-first**  |
-| 4   | Width behavior              | Falls out of the bounded client constraint: text wraps, vertical scroll; a horizontal bar appears only for incompressible content |
+| 3   | Extent model                | Per axis, driven by `ScrollBars` (default `Vertical`): eligible axes are measured **unbounded** (natural extent, content-first); non-eligible axes stay bounded (**fill-first**: star/percent/stretch fill the client) |
+| 4   | Width behavior              | Default `ScrollBars = Vertical` leaves width bounded, so text wraps and prose scrolls vertically; `ScrollBars = Both`/`Horizontal` opts an axis into unbounded measure for horizontal scrolling of incompressible content |
 | 5   | Vocabulary                  | Adopt `AutoScroll`, `AutoSize`, `AutoSizeMode { GrowOnly, GrowAndShrink }`; keep the existing scrollbar-chrome enums          |
 | 6   | Public scroll surface       | Hoist `ScrollView`'s surface onto `Container`; inert while `AutoScroll` is off                                               |
 | 7   | `ScrollView`                | Deleted; `List`/`Table` refactored onto the base mechanism                                                                    |
@@ -106,8 +106,9 @@ public bool AutoScroll { get; set; }
 public bool AutoSize { get; set; }                 // default false
 public AutoSizeMode AutoSizeMode { get; set; }     // GrowOnly | GrowAndShrink; default GrowAndShrink
 
-// Which axes AutoScroll may use, and how bars reserve space (existing enums).
-public ScrollBars ScrollBars { get; set; }                 // default Both
+// Which axes AutoScroll may use (also the axes measured unbounded; see §4),
+// and how bars reserve space (existing enums).
+public ScrollBars ScrollBars { get; set; }                 // default Vertical
 public ShowScrollBars ShowScrollBars { get; set; }         // default WhenNeeded
 public ScrollBarVisibility HorizontalBarVisibility { get; set; }
 public ScrollBarVisibility VerticalBarVisibility { get; set; }
@@ -156,31 +157,33 @@ pattern is therefore `AutoSize = true`, a `MaxHeight`, and `AutoScroll = true`.
 
 ### 4. Mechanism
 
-**Extent is the natural content size (no unbounded re-measure).** The base
-already computes, inside `Control.Measure`, the value
-`content = MeasureOverride(contentConstraint)` *before* clamping it to the outer
-constraint in `ResolveDesiredSize`. That pre-clamp value is the natural content
-size — the union of where children lay out within the normal bounded client
-constraint. The scroll layer captures it as the extent. Because the client
-constraint stays bounded on the cross axis:
+**Extent is the natural content size, discovered per axis via `ScrollBars`.**
+SharpVision's `ResolveMeasureAxis` clamps each control's `DesiredSize` to its
+constraint, so a bounded measure erases the overflow signal — the natural extent
+on an axis is only recoverable by measuring *that axis* unbounded. The scroll
+layer therefore nulls the `ScrollBars`-eligible axes in the content constraint
+handed to `MeasureOverride`, captures the (now unclamped) result as the extent,
+and leaves non-eligible axes bounded. With the default `ScrollBars = Vertical`:
 
-- Text and other wrapping content **wrap** to the client width, so prose grows
-  in height and scrolls vertically.
-- `Star`/`Percent`/`Stretch` children **fill the client** and never *cause*
-  scrolling (fill-first, like `Dock=Fill` and `TableLayoutPanel` percent
-  columns).
-- A horizontal bar appears only when a child is naturally wider than the client
-  and cannot shrink — an `AutoSize` child, a `Table`, or a fixed width. To scroll
-  wide non-wrapping content horizontally, the child declines to wrap and reports
-  its full natural width; the container then scrolls it. This replaces
-  `ScrollView.ConstrainContentToViewport` with a child-level decision.
+- **Height is eligible → measured unbounded.** The container reports its natural
+  content height; when it exceeds the viewport, a vertical bar appears. On this
+  axis `Star`/`Percent`/`Stretch` size to content (you cannot fill an unbounded
+  axis) — content-first, as in a WPF `ScrollViewer`.
+- **Width is not eligible → measured bounded.** Text and other content **wrap**
+  to the client width, and `Star`/`Percent`/`Stretch` **fill the client**
+  (fill-first, like `Dock=Fill` and `TableLayoutPanel` percent columns). No
+  horizontal bar appears; wide content wraps or clips.
+- **Opt into horizontal scrolling** with `ScrollBars = Both`/`Horizontal`, which
+  makes width eligible (measured unbounded); wide, incompressible content (a
+  `Table`, a fixed width, a non-wrapping child) then grows a horizontal bar.
+  This replaces `ScrollView.ConstrainContentToViewport`.
 
-An armed container **must report its natural (unclamped) content extent** from
-measure. `Stack` already does (it measures the stacking axis unbounded) and
-`Canvas` already does (it takes the union of absolute positions). `Grid` and
-`Table` must ensure fixed/auto tracks report their full requested size when the
-container is smaller than that request, rather than clamping it away, so the
-overflow is visible to the scroll layer. This is verified per container.
+An armed container **must report its natural content extent** from measure on the
+eligible axes. `Stack` already measures its stacking axis unbounded and `Canvas`
+takes the union of absolute positions, so both work directly. `Grid` and `Table`
+resolve tracks against the constraint; with the eligible axis nulled they must
+let fixed/auto tracks report their full requested size rather than clamping it,
+so the overflow is visible to the scroll layer. This is verified per container.
 
 **Reservation, translation, clipping, chrome.** When armed and overflowing, the
 base:
@@ -217,9 +220,11 @@ Every container defaults to `AutoScroll = false` (clip), matching WinForms/Delph
 and leaving current screens visually unchanged. The exceptions are the two
 controls that scroll today and must keep doing so:
 
-- `List` sets `AutoScroll = true` in its constructor, drops its internal
-  `ScrollView`, and enables scrolling directly on its item `Stack`.
-- `Table` sets `AutoScroll = true` and scrolls through the base mechanism.
+- `List` sets `AutoScroll = true` in its constructor (keeping the default
+  `ScrollBars = Vertical`), drops its internal `ScrollView`, and enables
+  scrolling directly on its item `Stack`.
+- `Table` sets `AutoScroll = true` with `ScrollBars = Both` (wide grids scroll
+  horizontally too) and scrolls through the base mechanism.
 
 No other control scrolls unless a caller opts in. `Canvas` with
 `ClipToBounds = false` cannot clip and therefore cannot scroll; arming it is
@@ -231,12 +236,13 @@ silent partial behavior.
 - Delete `ScrollView` and `ScrollViewShowcasePane`.
 - `new ScrollView { Content = x }` becomes `new Stack/Grid/Dock/... { AutoScroll
   = true }` around the same content, or `AutoScroll = true` on the content
-  container itself.
+  container itself. A view that relied on the old both-axis `ScrollView` sets
+  `ScrollBars = Both`; the default `Vertical` gives wrap + vertical scroll.
 - The Gallery's scrolling content host sets `AutoScroll = true`.
 - `List` drops the composed `ScrollView`; its `VerticalOffset`, `Viewport`, and
   `BringIntoView` usages retarget to the inherited base members.
 - `ScrollView.ConstrainContentToViewport = false` (old horizontal-scroll
-  behavior) migrates to a non-wrapping child.
+  behavior) migrates to `ScrollBars = Both` on the container.
 - The API-conformance showcase inventory drops the `ScrollView` entry.
 
 ## Error handling
