@@ -266,6 +266,9 @@ public abstract class Container: Control
     private ScrollBar? _vertical;
     private bool _syncing;
 
+    /// <summary>Raised after one or both offsets commit.</summary>
+    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
+
     /// <summary>Gets or sets whether this container clips and offsets overflowing content along enabled axes.</summary>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
@@ -475,6 +478,30 @@ public abstract class Container: Control
         return Apply(Add(HorizontalOffset, x), Add(VerticalOffset, y), cause);
     }
 
+    /// <summary>Scrolls minimally to expose one descendant of this container.</summary>
+    /// <param name="descendant">The non-null descendant control.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
+    /// <exception cref="ArgumentException">The control is not a descendant of this container.</exception>
+    /// <exception cref="InvalidOperationException">The attached container is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public bool BringIntoView(Control descendant)
+    {
+        ArgumentNullException.ThrowIfNull(descendant);
+        VerifyMutable();
+
+        if (!IsContentDescendant(descendant))
+        {
+            throw new ArgumentException("The control must be a descendant of this container.", nameof(descendant));
+        }
+
+        int logicalX = Add(Difference(descendant.Bounds.X, _viewportBounds.X), HorizontalOffset);
+        int logicalY = Add(Difference(descendant.Bounds.Y, _viewportBounds.Y), VerticalOffset);
+        int x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
+        int y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
+        return Apply(x, y, Cause.BringIntoView);
+    }
+
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
@@ -498,6 +525,17 @@ public abstract class Container: Control
         if (!eventArgs.Handled)
         {
             base.OnEvent(eventArgs);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            ScrollChanged = null;
         }
     }
 
@@ -728,9 +766,9 @@ public abstract class Container: Control
 
     private bool Apply(int x, int y, Cause cause)
     {
-        _ = cause;
         x = Math.Clamp(x, 0, MaximumX());
         y = Math.Clamp(y, 0, MaximumY());
+        Point previous = new(HorizontalOffset, VerticalOffset);
         bool changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
         bool changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
 
@@ -740,7 +778,32 @@ public abstract class Container: Control
         }
 
         Synchronize();
+        ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(previous, new Point(x, y), Extent, Viewport, cause));
         return true;
+    }
+
+    private bool IsContentDescendant(Control value)
+    {
+        for (Control? current = value; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, this))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static int Reveal(int current, int viewport, int start, int length)
+    {
+        if (start < current)
+        {
+            return start;
+        }
+
+        int end = Add(start, length);
+        return end > Add(current, viewport) ? Math.Max(0, end - viewport) : current;
     }
 
     private int MaximumX() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0

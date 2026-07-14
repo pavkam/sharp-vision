@@ -45,7 +45,7 @@ public sealed class ScrollView: Container
     }
 
     /// <summary>Raised after one or both offsets commit.</summary>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
+    public new event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
 
     /// <summary>Gets or atomically sets the optional owned content.</summary>
     /// <exception cref="ArgumentException">The value cannot be owned by this viewport.</exception>
@@ -266,7 +266,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentException">The control is not inside Content.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public bool BringIntoView(Control descendant)
+    public new bool BringIntoView(Control descendant)
     {
         ArgumentNullException.ThrowIfNull(descendant);
         VerifyMutable();

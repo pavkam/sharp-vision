@@ -3,6 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
+using SharpVision.Scrolling;
 using SharpVision.Terminal.Input;
 using SharpVision.Tests.Support;
 
@@ -160,5 +161,67 @@ public sealed class ContainerScrollTests
         container.RaiseKey(Code.Down);
 
         container.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a committed offset change raises ScrollChanged with the cause.</summary>
+    [Fact]
+    public void ScrollBy_WhenOffsetChanges_RaisesScrollChanged()
+    {
+        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(container, new Size(4, 10));
+        ScrollChangedEventArgs? captured = null;
+        container.ScrollChanged += (_, e) => captured = e;
+
+        _ = container.ScrollBy(0, 3, Cause.Keyboard);
+
+        _ = captured.ShouldNotBeNull();
+        captured.Offset.ShouldBe(new Point(0, 3));
+        captured.Extent.ShouldBe(container.Extent);
+        captured.Viewport.ShouldBe(container.Viewport);
+        captured.Cause.ShouldBe(Cause.Keyboard);
+    }
+
+    /// <summary>Verifies a no-op ScrollBy raises no ScrollChanged event.</summary>
+    [Fact]
+    public void ScrollBy_WhenOffsetUnchanged_DoesNotRaiseScrollChanged()
+    {
+        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(container, new Size(4, 10));
+        bool raised = false;
+        container.ScrollChanged += (_, _) => raised = true;
+
+        container.ScrollBy(0, 0, Cause.Keyboard).ShouldBeFalse();
+
+        raised.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies BringIntoView scrolls minimally to expose a descendant below the viewport.</summary>
+    [Fact]
+    public void BringIntoView_WhenDescendantBelowViewport_ScrollsToReveal()
+    {
+        Stack container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        ProbeControl target = new(new Size(4, 1));
+        container.Children.Add(target);
+        new Engine().Layout(container, new Size(4, 10));
+
+        bool changed = container.BringIntoView(target);
+
+        changed.ShouldBeTrue();
+        container.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies BringIntoView rejects a control that is not a descendant of this container.</summary>
+    [Fact]
+    public void BringIntoView_WhenNotDescendant_ThrowsArgumentException()
+    {
+        Stack container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        new Engine().Layout(container, new Size(4, 10));
+        ProbeControl stray = new(new Size(4, 1));
+
+        _ = Should.Throw<ArgumentException>(() => container.BringIntoView(stray));
     }
 }
