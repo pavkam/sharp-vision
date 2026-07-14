@@ -490,7 +490,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             FrameRendered?.Invoke(this, new FrameRenderedEventArgs(metrics!.Value));
             MarkStarted();
 
-            if (HasPendingOutOfBand())
+            if (!_stopping && HasPendingOutOfBand())
             {
                 FlushOutOfBand();
             }
