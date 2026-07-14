@@ -53,4 +53,21 @@ public sealed class ColorRoleTests
         clone.TryGetColor(ColorRole.Border, out Color color).ShouldBeTrue();
         color.ShouldBe(Color.Indexed(67));
     }
+
+    /// <summary>Verifies status and selection roles round-trip through set/get.</summary>
+    [Fact]
+    public void SetColor_WhenStatusRole_RoundTrips()
+    {
+        Theme theme = new();
+        theme.SetColor(ColorRole.Error, Color.Rgb(255, 0, 0));
+        theme.SetColor(ColorRole.SelectionBackground, Color.Indexed(4));
+        theme.SetColor(ColorRole.SelectionForeground, Color.Indexed(15));
+
+        theme.TryGetColor(ColorRole.Error, out Color error).ShouldBeTrue();
+        error.ShouldBe(Color.Rgb(255, 0, 0));
+        theme.TryGetColor(ColorRole.SelectionBackground, out Color selBg).ShouldBeTrue();
+        selBg.ShouldBe(Color.Indexed(4));
+        theme.TryGetColor(ColorRole.SelectionForeground, out Color selFg).ShouldBeTrue();
+        selFg.ShouldBe(Color.Indexed(15));
+    }
 }

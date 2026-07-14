@@ -30,5 +30,20 @@ public enum ColorRole
     Muted,
 
     /// <summary>The background color of a selected item.</summary>
-    Selection,
+    SelectionBackground,
+
+    /// <summary>The text color of a selected item.</summary>
+    SelectionForeground,
+
+    /// <summary>The color signaling an error or failed state.</summary>
+    Error,
+
+    /// <summary>The color signaling a caution or degraded state.</summary>
+    Warning,
+
+    /// <summary>The color signaling a successful or healthy state.</summary>
+    Success,
+
+    /// <summary>The color signaling neutral informational emphasis.</summary>
+    Info,
 }

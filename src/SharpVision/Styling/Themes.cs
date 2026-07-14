@@ -56,7 +56,7 @@ public static class Themes
         theme.SetColor(ColorRole.Border, Color.Indexed(8));
         theme.SetColor(ColorRole.Accent, accent);
         theme.SetColor(ColorRole.Muted, Color.Indexed(8));
-        theme.SetColor(ColorRole.Selection, Color.Indexed(4));
+        theme.SetColor(ColorRole.SelectionBackground, Color.Indexed(4));
     }
 
     private static ControlStyle<Control> CreateBaseControlStyle(
