@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Protocols;
 
+using System.Globalization;
+
 /// <summary>Represents a validated default, indexed, or RGB terminal color.</summary>
 public readonly record struct Color
 {
@@ -58,6 +60,59 @@ public readonly record struct Color
         return new Color(ColorKind.Rgb, (byte) red, (byte) green, (byte) blue);
     }
 
+    /// <summary>Parses a hex RGB color string (<c>#rgb</c> or <c>#rrggbb</c>, case-insensitive, leading <c>#</c> optional).</summary>
+    /// <param name="value">The hex color string.</param>
+    /// <returns>The parsed 24-bit RGB color.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    /// <exception cref="FormatException">The string is not a 3- or 6-digit hex color.</exception>
+    public static Color FromHex(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return TryFromHex(value, out Color color)
+            ? color
+            : throw new FormatException($"'{value}' is not a valid #rgb or #rrggbb color.");
+    }
+
+    /// <summary>Attempts to parse a hex RGB color string without throwing.</summary>
+    /// <param name="value">The candidate hex color string.</param>
+    /// <param name="color">The parsed color, or <see cref="Default"/> when parsing fails.</param>
+    /// <returns>Whether <paramref name="value"/> is a valid 3- or 6-digit hex color.</returns>
+    public static bool TryFromHex(string value, out Color color)
+    {
+        color = Default;
+
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> digits = value[0] == '#' ? value.AsSpan(1) : value.AsSpan();
+
+        if (digits.Length == 3)
+        {
+            if (!TryNibble(digits[0], out int r) || !TryNibble(digits[1], out int g) || !TryNibble(digits[2], out int b))
+            {
+                return false;
+            }
+
+            color = Rgb((r << 4) | r, (g << 4) | g, (b << 4) | b);
+            return true;
+        }
+
+        if (digits.Length == 6)
+        {
+            if (!TryByte(digits[..2], out int r) || !TryByte(digits[2..4], out int g) || !TryByte(digits[4..], out int b))
+            {
+                return false;
+            }
+
+            color = Rgb(r, g, b);
+            return true;
+        }
+
+        return false;
+    }
+
     private static void ValidateComponent(int value, string parameterName)
     {
         if (value is < byte.MinValue or > byte.MaxValue)
@@ -66,4 +121,10 @@ public readonly record struct Color
                 parameterName, value, "A color component must be from 0 through 255.");
         }
     }
+
+    private static bool TryNibble(char c, out int value) =>
+        int.TryParse([c], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
+
+    private static bool TryByte(ReadOnlySpan<char> pair, out int value) =>
+        int.TryParse(pair, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
 }
