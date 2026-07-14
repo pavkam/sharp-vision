@@ -14,4 +14,7 @@ public enum ColorKind
 
     /// <summary>Use an explicit 24-bit RGB color.</summary>
     Rgb,
+
+    /// <summary>A theme-resolved semantic color slot; must be resolved to a concrete color before encoding.</summary>
+    Role,
 }
