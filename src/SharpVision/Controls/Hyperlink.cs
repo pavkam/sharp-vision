@@ -163,6 +163,7 @@ public sealed class Hyperlink: Inline
     {
         ArgumentNullException.ThrowIfNull(value);
         _ = new TerminalStyle(hyperlink: value);
+
         return value;
     }
 }

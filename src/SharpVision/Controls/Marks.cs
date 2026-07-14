@@ -38,6 +38,7 @@ public readonly record struct Marks
         Span<char> buffer = stackalloc char[2];
         int length = value.EncodeToUtf16(buffer);
         Measurement measurement = Width.Measure(buffer[..length]);
+
         return measurement.Cells == 1 && measurement.Controls == 0
             ? value
             : throw new ArgumentException(

@@ -6,8 +6,8 @@ namespace SharpVision.Showcase.Panes;
 using SharpVision.Showcase.Controls;
 using SharpVision.Text;
 
-using Text = SharpVision.Controls.Text;
 using TerminalAttributes = Terminal.Rendering.Attributes;
+using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Text control with Unicode geometry, pointer, wrapping, and alignment specimens.</summary>
 internal sealed class TextPane: View

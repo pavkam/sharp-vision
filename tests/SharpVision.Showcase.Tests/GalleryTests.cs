@@ -101,7 +101,7 @@ public sealed class GalleryTests
     }
 
     /// <summary>Verifies pages that still supply a practical recipe wrap it, now that documentation prose is
-    /// optional data a pane may provide rather than a mandatory ShowcasePane section (View-based pages, such
+    /// optional data a pane may provide rather than a mandatory chrome section (View-based pages, such
     /// as the Doc.Page-composed Button page, no longer include this heading at all).</summary>
     [Fact]
     public void CreatePage_WhenEachPageIsSelected_IncludesWrappedPracticalRecipe()
@@ -131,8 +131,8 @@ public sealed class GalleryTests
         for (int index = 0; index < gallery.Pages.Count; index++)
         {
             string name = gallery.Pages[index];
-            using Control first = Gallery.CreatePage(index);
-            using Control second = Gallery.CreatePage(index);
+            using View first = Gallery.CreatePage(index);
+            using View second = Gallery.CreatePage(index);
             Engine engine = new();
             engine.Layout(first, new Size(80, 24));
             engine.Layout(second, new Size(80, 24));

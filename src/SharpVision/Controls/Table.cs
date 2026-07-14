@@ -407,6 +407,9 @@ public sealed class Table: Container
 
             _rowHeights[rowIndex] = height;
         }
+
+        Debug.Assert(_columnWidths.Length == Columns.Count, "Every column must resolve to one width.");
+        Debug.Assert(_rowHeights.Length == Rows.Count, "Every row must resolve to one height.");
     }
 
     private void ValidateRow(TableRow row)
@@ -438,12 +441,24 @@ public sealed class Table: Container
         }
     }
 
-    private int GapWidth(int count) => count < 2 ? 0 : Multiply(ColumnGap, count - 1);
+    private int GapWidth(int count)
+    {
+        Debug.Assert(count >= 0, "Table column gap count is non-negative.");
 
-    private int GapHeight(int count) => count < 2 ? 0 : Multiply(RowGap, count - 1);
+        return count < 2 ? 0 : Multiply(ColumnGap, count - 1);
+    }
+
+    private int GapHeight(int count)
+    {
+        Debug.Assert(count >= 0, "Table row gap count is non-negative.");
+
+        return count < 2 ? 0 : Multiply(RowGap, count - 1);
+    }
 
     private static int Sum(IEnumerable<int> values)
     {
+        Debug.Assert(values is not null, "Table sum requires a non-null sequence.");
+
         int total = 0;
 
         foreach (int value in values)
@@ -454,11 +469,21 @@ public sealed class Table: Container
         return total;
     }
 
-    private static int Add(int left, int right) =>
-        (int) Math.Min(int.MaxValue, (long) left + right);
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "Table accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Table accumulation uses non-negative extents.");
 
-    private static int Multiply(int value, int count) =>
-        (int) Math.Min(int.MaxValue, (long) value * count);
+        return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
+
+    private static int Multiply(int value, int count)
+    {
+        Debug.Assert(value >= 0, "Table multiplication value is non-negative.");
+        Debug.Assert(count >= 0, "Table multiplication count is non-negative.");
+
+        return (int) Math.Min(int.MaxValue, (long) value * count);
+    }
 
     #endregion
 }

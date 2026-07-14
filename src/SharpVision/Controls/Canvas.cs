@@ -219,6 +219,9 @@ public sealed class Canvas: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Canvas accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Canvas accumulation uses non-negative extents.");
+
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
@@ -248,12 +251,18 @@ public sealed class Canvas: Container
         int leading,
         int trailing)
     {
+        Debug.Assert(axis >= 0, "Available canvas axis space is non-negative.");
+        Debug.Assert(leading >= 0, "Leading canvas offset is non-negative.");
+        Debug.Assert(trailing >= 0, "Trailing canvas offset is non-negative.");
+
         Length length = horizontal ? child.Width : child.Height;
         int margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+        Position? position = GetPosition(child);
 
+        // Dual anchored automatic children stretch between the two offsets.
         if (length.Kind == Kind.Auto &&
-            (horizontal ? GetPosition(child)?.Left : GetPosition(child)?.Top) is not null &&
-            (horizontal ? GetPosition(child)?.Right : GetPosition(child)?.Bottom) is not null)
+            (horizontal ? position?.Left : position?.Top) is not null &&
+            (horizontal ? position?.Right : position?.Bottom) is not null)
         {
             return Math.Max(0, axis - leading - trailing);
         }
@@ -261,6 +270,7 @@ public sealed class Canvas: Container
         int desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
         int minimum = horizontal ? child.MinWidth : child.MinHeight;
         int maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+
         int border = length.Kind switch
         {
             Kind.Auto => desired,
@@ -269,20 +279,28 @@ public sealed class Canvas: Container
             Kind.Star => axis,
             _ => throw new UnreachableException(),
         };
+
         border = Math.Clamp(border, minimum, maximum);
         return Add(border, margin);
     }
 
-    private static int Resolve(Length? value, int axis) => value switch
+    private static int Resolve(Length? value, int axis)
     {
-        null => 0,
-        { Kind: Kind.Cells } => (int) value.Value.Value,
-        { Kind: Kind.Percent } => Percent(axis, value.Value.Value),
-        _ => throw new UnreachableException(),
-    };
+        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
+
+        return value switch
+        {
+            null => 0,
+            { Kind: Kind.Cells } => (int) value.Value.Value,
+            { Kind: Kind.Percent } => Percent(axis, value.Value.Value),
+            _ => throw new UnreachableException(),
+        };
+    }
 
     private static int Percent(int axis, double value)
     {
+        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
+
         double result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }

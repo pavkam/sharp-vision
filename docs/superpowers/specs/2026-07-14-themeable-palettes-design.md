@@ -253,13 +253,14 @@ catalog-backed. Two files ship — `default-light.theme.json` and
 `default-dark.theme.json` — reproducing the current palettes **exactly** using
 `idx:N` values (`background`/`foreground`/`border`/`accent`/`surface`/`muted`/
 `selectionBackground`/`selectionForeground` map to the same indices the
-hardcoded themes use today). Indexed values keep the default themes adapting to the user's
-terminal palette, unlike the absolute-RGB editor themes. `Themes.White`/`Dark`
-become lazy properties delegating to `ThemeCatalog.Default.Load(...)`. The
-hardcoded palette code in `Themes.cs` is deleted. Because the recipe (§4.3)
-reproduces the existing base control-style table, existing built-in-theme tests
-(`StandardThemeTests`, `ColorRoleTests`) keep asserting the same indexed values.
-This makes every theme, including the built-ins, defined in JSON.
+hardcoded themes use today). Indexed values keep the default themes adapting to
+the user's terminal palette, unlike the absolute-RGB editor themes.
+`Themes.White`/`Dark` become lazy properties delegating to
+`ThemeCatalog.Default.Load(...)`. The hardcoded palette code in `Themes.cs` is
+deleted. Because the recipe (§4.3) reproduces the existing base control-style
+table, existing built-in-theme tests (`StandardThemeTests`, `ColorRoleTests`)
+keep asserting the same indexed values. This makes every theme, including the
+built-ins, defined in JSON.
 
 ### 8. Showcase integration
 

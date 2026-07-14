@@ -264,8 +264,13 @@ public sealed class Popup: Container
 
     private static Size SurfaceSize(Control child, int anchorWidth, int? availableWidth, int? availableHeight)
     {
+        Debug.Assert(anchorWidth >= 0, "Anchor width is non-negative.");
+
         int contentWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
         int contentHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
+
+        // The framed surface is at least as wide as the anchor and always
+        // includes one border cell on every side.
         int width = Math.Max(anchorWidth, Add(contentWidth, 2));
         int height = Add(contentHeight, 2);
 
@@ -317,12 +322,22 @@ public sealed class Popup: Container
         }
     }
 
-    private static int Add(int left, int right) =>
-        (int) Math.Min(int.MaxValue, (long) left + right);
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "Popup accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Popup accumulation uses non-negative extents.");
 
-    private static int? Subtract(int? value, int extent) => value.HasValue
-        ? Math.Max(0, value.Value - extent)
-        : null;
+        return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
+
+    private static int? Subtract(int? value, int extent)
+    {
+        Debug.Assert(extent >= 0, "Subtracted popup frame extent cannot be negative.");
+
+        return value.HasValue
+            ? Math.Max(0, value.Value - extent)
+            : null;
+    }
 
     private static Control? FindFocusable(Control control)
     {

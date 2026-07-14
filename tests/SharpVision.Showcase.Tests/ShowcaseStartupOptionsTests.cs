@@ -15,7 +15,7 @@ using CapabilityOrigin = Terminal.Capabilities.Origin;
 using CapabilitySupport = Terminal.Capabilities.Support;
 
 /// <summary>Verifies the executable showcase explicitly requests its interactive terminal modes.</summary>
-public sealed class StartupOptionsTests
+public sealed class ShowcaseStartupOptionsTests
 {
     /// <summary>Verifies executable negotiation owns evidence and starts conservatively.</summary>
     [Fact]

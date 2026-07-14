@@ -227,6 +227,8 @@ public abstract partial class Control
 
     private void InvalidateThemeProperty<T>(StyleProperty<T> property)
     {
+        Debug.Assert(property is not null, "Theme invalidation requires a non-null property.");
+
         InvalidateResolvedStyleCache();
         Invalidate(property.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property.ClrName));

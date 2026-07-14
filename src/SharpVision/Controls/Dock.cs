@@ -102,9 +102,14 @@ public sealed class Dock: Container
 
             int outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
             int outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
+
+            // Track the union of consumed edges and the last fill participant so
+            // the dock reports both intrinsic and edge-reserved minimum sizes.
             desiredWidth = Math.Max(desiredWidth, Add(usedWidth, outerWidth));
             desiredHeight = Math.Max(desiredHeight, Add(usedHeight, outerHeight));
 
+            // The final participant keeps the remaining slot and does not consume
+            // space during measure when LastChildFills is enabled.
             if (LastChildFills && index == last)
             {
                 continue;
@@ -159,6 +164,7 @@ public sealed class Dock: Container
             int margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
             int border = Resolve(child, axis, horizontal);
             int outer = Math.Min(axis, Add(border, margin));
+
             Rect slot = side switch
             {
                 Side.Left => new Rect(remaining.X, remaining.Y, outer, remaining.Height),
@@ -183,31 +189,50 @@ public sealed class Dock: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Dock accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Dock accumulation uses non-negative extents.");
+
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
-    private static Rect Consume(Rect value, Side side, int extent) => side switch
+    private static Rect Consume(Rect value, Side side, int extent)
     {
-        Side.Left => new Rect(value.X + extent, value.Y, value.Width - extent, value.Height),
-        Side.Top => new Rect(value.X, value.Y + extent, value.Width, value.Height - extent),
-        Side.Right => new Rect(value.X, value.Y, value.Width - extent, value.Height),
-        Side.Bottom => new Rect(value.X, value.Y, value.Width, value.Height - extent),
-        _ => throw new UnreachableException(),
-    };
+        Debug.Assert(extent >= 0, "Consumed dock extent cannot be negative.");
+        Debug.Assert(Enum.IsDefined(side), "Dock side must be defined.");
 
-    private static int? Subtract(int? value, int consumed) => value.HasValue
-        ? Math.Max(0, value.Value - consumed)
-        : null;
+        return side switch
+        {
+            Side.Left => new Rect(value.X + extent, value.Y, value.Width - extent, value.Height),
+            Side.Top => new Rect(value.X, value.Y + extent, value.Width, value.Height - extent),
+            Side.Right => new Rect(value.X, value.Y, value.Width - extent, value.Height),
+            Side.Bottom => new Rect(value.X, value.Y, value.Width, value.Height - extent),
+            _ => throw new UnreachableException(),
+        };
+    }
+
+    private static int? Subtract(int? value, int consumed)
+    {
+        Debug.Assert(consumed >= 0, "Subtracted dock consumption cannot be negative.");
+
+        return value.HasValue
+            ? Math.Max(0, value.Value - consumed)
+            : null;
+    }
 
     private static int Resolve(Control child, int available, bool horizontal)
     {
+        Debug.Assert(available >= 0, "Available dock axis space is non-negative.");
+
         Length length = horizontal ? child.Width : child.Height;
         int desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
         int minimum = horizontal ? child.MinWidth : child.MinHeight;
         int maximum = horizontal ? child.MaxWidth : child.MaxHeight;
         int margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+
+        // Margins reserve their own cells outside the resolved edge request.
         int space = Math.Max(0, available - margin);
+
         int requested = length.Kind switch
         {
             Kind.Auto => desired,
@@ -222,6 +247,8 @@ public sealed class Dock: Container
 
     private static int Percent(int axis, double value)
     {
+        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
+
         double result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
@@ -232,6 +259,7 @@ public sealed class Dock: Container
         {
             if (Children[index].Visibility != Visibility.Collapsed)
             {
+                Debug.Assert(index >= 0 && index < Children.Count, "Last participant index must be valid.");
                 return index;
             }
         }

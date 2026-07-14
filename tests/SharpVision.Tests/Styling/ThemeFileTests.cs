@@ -13,7 +13,7 @@ using Shouldly;
 /// <summary>Verifies the public runtime theme-file loader.</summary>
 public sealed class ThemeFileTests
 {
-    private const string _json = """
+    private const string _json = /*lang=json,strict*/ """
         { "name": "Ext", "slug": "ext", "colorScheme": "dark", "order": 1,
           "author": "A", "license": "MIT", "source": "s",
           "palette": { "bg": "#101020", "fg": "#f0f0ff" },

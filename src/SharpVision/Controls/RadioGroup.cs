@@ -139,6 +139,10 @@ internal static class RadioGroup
 
     private static void Collect(Control control, string groupName, List<RadioButton> result)
     {
+        Debug.Assert(control is not null, "Radio group collection requires a non-null root.");
+        Debug.Assert(groupName is not null, "Radio group collection requires a non-null group name.");
+        Debug.Assert(result is not null, "Radio group collection requires a non-null result list.");
+
         if (control is RadioButton member &&
             string.Equals(member.GroupName, groupName, StringComparison.Ordinal))
         {

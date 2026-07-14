@@ -6,8 +6,8 @@ namespace SharpVision.Showcase.Panes;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Text;
 
-using Text = SharpVision.Controls.Text;
 using TerminalAttributes = Terminal.Rendering.Attributes;
+using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the RichText control with styled runs, hyperlinks, and an interactive mutation specimen.</summary>
 internal sealed class RichTextPane: View

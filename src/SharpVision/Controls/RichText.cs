@@ -210,6 +210,10 @@ public sealed class RichText: Control
 
     private void MeasureText(string content, int limit, List<int> widths, ref int cells)
     {
+        Debug.Assert(content is not null, "RichText measurement requires non-null content.");
+        Debug.Assert(widths is not null, "RichText measurement requires a non-null width list.");
+        Debug.Assert(limit >= 0, "RichText measurement limit is non-negative.");
+
         foreach (Grapheme segment in Graphemes.Enumerate(content))
         {
             ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
@@ -245,6 +249,11 @@ public sealed class RichText: Control
         ref int line,
         ref int cells)
     {
+        Debug.Assert(widths is not null, "RichText rendering requires line widths.");
+        Debug.Assert(content is not null, "RichText rendering requires non-null content.");
+        Debug.Assert(line >= 0, "RichText render line index is non-negative.");
+        Debug.Assert(cells >= 0, "RichText render cell offset is non-negative.");
+
         foreach (Grapheme segment in Graphemes.Enumerate(content))
         {
             ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
@@ -341,6 +350,12 @@ public sealed class RichText: Control
         ref int line,
         ref int cells)
     {
+        Debug.Assert(lines is not null, "RichText word rendering requires layout lines.");
+        Debug.Assert(content is not null, "RichText word rendering requires non-null content.");
+        Debug.Assert(sourceOffset >= 0, "RichText source offset is non-negative.");
+        Debug.Assert(line >= 0, "RichText word render line index is non-negative.");
+        Debug.Assert(cells >= 0, "RichText word render cell offset is non-negative.");
+
         foreach (Grapheme segment in Graphemes.Enumerate(content))
         {
             ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
@@ -408,17 +423,34 @@ public sealed class RichText: Control
             underlineColor);
     }
 
-    private BackgroundMode ResolveBackgroundMode(Run run) => run.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
-        ? BackgroundMode.Opaque
-        : BackgroundMode.Transparent;
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "RichText accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "RichText accumulation uses non-negative extents.");
 
-    private BackgroundMode ResolveBackgroundMode(Hyperlink hyperlink) =>
-        hyperlink.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
+        long result = (long) left + right;
+        return result >= int.MaxValue ? int.MaxValue : (int) result;
+    }
+
+    private BackgroundMode ResolveBackgroundMode(Run run)
+    {
+        return run.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
             ? BackgroundMode.Opaque
             : BackgroundMode.Transparent;
+    }
+
+    private BackgroundMode ResolveBackgroundMode(Hyperlink hyperlink)
+    {
+        return hyperlink.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
+            ? BackgroundMode.Opaque
+            : BackgroundMode.Transparent;
+    }
 
     private int Align(int width, int cells)
     {
+        Debug.Assert(width >= 0, "RichText alignment width is non-negative.");
+        Debug.Assert(cells >= 0, "RichText alignment cell count is non-negative.");
+
         int remaining = Math.Max(0, width - cells);
         return TextAlignment switch
         {
@@ -427,11 +459,5 @@ public sealed class RichText: Control
             Alignment.End => remaining,
             _ => throw new UnreachableException(),
         };
-    }
-
-    private static int Add(int left, int right)
-    {
-        long result = (long) left + right;
-        return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 }

@@ -67,6 +67,8 @@ public abstract class Screen: View
 
     private void OnApplicationStartedCore(object? sender, EventArgs eventArgs)
     {
+        _ = eventArgs;
+
         if (sender is Application application)
         {
             OnStarted(application);

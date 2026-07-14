@@ -1,39 +1,67 @@
 # Themeable Palettes Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship JSON-defined palette themes — a curated set of ~10 recognizable editor themes plus the built-in Light/Dark — that load from embedded resources and arbitrary files at runtime and drive the showcase picker.
+**Goal:** Ship JSON-defined palette themes — a curated set of ~10 recognizable
+editor themes plus the built-in Light/Dark — that load from embedded resources
+and arbitrary files at runtime and drive the showcase picker.
 
-**Architecture:** A theme file is a palette (named colors) plus a semantic role map. A loader resolves the role map (with fallbacks) into the 12 `ColorRole` colors, and one built-in recipe turns those into a frozen `Theme` (roles + a base `ControlStyle<Control>`). Themes ship as embedded `*.theme.json` resources discovered by `ThemeCatalog`; the built-in Light/Dark become catalog-backed indexed themes. This layers on the existing styling model — no per-control stylesheet format, no new dependency.
+**Architecture:** A theme file is a palette (named colors) plus a semantic role
+map. A loader resolves the role map (with fallbacks) into the 12 `ColorRole`
+colors, and one built-in recipe turns those into a frozen `Theme` (roles + a
+base `ControlStyle<Control>`). Themes ship as embedded `*.theme.json` resources
+discovered by `ThemeCatalog`; the built-in Light/Dark become catalog-backed
+indexed themes. This layers on the existing styling model — no per-control
+stylesheet format, no new dependency.
 
-**Tech Stack:** .NET 10 / C# 14, `System.Text.Json` (built-in), xUnit v3 + Shouldly, embedded resources (same mechanism as `FigletCatalog`).
+**Tech Stack:** .NET 10 / C# 14, `System.Text.Json` (built-in), xUnit v3 +
+Shouldly, embedded resources (same mechanism as `FigletCatalog`).
 
 Spec: `docs/superpowers/specs/2026-07-14-themeable-palettes-design.md`.
 
 ## Global Constraints
 
-- Target .NET 10 and C# 14. File-scoped namespaces; `using` directives after the namespace; `var` for locals.
-- One named type per file, named after the type (generic arity omitted). No nested named types, no two types per file.
-- Never use primary constructors or positional records. Declare constructors explicitly and validate arguments before assigning state.
-- Add XML documentation to every public and internal type and member; document every thrown exception.
-- No new runtime package dependency — `System.Text.Json` only. Culture-independent parsing (`CultureInfo.InvariantCulture`).
-- Validate every argument of a public method/constructor before changing observable state.
-- Zero build warnings/errors. Before declaring a phase complete run `make format`, `make lint`, `make build`, `make test`.
-- Tests: xUnit v3, Shouldly, Arrange/Act/Assert, `MethodName_WhenThis_ThatIsExpected`. Watch each new test fail first.
+- Target .NET 10 and C# 14. File-scoped namespaces; `using` directives after the
+  namespace; `var` for locals.
+- One named type per file, named after the type (generic arity omitted). No
+  nested named types, no two types per file.
+- Never use primary constructors or positional records. Declare constructors
+  explicitly and validate arguments before assigning state.
+- Add XML documentation to every public and internal type and member; document
+  every thrown exception.
+- No new runtime package dependency — `System.Text.Json` only.
+  Culture-independent parsing (`CultureInfo.InvariantCulture`).
+- Validate every argument of a public method/constructor before changing
+  observable state.
+- Zero build warnings/errors. Before declaring a phase complete run
+  `make format`, `make lint`, `make build`, `make test`.
+- Tests: xUnit v3, Shouldly, Arrange/Act/Assert,
+  `MethodName_WhenThis_ThatIsExpected`. Watch each new test fail first.
 
-**Setup (before Task 1):** Work proceeds **directly on `codex/runtime-protocol-router`** (per decision 2026-07-14). `main` is 89 commits behind and does not contain the styling subsystem, so it cannot be the base; the styling foundation this feature builds on lives only on this branch. Before Task 1, the pre-existing staged pane-rename refactor and the spec/plan docs are committed as their own commits so theme-task commits stay isolated.
+**Setup (before Task 1):** Work proceeds **directly on
+`codex/runtime-protocol-router`** (per decision 2026-07-14). `main` is 89
+commits behind and does not contain the styling subsystem, so it cannot be the
+base; the styling foundation this feature builds on lives only on this branch.
+Before Task 1, the pre-existing staged pane-rename refactor and the spec/plan
+docs are committed as their own commits so theme-task commits stay isolated.
 
 ---
 
 ### Task 1: `Color.FromHex` / `Color.TryFromHex`
 
 **Files:**
+
 - Modify: `src/SharpVision.Terminal/Protocols/Color.cs`
 - Test: `tests/SharpVision.Terminal.Tests/Protocols/ColorHexTests.cs` (create)
 
 **Interfaces:**
+
 - Consumes: existing `Color.Rgb(int,int,int)`, `Color.Default`.
-- Produces: `public static Color Color.FromHex(string value)`; `public static bool Color.TryFromHex(string value, out Color color)`.
+- Produces: `public static Color Color.FromHex(string value)`;
+  `public static bool Color.TryFromHex(string value, out Color color)`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -104,7 +132,8 @@ public sealed class ColorHexTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorHexTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorHexTests" --timeout 60s`
 Expected: FAIL — `Color` has no `FromHex`/`TryFromHex`.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -172,11 +201,14 @@ Add to `src/SharpVision.Terminal/Protocols/Color.cs` (after `Rgb`):
         int.TryParse(pair, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
 ```
 
-Add `using System.Globalization;` after the file-scoped namespace in `Color.cs` (or confirm it via `GlobalUsings`; the Terminal project's global usings do not include it, so add the local `using`).
+Add `using System.Globalization;` after the file-scoped namespace in `Color.cs`
+(or confirm it via `GlobalUsings`; the Terminal project's global usings do not
+include it, so add the local `using`).
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorHexTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorHexTests" --timeout 60s`
 Expected: PASS (all cases).
 
 - [ ] **Step 5: Commit**
@@ -191,12 +223,17 @@ git commit -m "feat(terminal): add Color hex parsing (FromHex/TryFromHex)"
 ### Task 2: Expand and rename `ColorRole`
 
 **Files:**
+
 - Modify: `src/SharpVision/Styling/ColorRole.cs`
-- Modify: `src/SharpVision/Styling/Themes.cs:59` (only reference to `ColorRole.Selection`)
+- Modify: `src/SharpVision/Styling/Themes.cs:59` (only reference to
+  `ColorRole.Selection`)
 - Test: `tests/SharpVision.Tests/Styling/ColorRoleTests.cs` (add cases)
 
 **Interfaces:**
-- Produces: renames `ColorRole.Selection` → `ColorRole.SelectionBackground`; adds `ColorRole.SelectionForeground`, `ColorRole.Error`, `ColorRole.Warning`, `ColorRole.Success`, `ColorRole.Info`.
+
+- Produces: renames `ColorRole.Selection` → `ColorRole.SelectionBackground`;
+  adds `ColorRole.SelectionForeground`, `ColorRole.Error`, `ColorRole.Warning`,
+  `ColorRole.Success`, `ColorRole.Info`.
 
 - [ ] **Step 1: Write the failing test** — add to `ColorRoleTests`:
 
@@ -220,10 +257,15 @@ git commit -m "feat(terminal): add Color hex parsing (FromHex/TryFromHex)"
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ColorRoleTests" --timeout 60s`
-Expected: FAIL — `ColorRole.SelectionBackground`/`Error`/`SelectionForeground` do not exist (compile error).
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ColorRoleTests" --timeout 60s`
+Expected: FAIL — `ColorRole.SelectionBackground`/`Error`/`SelectionForeground`
+do not exist (compile error).
 
-- [ ] **Step 3: Write minimal implementation** — in `ColorRole.cs`, rename the `Selection` member to `SelectionBackground` (keep its existing doc comment "The background color of a selected item.") and add the four status members plus `SelectionForeground` after it:
+- [ ] **Step 3: Write minimal implementation** — in `ColorRole.cs`, rename the
+      `Selection` member to `SelectionBackground` (keep its existing doc comment
+      "The background color of a selected item.") and add the four status
+      members plus `SelectionForeground` after it:
 
 ```csharp
     /// <summary>The background color of a selected item.</summary>
@@ -245,11 +287,14 @@ Expected: FAIL — `ColorRole.SelectionBackground`/`Error`/`SelectionForeground`
     Info,
 ```
 
-Then update the one caller in `Themes.cs:59` — `ColorRole.Selection` → `ColorRole.SelectionBackground`. (Task 9 rewrites `Themes.cs` entirely; this keeps the build green in between.)
+Then update the one caller in `Themes.cs:59` — `ColorRole.Selection` →
+`ColorRole.SelectionBackground`. (Task 9 rewrites `Themes.cs` entirely; this
+keeps the build green in between.)
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ColorRoleTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ColorRoleTests" --timeout 60s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -264,12 +309,17 @@ git commit -m "feat(styling): rename Selection to SelectionBackground and add ro
 ### Task 3: `ThemeColorValue` grammar helper
 
 **Files:**
+
 - Create: `src/SharpVision/Styling/ThemeColorValue.cs`
 - Test: `tests/SharpVision.Tests/Styling/ThemeColorValueTests.cs`
 
 **Interfaces:**
+
 - Consumes: `Color.FromHex` (Task 1), `Color.Indexed`.
-- Produces: `internal static class ThemeColorValue` with `static bool IsLiteral(string value)` and `static Color ParseLiteral(string value)` (throws `FormatException` for malformed/out-of-range).
+- Produces: `internal static class ThemeColorValue` with
+  `static bool IsLiteral(string value)` and
+  `static Color ParseLiteral(string value)` (throws `FormatException` for
+  malformed/out-of-range).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -320,7 +370,8 @@ public sealed class ThemeColorValueTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeColorValueTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeColorValueTests" --timeout 60s`
 Expected: FAIL — `ThemeColorValue` does not exist.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -372,7 +423,8 @@ internal static class ThemeColorValue
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeColorValueTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeColorValueTests" --timeout 60s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -387,12 +439,20 @@ git commit -m "feat(styling): add theme color-value grammar helper"
 ### Task 4: `ThemeDefinition` DTO + JSON deserialize
 
 **Files:**
+
 - Create: `src/SharpVision/Styling/ThemeDefinition.cs`
-- Create: `src/SharpVision/Styling/ThemeLoader.cs` (with `Deserialize` only for now)
+- Create: `src/SharpVision/Styling/ThemeLoader.cs` (with `Deserialize` only for
+  now)
 - Test: `tests/SharpVision.Tests/Styling/ThemeDeserializeTests.cs`
 
 **Interfaces:**
-- Produces: `internal sealed class ThemeDefinition` with public get/set properties `Name`, `Slug`, `ColorScheme` (string?), `Order` (int), `Author`, `License`, `Source` (all `string?`), `Palette` and `Roles` (`Dictionary<string, string>?`). `internal static class ThemeLoader` with `static ThemeDefinition Deserialize(string json, string source)` (throws `InvalidDataException`).
+
+- Produces: `internal sealed class ThemeDefinition` with public get/set
+  properties `Name`, `Slug`, `ColorScheme` (string?), `Order` (int), `Author`,
+  `License`, `Source` (all `string?`), `Palette` and `Roles`
+  (`Dictionary<string, string>?`). `internal static class ThemeLoader` with
+  `static ThemeDefinition Deserialize(string json, string source)` (throws
+  `InvalidDataException`).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -441,7 +501,8 @@ public sealed class ThemeDeserializeTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeDeserializeTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeDeserializeTests" --timeout 60s`
 Expected: FAIL — types missing.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -529,7 +590,8 @@ internal static class ThemeLoader
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeDeserializeTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeDeserializeTests" --timeout 60s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -544,12 +606,17 @@ git commit -m "feat(styling): add theme definition DTO and JSON deserialize"
 ### Task 5: `ThemeBuilder` — roles → frozen `Theme`
 
 **Files:**
+
 - Create: `src/SharpVision/Styling/ThemeBuilder.cs`
 - Test: `tests/SharpVision.Tests/Styling/ThemeBuilderTests.cs`
 
 **Interfaces:**
-- Consumes: `Theme`, `ControlStyle<Control>`, `Control.*Property`, `State`, `TerminalAttributes.Underline`.
-- Produces: `internal static class ThemeBuilder` with `static Theme Build(IReadOnlyDictionary<ColorRole, Color> roles)` returning a frozen theme. Assumes all 12 roles are present (the loader guarantees this).
+
+- Consumes: `Theme`, `ControlStyle<Control>`, `Control.*Property`, `State`,
+  `TerminalAttributes.Underline`.
+- Produces: `internal static class ThemeBuilder` with
+  `static Theme Build(IReadOnlyDictionary<ColorRole, Color> roles)` returning a
+  frozen theme. Assumes all 12 roles are present (the loader guarantees this).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -605,7 +672,8 @@ public sealed class ThemeBuilderTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeBuilderTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeBuilderTests" --timeout 60s`
 Expected: FAIL — `ThemeBuilder` missing.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -667,11 +735,15 @@ internal static class ThemeBuilder
 }
 ```
 
-Note the property types: `ForegroundProperty`/`BackgroundProperty`/`BorderColorProperty`/`ShadowForegroundProperty` are `StyleProperty<Color?>`; passing a non-null `Color` is valid. `AttributesProperty` is `StyleProperty<TerminalAttributes?>`.
+Note the property types:
+`ForegroundProperty`/`BackgroundProperty`/`BorderColorProperty`/`ShadowForegroundProperty`
+are `StyleProperty<Color?>`; passing a non-null `Color` is valid.
+`AttributesProperty` is `StyleProperty<TerminalAttributes?>`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeBuilderTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeBuilderTests" --timeout 60s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -686,12 +758,18 @@ git commit -m "feat(styling): add theme builder producing frozen themes from rol
 ### Task 6: `ThemeLoader.FromDefinition` — resolve palette, roles, fallbacks
 
 **Files:**
+
 - Modify: `src/SharpVision/Styling/ThemeLoader.cs`
 - Test: `tests/SharpVision.Tests/Styling/ThemeLoaderTests.cs`
 
 **Interfaces:**
+
 - Consumes: `ThemeDefinition`, `ThemeColorValue`, `ThemeBuilder.Build`.
-- Produces: `static Theme ThemeLoader.FromDefinition(ThemeDefinition definition, string source)` (throws `InvalidDataException`). Also `static Theme FromJson(string json, string source)` chaining `Deserialize` + `FromDefinition`.
+- Produces:
+  `static Theme ThemeLoader.FromDefinition(ThemeDefinition definition, string source)`
+  (throws `InvalidDataException`). Also
+  `static Theme FromJson(string json, string source)` chaining `Deserialize` +
+  `FromDefinition`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -767,7 +845,8 @@ public sealed class ThemeLoaderTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeLoaderTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeLoaderTests" --timeout 60s`
 Expected: FAIL — `FromDefinition`/`FromJson` missing.
 
 - [ ] **Step 3: Write minimal implementation** — add to `ThemeLoader.cs`:
@@ -923,7 +1002,9 @@ Expected: FAIL — `FromDefinition`/`FromJson` missing.
     }
 ```
 
-> **Implementer note on Border/Muted:** the snippet above is over-complicated. Replace the `Muted`/`Border` block with the clean fixed-order below (matches spec §4.2), and delete `HadExplicitMuted`:
+> **Implementer note on Border/Muted:** the snippet above is over-complicated.
+> Replace the `Muted`/`Border` block with the clean fixed-order below (matches
+> spec §4.2), and delete `HadExplicitMuted`:
 >
 > ```csharp
 > // Muted first: takes explicit Border if present, else Foreground.
@@ -938,11 +1019,15 @@ Expected: FAIL — `FromDefinition`/`FromJson` missing.
 > Fallback(roles, ColorRole.Border, ColorRole.Muted);
 > ```
 >
-> Keep the `Accent → Foreground` fallback *before* this block (SelectionBackground/status depend on Accent). Final order: Accent, Muted, Border, Surface, SelectionBackground, SelectionForeground, Error, Warning, Success, Info.
+> Keep the `Accent → Foreground` fallback _before_ this block
+> (SelectionBackground/status depend on Accent). Final order: Accent, Muted,
+> Border, Surface, SelectionBackground, SelectionForeground, Error, Warning,
+> Success, Info.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeLoaderTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeLoaderTests" --timeout 60s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -957,12 +1042,16 @@ git commit -m "feat(styling): resolve theme palette, roles, and fallbacks"
 ### Task 7: Public `ThemeFile` loader
 
 **Files:**
+
 - Create: `src/SharpVision/Styling/ThemeFile.cs`
 - Test: `tests/SharpVision.Tests/Styling/ThemeFileTests.cs`
 
 **Interfaces:**
+
 - Consumes: `ThemeLoader.FromJson`.
-- Produces: `public static class ThemeFile` with `static Theme Parse(string json)`, `static Theme Load(Stream stream)`, `static Theme LoadFile(string path)`.
+- Produces: `public static class ThemeFile` with
+  `static Theme Parse(string json)`, `static Theme Load(Stream stream)`,
+  `static Theme LoadFile(string path)`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1014,7 +1103,8 @@ public sealed class ThemeFileTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeFileTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeFileTests" --timeout 60s`
 Expected: FAIL — `ThemeFile` missing.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -1065,7 +1155,8 @@ public static class ThemeFile
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeFileTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeFileTests" --timeout 60s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1080,6 +1171,7 @@ git commit -m "feat(styling): add public ThemeFile runtime loader"
 ### Task 8: `ThemeCatalog` + built-in default theme resources
 
 **Files:**
+
 - Create: `src/SharpVision/Styling/ColorScheme.cs`
 - Create: `src/SharpVision/Styling/ThemeCatalogEntry.cs`
 - Create: `src/SharpVision/Styling/ThemeCatalog.cs`
@@ -1089,10 +1181,17 @@ git commit -m "feat(styling): add public ThemeFile runtime loader"
 - Test: `tests/SharpVision.Tests/Styling/ThemeCatalogTests.cs`
 
 **Interfaces:**
-- Consumes: `ThemeLoader.FromJson`, `ThemeLoader.Deserialize`.
-- Produces: `public enum ColorScheme { Dark, Light }`; `public sealed class ThemeCatalogEntry` with read-only `Name`, `Slug`, `ColorScheme` (ColorScheme), `Author`, `License`, `Source`; `public sealed class ThemeCatalog` with `static ThemeCatalog Default`, `IReadOnlyList<ThemeCatalogEntry> Entries`, `IReadOnlyList<string> Slugs`, `Theme Load(string slug)`.
 
-- [ ] **Step 1: Author the two default theme files** (indexed values reproduce today's built-ins exactly):
+- Consumes: `ThemeLoader.FromJson`, `ThemeLoader.Deserialize`.
+- Produces: `public enum ColorScheme { Dark, Light }`;
+  `public sealed class ThemeCatalogEntry` with read-only `Name`, `Slug`,
+  `ColorScheme` (ColorScheme), `Author`, `License`, `Source`;
+  `public sealed class ThemeCatalog` with `static ThemeCatalog Default`,
+  `IReadOnlyList<ThemeCatalogEntry> Entries`, `IReadOnlyList<string> Slugs`,
+  `Theme Load(string slug)`.
+
+- [ ] **Step 1: Author the two default theme files** (indexed values reproduce
+      today's built-ins exactly):
 
 `src/SharpVision/Styling/Themes/default-dark.theme.json`:
 
@@ -1107,10 +1206,18 @@ git commit -m "feat(styling): add public ThemeFile runtime loader"
   "source": "https://github.com/sharpvision/sharpvision",
   "palette": {},
   "roles": {
-    "foreground": "idx:15", "background": "idx:0", "surface": "idx:8",
-    "border": "idx:8", "accent": "idx:14", "muted": "idx:8",
-    "selectionBackground": "idx:4", "selectionForeground": "idx:15",
-    "error": "idx:9", "warning": "idx:11", "success": "idx:10", "info": "idx:12"
+    "foreground": "idx:15",
+    "background": "idx:0",
+    "surface": "idx:8",
+    "border": "idx:8",
+    "accent": "idx:14",
+    "muted": "idx:8",
+    "selectionBackground": "idx:4",
+    "selectionForeground": "idx:15",
+    "error": "idx:9",
+    "warning": "idx:11",
+    "success": "idx:10",
+    "info": "idx:12"
   }
 }
 ```
@@ -1128,15 +1235,24 @@ git commit -m "feat(styling): add public ThemeFile runtime loader"
   "source": "https://github.com/sharpvision/sharpvision",
   "palette": {},
   "roles": {
-    "foreground": "idx:0", "background": "idx:15", "surface": "idx:7",
-    "border": "idx:8", "accent": "idx:4", "muted": "idx:8",
-    "selectionBackground": "idx:4", "selectionForeground": "idx:15",
-    "error": "idx:1", "warning": "idx:3", "success": "idx:2", "info": "idx:4"
+    "foreground": "idx:0",
+    "background": "idx:15",
+    "surface": "idx:7",
+    "border": "idx:8",
+    "accent": "idx:4",
+    "muted": "idx:8",
+    "selectionBackground": "idx:4",
+    "selectionForeground": "idx:15",
+    "error": "idx:1",
+    "warning": "idx:3",
+    "success": "idx:2",
+    "info": "idx:4"
   }
 }
 ```
 
-- [ ] **Step 2: Embed the theme glob** — add to `src/SharpVision/SharpVision.csproj` inside a new `<ItemGroup>`:
+- [ ] **Step 2: Embed the theme glob** — add to
+      `src/SharpVision/SharpVision.csproj` inside a new `<ItemGroup>`:
 
 ```xml
   <ItemGroup>
@@ -1207,7 +1323,8 @@ public sealed class ThemeCatalogTests
 
 - [ ] **Step 4: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeCatalogTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeCatalogTests" --timeout 60s`
 Expected: FAIL — catalog types missing.
 
 - [ ] **Step 5: Write minimal implementation**
@@ -1403,11 +1520,18 @@ public sealed class ThemeCatalog
 }
 ```
 
-> **Implementer note:** the `_orders` field is declared after the constructor uses it — move `private readonly Dictionary<string, int> _orders = ...;` up with the other fields, and reorder members so fields precede the constructor. The local `ByOrder` in the constructor reads `_orders`, which is populated during `ToEntry` in the same loop before the sort. Keep members in the standard order (fields, constructor, properties, methods); this note only flags the drafting artifact.
+> **Implementer note:** the `_orders` field is declared after the constructor
+> uses it — move `private readonly Dictionary<string, int> _orders = ...;` up
+> with the other fields, and reorder members so fields precede the constructor.
+> The local `ByOrder` in the constructor reads `_orders`, which is populated
+> during `ToEntry` in the same loop before the sort. Keep members in the
+> standard order (fields, constructor, properties, methods); this note only
+> flags the drafting artifact.
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeCatalogTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ThemeCatalogTests" --timeout 60s`
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
@@ -1422,14 +1546,18 @@ git commit -m "feat(styling): add embedded ThemeCatalog with built-in default th
 ### Task 9: Make `Themes.White`/`Dark` catalog-backed
 
 **Files:**
+
 - Modify: `src/SharpVision/Styling/Themes.cs`
-- Test: existing `tests/SharpVision.Tests/Styling/StandardThemeTests.cs`, `ColorRoleTests.cs` must still pass; add one identity test.
+- Test: existing `tests/SharpVision.Tests/Styling/StandardThemeTests.cs`,
+  `ColorRoleTests.cs` must still pass; add one identity test.
 
 **Interfaces:**
+
 - Consumes: `ThemeCatalog.Default.Load`.
 - Produces: unchanged public surface `Themes.White`, `Themes.Dark`.
 
-- [ ] **Step 1: Add the failing identity test** — append to `StandardThemeTests`:
+- [ ] **Step 1: Add the failing identity test** — append to
+      `StandardThemeTests`:
 
 ```csharp
     [Fact]
@@ -1441,12 +1569,15 @@ git commit -m "feat(styling): add embedded ThemeCatalog with built-in default th
     }
 ```
 
-Add `using Shouldly;` after the namespace in `StandardThemeTests.cs` if not already present (the file relies on global usings; confirm build).
+Add `using Shouldly;` after the namespace in `StandardThemeTests.cs` if not
+already present (the file relies on global usings; confirm build).
 
 - [ ] **Step 2: Run test to verify it fails/builds**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*StandardThemeTests" --timeout 60s`
-Expected: PASS currently (old hardcoded themes are frozen). This test guards behavior across the refactor.
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*StandardThemeTests" --timeout 60s`
+Expected: PASS currently (old hardcoded themes are frozen). This test guards
+behavior across the refactor.
 
 - [ ] **Step 3: Replace `Themes.cs` body** with catalog-backed properties:
 
@@ -1465,12 +1596,15 @@ public static class Themes
 }
 ```
 
-Delete the old `CreateWhite`/`CreateDark`/`ApplyColors`/`CreateBaseControlStyle` code and the now-unused `using SharpVision.Terminal.Protocols;`.
+Delete the old `CreateWhite`/`CreateDark`/`ApplyColors`/`CreateBaseControlStyle`
+code and the now-unused `using SharpVision.Terminal.Protocols;`.
 
 - [ ] **Step 4: Run the full styling suite**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*Styling*" --timeout 120s`
-Expected: PASS — `StandardThemeTests` (indexed fg/bg/border), `ColorRoleTests` (white accent idx:4 ≠ dark accent idx:14), and the new identity test all pass.
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*Styling*" --timeout 120s`
+Expected: PASS — `StandardThemeTests` (indexed fg/bg/border), `ColorRoleTests`
+(white accent idx:4 ≠ dark accent idx:14), and the new identity test all pass.
 
 - [ ] **Step 5: Commit**
 
@@ -1484,78 +1618,136 @@ git commit -m "refactor(styling): back built-in Light/Dark themes with JSON cata
 ### Task 10: Add the curated ~10 editor themes
 
 **Files:**
-- Create: `src/SharpVision/Styling/Themes/<slug>.theme.json` for each theme below.
+
+- Create: `src/SharpVision/Styling/Themes/<slug>.theme.json` for each theme
+  below.
 - Test: `tests/SharpVision.Tests/Styling/CuratedThemesTests.cs`
 
 **Interfaces:**
+
 - Consumes: `ThemeCatalog.Default`.
 - Produces: catalog slugs listed below.
 
 Curated set and slugs (order values leave gaps for future insertion):
 
-| Slug | Name | colorScheme | order |
-| --- | --- | --- | --- |
-| `tokyo-night` | Tokyo Night | dark | 10 |
-| `tokyo-night-storm` | Tokyo Night Storm | dark | 11 |
-| `tokyo-night-day` | Tokyo Night Day | light | 12 |
-| `catppuccin-mocha` | Catppuccin Mocha | dark | 20 |
-| `catppuccin-latte` | Catppuccin Latte | light | 21 |
-| `gruvbox-dark` | Gruvbox Dark | dark | 30 |
-| `gruvbox-light` | Gruvbox Light | light | 31 |
-| `dracula` | Dracula | dark | 40 |
-| `nord` | Nord | dark | 50 |
-| `monokai` | Monokai | dark | 60 |
-| `solarized-dark` | Solarized Dark | dark | 70 |
-| `solarized-light` | Solarized Light | light | 71 |
-| `one-dark` | One Dark | dark | 80 |
+| Slug                | Name              | colorScheme | order |
+| ------------------- | ----------------- | ----------- | ----- |
+| `tokyo-night`       | Tokyo Night       | dark        | 10    |
+| `tokyo-night-storm` | Tokyo Night Storm | dark        | 11    |
+| `tokyo-night-day`   | Tokyo Night Day   | light       | 12    |
+| `catppuccin-mocha`  | Catppuccin Mocha  | dark        | 20    |
+| `catppuccin-latte`  | Catppuccin Latte  | light       | 21    |
+| `gruvbox-dark`      | Gruvbox Dark      | dark        | 30    |
+| `gruvbox-light`     | Gruvbox Light     | light       | 31    |
+| `dracula`           | Dracula           | dark        | 40    |
+| `nord`              | Nord              | dark        | 50    |
+| `monokai`           | Monokai           | dark        | 60    |
+| `solarized-dark`    | Solarized Dark    | dark        | 70    |
+| `solarized-light`   | Solarized Light   | light       | 71    |
+| `one-dark`          | One Dark          | dark        | 80    |
 
-> **Palette accuracy:** transcribe hex values from each project's official source (recorded in `source`). Two fully-worked canonical examples are given below; author the rest with the same structure. After authoring, the `CuratedThemesTests` count assertion is the guardrail.
+> **Palette accuracy:** transcribe hex values from each project's official
+> source (recorded in `source`). Two fully-worked canonical examples are given
+> below; author the rest with the same structure. After authoring, the
+> `CuratedThemesTests` count assertion is the guardrail.
 
-- [ ] **Step 1: Author each theme file.** Role mapping template (use per theme): `background←bg`, `foreground←fg`, `surface←a slightly raised bg`, `border←a muted/overlay color`, `muted←comment/subtle`, `accent←the signature color (blue/purple/etc.)`, `selectionBackground←the editor selection bg`, `selectionForeground←fg`, `error←red`, `warning←yellow/orange`, `success←green`, `info←blue/cyan`.
+- [ ] **Step 1: Author each theme file.** Role mapping template (use per theme):
+      `background←bg`, `foreground←fg`, `surface←a slightly raised bg`,
+      `border←a muted/overlay color`, `muted←comment/subtle`,
+      `accent←the signature color (blue/purple/etc.)`,
+      `selectionBackground←the editor selection bg`, `selectionForeground←fg`,
+      `error←red`, `warning←yellow/orange`, `success←green`, `info←blue/cyan`.
 
-Canonical example — `dracula.theme.json` (source: https://github.com/dracula/dracula-theme):
+Canonical example — `dracula.theme.json` (source:
+https://github.com/dracula/dracula-theme):
 
 ```json
 {
-  "name": "Dracula", "slug": "dracula", "colorScheme": "dark", "order": 40,
-  "author": "Dracula Theme", "license": "MIT",
+  "name": "Dracula",
+  "slug": "dracula",
+  "colorScheme": "dark",
+  "order": 40,
+  "author": "Dracula Theme",
+  "license": "MIT",
   "source": "https://github.com/dracula/dracula-theme",
   "palette": {
-    "bg": "#282a36", "current": "#44475a", "fg": "#f8f8f2", "comment": "#6272a4",
-    "cyan": "#8be9fd", "green": "#50fa7b", "orange": "#ffb86c", "pink": "#ff79c6",
-    "purple": "#bd93f9", "red": "#ff5555", "yellow": "#f1fa8c"
+    "bg": "#282a36",
+    "current": "#44475a",
+    "fg": "#f8f8f2",
+    "comment": "#6272a4",
+    "cyan": "#8be9fd",
+    "green": "#50fa7b",
+    "orange": "#ffb86c",
+    "pink": "#ff79c6",
+    "purple": "#bd93f9",
+    "red": "#ff5555",
+    "yellow": "#f1fa8c"
   },
   "roles": {
-    "background": "bg", "foreground": "fg", "surface": "current",
-    "border": "comment", "muted": "comment", "accent": "purple",
-    "selectionBackground": "current", "selectionForeground": "fg",
-    "error": "red", "warning": "orange", "success": "green", "info": "cyan"
+    "background": "bg",
+    "foreground": "fg",
+    "surface": "current",
+    "border": "comment",
+    "muted": "comment",
+    "accent": "purple",
+    "selectionBackground": "current",
+    "selectionForeground": "fg",
+    "error": "red",
+    "warning": "orange",
+    "success": "green",
+    "info": "cyan"
   }
 }
 ```
 
-Canonical example — `nord.theme.json` (source: https://github.com/nordtheme/nord):
+Canonical example — `nord.theme.json` (source:
+https://github.com/nordtheme/nord):
 
 ```json
 {
-  "name": "Nord", "slug": "nord", "colorScheme": "dark", "order": 50,
-  "author": "Sven Greb", "license": "MIT",
+  "name": "Nord",
+  "slug": "nord",
+  "colorScheme": "dark",
+  "order": 50,
+  "author": "Sven Greb",
+  "license": "MIT",
   "source": "https://github.com/nordtheme/nord",
   "palette": {
-    "nord0": "#2e3440", "nord1": "#3b4252", "nord2": "#434c5e", "nord3": "#4c566a",
-    "nord4": "#d8dee9", "nord6": "#eceff4", "nord8": "#88c0d0", "nord10": "#5e81ac",
-    "nord11": "#bf616a", "nord13": "#ebcb8b", "nord14": "#a3be8c"
+    "nord0": "#2e3440",
+    "nord1": "#3b4252",
+    "nord2": "#434c5e",
+    "nord3": "#4c566a",
+    "nord4": "#d8dee9",
+    "nord6": "#eceff4",
+    "nord8": "#88c0d0",
+    "nord10": "#5e81ac",
+    "nord11": "#bf616a",
+    "nord13": "#ebcb8b",
+    "nord14": "#a3be8c"
   },
   "roles": {
-    "background": "nord0", "foreground": "nord4", "surface": "nord1",
-    "border": "nord3", "muted": "nord3", "accent": "nord8",
-    "selectionBackground": "nord2", "selectionForeground": "nord6",
-    "error": "nord11", "warning": "nord13", "success": "nord14", "info": "nord10"
+    "background": "nord0",
+    "foreground": "nord4",
+    "surface": "nord1",
+    "border": "nord3",
+    "muted": "nord3",
+    "accent": "nord8",
+    "selectionBackground": "nord2",
+    "selectionForeground": "nord6",
+    "error": "nord11",
+    "warning": "nord13",
+    "success": "nord14",
+    "info": "nord10"
   }
 }
 ```
 
-Tokyo Night is fully specified in the spec (§3); reuse it verbatim for `tokyo-night.theme.json`. Author the remaining slugs from their official sources: Tokyo Night Storm/Day (folke/tokyonight.nvim), Catppuccin Mocha/Latte (catppuccin/catppuccin, MIT), Gruvbox Dark/Light (morhetz/gruvbox, MIT), Monokai (classic Monokai palette), Solarized Dark/Light (altercation/solarized, MIT), One Dark (atom/one-dark-syntax / joshdick/onedark.vim, MIT).
+Tokyo Night is fully specified in the spec (§3); reuse it verbatim for
+`tokyo-night.theme.json`. Author the remaining slugs from their official
+sources: Tokyo Night Storm/Day (folke/tokyonight.nvim), Catppuccin Mocha/Latte
+(catppuccin/catppuccin, MIT), Gruvbox Dark/Light (morhetz/gruvbox, MIT), Monokai
+(classic Monokai palette), Solarized Dark/Light (altercation/solarized, MIT),
+One Dark (atom/one-dark-syntax / joshdick/onedark.vim, MIT).
 
 - [ ] **Step 2: Write the guardrail test**
 
@@ -1612,7 +1804,8 @@ public sealed class CuratedThemesTests
 
 - [ ] **Step 3: Run test to verify it fails, then passes as files are added**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*CuratedThemesTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*CuratedThemesTests" --timeout 60s`
 Expected: FAIL until all files exist; PASS once the set matches.
 
 - [ ] **Step 4: Commit**
@@ -1627,15 +1820,21 @@ git commit -m "feat(styling): add curated editor theme resources"
 ### Task 11: Showcase picker + Theming pane
 
 **Files:**
-- Modify: `src/SharpVision.Showcase/Gallery.cs` (lines ~48-53 catalog array, ~106-113 picker, ~285-303 SetTheme/OnThemeSelected)
+
+- Modify: `src/SharpVision.Showcase/Gallery.cs` (lines ~48-53 catalog array,
+  ~106-113 picker, ~285-303 SetTheme/OnThemeSelected)
 - Modify: `src/SharpVision.Showcase/Panes/ThemingShowcasePane.cs`
 - Test: `tests/SharpVision.Showcase.Tests/ThemeGalleryTests.cs`
 
 **Interfaces:**
-- Consumes: `ThemeCatalog.Default`, `Application.Theme`.
-- Produces: picker populated from the catalog; selecting an entry publishes `ThemeCatalog.Default.Load(slug)`.
 
-- [ ] **Step 1: Update the gallery test** — replace `Theme_WhenLightIsSelected_PublishesWhiteThemeAsync` selection to use the display name from the catalog and assert against the loaded theme:
+- Consumes: `ThemeCatalog.Default`, `Application.Theme`.
+- Produces: picker populated from the catalog; selecting an entry publishes
+  `ThemeCatalog.Default.Load(slug)`.
+
+- [ ] **Step 1: Update the gallery test** — replace
+      `Theme_WhenLightIsSelected_PublishesWhiteThemeAsync` selection to use the
+      display name from the catalog and assert against the loaded theme:
 
 ```csharp
     [Fact]
@@ -1670,23 +1869,29 @@ git commit -m "feat(styling): add curated editor theme resources"
     }
 ```
 
-(`Themes.White` is now `ThemeCatalog.Default.Load("default-light")` — the same cached instance, so `ReferenceEquals` holds. The display name "Light" comes from `default-light.theme.json`.)
+(`Themes.White` is now `ThemeCatalog.Default.Load("default-light")` — the same
+cached instance, so `ReferenceEquals` holds. The display name "Light" comes from
+`default-light.theme.json`.)
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Showcase.Tests --filter-class "*ThemeGalleryTests" --timeout 120s`
-Expected: FAIL — the gallery still uses the old hardcoded array (names/wiring differ) until Step 3.
+Run:
+`dotnet test --project tests/SharpVision.Showcase.Tests --filter-class "*ThemeGalleryTests" --timeout 120s`
+Expected: FAIL — the gallery still uses the old hardcoded array (names/wiring
+differ) until Step 3.
 
 - [ ] **Step 3: Rewire the gallery.** In `Gallery.cs`:
 
-Replace the `ThemeCatalog` field (lines ~48-53) — remove the local tuple array; add a slug lookup built from the catalog:
+Replace the `ThemeCatalog` field (lines ~48-53) — remove the local tuple array;
+add a slug lookup built from the catalog:
 
 ```csharp
     // Ordered themes surfaced by the sidebar picker, sourced from the embedded catalog.
     private static readonly IReadOnlyList<ThemeCatalogEntry> _themeEntries = OrderForPicker(SharpVision.Styling.ThemeCatalog.Default.Entries);
 ```
 
-Add a helper (dark group first, then light, preserving catalog order within each):
+Add a helper (dark group first, then light, preserving catalog order within
+each):
 
 ```csharp
     private static IReadOnlyList<ThemeCatalogEntry> OrderForPicker(IReadOnlyList<ThemeCatalogEntry> entries)
@@ -1732,9 +1937,13 @@ Update `OnThemeSelected` (lines ~294-303):
     }
 ```
 
-Confirm `using SharpVision.Styling;` is present (or use the fully-qualified names shown). Keep `SetTheme` and `OnAttach` (which sets `Themes.Dark`) unchanged.
+Confirm `using SharpVision.Styling;` is present (or use the fully-qualified
+names shown). Keep `SetTheme` and `OnAttach` (which sets `Themes.Dark`)
+unchanged.
 
-- [ ] **Step 4: Update the Theming pane** — in `ThemingShowcasePane.BuildExamples`, add a role-swatch section and a note about the file format. Append before the method's end:
+- [ ] **Step 4: Update the Theming pane** — in
+      `ThemingShowcasePane.BuildExamples`, add a role-swatch section and a note
+      about the file format. Append before the method's end:
 
 ```csharp
         ControlStack swatches = new() { Spacing = 0 };
@@ -1772,16 +1981,27 @@ Add the helper to the pane:
             : Color.Default;
 ```
 
-> **Implementer note:** verify the exact API for reading the active theme in the showcase (`Application.Current?.Theme`, or the pane's attached application). If a static `Application.Current` is not available, thread the swatch fill through the existing theme-change path the pane already uses; the key deliverable is a visible per-role swatch column. Adjust `ControlBorder`/`FillMode` usage to the real chrome API if the sampled call differs — the ButtonShowcasePane and ControlChrome are references for painting a solid cell.
+> **Implementer note:** verify the exact API for reading the active theme in the
+> showcase (`Application.Current?.Theme`, or the pane's attached application).
+> If a static `Application.Current` is not available, thread the swatch fill
+> through the existing theme-change path the pane already uses; the key
+> deliverable is a visible per-role swatch column. Adjust
+> `ControlBorder`/`FillMode` usage to the real chrome API if the sampled call
+> differs — the ButtonShowcasePane and ControlChrome are references for painting
+> a solid cell.
 
 - [ ] **Step 5: Run tests**
 
-Run: `dotnet test --project tests/SharpVision.Showcase.Tests --filter-class "*ThemeGalleryTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Showcase.Tests --filter-class "*ThemeGalleryTests" --timeout 120s`
 Expected: PASS (both gallery tests).
 
-- [ ] **Step 6: Verify the app renders** — build and launch the showcase, open the Theming page, switch a few themes:
+- [ ] **Step 6: Verify the app renders** — build and launch the showcase, open
+      the Theming page, switch a few themes:
 
-Run: `dotnet run --project src/SharpVision.Showcase` (or the repo's run skill). Confirm the picker lists the catalog themes and switching repaints. Exit with the Quit button / Ctrl+C.
+Run: `dotnet run --project src/SharpVision.Showcase` (or the repo's run skill).
+Confirm the picker lists the catalog themes and switching repaints. Exit with
+the Quit button / Ctrl+C.
 
 - [ ] **Step 7: Commit**
 
@@ -1795,19 +2015,31 @@ git commit -m "feat(showcase): drive theme picker from the embedded ThemeCatalog
 ### Task 12: Documentation
 
 **Files:**
+
 - Create: `docs/concepts/themes.md`
-- Modify: the `ColorRole` and Theming references under `docs/` (locate via `grep -rl ColorRole docs`), `docs/architecture/showcase.md`, and any coverage matrix that lists themes.
+- Modify: the `ColorRole` and Theming references under `docs/` (locate via
+  `grep -rl ColorRole docs`), `docs/architecture/showcase.md`, and any coverage
+  matrix that lists themes.
 
 **Interfaces:** none (docs only).
 
-- [ ] **Step 1: Write `docs/concepts/themes.md`** — normative concept doc covering: the theme-file JSON format (fields, `palette`, `roles`), the color-value grammar (`#hex`, `idx:N`, palette key), the 12 `ColorRole`s and their fallback derivations (reproduce the §4.2 order), the base control-style recipe (§4.3 table), authoring a new theme (drop a `*.theme.json` into `Styling/Themes`), loading at runtime (`ThemeCatalog.Default.Load`, `ThemeFile.Parse/Load/LoadFile`), and the attribution/license policy. No TODO/TBD (AGENTS.md).
+- [ ] **Step 1: Write `docs/concepts/themes.md`** — normative concept doc
+      covering: the theme-file JSON format (fields, `palette`, `roles`), the
+      color-value grammar (`#hex`, `idx:N`, palette key), the 12 `ColorRole`s
+      and their fallback derivations (reproduce the §4.2 order), the base
+      control-style recipe (§4.3 table), authoring a new theme (drop a
+      `*.theme.json` into `Styling/Themes`), loading at runtime
+      (`ThemeCatalog.Default.Load`, `ThemeFile.Parse/Load/LoadFile`), and the
+      attribution/license policy. No TODO/TBD (AGENTS.md).
 
-- [ ] **Step 2: Update references** — add the five new roles to the `ColorRole` reference; update the Theming control page and `docs/architecture/showcase.md` for the catalog-backed picker and the role-swatch section; update any theme coverage list to the curated set.
+- [ ] **Step 2: Update references** — add the five new roles to the `ColorRole`
+      reference; update the Theming control page and
+      `docs/architecture/showcase.md` for the catalog-backed picker and the
+      role-swatch section; update any theme coverage list to the curated set.
 
 - [ ] **Step 3: Run doc gates**
 
-Run: `make lint`
-Expected: no Markdown or link failures.
+Run: `make lint` Expected: no Markdown or link failures.
 
 - [ ] **Step 4: Commit**
 
@@ -1828,10 +2060,22 @@ make format && make lint && make build && make test
 
 Expected: zero warnings, zero errors, all tests pass, no Markdown/link failures.
 
-- [ ] Confirm `git status` shows only intended files; the branch `feat/themeable-palettes` holds the complete feature.
+- [ ] Confirm `git status` shows only intended files; the branch
+      `feat/themeable-palettes` holds the complete feature.
 
 ## Self-Review notes (author)
 
-- **Spec coverage:** §1 hex→T1; §2 roles→T2; §3/§3.1 format & grammar→T3,T4; §4 pipeline→T4,T5,T6; §5 catalog→T8; §6 runtime loading→T7; §7 built-ins→T8,T9; §8 showcase→T11; §9 tests→each task; §10 docs→T12. No uncovered section.
-- **Type consistency:** `ThemeLoader.Deserialize/FromDefinition/FromJson`, `ThemeBuilder.Build`, `ThemeColorValue.IsLiteral/ParseLiteral`, `ThemeFile.Parse/Load/LoadFile`, `ThemeCatalog.Default/Entries/Slugs/Load`, `ThemeCatalogEntry.ColorScheme`, `ColorScheme` enum are used with identical names/signatures across tasks. `ColorRole.SelectionBackground`/`SelectionForeground` replace the old `Selection`.
-- **Known drafting artifacts flagged inline** for the implementer: Task 6 Border/Muted block (use the clean fixed-order note), Task 8 field/member ordering, Task 11 active-theme read API. These are called out, not left as silent placeholders.
+- **Spec coverage:** §1 hex→T1; §2 roles→T2; §3/§3.1 format & grammar→T3,T4; §4
+  pipeline→T4,T5,T6; §5 catalog→T8; §6 runtime loading→T7; §7 built-ins→T8,T9;
+  §8 showcase→T11; §9 tests→each task; §10 docs→T12. No uncovered section.
+- **Type consistency:** `ThemeLoader.Deserialize/FromDefinition/FromJson`,
+  `ThemeBuilder.Build`, `ThemeColorValue.IsLiteral/ParseLiteral`,
+  `ThemeFile.Parse/Load/LoadFile`, `ThemeCatalog.Default/Entries/Slugs/Load`,
+  `ThemeCatalogEntry.ColorScheme`, `ColorScheme` enum are used with identical
+  names/signatures across tasks.
+  `ColorRole.SelectionBackground`/`SelectionForeground` replace the old
+  `Selection`.
+- **Known drafting artifacts flagged inline** for the implementer: Task 6
+  Border/Muted block (use the clean fixed-order note), Task 8 field/member
+  ordering, Task 11 active-theme read API. These are called out, not left as
+  silent placeholders.

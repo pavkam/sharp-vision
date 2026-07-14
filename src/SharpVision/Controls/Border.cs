@@ -88,11 +88,19 @@ public sealed class Border: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Border accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Border accumulation uses non-negative extents.");
+
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
-    private static int? Subtract(int? value, int extent) => value.HasValue
-        ? Math.Max(0, value.Value - extent)
-        : null;
+    private static int? Subtract(int? value, int extent)
+    {
+        Debug.Assert(extent >= 0, "Subtracted border thickness cannot be negative.");
+
+        return value.HasValue
+            ? Math.Max(0, value.Value - extent)
+            : null;
+    }
 }

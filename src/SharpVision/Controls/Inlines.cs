@@ -142,6 +142,8 @@ public sealed class Inlines: IList<Inline>
 
     private static void ValidateDetached(Inline item)
     {
+        Debug.Assert(item is not null, "Inline validation requires a non-null item.");
+
         if (item.Owner is not null)
         {
             throw new ArgumentException("The inline already belongs to a document.", nameof(item));

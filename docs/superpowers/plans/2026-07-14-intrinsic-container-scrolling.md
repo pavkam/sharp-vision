@@ -1,32 +1,63 @@
 # Intrinsic Container Scrolling Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make overflow scrolling and grow/shrink intrinsic, opt-in capabilities of `Container` (WinForms/Delphi model), then delete `ScrollView` and refactor `List`/`Table` onto the base mechanism.
+**Goal:** Make overflow scrolling and grow/shrink intrinsic, opt-in capabilities
+of `Container` (WinForms/Delphi model), then delete `ScrollView` and refactor
+`List`/`Table` onto the base mechanism.
 
-**Architecture:** Hoist `ScrollView`'s proven engine (reservation probe, offset translation, viewport clip, two owned `ScrollBar` chrome controls, input) into the `Control`/`Container` boundary behind small internal virtual seams, so each container's existing `MeasureOverride`/`ArrangeOverride`/`OnRender` is wrapped transparently. Arming is per instance via `AutoScroll`; the eligible/measured-unbounded axes are chosen by `ScrollBars` (default `Vertical`). Keep the build green after every task.
+**Architecture:** Hoist `ScrollView`'s proven engine (reservation probe, offset
+translation, viewport clip, two owned `ScrollBar` chrome controls, input) into
+the `Control`/`Container` boundary behind small internal virtual seams, so each
+container's existing `MeasureOverride`/`ArrangeOverride`/`OnRender` is wrapped
+transparently. Arming is per instance via `AutoScroll`; the
+eligible/measured-unbounded axes are chosen by `ScrollBars` (default
+`Vertical`). Keep the build green after every task.
 
-**Tech Stack:** .NET 10, C# 14, xUnit v3, Shouldly. Layout via `Engine().Layout(root, size)`; rendering asserted with `Frame` + `FrameOracle`.
+**Tech Stack:** .NET 10, C# 14, xUnit v3, Shouldly. Layout via
+`Engine().Layout(root, size)`; rendering asserted with `Frame` + `FrameOracle`.
 
-**Spec:** `docs/superpowers/specs/2026-07-14-intrinsic-container-scrolling-design.md`.
+**Spec:**
+`docs/superpowers/specs/2026-07-14-intrinsic-container-scrolling-design.md`.
 
-**Base commit:** `2beda39`. Branch: `codex/runtime-protocol-router` (shared — a concurrent showcase effort touches `SharpVision.Showcase`; coordinate on Phase 4).
+**Base commit:** `2beda39`. Branch: `codex/runtime-protocol-router` (shared — a
+concurrent showcase effort touches `SharpVision.Showcase`; coordinate on Phase
+4).
 
 ## Global Constraints
 
-- .NET 10 / C# 14; file-scoped namespaces; `var` for locals; `using` after `namespace`; shared imports in each project's `GlobalUsings.cs`.
-- **One public/named type per file, named after the type (incl. enums, delegates, test helpers)** — enforced by `make lint`. No nested named types; no two types per file.
-- No primary constructors / positional records. Declare every constructor explicitly and validate arguments before assigning state. XML docs on every public/internal type and member and every thrown exception.
-- Validate every public argument before mutating observable state. Use `Debug.Assert` only for post-validation invariants.
-- Property changes invalidate only the required phase via `Set(ref field, value, Invalidation.X)` / `NotifyChanged(name, Invalidation.X)`. `Invalidation` is `None|Render|Arrange|Measure|All`.
-- All mutation is dispatcher-affine; setters/commands call `VerifyMutable()` (or `Set`, which verifies).
-- Quality gate before every commit: `make format && make lint && make build`, plus the task's focused tests. `make test` must stay at/above its configured minimum discovered-test count.
-- KNOWN pre-existing flaky test: `Integration/ScrollingTests` errors ~1 run in 3 (unrelated to render logic). If a full run shows exactly one error there in an unchanged file, re-run once.
-- Focused test command shape: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`.
+- .NET 10 / C# 14; file-scoped namespaces; `var` for locals; `using` after
+  `namespace`; shared imports in each project's `GlobalUsings.cs`.
+- **One public/named type per file, named after the type (incl. enums,
+  delegates, test helpers)** — enforced by `make lint`. No nested named types;
+  no two types per file.
+- No primary constructors / positional records. Declare every constructor
+  explicitly and validate arguments before assigning state. XML docs on every
+  public/internal type and member and every thrown exception.
+- Validate every public argument before mutating observable state. Use
+  `Debug.Assert` only for post-validation invariants.
+- Property changes invalidate only the required phase via
+  `Set(ref field, value, Invalidation.X)` /
+  `NotifyChanged(name, Invalidation.X)`. `Invalidation` is
+  `None|Render|Arrange|Measure|All`.
+- All mutation is dispatcher-affine; setters/commands call `VerifyMutable()` (or
+  `Set`, which verifies).
+- Quality gate before every commit: `make format && make lint && make build`,
+  plus the task's focused tests. `make test` must stay at/above its configured
+  minimum discovered-test count.
+- KNOWN pre-existing flaky test: `Integration/ScrollingTests` errors ~1 run in 3
+  (unrelated to render logic). If a full run shows exactly one error there in an
+  unchanged file, re-run once.
+- Focused test command shape:
+  `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`.
 
 ## New internal seams on `Control` (used by every task)
 
-These are added in Task 2 and Task 5 and consumed throughout. Signatures are fixed here so tasks agree:
+These are added in Task 2 and Task 5 and consumed throughout. Signatures are
+fixed here so tasks agree:
 
 ```csharp
 // Control.cs — layout seams. Defaults preserve today's behavior exactly.
@@ -47,10 +78,12 @@ internal virtual void RenderContent(TerminalCanvas canvas) => RenderChildren(can
 ### Task 1: `AutoSizeMode` enum
 
 **Files:**
+
 - Create: `src/SharpVision/Layout/AutoSizeMode.cs`
 - Test: (covered by Task 4; enum alone needs no test)
 
 **Interfaces:**
+
 - Produces: `enum SharpVision.Layout.AutoSizeMode { GrowAndShrink, GrowOnly }`
 
 - [ ] **Step 1: Create the enum**
@@ -74,8 +107,7 @@ public enum AutoSizeMode
 
 - [ ] **Step 2: Build**
 
-Run: `make build`
-Expected: success, zero warnings.
+Run: `make build` Expected: success, zero warnings.
 
 - [ ] **Step 3: Commit**
 
@@ -87,15 +119,22 @@ git commit -m "feat(layout): add AutoSizeMode for container grow/shrink"
 ### Task 2: Capture the natural content extent
 
 **Files:**
-- Modify: `src/SharpVision/Controls/Control.cs` (the `Measure` body near line 485; add `ContentExtent` and the `OnMeasuringContent`/`OnMeasuredDesired` seams)
+
+- Modify: `src/SharpVision/Controls/Control.cs` (the `Measure` body near line
+  485; add `ContentExtent` and the `OnMeasuringContent`/`OnMeasuredDesired`
+  seams)
 - Test: `tests/SharpVision.Tests/Controls/ControlExtentTests.cs`
 
 **Interfaces:**
-- Produces: `Control.ContentExtent` (internal Size); `Control.OnMeasuringContent(Constraint)`, `Control.OnMeasuredDesired(Size)` internal virtuals (defaults identity).
+
+- Produces: `Control.ContentExtent` (internal Size);
+  `Control.OnMeasuringContent(Constraint)`, `Control.OnMeasuredDesired(Size)`
+  internal virtuals (defaults identity).
 
 - [ ] **Step 1: Write the failing test**
 
-`ContentExtent` must hold the unclamped `MeasureOverride` result even when `DesiredSize` is clamped to a smaller constraint.
+`ContentExtent` must hold the unclamped `MeasureOverride` result even when
+`DesiredSize` is clamped to a smaller constraint.
 
 ```csharp
 // Copyright (c) SharpVision contributors. All rights reserved.
@@ -120,7 +159,9 @@ public sealed class ControlExtentTests
 }
 ```
 
-Add a test-only accessor on `ProbeControl` (it lives in `SharpVision.Tests.Support`; the test assembly has `InternalsVisibleTo`, so expose the internal via a helper):
+Add a test-only accessor on `ProbeControl` (it lives in
+`SharpVision.Tests.Support`; the test assembly has `InternalsVisibleTo`, so
+expose the internal via a helper):
 
 ```csharp
 // ProbeControl.cs — add:
@@ -130,7 +171,8 @@ internal Size ExposedContentExtent => ContentExtent;
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ControlExtentTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ControlExtentTests" --timeout 120s`
 Expected: FAIL — `ContentExtent`/`ExposedContentExtent` do not exist.
 
 - [ ] **Step 3: Add the property and seams, and capture in `Measure`**
@@ -176,12 +218,14 @@ Size desired = OnMeasuredDesired(ResolveDesiredSize(constraint, content));
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ControlExtentTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ControlExtentTests" --timeout 120s`
 Expected: PASS.
 
 - [ ] **Step 5: Regression — full layout suite still green**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s`
 Expected: PASS (seams default to identity, so nothing changes).
 
 - [ ] **Step 6: Commit**
@@ -194,16 +238,21 @@ git commit -m "feat(layout): capture natural content extent and add measure seam
 ### Task 3: Grow/shrink arrange seam (`ShrinkWraps*`)
 
 **Files:**
-- Modify: `src/SharpVision/Controls/Control.cs` (`Arrange`, lines 552-571; add `ShrinkWrapsWidth`/`ShrinkWrapsHeight`)
+
+- Modify: `src/SharpVision/Controls/Control.cs` (`Arrange`, lines 552-571; add
+  `ShrinkWrapsWidth`/`ShrinkWrapsHeight`)
 - Test: `tests/SharpVision.Tests/Controls/ControlShrinkWrapTests.cs`
 
 **Interfaces:**
-- Produces: `Control.ShrinkWrapsWidth`, `Control.ShrinkWrapsHeight` internal virtuals (default `false`).
+
+- Produces: `Control.ShrinkWrapsWidth`, `Control.ShrinkWrapsHeight` internal
+  virtuals (default `false`).
 - Consumes: nothing new.
 
 - [ ] **Step 1: Write the failing test**
 
-A control that shrink-wraps width must size to its content width even when it is `Stretch`-aligned in a larger slot.
+A control that shrink-wraps width must size to its content width even when it is
+`Stretch`-aligned in a larger slot.
 
 ```csharp
 // Copyright (c) SharpVision contributors. All rights reserved.
@@ -255,7 +304,8 @@ internal sealed class ShrinkProbe: Control
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ControlShrinkWrapTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ControlShrinkWrapTests" --timeout 120s`
 Expected: FAIL — width is 20 (stretched).
 
 - [ ] **Step 3: Add the seams and consult them in `Arrange`**
@@ -270,7 +320,8 @@ internal virtual bool ShrinkWrapsWidth => false;
 internal virtual bool ShrinkWrapsHeight => false;
 ```
 
-In `Arrange` (lines 552-571), change the two `stretch` arguments so shrink-wrap forces non-stretch:
+In `Arrange` (lines 552-571), change the two `stretch` arguments so shrink-wrap
+forces non-stretch:
 
 ```csharp
 int width = widthResolved
@@ -297,7 +348,8 @@ int height = heightResolved
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ControlShrinkWrapTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ControlShrinkWrapTests" --timeout 120s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -310,12 +362,16 @@ git commit -m "feat(layout): add shrink-wrap arrange seam for auto-size"
 ### Task 4: `AutoSize` / `AutoSizeMode` on `Container`
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Container.cs`
 - Test: `tests/SharpVision.Tests/Controls/ContainerAutoSizeTests.cs`
 
 **Interfaces:**
-- Consumes: `ShrinkWrapsWidth`/`ShrinkWrapsHeight` (Task 3), `OnMeasuredDesired` (Task 2).
-- Produces: `Container.AutoSize` (bool, default false), `Container.AutoSizeMode` (default `GrowAndShrink`).
+
+- Consumes: `ShrinkWrapsWidth`/`ShrinkWrapsHeight` (Task 3), `OnMeasuredDesired`
+  (Task 2).
+- Produces: `Container.AutoSize` (bool, default false), `Container.AutoSizeMode`
+  (default `GrowAndShrink`).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -362,7 +418,10 @@ public sealed class ContainerAutoSizeTests
 }
 ```
 
-`ProbeContainer` needs an `AutoSize` passthrough — it already derives from `Container`, so once the properties exist the test compiles. `ProbeContainer` measures children with a default `MeasureOverride`? It does not override it, so add a minimal children-union `MeasureOverride` to `ProbeContainer`:
+`ProbeContainer` needs an `AutoSize` passthrough — it already derives from
+`Container`, so once the properties exist the test compiles. `ProbeContainer`
+measures children with a default `MeasureOverride`? It does not override it, so
+add a minimal children-union `MeasureOverride` to `ProbeContainer`:
 
 ```csharp
 // ProbeContainer.cs — add:
@@ -394,7 +453,8 @@ protected override void ArrangeOverride(Rect bounds)
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerAutoSizeTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerAutoSizeTests" --timeout 120s`
 Expected: FAIL — `AutoSize`/`AutoSizeMode` do not exist.
 
 - [ ] **Step 3: Implement `AutoSize`/`AutoSizeMode` on `Container`**
@@ -453,12 +513,14 @@ internal override Size OnMeasuredDesired(Size desired)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerAutoSizeTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerAutoSizeTests" --timeout 120s`
 Expected: PASS.
 
 - [ ] **Step 5: Regression**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -475,14 +537,24 @@ git commit -m "feat(controls): add AutoSize/AutoSizeMode grow-shrink to Containe
 ### Task 5: Scroll configuration properties + offsets + `ContentSlot` translation (bars hidden)
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Container.cs`
 - Test: `tests/SharpVision.Tests/Controls/ContainerScrollTests.cs`
 
-This task lands the scroll state and offset translation while keeping `ShowScrollBars = Never` semantics (no bar chrome yet), so translation is tested in isolation. It lifts the geometry helpers, `Resolve`, `Apply`, `MaximumX/Y`, and `ResolveContentSlot` from `ScrollView`.
+This task lands the scroll state and offset translation while keeping
+`ShowScrollBars = Never` semantics (no bar chrome yet), so translation is tested
+in isolation. It lifts the geometry helpers, `Resolve`, `Apply`, `MaximumX/Y`,
+and `ResolveContentSlot` from `ScrollView`.
 
 **Interfaces:**
+
 - Consumes: `ContentExtent` (Task 2), `ResolveContentSlot` seam (Task 2).
-- Produces on `Container`: `AutoScroll` (bool, default false), `ScrollBars` (default `Vertical`), `ShowScrollBars` (default `WhenNeeded`), `HorizontalBarVisibility`/`VerticalBarVisibility` (`ScrollBarVisibility`), `HorizontalOffset`/`VerticalOffset` (int), `Extent`/`Viewport` (`Size`), `LineSize` (int, default 1), `PageOverlap` (int, default 0), `ScrollBy(int x, int y, Cause cause = Cause.Programmatic) → bool`.
+- Produces on `Container`: `AutoScroll` (bool, default false), `ScrollBars`
+  (default `Vertical`), `ShowScrollBars` (default `WhenNeeded`),
+  `HorizontalBarVisibility`/`VerticalBarVisibility` (`ScrollBarVisibility`),
+  `HorizontalOffset`/`VerticalOffset` (int), `Extent`/`Viewport` (`Size`),
+  `LineSize` (int, default 1), `PageOverlap` (int, default 0),
+  `ScrollBy(int x, int y, Cause cause = Cause.Programmatic) → bool`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -545,16 +617,23 @@ public sealed class ContainerScrollTests
 }
 ```
 
-The `ProbeContainer.MeasureOverride` from Task 4 measures children with the incoming (possibly height-null) constraint and unions their desired sizes; with the eligible height nulled by `OnMeasuringContent`, the child reports its natural height 40. Confirm `ProbeContainer.MeasureOverride` passes `constraint` straight through to the child (it does).
+The `ProbeContainer.MeasureOverride` from Task 4 measures children with the
+incoming (possibly height-null) constraint and unions their desired sizes; with
+the eligible height nulled by `OnMeasuringContent`, the child reports its
+natural height 40. Confirm `ProbeContainer.MeasureOverride` passes `constraint`
+straight through to the child (it does).
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: FAIL — `AutoScroll`, `Extent`, `Viewport`, `ScrollBy` do not exist.
 
 - [ ] **Step 3: Add configuration + state + geometry**
 
-Add to `Container.cs` a `#region Scrolling` with the properties. Copy the enum-validating setters and `Add`/`Difference`/`MultiplyNegative` helpers from `ScrollView.cs` (lines 60-104, 636-724). Key members (defaults per spec):
+Add to `Container.cs` a `#region Scrolling` with the properties. Copy the
+enum-validating setters and `Add`/`Difference`/`MultiplyNegative` helpers from
+`ScrollView.cs` (lines 60-104, 636-724). Key members (defaults per spec):
 
 ```csharp
 public bool AutoScroll { get; set => _ = Set(ref field, value, Invalidation.Measure); }
@@ -592,9 +671,11 @@ public bool ScrollBy(int x, int y, Cause cause = Cause.Programmatic)
 }
 ```
 
-Backing fields: `_extent`, `_viewport` (`Size`), `_horizontalOffset`, `_verticalOffset` (int), `_viewportBounds` (`Rect`).
+Backing fields: `_extent`, `_viewport` (`Size`), `_horizontalOffset`,
+`_verticalOffset` (int), `_viewportBounds` (`Rect`).
 
-Add `MaximumX`/`MaximumY` gated by `AutoScroll` (return 0 when `!AutoScroll`), lifted from `ScrollView.cs:636-642`:
+Add `MaximumX`/`MaximumY` gated by `AutoScroll` (return 0 when `!AutoScroll`),
+lifted from `ScrollView.cs:636-642`:
 
 ```csharp
 private int MaximumX() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0
@@ -603,7 +684,9 @@ private int MaximumY() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0
     ? Math.Max(0, Extent.Height - Viewport.Height) : 0;
 ```
 
-Add `Apply` lifted from `ScrollView.cs:460-478` but **without** the bar `Synchronize` and `ScrollChanged` call yet (those arrive in Tasks 7 and 10). For now:
+Add `Apply` lifted from `ScrollView.cs:460-478` but **without** the bar
+`Synchronize` and `ScrollChanged` call yet (those arrive in Tasks 7 and 10). For
+now:
 
 ```csharp
 private bool Apply(int x, int y, Cause cause)
@@ -616,9 +699,12 @@ private bool Apply(int x, int y, Cause cause)
 }
 ```
 
-- [ ] **Step 4: Null eligible axes in measure; run the probe and translate in arrange**
+- [ ] **Step 4: Null eligible axes in measure; run the probe and translate in
+      arrange**
 
-Override the layout seams (`Resolve` lifted verbatim from `ScrollView.cs:655-695`, but reading `AutoScroll`, `ScrollBars`, and the per-axis visibility from `this`):
+Override the layout seams (`Resolve` lifted verbatim from
+`ScrollView.cs:655-695`, but reading `AutoScroll`, `ScrollBars`, and the
+per-axis visibility from `this`):
 
 ```csharp
 /// <inheritdoc/>
@@ -660,16 +746,21 @@ internal override Rect ResolveContentSlot(Rect padded)
 }
 ```
 
-Add fields `_reserveHorizontal`/`_reserveVertical` (bool). `Resolve` uses `HorizontalBarVisibility`/`VerticalBarVisibility` exactly as `ScrollView`. When `ShowScrollBars.Never`, both visibilities are `Hidden`, so `Resolve` reserves nothing and `viewport == padded` — the translation test uses this path.
+Add fields `_reserveHorizontal`/`_reserveVertical` (bool). `Resolve` uses
+`HorizontalBarVisibility`/`VerticalBarVisibility` exactly as `ScrollView`. When
+`ShowScrollBars.Never`, both visibilities are `Hidden`, so `Resolve` reserves
+nothing and `viewport == padded` — the translation test uses this path.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: PASS.
 
 - [ ] **Step 6: Regression**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s`
 Expected: PASS (unarmed containers unchanged).
 
 - [ ] **Step 7: Commit**
@@ -682,19 +773,28 @@ git commit -m "feat(controls): add AutoScroll state, extent probe, and offset tr
 ### Task 6: Bar chrome ownership, reservation, arrange, render, hit-test
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Container.cs`
-- Modify: `src/SharpVision/Controls/Stack.cs` (route child rendering through `RenderContent`)
+- Modify: `src/SharpVision/Controls/Stack.cs` (route child rendering through
+  `RenderContent`)
 - Test: `tests/SharpVision.Tests/Controls/ContainerScrollTests.cs` (extend)
 
-This is the largest lift: the two owned `ScrollBar` controls and the render/arrange/hit-test integration, moved from `ScrollView.cs`.
+This is the largest lift: the two owned `ScrollBar` controls and the
+render/arrange/hit-test integration, moved from `ScrollView.cs`.
 
 **Interfaces:**
-- Consumes: `_reserveHorizontal`/`_reserveVertical`, `_viewportBounds`, `Extent`/`Viewport`, `MaximumX/Y`, `Apply` (Task 5); `RenderContent` seam (defined here on `Control`).
-- Produces on `Container`: `ScrollBarChrome`, `ScrollBarFill` properties; owned bars; overrides of `RenderChildren`, `ArrangeOverlays`, `HitTest`, `VisitChildren`, `NavigationCount`/`NavigationAt`, `DisposeChildren`.
+
+- Consumes: `_reserveHorizontal`/`_reserveVertical`, `_viewportBounds`,
+  `Extent`/`Viewport`, `MaximumX/Y`, `Apply` (Task 5); `RenderContent` seam
+  (defined here on `Control`).
+- Produces on `Container`: `ScrollBarChrome`, `ScrollBarFill` properties; owned
+  bars; overrides of `RenderChildren`, `ArrangeOverlays`, `HitTest`,
+  `VisitChildren`, `NavigationCount`/`NavigationAt`, `DisposeChildren`.
 
 - [ ] **Step 1: Write the failing test**
 
-Reuse the exact chrome-glyph expectations from `ScrollViewTests` (`▲ ▓ ▼` vertical, `◀ ▓ ▶` horizontal):
+Reuse the exact chrome-glyph expectations from `ScrollViewTests` (`▲ ▓ ▼`
+vertical, `◀ ▓ ▶` horizontal):
 
 ```csharp
 // ContainerScrollTests.cs — add:
@@ -742,12 +842,21 @@ public void Layout_WhenAutomaticBarInducesOther_ConvergesWithBothBars()
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: FAIL — no chrome renders; `ScrollBars.Both` induction not wired.
 
 - [ ] **Step 3: Add owned bars, chrome props, `Synchronize`/`Configure`**
 
-Add to `Container.cs`: fields `_bars` (`Children`, capacity 2, created lazily), `_horizontal`/`_vertical` (`ScrollBar?`), `_syncing` (bool). Add `ScrollBarChrome`/`ScrollBarFill` properties (lift from `ScrollView.cs:138-170`, updating the two bars when set). Add a private `EnsureBars()` that lazily constructs the two bars exactly as `ScrollView`'s constructor (lines 29-44), subscribing `OnHorizontalChanged`/`OnVerticalChanged`. Lift `Synchronize`/`Configure`/`OnHorizontalChanged`/`OnVerticalChanged` verbatim from `ScrollView.cs:480-531`. Call `EnsureBars()` from `ResolveContentSlot` when `AutoScroll` and either visibility can show a bar.
+Add to `Container.cs`: fields `_bars` (`Children`, capacity 2, created lazily),
+`_horizontal`/`_vertical` (`ScrollBar?`), `_syncing` (bool). Add
+`ScrollBarChrome`/`ScrollBarFill` properties (lift from `ScrollView.cs:138-170`,
+updating the two bars when set). Add a private `EnsureBars()` that lazily
+constructs the two bars exactly as `ScrollView`'s constructor (lines 29-44),
+subscribing `OnHorizontalChanged`/`OnVerticalChanged`. Lift
+`Synchronize`/`Configure`/`OnHorizontalChanged`/`OnVerticalChanged` verbatim
+from `ScrollView.cs:480-531`. Call `EnsureBars()` from `ResolveContentSlot` when
+`AutoScroll` and either visibility can show a bar.
 
 - [ ] **Step 4: Introduce the `RenderContent` seam and override render/arrange**
 
@@ -759,7 +868,9 @@ On `Control.cs`, add:
 internal virtual void RenderContent(TerminalCanvas canvas) => RenderChildren(canvas);
 ```
 
-On `Container.cs`, override `RenderChildren` to clip to the viewport and draw bars when armed (adapting `ScrollView.cs:340-349`); when not armed, keep today's behavior:
+On `Container.cs`, override `RenderChildren` to clip to the viewport and draw
+bars when armed (adapting `ScrollView.cs:340-349`); when not armed, keep today's
+behavior:
 
 ```csharp
 internal override void RenderChildren(TerminalCanvas canvas)
@@ -781,11 +892,18 @@ internal override void RenderChildren(TerminalCanvas canvas)
 }
 ```
 
-Move the child loop from today's `Container.RenderChildren` into an override of `RenderContent` (default `RenderChildren` still runs the loop for unarmed containers — so factor the loop into a private `RenderChildLoop(canvas)` called by both). Override `ArrangeOverlays` to arrange the two bars in the gutters (adapt `ScrollView.cs:415-424`), and `HitTest`/`VisitChildren`/`NavigationCount`/`NavigationAt`/`DisposeChildren` to include the owned bars **only when armed** (adapt `ScrollView.cs:287-337`).
+Move the child loop from today's `Container.RenderChildren` into an override of
+`RenderContent` (default `RenderChildren` still runs the loop for unarmed
+containers — so factor the loop into a private `RenderChildLoop(canvas)` called
+by both). Override `ArrangeOverlays` to arrange the two bars in the gutters
+(adapt `ScrollView.cs:415-424`), and
+`HitTest`/`VisitChildren`/`NavigationCount`/`NavigationAt`/`DisposeChildren` to
+include the owned bars **only when armed** (adapt `ScrollView.cs:287-337`).
 
 - [ ] **Step 5: Update `Stack` to render through `RenderContent`**
 
-`Stack` overrides `RenderChildren` for `Reverse`. Move that logic to override `RenderContent` instead, so it composes with the base clip+bars:
+`Stack` overrides `RenderChildren` for `Reverse`. Move that logic to override
+`RenderContent` instead, so it composes with the base clip+bars:
 
 ```csharp
 // Stack.cs — replace the RenderChildren override with:
@@ -806,12 +924,15 @@ internal override void RenderContent(TerminalCanvas canvas)
 
 - [ ] **Step 6: Run tests to verify they pass**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: PASS.
 
-- [ ] **Step 7: Regression — Stack, Grid, Canvas, and existing ScrollView still pass**
+- [ ] **Step 7: Regression — Stack, Grid, Canvas, and existing ScrollView still
+      pass**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Controls" --timeout 240s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Controls" --timeout 240s`
 Expected: PASS.
 
 - [ ] **Step 8: Commit**
@@ -828,11 +949,14 @@ git commit -m "feat(controls): own scrollbar chrome and clip content in Containe
 ### Task 7: Keyboard scrolling
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Container.cs` (`OnEvent`)
 - Test: `tests/SharpVision.Tests/Controls/ContainerScrollTests.cs`
 
 **Interfaces:**
-- Consumes: `ScrollBy`, `Apply`, `Viewport`, `MaximumY`, `PageOverlap`, `LineSize`.
+
+- Consumes: `ScrollBy`, `Apply`, `Viewport`, `MaximumY`, `PageOverlap`,
+  `LineSize`.
 - Produces: keyboard handling inside `Container.OnEvent`.
 
 - [ ] **Step 1: Write the failing test**
@@ -853,20 +977,27 @@ public void OnEvent_WhenDownKey_ScrollsByLineSize()
 }
 ```
 
-Add a `RaiseKey` test helper to `ProbeContainer` that builds a press `KeyEventArgs` and calls `InvokeDefault` (mirror how `ScrollViewTests` drives keys — see that file's `KeyAction` alias and helper usage).
+Add a `RaiseKey` test helper to `ProbeContainer` that builds a press
+`KeyEventArgs` and calls `InvokeDefault` (mirror how `ScrollViewTests` drives
+keys — see that file's `KeyAction` alias and helper usage).
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: FAIL — no key handling.
 
 - [ ] **Step 3: Implement keyboard handling**
 
-Override `OnEvent` in `Container` and lift `Handle(KeyEventArgs)` verbatim from `ScrollView.cs:430-581`, guarded by `if (!AutoScroll) { base.OnEvent(eventArgs); return; }`. Keep the exact key set (`Left/Right/Up/Down/PageUp/PageDown/Home/End`) and `PageOverlap` math.
+Override `OnEvent` in `Container` and lift `Handle(KeyEventArgs)` verbatim from
+`ScrollView.cs:430-581`, guarded by
+`if (!AutoScroll) { base.OnEvent(eventArgs); return; }`. Keep the exact key set
+(`Left/Right/Up/Down/PageUp/PageDown/Home/End`) and `PageOverlap` math.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -879,10 +1010,12 @@ git commit -m "feat(controls): keyboard scrolling on armed Container"
 ### Task 8: Wheel scrolling with nested propagation
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Container.cs` (`OnEvent`, `Ancestor`)
 - Test: `tests/SharpVision.Tests/Controls/ContainerScrollTests.cs`
 
 **Interfaces:**
+
 - Consumes: `ScrollBy`, `HorizontalOffset`/`VerticalOffset`.
 - Produces: wheel handling; `Ancestor` walks to the nearest armed `Container`.
 
@@ -908,16 +1041,20 @@ public void Wheel_WhenLeafAtEnd_PropagatesToArmedAncestor()
 }
 ```
 
-Add a `RaiseWheel(int wheelX, int wheelY)` helper to `ProbeContainer` building a wheel `PointerEventArgs` (mirror `ScrollViewTests`' pointer/wheel drive).
+Add a `RaiseWheel(int wheelX, int wheelY)` helper to `ProbeContainer` building a
+wheel `PointerEventArgs` (mirror `ScrollViewTests`' pointer/wheel drive).
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement wheel handling + ancestor walk**
 
-In `Container.OnEvent`, dispatch `PointerEventArgs` to `Handle(PointerEventArgs)` lifted from `ScrollView.cs:583-608`. Replace the `ScrollView`-typed `Ancestor` (`ScrollView.cs:610-621`) with:
+In `Container.OnEvent`, dispatch `PointerEventArgs` to
+`Handle(PointerEventArgs)` lifted from `ScrollView.cs:583-608`. Replace the
+`ScrollView`-typed `Ancestor` (`ScrollView.cs:610-621`) with:
 
 ```csharp
 private static Container? Ancestor(Control control)
@@ -938,7 +1075,8 @@ and change the propagation loop's type from `ScrollView?` to `Container?`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -951,11 +1089,16 @@ git commit -m "feat(controls): wheel scrolling with nested propagation on Contai
 ### Task 9: `BringIntoView`, `ScrollChanged`, and `Apply` completion
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Container.cs`
 - Test: `tests/SharpVision.Tests/Controls/ContainerScrollTests.cs`
 
 **Interfaces:**
-- Produces on `Container`: `event EventHandler<ScrollChangedEventArgs>? ScrollChanged`; `bool BringIntoView(Control descendant)`. Completes `Apply` to raise `ScrollChanged` and call `Synchronize`.
+
+- Produces on `Container`:
+  `event EventHandler<ScrollChangedEventArgs>? ScrollChanged`;
+  `bool BringIntoView(Control descendant)`. Completes `Apply` to raise
+  `ScrollChanged` and call `Synchronize`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -998,7 +1141,9 @@ public void ScrollBy_WhenOffsetChanges_RaisesScrollChanged()
 }
 ```
 
-For `BringIntoView`, use a real vertical `Stack` as the container under test (it stacks children, so the target lands below the viewport). Rewrite that test to arm a `Stack`:
+For `BringIntoView`, use a real vertical `Stack` as the container under test (it
+stacks children, so the target lands below the viewport). Rewrite that test to
+arm a `Stack`:
 
 ```csharp
 Stack container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
@@ -1012,12 +1157,15 @@ container.VerticalOffset.ShouldBeGreaterThan(0);
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: FAIL.
 
-- [ ] **Step 3: Complete `Apply`; add `ScrollChanged`, `BringIntoView`, `Reveal`, `IsContentDescendant`**
+- [ ] **Step 3: Complete `Apply`; add `ScrollChanged`, `BringIntoView`,
+      `Reveal`, `IsContentDescendant`**
 
-Extend `Apply` (from Task 5) to raise `ScrollChanged` and call `Synchronize()`, matching `ScrollView.cs:460-478`:
+Extend `Apply` (from Task 5) to raise `ScrollChanged` and call `Synchronize()`,
+matching `ScrollView.cs:460-478`:
 
 ```csharp
 private bool Apply(int x, int y, Cause cause)
@@ -1039,16 +1187,22 @@ private bool Apply(int x, int y, Cause cause)
 }
 ```
 
-Add `public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;` and clear it in `OnUnavailable(ReleaseReason.Disposed)`. Lift `BringIntoView` (adapt so "content descendant" means any descendant of `this`, using `_viewportBounds`), `Reveal`, and `IsContentDescendant` from `ScrollView.cs:269-284, 623-653`.
+Add `public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;` and
+clear it in `OnUnavailable(ReleaseReason.Disposed)`. Lift `BringIntoView` (adapt
+so "content descendant" means any descendant of `this`, using
+`_viewportBounds`), `Reveal`, and `IsContentDescendant` from
+`ScrollView.cs:269-284, 623-653`.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ContainerScrollTests" --timeout 120s`
 Expected: PASS.
 
 - [ ] **Step 5: Full controls + integration regression**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Controls" --timeout 240s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Controls" --timeout 240s`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -1065,21 +1219,30 @@ git commit -m "feat(controls): BringIntoView and ScrollChanged on Container"
 ### Task 10: Refactor `List` onto intrinsic scrolling
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/List.cs`
 - Test: `tests/SharpVision.Tests/Controls/ListTests.cs` (adjust references)
 
 **Interfaces:**
-- Consumes: `Container.AutoScroll`, `ScrollBars`, `ShowScrollBars`, `ScrollBarChrome`, `ScrollBarFill`, `VerticalOffset`, `Viewport`, `BringIntoView` (inherited).
-- Produces: `List` with no internal `ScrollView`; its item `Stack` becomes the single child with `AutoScroll = true`.
+
+- Consumes: `Container.AutoScroll`, `ScrollBars`, `ShowScrollBars`,
+  `ScrollBarChrome`, `ScrollBarFill`, `VerticalOffset`, `Viewport`,
+  `BringIntoView` (inherited).
+- Produces: `List` with no internal `ScrollView`; its item `Stack` becomes the
+  single child with `AutoScroll = true`.
 
 - [ ] **Step 1: Run the existing List tests to capture the baseline**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ListTests" --timeout 180s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ListTests" --timeout 180s`
 Expected: PASS (record which tests reference `_scroll`/`ScrollView` internals).
 
 - [ ] **Step 2: Rework `List` to arm the item stack**
 
-In `List.cs`: delete the `_scroll` field and its construction. Keep `_stack` as the content. Set the item stack to scroll and make `List` delegate through it. The simplest faithful change: `List` keeps a single-child chrome slot holding `_stack`, and arms `_stack`:
+In `List.cs`: delete the `_scroll` field and its construction. Keep `_stack` as
+the content. Set the item stack to scroll and make `List` delegate through it.
+The simplest faithful change: `List` keeps a single-child chrome slot holding
+`_stack`, and arms `_stack`:
 
 ```csharp
 public List() : base(capacity: 0)
@@ -1098,15 +1261,24 @@ public List() : base(capacity: 0)
 }
 ```
 
-Replace every `_scroll.X` delegation with `_stack.X`: `ScrollBars`, `ShowScrollBars`, `ScrollBarChrome`, `ScrollBarFill`, `VerticalOffset`, `Viewport`, `BringIntoView`, `HitTest`/`HitTestPopup`/`RenderChildren`/`RenderPopupLayer`/`MeasureOverride`/`ArrangeOverride` (they now target `_stack`). `ResolveNavigation`'s `_scroll.Viewport.Height` and `_scroll.BringIntoView(target)` become `_stack.Viewport.Height` and `_stack.BringIntoView(target)`.
+Replace every `_scroll.X` delegation with `_stack.X`: `ScrollBars`,
+`ShowScrollBars`, `ScrollBarChrome`, `ScrollBarFill`, `VerticalOffset`,
+`Viewport`, `BringIntoView`,
+`HitTest`/`HitTestPopup`/`RenderChildren`/`RenderPopupLayer`/`MeasureOverride`/`ArrangeOverride`
+(they now target `_stack`). `ResolveNavigation`'s `_scroll.Viewport.Height` and
+`_scroll.BringIntoView(target)` become `_stack.Viewport.Height` and
+`_stack.BringIntoView(target)`.
 
 - [ ] **Step 3: Update tests that referenced `ScrollView`**
 
-Where `ListTests` asserted `list ... .Parent` is a `ScrollView` or reached `_scroll`, retarget to the `Stack`. Keep the observable behavior assertions (selection, `SelectedIndex=2` → "Gamma", background colors) unchanged.
+Where `ListTests` asserted `list ... .Parent` is a `ScrollView` or reached
+`_scroll`, retarget to the `Stack`. Keep the observable behavior assertions
+(selection, `SelectedIndex=2` → "Gamma", background colors) unchanged.
 
 - [ ] **Step 4: Run List tests**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*ListTests" --timeout 180s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*ListTests" --timeout 180s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1119,12 +1291,16 @@ git commit -m "refactor(controls): List uses intrinsic Container scrolling"
 ### Task 11: Enable intrinsic scrolling on `Table`
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Table.cs`
-- Test: `tests/SharpVision.Tests/Controls/TableTests.cs` (add overflow scroll test)
+- Test: `tests/SharpVision.Tests/Controls/TableTests.cs` (add overflow scroll
+  test)
 
 **Interfaces:**
+
 - Consumes: inherited scroll surface.
-- Produces: `Table` with `AutoScroll = true`, `ScrollBars = ScrollBars.Both`, and a `MeasureOverride` that reports natural (unclamped) column/row extents.
+- Produces: `Table` with `AutoScroll = true`, `ScrollBars = ScrollBars.Both`,
+  and a `MeasureOverride` that reports natural (unclamped) column/row extents.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1144,16 +1320,25 @@ public void Extent_WhenRowsExceedViewport_ExposesVerticalScroll()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*TableTests" --timeout 180s`
-Expected: FAIL — `Extent`/`Viewport` inert because `AutoScroll` is off, or `MeasureCells` clamps.
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*TableTests" --timeout 180s`
+Expected: FAIL — `Extent`/`Viewport` inert because `AutoScroll` is off, or
+`MeasureCells` clamps.
 
 - [ ] **Step 3: Arm the table and expose natural extents**
 
-In `Table.cs` constructor set `AutoScroll = true; ScrollBars = ScrollBars.Both;`. In `MeasureCells`/`MeasureOverride`, when the eligible axis constraint is null (the base nulled it), compute row heights and column widths from cell desired sizes without clamping to the (absent) bound, so the returned size is the natural extent. Confirm the returned `Size` sums natural `_rowHeights`/`_columnWidths` plus gaps.
+In `Table.cs` constructor set
+`AutoScroll = true; ScrollBars = ScrollBars.Both;`. In
+`MeasureCells`/`MeasureOverride`, when the eligible axis constraint is null (the
+base nulled it), compute row heights and column widths from cell desired sizes
+without clamping to the (absent) bound, so the returned size is the natural
+extent. Confirm the returned `Size` sums natural `_rowHeights`/`_columnWidths`
+plus gaps.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*TableTests" --timeout 180s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*TableTests" --timeout 180s`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1166,23 +1351,37 @@ git commit -m "feat(controls): Table scrolls via intrinsic Container mechanism"
 ### Task 12: Delete `ScrollView`; migrate Gallery and remaining usages
 
 **Files:**
+
 - Delete: `src/SharpVision/Controls/ScrollView.cs`
 - Delete: `src/SharpVision.Showcase/Panes/ScrollViewShowcasePane.cs`
-- Modify: `src/SharpVision.Showcase/Gallery.cs`, `src/SharpVision.Showcase/GlobalUsings.cs`, `src/SharpVision.Showcase/Panes/ListShowcasePane.cs`, `src/SharpVision.Showcase/Panes/ComboBoxShowcasePane.cs`
-- Delete/rename tests: `tests/SharpVision.Tests/Controls/ScrollViewTests.cs`, `tests/SharpVision.Tests/Controls/RandomizedScrollViewTests.cs` (migrated in Task 13)
+- Modify: `src/SharpVision.Showcase/Gallery.cs`,
+  `src/SharpVision.Showcase/GlobalUsings.cs`,
+  `src/SharpVision.Showcase/Panes/ListShowcasePane.cs`,
+  `src/SharpVision.Showcase/Panes/ComboBoxShowcasePane.cs`
+- Delete/rename tests: `tests/SharpVision.Tests/Controls/ScrollViewTests.cs`,
+  `tests/SharpVision.Tests/Controls/RandomizedScrollViewTests.cs` (migrated in
+  Task 13)
 
 **Interfaces:**
+
 - Consumes: intrinsic scroll surface on `Container`.
 - Produces: no `ScrollView` type anywhere.
 
 - [ ] **Step 1: Find every reference**
 
-Run: `grep -rln "ScrollView" src tests`
-Expected: the files listed above plus the two test files.
+Run: `grep -rln "ScrollView" src tests` Expected: the files listed above plus
+the two test files.
 
 - [ ] **Step 2: Migrate each usage**
 
-Replace `new ScrollView { Content = c, ScrollBars = ScrollBars.X, ... }` with the content container armed: set `c.AutoScroll = true` and copy `ScrollBars`/`ShowScrollBars`/chrome onto `c` (or wrap in `new Stack { AutoScroll = true, Children = { c } }` if `c` must stay unchanged). In `Gallery.cs`, the scrolling content host (its `Content.Parent` is currently a `ScrollView`) becomes an armed `Stack`/`Dock`; update the `GalleryTests` assertion that `Content.Parent` is a `ScrollView` to expect the new armed container type.
+Replace `new ScrollView { Content = c, ScrollBars = ScrollBars.X, ... }` with
+the content container armed: set `c.AutoScroll = true` and copy
+`ScrollBars`/`ShowScrollBars`/chrome onto `c` (or wrap in
+`new Stack { AutoScroll = true, Children = { c } }` if `c` must stay unchanged).
+In `Gallery.cs`, the scrolling content host (its `Content.Parent` is currently a
+`ScrollView`) becomes an armed `Stack`/`Dock`; update the `GalleryTests`
+assertion that `Content.Parent` is a `ScrollView` to expect the new armed
+container type.
 
 - [ ] **Step 3: Delete `ScrollView.cs` and the showcase pane**
 
@@ -1192,8 +1391,8 @@ git rm src/SharpVision/Controls/ScrollView.cs src/SharpVision.Showcase/Panes/Scr
 
 - [ ] **Step 4: Build**
 
-Run: `make build`
-Expected: success. Fix any remaining references the compiler flags.
+Run: `make build` Expected: success. Fix any remaining references the compiler
+flags.
 
 - [ ] **Step 5: Commit**
 
@@ -1205,9 +1404,13 @@ git commit -m "refactor: remove ScrollView in favor of intrinsic Container scrol
 ### Task 13: Update the showcase inventory
 
 **Files:**
-- Modify: `src/SharpVision.Showcase/Gallery.cs` (page list/sidebar), and the inventory assertions in `tests/SharpVision.Showcase.Tests/GalleryTests.cs`, `GalleryRenderingTests.cs`, `GalleryInteractionTests.cs`.
+
+- Modify: `src/SharpVision.Showcase/Gallery.cs` (page list/sidebar), and the
+  inventory assertions in `tests/SharpVision.Showcase.Tests/GalleryTests.cs`,
+  `GalleryRenderingTests.cs`, `GalleryInteractionTests.cs`.
 
 **Interfaces:**
+
 - Produces: sidebar inventory with `ScrollView` removed; `ScrollBar` retained.
 
 - [ ] **Step 1: Run showcase tests to see the failing inventory**
@@ -1215,9 +1418,13 @@ git commit -m "refactor: remove ScrollView in favor of intrinsic Container scrol
 Run: `dotnet test --project tests/SharpVision.Showcase.Tests --timeout 240s`
 Expected: FAIL — inventory still lists `ScrollView`.
 
-- [ ] **Step 2: Remove `ScrollView` from the page inventory and the test expectations**
+- [ ] **Step 2: Remove `ScrollView` from the page inventory and the test
+      expectations**
 
-Delete the `ScrollView` entry from `Gallery`'s page list and from every `_controls`/inventory array in the showcase tests. Keep `ScrollBar`, `Border`, `Shadow` (Border/Shadow are the sibling spec's concern, not this one). Verify order is otherwise unchanged.
+Delete the `ScrollView` entry from `Gallery`'s page list and from every
+`_controls`/inventory array in the showcase tests. Keep `ScrollBar`, `Border`,
+`Shadow` (Border/Shadow are the sibling spec's concern, not this one). Verify
+order is otherwise unchanged.
 
 - [ ] **Step 3: Run showcase tests**
 
@@ -1238,29 +1445,46 @@ git commit -m "test(showcase): drop ScrollView from the control inventory"
 ### Task 14: Migrate the scrolling test contract to `Container`
 
 **Files:**
-- Create: `tests/SharpVision.Tests/Controls/ContainerScrollGeometryTests.cs` (port `RandomizedScrollViewTests`)
+
+- Create: `tests/SharpVision.Tests/Controls/ContainerScrollGeometryTests.cs`
+  (port `RandomizedScrollViewTests`)
 - Modify/rename: fold `ScrollViewTests` behaviors into `ContainerScrollTests`
-- Delete: `tests/SharpVision.Tests/Controls/ScrollViewTests.cs`, `RandomizedScrollViewTests.cs`
+- Delete: `tests/SharpVision.Tests/Controls/ScrollViewTests.cs`,
+  `RandomizedScrollViewTests.cs`
 
 **Interfaces:**
+
 - Consumes: the full `Container` scroll surface.
 
 - [ ] **Step 1: Port the randomized geometry suite**
 
-Recreate `RandomizedScrollViewTests` against an armed `ProbeContainer`/`Stack`, keeping the seed `0x005C7011` and the invariants (containment, repeatability, monotonic endpoint position, exact invertible endpoints, one-step round-trip error). The bar math lives in `ScrollBar`/`Thumb` (unchanged), so only the driver type changes.
+Recreate `RandomizedScrollViewTests` against an armed `ProbeContainer`/`Stack`,
+keeping the seed `0x005C7011` and the invariants (containment, repeatability,
+monotonic endpoint position, exact invertible endpoints, one-step round-trip
+error). The bar math lives in `ScrollBar`/`Thumb` (unchanged), so only the
+driver type changes.
 
 - [ ] **Step 2: Port the remaining `ScrollViewTests` cases**
 
-For each `ScrollViewTests` case not already covered by `ContainerScrollTests` (visibility policies, exact fit, zero/tiny viewport, resize appearance/removal, content changes, offset clamping, capture, focus, disabled state, Unicode clipping, final frames), add the equivalent armed-`Container` test. Delete the two old files.
+For each `ScrollViewTests` case not already covered by `ContainerScrollTests`
+(visibility policies, exact fit, zero/tiny viewport, resize appearance/removal,
+content changes, offset clamping, capture, focus, disabled state, Unicode
+clipping, final frames), add the equivalent armed-`Container` test. Delete the
+two old files.
 
 - [ ] **Step 3: Add the intrinsic-model tests from the spec's Testing section**
 
-Add: fill-first (Star/Percent/Stretch on the cross axis do not scroll), wrap-vs-horizontal (`ScrollBars = Vertical` wraps; `ScrollBars = Both` + incompressible child grows a horizontal bar), natural-extent reporting for `Grid`/`Table`, and grow/shrink + `AutoSize` + `MaxHeight` + `AutoScroll` caps-then-scrolls.
+Add: fill-first (Star/Percent/Stretch on the cross axis do not scroll),
+wrap-vs-horizontal (`ScrollBars = Vertical` wraps; `ScrollBars = Both` +
+incompressible child grows a horizontal bar), natural-extent reporting for
+`Grid`/`Table`, and grow/shrink + `AutoSize` + `MaxHeight` + `AutoScroll`
+caps-then-scrolls.
 
 - [ ] **Step 4: Run the full test project**
 
-Run: `dotnet test --project tests/SharpVision.Tests --timeout 600s`
-Expected: PASS, discovered-test count at/above the configured minimum. (Re-run once if `Integration/ScrollingTests` shows the known single flake.)
+Run: `dotnet test --project tests/SharpVision.Tests --timeout 600s` Expected:
+PASS, discovered-test count at/above the configured minimum. (Re-run once if
+`Integration/ScrollingTests` shows the known single flake.)
 
 - [ ] **Step 5: Commit**
 
@@ -1272,26 +1496,40 @@ git commit -m "test(controls): migrate the scrolling contract to intrinsic Conta
 ### Task 15: Documentation, `AGENTS.md`, and the full quality gate
 
 **Files:**
-- Modify: `docs/concepts/scrolling.md`, `docs/concepts/layout.md`, `docs/controls/index.md` (+ remove the `ScrollView` control doc if one exists), `docs/architecture/showcase.md`, `AGENTS.md`
+
+- Modify: `docs/concepts/scrolling.md`, `docs/concepts/layout.md`,
+  `docs/controls/index.md` (+ remove the `ScrollView` control doc if one
+  exists), `docs/architecture/showcase.md`, `AGENTS.md`
 
 **Interfaces:** none (docs).
 
 - [ ] **Step 1: Rewrite `docs/concepts/scrolling.md`**
 
-Recast around `AutoScroll` on `Container`; describe the VCL/WinForms lineage, the natural-extent (`DisplayRectangle`) model, the per-axis `ScrollBars` unbounded-measure rule (default `Vertical`), the reservation probe, and nested wheel propagation. Keep the "Automatic scrollbar algorithm", "Thumb geometry", and "Test contract" sections, updating type names from `ScrollView` to `Container`.
+Recast around `AutoScroll` on `Container`; describe the VCL/WinForms lineage,
+the natural-extent (`DisplayRectangle`) model, the per-axis `ScrollBars`
+unbounded-measure rule (default `Vertical`), the reservation probe, and nested
+wheel propagation. Keep the "Automatic scrollbar algorithm", "Thumb geometry",
+and "Test contract" sections, updating type names from `ScrollView` to
+`Container`.
 
 - [ ] **Step 2: Update `docs/concepts/layout.md`**
 
-Add a grow/shrink section (`AutoSize`/`AutoSizeMode`) and the rule that a determinate axis scrolls while an auto-sized axis grows (capping at `Max` then scrolling).
+Add a grow/shrink section (`AutoSize`/`AutoSizeMode`) and the rule that a
+determinate axis scrolls while an auto-sized axis grows (capping at `Max` then
+scrolling).
 
 - [ ] **Step 3: Update control docs and `AGENTS.md`**
 
-Remove the `ScrollView` control spec; document the scroll surface on `Container`. In `AGENTS.md`, add that scrolling and grow/shrink are intrinsic `Container` properties (`AutoScroll`, `AutoSize`, `AutoSizeMode`) and there is no dedicated scroll container.
+Remove the `ScrollView` control spec; document the scroll surface on
+`Container`. In `AGENTS.md`, add that scrolling and grow/shrink are intrinsic
+`Container` properties (`AutoScroll`, `AutoSize`, `AutoSizeMode`) and there is
+no dedicated scroll container.
 
 - [ ] **Step 4: Full quality gate**
 
-Run: `make format && make lint && make build && make test`
-Expected: zero warnings, zero errors, docs/link checks pass, discovered tests at/above the minimum.
+Run: `make format && make lint && make build && make test` Expected: zero
+warnings, zero errors, docs/link checks pass, discovered tests at/above the
+minimum.
 
 - [ ] **Step 5: Commit**
 
@@ -1304,11 +1542,25 @@ git commit -m "docs: intrinsic Container scrolling and grow/shrink"
 
 ## Self-Review
 
-**Spec coverage:** §1 base capability → Tasks 2/5/6; §2 public surface → Tasks 4/5/6/9; §3 grow/shrink → Tasks 1/3/4; §4 mechanism (per-axis unbounded measure, probe, translate, clip, natural extent) → Tasks 5/6/11; §5 defaults/arming → Tasks 5 (default false), 10/11 (List/Table on); §6 removal/migration → Tasks 10-13; Testing → Task 14; Docs → Task 15; Risks (bespoke containers) → Tasks 6/10/11 (Stack `RenderContent`, List/Table); (natural extent) → Task 11.
+**Spec coverage:** §1 base capability → Tasks 2/5/6; §2 public surface → Tasks
+4/5/6/9; §3 grow/shrink → Tasks 1/3/4; §4 mechanism (per-axis unbounded measure,
+probe, translate, clip, natural extent) → Tasks 5/6/11; §5 defaults/arming →
+Tasks 5 (default false), 10/11 (List/Table on); §6 removal/migration → Tasks
+10-13; Testing → Task 14; Docs → Task 15; Risks (bespoke containers) → Tasks
+6/10/11 (Stack `RenderContent`, List/Table); (natural extent) → Task 11.
 
-**Placeholders:** the `BuildTableWithRows` helper in Task 11 must be a real inline builder or an existing `TableTests` helper — the implementer inlines row construction from the existing `TableTests` patterns. `ShowScrollBars` setter body in Task 5 is specified by reference to `ScrollView.cs:110-132` (verbatim lift), not left blank.
+**Placeholders:** the `BuildTableWithRows` helper in Task 11 must be a real
+inline builder or an existing `TableTests` helper — the implementer inlines row
+construction from the existing `TableTests` patterns. `ShowScrollBars` setter
+body in Task 5 is specified by reference to `ScrollView.cs:110-132` (verbatim
+lift), not left blank.
 
-**Type consistency:** seam names (`OnMeasuringContent`, `OnMeasuredDesired`, `ResolveContentSlot`, `ArrangeOverlays`, `ShrinkWrapsWidth/Height`, `RenderContent`, `ContentExtent`), `Apply(int,int,Cause)`, `ScrollBy(int,int,Cause)`, `Ancestor(Control)→Container?`, and property defaults (`ScrollBars=Vertical`, `AutoScroll=false`, `AutoSizeMode=GrowAndShrink`) are consistent across tasks and match the spec.
+**Type consistency:** seam names (`OnMeasuringContent`, `OnMeasuredDesired`,
+`ResolveContentSlot`, `ArrangeOverlays`, `ShrinkWrapsWidth/Height`,
+`RenderContent`, `ContentExtent`), `Apply(int,int,Cause)`,
+`ScrollBy(int,int,Cause)`, `Ancestor(Control)→Container?`, and property defaults
+(`ScrollBars=Vertical`, `AutoScroll=false`, `AutoSizeMode=GrowAndShrink`) are
+consistent across tasks and match the spec.
 
 ---
 
@@ -1316,7 +1568,8 @@ git commit -m "docs: intrinsic Container scrolling and grow/shrink"
 
 Two execution options:
 
-1. **Subagent-Driven (recommended)** — a fresh subagent per task, review between tasks, fast iteration.
+1. **Subagent-Driven (recommended)** — a fresh subagent per task, review between
+   tasks, fast iteration.
 2. **Inline Execution** — execute tasks in this session with checkpoints.
 
 Which approach?

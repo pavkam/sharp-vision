@@ -155,12 +155,17 @@ public sealed class Overlay: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Overlay accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Overlay accumulation uses non-negative extents.");
+
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private Control[] RentOrdered()
     {
+        Debug.Assert(Children.Count >= 0, "Overlay child count cannot be negative.");
+
         Control[] result = ArrayPool<Control>.Shared.Rent(Children.Count);
 
         for (int index = 0; index < Children.Count; index++)
@@ -185,6 +190,7 @@ public sealed class Overlay: Container
             result[insertion + 1] = current;
         }
 
+        Debug.Assert(result.Length >= Children.Count, "Rented overlay buffer must cover every child.");
         return result;
     }
 }

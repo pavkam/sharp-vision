@@ -295,11 +295,24 @@ public sealed class Menu: Container
         return -1;
     }
 
-    private static MenuItem RequireItem(Control child) => child as MenuItem ??
-        throw new InvalidOperationException("Menus may own only MenuItem controls through Items.");
+    private static MenuItem RequireItem(Control child)
+    {
+        return child as MenuItem ??
+            throw new InvalidOperationException("Menus may own only MenuItem controls through Items.");
+    }
 
-    private int SpacingExtent(int count) => count < 2 ? 0 : Add(0, Spacing * (count - 1));
+    private int SpacingExtent(int count)
+    {
+        Debug.Assert(count >= 0, "Menu participant count is non-negative.");
 
-    private static int Add(int left, int right) =>
-        (int) Math.Min(int.MaxValue, (long) left + right);
+        return count < 2 ? 0 : Add(0, Spacing * (count - 1));
+    }
+
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "Menu accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Menu accumulation uses non-negative extents.");
+
+        return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
 }

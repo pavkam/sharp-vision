@@ -138,6 +138,5 @@ public readonly record struct Glyphs
                 name);
     }
 
-    private static Glyphs Uniform(Rune value) =>
-        new(value, value, value, value, value, value, value, value);
+    private static Glyphs Uniform(Rune value) => new(value, value, value, value, value, value, value, value);
 }

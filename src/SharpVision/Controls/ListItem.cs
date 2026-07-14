@@ -116,8 +116,13 @@ internal sealed class ListItem: Pressable
         }
     }
 
-    private static int Add(int left, int right) =>
-        (int) Math.Min(int.MaxValue, (long) left + right);
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "ListItem accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "ListItem accumulation uses non-negative extents.");
+
+        return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
 
     private void Commit(bool value)
     {

@@ -107,6 +107,9 @@ public sealed partial class Shadow: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Shadow accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Shadow accumulation uses non-negative extents.");
+
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }

@@ -11,7 +11,7 @@ using System.Buffers;
     "Naming",
     "CA1711:Identifiers should not have incorrect suffix",
     Justification = "Stack is the approved concise terminal control name, not a collection type.")]
-public class Stack: Container
+public sealed class Stack: Container
 {
     /// <summary>Initializes a stack that fills its parent cross-axis slot.</summary>
     public Stack() => HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -180,12 +180,17 @@ public class Stack: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Stack accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Stack accumulation uses non-negative extents.");
+
         long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
     private static int Percent(int axis, double value)
     {
+        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
+
         double result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
@@ -239,6 +244,8 @@ public class Stack: Container
 
     private int SumMargins(ReadOnlySpan<Control> children)
     {
+        Debug.Assert(children.Length >= 0, "Stack margin sum requires a valid span.");
+
         int result = 0;
 
         foreach (Control child in children)
@@ -259,6 +266,9 @@ public class Stack: Container
         Rect bounds,
         int spacing)
     {
+        Debug.Assert(children.Length == extents.Length, "Every arranged child must have one extent.");
+        Debug.Assert(spacing >= 0, "Stack spacing is non-negative.");
+
         int origin = Orientation == Orientation.Vertical ? bounds.Y : bounds.X;
         int remainingSpacing = spacing;
 
@@ -272,6 +282,7 @@ public class Stack: Container
             Rect slot = Orientation == Orientation.Vertical
                 ? new Rect(bounds.X, origin, bounds.Width, outer)
                 : new Rect(origin, bounds.Y, outer, bounds.Height);
+
             child.Arrange(
                 slot,
                 widthResolved: Orientation == Orientation.Horizontal,
@@ -289,6 +300,9 @@ public class Stack: Container
 
     private int SpacingExtent(int count, int limit)
     {
+        Debug.Assert(count >= 0, "Participant count is non-negative.");
+        Debug.Assert(limit >= 0, "Spacing limit is non-negative.");
+
         if (count <= 1)
         {
             return 0;

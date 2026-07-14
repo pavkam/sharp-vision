@@ -321,12 +321,20 @@ public sealed class ComboBox: Pressable
 
     #region Geometry
 
-    private string SelectedText() => _list.SelectedIndex >= 0 && _list.SelectedIndex < _list.Items.Count
-        ? _list.Items[_list.SelectedIndex]?.ToString() ?? string.Empty
-        : string.Empty;
+    private string SelectedText()
+    {
+        int index = _list.SelectedIndex;
 
-    private static int Add(int left, int right) =>
-        (int) Math.Min(int.MaxValue, (long) left + right);
+        return index < 0 || index >= _list.Items.Count ? string.Empty : _list.Items[index]?.ToString() ?? string.Empty;
+    }
+
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "ComboBox accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "ComboBox accumulation uses non-negative extents.");
+
+        return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
 
     private Rect RootBounds(Rect fallback)
     {
@@ -371,6 +379,7 @@ public sealed class ComboBox: Pressable
         int y = Math.Min(left.Y, right.Y);
         int rightEdge = Math.Max(left.Right, right.Right);
         int bottom = Math.Max(left.Bottom, right.Bottom);
+
         return new Rect(
             x,
             y,

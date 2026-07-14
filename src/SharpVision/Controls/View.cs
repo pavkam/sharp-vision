@@ -62,6 +62,7 @@ public abstract class View: Container
 
         Control content = Build() ??
             throw new InvalidOperationException("View.Build must return a non-null control.");
+
         // SetOnly re-marks this view measure-dirty mid-measure; the _built guard makes the resulting extra pass a no-op.
         Children.SetOnly(content);
         _built = true;
@@ -69,6 +70,9 @@ public abstract class View: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "View accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "View accumulation uses non-negative extents.");
+
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }

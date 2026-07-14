@@ -391,11 +391,12 @@ public sealed class List: Container, IStyleScope
         }
     }
 
-    private static Control DefaultTemplate(object? item) =>
-        new Label(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
+    private static Control DefaultTemplate(object? item) => new Label(Convert.ToString(item, CultureInfo.InvariantCulture) ?? string.Empty);
 
     private static object?[] Copy(IReadOnlyList<object?> values)
     {
+        Debug.Assert(values is not null, "List copy requires a non-null source.");
+
         object?[] result = new object?[values.Count];
 
         for (int index = 0; index < result.Length; index++)
@@ -408,6 +409,9 @@ public sealed class List: Container, IStyleScope
 
     private static ListItem[] Build(IReadOnlyList<object?> items, ItemTemplate template)
     {
+        Debug.Assert(items is not null, "List build requires a non-null item source.");
+        Debug.Assert(template is not null, "List build requires a non-null template.");
+
         Control[] controls = new Control[items.Count];
         HashSet<Control> unique = new(ReferenceEqualityComparer.Instance);
 
@@ -438,6 +442,8 @@ public sealed class List: Container, IStyleScope
                 result[index] = new ListItem(index, controls[index]);
             }
 
+            Debug.Assert(result.Length == items.Count, "Every item must realize to one ListItem.");
+
             return result;
         }
         catch
@@ -456,6 +462,9 @@ public sealed class List: Container, IStyleScope
 
     private void Replace(IReadOnlyList<object?> items, ListItem[] realized, bool replaceItems)
     {
+        Debug.Assert(realized is not null, "List replacement requires realized items.");
+        Debug.Assert(realized.Length == items.Count, "Realized items must match the source count.");
+
         while (_stack.Children.Count > 0)
         {
             ListItem previous = (ListItem) _stack.Children[^1];
@@ -571,6 +580,8 @@ public sealed class List: Container, IStyleScope
 
     private void ApplyInputSelection(int index, Modifiers modifiers)
     {
+        Debug.Assert(index >= 0, "List input selection index is non-negative.");
+
         if (SelectionMode == SelectionMode.None)
         {
             return;
@@ -685,9 +696,7 @@ public sealed class List: Container, IStyleScope
         return null;
     }
 
-    private ListItem? ItemAt(int index) => index >= 0 && index < _stack.Children.Count
-        ? (ListItem) _stack.Children[index]
-        : null;
+    private ListItem? ItemAt(int index) => index < 0 || index >= _stack.Children.Count ? null : (ListItem) _stack.Children[index];
 
     private static ListItem? FindItem(Control? source)
     {

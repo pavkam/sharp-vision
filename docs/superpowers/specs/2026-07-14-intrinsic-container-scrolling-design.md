@@ -3,8 +3,8 @@
 ## Status
 
 Design approved 2026-07-14. Ready for an implementation plan. This is the first
-of two sibling specs in one initiative — *WinForms/Delphi-aligned intrinsic
-capabilities* — that folds dedicated wrapper controls into intrinsic
+of two sibling specs in one initiative — _WinForms/Delphi-aligned intrinsic
+capabilities_ — that folds dedicated wrapper controls into intrinsic
 `Control`/`Container` behavior. This spec covers scrolling and grow/shrink and
 removes `ScrollView`. A separate spec covers intrinsic border/shadow and removes
 `Border`/`Shadow`.
@@ -57,12 +57,12 @@ mature and predictable:
   `ScrollableControl.AutoScroll`; Delphi `TScrollingWinControl.AutoScroll` with
   `HorzScrollBar`/`VertScrollBar`. A `Button` is not a scrollable control; a
   `Panel`/`Form`/`TScrollBox` is.
-- **The scroll extent is the natural content size** — WinForms `DisplayRectangle`
-  (the virtual/scroll area) versus `ClientRectangle` (the visible viewport). It
-  is derived from where children actually lay out, *not* from re-measuring
-  children against infinity. Docked/anchored/filled children fit the client and
-  do not enlarge the scroll region; only content that is naturally larger than
-  the client does.
+- **The scroll extent is the natural content size** — WinForms
+  `DisplayRectangle` (the virtual/scroll area) versus `ClientRectangle` (the
+  visible viewport). It is derived from where children actually lay out, _not_
+  from re-measuring children against infinity. Docked/anchored/filled children
+  fit the client and do not enlarge the scroll region; only content that is
+  naturally larger than the client does.
 - **Grow/shrink is a separate, explicit concern.** `AutoSize` +
   `AutoSizeMode { GrowOnly, GrowAndShrink }`. A container that grows to fit its
   content does not need to scroll; a container with a determinate size that
@@ -70,15 +70,15 @@ mature and predictable:
 
 ## Decisions (locked)
 
-| #   | Decision                    | Choice                                                                                                                       |
-| --- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Where the capability lives  | The `Container` base (the `ScrollableControl` role); all subclasses inherit it                                               |
-| 2   | Default                     | WinForms-faithful **opt-in**: `AutoScroll` defaults to `false` (clip); scrolling is turned on per container                  |
-| 3   | Extent model                | Per axis, driven by `ScrollBars` (default `Vertical`): eligible axes are measured **unbounded** (natural extent, content-first); non-eligible axes stay bounded (**fill-first**: star/percent/stretch fill the client) |
-| 4   | Width behavior              | Default `ScrollBars = Vertical` leaves width bounded, so text wraps and prose scrolls vertically; `ScrollBars = Both`/`Horizontal` opts an axis into unbounded measure for horizontal scrolling of incompressible content |
-| 5   | Vocabulary                  | Adopt `AutoScroll`, `AutoSize`, `AutoSizeMode { GrowOnly, GrowAndShrink }`; keep the existing scrollbar-chrome enums          |
-| 6   | Public scroll surface       | Hoist `ScrollView`'s surface onto `Container`; inert while `AutoScroll` is off                                               |
-| 7   | `ScrollView`                | Deleted; `List`/`Table` refactored onto the base mechanism                                                                    |
+| #   | Decision                   | Choice                                                                                                                                                                                                                    |
+| --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Where the capability lives | The `Container` base (the `ScrollableControl` role); all subclasses inherit it                                                                                                                                            |
+| 2   | Default                    | WinForms-faithful **opt-in**: `AutoScroll` defaults to `false` (clip); scrolling is turned on per container                                                                                                               |
+| 3   | Extent model               | Per axis, driven by `ScrollBars` (default `Vertical`): eligible axes are measured **unbounded** (natural extent, content-first); non-eligible axes stay bounded (**fill-first**: star/percent/stretch fill the client)    |
+| 4   | Width behavior             | Default `ScrollBars = Vertical` leaves width bounded, so text wraps and prose scrolls vertically; `ScrollBars = Both`/`Horizontal` opts an axis into unbounded measure for horizontal scrolling of incompressible content |
+| 5   | Vocabulary                 | Adopt `AutoScroll`, `AutoSize`, `AutoSizeMode { GrowOnly, GrowAndShrink }`; keep the existing scrollbar-chrome enums                                                                                                      |
+| 6   | Public scroll surface      | Hoist `ScrollView`'s surface onto `Container`; inert while `AutoScroll` is off                                                                                                                                            |
+| 7   | `ScrollView`               | Deleted; `List`/`Table` refactored onto the base mechanism                                                                                                                                                                |
 
 ## Design
 
@@ -87,7 +87,7 @@ mature and predictable:
 The scroll layer is implemented once at the `Control`/`Container` boundary and
 transparently wraps each subclass's existing `MeasureOverride`,
 `ArrangeOverride`, and `OnRender`. Subclasses keep measuring and arranging their
-children exactly as they do now, into a *content box* the base sizes to the
+children exactly as they do now, into a _content box_ the base sizes to the
 content extent and shifts by the scroll offset. The base clips children to the
 viewport and owns the bar chrome. This is `ScrollView`'s mechanism moved down to
 the base and armed per instance.
@@ -160,7 +160,7 @@ pattern is therefore `AutoSize = true`, a `MaxHeight`, and `AutoScroll = true`.
 **Extent is the natural content size, discovered per axis via `ScrollBars`.**
 SharpVision's `ResolveMeasureAxis` clamps each control's `DesiredSize` to its
 constraint, so a bounded measure erases the overflow signal — the natural extent
-on an axis is only recoverable by measuring *that axis* unbounded. The scroll
+on an axis is only recoverable by measuring _that axis_ unbounded. The scroll
 layer therefore nulls the `ScrollBars`-eligible axes in the content constraint
 handed to `MeasureOverride`, captures the (now unclamped) result as the extent,
 and leaves non-eligible axes bounded. With the default `ScrollBars = Vertical`:
@@ -178,12 +178,13 @@ and leaves non-eligible axes bounded. With the default `ScrollBars = Vertical`:
   `Table`, a fixed width, a non-wrapping child) then grows a horizontal bar.
   This replaces `ScrollView.ConstrainContentToViewport`.
 
-An armed container **must report its natural content extent** from measure on the
-eligible axes. `Stack` already measures its stacking axis unbounded and `Canvas`
-takes the union of absolute positions, so both work directly. `Grid` and `Table`
-resolve tracks against the constraint; with the eligible axis nulled they must
-let fixed/auto tracks report their full requested size rather than clamping it,
-so the overflow is visible to the scroll layer. This is verified per container.
+An armed container **must report its natural content extent** from measure on
+the eligible axes. `Stack` already measures its stacking axis unbounded and
+`Canvas` takes the union of absolute positions, so both work directly. `Grid`
+and `Table` resolve tracks against the constraint; with the eligible axis nulled
+they must let fixed/auto tracks report their full requested size rather than
+clamping it, so the overflow is visible to the scroll layer. This is verified
+per container.
 
 **Reservation, translation, clipping, chrome.** When armed and overflowing, the
 base:
@@ -193,8 +194,9 @@ base:
    add an automatic bar when `extent > viewport` on its axis, recompute because
    one bar consumes space and can require the other, and stop when stable. Bars
    only grow during the probe. Percentage bases remain the candidate viewport.
-2. Commits `Extent` and `Viewport`, clamps offsets to `0..max(0, extent -
-   viewport)` per the enabled axes, and raises `ScrollChanged`.
+2. Commits `Extent` and `Viewport`, clamps offsets to
+   `0..max(0, extent - viewport)` per the enabled axes, and raises
+   `ScrollChanged`.
 3. Calls the subclass `ArrangeOverride` with a content box positioned at
    `origin - offset` and sized `max(extent, viewport)`, so children arrange
    normally and the offset scrolls them.
@@ -210,15 +212,15 @@ coordinates after the offset and never targets clipped content or a hidden bar.
 **Input.** Arrow/page/home/end keys, wheel and pixel deltas, track clicks, thumb
 dragging, and programmatic `BringIntoView` all use the typed scroll commands and
 `Cause`. Unused wheel delta propagates to the nearest ancestor container that is
-armed (`AutoScroll` with the matching axis enabled) — generalizing `ScrollView`'s
-current ancestor walk. Pointer capture owns thumb dragging and is released on
-disable, detach, close, or cancellation.
+armed (`AutoScroll` with the matching axis enabled) — generalizing
+`ScrollView`'s current ancestor walk. Pointer capture owns thumb dragging and is
+released on disable, detach, close, or cancellation.
 
 ### 5. Defaults and arming
 
-Every container defaults to `AutoScroll = false` (clip), matching WinForms/Delphi
-and leaving current screens visually unchanged. The exceptions are the two
-controls that scroll today and must keep doing so:
+Every container defaults to `AutoScroll = false` (clip), matching
+WinForms/Delphi and leaving current screens visually unchanged. The exceptions
+are the two controls that scroll today and must keep doing so:
 
 - `List` sets `AutoScroll = true` in its constructor (keeping the default
   `ScrollBars = Vertical`), drops its internal `ScrollView`, and enables
@@ -234,10 +236,11 @@ silent partial behavior.
 ### 6. `ScrollView` removal and migration
 
 - Delete `ScrollView` and `ScrollViewShowcasePane`.
-- `new ScrollView { Content = x }` becomes `new Stack/Grid/Dock/... { AutoScroll
-  = true }` around the same content, or `AutoScroll = true` on the content
-  container itself. A view that relied on the old both-axis `ScrollView` sets
-  `ScrollBars = Both`; the default `Vertical` gives wrap + vertical scroll.
+- `new ScrollView { Content = x }` becomes
+  `new Stack/Grid/Dock/... { AutoScroll = true }` around the same content, or
+  `AutoScroll = true` on the content container itself. A view that relied on the
+  old both-axis `ScrollView` sets `ScrollBars = Both`; the default `Vertical`
+  gives wrap + vertical scroll.
 - The Gallery's scrolling content host sets `AutoScroll = true`.
 - `List` drops the composed `ScrollView`; its `VerticalOffset`, `Viewport`, and
   `BringIntoView` usages retarget to the inherited base members.
@@ -274,16 +277,16 @@ Add tests for the intrinsic model:
   scroll state; arming it produces bars and reachable content.
 - **Fill-first:** `Star`/`Percent`/`Stretch` children fill the client and do not
   by themselves produce a bar.
-- **Wrap versus horizontal scroll:** wrapping content scrolls vertically only; an
-  incompressible child (fixed width, `Table`, `AutoSize`) produces a horizontal
-  bar.
+- **Wrap versus horizontal scroll:** wrapping content scrolls vertically only;
+  an incompressible child (fixed width, `Table`, `AutoSize`) produces a
+  horizontal bar.
 - **Natural-extent reporting:** `Grid`/`Table` with fixed tracks exceeding the
   client overflow and scroll rather than clamp.
 - **Grow/shrink:** `GrowAndShrink` versus `GrowOnly`; `AutoSize` + `MaxHeight` +
   `AutoScroll` grows to content then caps and scrolls.
-- **Migration:** `List`/`Table` keep their current scrolling behavior on the base
-  mechanism; representative screens that used `ScrollView` behave identically
-  after migration.
+- **Migration:** `List`/`Table` keep their current scrolling behavior on the
+  base mechanism; representative screens that used `ScrollView` behave
+  identically after migration.
 
 Follow the repository test rules: watch each new test fail for the expected
 reason first; assert observable output and final frames; add property-style
@@ -293,11 +296,12 @@ tests where geometry is involved.
 
 - `docs/concepts/scrolling.md` — recast around `AutoScroll` on `Container`; note
   the VCL/WinForms lineage and the natural-extent (`DisplayRectangle`) model.
-- `docs/concepts/layout.md` — add grow/shrink (`AutoSize`/`AutoSizeMode`) and how
-  a determinate axis scrolls while an auto-sizing axis grows.
+- `docs/concepts/layout.md` — add grow/shrink (`AutoSize`/`AutoSizeMode`) and
+  how a determinate axis scrolls while an auto-sizing axis grows.
 - `docs/controls/*` — remove the `ScrollView` control spec; document the scroll
   surface on `Container`.
-- `docs/architecture/showcase.md` and the showcase inventory — drop `ScrollView`.
+- `docs/architecture/showcase.md` and the showcase inventory — drop
+  `ScrollView`.
 - `AGENTS.md` — note that scrolling and grow/shrink are intrinsic `Container`
   properties (`AutoScroll`, `AutoSize`, `AutoSizeMode`) and that there is no
   dedicated scroll container.
@@ -331,5 +335,5 @@ tests where geometry is involved.
 4. Delete `ScrollView`; refactor `List`/`Table`; migrate the showcase and
    Gallery.
 5. Documentation, `AGENTS.md`, and inventory sync; migrate and extend the test
-   suite; full quality gate (`make format && make lint && make build && make
-   test`).
+   suite; full quality gate
+   (`make format && make lint && make build && make test`).

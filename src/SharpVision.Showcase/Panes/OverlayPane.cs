@@ -3,8 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using Text = SharpVision.Controls.Text;
 using TerminalAttributes = Terminal.Rendering.Attributes;
+using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Overlay control with layered, z-ordered specimens.</summary>
 internal sealed class OverlayPane: View

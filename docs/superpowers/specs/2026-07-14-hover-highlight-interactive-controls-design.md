@@ -31,11 +31,11 @@ Only [`Pressable`](../../../src/SharpVision/Controls/Pressable.cs) overrides
 [`Control.OwnsHover`](../../../src/SharpVision/Controls/Control.cs) is `false`.
 When the pointer is over a non-interactive control, the walk up the tree finds
 no owner and the fallback returns the physical leaf. That leaf receives
-`SetHovered(true)`, `GetVisualState()` adds `State.Hovered`, and the theme's base
-`ControlStyle<Control>` applies its hover foreground to **every** control type,
-so static content highlights.
+`SetHovered(true)`, `GetVisualState()` adds `State.Hovered`, and the theme's
+base `ControlStyle<Control>` applies its hover foreground to **every** control
+type, so static content highlights.
 
-The interactive controls that *should* highlight all set `CanFocus = true`
+The interactive controls that _should_ highlight all set `CanFocus = true`
 (every `Pressable`: `Button`, `CheckBox`, `RadioButton`, `ComboBox`, `MenuItem`,
 `ListItem`; plus `TextInput`, `ScrollBar`, `List`). The controls that should not
 (`Text`, `RichText`, `FigletText`, `Table`, `Grid`, and layout containers) are
@@ -99,7 +99,7 @@ turned off consistently stops highlighting too.
 ### Deliberately unchanged
 
 - **`GetVisualState()` and the `IsHovered → State.Hovered` mapping.** Gating is
-  purely a matter of *which* controls get `SetHovered(true)` called on them.
+  purely a matter of _which_ controls get `SetHovered(true)` called on them.
   Unit tests that call `SetHovered(true)` directly (rendering, button) keep
   exercising the overlay.
 - **The theme.** The base `ControlStyle<Control>` hover foreground stays; it now
@@ -178,5 +178,5 @@ Tests:
 
 Docs:
 
-- `docs/controls/control.md`, `docs/concepts/styling.md`, and the `PointerDevice`
-  hover prose.
+- `docs/controls/control.md`, `docs/concepts/styling.md`, and the
+  `PointerDevice` hover prose.

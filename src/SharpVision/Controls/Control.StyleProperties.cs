@@ -281,8 +281,7 @@ public abstract partial class Control
         set => SetValue(ShadowAttributesProperty, value);
     }
 
-    private static void ValidateThemeAttributes(TerminalAttributes? value) =>
-        Decoration.Validate(value, null, null);
+    private static void ValidateThemeAttributes(TerminalAttributes? value) => Decoration.Validate(value, null, null);
 
     private static void ValidateThemeBorderThickness(Thickness value)
     {

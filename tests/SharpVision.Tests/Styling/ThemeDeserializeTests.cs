@@ -10,7 +10,7 @@ using Shouldly;
 /// <summary>Verifies theme JSON deserialization into the definition DTO.</summary>
 public sealed class ThemeDeserializeTests
 {
-    private const string _json = """
+    private const string _json = /*lang=json,strict*/ """
         {
           "name": "Sample", "slug": "sample", "colorScheme": "dark", "order": 5,
           "author": "A", "license": "MIT", "source": "https://example.test",

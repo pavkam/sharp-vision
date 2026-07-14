@@ -207,6 +207,8 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 
     private void Validate(Control item)
     {
+        Debug.Assert(item is not null, "Children validation requires a non-null item.");
+
         if (item.Parent is not null || item.Dispatcher is not null)
         {
             throw new ArgumentException("The child already belongs to a tree.", nameof(item));
@@ -225,6 +227,8 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 
     private void Attach(Control item)
     {
+        Debug.Assert(item is not null, "Children attachment requires a non-null item.");
+
         item.SetParent(_owner);
         item.SetFocusOwner(_owner.FocusOwner);
         item.SetCaptureOwner(_owner.CaptureOwner);
@@ -242,6 +246,8 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 
     private static void Detach(Control item)
     {
+        Debug.Assert(item is not null, "Children detachment requires a non-null item.");
+
         item.NotifyUnavailable(ReleaseReason.Detached);
         item.SetFocusOwner(null);
         item.SetCaptureOwner(null);

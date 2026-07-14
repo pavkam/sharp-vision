@@ -192,6 +192,9 @@ public sealed class CheckBox: Pressable
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "CheckBox accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "CheckBox accumulation uses non-negative extents.");
+
         long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
@@ -235,35 +238,42 @@ public sealed class CheckBox: Pressable
         StateChanged?.Invoke(this, eventArgs);
     }
 
-    private static int? Subtract(int? value, int extent) => value.HasValue
-        ? Math.Max(0, value.Value - extent)
-        : null;
+    private static int? Subtract(int? value, int extent)
+    {
+        Debug.Assert(extent >= 0, "CheckBox subtraction extent is non-negative.");
+
+        return value.HasValue
+            ? Math.Max(0, value.Value - extent)
+            : null;
+    }
 
     private int MarkWidth => MarkStyle == CheckBoxMarks.Brackets ? 3 : 1;
 
-    private string Mark() => MarkStyle switch
+    private string Mark()
     {
-        CheckBoxMarks.Brackets => _isChecked switch
+        return MarkStyle switch
         {
-            true => "[x]",
-            false => "[ ]",
-            null => "[-]",
-        },
-        CheckBoxMarks.Tick => _isChecked switch
-        {
-            true => Mark(new Rune('✓'), new Rune('x')),
-            false => Mark(new Rune('○'), new Rune('o')),
-            null => Mark(new Rune('−'), new Rune('-')),
-        },
-        CheckBoxMarks.Square => _isChecked switch
-        {
-            true => Mark(Marks.Checked, new Rune('x')),
-            false => Mark(Marks.Unchecked, new Rune('o')),
-            null => Mark(Marks.Indeterminate, new Rune('-')),
-        },
-        _ => throw new UnreachableException(),
-    };
+            CheckBoxMarks.Brackets => _isChecked switch
+            {
+                true => "[x]",
+                false => "[ ]",
+                null => "[-]",
+            },
+            CheckBoxMarks.Tick => _isChecked switch
+            {
+                true => Mark(new Rune('✓'), new Rune('x')),
+                false => Mark(new Rune('○'), new Rune('o')),
+                null => Mark(new Rune('−'), new Rune('-')),
+            },
+            CheckBoxMarks.Square => _isChecked switch
+            {
+                true => Mark(Marks.Checked, new Rune('x')),
+                false => Mark(Marks.Unchecked, new Rune('o')),
+                null => Mark(Marks.Indeterminate, new Rune('-')),
+            },
+            _ => throw new UnreachableException(),
+        };
+    }
 
-    private string Mark(Rune value, Rune fallback) =>
-        CellGlyph.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
+    private string Mark(Rune value, Rune fallback) => CellGlyph.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
 }

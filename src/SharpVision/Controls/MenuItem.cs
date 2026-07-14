@@ -204,6 +204,11 @@ public sealed class MenuItem: Pressable
 
     private int PrefixWidth => Kind == MenuItemKind.Check ? 4 : Kind == MenuItemKind.Radio ? 2 : 0;
 
-    private static int Add(int left, int right) =>
-        (int) Math.Min(int.MaxValue, (long) left + right);
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "MenuItem accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "MenuItem accumulation uses non-negative extents.");
+
+        return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
 }

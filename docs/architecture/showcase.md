@@ -8,37 +8,40 @@ control API. It contains no behavior unavailable to ordinary library users.
 ```mermaid
 flowchart LR
     Gallery["Gallery catalog"] --> Sidebar["Framed dashboard sidebar"]
-    Gallery --> Page["Selected showcase pane"]
-    Page --> Variants["Interactive variants"]
-    Page --> RichText["RichText documentation"]
-    Page --> Properties["Property guidance"]
-    Page --> Interaction["Input guidance"]
+    Gallery --> Page["Selected pane (View)"]
+    Page --> Overview["Overview heading"]
+    Page --> Example["Doc.Example blocks"]
+    Example --> Specimen["Live control specimen"]
 ```
 
 Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
-`*ShowcasePane` subclass. Each pane is a real `Stack` that composes its child
-tree in the constructor, matching how application authors use the toolkit.
-`PaneSupport` holds shared composition helpers for specimens and cards.
+`*Pane : View` that overrides `Build()` and returns its content root once, on
+first layout, exactly like any other application-authored `View`. There is no
+shared showcase base class and no mandatory metadata: a pane composes public
+`Stack`, `RichText`, `Border`, and layout APIs directly. `Doc` (in
+`src/SharpVision.Showcase/Panes/Doc.cs`) holds the small composition helpers
+every pane shares: `Doc.Page(name, overview, sections...)` builds the bold
+heading plus an "Overview" paragraph and stacks the given sections beneath it;
+`Doc.Example(heading, description, specimen)` builds one labeled block pairing
+prose with a live specimen; `Doc.Card`, `Doc.Row`, and `Doc.Column` are
+composition shorthands for framing and arranging specimens.
 
-`Gallery` owns the stable catalog of pane titles and factories. The sidebar
-contains one entry for each concrete shipped control: Border, Button, Canvas,
-CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu, Overlay, Popup,
-RadioButton, RichText, ScrollBar, ScrollView, Shadow, Stack, Table, Text,
-TextInput, Window, and Theming. Foundation types and unimplemented
-specifications are not navigation entries.
+`Gallery` owns the stable catalog of pane titles and factories
+(`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
+concrete shipped control: Border, Button, Canvas, CheckBox, ComboBox, Dock,
+FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar,
+ScrollView, Shadow, Stack, Table, Text, TextInput, Window, and Theming.
+Foundation types and unimplemented specifications are not navigation entries.
 
-Each `ShowcasePane` owns the exact title, purpose, structured interaction rows,
-meaningful `PropertyDescription` values, and live examples built through
-`BuildExamples`. Its page shell uses public Stack, RichText, Table, Border, and
-layout APIs to render Overview, a Practical recipe, Examples, Properties, and a
-standalone Interaction table. Every interaction row records the input path, the
-control behavior, and the observable result; interaction prose is not hidden
-inside a decorative card. The recipe is one borderless, word-wrapped RichText
-narrative that combines the control's purpose, every supported interaction path,
-and responsive exploration guidance. Its text reflows as the page narrows, as do
-the heading, section labels, property table, and interaction table. Examples use
-only behavior available to ordinary application code; reflection and private
-render paths are forbidden.
+Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
+blocks: an Overview paragraph stating the control's purpose, followed by
+labeled, live examples that show its real behavior (activation, selection,
+shadow styles, disabled state, and so on) using only behavior available to
+ordinary application code — reflection and private render paths are forbidden.
+There are no Property or Interaction tables and no separate "Practical recipe"
+narrative section; documentation prose lives inline next to the specimen it
+describes. `RichText` headings and example descriptions use word wrapping, so
+they reflow as the page narrows along with the live specimens.
 
 Canvas and Shadow demonstrate visual behavior as several labeled, framed live
 specimens rather than a single crowded sample. Each stage keeps the control's
@@ -102,12 +105,12 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 ## Test contract
 
-Showcase tests assert the exact inventory, metadata validation, fresh detached
-example ownership, and matching runtime control type. They render every page at
-30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell continuation
-structure, and prove automatic scrolling. A full Application test drives SGR
-pointer selection, keyboard sidebar navigation and button activation, wheel
-scrolling, text editing, and pixel-aware resize through terminal bytes.
+Showcase tests assert the exact inventory, RichText documentation coverage,
+fresh detached page ownership, and matching runtime control type. They render
+every page at 30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell
+continuation structure, and prove automatic scrolling. A full Application test
+drives SGR pointer selection, keyboard sidebar navigation and button activation,
+wheel scrolling, text editing, and pixel-aware resize through terminal bytes.
 Dedicated tests prove cooperative exit through both the sidebar `Quit` button
 and a decoded `Ctrl+C` key. Startup coverage requires the exact SGR mouse-mode
 lease before the first frame. The live tmux smoke test then proves a normal Down

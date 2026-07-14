@@ -210,14 +210,16 @@ public sealed partial class Button: Pressable
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Button accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Button accumulation uses non-negative extents.");
+
         long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
     private Rect FaceBounds => IsPressed && HasShadow ? ControlChrome.Shift(Bounds, ShadowOffset) : Bounds;
 
-    private Rect FaceContentBounds(Rect bounds) =>
-        IsPressed && HasShadow ? ControlChrome.Shift(bounds, ShadowOffset) : bounds;
+    private Rect FaceContentBounds(Rect bounds) => IsPressed && HasShadow ? ControlChrome.Shift(bounds, ShadowOffset) : bounds;
 
     #endregion
 

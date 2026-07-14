@@ -256,12 +256,17 @@ public sealed class Grid: Container
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "Grid accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Grid accumulation uses non-negative extents.");
+
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private static Track[] Definitions(TrackCollection source)
     {
+        Debug.Assert(source is not null, "Grid definitions require a non-null collection.");
+
         if (source.Count == 0)
         {
             return [Track.Auto()];
@@ -269,6 +274,7 @@ public sealed class Grid: Container
 
         Track[] result = new Track[source.Count];
         source.CopyTo(result, 0);
+
         return result;
     }
 
@@ -278,6 +284,9 @@ public sealed class Grid: Container
         ReadOnlySpan<Track> definitions,
         ReadOnlySpan<int> requests)
     {
+        Debug.Assert(spacing >= 0, "Grid spacing is non-negative.");
+        Debug.Assert(definitions.Length == requests.Length, "Every track definition must have one request.");
+
         Length[] lengths = new Length[definitions.Length];
         int[] minimum = new int[definitions.Length];
         int[] maximum = new int[definitions.Length];
@@ -294,11 +303,15 @@ public sealed class Grid: Container
             ? Math.Max(0, available.Value - Spacing(spacing, definitions.Length, available))
             : null;
         Tracks.Resolve(trackArea, lengths, requests, minimum, maximum, result);
+
         return result;
     }
 
     private static int Spacing(int value, int count, int? limit)
     {
+        Debug.Assert(value >= 0, "Grid spacing value is non-negative.");
+        Debug.Assert(count >= 0, "Grid spacing count is non-negative.");
+
         if (count <= 1)
         {
             return 0;
@@ -325,6 +338,9 @@ public sealed class Grid: Container
         ReadOnlySpan<int> rowExtents,
         ReadOnlySpan<int> columnExtents)
     {
+        Debug.Assert(rowExtents.Length >= 0, "Grid arrangement requires valid row extents.");
+        Debug.Assert(columnExtents.Length >= 0, "Grid arrangement requires valid column extents.");
+
         int[] rowOrigins = Origins(bounds.Y, bounds.Height, RowSpacing, rowExtents);
         int[] columnOrigins = Origins(bounds.X, bounds.Width, ColumnSpacing, columnExtents);
 
@@ -363,6 +379,9 @@ public sealed class Grid: Container
         int spacing,
         ReadOnlySpan<int> extents)
     {
+        Debug.Assert(available >= 0, "Grid origin base is non-negative.");
+        Debug.Assert(spacing >= 0, "Grid origin spacing is non-negative.");
+
         int[] result = new int[extents.Length];
         int position = origin;
         int remainingSpacing = Spacing(spacing, extents.Length, available);
@@ -385,6 +404,8 @@ public sealed class Grid: Container
 
     private int[] Requests(int count, bool rows)
     {
+        Debug.Assert(count >= 1, "Grid requests require at least one track.");
+
         int[] result = new int[count];
 
         // Non-spanning requests establish the individual intrinsic tracks.
@@ -499,6 +520,9 @@ public sealed class Grid: Container
 
     private static bool IsAutomaticSpan(ReadOnlySpan<Track> definitions, int origin, int span)
     {
+        Debug.Assert(span >= 1, "Grid automatic span is positive.");
+        Debug.Assert(origin >= 0 && origin + span <= definitions.Length, "Grid automatic span fits definitions.");
+
         for (int index = origin; index < origin + span; index++)
         {
             if (definitions[index].Length.Kind != Kind.Auto)
@@ -517,6 +541,10 @@ public sealed class Grid: Container
         int spacing,
         int? available)
     {
+        Debug.Assert(span >= 1, "Grid span extent is positive.");
+        Debug.Assert(origin >= 0 && origin + span <= extents.Length, "Grid span fits extents.");
+        Debug.Assert(spacing >= 0, "Grid span spacing is non-negative.");
+
         int result = 0;
 
         for (int index = origin; index < origin + span; index++)
@@ -546,6 +574,9 @@ public sealed class Grid: Container
 
     private static void ValidatePlacement(Control child, int count, bool rows)
     {
+        Debug.Assert(child is not null, "Grid placement validation requires a non-null child.");
+        Debug.Assert(count >= 1, "Grid placement validation requires at least one track.");
+
         int origin = rows ? GetRow(child) : GetColumn(child);
         int span = rows ? GetRowSpan(child) : GetColumnSpan(child);
 

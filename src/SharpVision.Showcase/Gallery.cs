@@ -14,11 +14,12 @@ using SharpVision.Terminal.Input;
 
 using KeyAction = Terminal.Input.Action;
 using TerminalAttributes = Terminal.Rendering.Attributes;
+using Text = SharpVision.Controls.Text;
 
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
 {
-    private static readonly (string Name, Func<Control> Create)[] Catalog =
+    private static readonly (string Name, Func<View> Create)[] Catalog =
     [
         (BorderPane.Title, static () => new BorderPane()),
         (ButtonPane.Title, static () => new ButtonPane()),
@@ -52,12 +53,12 @@ public sealed class Gallery: Screen
         ("Dark", Themes.Dark),
     ];
 
-    private readonly ControlScrollView _main;
-    private readonly ControlScrollView _navigationScroll;
+    private readonly ScrollView _main;
+    private readonly ScrollView _navigationScroll;
     private readonly NavigationItem[] _navigation;
-    private readonly ControlComboBox _themePicker;
-    private readonly ControlButton _quit;
-    private readonly ControlDock _root;
+    private readonly ComboBox _themePicker;
+    private readonly Button _quit;
+    private readonly Dock _root;
     private FocusManager? _focus;
 
     #region Construction and navigation
@@ -66,7 +67,7 @@ public sealed class Gallery: Screen
     public Gallery()
     {
         Pages = Array.ConvertAll(Catalog, static entry => entry.Name);
-        _main = new ControlScrollView
+        _main = new ScrollView
         {
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
@@ -76,8 +77,8 @@ public sealed class Gallery: Screen
             ConstrainContentToViewport = true,
         };
         _navigation = new NavigationItem[Pages.Count];
-        ControlStack entries = new() { Padding = new Thickness(1, 0) };
-        entries.Children.Add(new ControlText("Components")
+        Stack entries = new() { Padding = new Thickness(1, 0) };
+        entries.Children.Add(new Text("Components")
         {
             Attributes = TerminalAttributes.Bold,
         });
@@ -93,7 +94,7 @@ public sealed class Gallery: Screen
             entries.Children.Add(item);
         }
 
-        _navigationScroll = new ControlScrollView
+        _navigationScroll = new ScrollView
         {
             Content = entries,
             ScrollBars = ScrollBars.Both,
@@ -101,25 +102,25 @@ public sealed class Gallery: Screen
             ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
         };
-        ControlDock sidebarLayout = new();
-        ControlStack header = CreateSidebarHeader();
+        Dock sidebarLayout = new();
+        Stack header = CreateSidebarHeader();
         int darkIndex = Array.FindIndex(ThemeCatalog, static entry => ReferenceEquals(entry.Theme, Themes.Dark));
-        _themePicker = new ControlComboBox
+        _themePicker = new ComboBox
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Items = Array.ConvertAll(ThemeCatalog, static entry => (object?) entry.Name),
             SelectedIndex = darkIndex >= 0 ? darkIndex : 0,
         };
         _themePicker.SelectionChanged += OnThemeSelected;
-        _quit = new ControlButton { Content = new ControlText("Quit") };
+        _quit = new Button { Content = new Text("Quit") };
         _quit.Click += OnQuitClicked;
-        ControlStack footer = CreateSidebarFooter(_themePicker, _quit);
-        ControlDock.SetSide(header, Side.Top);
-        ControlDock.SetSide(footer, Side.Bottom);
+        Stack footer = CreateSidebarFooter(_themePicker, _quit);
+        Dock.SetSide(header, Side.Top);
+        Dock.SetSide(footer, Side.Bottom);
         sidebarLayout.Children.Add(header);
         sidebarLayout.Children.Add(footer);
         sidebarLayout.Children.Add(_navigationScroll);
-        Sidebar = new ControlBorder
+        Sidebar = new Border
         {
             Width = Length.Cells(28),
             BorderThickness = new Thickness(1),
@@ -132,16 +133,16 @@ public sealed class Gallery: Screen
         // anywhere, including terminals whose Kitty keyboard protocol delivers it as a key event
         // rather than a host cancellation signal.
         _ = AddHandler(Events.Key, OnGlobalKey);
-        ControlBorder surface = new()
+        Border surface = new()
         {
             Child = _main,
         };
-        ControlDock layout = new()
+        Dock layout = new()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
-        ControlDock.SetSide(Sidebar, Side.Left);
+        Dock.SetSide(Sidebar, Side.Left);
         layout.Children.Add(Sidebar);
         layout.Children.Add(surface);
         _root = layout;
@@ -149,7 +150,7 @@ public sealed class Gallery: Screen
     }
 
     /// <summary>Gets the framed keyboard- and pointer-enabled component navigation sidebar.</summary>
-    public ControlBorder Sidebar { get; }
+    public Border Sidebar { get; }
 
     /// <summary>Gets the current documentation page content.</summary>
     /// <remarks>Deliberately hides <see cref="View.Content"/>: this is the selected showcase page,
@@ -172,7 +173,7 @@ public sealed class Gallery: Screen
     /// <param name="index">The zero-based page index.</param>
     /// <returns>A new showcase pane instance.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
-    internal static Control CreatePage(int index)
+    internal static View CreatePage(int index)
     {
         return (uint) index >= (uint) Catalog.Length
             ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
@@ -237,44 +238,44 @@ public sealed class Gallery: Screen
         previous?.Dispose();
     }
 
-    private static ControlStack CreateSidebarHeader()
+    private static Stack CreateSidebarHeader()
     {
-        ControlStack header = new()
+        Stack header = new()
         {
             Height = Length.Cells(4),
             Padding = new Thickness(1, 0),
         };
-        header.Children.Add(new ControlText("SHARP VISION")
+        header.Children.Add(new Text("SHARP VISION")
         {
             Attributes = TerminalAttributes.Bold,
         });
-        header.Children.Add(new ControlText("Terminal UI toolkit")
+        header.Children.Add(new Text("Terminal UI toolkit")
         {
             Attributes = TerminalAttributes.Dim,
         });
-        header.Children.Add(new ControlText("Control showcase"));
+        header.Children.Add(new Text("Control showcase"));
         return header;
     }
 
-    private static ControlStack CreateSidebarFooter(ControlComboBox themePicker, ControlButton quit)
+    private static Stack CreateSidebarFooter(ComboBox themePicker, Button quit)
     {
-        ControlStack themeGroup = new() { Spacing = 0 };
-        themeGroup.Children.Add(new ControlText("Theme")
+        Stack themeGroup = new() { Spacing = 0 };
+        themeGroup.Children.Add(new Text("Theme")
         {
             Attributes = TerminalAttributes.Dim,
         });
         themeGroup.Children.Add(themePicker);
 
-        ControlStack exitGroup = new() { Spacing = 0 };
+        Stack exitGroup = new() { Spacing = 0 };
         exitGroup.Children.Add(quit);
-        exitGroup.Children.Add(new ControlText("Ctrl+C to quit")
+        exitGroup.Children.Add(new Text("Ctrl+C to quit")
         {
             Attributes = TerminalAttributes.Dim,
         });
 
         // No fixed height: the footer sizes to its content so the bordered Quit
         // button and the exit hint are never clipped on short terminals.
-        return new ControlStack
+        return new Stack
         {
             Padding = new Thickness(1, 0),
             Spacing = 1,

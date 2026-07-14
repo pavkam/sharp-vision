@@ -204,11 +204,19 @@ public sealed class RadioButton: Pressable
 
     private static int Add(int left, int right)
     {
+        Debug.Assert(left >= 0, "RadioButton accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "RadioButton accumulation uses non-negative extents.");
+
         long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
-    private static int? Subtract(int? value, int extent) => value.HasValue
-        ? Math.Max(0, value.Value - extent)
-        : null;
+    private static int? Subtract(int? value, int extent)
+    {
+        Debug.Assert(extent >= 0, "RadioButton subtraction extent is non-negative.");
+
+        return value.HasValue
+            ? Math.Max(0, value.Value - extent)
+            : null;
+    }
 }
