@@ -5,7 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents the Menu control with command, check, radio, and separator specimens.</summary>
+/// <summary>Documents the Menu control with command, check, radio, separator, orientation, and disabled-item specimens.</summary>
 internal sealed class MenuPane: View
 {
     /// <summary>The exact catalog/page name.</summary>
@@ -35,12 +35,55 @@ internal sealed class MenuPane: View
             Child = menu,
         };
 
+        Text barStatus = new("Choose a top-level action.");
+        Menu bar = new()
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 2,
+        };
+        bar.Items.Add(new MenuItem { Header = "File" });
+        bar.Items.Add(new MenuItem { Header = "Edit" });
+        bar.Items.Add(new MenuItem { Header = "View" });
+        bar.Items.Add(new MenuItem { Header = "Help" });
+        bar.ItemInvoked += (_, eventArgs) => barStatus.Content = $"Invoked {eventArgs.Item.Header}.";
+
+        Border framedBar = new()
+        {
+            BorderThickness = new Thickness(1),
+            Glyphs = Glyphs.Rounded,
+            Child = bar,
+        };
+
+        Menu withDisabled = new()
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0,
+        };
+        withDisabled.Items.Add(new MenuItem { Header = "Available action" });
+        withDisabled.Items.Add(new MenuItem { Header = "Unavailable action", IsEnabled = false });
+        withDisabled.Items.Add(new MenuItem { Header = "Another available action" });
+
+        Border framedDisabled = new()
+        {
+            BorderThickness = new Thickness(1),
+            Glyphs = Glyphs.Rounded,
+            Child = withDisabled,
+        };
+
         return Doc.Page(
             Title,
             "Arranges typed command, check, radio, and separator items with semantic selected state and keyboard navigation.",
             Doc.Example(
-                "Command menu",
+                "Command menu with state",
                 "Arrow keys skip the separator while Enter or Space activates the selected item, or click one directly with the pointer. Check and radio state commits before the invocation message below updates.",
-                Doc.Column(framed, status)));
+                Doc.Column(framed, status)),
+            Doc.Example(
+                "Horizontal menu bar",
+                "Orientation.Horizontal lays items out left to right with Left and Right arrow navigation instead of Up and Down, the shape of a conventional top-level menu bar.",
+                Doc.Column(framedBar, barStatus)),
+            Doc.Example(
+                "Disabled item",
+                "A disabled MenuItem is skipped by arrow-key navigation and ignores activation, just like a disabled Button.",
+                framedDisabled));
     }
 }

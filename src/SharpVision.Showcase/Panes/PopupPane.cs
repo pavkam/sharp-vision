@@ -44,12 +44,45 @@ internal sealed class PopupPane: View
         Overlay.SetZIndex(popup, 10);
         overlay.Children.Add(popup);
 
+        Stack variants = new() { Orientation = Orientation.Horizontal, Spacing = 6 };
+        variants.Children.Add(PlacementDemo("Above", PopupPlacement.Above));
+        variants.Children.Add(PlacementDemo("Left", PopupPlacement.Left));
+        variants.Children.Add(PlacementDemo("Right", PopupPlacement.Right));
+
         return Doc.Page(
             Title,
             "Displays one owned child on an opaque bordered surface relative to an optional anchor.",
             Doc.Example(
                 "Anchored action menu",
                 "Click the trigger, or focus it and press Enter or Space, to open the compact list anchored below it. Arrow keys and Enter navigate and choose inside the popup; Escape closes it without selecting anything and restores focus to the trigger.",
-                overlay));
+                overlay),
+            Doc.Example(
+                "Placement variants",
+                "PopupPlacement also offers Above, Left, and Right; each trigger below opens its popup on that preferred side of its own anchor when space permits.",
+                variants));
+    }
+
+    private static Overlay PlacementDemo(string label, PopupPlacement placement)
+    {
+        Button trigger = new() { Content = new Text(label) };
+        Popup popup = new()
+        {
+            Anchor = trigger,
+            Placement = placement,
+            Glyphs = Glyphs.Rounded,
+            Child = new Text($"{label} content"),
+        };
+        trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
+
+        Overlay overlay = new()
+        {
+            Width = Length.Cells(14),
+            Height = Length.Cells(3),
+            ClipToBounds = false,
+        };
+        overlay.Children.Add(trigger);
+        Overlay.SetZIndex(popup, 10);
+        overlay.Children.Add(popup);
+        return overlay;
     }
 }

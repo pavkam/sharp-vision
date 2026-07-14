@@ -40,7 +40,7 @@ internal sealed class ButtonPane: View
                 Doc.Column(primary, status)),
             Doc.Example(
                 "Dialog command roles",
-                "IsDefault activates on the owning window's Enter fallback; IsCancel on Escape.",
+                "IsDefault marks a button as its owning window's Enter fallback and IsCancel as its Escape fallback. Both flags are just markers here since these two buttons have no Window ancestor; see the Window page for the live fallback.",
                 Doc.Row(dialogDefault, dialogCancel)),
             Doc.Example(
                 "Shadow styles",

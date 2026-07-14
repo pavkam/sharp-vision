@@ -5,7 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents the Grid control with fixed, percentage, star, and spanning track specimens.</summary>
+/// <summary>Documents the Grid control with fixed, star, auto, and spanning track specimens.</summary>
 internal sealed class GridPane: View
 {
     /// <summary>The exact catalog/page name.</summary>
@@ -14,36 +14,89 @@ internal sealed class GridPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Grid grid = new()
+        Grid fixedTracks = new()
+        {
+            Width = Length.Cells(33),
+            Height = Length.Cells(4),
+            RowSpacing = 1,
+            ColumnSpacing = 1,
+        };
+        fixedTracks.Rows.Add(Track.Cells(3));
+        fixedTracks.Columns.Add(Track.Cells(9));
+        fixedTracks.Columns.Add(Track.Cells(9));
+        fixedTracks.Columns.Add(Track.Cells(9));
+        AddCell(fixedTracks, "9 cells", 0, 0);
+        AddCell(fixedTracks, "9 cells", 0, 1);
+        AddCell(fixedTracks, "9 cells", 0, 2);
+
+        Grid proportionalTracks = new()
         {
             Width = Length.Cells(40),
+            Height = Length.Cells(7),
+            RowSpacing = 1,
+            ColumnSpacing = 1,
+        };
+        proportionalTracks.Rows.Add(Track.Auto());
+        proportionalTracks.Rows.Add(Track.Star(2));
+        proportionalTracks.Rows.Add(Track.Star(1));
+        proportionalTracks.Columns.Add(Track.Star(1));
+        proportionalTracks.Columns.Add(Track.Star(2));
+        AddCell(proportionalTracks, "Auto", 0, 0);
+        Border autoWide = Card("Auto sizes to this content");
+        Grid.SetRow(autoWide, 0);
+        Grid.SetColumn(autoWide, 1);
+        proportionalTracks.Children.Add(autoWide);
+        AddCell(proportionalTracks, "Star 1", 1, 0);
+        AddCell(proportionalTracks, "Star 2", 1, 1);
+        AddCell(proportionalTracks, "Star 1", 2, 0);
+        AddCell(proportionalTracks, "Star 2", 2, 1);
+
+        Grid spans = new()
+        {
+            Width = Length.Cells(36),
             Height = Length.Cells(9),
             RowSpacing = 1,
             ColumnSpacing = 1,
         };
-        grid.Rows.Add(Track.Cells(2));
-        grid.Rows.Add(Track.Auto());
-        grid.Rows.Add(Track.Star(1));
-        grid.Columns.Add(Track.Cells(8));
-        grid.Columns.Add(Track.Percent(35));
-        grid.Columns.Add(Track.Star(1));
-        AddCell(grid, "Fixed", 0, 0);
-        AddCell(grid, "35%", 0, 1);
-        AddCell(grid, "Star", 0, 2);
-        Border spanning = Card("ColumnSpan = 2");
-        Grid.SetRow(spanning, 1);
-        Grid.SetColumn(spanning, 0);
-        Grid.SetColumnSpan(spanning, 2);
-        grid.Children.Add(spanning);
-        AddCell(grid, "Auto / Star", 2, 2);
+        spans.Rows.Add(Track.Star(1));
+        spans.Rows.Add(Track.Star(1));
+        spans.Rows.Add(Track.Star(1));
+        spans.Columns.Add(Track.Star(1));
+        spans.Columns.Add(Track.Star(1));
+        spans.Columns.Add(Track.Star(1));
+        Border rowSpan = Card("RowSpan = 2");
+        Grid.SetRow(rowSpan, 0);
+        Grid.SetColumn(rowSpan, 0);
+        Grid.SetRowSpan(rowSpan, 2);
+        spans.Children.Add(rowSpan);
+        Border columnSpan = Card("ColumnSpan = 2");
+        Grid.SetRow(columnSpan, 0);
+        Grid.SetColumn(columnSpan, 1);
+        Grid.SetColumnSpan(columnSpan, 2);
+        spans.Children.Add(columnSpan);
+        Border both = Card("Row + Column span");
+        Grid.SetRow(both, 1);
+        Grid.SetColumn(both, 1);
+        Grid.SetRowSpan(both, 2);
+        Grid.SetColumnSpan(both, 2);
+        spans.Children.Add(both);
+        AddCell(spans, "1x1", 2, 0);
 
         return Doc.Page(
             Title,
             "Allocates fixed, automatic, percentage, and proportional tracks across rows and columns with exact integer rounding and spans.",
             Doc.Example(
-                "Track kinds and spans",
-                "The first row is a fixed 2-cell strip, the second sizes to its Auto content, and the third takes a Star share of whatever height remains. Columns mix a fixed 8-cell strip, a 35% share, and a Star share. A child with ColumnSpan set to 2 stretches across the first two columns on the Auto row.",
-                grid));
+                "Fixed tracks",
+                "Every column is a Track.Cells fixed width, so each cell keeps exactly the same 9-cell width regardless of the Grid's overall size.",
+                fixedTracks),
+            Doc.Example(
+                "Auto and star tracks",
+                "The first row uses Track.Auto and sizes to its widest cell's content. The remaining rows split the leftover height between a Track.Star(2) and a Track.Star(1) row, a 2:1 ratio; columns split width the same way.",
+                proportionalTracks),
+            Doc.Example(
+                "Row and column spans",
+                "Grid.SetRowSpan and Grid.SetColumnSpan stretch one child across multiple tracks: a row span down the left column, a column span across the top right, and a child spanning both directions where they would otherwise overlap.",
+                spans));
     }
 
     private static void AddCell(Grid grid, string text, int row, int column)
