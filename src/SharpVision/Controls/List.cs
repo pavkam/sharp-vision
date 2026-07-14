@@ -181,13 +181,13 @@ public sealed class List: Container, IStyleScope
     public int ActiveIndex { get; private set; } = -1;
 
     /// <summary>Gets the composed vertical scroll offset.</summary>
-    public int VerticalOffset => _scroll.VerticalOffset;
+    public new int VerticalOffset => _scroll.VerticalOffset;
 
     /// <summary>Gets or sets the axes available to the composed overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public ScrollBars ScrollBars
+    public new ScrollBars ScrollBars
     {
         get => _scroll.ScrollBars;
         set
@@ -208,7 +208,7 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
+    public new ShowScrollBars ShowScrollBars
     {
         get => _scroll.ShowScrollBars;
         set

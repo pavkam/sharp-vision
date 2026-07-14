@@ -86,7 +86,7 @@ public sealed class ComboBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public ScrollBars ScrollBars
+    public new ScrollBars ScrollBars
     {
         get => _list.ScrollBars;
         set
@@ -107,7 +107,7 @@ public sealed class ComboBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
+    public new ShowScrollBars ShowScrollBars
     {
         get => _list.ShowScrollBars;
         set

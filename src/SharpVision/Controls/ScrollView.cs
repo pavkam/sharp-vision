@@ -61,7 +61,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public ScrollBarVisibility HorizontalBarVisibility
+    public new ScrollBarVisibility HorizontalBarVisibility
     {
         get;
         set
@@ -75,7 +75,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public ScrollBarVisibility VerticalBarVisibility
+    public new ScrollBarVisibility VerticalBarVisibility
     {
         get;
         set
@@ -89,7 +89,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public ScrollBars ScrollBars
+    public new ScrollBars ScrollBars
     {
         get;
         set
@@ -107,7 +107,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
+    public new ShowScrollBars ShowScrollBars
     {
         get;
         set
@@ -186,7 +186,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public int HorizontalOffset
+    public new int HorizontalOffset
     {
         get => _horizontalOffset;
         set
@@ -200,7 +200,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public int VerticalOffset
+    public new int VerticalOffset
     {
         get => _verticalOffset;
         set
@@ -211,16 +211,16 @@ public sealed class ScrollView: Container
     }
 
     /// <summary>Gets the committed non-negative content extent.</summary>
-    public Size Extent => _extent;
+    public new Size Extent => _extent;
 
     /// <summary>Gets the committed non-negative visible extent.</summary>
-    public Size Viewport => _viewport;
+    public new Size Viewport => _viewport;
 
     /// <summary>Gets or sets the non-negative arrow and wheel change in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public int LineSize
+    public new int LineSize
     {
         get;
         set
@@ -234,7 +234,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public int PageOverlap
+    public new int PageOverlap
     {
         get;
         set
@@ -252,7 +252,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public bool ScrollBy(int x, int y, Cause cause = Cause.Programmatic)
+    public new bool ScrollBy(int x, int y, Cause cause = Cause.Programmatic)
     {
         Validate(cause);
         VerifyMutable();

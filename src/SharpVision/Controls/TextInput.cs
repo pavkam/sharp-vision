@@ -183,16 +183,16 @@ public sealed class TextInput: Container
     public string SelectedText => Text.Substring(SelectionStart, SelectionLength);
 
     /// <summary>Gets the current horizontal cell offset.</summary>
-    public int HorizontalOffset { get; private set; }
+    public new int HorizontalOffset { get; private set; }
 
     /// <summary>Gets the current vertical line offset.</summary>
-    public int VerticalOffset { get; private set; }
+    public new int VerticalOffset { get; private set; }
 
     /// <summary>Gets or sets the axes eligible for editor overflow scrolling.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBars ScrollBars
+    public new ScrollBars ScrollBars
     {
         get;
         set
@@ -213,7 +213,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
+    public new ShowScrollBars ShowScrollBars
     {
         get;
         set

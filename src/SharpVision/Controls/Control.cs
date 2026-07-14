@@ -588,7 +588,9 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
-            ArrangeOverride(Padding.Deflate(bounds));
+            Rect padded = Padding.Deflate(bounds);
+            ArrangeOverride(ResolveContentSlot(padded));
+            ArrangeOverlays(padded);
         }
         catch
         {
@@ -911,6 +913,15 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="desired">The border-box desired size.</param>
     /// <returns>The committed desired size.</returns>
     internal virtual Size OnMeasuredDesired(Size desired) => desired;
+
+    /// <summary>Adjusts the padding-deflated border box before content arrangement. Default returns it unchanged.</summary>
+    /// <param name="padded">The padding-deflated border-box rectangle.</param>
+    /// <returns>The rectangle passed to <see cref="ArrangeOverride"/>.</returns>
+    internal virtual Rect ResolveContentSlot(Rect padded) => padded;
+
+    /// <summary>Arranges overlay chrome anchored to the padding-deflated border box. Default is a no-op.</summary>
+    /// <param name="padded">The padding-deflated border-box rectangle.</param>
+    internal virtual void ArrangeOverlays(Rect padded) { }
 
     /// <summary>Gets whether this control sizes its width to content, overriding stretch. Default false.</summary>
     internal virtual bool ShrinkWrapsWidth => false;
