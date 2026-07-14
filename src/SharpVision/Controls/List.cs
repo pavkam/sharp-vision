@@ -229,7 +229,7 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public ScrollBarChrome ScrollBarChrome
+    public new ScrollBarChrome ScrollBarChrome
     {
         get => _scroll.ScrollBarChrome;
         set
@@ -250,7 +250,7 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public ScrollBarFill ScrollBarFill
+    public new ScrollBarFill ScrollBarFill
     {
         get => _scroll.ScrollBarFill;
         set

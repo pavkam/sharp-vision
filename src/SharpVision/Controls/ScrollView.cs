@@ -135,7 +135,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public ScrollBarChrome ScrollBarChrome
+    public new ScrollBarChrome ScrollBarChrome
     {
         get;
         set
@@ -154,7 +154,7 @@ public sealed class ScrollView: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached viewport is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The viewport is disposed.</exception>
-    public ScrollBarFill ScrollBarFill
+    public new ScrollBarFill ScrollBarFill
     {
         get;
         set

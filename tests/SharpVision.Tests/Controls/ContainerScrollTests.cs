@@ -70,4 +70,46 @@ public sealed class ContainerScrollTests
         container.Extent.ShouldBe(container.Viewport);
         container.ScrollBy(0, 5).ShouldBeFalse();
     }
+
+    /// <summary>Verifies an armed container renders the automatic vertical bar chrome.</summary>
+    [Fact]
+    public void Render_WhenVerticalBarIsAutomatic_UsesScrollBarGlyphs()
+    {
+        LayoutProbe container = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            VerticalBarVisibility = ScrollBarVisibility.Auto,
+        };
+        container.Children.Add(new ProbeControl(new Size(1, 4)));
+        Size size = new(3, 3);
+        new Engine().Layout(container, size);
+        using Frame frame = new(size);
+
+        container.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("▲");
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(2, 2)).ShouldBe("▼");
+    }
+
+    /// <summary>Verifies one automatic bar can induce the other, converging with both.</summary>
+    [Fact]
+    public void Layout_WhenAutomaticBarInducesOther_ConvergesWithBothBars()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Auto,
+            VerticalBarVisibility = ScrollBarVisibility.Auto,
+        };
+        container.Children.Add(new ProbeControl(new Size(5, 4)));
+
+        new Engine().Layout(container, new Size(5, 3));
+
+        container.Extent.ShouldBe(new Size(5, 4));
+        container.Viewport.ShouldBe(new Size(4, 2));
+    }
 }

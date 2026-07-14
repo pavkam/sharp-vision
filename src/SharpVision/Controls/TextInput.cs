@@ -234,7 +234,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBarChrome ScrollBarChrome
+    public new ScrollBarChrome ScrollBarChrome
     {
         get;
         set
@@ -256,7 +256,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBarFill ScrollBarFill
+    public new ScrollBarFill ScrollBarFill
     {
         get;
         set

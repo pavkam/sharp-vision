@@ -23,12 +23,14 @@ public abstract class Container: Control
     public Children Children { get; }
 
     /// <summary>Gets the number of children participating in default navigation.</summary>
-    internal virtual int NavigationCount => Children.Count;
+    internal virtual int NavigationCount => Children.Count + (_bars?.Count ?? 0);
 
     /// <summary>Gets one child in default navigation order.</summary>
     /// <param name="index">The zero-based navigation index.</param>
     /// <returns>The child at the requested navigation position.</returns>
-    internal virtual Control NavigationAt(int index) => Children[index];
+    internal virtual Control NavigationAt(int index) => index < Children.Count
+        ? Children[index]
+        : _bars![index - Children.Count];
 
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
@@ -45,15 +47,16 @@ public abstract class Container: Control
             return null;
         }
 
-        for (int index = Children.Count - 1; index >= 0; index--)
+        if (AutoScroll)
         {
-            if (Children[index].HitTest(point) is { } child)
-            {
-                return child;
-            }
+            Control? bar = _bars is not null
+                ? _vertical!.HitTest(point) ?? _horizontal!.HitTest(point)
+                : null;
+
+            return bar ?? (_viewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? this;
         }
 
-        return this;
+        return HitTestChildren(point) ?? this;
     }
 
     /// <inheritdoc/>
@@ -65,6 +68,27 @@ public abstract class Container: Control
         {
             visitor(child);
         }
+
+        if (_bars is not null)
+        {
+            foreach (Control child in _bars)
+            {
+                visitor(child);
+            }
+        }
+    }
+
+    private Control? HitTestChildren(Point point)
+    {
+        for (int index = Children.Count - 1; index >= 0; index--)
+        {
+            if (Children[index].HitTest(point) is { } child)
+            {
+                return child;
+            }
+        }
+
+        return null;
     }
 
     /// <inheritdoc/>
@@ -88,19 +112,51 @@ public abstract class Container: Control
         {
             Children[^1].Dispose();
         }
+
+        if (_bars is null)
+        {
+            return;
+        }
+
+        while (_bars.Count > 0)
+        {
+            Control child = _bars[^1];
+            _bars.RemoveAt(_bars.Count - 1);
+            child.Dispose();
+        }
     }
 
     /// <inheritdoc/>
     internal override void RenderChildren(TerminalCanvas canvas)
     {
-        foreach (Control child in Children)
+        if (!AutoScroll)
         {
-            child.Render(canvas);
+            RenderContent(canvas);
+
+            if (Parent is null)
+            {
+                RenderOwnedPopupLayer(canvas);
+            }
+
+            return;
         }
+
+        RenderContent(canvas.Clip(_viewportBounds));
+        _horizontal?.Render(canvas);
+        _vertical?.Render(canvas);
 
         if (Parent is null)
         {
             RenderOwnedPopupLayer(canvas);
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderContent(TerminalCanvas canvas)
+    {
+        foreach (Control child in Children)
+        {
+            child.Render(canvas);
         }
     }
 
@@ -201,16 +257,13 @@ public abstract class Container: Control
     private Size _viewport;
     private int _horizontalOffset;
     private int _verticalOffset;
-
-    // Consumed starting in Task 6 (bar chrome reservation/arrange) and Task 9 (BringIntoView hit-testing).
-    [SuppressMessage("Performance", "IDE0052:Remove unread private members", Justification = "Consumed starting in Task 6/9.")]
     private Rect _viewportBounds;
-
-    [SuppressMessage("Performance", "IDE0052:Remove unread private members", Justification = "Consumed starting in Task 6.")]
     private bool _reserveHorizontal;
-
-    [SuppressMessage("Performance", "IDE0052:Remove unread private members", Justification = "Consumed starting in Task 6.")]
     private bool _reserveVertical;
+    private Children? _bars;
+    private ScrollBar? _horizontal;
+    private ScrollBar? _vertical;
+    private bool _syncing;
 
     /// <summary>Gets or sets whether this container clips and offsets overflowing content along enabled axes.</summary>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
@@ -301,6 +354,48 @@ public abstract class Container: Control
             _ = Set(ref field, value, Invalidation.Measure);
         }
     } = ScrollBarVisibility.Auto;
+
+    /// <summary>Gets or sets the shared chrome form used by both owned bars.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public ScrollBarChrome ScrollBarChrome
+    {
+        get;
+        set
+        {
+            Validate(value);
+
+            if (!Set(ref field, value, Invalidation.Measure))
+            {
+                return;
+            }
+
+            _ = _horizontal?.Chrome = value;
+            _ = _vertical?.Chrome = value;
+        }
+    } = ScrollBarChrome.Full;
+
+    /// <summary>Gets or sets the shared generated glyph treatment used by both owned bars.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public ScrollBarFill ScrollBarFill
+    {
+        get;
+        set
+        {
+            Validate(value);
+
+            if (!Set(ref field, value, Invalidation.Render))
+            {
+                return;
+            }
+
+            _ = _horizontal?.Fill = value;
+            _ = _vertical?.Fill = value;
+        }
+    } = ScrollBarFill.Block;
 
     /// <summary>Gets or sets the non-negative arrow and wheel change in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -393,6 +488,11 @@ public abstract class Container: Control
             return padded;
         }
 
+        if (HorizontalBarVisibility != ScrollBarVisibility.Hidden || VerticalBarVisibility != ScrollBarVisibility.Hidden)
+        {
+            EnsureBars();
+        }
+
         Resolve(new Size(padded.Width, padded.Height), ContentExtent, out bool horizontal, out bool vertical, out Size viewport);
         _viewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
         _ = Set(ref _extent, ContentExtent, Invalidation.None, nameof(Extent));
@@ -408,6 +508,107 @@ public abstract class Container: Control
             Math.Max(Extent.Height, viewport.Height));
     }
 
+    /// <inheritdoc/>
+    internal override void ArrangeOverlays(Rect padded)
+    {
+        if (!AutoScroll || _bars is null)
+        {
+            return;
+        }
+
+        SetVisibility(_horizontal!, _reserveHorizontal);
+        SetVisibility(_vertical!, _reserveVertical);
+        _horizontal!.Arrange(
+            new Rect(padded.X, padded.Y + _viewportBounds.Height, _viewportBounds.Width, _reserveHorizontal ? 1 : 0),
+            widthResolved: true,
+            heightResolved: true);
+        _vertical!.Arrange(
+            new Rect(padded.X + _viewportBounds.Width, padded.Y, _reserveVertical ? 1 : 0, _viewportBounds.Height),
+            widthResolved: true,
+            heightResolved: true);
+        Synchronize();
+    }
+
+    private void EnsureBars()
+    {
+        if (_bars is not null)
+        {
+            return;
+        }
+
+        _horizontal = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Chrome = ScrollBarChrome,
+            Fill = ScrollBarFill,
+        };
+        _vertical = new ScrollBar
+        {
+            Orientation = Orientation.Vertical,
+            Chrome = ScrollBarChrome,
+            Fill = ScrollBarFill,
+        };
+        _horizontal.ValueChanged += OnHorizontalChanged;
+        _vertical.ValueChanged += OnVerticalChanged;
+        _bars = new Children(this, capacity: 2) { _horizontal, _vertical };
+    }
+
+    private void Synchronize()
+    {
+        if (_syncing || _bars is null)
+        {
+            return;
+        }
+
+        _syncing = true;
+
+        try
+        {
+            Configure(_horizontal!, MaximumX(), Viewport.Width, HorizontalOffset);
+            Configure(_vertical!, MaximumY(), Viewport.Height, VerticalOffset);
+        }
+        finally
+        {
+            _syncing = false;
+        }
+    }
+
+    private static void Configure(ScrollBar bar, int maximum, int viewport, int value)
+    {
+        if (bar.Value > maximum)
+        {
+            bar.Value = maximum;
+        }
+
+        bar.Maximum = maximum;
+        bar.ViewportSize = viewport;
+        bar.LargeChange = viewport;
+        bar.Value = value;
+    }
+
+    private void OnHorizontalChanged(object? sender, ScrollEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (!_syncing)
+        {
+            _ = Apply(eventArgs.Value, VerticalOffset, eventArgs.Cause);
+        }
+    }
+
+    private void OnVerticalChanged(object? sender, ScrollEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (!_syncing)
+        {
+            _ = Apply(HorizontalOffset, eventArgs.Value, eventArgs.Cause);
+        }
+    }
+
+    private static void SetVisibility(Control control, bool visible) =>
+        control.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+
     private bool Apply(int x, int y, Cause cause)
     {
         _ = cause;
@@ -415,7 +616,14 @@ public abstract class Container: Control
         y = Math.Clamp(y, 0, MaximumY());
         bool changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
         bool changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
-        return changedX || changedY;
+
+        if (!changedX && !changedY)
+        {
+            return false;
+        }
+
+        Synchronize();
+        return true;
     }
 
     private int MaximumX() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0

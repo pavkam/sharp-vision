@@ -159,22 +159,17 @@ public sealed class Stack: Container
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas)
+    internal override void RenderContent(TerminalCanvas canvas)
     {
         if (!Reverse)
         {
-            base.RenderChildren(canvas);
+            base.RenderContent(canvas);
             return;
         }
 
         for (int index = Children.Count - 1; index >= 0; index--)
         {
             Children[index].Render(canvas);
-        }
-
-        if (Parent is null)
-        {
-            RenderPopupLayer(canvas);
         }
     }
 

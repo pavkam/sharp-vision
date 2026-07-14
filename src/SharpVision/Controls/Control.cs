@@ -998,6 +998,11 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Debug.Assert(!IsDisposed, "A disposed control cannot render children.");
     }
 
+    /// <summary>Renders owned child content into the (already clipped) canvas.</summary>
+    /// <param name="canvas">The child canvas.</param>
+    /// <remarks>The default delegates to <see cref="RenderChildren"/> so leaf controls are unaffected.</remarks>
+    internal virtual void RenderContent(TerminalCanvas canvas) => RenderChildren(canvas);
+
     /// <summary>Gets behavior-derived flags for appearance resolution.</summary>
     /// <returns>The current defined visual-state flags.</returns>
     protected virtual State GetVisualState()
