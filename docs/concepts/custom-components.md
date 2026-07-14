@@ -20,6 +20,11 @@ measured never builds. A null return throws a documented
 it returns, mutate the installed subtree like any other control tree (add or
 remove children, set properties) instead of expecting `Build()` to run again.
 
+A `View` owns exactly one child and stretches it to fill the view's content
+box, like `Border`/`Button`; return a layout container (`Stack`, `Dock`, or
+`Grid`) when the content should have multiple children or should not simply
+fill.
+
 ## Composing vs. deriving from a primitive
 
 Compose with `View` when the new type is an arrangement of existing controls.

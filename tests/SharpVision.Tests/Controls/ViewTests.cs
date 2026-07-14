@@ -77,4 +77,37 @@ public sealed class ViewTests
 
         _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
     }
+
+    /// <summary>Verifies the view's desired size equals the built child's desired size plus its
+    /// margin, and that arranging the view into a box larger than the child's desired size
+    /// stretches the child to fill the view's content rectangle.</summary>
+    [Fact]
+    public void Measure_ThenArrangeLargerThanChild_ChildFillsContentBounds()
+    {
+        ProbeControl content = new(new Size(5, 2));
+        CountingView view = new(content)
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+
+        view.Measure(new Constraint(20, 6));
+
+        view.DesiredSize.ShouldBe(new Size(5, 2));
+
+        view.Arrange(new Rect(0, 0, 20, 6));
+
+        content.Bounds.ShouldBe(new Rect(0, 0, 20, 6));
+    }
+
+    /// <summary>Verifies an exception from Build propagates out of Measure and leaves the view
+    /// measure-dirty, so a subsequent measure re-attempts Build rather than caching a result.</summary>
+    [Fact]
+    public void Measure_WhenBuildThrows_PropagatesAndLeavesMeasureInvalidated()
+    {
+        ThrowingView view = new();
+
+        _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
+        _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
+    }
 }

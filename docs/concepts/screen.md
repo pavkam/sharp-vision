@@ -26,6 +26,10 @@ Because shipped layout roots such as `Dock` and `Stack` are sealed, a screen
 that needs dock layout returns a `Dock` (or another shipped container) from
 `Build()`.
 
+A `Screen` owns exactly one child — its `Build()` result — and, being
+capacity-1 like any `View`, arranges that child to fill the screen's content
+box; a root that should not fill must set its own alignment/size.
+
 ## Lifecycle
 
 Construction leaves the screen detached. `Build()` builds a view's content once,
