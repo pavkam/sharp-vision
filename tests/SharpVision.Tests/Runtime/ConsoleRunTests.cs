@@ -29,17 +29,4 @@ public sealed class ConsoleRunTests
         terminal.Tracking.ShouldBe(MouseTracking.Any);
         terminal.Coordinates.ShouldBe(MouseCoordinates.Sgr);
     }
-
-    /// <summary>Verifies unsupported hosts receive a no-op raw-input lease.</summary>
-    [Fact]
-    public void Enter_WhenHostIsUnsupported_DisposesWithoutThrowing()
-    {
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
-        {
-            return;
-        }
-
-        using ConsoleInputMode mode = ConsoleInputMode.Enter();
-        _ = mode.ShouldNotBeNull();
-    }
 }

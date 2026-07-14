@@ -4,6 +4,7 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("SharpVision.Terminal.Tests")]
+[assembly: InternalsVisibleTo("SharpVision")]
 
 namespace SharpVision.Terminal;
 

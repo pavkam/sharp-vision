@@ -37,7 +37,7 @@ public sealed partial class Application
             return ConsoleRunStatus.Redirected;
         }
 
-        using ConsoleInputMode inputMode = ConsoleInputMode.Enter();
+        using UnixConsoleMode inputMode = UnixConsoleMode.Enter(captureControlKeys: false);
         StreamTransport transport = ConsoleHost.CreateTransport();
         ConsoleResizeSource resize = new(TimeSpan.FromMilliseconds(100));
         await using Application application = new(

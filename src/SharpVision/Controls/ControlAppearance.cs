@@ -6,6 +6,8 @@ namespace SharpVision.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
+using State = SharpVision.Styling.State;
+
 internal static class ControlAppearance
 {
     internal static ResolvedAppearance Resolve(Control control, State visualState)

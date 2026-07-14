@@ -8,6 +8,8 @@ using System.ComponentModel;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
+using State = SharpVision.Styling.State;
+
 public abstract partial class Control
 {
     private readonly Dictionary<IStyleProperty, object?> _localValues = [];
