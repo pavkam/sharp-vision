@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Runtime;
 using System.Diagnostics;
 
 /// <summary>Owns one best-effort Unix terminal raw-input lease for interactive console hosts.</summary>
-internal sealed class UnixConsoleMode: IDisposable
+public sealed class UnixConsoleMode: IDisposable
 {
     private readonly string? _restore;
     private int _disposed;
@@ -36,7 +36,7 @@ internal sealed class UnixConsoleMode: IDisposable
     /// arrive without canonical line buffering. When <paramref name="captureControlKeys"/>
     /// is true, `isig` is left disabled so Ctrl-key combinations arrive as input bytes.
     /// </remarks>
-    internal static UnixConsoleMode Enter(bool captureControlKeys)
+    public static UnixConsoleMode Enter(bool captureControlKeys)
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
         {

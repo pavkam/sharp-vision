@@ -4,9 +4,8 @@
 namespace SharpVision.Controls;
 
 
+using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
-
-using State = SharpVision.Styling.State;
 
 /// <summary>Draws shared control border, shadow, and body-fill chrome into semantic cells.</summary>
 internal static class ControlChrome
