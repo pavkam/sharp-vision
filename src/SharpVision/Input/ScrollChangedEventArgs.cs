@@ -5,7 +5,7 @@ namespace SharpVision.Input;
 
 using SharpVision.Scrolling;
 
-/// <summary>Reports one committed two-axis ScrollView geometry or offset transition.</summary>
+/// <summary>Reports one committed two-axis scroll host geometry or offset transition.</summary>
 public sealed class ScrollChangedEventArgs: EventArgs
 {
     /// <summary>Initializes immutable old/new offsets, geometry, and cause.</summary>

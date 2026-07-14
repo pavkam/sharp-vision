@@ -33,13 +33,14 @@ public sealed class ScrollingTests
         ControlCanvas.SetTop(target, Length.Cells(8));
         content.Children.Add(label);
         content.Children.Add(target);
-        ScrollView inner = new()
+        Stack inner = new()
         {
-            Content = content,
+            AutoScroll = true,
             Width = Length.Cells(12),
             Height = Length.Cells(7),
+            Children = { content },
         };
-        ScrollView outer = new() { Content = inner };
+        Stack outer = new() { AutoScroll = true, Children = { inner } };
         await using Application application = new(
             outer,
             terminal,
@@ -129,10 +130,10 @@ public sealed class ScrollingTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(5, 4), new Size(50, 40)));
         Label leaf = new(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
-        ScrollView inner = Hidden(leaf);
+        Stack inner = Hidden(leaf);
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
-        ScrollView outer = Hidden(inner);
+        Stack outer = Hidden(inner);
         await using Application application = new(outer, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         TaskCompletionSource reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -157,11 +158,11 @@ public sealed class ScrollingTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    private static ScrollView Hidden(Control content) => new()
+    private static Stack Hidden(Control content) => new()
     {
-        Content = content,
-        HorizontalBarVisibility = ScrollBarVisibility.Hidden,
-        VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        AutoScroll = true,
+        ShowScrollBars = ShowScrollBars.Never,
+        Children = { content },
     };
 
     private static Task NextFrame(Application application)

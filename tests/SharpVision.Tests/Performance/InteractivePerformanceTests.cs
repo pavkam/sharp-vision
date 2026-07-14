@@ -127,10 +127,10 @@ public sealed class InteractivePerformanceTests
         {
             Width = Length.Cells(5),
         };
-        ScrollView inner = Hidden(leaf);
+        Stack inner = Hidden(leaf);
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
-        ScrollView outer = Hidden(inner);
+        Stack outer = Hidden(inner);
         new Engine().Layout(outer, new Size(5, 4));
         PointerEventArgs down = new(Pointer(default, PointerAction.Wheel, wheelY: -20));
         PointerEventArgs up = new(Pointer(default, PointerAction.Wheel, wheelY: 20));
@@ -185,20 +185,21 @@ public sealed class InteractivePerformanceTests
             Value = 40,
             ViewportSize = 20,
         });
-        content.Children.Add(new ScrollView
+        content.Children.Add(new Stack
         {
-            Content = new Label("wide 界 and emoji 👩‍💻 content"),
+            AutoScroll = true,
+            Children = { new Label("wide 界 and emoji 👩‍💻 content") },
         });
         root.Children.Add(list);
         root.Children.Add(content);
         return root;
     }
 
-    private static ScrollView Hidden(Control content) => new()
+    private static Stack Hidden(Control content) => new()
     {
-        Content = content,
-        HorizontalBarVisibility = ScrollBarVisibility.Hidden,
-        VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        AutoScroll = true,
+        ShowScrollBars = ShowScrollBars.Never,
+        Children = { content },
     };
 
     private static Pointer Pointer(Point cells, PointerAction action, int wheelY = 0) => new(

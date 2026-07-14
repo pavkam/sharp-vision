@@ -26,7 +26,6 @@ public sealed class GalleryTests
         "RadioButton",
         "RichText",
         "ScrollBar",
-        "ScrollView",
         "Shadow",
         "Stack",
         "Table",
@@ -68,7 +67,7 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
         new Engine().Layout(gallery, new Size(80, 24));
-        ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        Stack main = gallery.Content.Parent.ShouldBeOfType<Stack>();
         main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
 
         gallery.Select(1);

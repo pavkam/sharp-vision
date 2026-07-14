@@ -349,11 +349,12 @@ public sealed class TextInputTests
         Stack content = new();
         content.Children.Add(input);
         content.Children.Add(new ProbeControl(new Size(5, 8)));
-        ScrollView outer = new()
+        Stack outer = new()
         {
-            Content = content,
+            AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Never,
+            Children = { content },
         };
         new Engine().Layout(outer, new Size(5, 3));
 

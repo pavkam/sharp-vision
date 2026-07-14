@@ -3,7 +3,7 @@
 
 namespace SharpVision.Layout;
 
-/// <summary>Selects whether one ScrollView bar is hidden, automatic, or permanent.</summary>
+/// <summary>Selects whether one Container scroll bar is hidden, automatic, or permanent.</summary>
 public enum ScrollBarVisibility
 {
     /// <summary>Suppress the bar without disabling programmatic scrolling.</summary>

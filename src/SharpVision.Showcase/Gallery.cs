@@ -36,7 +36,6 @@ public sealed class Gallery: Screen
         (RadioButtonPane.Title, static () => new RadioButtonPane()),
         (RichTextPane.Title, static () => new RichTextPane()),
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
-        (ScrollViewPane.Title, static () => new ScrollViewPane()),
         (ShadowPane.Title, static () => new ShadowPane()),
         (StackPane.Title, static () => new StackPane()),
         (TablePane.Title, static () => new TablePane()),
@@ -75,8 +74,8 @@ public sealed class Gallery: Screen
         return [.. ordered];
     }
 
-    private readonly ScrollView _main;
-    private readonly ScrollView _navigationScroll;
+    private readonly Stack _main;
+    private readonly Stack _navigationScroll;
     private readonly NavigationItem[] _navigation;
     private readonly ComboBox _themePicker;
     private readonly Button _quit;
@@ -89,14 +88,14 @@ public sealed class Gallery: Screen
     public Gallery()
     {
         Pages = Array.ConvertAll(Catalog, static entry => entry.Name);
-        _main = new ScrollView
+        _main = new Stack
         {
+            AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
-            ConstrainContentToViewport = true,
         };
         _navigation = new NavigationItem[Pages.Count];
         Stack entries = new() { Padding = new Thickness(1, 0) };
@@ -116,13 +115,14 @@ public sealed class Gallery: Screen
             entries.Children.Add(item);
         }
 
-        _navigationScroll = new ScrollView
+        _navigationScroll = new Stack
         {
-            Content = entries,
+            AutoScroll = true,
             ScrollBars = ScrollBars.Both,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
+            Children = { entries },
         };
         Dock sidebarLayout = new();
         Stack header = CreateSidebarHeader();
@@ -177,7 +177,7 @@ public sealed class Gallery: Screen
     /// <summary>Gets the current documentation page content.</summary>
     /// <remarks>Deliberately hides <see cref="View.Content"/>: this is the selected showcase page,
     /// unrelated to the protected built-content root that <see cref="View"/> exposes to subclasses.</remarks>
-    public new Control Content => _main.Content!;
+    public new Control Content => (_main.Children.Count > 0 ? _main.Children[0] : null)!;
 
     /// <summary>Gets the current exact concrete control name.</summary>
     public string SelectedPage => Pages[SelectedIndex];
@@ -235,7 +235,7 @@ public sealed class Gallery: Screen
         }
 
         Debug.Assert(_navigation[index].Label == Catalog[index].Name);
-        Control? previous = _main.Content;
+        Control? previous = _main.Children.Count > 0 ? _main.Children[0] : null;
         SelectedIndex = index;
 
         // A catalog selection changes subject, not just content. Preserve the
@@ -250,7 +250,8 @@ public sealed class Gallery: Screen
             _main.VerticalOffset = 0;
         }
 
-        _main.Content = Catalog[index].Create();
+        _main.Children.Clear();
+        _main.Children.Add(Catalog[index].Create());
 
         for (int navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)
         {

@@ -28,7 +28,7 @@ public sealed class InteractiveControlTests
             out RadioButton? secondRadio,
             out TextInput? input,
             out ScrollBar? scrollBar,
-            out ScrollView? scrollView,
+            out Stack? scrollView,
             out UiList? list);
         List<string> order = [];
         button.Click += (_, _) => order.Add("button");
@@ -258,7 +258,7 @@ public sealed class InteractiveControlTests
         out RadioButton secondRadio,
         out TextInput input,
         out ScrollBar scrollBar,
-        out ScrollView scrollView,
+        out Stack scrollView,
         out UiList list)
     {
         button = new Button { Content = new Label("Go"), Width = Length.Cells(20) };
@@ -284,13 +284,13 @@ public sealed class InteractiveControlTests
             ViewportSize = 20,
             Width = Length.Cells(20),
         };
-        scrollView = new ScrollView
+        scrollView = new Stack
         {
-            Content = new Label(string.Join('\n', Enumerable.Range(0, 6))),
-            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
-            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
             Width = Length.Cells(20),
             Height = Length.Cells(3),
+            Children = { new Label(string.Join('\n', Enumerable.Range(0, 6))) },
         };
         list = new UiList
         {

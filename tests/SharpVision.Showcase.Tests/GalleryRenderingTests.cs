@@ -24,7 +24,7 @@ public sealed class GalleryRenderingTests
         using Frame frame = new(size);
         gallery.Render(frame.Canvas);
         Screen screen = new(frame);
-        ScrollView view = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        Stack view = gallery.Content.Parent.ShouldBeOfType<Stack>();
 
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
         screen.Text.ShouldContain("SHARP VISION");
@@ -50,7 +50,7 @@ public sealed class GalleryRenderingTests
 
         Screen screen = new(frame);
         screen.Text.ShouldContain("command paths.");
-        gallery.Content.Parent.ShouldBeOfType<ScrollView>()
+        gallery.Content.Parent.ShouldBeOfType<Stack>()
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
     }
 

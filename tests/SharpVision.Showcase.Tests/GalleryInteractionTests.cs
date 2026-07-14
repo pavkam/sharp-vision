@@ -76,7 +76,7 @@ public sealed class GalleryInteractionTests
             application,
             "Button keyboard activation");
 
-        ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        Stack main = gallery.Content.Parent.ShouldBeOfType<Stack>();
         string wheel = string.Concat(Enumerable.Repeat("\u001b[<65;30;10M", 8));
         terminal.QueueInput(Encoding.ASCII.GetBytes(wheel));
         await WaitUntilAsync(
@@ -140,7 +140,7 @@ public sealed class GalleryInteractionTests
         Point target = await application.Dispatcher.InvokeAsync(
             () => new Point(activeEditor.Bounds.X + 1, activeEditor.Bounds.Y + 1),
             TestContext.Current.CancellationToken);
-        ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+        Stack main = gallery.Content.Parent.ShouldBeOfType<Stack>();
         int previousPageOffset = await application.Dispatcher.InvokeAsync(
             () => main.VerticalOffset,
             TestContext.Current.CancellationToken);
@@ -742,7 +742,7 @@ public sealed class GalleryInteractionTests
         application.FrameRendered += Complete;
         bool moved = await application.Dispatcher.InvokeAsync(() =>
         {
-            ScrollView main = gallery.Content.Parent.ShouldBeOfType<ScrollView>();
+            Stack main = gallery.Content.Parent.ShouldBeOfType<Stack>();
             return main.BringIntoView(control);
         }, TestContext.Current.CancellationToken);
 
