@@ -10,22 +10,22 @@ dispatcher.
 
 ## Core properties
 
-| Property                                   | Default        | Contract                                                                              |
-| ------------------------------------------ | -------------- | ------------------------------------------------------------------------------------- |
-| `Width`, `Height`                          | `Length.Auto`  | Fixed, percentage, automatic, or proportional `Length`.                               |
-| `MinWidth`, `MinHeight`                    | `0`            | Non-negative cell minimums.                                                           |
-| `MaxWidth`, `MaxHeight`                    | `int.MaxValue` | Cell maximums not below the corresponding minimum.                                    |
-| `Margin`                                   | Zero edges     | External non-negative `Thickness`.                                                    |
-| `Padding`                                  | Zero edges     | Internal non-negative `Thickness`.                                                    |
-| `HorizontalAlignment`, `VerticalAlignment` | `Stretch`      | Placement within the arranged slot.                                                   |
-| `Visibility`                               | `Visible`      | Visible, hidden, or collapsed.                                                        |
-| `IsEnabled`                                | `true`         | Inherited effective input state.                                                      |
-| `IsHitTestVisible`                         | `true`         | Whether pointer hit testing may target the control.                                   |
-| `CanFocus`, `TabIndex`                     | `false`, `0`   | Focus participation and deterministic order.                                          |
-| `IsFocused`, `IsHovered`, `IsPressed`      | `false`        | Read-only committed interaction state; composite hover belongs to its semantic owner. |
-| `Style`                                    | `null`         | Optional per-instance `IControlStyle` overlay; null uses only the theme chain.        |
-| `DesiredSize`                              | Empty          | Read-only result of the last successful measure.                                      |
-| `Bounds`                                   | Empty          | Read-only committed arranged rectangle.                                               |
+| Property                                   | Default        | Contract                                                                                                                                     |
+| ------------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Width`, `Height`                          | `Length.Auto`  | Fixed, percentage, automatic, or proportional `Length`.                                                                                      |
+| `MinWidth`, `MinHeight`                    | `0`            | Non-negative cell minimums.                                                                                                                  |
+| `MaxWidth`, `MaxHeight`                    | `int.MaxValue` | Cell maximums not below the corresponding minimum.                                                                                           |
+| `Margin`                                   | Zero edges     | External non-negative `Thickness`.                                                                                                           |
+| `Padding`                                  | Zero edges     | Internal non-negative `Thickness`.                                                                                                           |
+| `HorizontalAlignment`, `VerticalAlignment` | `Stretch`      | Placement within the arranged slot.                                                                                                          |
+| `Visibility`                               | `Visible`      | Visible, hidden, or collapsed.                                                                                                               |
+| `IsEnabled`                                | `true`         | Inherited effective input state.                                                                                                             |
+| `IsHitTestVisible`                         | `true`         | Whether pointer hit testing may target the control.                                                                                          |
+| `CanFocus`, `TabIndex`                     | `false`, `0`   | Focus participation and deterministic order.                                                                                                 |
+| `IsFocused`, `IsHovered`, `IsPressed`      | `false`        | Read-only committed interaction state; only interactive (focusable) controls are hovered, and composite hover belongs to its semantic owner. |
+| `Style`                                    | `null`         | Optional per-instance `IControlStyle` overlay; null uses only the theme chain.                                                               |
+| `DesiredSize`                              | Empty          | Read-only result of the last successful measure.                                                                                             |
+| `Bounds`                                   | Empty          | Read-only committed arranged rectangle.                                                                                                      |
 
 Setters validate before mutation, verify dispatcher access while attached, and
 raise `PropertyChanged` once after the changed value is committed. Invalid
@@ -119,8 +119,10 @@ control exposes only its own properties and class defaults here.
 
 `GetVisualState()` derives normal, hovered, focused, pressed, and disabled flags
 from behavior. Controls with semantic selection override it to add checked
-state. `GetResolvedStyle` converts the active theme cascade into the complete
-terminal cell style used by rendering.
+state. Only interactive (focusable) controls are ever marked hovered, so the
+hovered flag never appears on static content such as text or tables.
+`GetResolvedStyle` converts the active theme cascade into the complete terminal
+cell style used by rendering.
 
 ## Example
 

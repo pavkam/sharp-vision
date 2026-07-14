@@ -40,7 +40,7 @@ public sealed class PointerDevice
     /// <summary>Gets the action of the last pointer.</summary>
     public PointerAction LastAction { get; private set; }
 
-    /// <summary>Gets the current hover target, or null.</summary>
+    /// <summary>Gets the current interactive hover target, or null when the pointer is over non-interactive content.</summary>
     public Control? Hovered => _capture()?.Hovered;
 
     /// <summary>Gets the control where the active press began, or null.</summary>

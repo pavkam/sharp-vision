@@ -46,9 +46,11 @@ theme chain so row selection styling remains coherent.
 ## Visual states
 
 Standard states are normal, hovered, pressed, focused, checked, and disabled.
-Measure-impact properties are normal-state values only. Render-impact properties
-may vary by overlay state. Visual overlays never control behavior: `IsEnabled`
-determines input acceptance.
+The hovered overlay applies only to interactive (focusable) controls; static
+content such as text and tables is never marked hovered. Measure-impact
+properties are normal-state values only. Render-impact properties may vary by
+overlay state. Visual overlays never control behavior: `IsEnabled` determines
+input acceptance.
 
 ## Invalidation and tests
 

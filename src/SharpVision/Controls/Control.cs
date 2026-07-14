@@ -283,18 +283,20 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether this control currently owns keyboard focus.</summary>
     public bool IsFocused { get; private set; }
 
-    /// <summary>Gets whether pointer targeting currently hovers this control.</summary>
+    /// <summary>Gets whether the pointer currently hovers this control; only interactive (focusable) controls are marked hovered.</summary>
     public bool IsHovered { get; private set; }
 
     /// <summary>Gets whether an active pointer press began on this control.</summary>
     public bool IsPressed { get; private set; }
 
-    /// <summary>Gets whether this control owns hover resolved from its hit-tested descendants.</summary>
+    /// <summary>Gets whether this control is an interactive hover target.</summary>
     /// <remarks>
-    /// The default preserves direct leaf hover. Composite interactive controls
-    /// override this to expose one semantic hover state for their visible content.
+    /// Hover feedback is reserved for interactive controls, so the default follows
+    /// <see cref="CanFocus"/>. Hover over a non-interactive descendant resolves up to
+    /// the nearest owner, which is how a composite interactive control claims one
+    /// semantic hover state for its visible content.
     /// </remarks>
-    internal virtual bool OwnsHover => false;
+    internal virtual bool OwnsHover => CanFocus;
 
     /// <summary>Gets the desired border-box size from the last successful measure.</summary>
     public Size DesiredSize { get; internal set; }

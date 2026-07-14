@@ -106,7 +106,7 @@ public sealed class PointerTests
         await dispatcher.InvokeAsync(() =>
         {
             ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(4, 3, 8, 4) };
+            ProbeControl child = new() { Bounds = new Rect(4, 3, 8, 4), CanFocus = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);
@@ -135,6 +135,53 @@ public sealed class PointerTests
             ]);
             manager.Hovered.ShouldBeSameAs(child);
             child.IsHovered.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a non-interactive hit target routes input but is never hovered.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerHitsNonInteractiveControl_DoesNotHoverAsync()
+    {
+        await using Dispatcher dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 10) };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using CaptureManager manager = new(root);
+
+            manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move))
+                .ShouldBeSameAs(child);
+
+            manager.Hovered.ShouldBeNull();
+            child.IsHovered.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies hover resolves to the nearest interactive ancestor of the hit control.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerHitsChildOfInteractiveAncestor_HoversAncestorAsync()
+    {
+        await using Dispatcher dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
+            ProbeContainer ancestor = new() { Bounds = new Rect(0, 0, 12, 8), CanFocus = true };
+            ProbeControl child = new() { Bounds = new Rect(2, 2, 6, 4) };
+            ancestor.Children.Add(child);
+            root.Children.Add(ancestor);
+            root.Attach(dispatcher);
+            using CaptureManager manager = new(root);
+
+            manager.Dispatch(CreatePointer(new Point(4, 3), PointerAction.Move))
+                .ShouldBeSameAs(child);
+
+            manager.Hovered.ShouldBeSameAs(ancestor);
+            ancestor.IsHovered.ShouldBeTrue();
+            child.IsHovered.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -325,7 +372,7 @@ public sealed class PointerTests
         await dispatcher.InvokeAsync(() =>
         {
             ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 10) };
+            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 10), CanFocus = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);

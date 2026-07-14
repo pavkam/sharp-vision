@@ -256,7 +256,8 @@ public sealed class CaptureManager: IDisposable
             }
         }
 
-        return physical;
+        // No interactive ancestor owns hover, so nothing is highlighted.
+        return null;
     }
 
     private static void FocusTarget(Control? target)
