@@ -33,8 +33,10 @@ public readonly record struct CellStyle
     /// <paramref name="attributes"/> contains unknown flags.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Rendition fields conflict, underline color has no underline, or
-    /// <paramref name="hyperlink"/> is empty or contains a control code unit.
+    /// Rendition fields conflict, underline color has no underline,
+    /// <paramref name="hyperlink"/> is empty or contains a control code unit, or
+    /// <paramref name="foreground"/>, <paramref name="background"/>, or <paramref name="underlineColor"/>
+    /// is an unresolved role color.
     /// </exception>
     public CellStyle(
         Color foreground = default,
@@ -79,6 +81,14 @@ public readonly record struct CellStyle
             throw new ArgumentException(
                 "Underline color requires a straight or typed underline.",
                 nameof(underlineColor));
+        }
+
+        if (foreground.Kind == ColorKind.Role ||
+            background.Kind == ColorKind.Role ||
+            underlineColor.Kind == ColorKind.Role)
+        {
+            throw new ArgumentException(
+                "A role color must be resolved against a theme before it can be rendered.");
         }
 
         if (hyperlink is not null)

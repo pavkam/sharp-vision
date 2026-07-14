@@ -16,8 +16,15 @@ internal static class Palette
     /// <param name="depth">The validated terminal color tier.</param>
     /// <returns>The default color or a representation contained by <paramref name="depth"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="depth"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="source"/> is an unresolved role color.</exception>
     internal static Color Project(Color source, ColorDepth depth)
     {
+        if (source.Kind == ColorKind.Role)
+        {
+            throw new InvalidOperationException(
+                "A role color must be resolved against a theme before it can be projected or encoded.");
+        }
+
         if (!Enum.IsDefined(depth))
         {
             throw new ArgumentOutOfRangeException(nameof(depth), depth, "The color depth is unknown.");
