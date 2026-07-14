@@ -338,7 +338,7 @@ public sealed class GalleryInteractionTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(80, 60)));
-        ButtonShowcasePane root = new();
+        ButtonPane root = new();
         await using Application application = new(
             root,
             terminal,
@@ -372,7 +372,7 @@ public sealed class GalleryInteractionTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(80, 60)));
-        ButtonShowcasePane root = new();
+        ButtonPane root = new();
         await using Application application = new(
             root,
             terminal,

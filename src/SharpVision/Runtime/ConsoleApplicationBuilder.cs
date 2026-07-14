@@ -8,18 +8,17 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
-using Screen = Screen;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Configures and builds one interactive console <see cref="Application"/> fluently.</summary>
 public sealed class ConsoleApplicationBuilder
 {
-    private readonly Screen _screen;
+    private readonly Controls.Screen _screen;
 
     /// <summary>Initializes a builder for one detached screen.</summary>
     /// <param name="screen">The non-null detached screen.</param>
     /// <exception cref="ArgumentNullException"><paramref name="screen"/> is null.</exception>
-    public ConsoleApplicationBuilder(Screen screen)
+    public ConsoleApplicationBuilder(Controls.Screen screen)
     {
         ArgumentNullException.ThrowIfNull(screen);
         _screen = screen;

@@ -80,6 +80,7 @@ public sealed class GalleryRenderingTests
     {
         using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "Button"));
+        new Engine().Layout(gallery, new Size(100, 60));
 
         List<Button> buttons = FindAll<Button>(gallery.Content);
 
@@ -297,7 +298,6 @@ public sealed class GalleryRenderingTests
             {
                 screen.Text.ShouldContain(gallery.SelectedPage);
                 screen.Text.ShouldContain("Overview");
-                screen.Text.ShouldContain("Practical recipe");
             }
         }
     }

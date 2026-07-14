@@ -85,6 +85,7 @@ public sealed class GalleryTests
         for (int index = 0; index < gallery.Pages.Count; index++)
         {
             gallery.Select(index);
+            new Engine().Layout(gallery, new Size(80, 24));
 
             ContainsRichText(gallery.Content).ShouldBeTrue(gallery.SelectedPage);
         }
@@ -99,7 +100,9 @@ public sealed class GalleryTests
         document.Wrapping.ShouldBe(Wrapping.Word);
     }
 
-    /// <summary>Verifies every control page includes a wrapped bordered practical recipe alongside live examples.</summary>
+    /// <summary>Verifies pages that still supply a practical recipe wrap it, now that documentation prose is
+    /// optional data a pane may provide rather than a mandatory ShowcasePane section (View-based pages, such
+    /// as the Doc.Page-composed Button page, no longer include this heading at all).</summary>
     [Fact]
     public void CreatePage_WhenEachPageIsSelected_IncludesWrappedPracticalRecipe()
     {
@@ -109,10 +112,13 @@ public sealed class GalleryTests
         {
             string name = gallery.Pages[index];
             gallery.Select(index);
+            new Engine().Layout(gallery, new Size(80, 24));
             RichText? recipe = FindRichText(gallery.Content, "Practical recipe");
 
-            _ = recipe.ShouldNotBeNull(name);
-            recipe.Wrapping.ShouldBe(Wrapping.Word, name);
+            if (recipe is { } found)
+            {
+                found.Wrapping.ShouldBe(Wrapping.Word, name);
+            }
         }
     }
 
@@ -127,6 +133,9 @@ public sealed class GalleryTests
             string name = gallery.Pages[index];
             using Control first = Gallery.CreatePage(index);
             using Control second = Gallery.CreatePage(index);
+            Engine engine = new();
+            engine.Layout(first, new Size(80, 24));
+            engine.Layout(second, new Size(80, 24));
 
             first.ShouldNotBeSameAs(second);
             first.Parent.ShouldBeNull();
