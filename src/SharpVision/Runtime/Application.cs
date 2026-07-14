@@ -3,6 +3,7 @@
 
 namespace SharpVision.Runtime;
 
+using System.Buffers;
 
 using SharpVision.Styling;
 using SharpVision.Terminal.Capabilities;
@@ -40,6 +41,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _completion =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ArrayBufferWriter<byte> _outOfBand = new();
     private Dimensions _latestResize;
     private TerminalCapabilities? _pendingProfile;
     private Task _sessionTask = Task.CompletedTask;
@@ -47,6 +49,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private bool _inputWake;
     private bool _profileWake;
     private bool _resizeWake;
+    private bool _outOfBandWake;
     private bool _initialized;
     private bool _rendering;
     private bool _renderRequested;
@@ -487,7 +490,11 @@ public sealed partial class Application: ISink, IAsyncDisposable
             FrameRendered?.Invoke(this, new FrameRenderedEventArgs(metrics!.Value));
             MarkStarted();
 
-            if (_renderRequested || Root.Pending != Invalidation.None)
+            if (HasPendingOutOfBand())
+            {
+                FlushOutOfBand();
+            }
+            else if (_renderRequested || Root.Pending != Invalidation.None)
             {
                 _renderRequested = false;
                 ProcessInvalidation();
@@ -932,6 +939,161 @@ public sealed partial class Application: ISink, IAsyncDisposable
         if (!eventArgs.Handled)
         {
             BeginStopping(forced: true, exception);
+        }
+    }
+
+    /// <summary>Buffers out-of-band protocol bytes and drains them on the dispatcher.</summary>
+    /// <param name="bytes">The exact bytes to write; flushed only when no frame render is in flight.</param>
+    internal void PostOutOfBand(ReadOnlyMemory<byte> bytes)
+    {
+        if (bytes.IsEmpty)
+        {
+            return;
+        }
+
+        lock (_gate)
+        {
+            if (_stopping)
+            {
+                return;
+            }
+
+            _outOfBand.Write(bytes.Span);
+
+            if (_outOfBandWake)
+            {
+                return;
+            }
+
+            _outOfBandWake = true;
+        }
+
+        Dispatcher.Post(DrainOutOfBand);
+    }
+
+    private void DrainOutOfBand()
+    {
+        Dispatcher.VerifyAccess();
+
+        lock (_gate)
+        {
+            _outOfBandWake = false;
+        }
+
+        // A frame render owns the writer; CompleteRender re-drains afterward.
+        if (_rendering || _stopping || IsSuspended())
+        {
+            return;
+        }
+
+        FlushOutOfBand();
+    }
+
+    private void FlushOutOfBand()
+    {
+        Dispatcher.VerifyAccess();
+        Debug.Assert(!_rendering, "Out-of-band flush must not overlap a frame render.");
+
+        byte[] payload;
+
+        lock (_gate)
+        {
+            if (_outOfBand.WrittenCount == 0)
+            {
+                return;
+            }
+
+            payload = _outOfBand.WrittenSpan.ToArray();
+            _outOfBand.Clear();
+        }
+
+        IDisposable hold = Dispatcher.Hold();
+        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _renderTask = completion.Task;
+        _rendering = true;
+        ValueTask operation = WriteOutOfBandAsync(payload);
+        _ = ObserveOutOfBandAsync(operation, hold, completion);
+    }
+
+    private async ValueTask WriteOutOfBandAsync(byte[] payload)
+    {
+        await _transport.WriteAsync(payload, _lifetime.Token).ConfigureAwait(false);
+        await _transport.FlushAsync(_lifetime.Token).ConfigureAwait(false);
+    }
+
+    private async Task ObserveOutOfBandAsync(ValueTask operation, IDisposable hold, TaskCompletionSource completion)
+    {
+        Exception? failure = null;
+
+        try
+        {
+            await operation;
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+
+        try
+        {
+            Dispatcher.Post(() => CompleteOutOfBand(hold, completion, failure));
+        }
+        catch
+        {
+            hold.Dispose();
+            _ = completion.TrySetResult();
+        }
+    }
+
+    private void CompleteOutOfBand(IDisposable hold, TaskCompletionSource completion, Exception? failure)
+    {
+        Dispatcher.VerifyAccess();
+
+        try
+        {
+            _rendering = false;
+
+            if (failure is not null &&
+                (failure is not OperationCanceledException || !_lifetime.IsCancellationRequested))
+            {
+                Report(failure);
+                return;
+            }
+
+            PumpAfterWrite();
+        }
+        finally
+        {
+            hold.Dispose();
+            _ = completion.TrySetResult();
+        }
+    }
+
+    private void PumpAfterWrite()
+    {
+        if (_stopping || IsSuspended())
+        {
+            return;
+        }
+
+        if (HasPendingOutOfBand())
+        {
+            FlushOutOfBand();
+            return;
+        }
+
+        if (_renderRequested || Root.Pending != Invalidation.None)
+        {
+            _renderRequested = false;
+            ProcessInvalidation();
+        }
+    }
+
+    private bool HasPendingOutOfBand()
+    {
+        lock (_gate)
+        {
+            return _outOfBand.WrittenCount > 0;
         }
     }
 
