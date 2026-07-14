@@ -35,4 +35,13 @@ public sealed class StandardThemeTests
         ThemeTestSupport.Resolve(control, Control.BackgroundProperty, State.Normal)
             .ShouldBe(Color.Indexed(15));
     }
+
+    /// <summary>Verifies the standard themes are frozen, stable singletons distinct from each other.</summary>
+    [Fact]
+    public void Themes_AreCachedFrozenInstances()
+    {
+        Themes.Dark.IsFrozen.ShouldBeTrue();
+        ReferenceEquals(Themes.Dark, Themes.Dark).ShouldBeTrue();
+        ReferenceEquals(Themes.White, Themes.Dark).ShouldBeFalse();
+    }
 }
