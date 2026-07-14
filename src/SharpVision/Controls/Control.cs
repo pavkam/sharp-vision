@@ -560,7 +560,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 ? available.Width
                 : ResolveArrangeAxis(
                     Width,
-                    HorizontalAlignment == HorizontalAlignment.Stretch,
+                    HorizontalAlignment == HorizontalAlignment.Stretch && !ShrinkWrapsWidth,
                     slot.Width,
                     available.Width,
                     DesiredSize.Width,
@@ -570,7 +570,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 ? available.Height
                 : ResolveArrangeAxis(
                     Height,
-                    VerticalAlignment == VerticalAlignment.Stretch,
+                    VerticalAlignment == VerticalAlignment.Stretch && !ShrinkWrapsHeight,
                     slot.Height,
                     available.Height,
                     DesiredSize.Height,
@@ -907,6 +907,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="desired">The border-box desired size.</param>
     /// <returns>The committed desired size.</returns>
     internal virtual Size OnMeasuredDesired(Size desired) => desired;
+
+    /// <summary>Gets whether this control sizes its width to content, overriding stretch. Default false.</summary>
+    internal virtual bool ShrinkWrapsWidth => false;
+
+    /// <summary>Gets whether this control sizes its height to content, overriding stretch. Default false.</summary>
+    internal virtual bool ShrinkWrapsHeight => false;
 
     /// <summary>Arranges content inside the committed padded border box.</summary>
     /// <param name="bounds">The non-negative content-box rectangle.</param>
