@@ -24,19 +24,24 @@ and is not retained on the produced `Theme`.
 | Field         | Type                  | Meaning                                                                                                                               |
 | ------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`        | string                | Display name.                                                                                                                         |
-| `slug`        | string                | Stable catalog key, `[a-z0-9-]`, unique within the catalog.                                                                           |
+| `slug`        | string                | Stable catalog key, unique within the catalog; by convention `[a-z0-9-]`.                                                             |
 | `colorScheme` | `"dark"` or `"light"` | The dark/light color scheme, using CSS `color-scheme` naming.                                                                         |
-| `order`       | non-negative int      | Deterministic catalog sort key; ties break by ordinal `slug`.                                                                         |
+| `order`       | integer               | Catalog sort key; ties break by ordinal `slug`. By convention non-negative.                                                           |
 | `author`      | string                | Attribution author.                                                                                                                   |
 | `license`     | string                | License identifier for the palette source.                                                                                            |
 | `source`      | string                | URL the palette values were taken from.                                                                                               |
 | `palette`     | object                | Named color-value strings; may be empty if `roles` uses only inline values.                                                           |
 | `roles`       | object                | Semantic role name (camelCase, matching `ColorRole` members) to a color-value string or palette key. Unknown role names are rejected. |
 
-`name`, `slug`, `author`, `license`, and `source` must be non-empty; a missing
-or blank required field throws `InvalidDataException` naming the theme and the
-field. `slug` additionally must be unique within the catalog and match
-`[a-z0-9-]`.
+Validation is split by load path. For **any** theme, the loader requires that
+`background` and `foreground` resolve and that every `palette`/`roles` color
+value is valid (see below); otherwise it throws `InvalidDataException`. The
+descriptive metadata fields (`name`, `author`, `license`, `source`,
+`colorScheme`) and slug uniqueness are enforced only for **embedded catalog
+themes**: the catalog requires non-empty `name`/`slug`/`author`/`license`/
+`source`, a `colorScheme` of exactly `"dark"` or `"light"`, and slugs unique
+across the catalog. The `slug` `[a-z0-9-]` format and a non-negative `order` are
+authoring conventions, not enforced by the loader.
 
 ### Color-value grammar
 
@@ -195,8 +200,7 @@ ordered catalog metadata entries (`Name`, `Slug`, `ColorScheme`, `Author`,
 `License`, `Source`) and `.Slugs` returns the ordered slugs.
 
 User-supplied theme files — not part of the embedded catalog — load through
-[`ThemeFile`](../../src/SharpVision/Styling/ThemeFile.cs), which runs the same
-validation pipeline:
+[`ThemeFile`](../../src/SharpVision/Styling/ThemeFile.cs):
 
 ```csharp
 Theme fromText = ThemeFile.Parse(jsonText);
@@ -204,7 +208,11 @@ Theme fromStream = ThemeFile.Load(stream);      // caller owns the stream
 Theme fromDisk = ThemeFile.LoadFile("my-theme.theme.json");
 ```
 
-All three throw `ArgumentNullException` for a null argument and
+`ThemeFile` resolves the palette and roles and returns a frozen `Theme`,
+validating the color values and the required `background`/`foreground` roles; it
+does not require the descriptive metadata fields. The non-empty-metadata,
+`colorScheme`, and unique-slug checks apply only to embedded catalog themes. All
+three methods throw `ArgumentNullException` for a null argument and
 `InvalidDataException` for malformed or invalid content; `LoadFile` also
 propagates `FileNotFoundException`/`IOException` from the file read.
 
