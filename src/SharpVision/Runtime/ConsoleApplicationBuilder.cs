@@ -229,6 +229,8 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Opens the console and builds a wired application for advanced lifecycle control.</summary>
     /// <returns>The application; the caller runs and disposes it.</returns>
     /// <exception cref="IOException">The console is not interactive or cannot enter raw mode.</exception>
+    /// <exception cref="ArgumentException">The screen is already attached to an application.</exception>
+    /// <exception cref="ObjectDisposedException">The screen is disposed.</exception>
     public Application Build()
     {
         if (!ConsoleHost.IsInteractive)
@@ -262,7 +264,7 @@ public sealed class ConsoleApplicationBuilder
     /// <summary>Builds and runs the configured interactive console application.</summary>
     /// <param name="cancellationToken">Requests shutdown, reported as <see cref="ConsoleRunStatus.Cancelled"/>.</param>
     /// <returns>The run status.</returns>
-    /// <exception cref="IOException">The console is not interactive or cannot enter raw mode.</exception>
+    /// <exception cref="IOException">The interactive console cannot enter raw mode.</exception>
     public ValueTask<ConsoleRunStatus> RunAsync(CancellationToken cancellationToken = default) =>
         ConsoleApplication.RunCoreAsync(this, cancellationToken);
 }
