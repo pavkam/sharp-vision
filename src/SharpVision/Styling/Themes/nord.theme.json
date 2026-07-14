@@ -1,0 +1,20 @@
+{
+  "name": "Nord",
+  "slug": "nord",
+  "colorScheme": "dark",
+  "order": 50,
+  "author": "Sven Greb",
+  "license": "MIT",
+  "source": "https://github.com/nordtheme/nord",
+  "palette": {
+    "nord0": "#2e3440", "nord1": "#3b4252", "nord2": "#434c5e", "nord3": "#4c566a",
+    "nord4": "#d8dee9", "nord6": "#eceff4", "nord8": "#88c0d0", "nord10": "#5e81ac",
+    "nord11": "#bf616a", "nord13": "#ebcb8b", "nord14": "#a3be8c"
+  },
+  "roles": {
+    "background": "nord0", "foreground": "nord4", "surface": "nord1",
+    "border": "nord3", "muted": "nord3", "accent": "nord8",
+    "selectionBackground": "nord2", "selectionForeground": "nord6",
+    "error": "nord11", "warning": "nord13", "success": "nord14", "info": "nord10"
+  }
+}

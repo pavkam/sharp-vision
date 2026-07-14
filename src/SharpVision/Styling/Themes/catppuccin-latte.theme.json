@@ -1,0 +1,21 @@
+{
+  "name": "Catppuccin Latte",
+  "slug": "catppuccin-latte",
+  "colorScheme": "light",
+  "order": 21,
+  "author": "Catppuccin",
+  "license": "MIT",
+  "source": "https://github.com/catppuccin/catppuccin",
+  "palette": {
+    "base": "#eff1f5", "surface0": "#ccd0da", "surface2": "#acb0be",
+    "overlay0": "#9ca0b0", "overlay1": "#8c8fa1", "text": "#4c4f69",
+    "mauve": "#8839ef", "blue": "#1e66f5", "red": "#d20f39", "yellow": "#df8e1d",
+    "green": "#40a02b"
+  },
+  "roles": {
+    "background": "base", "foreground": "text", "surface": "surface0",
+    "border": "overlay0", "muted": "overlay1", "accent": "mauve",
+    "selectionBackground": "surface2", "selectionForeground": "text",
+    "error": "red", "warning": "yellow", "success": "green", "info": "blue"
+  }
+}

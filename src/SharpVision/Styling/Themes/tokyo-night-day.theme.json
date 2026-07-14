@@ -1,0 +1,20 @@
+{
+  "name": "Tokyo Night Day",
+  "slug": "tokyo-night-day",
+  "colorScheme": "light",
+  "order": 12,
+  "author": "Folke Lemaitre",
+  "license": "MIT",
+  "source": "https://github.com/folke/tokyonight.nvim",
+  "palette": {
+    "bg": "#e1e2e7", "bg-highlight": "#c4c8da", "fg": "#3760bf", "comment": "#848cb5",
+    "blue": "#2e7de9", "cyan": "#007197", "green": "#587539", "magenta": "#9854f1",
+    "red": "#f52a65", "yellow": "#8c6c3e", "orange": "#b15c00", "selection": "#b7c1e3"
+  },
+  "roles": {
+    "background": "bg", "foreground": "fg", "surface": "bg-highlight",
+    "border": "comment", "muted": "comment", "accent": "blue",
+    "selectionBackground": "selection", "selectionForeground": "fg",
+    "error": "red", "warning": "yellow", "success": "green", "info": "blue"
+  }
+}

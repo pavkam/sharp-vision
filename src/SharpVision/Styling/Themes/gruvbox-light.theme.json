@@ -1,0 +1,20 @@
+{
+  "name": "Gruvbox Light",
+  "slug": "gruvbox-light",
+  "colorScheme": "light",
+  "order": 31,
+  "author": "Pavel Pertsev",
+  "license": "MIT",
+  "source": "https://github.com/morhetz/gruvbox",
+  "palette": {
+    "bg0": "#fbf1c7", "bg1": "#ebdbb2", "bg2": "#d5c4a1", "bg3": "#bdae93",
+    "fg1": "#3c3836", "gray": "#928374", "red": "#9d0006", "green": "#79740e",
+    "yellow": "#b57614", "blue": "#076678", "orange": "#af3a03"
+  },
+  "roles": {
+    "background": "bg0", "foreground": "fg1", "surface": "bg1",
+    "border": "bg3", "muted": "gray", "accent": "orange",
+    "selectionBackground": "bg2", "selectionForeground": "fg1",
+    "error": "red", "warning": "yellow", "success": "green", "info": "blue"
+  }
+}

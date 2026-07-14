@@ -1,0 +1,20 @@
+{
+  "name": "Monokai",
+  "slug": "monokai",
+  "colorScheme": "dark",
+  "order": 60,
+  "author": "Wimer Hazenberg",
+  "license": "MIT",
+  "source": "https://www.monokai.nl",
+  "palette": {
+    "bg": "#272822", "raised": "#3e3d32", "selection": "#49483e", "fg": "#f8f8f2",
+    "comment": "#75715e", "pink": "#f92672", "orange": "#fd971f", "yellow": "#e6db74",
+    "green": "#a6e22e", "cyan": "#66d9ef", "purple": "#ae81ff"
+  },
+  "roles": {
+    "background": "bg", "foreground": "fg", "surface": "raised",
+    "border": "comment", "muted": "comment", "accent": "pink",
+    "selectionBackground": "selection", "selectionForeground": "fg",
+    "error": "pink", "warning": "orange", "success": "green", "info": "cyan"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "One Dark",
+  "slug": "one-dark",
+  "colorScheme": "dark",
+  "order": 80,
+  "author": "Josh Dick",
+  "license": "MIT",
+  "source": "https://github.com/joshdick/onedark.vim",
+  "palette": {
+    "bg": "#282c34", "cursor-grey": "#2c323c", "visual-grey": "#3e4452",
+    "gutter-grey": "#4b5263", "comment-grey": "#5c6370", "fg": "#abb2bf",
+    "red": "#e06c75", "green": "#98c379", "yellow": "#e5c07b", "orange": "#d19a66",
+    "blue": "#61afef", "purple": "#c678dd", "cyan": "#56b6c2"
+  },
+  "roles": {
+    "background": "bg", "foreground": "fg", "surface": "cursor-grey",
+    "border": "gutter-grey", "muted": "comment-grey", "accent": "blue",
+    "selectionBackground": "visual-grey", "selectionForeground": "fg",
+    "error": "red", "warning": "orange", "success": "green", "info": "cyan"
+  }
+}
