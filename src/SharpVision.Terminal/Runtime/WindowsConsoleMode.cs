@@ -47,8 +47,9 @@ internal sealed class WindowsConsoleMode: IDisposable
 
         if (!Native.TrySetConsoleMode(output, Native.ComputeOutputMode(savedOutput)))
         {
+            IOException failure = Failure();
             _ = Native.TrySetConsoleMode(input, savedInput);
-            throw Failure();
+            throw failure;
         }
 
         return new WindowsConsoleMode(input, output, savedInput, savedOutput);
