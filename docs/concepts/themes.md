@@ -25,7 +25,7 @@ and is not retained on the produced `Theme`.
 | ------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`        | string                | Display name.                                                                                                                         |
 | `slug`        | string                | Stable catalog key, `[a-z0-9-]`, unique within the catalog.                                                                           |
-| `colorScheme` | `"dark"` or `"light"` | CSS `color-scheme` naming; drives picker grouping.                                                                                    |
+| `colorScheme` | `"dark"` or `"light"` | The dark/light color scheme, using CSS `color-scheme` naming.                                                                         |
 | `order`       | non-negative int      | Deterministic catalog sort key; ties break by ordinal `slug`.                                                                         |
 | `author`      | string                | Attribution author.                                                                                                                   |
 | `license`     | string                | License identifier for the palette source.                                                                                            |
@@ -33,8 +33,10 @@ and is not retained on the produced `Theme`.
 | `palette`     | object                | Named color-value strings; may be empty if `roles` uses only inline values.                                                           |
 | `roles`       | object                | Semantic role name (camelCase, matching `ColorRole` members) to a color-value string or palette key. Unknown role names are rejected. |
 
-`name`, `author`, `license`, and `source` must be non-empty; a missing or blank
-required field throws `InvalidDataException` naming the theme and the field.
+`name`, `slug`, `author`, `license`, and `source` must be non-empty; a missing
+or blank required field throws `InvalidDataException` naming the theme and the
+field. `slug` additionally must be unique within the catalog and match
+`[a-z0-9-]`.
 
 ### Color-value grammar
 
@@ -188,9 +190,9 @@ Application.Theme = theme;
 
 `Load` builds and freezes the theme on first request and caches the result;
 repeated calls with the same slug return the same instance. An unknown slug
-throws `KeyNotFoundException`. `ThemeCatalog.Default.Entries` and `.Slugs`
-expose the ordered catalog metadata (`Name`, `Slug`, `ColorScheme`, `Author`,
-`License`, `Source`) for building a picker.
+throws `KeyNotFoundException`. `ThemeCatalog.Default.Entries` returns the
+ordered catalog metadata entries (`Name`, `Slug`, `ColorScheme`, `Author`,
+`License`, `Source`) and `.Slugs` returns the ordered slugs.
 
 User-supplied theme files — not part of the embedded catalog — load through
 [`ThemeFile`](../../src/SharpVision/Styling/ThemeFile.cs), which runs the same
