@@ -218,7 +218,14 @@ public abstract class Container: Control
     public bool AutoScroll
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set
+        {
+            if (Set(ref field, value, Invalidation.Measure) && !value)
+            {
+                _horizontalOffset = 0;
+                _verticalOffset = 0;
+            }
+        }
     }
 
     /// <summary>Gets or sets the axes that may scroll within this container.</summary>
@@ -377,6 +384,12 @@ public abstract class Container: Control
     {
         if (!AutoScroll)
         {
+            Size box = new(padded.Width, padded.Height);
+            _ = Set(ref _extent, box, Invalidation.None, nameof(Extent));
+            _ = Set(ref _viewport, box, Invalidation.None, nameof(Viewport));
+            _viewportBounds = padded;
+            _horizontalOffset = 0;
+            _verticalOffset = 0;
             return padded;
         }
 

@@ -52,4 +52,22 @@ public sealed class ContainerScrollTests
 
         child.Bounds.Y.ShouldBe(-6);
     }
+
+    /// <summary>Verifies disarming AutoScroll after scrolling restores the inert state.</summary>
+    [Fact]
+    public void ScrollState_WhenDisarmedAfterScrolling_ResetsToInert()
+    {
+        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(container, new Size(4, 10));
+        _ = container.ScrollBy(0, 1000);
+        container.VerticalOffset.ShouldBe(30);
+
+        container.AutoScroll = false;
+        new Engine().Layout(container, new Size(4, 10));
+
+        container.VerticalOffset.ShouldBe(0);
+        container.Extent.ShouldBe(container.Viewport);
+        container.ScrollBy(0, 5).ShouldBeFalse();
+    }
 }
