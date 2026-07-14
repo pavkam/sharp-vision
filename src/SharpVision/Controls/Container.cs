@@ -5,6 +5,7 @@ namespace SharpVision.Controls;
 
 
 using SharpVision.Scrolling;
+using SharpVision.Terminal.Input;
 
 /// <summary>Defines a mutable control that owns an ordered child collection.</summary>
 public abstract class Container: Control
@@ -472,6 +473,78 @@ public abstract class Container: Control
         Validate(cause);
         VerifyMutable();
         return Apply(Add(HorizontalOffset, x), Add(VerticalOffset, y), cause);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (!AutoScroll)
+        {
+            base.OnEvent(eventArgs);
+            return;
+        }
+
+        if (eventArgs is KeyEventArgs key)
+        {
+            Handle(key);
+        }
+
+        if (!eventArgs.Handled)
+        {
+            base.OnEvent(eventArgs);
+        }
+    }
+
+    private void Handle(KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Stroke.Action is not (KeyAction.Press or KeyAction.Repeat))
+        {
+            return;
+        }
+
+        int page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
+        Code code = eventArgs.Stroke.Code;
+
+        if (code == Code.Left)
+        {
+            _ = ScrollBy(-LineSize, 0, Cause.Keyboard);
+        }
+        else if (code == Code.Right)
+        {
+            _ = ScrollBy(LineSize, 0, Cause.Keyboard);
+        }
+        else if (code == Code.Up)
+        {
+            _ = ScrollBy(0, -LineSize, Cause.Keyboard);
+        }
+        else if (code == Code.Down)
+        {
+            _ = ScrollBy(0, LineSize, Cause.Keyboard);
+        }
+        else if (code == Code.PageUp)
+        {
+            _ = ScrollBy(0, -page, Cause.Keyboard);
+        }
+        else if (code == Code.PageDown)
+        {
+            _ = ScrollBy(0, page, Cause.Keyboard);
+        }
+        else if (code == Code.Home)
+        {
+            _ = Apply(HorizontalOffset, 0, Cause.Keyboard);
+        }
+        else if (code == Code.End)
+        {
+            _ = Apply(HorizontalOffset, MaximumY(), Cause.Keyboard);
+        }
+        else
+        {
+            return;
+        }
+
+        eventArgs.Handled = true;
     }
 
     /// <inheritdoc/>

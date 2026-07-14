@@ -3,6 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
+using SharpVision.Terminal.Input;
 using SharpVision.Tests.Support;
 
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
@@ -111,5 +112,18 @@ public sealed class ContainerScrollTests
 
         container.Extent.ShouldBe(new Size(5, 4));
         container.Viewport.ShouldBe(new Size(4, 2));
+    }
+
+    /// <summary>Verifies the Down key advances the vertical offset by LineSize.</summary>
+    [Fact]
+    public void OnEvent_WhenDownKey_ScrollsByLineSize()
+    {
+        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never, LineSize = 2 };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(container, new Size(4, 10));
+
+        container.RaiseKey(Code.Down);
+
+        container.VerticalOffset.ShouldBe(2);
     }
 }

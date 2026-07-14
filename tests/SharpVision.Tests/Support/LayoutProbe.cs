@@ -3,6 +3,9 @@
 
 namespace SharpVision.Tests.Support;
 
+using SharpVision.Terminal.Input;
+
+using KeyAction = Terminal.Input.Action;
 
 /// <summary>A container probe that measures the union of its children and arranges each child to its slot.</summary>
 internal sealed class LayoutProbe: Container
@@ -12,6 +15,19 @@ internal sealed class LayoutProbe: Container
     internal LayoutProbe(int capacity = int.MaxValue) : base(capacity)
     {
     }
+
+    /// <summary>Routes one keyboard press through the routed-event default path.</summary>
+    /// <param name="code">The pressed key code.</param>
+    internal void RaiseKey(Code code) =>
+        Router.Route(
+            this,
+            Events.Key,
+            new KeyEventArgs(new Stroke(
+                code,
+                character: null,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
