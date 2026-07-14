@@ -238,10 +238,11 @@ public sealed class ConsoleApplicationBuilder
         }
 
         ConsoleConnection connection = ConsoleHost.Open(Options.ToHostOptions());
+        Application? application = null;
 
         try
         {
-            Application application = new(
+            application = new Application(
                 _screen,
                 connection.Transport,
                 connection.Resize,
@@ -253,9 +254,17 @@ public sealed class ConsoleApplicationBuilder
         }
         catch
         {
-            connection.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            connection.Transport.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            connection.Resize.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            if (application is not null)
+            {
+                application.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            else
+            {
+                connection.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                connection.Transport.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                connection.Resize.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+
             throw;
         }
     }

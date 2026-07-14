@@ -42,4 +42,19 @@ public sealed class ConsoleConnectionTests
         _ = Should.Throw<ArgumentNullException>(
             () => new ConsoleConnection(new FakeTransport(), new FakeResizeSource(), restore: null!));
     }
+
+    /// <summary>
+    /// Verifies that DisposeAsync restores the lease without disposing the transport, which the
+    /// caller (e.g. the owning <c>Application</c>) is responsible for disposing.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenCalled_DoesNotDisposeTransportOrResize()
+    {
+        FakeTransport transport = new();
+        ConsoleConnection connection = new(transport, new FakeResizeSource(), new TrackingRestore());
+
+        await connection.DisposeAsync();
+
+        transport.DisposeCount.ShouldBe(0);
+    }
 }

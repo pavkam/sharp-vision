@@ -183,7 +183,7 @@ public sealed record ConsoleRunOptions
         return ColorDepth is { } forced ? detected with { ColorDepth = forced } : detected;
     }
 
-    private static NegotiationOptions DefaultNegotiation()
+    private NegotiationOptions DefaultNegotiation()
     {
         Dictionary<string, string?> environment = new(StringComparer.Ordinal);
 
@@ -195,6 +195,6 @@ public sealed record ConsoleRunOptions
             }
         }
 
-        return new NegotiationOptions(environment, new Settings { CellMouse = true });
+        return new NegotiationOptions(environment, new Settings { CellMouse = true, ColorDepth = ColorDepth });
     }
 }

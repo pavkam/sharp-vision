@@ -70,4 +70,24 @@ public sealed class ConsoleRunOptionsTests
     [Fact]
     public void ResolveTheme_WhenThemeNull_ReturnsDark() =>
         new ConsoleRunOptions().ResolveTheme().ShouldBe(Themes.Dark);
+
+    /// <summary>Verifies a forced color depth is threaded into negotiation overrides so it survives renegotiation.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenColorDepthForced_ThreadsItIntoNegotiationOverrides()
+    {
+        ConsoleRunOptions options = new() { ColorDepth = ColorDepth.Monochrome };
+
+        TerminalOptions terminal = options.ToTerminalOptions();
+
+        terminal.Negotiation.ShouldNotBeNull().Overrides.ShouldNotBeNull().ColorDepth.ShouldBe(ColorDepth.Monochrome);
+    }
+
+    /// <summary>Verifies the default (unforced) color depth leaves the negotiation override null.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenColorDepthDefault_LeavesNegotiationOverrideNull()
+    {
+        TerminalOptions terminal = new ConsoleRunOptions().ToTerminalOptions();
+
+        terminal.Negotiation.ShouldNotBeNull().Overrides.ShouldNotBeNull().ColorDepth.ShouldBeNull();
+    }
 }
