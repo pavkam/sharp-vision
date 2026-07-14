@@ -112,6 +112,13 @@ if (TryGetThemeColor(ColorRole.Accent, out var accent))
 }
 ```
 
+`ColorRole` has twelve members — `Foreground`, `Background`, `Surface`,
+`Border`, `Accent`, `Muted`, `SelectionBackground`, `SelectionForeground`,
+`Error`, `Warning`, `Success`, and `Info` — every one of which every theme
+resolves, by explicit value or fallback. See
+[Themes](themes.md#semantic-roles-and-fallbacks) for the full role reference and
+fallback derivation.
+
 ## 7. Tooling / design time
 
 - `StylePropertyRegistry.GetProperties(typeof(Gauge))` lists every property a

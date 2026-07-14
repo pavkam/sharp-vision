@@ -5,6 +5,7 @@
 - [Unicode cell geometry](unicode-cell-geometry.md#unicode-cell-geometry-contract)
 - [Images](images.md#image-ownership-contract)
 - [Styling](styling.md#styling-contract)
+- [Themes](themes.md#theme-file-contract)
 - [Layout](layout.md#layout-contract)
 - [Scrolling](scrolling.md#scrolling-contract)
 - [Focus](focus.md#focus-contract)
