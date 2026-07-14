@@ -3,6 +3,7 @@
 
 namespace SharpVision.Showcase.Panes;
 
+using SharpVision.Showcase.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
@@ -84,7 +85,7 @@ internal sealed class ThemingPane: View
                 placement),
             Doc.Example(
                 "Theme roles",
-                "Themes are JSON palette files loaded through ThemeCatalog and ThemeFile. Every theme defines these 12 semantic ColorRole values; the swatches below are a build-time snapshot of the built-in Dark theme.",
+                "Themes are JSON palette files loaded through ThemeCatalog and ThemeFile. Every theme defines these 12 semantic ColorRole values; the swatches below show the active application theme and update live when you change the theme in the sidebar picker.",
                 roleSwatches));
     }
 
@@ -96,14 +97,7 @@ internal sealed class ThemingPane: View
         for (int index = 0; index < roles.Length; index++)
         {
             ColorRole role = roles[index];
-            Border swatch = new()
-            {
-                Width = Length.Cells(4),
-                Height = Length.Cells(1),
-                FillMode = FillMode.Opaque,
-                Background = Themes.Dark.TryGetColor(role, out Color color) ? color : null,
-            };
-            rows[index] = Doc.Row(swatch, new Text(role.ToString()));
+            rows[index] = Doc.Row(new RoleSwatch(role), new Text(role.ToString()));
         }
 
         return Doc.Column(rows);
