@@ -20,7 +20,6 @@ using Label = Text;
 public sealed class List: Container, IStyleScope
 {
     private readonly Children _chrome;
-    private readonly ScrollView _scroll;
     private readonly Stack _stack;
     private readonly GenericList _items = [];
     private readonly ReadOnlyCollection<object?> _itemsView;
@@ -35,16 +34,15 @@ public sealed class List: Container, IStyleScope
     {
         _itemsView = _items.AsReadOnly();
         _selectedView = _selectedItems.AsReadOnly();
-        _stack = new Stack();
-        _scroll = new ScrollView
+        _stack = new Stack
         {
-            Content = _stack,
-            ScrollBars = ScrollBars.Both,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
         };
         _chrome = new Children(this, capacity: 1)
         {
-            _scroll
+            _stack
         };
         _ = AddHandler(Events.Key, OnKeyRouted);
         CanFocus = true;
@@ -181,7 +179,7 @@ public sealed class List: Container, IStyleScope
     public int ActiveIndex { get; private set; } = -1;
 
     /// <summary>Gets the composed vertical scroll offset.</summary>
-    public new int VerticalOffset => _scroll.VerticalOffset;
+    public new int VerticalOffset => _stack.VerticalOffset;
 
     /// <summary>Gets or sets the axes available to the composed overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
@@ -189,17 +187,17 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
     public new ScrollBars ScrollBars
     {
-        get => _scroll.ScrollBars;
+        get => _stack.ScrollBars;
         set
         {
             VerifyMutable();
 
-            if (_scroll.ScrollBars == value)
+            if (_stack.ScrollBars == value)
             {
                 return;
             }
 
-            _scroll.ScrollBars = value;
+            _stack.ScrollBars = value;
             NotifyChanged(nameof(ScrollBars), Invalidation.None);
         }
     }
@@ -210,17 +208,17 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
     public new ShowScrollBars ShowScrollBars
     {
-        get => _scroll.ShowScrollBars;
+        get => _stack.ShowScrollBars;
         set
         {
             VerifyMutable();
 
-            if (_scroll.ShowScrollBars == value)
+            if (_stack.ShowScrollBars == value)
             {
                 return;
             }
 
-            _scroll.ShowScrollBars = value;
+            _stack.ShowScrollBars = value;
             NotifyChanged(nameof(ShowScrollBars), Invalidation.None);
         }
     }
@@ -231,17 +229,17 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
     public new ScrollBarChrome ScrollBarChrome
     {
-        get => _scroll.ScrollBarChrome;
+        get => _stack.ScrollBarChrome;
         set
         {
             VerifyMutable();
 
-            if (_scroll.ScrollBarChrome == value)
+            if (_stack.ScrollBarChrome == value)
             {
                 return;
             }
 
-            _scroll.ScrollBarChrome = value;
+            _stack.ScrollBarChrome = value;
             NotifyChanged(nameof(ScrollBarChrome), Invalidation.None);
         }
     }
@@ -252,17 +250,17 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
     public new ScrollBarFill ScrollBarFill
     {
-        get => _scroll.ScrollBarFill;
+        get => _stack.ScrollBarFill;
         set
         {
             VerifyMutable();
 
-            if (_scroll.ScrollBarFill == value)
+            if (_stack.ScrollBarFill == value)
             {
                 return;
             }
 
-            _scroll.ScrollBarFill = value;
+            _stack.ScrollBarFill = value;
             NotifyChanged(nameof(ScrollBarFill), Invalidation.None);
         }
     }
@@ -316,7 +314,7 @@ public sealed class List: Container, IStyleScope
     {
         Control? self = base.HitTest(point);
 
-        return self is null ? null : _scroll.HitTestPopup(point) ?? _scroll.HitTest(point) ?? this;
+        return self is null ? null : _stack.HitTestPopup(point) ?? _stack.HitTest(point) ?? this;
     }
 
     /// <inheritdoc/>
@@ -348,19 +346,19 @@ public sealed class List: Container, IStyleScope
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas) => _scroll.Render(canvas);
+    internal override void RenderChildren(TerminalCanvas canvas) => _stack.Render(canvas);
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopup(Point point) => _scroll.HitTestPopup(point);
+    internal override Control? HitTestPopup(Point point) => _stack.HitTestPopup(point);
 
     /// <inheritdoc/>
-    internal override void RenderPopupLayer(TerminalCanvas canvas) => _scroll.RenderPopupLayer(canvas);
+    internal override void RenderPopupLayer(TerminalCanvas canvas) => _stack.RenderPopupLayer(canvas);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _scroll.Measure(constraint);
-        return _scroll.DesiredSize;
+        _stack.Measure(constraint);
+        return _stack.DesiredSize;
     }
 
     /// <inheritdoc/>
@@ -376,7 +374,7 @@ public sealed class List: Container, IStyleScope
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds) =>
-        _scroll.Arrange(bounds, widthResolved: true, heightResolved: true);
+        _stack.Arrange(bounds, widthResolved: true, heightResolved: true);
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -644,7 +642,7 @@ public sealed class List: Container, IStyleScope
 
         ActiveIndex = target.Index;
         _ = FocusOwner?.Focus(target);
-        _ = _scroll.BringIntoView(target);
+        _ = _stack.BringIntoView(target);
         eventArgs.Handled = true;
     }
 
@@ -670,7 +668,7 @@ public sealed class List: Container, IStyleScope
             return FindEligible(Items.Count - 1, -1);
         }
 
-        int page = Math.Max(1, _scroll.Viewport.Height);
+        int page = Math.Max(1, _stack.Viewport.Height);
 
         return code == Code.PageUp
             ? FindEligible(current.Index - page, -1)

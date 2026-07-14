@@ -264,7 +264,7 @@ public sealed class ListTests
         control.SelectedItems.ShouldBe(new object?[] { "B", "C", "D" });
     }
 
-    /// <summary>Verifies active items are minimally brought through the composed ScrollView on resize.</summary>
+    /// <summary>Verifies active items are minimally brought through the armed item Stack on resize.</summary>
     [Fact]
     public async Task Dispatch_WhenActiveItemMovesBeyondViewport_BringsItIntoViewAsync()
     {
