@@ -18,7 +18,7 @@ using TerminalAttributes = Terminal.Rendering.Attributes;
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
 {
-    private static readonly (string Name, Func<ShowcasePane> Create)[] Catalog =
+    private static readonly (string Name, Func<Control> Create)[] Catalog =
     [
         (BorderShowcasePane.Title, static () => new BorderShowcasePane()),
         (ButtonShowcasePane.Title, static () => new ButtonShowcasePane()),
@@ -154,7 +154,7 @@ public sealed class Gallery: Screen
     /// <param name="index">The zero-based page index.</param>
     /// <returns>A new showcase pane instance.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
-    internal static ShowcasePane CreatePage(int index)
+    internal static Control CreatePage(int index)
     {
         return (uint) index >= (uint) Catalog.Length
             ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")

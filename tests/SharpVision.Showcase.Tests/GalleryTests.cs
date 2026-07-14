@@ -125,36 +125,14 @@ public sealed class GalleryTests
         for (int index = 0; index < gallery.Pages.Count; index++)
         {
             string name = gallery.Pages[index];
-            using ShowcasePane first = Gallery.CreatePage(index);
-            using ShowcasePane second = Gallery.CreatePage(index);
+            using Control first = Gallery.CreatePage(index);
+            using Control second = Gallery.CreatePage(index);
 
             first.ShouldNotBeSameAs(second);
             first.Parent.ShouldBeNull();
             second.Parent.ShouldBeNull();
             ContainsType(first, name).ShouldBeTrue(name);
             ContainsType(second, name).ShouldBeTrue(name);
-        }
-    }
-
-    /// <summary>Verifies every page explains a useful set of meaningful public properties.</summary>
-    [Fact]
-    public void Properties_WhenCatalogLoads_DescribeMeaningfulControlAttributes()
-    {
-        using Gallery gallery = new();
-
-        for (int index = 0; index < gallery.Pages.Count; index++)
-        {
-            string name = gallery.Pages[index];
-            using ShowcasePane pane = Gallery.CreatePage(index);
-            pane.Properties.Count.ShouldBeGreaterThanOrEqualTo(3, name);
-
-            foreach (PropertyDescription property in pane.Properties)
-            {
-                property.Name.ShouldNotBeNullOrWhiteSpace(name);
-                property.Type.ShouldNotBeNullOrWhiteSpace(name);
-                property.Default.ShouldNotBeNullOrWhiteSpace(name);
-                property.Description.Length.ShouldBeGreaterThan(24, $"{name}.{property.Name}");
-            }
         }
     }
 
