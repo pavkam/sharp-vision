@@ -150,18 +150,28 @@ public abstract class Container: Control
     /// <inheritdoc/>
     internal override bool ShrinkWrapsHeight => AutoSize;
 
+    // AutoSize sizes to content on both axes, so content is measured unbounded
+    // (unclamped by an explicit Width/Height) to discover its natural size.
     /// <inheritdoc/>
-    internal override Size OnMeasuredDesired(Size desired)
-    {
-        if (!AutoSize || AutoSizeMode != AutoSizeMode.GrowOnly)
-        {
-            return desired;
-        }
+    internal override Constraint OnMeasuringContent(Constraint content) => AutoSize ? new Constraint(null, null) : content;
 
-        // GrowOnly never shrinks below an explicit fixed-cell size on that axis.
-        int width = Width.Kind == Kind.Cells ? Math.Max(desired.Width, (int) Width.Value) : desired.Width;
-        int height = Height.Kind == Kind.Cells ? Math.Max(desired.Height, (int) Height.Value) : desired.Height;
-        return new Size(width, height);
+    /// <inheritdoc/>
+    internal override Size OnMeasuredDesired(Size desired) => !AutoSize
+        ? desired
+        : new Size(
+            AutoSizeAxis(ContentExtent.Width, Padding.Horizontal, Width, MinWidth, MaxWidth),
+            AutoSizeAxis(ContentExtent.Height, Padding.Vertical, Height, MinHeight, MaxHeight));
+
+    // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit
+    // fixed-cell size. Both honor Min/Max.
+    private int AutoSizeAxis(int contentExtent, int padding, Length length, int minimum, int maximum)
+    {
+        long content = (long) contentExtent + padding;
+        int floor = AutoSizeMode == AutoSizeMode.GrowOnly && length.Kind == Kind.Cells
+            ? (int) length.Value
+            : 0;
+        long requested = Math.Max(content, floor);
+        return (int) Math.Clamp(requested, minimum, maximum);
     }
 
     #endregion

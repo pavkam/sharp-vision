@@ -21,20 +21,39 @@ public sealed class ContainerAutoSizeTests
         container.Bounds.Height.ShouldBe(3);
     }
 
-    /// <summary>Verifies GrowOnly keeps the explicit fixed width as a floor.</summary>
+    /// <summary>Verifies GrowAndShrink shrinks to content even below an explicit fixed width.</summary>
+    [Fact]
+    public void AutoSizeGrowAndShrink_WhenContentSmallerThanFixedWidth_ShrinksToContent()
+    {
+        LayoutProbe container = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Width = Length.Cells(10) };
+        container.Children.Add(new ProbeControl(new Size(4, 2)));
+
+        new Engine().Layout(container, new Size(40, 40));
+
+        container.Bounds.Width.ShouldBe(4);
+    }
+
+    /// <summary>Verifies GrowOnly keeps the explicit fixed width as a floor when content is smaller.</summary>
     [Fact]
     public void AutoSizeGrowOnly_WhenContentSmallerThanFixedWidth_KeepsFixedWidth()
     {
-        LayoutProbe container = new()
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowOnly,
-            Width = Length.Cells(10),
-        };
+        LayoutProbe container = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowOnly, Width = Length.Cells(10) };
         container.Children.Add(new ProbeControl(new Size(4, 2)));
 
         new Engine().Layout(container, new Size(40, 40));
 
         container.Bounds.Width.ShouldBe(10);
+    }
+
+    /// <summary>Verifies AutoSize grows past an explicit fixed width when content is larger.</summary>
+    [Fact]
+    public void AutoSize_WhenContentLargerThanFixedWidth_GrowsToContent()
+    {
+        LayoutProbe container = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowOnly, Width = Length.Cells(10) };
+        container.Children.Add(new ProbeControl(new Size(20, 2)));
+
+        new Engine().Layout(container, new Size(40, 40));
+
+        container.Bounds.Width.ShouldBe(20);
     }
 }

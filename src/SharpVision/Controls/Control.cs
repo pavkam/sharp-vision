@@ -558,24 +558,28 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             Rect available = Margin.Deflate(slot);
             int width = widthResolved
                 ? available.Width
-                : ResolveArrangeAxis(
-                    Width,
-                    HorizontalAlignment == HorizontalAlignment.Stretch && !ShrinkWrapsWidth,
-                    slot.Width,
-                    available.Width,
-                    DesiredSize.Width,
-                    MinWidth,
-                    MaxWidth);
+                : ShrinkWrapsWidth
+                    ? Math.Min(available.Width, Math.Clamp(DesiredSize.Width, MinWidth, MaxWidth))
+                    : ResolveArrangeAxis(
+                        Width,
+                        HorizontalAlignment == HorizontalAlignment.Stretch,
+                        slot.Width,
+                        available.Width,
+                        DesiredSize.Width,
+                        MinWidth,
+                        MaxWidth);
             int height = heightResolved
                 ? available.Height
-                : ResolveArrangeAxis(
-                    Height,
-                    VerticalAlignment == VerticalAlignment.Stretch && !ShrinkWrapsHeight,
-                    slot.Height,
-                    available.Height,
-                    DesiredSize.Height,
-                    MinHeight,
-                    MaxHeight);
+                : ShrinkWrapsHeight
+                    ? Math.Min(available.Height, Math.Clamp(DesiredSize.Height, MinHeight, MaxHeight))
+                    : ResolveArrangeAxis(
+                        Height,
+                        VerticalAlignment == VerticalAlignment.Stretch,
+                        slot.Height,
+                        available.Height,
+                        DesiredSize.Height,
+                        MinHeight,
+                        MaxHeight);
             int x = Align(available.X, available.Width, width, HorizontalAlignment);
             int y = Align(available.Y, available.Height, height, VerticalAlignment);
             Rect bounds = new(x, y, width, height);
