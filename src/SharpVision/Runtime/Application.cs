@@ -105,6 +105,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI");
         Pointer = new PointerDevice(() => CaptureValue);
+        Terminal = new TerminalServices(this);
         _session = new Session(transport, resize, this, _options);
         SubscribeTheme(_theme);
         Dispatcher.Idle += OnIdle;
@@ -217,6 +218,9 @@ public sealed partial class Application: ISink, IAsyncDisposable
         "CA1720:Identifier contains type name",
         Justification = "Pointer is the conventional terminal input domain term.")]
     public PointerDevice Pointer { get; }
+
+    /// <summary>Gets the implemented terminal output services (bell, clipboard, title).</summary>
+    public ITerminalServices Terminal { get; }
 
     /// <summary>Gets whether the terminal window currently has focus.</summary>
     public bool HasFocus { get; private set; } = true;
