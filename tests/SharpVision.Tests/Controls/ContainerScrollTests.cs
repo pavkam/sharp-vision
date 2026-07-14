@@ -126,4 +126,39 @@ public sealed class ContainerScrollTests
 
         container.VerticalOffset.ShouldBe(2);
     }
+
+    /// <summary>Verifies unused wheel delta propagates to the nearest armed ancestor.</summary>
+    [Fact]
+    public void Wheel_WhenLeafAtEnd_PropagatesToArmedAncestor()
+    {
+        LayoutProbe outer = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        LayoutProbe inner = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        inner.Children.Add(new ProbeControl(new Size(4, 4)));   // inner cannot scroll (fits)
+        outer.Children.Add(inner);
+        // outer content taller than viewport via a second tall child
+        outer.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(outer, new Size(4, 10));
+
+        inner.RaiseWheel(0, -3);   // wheel over inner, which has no room
+
+        outer.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies a disabled container does not scroll on a key that would otherwise move the offset.</summary>
+    [Fact]
+    public void OnEvent_WhenDisabled_DoesNotScroll()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ShowScrollBars = ShowScrollBars.Never,
+            IsEnabled = false,
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(container, new Size(4, 10));
+
+        container.RaiseKey(Code.Down);
+
+        container.VerticalOffset.ShouldBe(0);
+    }
 }

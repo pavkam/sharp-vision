@@ -480,7 +480,7 @@ public abstract class Container: Control
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
-        if (!AutoScroll)
+        if (!AutoScroll || !EffectiveIsEnabled || !EffectiveIsVisible)
         {
             base.OnEvent(eventArgs);
             return;
@@ -489,6 +489,10 @@ public abstract class Container: Control
         if (eventArgs is KeyEventArgs key)
         {
             Handle(key);
+        }
+        else if (eventArgs is PointerEventArgs pointer)
+        {
+            Handle(pointer);
         }
 
         if (!eventArgs.Handled)
@@ -545,6 +549,46 @@ public abstract class Container: Control
         }
 
         eventArgs.Handled = true;
+    }
+
+    private void Handle(PointerEventArgs eventArgs)
+    {
+        Pointer pointer = eventArgs.Pointer;
+
+        if (pointer.Action != PointerAction.Wheel)
+        {
+            return;
+        }
+
+        int x = MultiplyNegative(pointer.WheelX, LineSize);
+        int y = MultiplyNegative(pointer.WheelY, LineSize);
+        int remainingX = x;
+        int remainingY = y;
+
+        for (Container? current = this; current is not null && (remainingX != 0 || remainingY != 0);
+            current = Ancestor(current))
+        {
+            int previousX = current.HorizontalOffset;
+            int previousY = current.VerticalOffset;
+            _ = current.ScrollBy(remainingX, remainingY, Cause.Wheel);
+            remainingX = Difference(remainingX, current.HorizontalOffset - previousX);
+            remainingY = Difference(remainingY, current.VerticalOffset - previousY);
+        }
+
+        eventArgs.Handled = x != 0 || y != 0;
+    }
+
+    private static Container? Ancestor(Control control)
+    {
+        for (Container? current = control.Parent; current is not null; current = current.Parent)
+        {
+            if (current.AutoScroll)
+            {
+                return current;
+            }
+        }
+
+        return null;
     }
 
     /// <inheritdoc/>
@@ -770,6 +814,9 @@ public abstract class Container: Control
 
     private static int Difference(int left, int right) =>
         (int) Math.Clamp((long) left - right, int.MinValue, int.MaxValue);
+
+    private static int MultiplyNegative(int left, int right) =>
+        (int) Math.Clamp(-(long) left * right, int.MinValue, int.MaxValue);
 
     #endregion
 }

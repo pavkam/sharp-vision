@@ -29,6 +29,24 @@ internal sealed class LayoutProbe: Container
                 Modifiers.None,
                 KeyAction.Press)));
 
+    /// <summary>Routes one wheel pointer event through the routed-event default path.</summary>
+    /// <param name="wheelX">The horizontal wheel delta.</param>
+    /// <param name="wheelY">The vertical wheel delta.</param>
+    internal void RaiseWheel(int wheelX, int wheelY) =>
+        Router.Route(
+            this,
+            Events.Pointer,
+            new PointerEventArgs(new Pointer(
+                cells: default,
+                pixels: null,
+                Buttons.None,
+                PointerAction.Wheel,
+                wheelX,
+                wheelY,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false)));
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
