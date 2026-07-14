@@ -89,6 +89,59 @@ public sealed class ThemeGalleryTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the picker lists the full embedded catalog with every dark theme before any light theme.</summary>
+    [Fact]
+    public async Task ThemePicker_WhenGalleryStarts_ListsFullCatalogDarkGroupFirstAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(100, 30)));
+        using Gallery gallery = new();
+        await using Application application = new(
+            gallery,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        gallery.Attach(application);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        ComboBox? picker = await application.Dispatcher.InvokeAsync(
+            () => Find<ComboBox>(gallery.Sidebar, static _ => true),
+            TestContext.Current.CancellationToken);
+        ComboBox themePicker = picker.ShouldNotBeNull();
+
+        IReadOnlyList<ThemeCatalogEntry> entries = ThemeCatalog.Default.Entries;
+        Dictionary<string, ColorScheme> schemesByName = new(StringComparer.Ordinal);
+        foreach (ThemeCatalogEntry entry in entries)
+        {
+            schemesByName[entry.Name] = entry.ColorScheme;
+        }
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                themePicker.Items.Count.ShouldBe(entries.Count);
+
+                bool sawLight = false;
+                foreach (object? item in themePicker.Items)
+                {
+                    string name = item.ShouldBeOfType<string>();
+                    schemesByName.ShouldContainKey(name);
+
+                    if (schemesByName[name] == ColorScheme.Light)
+                    {
+                        sawLight = true;
+                    }
+                    else
+                    {
+                        sawLight.ShouldBeFalse($"Dark theme '{name}' appeared after a light theme.");
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies selecting the Theming page exposes the third-party showcase panel specimen.</summary>
     [Fact]
     public async Task Navigation_WhenThemingPageIsSelected_ShowsShowcasePanelAsync()

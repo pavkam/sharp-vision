@@ -67,7 +67,8 @@ button. The picker lists every theme in the embedded
 Dark themes plus the curated editor themes (Dracula, Nord, Gruvbox, Solarized,
 and others) — grouped dark-first then light, and republishes the chosen
 application theme when selected. The Theming page renders the 12 semantic
-`ColorRole` values as labeled color swatches so the active palette is visible.
+`ColorRole` values as labeled color swatches of a fixed representative theme
+(the built-in Dark theme, captured once at build time — not the active theme).
 `Ctrl+C` also exits from
 anywhere: the gallery handles it as a key in the preview pass so it works even
 when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
