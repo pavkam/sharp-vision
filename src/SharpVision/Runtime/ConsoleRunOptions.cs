@@ -22,7 +22,7 @@ public sealed record ConsoleRunOptions
     /// <summary>Gets whether the cursor stays visible. Default is false.</summary>
     public bool ShowCursor { get; init; }
 
-    /// <summary>Gets the mouse tracking level, or null to disable mouse input. Default is <see cref="Terminal.Protocols.MouseTracking.Any"/>.</summary>
+    /// <summary>Gets the mouse tracking level, or null to disable mouse input. Default is <see cref="MouseTracking.Any"/>.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     public MouseTracking? MouseTracking
     {
@@ -36,7 +36,7 @@ public sealed record ConsoleRunOptions
 
             field = value;
         }
-    } = SharpVision.Terminal.Protocols.MouseTracking.Any;
+    } = Terminal.Protocols.MouseTracking.Any;
 
     /// <summary>Gets the mouse coordinate encoding. Default is <see cref="MouseCoordinates.Sgr"/>.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>

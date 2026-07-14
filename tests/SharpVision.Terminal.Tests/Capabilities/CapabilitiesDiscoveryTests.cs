@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
 
-using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
+using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>
 /// Verifies the named protocol-discovery facade on <see cref="TerminalCapabilities"/>.

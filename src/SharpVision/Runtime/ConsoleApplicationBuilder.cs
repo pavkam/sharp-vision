@@ -8,7 +8,7 @@ using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
-using Screen = SharpVision.Controls.Screen;
+using Screen = Screen;
 using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Configures and builds one interactive console <see cref="Application"/> fluently.</summary>
