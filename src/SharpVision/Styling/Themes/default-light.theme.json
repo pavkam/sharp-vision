@@ -1,0 +1,16 @@
+{
+  "name": "Light",
+  "slug": "default-light",
+  "colorScheme": "light",
+  "order": 1,
+  "author": "SharpVision",
+  "license": "MIT",
+  "source": "https://github.com/sharpvision/sharpvision",
+  "palette": {},
+  "roles": {
+    "foreground": "idx:0", "background": "idx:15", "surface": "idx:7",
+    "border": "idx:8", "accent": "idx:4", "muted": "idx:8",
+    "selectionBackground": "idx:4", "selectionForeground": "idx:15",
+    "error": "idx:1", "warning": "idx:3", "success": "idx:2", "info": "idx:4"
+  }
+}

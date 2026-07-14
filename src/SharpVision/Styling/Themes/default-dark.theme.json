@@ -1,0 +1,16 @@
+{
+  "name": "Dark",
+  "slug": "default-dark",
+  "colorScheme": "dark",
+  "order": 0,
+  "author": "SharpVision",
+  "license": "MIT",
+  "source": "https://github.com/sharpvision/sharpvision",
+  "palette": {},
+  "roles": {
+    "foreground": "idx:15", "background": "idx:0", "surface": "idx:8",
+    "border": "idx:8", "accent": "idx:14", "muted": "idx:8",
+    "selectionBackground": "idx:4", "selectionForeground": "idx:15",
+    "error": "idx:9", "warning": "idx:11", "success": "idx:10", "info": "idx:12"
+  }
+}
