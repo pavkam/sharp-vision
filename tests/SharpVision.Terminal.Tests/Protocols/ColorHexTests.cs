@@ -60,4 +60,17 @@ public sealed class ColorHexTests
         Color.TryFromHex("#nope", out Color color).ShouldBeFalse();
         color.ShouldBe(Color.Default);
     }
+
+    /// <summary>Verifies that a six-character string with embedded, leading, or trailing whitespace is rejected.</summary>
+    [Theory]
+    [InlineData("1 2345")]
+    [InlineData(" 12345")]
+    [InlineData("12345 ")]
+    public void FromHex_WhenWhitespaceInDigits_Throws(string value)
+    {
+        _ = Should.Throw<FormatException>(() => Color.FromHex(value));
+
+        Color.TryFromHex(value, out Color color).ShouldBeFalse();
+        color.ShouldBe(Color.Default);
+    }
 }

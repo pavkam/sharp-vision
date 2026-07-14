@@ -123,8 +123,8 @@ public readonly record struct Color
     }
 
     private static bool TryNibble(char c, out int value) =>
-        int.TryParse([c], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
+        int.TryParse([c], NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out value);
 
     private static bool TryByte(ReadOnlySpan<char> pair, out int value) =>
-        int.TryParse(pair, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
+        int.TryParse(pair, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out value);
 }
