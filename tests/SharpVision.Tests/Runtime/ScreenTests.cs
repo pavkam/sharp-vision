@@ -51,21 +51,4 @@ public sealed class ScreenTests
         screen.Order.ShouldBe(["attach", "build", "started"]);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
-
-    private sealed class ProbeScreen: SharpVision.Controls.Screen
-    {
-        internal ProbeScreen() => Order = [];
-
-        internal List<string> Order { get; }
-
-        protected override void OnAttach(Application application) => Order.Add("attach");
-
-        protected override void OnStarted(Application application) => Order.Add("started");
-
-        protected override Control Build()
-        {
-            Order.Add("build");
-            return new ProbeControl();
-        }
-    }
 }

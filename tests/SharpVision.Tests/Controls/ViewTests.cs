@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Threading;
@@ -77,27 +76,5 @@ public sealed class ViewTests
         NullView view = new();
 
         _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
-    }
-
-    private sealed class CountingView: View
-    {
-        private readonly Control _content;
-
-        internal CountingView(Control content) => _content = content;
-
-        internal int BuildCount { get; private set; }
-
-        internal Control? Installed => Content;
-
-        protected override Control Build()
-        {
-            BuildCount++;
-            return _content;
-        }
-    }
-
-    private sealed class NullView: View
-    {
-        protected override Control Build() => null!;
     }
 }

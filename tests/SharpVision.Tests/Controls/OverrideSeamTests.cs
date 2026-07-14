@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Controls;
 using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 
@@ -19,10 +18,5 @@ public sealed class OverrideSeamTests
         control.Measure(new Constraint(20, 6));
 
         control.DesiredSize.ShouldBe(new Size(7, 3));
-    }
-
-    private sealed class FixedContent: Control
-    {
-        protected override Size MeasureOverride(Constraint constraint) => new(7, 3);
     }
 }
