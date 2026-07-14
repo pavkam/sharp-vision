@@ -12,4 +12,5 @@
 - [Threading](threading.md#threading-contract)
 - [Lifecycle events](lifecycle-events.md#lifecycle-event-contract)
 - [Screen](screen.md#screen-contract)
+- [Custom components](custom-components.md#custom-components-contract)
 - [Safe degradation](safe-degradation.md#safe-degradation-contract)

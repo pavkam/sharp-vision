@@ -102,6 +102,11 @@ If an extension point changes a layout property, that invalidation remains
 pending for a later transaction. If it throws, the active phase is marked dirty
 again before the exception escapes.
 
+Building a composite control out of existing controls, rather than a new
+primitive, does not use these seams directly; derive from
+[`View`](../concepts/custom-components.md#custom-components-contract) and
+implement `Build()` instead.
+
 Control content always draws through a canvas clipped to its own `Bounds`.
 Containers may opt to retain only the ancestor clip for descendants; this is the
 shared mechanism behind documented Overlay and Canvas unclipped-child modes.

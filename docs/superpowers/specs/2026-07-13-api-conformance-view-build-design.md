@@ -94,7 +94,7 @@ public abstract class View : Container
     protected View() : base(capacity: 1) { }
 
     /// <summary>Produces this view's content tree. Called once by the runtime,
-    /// after attachment and before the first layout pass. Must return non-null.</summary>
+    /// on the view's first measure, whether or not it is attached. Must return non-null.</summary>
     protected abstract Control Build();
 
     // Framework-owned: installs Build()'s result as the single child, exactly once.
@@ -110,12 +110,14 @@ Contract:
   value returned by `Build()`. Returning `null` throws a documented
   `InvalidOperationException`. To present multiple children, return a `Stack`,
   `Dock`, `Grid`, etc.
-- **Called once, lazily, at the right time.** The runtime invokes `Build()`
-  exactly once per instance, after the control is attached to its dispatcher and
-  before its first `MeasureOverride`. This avoids the virtual-call-from-
-  constructor trap and guarantees dispatcher (and, for a `Screen`,
-  `Application`) context is available. A `View` that is never attached/measured
-  never builds.
+- **Called once, lazily, on first measure — attach-agnostic.** The runtime
+  invokes `Build()` exactly once per instance, on the view's first
+  `MeasureOverride`, whether or not the view is attached to a dispatcher at that
+  point. This avoids the virtual-call-from-constructor trap without making
+  construction depend on attachment. A `View` that is never measured never
+  builds. (For a `Screen` specifically, the first measure always happens after
+  `Attach`/`OnAttach` in the real runtime, so a screen's `Build()` can still
+  rely on state configured in `OnAttach`; see the `Screen` section below.)
 - **Not reactive.** There is no rebuild in v1. After `Build()`, the content tree
   is a normal mutable subtree; change it by mutating controls, adding/removing
   children, or toggling properties — the traditional way.
@@ -226,11 +228,12 @@ public sealed class ButtonPane : View
   and tested via public behavior). Update any test-only `Control` subclasses
   that override `*Core`. Grep tests for
   `MeasureCore`/`ArrangeCore`/`RenderCore`.
-- **`View`/`Build()`:** new tests — `Build()` is called exactly once; it runs
-  after attach and before the first measure; its result is installed as the sole
-  child; a detached, never-measured view does not build; `null` return throws;
-  an exception in `Build()` propagates and leaves the phase re-invalidated;
-  mutating the built subtree afterwards behaves like any container mutation.
+- **`View`/`Build()`:** new tests — `Build()` is called exactly once; it runs on
+  the view's first measure, whether or not the view is attached; its result is
+  installed as the sole child; a never-measured view does not build, attached or
+  not; `null` return throws; an exception in `Build()` propagates and leaves the
+  phase re-invalidated; mutating the built subtree afterwards behaves like any
+  container mutation.
 - **`Screen`:** lifecycle order `OnAttach → Build → first frame → OnStarted`;
   `Build()` can read the theme set in `OnAttach`; one end-to-end
   `RunConsoleAsync` path through a concrete `Screen` with `Build()`.

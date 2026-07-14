@@ -124,6 +124,9 @@ in the protocol document.
   dispatcher.
 - Percentage sizing inside unbounded measure and automatic scrollbar feedback
   follow their normative algorithms; do not invent local exceptions.
+- Build a composite control by deriving from `View` and implementing
+  `protected override Control Build()`; the layout/render override seams are
+  `MeasureOverride`/`ArrangeOverride`/`OnRender`.
 
 ## Tests
 
