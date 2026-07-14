@@ -10,11 +10,10 @@ SharpVision's runtime is correct but its **public hosting surface is thin and
 Unix-shaped**, and several capabilities the library already implements are not
 reachable by a consumer:
 
-1. **The console host is not portable.**
-   [`ConsoleInputMode.Enter()`](../../../src/SharpVision.Terminal/Runtime/ConsoleInputMode.cs)
-   shells out to `/bin/stty` and is a no-op on Windows: there is no
-   `SetConsoleMode` call, so Windows never enters VT input / VT processing mode.
-   The console path always uses the polling
+1. **The console host is not portable.** `ConsoleInputMode.Enter()` shells out
+   to `/bin/stty` and is a no-op on Windows: there is no `SetConsoleMode` call,
+   so Windows never enters VT input / VT processing mode. The console path
+   always uses the polling
    [`ConsoleResizeSource`](../../../src/SharpVision.Terminal/Runtime/ConsoleResizeSource.cs)
    (cell-only) even on Unix, so
    [`UnixResizeSource`](../../../src/SharpVision.Terminal/Runtime/UnixResizeSource.cs)
@@ -26,8 +25,8 @@ reachable by a consumer:
    has a single `RedirectedMessage` property. Every real knob — mouse, alternate
    screen, cursor, focus/paste, keyboard enhancement, cleanup timeout,
    capabilities, negotiation, resize interval, theme — is hardcoded in
-   [`ConsoleRun.CreateTerminalOptions()`](../../../src/SharpVision/Runtime/ConsoleRun.cs)
-   and cannot be configured or passed through to the `Application`.
+   `ConsoleRun.CreateTerminalOptions()` and cannot be configured or passed
+   through to the `Application`.
 
 3. **`Application` exposes no live input read-model.** It surfaces `Focus`,
    `Capture` (hovered / pressed / captured), `Size`, and `Capabilities`, but no
@@ -45,14 +44,12 @@ reachable by a consumer:
    application-facing way to invoke implemented **output** protocols (bell,
    window title, clipboard).
 
-5. **One layering seam is muddy.**
-   [`Application.Console.cs`](../../../src/SharpVision/Runtime/Application.Console.cs)
-   plus `ConsoleRun` hand-wire five Terminal-layer primitives (`ConsoleHost`,
-   `ConsoleInputMode`, `ConsoleResizeSource`, `StreamTransport`, capability
-   detection, negotiation). That orchestration belongs behind one Terminal-layer
-   seam the higher layer simply consumes. `ConsoleInputMode` is public but is a
-   Unix-only implementation detail — an abstraction that leaks out of its
-   domain.
+5. **One layering seam is muddy.** `Application.Console.cs` plus `ConsoleRun`
+   hand-wire five Terminal-layer primitives (`ConsoleHost`, `ConsoleInputMode`,
+   `ConsoleResizeSource`, `StreamTransport`, capability detection, negotiation).
+   That orchestration belongs behind one Terminal-layer seam the higher layer
+   simply consumes. `ConsoleInputMode` is public but is a Unix-only
+   implementation detail — an abstraction that leaks out of its domain.
 
 6. **There is no fluent entry point.** The only door is the static
    `Application.RunConsoleAsync(screen, options?)`; advanced hosts construct

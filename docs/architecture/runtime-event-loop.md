@@ -55,8 +55,8 @@ stop cleanly, and restore host terminal state.
 that any host — console or otherwise — can call once a transport-backed
 `Application` already exists: it awaits `StartAsync`, then `Completion`, then
 `StopAsync`, surfacing `Failure` by rethrowing. The console-specific
-`ConsoleRunStatus` mapping (`Redirected`/`Completed`/ `Cancelled`/`Failed`)
-lives only in the console entry points above; the instance method itself is
+`ConsoleRunStatus` mapping (`Redirected`/`Completed`/`Cancelled`/`Failed`) lives
+only in the console entry points above; the instance method itself is
 host-agnostic.
 
 `StartAsync` raises `Starting` on the dispatcher before `Session.RunAsync` can

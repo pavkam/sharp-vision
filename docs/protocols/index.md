@@ -47,10 +47,12 @@ a `Capabilities` profile can report: `SynchronizedOutput`, `FocusReporting`,
 one named protocol to its `Feature` evidence, and `Capabilities.Features`
 returns every protocol paired with its `Feature` as an
 `IReadOnlyList<ProtocolSupport>`, replacing an earlier anonymous feature list.
-Both members report each protocol's real `Support` state — including
-`Unsupported` for Kitty graphics, sixel, and iTerm2 images — and never fabricate
-support; the [coverage matrix](coverage-matrix.md#coverage) remains the only
-support claim.
+Both members report each protocol's real `Support` state. `Support(...)` for
+Kitty graphics, sixel, and iTerm2 images never reports `Supported`; it returns
+`Unknown` by default, `Tentative` under a vendor-hinted terminal, and
+`Unsupported` only under a detected multiplexer — so the discovery facade never
+fabricates support for a protocol this table lists as unsupported; the
+[coverage matrix](coverage-matrix.md#coverage) remains the only support claim.
 
 `SharpVision.Runtime.ITerminalServices` (`Application.Terminal`) exposes the
 implemented **output** protocols behind small interfaces: `IBell.Ring()` emits a
