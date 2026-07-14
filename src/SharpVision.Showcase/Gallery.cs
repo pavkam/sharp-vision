@@ -20,12 +20,12 @@ public sealed class Gallery: Screen
 {
     private static readonly (string Name, Func<Control> Create)[] Catalog =
     [
-        (BorderShowcasePane.Title, static () => new BorderShowcasePane()),
+        (BorderPane.Title, static () => new BorderPane()),
         (ButtonPane.Title, static () => new ButtonPane()),
         (CanvasShowcasePane.Title, static () => new CanvasShowcasePane()),
-        (CheckBoxShowcasePane.Title, static () => new CheckBoxShowcasePane()),
-        (ComboBoxShowcasePane.Title, static () => new ComboBoxShowcasePane()),
-        (DockShowcasePane.Title, static () => new DockShowcasePane()),
+        (CheckBoxPane.Title, static () => new CheckBoxPane()),
+        (ComboBoxPane.Title, static () => new ComboBoxPane()),
+        (DockPane.Title, static () => new DockPane()),
         (FigletTextShowcasePane.Title, static () => new FigletTextShowcasePane()),
         (GridShowcasePane.Title, static () => new GridShowcasePane()),
         (ListShowcasePane.Title, static () => new ListShowcasePane()),
