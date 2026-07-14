@@ -177,6 +177,7 @@ public sealed class GalleryRenderingTests
     {
         using Gallery gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "RichText"));
+        new Engine().Layout(gallery, new Size(120, 80));
 
         List<Run> runs = [.. FindAll<RichText>(gallery.Content).SelectMany(static richText => richText.Inlines.OfType<Run>())];
 

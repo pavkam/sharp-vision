@@ -4,6 +4,7 @@
 namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Terminal.Protocols;
+using SharpVision.Text;
 
 using Text = SharpVision.Controls.Text;
 using TerminalAttributes = Terminal.Rendering.Attributes;
@@ -48,7 +49,7 @@ internal sealed class RichTextPane: View
         attributes.Inlines.Add(new Run("diagnostic emphasis")
         {
             Foreground = _bright,
-            Underline = Underline.Curly,
+            Underline = Terminal.Protocols.Underline.Curly,
             UnderlineColor = _warning,
         });
         AddAttributeLine(attributes, "Hidden", "concealed run follows", TerminalAttributes.Hidden, _muted);
