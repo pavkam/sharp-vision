@@ -258,4 +258,11 @@ public sealed class ConsoleApplicationBuilder
             throw;
         }
     }
+
+    /// <summary>Builds and runs the configured interactive console application.</summary>
+    /// <param name="cancellationToken">Requests shutdown, reported as <see cref="ConsoleRunStatus.Cancelled"/>.</param>
+    /// <returns>The run status.</returns>
+    /// <exception cref="IOException">The console is not interactive or cannot enter raw mode.</exception>
+    public ValueTask<ConsoleRunStatus> RunAsync(CancellationToken cancellationToken = default) =>
+        ConsoleApplication.RunCoreAsync(this, cancellationToken);
 }

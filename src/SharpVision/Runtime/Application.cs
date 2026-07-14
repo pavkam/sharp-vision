@@ -277,6 +277,28 @@ public sealed partial class Application: ISink, IAsyncDisposable
         }
     }
 
+    /// <summary>Starts the application, waits for completion, and stops it.</summary>
+    /// <param name="cancellationToken">Requests shutdown.</param>
+    /// <returns>The complete run; faults with the primary failure when one occurred.</returns>
+    /// <exception cref="InvalidOperationException">The application was already started.</exception>
+    /// <exception cref="ObjectDisposedException">The application is disposed.</exception>
+    public async Task RunAsync(CancellationToken cancellationToken = default)
+    {
+        await StartAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await Completion.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await StopAsync(CancellationToken.None).ConfigureAwait(false);
+            return;
+        }
+
+        await StopAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
     /// <summary>Stops and releases every application-owned resource.</summary>
     public async ValueTask DisposeAsync()
     {
