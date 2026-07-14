@@ -28,7 +28,7 @@ public sealed class Gallery: Screen
         (DockPane.Title, static () => new DockPane()),
         (FigletTextPane.Title, static () => new FigletTextPane()),
         (GridPane.Title, static () => new GridPane()),
-        (ListShowcasePane.Title, static () => new ListShowcasePane()),
+        (ListPane.Title, static () => new ListPane()),
         (MenuPane.Title, static () => new MenuPane()),
         (OverlayPane.Title, static () => new OverlayPane()),
         (PopupPane.Title, static () => new PopupPane()),
@@ -41,8 +41,8 @@ public sealed class Gallery: Screen
         (TablePane.Title, static () => new TablePane()),
         (TextPane.Title, static () => new TextPane()),
         (TextInputPane.Title, static () => new TextInputPane()),
-        (WindowShowcasePane.Title, static () => new WindowShowcasePane()),
-        (ThemingShowcasePane.Title, static () => new ThemingShowcasePane()),
+        (WindowPane.Title, static () => new WindowPane()),
+        (ThemingPane.Title, static () => new ThemingPane()),
     ];
 
     // Ordered theme catalog surfaced by the sidebar picker. Adding a theme is one entry.
