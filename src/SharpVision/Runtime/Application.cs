@@ -31,6 +31,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private readonly Queue<Record> _input = new();
     private readonly ITransport _transport;
     private readonly TerminalOptions _options;
+    private readonly IAsyncDisposable? _hostLease;
     private readonly Session _session;
     private readonly Renderer _renderer = new();
     private readonly Engine _engine = new();
@@ -54,6 +55,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private volatile bool _stopped;
     private int _startState;
     private int _disposeState;
+    private int _hostLeaseDisposed;
 
     private Theme _theme = Themes.Dark;
     private ThemeContext? _themeContext;
@@ -67,6 +69,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     /// <param name="transport">The non-null terminal transport.</param>
     /// <param name="resize">The non-null terminal resize source.</param>
     /// <param name="options">Validated terminal options, or null for defaults.</param>
+    /// <param name="hostLease">An optional host resource disposed last after cleanup, or null.</param>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="root"/> is already attached.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="root"/> is disposed.</exception>
@@ -74,7 +77,8 @@ public sealed partial class Application: ISink, IAsyncDisposable
         Control root,
         ITransport transport,
         IResizeSource resize,
-        TerminalOptions? options = null)
+        TerminalOptions? options = null,
+        IAsyncDisposable? hostLease = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(transport);
@@ -93,6 +97,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         Root = root;
         _transport = transport;
         _options = options ?? new TerminalOptions();
+        _hostLease = hostLease;
         Capabilities = _options.Capabilities;
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI");
@@ -692,7 +697,16 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private async Task FinishWithoutSessionAsync()
     {
         await _session.DisposeAsync();
+        await DisposeHostLeaseAsync();
         await Dispatcher.InvokeAsync(FinalizeStopped);
+    }
+
+    private async ValueTask DisposeHostLeaseAsync()
+    {
+        if (_hostLease is not null && Interlocked.Exchange(ref _hostLeaseDisposed, 1) == 0)
+        {
+            await _hostLease.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     private void SubscribeTheme(Theme theme) => theme.Changed += OnThemeChanged;
@@ -851,6 +865,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         while (_rendering);
 
         await _session.DisposeAsync();
+        await DisposeHostLeaseAsync();
         await Dispatcher.InvokeAsync(FinalizeStopped);
     }
 
