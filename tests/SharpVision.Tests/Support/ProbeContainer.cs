@@ -18,29 +18,4 @@ internal sealed class ProbeContainer: Container
 
     /// <inheritdoc/>
     internal override bool ClipsChildren => ClipChildren;
-
-    /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        int width = 0;
-        int height = 0;
-
-        foreach (Control child in Children)
-        {
-            child.Measure(constraint);
-            width = Math.Max(width, child.DesiredSize.Width);
-            height = Math.Max(height, child.DesiredSize.Height);
-        }
-
-        return new Size(width, height);
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        foreach (Control child in Children)
-        {
-            child.Arrange(bounds);
-        }
-    }
 }

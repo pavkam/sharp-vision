@@ -12,7 +12,7 @@ public sealed class ContainerAutoSizeTests
     [Fact]
     public void AutoSize_WhenStretchedSlot_SizesToContent()
     {
-        ProbeContainer container = new() { AutoSize = true, HorizontalAlignment = HorizontalAlignment.Stretch };
+        LayoutProbe container = new() { AutoSize = true, HorizontalAlignment = HorizontalAlignment.Stretch };
         container.Children.Add(new ProbeControl(new Size(5, 3)) { HorizontalAlignment = HorizontalAlignment.Left });
 
         new Engine().Layout(container, new Size(40, 40));
@@ -25,7 +25,7 @@ public sealed class ContainerAutoSizeTests
     [Fact]
     public void AutoSizeGrowOnly_WhenContentSmallerThanFixedWidth_KeepsFixedWidth()
     {
-        ProbeContainer container = new()
+        LayoutProbe container = new()
         {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowOnly,
