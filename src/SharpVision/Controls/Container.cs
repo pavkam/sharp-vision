@@ -113,4 +113,56 @@ public abstract class Container: Control
             child.RenderPopupLayer(canvas);
         }
     }
+
+    #region Grow and shrink
+
+    /// <summary>Gets or sets whether this container sizes its border box to its content, overriding stretch and star sizing.</summary>
+    /// <remarks>Honors <see cref="Control.MinWidth"/>/<see cref="Control.MaxWidth"/> and the height equivalents. See <see cref="AutoSizeMode"/>.</remarks>
+    /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public bool AutoSize
+    {
+        get;
+        set => _ = Set(ref field, value, Invalidation.Measure);
+    }
+
+    /// <summary>Gets or sets whether an auto-sizing axis may shrink below its explicit fixed-cell size.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public AutoSizeMode AutoSizeMode
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The auto-size mode is unknown.");
+            }
+
+            _ = Set(ref field, value, Invalidation.Measure);
+        }
+    } = AutoSizeMode.GrowAndShrink;
+
+    /// <inheritdoc/>
+    internal override bool ShrinkWrapsWidth => AutoSize;
+
+    /// <inheritdoc/>
+    internal override bool ShrinkWrapsHeight => AutoSize;
+
+    /// <inheritdoc/>
+    internal override Size OnMeasuredDesired(Size desired)
+    {
+        if (!AutoSize || AutoSizeMode != AutoSizeMode.GrowOnly)
+        {
+            return desired;
+        }
+
+        // GrowOnly never shrinks below an explicit fixed-cell size on that axis.
+        int width = Width.Kind == Kind.Cells ? Math.Max(desired.Width, (int) Width.Value) : desired.Width;
+        int height = Height.Kind == Kind.Cells ? Math.Max(desired.Height, (int) Height.Value) : desired.Height;
+        return new Size(width, height);
+    }
+
+    #endregion
 }
