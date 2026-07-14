@@ -128,6 +128,19 @@ in the protocol document.
   `protected override Control Build()`; the layout/render override seams are
   `MeasureOverride`/`ArrangeOverride`/`OnRender`.
 
+## Hosting
+
+- Host an interactive console through `SharpVision.Runtime.ConsoleApplication`
+  (`CreateBuilder`/`RunAsync`) and its fluent `ConsoleApplicationBuilder`, not
+  by hand-wiring `ConsoleHost`, transport, and terminal `Options`.
+- Reach implemented output protocols only through `Application.Terminal`
+  (`ITerminalServices`): `Bell.Ring()` for the audible alert, `SetTitle` for OSC
+  2, and `Clipboard` for capability-gated OSC 52/Kitty clipboard access. Do not
+  emit bell, title, or clipboard bytes directly from control code.
+- `TreatControlCAsInput` (on `ConsoleRunOptions`/the builder) delivers Ctrl+C as
+  decoded input instead of cooperative shutdown; a host that sets it owns its
+  own exit path.
+
 ## Tests
 
 - Use xUnit v3, Shouldly, and Arrange/Act/Assert.

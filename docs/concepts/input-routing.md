@@ -118,6 +118,32 @@ Explicit `Release` is quiet; detach, disable, hide, disposal, and terminal-focus
 loss emit one `Cancelled` callback with a precise `ReleaseReason`, then clear
 capture, hover, and press references synchronously.
 
+## Pull-style pointer and focus snapshot
+
+`Application.Pointer` exposes a `PointerDevice`, a dispatcher-affine read-model
+of the last dispatched pointer state, independent of the routed pointer events
+above. Unlike `Focus` and `Capture`, which throw before the first resize because
+they own tree state, `Pointer` is always readable: it is constructed once in the
+`Application` constructor and never throws. `Position` (the last zero-based cell
+position) and `PixelPosition` (the last zero-based pixel position, when the wire
+supplied one) are `null` before the first pointer arrives and are cleared on
+`PointerAction.Leave`; `Buttons`, `Modifiers`, and `LastAction` reflect the most
+recently dispatched pointer. `Hovered`, `Pressed`, and `Captured` delegate live
+to `CaptureManager` and are `null` until the tree attaches.
+`Application.Dispatch` updates the device from every `RecordKind.Pointer` record
+before routing it, so a caller reading `Pointer` mid-callback sees the same
+state the router just used.
+
+`Application.HasFocus` is a `bool` tracking whether the terminal window
+currently reports focus. It defaults to `true` (assume focused until told
+otherwise) and toggles on each `RecordKind.Focus` record, before that record is
+routed to the focused control's `Events.Focus` handler.
+
+No new event backs either member: `Pointer` and `HasFocus` are pull-style
+snapshots for code that wants "where is the mouse" or "are we focused" without
+subscribing to routed events; push-style consumers continue to use `Router`
+pointer and focus events as described above.
+
 ## Tests
 
 Use recording controls to assert route order, handled semantics, default action,

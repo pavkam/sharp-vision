@@ -42,12 +42,22 @@ immutable records into a bounded queue; they never enter the control tree.
 Resize uses a newest-value slot plus one queued wake, so storms cannot grow work
 without bound.
 
-`Application.RunConsoleAsync(screen, options?)` is the supported interactive
-console entry point. It rejects redirected standard I/O, acquires the host
-raw-input lease, opens the console transport and resize source, negotiates
-terminal capabilities, maps Ctrl+C to cooperative shutdown, attaches the
-supplied <see cref="Screen"/>, starts the application, waits for completion or
-cancellation, stops cleanly, and restores host terminal state.
+[`ConsoleApplication.RunAsync`](../concepts/hosting.md#entry-points) (one-liner,
+configure-callback, or immutable `ConsoleRunOptions`) and
+`ConsoleApplicationBuilder.RunAsync` are the supported interactive console entry
+points. They reject redirected standard I/O, open the portable console host
+lease and transport/resize source, negotiate terminal capabilities, map Ctrl+C
+to cooperative shutdown unless `TreatControlCAsInput` is set, attach the
+supplied `Screen`, start the application, wait for completion or cancellation,
+stop cleanly, and restore host terminal state.
+
+`Application.RunAsync(CancellationToken)` is a lower-level instance convenience
+that any host — console or otherwise — can call once a transport-backed
+`Application` already exists: it awaits `StartAsync`, then `Completion`, then
+`StopAsync`, surfacing `Failure` by rethrowing. The console-specific
+`ConsoleRunStatus` mapping (`Redirected`/`Completed`/ `Cancelled`/`Failed`)
+lives only in the console entry points above; the instance method itself is
+host-agnostic.
 
 `StartAsync` raises `Starting` on the dispatcher before `Session.RunAsync` can
 enable a mode. The first resize attaches the root, creates focus/capture
@@ -86,6 +96,29 @@ Input received before the first resize remains in the bounded queue until the
 tree is attached. Key/text/paste target focus; pointer values use capture then
 hit testing; terminal focus loss cancels pointer interaction. Each input drain
 processes resulting layout/render invalidation before idleness.
+
+## Out-of-band protocol writes
+
+Implemented output protocols — the bell, `SetTitle`, and clipboard writes behind
+[`ITerminalServices`](../protocols/index.md#discovery-and-output-facade) — never
+interleave a frame write. `Application.PostOutOfBand` appends encoded bytes to a
+pending buffer guarded by the same internal gate used for input, resize, and
+profile records, and posts a drain to the dispatcher.
+
+The drain reuses the renderer's single-writer discipline: it shares the
+`_rendering` flag with frame rendering, so at most one of a frame render or an
+out-of-band flush is ever writing to the transport. If a frame render is already
+in flight, the bytes stay buffered and `CompleteRender` drains them immediately
+after that frame's write completes, before servicing any deferred render
+request. If no render is in flight, the drain itself starts an out-of-band
+flush: it sets `_rendering`, writes and flushes the buffered bytes through the
+transport under a dispatcher hold, and on completion clears `_rendering` and
+resumes normal invalidation (a pending render, or another out-of-band write
+queued meanwhile) through the same pump used after an ordinary frame. Because
+frame renders and out-of-band flushes share both the `_rendering` gate and the
+dispatcher hold, byte ordering between UI frames and protocol bytes is
+deterministic and a bell or title change requested mid-frame is guaranteed to
+land only after that frame's bytes are on the wire.
 
 ## Shutdown
 

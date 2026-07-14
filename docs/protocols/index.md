@@ -36,3 +36,33 @@ DEC, xterm, Kitty, iTerm2, sixel, tmux, and GNU screen extensions. The
 - [Sixel](sixel.md#sixel-contract) defines DEC raster graphics boundaries.
 - [tmux](tmux.md#tmux-contract) and
   [GNU screen](gnu-screen.md#gnu-screen-contract) define multiplexer wrapping.
+
+## Discovery and output facade
+
+`SharpVision.Terminal.Capabilities.TerminalProtocol` names each optional feature
+a `Capabilities` profile can report: `SynchronizedOutput`, `FocusReporting`,
+`BracketedPaste`, `PixelMouse`, `CellMouse`, `KittyKeyboard`, `Osc52`,
+`KittyClipboard`, `KittyGraphics`, `Sixel`, `ItermImages`, `StyledUnderlines`,
+`UnderlineColor`, and `Overline`. `Capabilities.Support(TerminalProtocol)` maps
+one named protocol to its `Feature` evidence, and `Capabilities.Features`
+returns every protocol paired with its `Feature` as an
+`IReadOnlyList<ProtocolSupport>`, replacing an earlier anonymous feature list.
+Both members report each protocol's real `Support` state — including
+`Unsupported` for Kitty graphics, sixel, and iTerm2 images — and never fabricate
+support; the [coverage matrix](coverage-matrix.md#coverage) remains the only
+support claim.
+
+`SharpVision.Runtime.ITerminalServices` (`Application.Terminal`) exposes the
+implemented **output** protocols behind small interfaces: `IBell.Ring()` emits a
+BEL byte, `SetTitle(string)` emits OSC 2, and `IClipboard` writes and requests
+OSC 52/Kitty clipboard selections when `IsSupported`
+(`Osc52.IsSupported || KittyClipboard.IsSupported`) is `true`, otherwise
+`Write`/`Request` are safe no-ops. All three post their encoded bytes through
+the
+[ordered out-of-band write path](../architecture/runtime-event-loop.md#out-of-band-protocol-writes)
+so they never interleave a frame. Kitty graphics, sixel, and iTerm2 images are
+not exposed by this facade — the coverage matrix continues to state them as
+unsupported, and the runtime never fabricates output support for them either.
+Inbound consumption of protocol replies (typed responses, capability changes,
+and redacted diagnostics) is unchanged and documented in
+[runtime routing](runtime-routing.md#inbound-consumption-surface).

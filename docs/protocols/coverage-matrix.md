@@ -35,3 +35,15 @@ graphics and multiplexer passthrough remain explicit unsupported boundaries in
 [tmux](tmux.md#first-milestone-contract), and
 [GNU screen](gnu-screen.md#first-milestone-contract); generic parser framing is
 not misreported as semantic support.
+
+## Discovery and output facade
+
+The `TerminalProtocol`/`Capabilities.Support`/`Features` discovery facade and
+the `ITerminalServices` output surface, both described in the
+[protocol index](index.md#discovery-and-output-facade), are reporting and
+consumption layers over this matrix, not new support claims.
+`Capabilities.Support(TerminalProtocol.KittyGraphics)`,
+`Support(TerminalProtocol.Sixel)`, and `Support(TerminalProtocol.ItermImages)`
+report the same real `Unsupported` state as this table, and `ITerminalServices`
+exposes no member for graphics, sixel, or iTerm2 images — only the bell, window
+title, and clipboard, matching their rows above.

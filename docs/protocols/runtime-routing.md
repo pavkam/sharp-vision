@@ -56,6 +56,20 @@ Owned values cannot exceed those limits. Application diagnostics never include
 raw payload bytes, clipboard data, paths, credentials, or terminal-provided
 metadata.
 
+## Inbound consumption surface
+
+`Application` exposes three events for consuming inbound protocol activity,
+unchanged in behavior by the hosting and discovery additions above.
+`ResponseReceived` raises one typed `Response` (DA, DSR, DECRPM, Kitty keyboard,
+or OSC color reply) per record, on the dispatcher, in transport order.
+`CapabilitiesChanged` raises once whenever a new immutable `Capabilities`
+profile becomes active — including the startup negotiation result — before any
+resulting invalidation. `Diagnostic` raises one redacted `Diagnostic` for every
+malformed, unsupported, or otherwise unrouted protocol occurrence, containing
+only its family and discarded byte count, never raw payload bytes. These three
+events are the complete way an application consumes protocol replies and
+capability changes; there is no lower-level polling surface.
+
 ## Test obligations
 
 Test each recognized reply and each string family whole and at every read split.

@@ -62,11 +62,11 @@ theme. The sidebar footer hosts a theme picker `ComboBox` that republishes the
 chosen application theme and a visible `Quit` button. `Ctrl+C` also exits from
 anywhere: the gallery handles it as a key in the preview pass so it works even
 when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
-rather than raising a host cancellation signal. The executable app explicitly
-requests xterm any-event (`1003`) SGR cell mouse reporting through an
-application-level capability override and runs through
-`Application.RunConsoleAsync` with a `Gallery` screen, which owns the Unix
-raw-input lease and console transport while running. The terminal library's
+rather than raising a host cancellation signal. The executable app runs through
+`ConsoleApplication.RunAsync` with a `Gallery` screen and no further
+configuration, so it gets the default xterm any-event (`1003`) SGR cell mouse
+reporting from `ConsoleRunOptions` while `ConsoleApplication` owns the Unix
+raw-input lease and console transport for the run. The terminal library's
 default environment-hint policy remains conservative.
 
 The main pane reserves a vertical scrollbar automatically and suppresses a
@@ -89,7 +89,7 @@ Every showcase `TextInput` inherits the active theme, and the control paints its
 resolved background across its entire committed box. Empty space is therefore
 visibly part of the input rather than blending into its card.
 
-On Unix, `Application.RunConsoleAsync` reads directly from `/dev/tty` through a
+On Unix, `ConsoleApplication.RunAsync` reads directly from `/dev/tty` through a
 one-byte asynchronous stream after acquiring its raw-input lease. This avoids
 the line-buffered standard-input behavior that can otherwise defer
 escape-prefixed mouse reports until a later key. Windows retains the standard
