@@ -101,6 +101,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         Capabilities = _options.Capabilities;
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI");
+        Pointer = new PointerDevice(() => CaptureValue);
         _session = new Session(transport, resize, this, _options);
         SubscribeTheme(_theme);
         Dispatcher.Idle += OnIdle;
@@ -206,6 +207,16 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
     /// <summary>Gets the latest committed terminal size.</summary>
     public Size Size { get; private set; }
+
+    /// <summary>Gets the last observed pointer state and current pointer targets.</summary>
+    [SuppressMessage(
+        "Naming",
+        "CA1720:Identifier contains type name",
+        Justification = "Pointer is the conventional terminal input domain term.")]
+    public PointerDevice Pointer { get; }
+
+    /// <summary>Gets whether the terminal window currently has focus.</summary>
+    public bool HasFocus { get; private set; } = true;
 
     /// <summary>Gets the immutable capability profile used by layout and rendering.</summary>
     public TerminalCapabilities Capabilities { get; private set; }
@@ -508,6 +519,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
                 break;
             case RecordKind.Pointer:
+                Pointer.Observe(record.Pointer);
                 _ = Capture.Dispatch(record.Pointer);
                 break;
             case RecordKind.Paste:
@@ -522,6 +534,8 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
                 break;
             case RecordKind.Focus:
+                HasFocus = record.Focus.Gained;
+
                 if (!record.Focus.Gained)
                 {
                     Capture.TerminalFocusLost();
