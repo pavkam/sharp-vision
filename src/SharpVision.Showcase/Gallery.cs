@@ -46,12 +46,34 @@ public sealed class Gallery: Screen
         (ThemingPane.Title, static () => new ThemingPane()),
     ];
 
-    // Ordered theme catalog surfaced by the sidebar picker. Adding a theme is one entry.
-    private static readonly (string Name, Theme Theme)[] ThemeCatalog =
-    [
-        ("Light", Themes.White),
-        ("Dark", Themes.Dark),
-    ];
+    // Ordered theme catalog surfaced by the sidebar picker: every embedded theme from
+    // SharpVision.Styling.ThemeCatalog.Default, dark group first then light, preserving each
+    // group's catalog (order, slug) sequence. A new embedded theme JSON resource is one entry.
+    private static readonly ThemeCatalogEntry[] ThemePickerEntries = BuildThemePickerEntries();
+
+    private static ThemeCatalogEntry[] BuildThemePickerEntries()
+    {
+        IReadOnlyList<ThemeCatalogEntry> entries = SharpVision.Styling.ThemeCatalog.Default.Entries;
+        List<ThemeCatalogEntry> ordered = new(entries.Count);
+
+        foreach (ThemeCatalogEntry entry in entries)
+        {
+            if (entry.ColorScheme == ColorScheme.Dark)
+            {
+                ordered.Add(entry);
+            }
+        }
+
+        foreach (ThemeCatalogEntry entry in entries)
+        {
+            if (entry.ColorScheme == ColorScheme.Light)
+            {
+                ordered.Add(entry);
+            }
+        }
+
+        return [.. ordered];
+    }
 
     private readonly ScrollView _main;
     private readonly ScrollView _navigationScroll;
@@ -104,11 +126,11 @@ public sealed class Gallery: Screen
         };
         Dock sidebarLayout = new();
         Stack header = CreateSidebarHeader();
-        int darkIndex = Array.FindIndex(ThemeCatalog, static entry => ReferenceEquals(entry.Theme, Themes.Dark));
+        int darkIndex = Array.FindIndex(ThemePickerEntries, static entry => entry.Slug == "default-dark");
         _themePicker = new ComboBox
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Items = Array.ConvertAll(ThemeCatalog, static entry => (object?) entry.Name),
+            Items = Array.ConvertAll(ThemePickerEntries, static entry => (object?) entry.Name),
             SelectedIndex = darkIndex >= 0 ? darkIndex : 0,
         };
         _themePicker.SelectionChanged += OnThemeSelected;
@@ -298,9 +320,9 @@ public sealed class Gallery: Screen
         _ = eventArgs;
         int index = _themePicker.SelectedIndex;
 
-        if ((uint) index < (uint) ThemeCatalog.Length)
+        if ((uint) index < (uint) ThemePickerEntries.Length)
         {
-            SetTheme(ThemeCatalog[index].Theme);
+            SetTheme(SharpVision.Styling.ThemeCatalog.Default.Load(ThemePickerEntries[index].Slug));
         }
     }
 

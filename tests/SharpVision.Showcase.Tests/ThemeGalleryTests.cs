@@ -50,6 +50,45 @@ public sealed class ThemeGalleryTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the gallery publishes a curated catalog theme when it is selected by name.</summary>
+    [Fact]
+    public async Task Theme_WhenDraculaIsSelected_PublishesCatalogThemeAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(100, 30)));
+        using Gallery gallery = new();
+        await using Application application = new(
+            gallery,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        gallery.Attach(application);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        ComboBox? picker = await application.Dispatcher.InvokeAsync(
+            () => Find<ComboBox>(gallery.Sidebar, static _ => true),
+            TestContext.Current.CancellationToken);
+        ComboBox themePicker = picker.ShouldNotBeNull();
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                int dracula = themePicker.Items.ToList().IndexOf("Dracula");
+                dracula.ShouldBeGreaterThanOrEqualTo(0);
+                themePicker.SelectedIndex = dracula;
+            },
+            TestContext.Current.CancellationToken);
+
+        Theme expected = ThemeCatalog.Default.Load("dracula");
+
+        await WaitUntilAsync(
+            () => ReferenceEquals(application.Theme, expected),
+            application,
+            "Dracula theme selection");
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies selecting the Theming page exposes the third-party showcase panel specimen.</summary>
     [Fact]
     public async Task Navigation_WhenThemingPageIsSelected_ShowsShowcasePanelAsync()

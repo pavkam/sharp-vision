@@ -61,6 +61,8 @@ internal sealed class ThemingPane: View
         Button overridden = new() { Content = new Text("Only me"), Style = localStyle };
         Button plain = new() { Content = new Text("Themed sibling") };
 
+        Stack roleSwatches = BuildRoleSwatches();
+
         return Doc.Page(
             Title,
             "Demonstrates application themes, type-keyed styles, local overrides, and third-party style properties.",
@@ -79,6 +81,31 @@ internal sealed class ThemingPane: View
             Doc.Example(
                 "Third-party style property",
                 "ShowcasePanel registers LabelPlacement through StyleProperty metadata. Themes and local values resolve it with the same cascade as built-in chrome. All four placements are reachable below.",
-                placement));
+                placement),
+            Doc.Example(
+                "Theme roles",
+                "Themes are JSON palette files loaded through ThemeCatalog and ThemeFile. Every theme defines these 12 semantic ColorRole values; the swatches below are a build-time snapshot of the built-in Dark theme.",
+                roleSwatches));
+    }
+
+    private static Stack BuildRoleSwatches()
+    {
+        ColorRole[] roles = Enum.GetValues<ColorRole>();
+        Control[] rows = new Control[roles.Length];
+
+        for (int index = 0; index < roles.Length; index++)
+        {
+            ColorRole role = roles[index];
+            Border swatch = new()
+            {
+                Width = Length.Cells(4),
+                Height = Length.Cells(1),
+                FillMode = FillMode.Opaque,
+                Background = Themes.Dark.TryGetColor(role, out Color color) ? color : null,
+            };
+            rows[index] = Doc.Row(swatch, new Text(role.ToString()));
+        }
+
+        return Doc.Column(rows);
     }
 }

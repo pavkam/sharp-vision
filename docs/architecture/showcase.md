@@ -61,8 +61,14 @@ The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
 `ScrollView` in the remaining space. The sidebar owns product identity,
 component-only stateful navigation entries, and compact interaction hints; its
 selected, focused, hovered, and pressed states follow the active application
-theme. The sidebar footer hosts a theme picker `ComboBox` that republishes the
-chosen application theme and a visible `Quit` button. `Ctrl+C` also exits from
+theme. The sidebar footer hosts a theme picker `ComboBox` and a visible `Quit`
+button. The picker lists every theme in the embedded
+`SharpVision.Styling.ThemeCatalog.Default` catalog — the built-in Light and
+Dark themes plus the curated editor themes (Dracula, Nord, Gruvbox, Solarized,
+and others) — grouped dark-first then light, and republishes the chosen
+application theme when selected. The Theming page renders the 12 semantic
+`ColorRole` values as labeled color swatches so the active palette is visible.
+`Ctrl+C` also exits from
 anywhere: the gallery handles it as a key in the preview pass so it works even
 when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
 rather than raising a host cancellation signal. The executable app runs through
