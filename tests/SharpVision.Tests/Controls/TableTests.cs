@@ -138,6 +138,24 @@ public sealed class TableTests
         FrameOracle.Get(frame, new Point(0, 1)).ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a table taller than its viewport exposes vertical scroll via the intrinsic scroll surface.</summary>
+    [Fact]
+    public void Extent_WhenRowsExceedViewport_ExposesVerticalScroll()
+    {
+        Table table = new();
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Columns.Add(TableColumn.Fill("Value"));
+
+        for (int index = 0; index < 40; index++)
+        {
+            table.Rows.Add(new TableRow([new ControlText($"Row {index}"), new ControlText("Value")]));
+        }
+
+        new Engine().Layout(table, new Size(30, 10));
+
+        table.Extent.Height.ShouldBeGreaterThan(table.Viewport.Height);
+    }
+
     /// <summary>Verifies a row must match the complete column count before any cells are attached.</summary>
     [Fact]
     public void Rows_WhenCellCountDiffersFromColumns_RejectsRowWithoutOwnershipTransfer()

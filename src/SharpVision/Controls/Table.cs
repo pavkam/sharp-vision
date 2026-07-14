@@ -19,6 +19,8 @@ public sealed class Table: Container
     public Table()
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
+        AutoScroll = true;
+        ScrollBars = ScrollBars.Both;
         Columns = new TableColumns(this);
         Rows = new TableRows(this);
     }
