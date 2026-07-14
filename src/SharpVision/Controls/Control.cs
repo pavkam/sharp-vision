@@ -301,6 +301,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets the desired border-box size from the last successful measure.</summary>
     public Size DesiredSize { get; internal set; }
 
+    /// <summary>Gets the natural content size from the last measure, before outer-constraint clamping.</summary>
+    /// <remarks>Equals <see cref="MeasureOverride"/>'s result. Scrollable containers compare it against the arranged viewport.</remarks>
+    internal Size ContentExtent { get; private set; }
+
     /// <summary>Gets the committed border-box rectangle from the last successful arrange.</summary>
     public Rect Bounds { get; internal set; }
 
@@ -484,9 +488,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            Constraint contentConstraint = CreateContentConstraint(constraint);
+            Constraint contentConstraint = OnMeasuringContent(CreateContentConstraint(constraint));
             Size content = MeasureOverride(contentConstraint);
-            Size desired = ResolveDesiredSize(constraint, content);
+            ContentExtent = content;
+            Size desired = OnMeasuredDesired(ResolveDesiredSize(constraint, content));
 
             DesiredSize = desired;
             LastMeasureConstraint = constraint;
@@ -892,6 +897,16 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Debug.Assert(!IsDisposed, "A disposed control cannot measure content.");
         return default;
     }
+
+    /// <summary>Adjusts the content constraint before content measurement. Default returns it unchanged.</summary>
+    /// <param name="content">The padding-deflated content constraint.</param>
+    /// <returns>The constraint passed to <see cref="MeasureOverride"/>.</returns>
+    internal virtual Constraint OnMeasuringContent(Constraint content) => content;
+
+    /// <summary>Adjusts the resolved desired size after content measurement. Default returns it unchanged.</summary>
+    /// <param name="desired">The border-box desired size.</param>
+    /// <returns>The committed desired size.</returns>
+    internal virtual Size OnMeasuredDesired(Size desired) => desired;
 
     /// <summary>Arranges content inside the committed padded border box.</summary>
     /// <param name="bounds">The non-negative content-box rectangle.</param>

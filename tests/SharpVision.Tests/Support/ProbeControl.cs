@@ -25,6 +25,9 @@ internal sealed class ProbeControl: Control
     /// <summary>Gets or sets work invoked from inside the next measure pass.</summary>
     internal Action<ProbeControl>? Measuring { get; set; }
 
+    /// <summary>Gets the natural content extent captured by the base measure.</summary>
+    internal Size ExposedContentExtent => ContentExtent;
+
     /// <summary>Gets or sets work invoked from inside the next arrange pass.</summary>
     internal Action<ProbeControl>? Arranging { get; set; }
 
