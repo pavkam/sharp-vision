@@ -13,7 +13,7 @@ internal sealed class ThemingShowcasePane: ShowcasePane
 
     private static readonly InteractionDescription[] _catalogInteractions =
     [
-        new InteractionDescription("Theme switch", "Activate Light or Dark in the sidebar", "Application.Theme republishes a frozen theme to every attached control."),
+        new InteractionDescription("Theme switch", "Choose a theme in the sidebar picker", "Application.Theme republishes a frozen theme to every attached control."),
         new InteractionDescription("Local override", "Set Foreground on a specimen control", "The explicit local value survives later theme changes until cleared."),
         new InteractionDescription("Third-party property", "Change ShowcasePanel label placement", "Custom StyleProperty metadata resolves through the same cascade as built-in chrome."),
     ];
@@ -52,7 +52,7 @@ internal sealed class ThemingShowcasePane: ShowcasePane
 
         examples.Children.Add(PaneSupport.SampleSection(
             "Application theme",
-            "Use the Light and Dark buttons in the sidebar footer. Application.Theme publishes a frozen snapshot to every attached control without ancestor-style inheritance.",
+            "Use the theme picker in the sidebar footer. Application.Theme publishes a frozen snapshot to every attached control without ancestor-style inheritance.",
             panel));
         examples.Children.Add(PaneSupport.SampleSection(
             "Third-party style property",

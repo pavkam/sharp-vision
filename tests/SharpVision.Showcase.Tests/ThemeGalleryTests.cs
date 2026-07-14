@@ -8,8 +8,6 @@ using SharpVision.Showcase.Panes;
 using SharpVision.Styling;
 using SharpVision.Terminal.Runtime;
 
-
-using ControlText = SharpVision.Controls.Text;
 using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
@@ -30,13 +28,18 @@ public sealed class ThemeGalleryTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        Button? light = await application.Dispatcher.InvokeAsync(
-            () => Find<Button>(gallery.Sidebar, static value => value.Content is ControlText { Content: "Light" }),
+        ComboBox? picker = await application.Dispatcher.InvokeAsync(
+            () => Find<ComboBox>(gallery.Sidebar, static _ => true),
             TestContext.Current.CancellationToken);
-        Button button = light.ShouldNotBeNull();
+        ComboBox themePicker = picker.ShouldNotBeNull();
 
         await application.Dispatcher.InvokeAsync(
-            button.PerformClick,
+            () =>
+            {
+                int light = themePicker.Items.ToList().IndexOf("Light");
+                light.ShouldBeGreaterThanOrEqualTo(0);
+                themePicker.SelectedIndex = light;
+            },
             TestContext.Current.CancellationToken);
 
         await WaitUntilAsync(

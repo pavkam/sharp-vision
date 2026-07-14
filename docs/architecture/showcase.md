@@ -58,10 +58,15 @@ The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
 `ScrollView` in the remaining space. The sidebar owns product identity,
 component-only stateful navigation entries, and compact interaction hints; its
 selected, focused, hovered, and pressed states follow the active application
-theme. The executable app explicitly requests xterm any-event (`1003`) SGR cell
-mouse reporting through an application-level capability override and runs
-through `Application.RunConsoleAsync` with a `Gallery` screen, which owns the
-Unix raw-input lease and console transport while running. The terminal library's
+theme. The sidebar footer hosts a theme picker `ComboBox` that republishes the
+chosen application theme and a visible `Quit` button. `Ctrl+C` also exits from
+anywhere: the gallery handles it as a key in the preview pass so it works even
+when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
+rather than raising a host cancellation signal. The executable app explicitly
+requests xterm any-event (`1003`) SGR cell mouse reporting through an
+application-level capability override and runs through
+`Application.RunConsoleAsync` with a `Gallery` screen, which owns the Unix
+raw-input lease and console transport while running. The terminal library's
 default environment-hint policy remains conservative.
 
 The main pane reserves a vertical scrollbar automatically and suppresses a
@@ -102,9 +107,11 @@ example ownership, and matching runtime control type. They render every page at
 30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell continuation
 structure, and prove automatic scrolling. A full Application test drives SGR
 pointer selection, keyboard sidebar navigation and button activation, wheel
-scrolling, text editing, and pixel-aware resize through terminal bytes. Startup
-coverage requires the exact SGR mouse-mode lease before the first frame. The
-live tmux smoke test then proves a normal Down key, separate complete SGR clicks
-for Canvas and Button, Figlet dropdown opening and font selection, and a
-captured ScrollBar thumb drag. Each completes without a trailing flushing key.
-The live image supplements these assertions; it cannot replace them.
+scrolling, text editing, and pixel-aware resize through terminal bytes.
+Dedicated tests prove cooperative exit through both the sidebar `Quit` button
+and a decoded `Ctrl+C` key. Startup coverage requires the exact SGR mouse-mode
+lease before the first frame. The live tmux smoke test then proves a normal Down
+key, separate complete SGR clicks for Canvas and Button, Figlet dropdown opening
+and font selection, and a captured ScrollBar thumb drag. Each completes without
+a trailing flushing key. The live image supplements these assertions; it cannot
+replace them.

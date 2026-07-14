@@ -18,7 +18,7 @@ using TerminalAttributes = Terminal.Rendering.Attributes;
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
 {
-    private static readonly (string Name, Func<Control> Create)[] Catalog =
+    private static readonly (string Name, Func<ShowcasePane> Create)[] Catalog =
     [
         (BorderShowcasePane.Title, static () => new BorderShowcasePane()),
         (ButtonShowcasePane.Title, static () => new ButtonShowcasePane()),
@@ -45,11 +45,18 @@ public sealed class Gallery: Screen
         (ThemingShowcasePane.Title, static () => new ThemingShowcasePane()),
     ];
 
+    // Ordered theme catalog surfaced by the sidebar picker. Adding a theme is one entry.
+    private static readonly (string Name, Theme Theme)[] ThemeCatalog =
+    [
+        ("Light", Themes.White),
+        ("Dark", Themes.Dark),
+    ];
+
     private readonly ControlScrollView _main;
     private readonly ControlScrollView _navigationScroll;
     private readonly NavigationItem[] _navigation;
-    private readonly ControlButton _lightTheme;
-    private readonly ControlButton _darkTheme;
+    private readonly ControlComboBox _themePicker;
+    private readonly ControlButton _quit;
     private readonly ControlDock _root;
     private FocusManager? _focus;
 
@@ -96,11 +103,17 @@ public sealed class Gallery: Screen
         };
         ControlDock sidebarLayout = new();
         ControlStack header = CreateSidebarHeader();
-        _lightTheme = new ControlButton { Content = new ControlText("Light") };
-        _darkTheme = new ControlButton { Content = new ControlText("Dark") };
-        _lightTheme.Click += (_, _) => SetTheme(Themes.White);
-        _darkTheme.Click += (_, _) => SetTheme(Themes.Dark);
-        ControlStack footer = CreateSidebarFooter(_lightTheme, _darkTheme);
+        int darkIndex = Array.FindIndex(ThemeCatalog, static entry => ReferenceEquals(entry.Theme, Themes.Dark));
+        _themePicker = new ControlComboBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Items = Array.ConvertAll(ThemeCatalog, static entry => (object?) entry.Name),
+            SelectedIndex = darkIndex >= 0 ? darkIndex : 0,
+        };
+        _themePicker.SelectionChanged += OnThemeSelected;
+        _quit = new ControlButton { Content = new ControlText("Quit") };
+        _quit.Click += OnQuitClicked;
+        ControlStack footer = CreateSidebarFooter(_themePicker, _quit);
         ControlDock.SetSide(header, Side.Top);
         ControlDock.SetSide(footer, Side.Bottom);
         sidebarLayout.Children.Add(header);
@@ -114,6 +127,11 @@ public sealed class Gallery: Screen
             Child = sidebarLayout,
         };
         _ = Sidebar.AddHandler(Events.Key, OnNavigationKey);
+
+        // Quit chords are handled at the screen root in the preview pass so Ctrl+C exits from
+        // anywhere, including terminals whose Kitty keyboard protocol delivers it as a key event
+        // rather than a host cancellation signal.
+        _ = AddHandler(Events.Key, OnGlobalKey);
         ControlBorder surface = new()
         {
             Child = _main,
@@ -154,7 +172,7 @@ public sealed class Gallery: Screen
     /// <param name="index">The zero-based page index.</param>
     /// <returns>A new showcase pane instance.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
-    internal static Control CreatePage(int index)
+    internal static ShowcasePane CreatePage(int index)
     {
         return (uint) index >= (uint) Catalog.Length
             ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
@@ -238,29 +256,30 @@ public sealed class Gallery: Screen
         return header;
     }
 
-    private static ControlStack CreateSidebarFooter(ControlButton lightTheme, ControlButton darkTheme)
+    private static ControlStack CreateSidebarFooter(ControlComboBox themePicker, ControlButton quit)
     {
-        ControlStack footer = new()
+        ControlStack themeGroup = new() { Spacing = 0 };
+        themeGroup.Children.Add(new ControlText("Theme")
         {
-            Height = Length.Cells(4),
+            Attributes = TerminalAttributes.Dim,
+        });
+        themeGroup.Children.Add(themePicker);
+
+        ControlStack exitGroup = new() { Spacing = 0 };
+        exitGroup.Children.Add(quit);
+        exitGroup.Children.Add(new ControlText("Ctrl+C to quit")
+        {
+            Attributes = TerminalAttributes.Dim,
+        });
+
+        // No fixed height: the footer sizes to its content so the bordered Quit
+        // button and the exit hint are never clipped on short terminals.
+        return new ControlStack
+        {
             Padding = new Thickness(1, 0),
-            Spacing = 0,
-        };
-        footer.Children.Add(new ControlText("Theme")
-        {
-            Attributes = TerminalAttributes.Dim,
-        });
-        footer.Children.Add(new ControlStack
-        {
-            Orientation = Orientation.Horizontal,
             Spacing = 1,
-            Children = { lightTheme, darkTheme },
-        });
-        footer.Children.Add(new ControlText("Enter select · Click")
-        {
-            Attributes = TerminalAttributes.Dim,
-        });
-        return footer;
+            Children = { themeGroup, exitGroup },
+        };
     }
 
     private void SetTheme(Theme theme)
@@ -270,6 +289,50 @@ public sealed class Gallery: Screen
             application.Theme = theme;
         }
     }
+
+    /// <summary>Applies the theme catalog entry chosen in the sidebar picker.</summary>
+    private void OnThemeSelected(object? sender, ListSelectionChangedEventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        int index = _themePicker.SelectedIndex;
+
+        if ((uint) index < (uint) ThemeCatalog.Length)
+        {
+            SetTheme(ThemeCatalog[index].Theme);
+        }
+    }
+
+    /// <summary>Requests cooperative application shutdown when the sidebar Quit button is activated.</summary>
+    private void OnQuitClicked(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        RequestQuit();
+    }
+
+    /// <summary>Exits the showcase on a Ctrl+C key press regardless of the focused control.</summary>
+    private void OnGlobalKey(object? sender, KeyEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != Phase.Preview ||
+            eventArgs.Handled ||
+            eventArgs.Stroke.Action != KeyAction.Press ||
+            (eventArgs.Stroke.Modifiers & Modifiers.Control) == 0 ||
+            eventArgs.Stroke.Code != Code.Character ||
+            eventArgs.Stroke.Character is not { } character ||
+            Rune.ToLowerInvariant(character) != new Rune('c'))
+        {
+            return;
+        }
+
+        RequestQuit();
+        eventArgs.Handled = true;
+    }
+
+    /// <summary>Drives graceful shutdown through the attached application's cooperative close path.</summary>
+    private void RequestQuit() => Application?.Closed();
 
     private void OnNavigationInvoked(object? sender, ActivationEventArgs eventArgs)
     {
@@ -359,6 +422,8 @@ public sealed class Gallery: Screen
             item.Invoked -= OnNavigationInvoked;
         }
 
+        _themePicker.SelectionChanged -= OnThemeSelected;
+        _quit.Click -= OnQuitClicked;
         _focus = null;
     }
 
