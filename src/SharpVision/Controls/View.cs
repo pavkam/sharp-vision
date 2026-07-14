@@ -10,8 +10,9 @@ using SharpVision.Terminal.Geometry;
 /// <remarks>
 /// Derive from <see cref="View"/> to build a reusable component from existing controls. Implement
 /// <see cref="Build"/> to return the content root; the runtime installs it as the view's only child
-/// the first time the view is measured after attachment. This is one-shot construction, not reactive
-/// rendering: after <see cref="Build"/> runs, mutate the returned subtree like any other control tree.
+/// on the view's first measure, whether or not the view is attached at that point. This is one-shot
+/// construction, not reactive rendering: after <see cref="Build"/> runs, mutate the returned subtree
+/// like any other control tree.
 /// </remarks>
 public abstract class View: Container
 {
@@ -25,8 +26,9 @@ public abstract class View: Container
     /// <summary>Gets the built content child, or null before <see cref="Build"/> has run.</summary>
     protected Control? Content => Children.Count == 0 ? null : Children[0];
 
-    /// <summary>Produces this view's content root. Called once, after attachment and before the first
-    /// layout pass. Must return a non-null control; return a layout container for multiple children.</summary>
+    /// <summary>Produces this view's content root. Called once, on the first layout pass, whether or
+    /// not the view is attached. Must return a non-null control; return a layout container for
+    /// multiple children.</summary>
     /// <returns>The non-null content root installed as this view's only child.</returns>
     /// <exception cref="InvalidOperationException">This method returned null.</exception>
     protected abstract Control Build();
@@ -51,25 +53,10 @@ public abstract class View: Container
     protected override void ArrangeOverride(Rect bounds) =>
         Content?.Arrange(bounds, widthResolved: true, heightResolved: true);
 
-    // Build lazily, only while attached, so detached trees stay inert and the content tree can read
-    // attached context (dispatcher, and for Screen the running Application). Measure only runs on an
-    // attached, laid-out tree, so this is the first point where building is both safe and meaningful.
     private void EnsureBuilt()
     {
         if (_built)
         {
-            return;
-        }
-
-        if (Dispatcher is null)
-        {
-            // A detached measure must not poison the measure cache. Without this,
-            // measuring while detached records LastMeasureConstraint and clears the
-            // measure-dirty bit; a later measure with the same constraint after
-            // attachment would hit the cache early-return, skip MeasureOverride, and
-            // never build. Re-marking measure-dirty guarantees the first measure
-            // after attachment runs and builds.
-            Invalidate(Invalidation.Measure);
             return;
         }
 

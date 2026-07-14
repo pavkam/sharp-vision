@@ -8,7 +8,7 @@ using SharpVision.Layout;
 using SharpVision.Terminal.Geometry;
 using SharpVision.Threading;
 
-/// <summary>Verifies View builds its content once, after attach, before first layout use.</summary>
+/// <summary>Verifies View builds its content once, on its first measure, whether attached or not.</summary>
 public sealed class ViewTests
 {
     /// <summary>Verifies Build runs once on the first measure after attach and installs its result.</summary>
@@ -32,31 +32,31 @@ public sealed class ViewTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a detached, unmeasured view never builds.</summary>
+    /// <summary>Verifies a detached view builds on its first measure, with no attachment required.</summary>
     [Fact]
-    public void Build_WhenViewIsDetached_IsNotCalled()
-    {
-        ProbeControl content = new();
-        CountingView view = new(content);
-
-        view.Measure(new Constraint(20, 6));
-
-        view.BuildCount.ShouldBe(0);
-        view.Installed.ShouldBeNull();
-    }
-
-    /// <summary>Verifies a view measured once while detached still builds on the first measure
-    /// after attach, even when that measure uses the same constraint as the detached measure.</summary>
-    [Fact]
-    public async Task Build_WhenMeasuredDetachedThenAttachedAndRemeasured_BuildsOnNextMeasureAsync()
+    public void Build_WhenMeasuredWhileDetached_BuildsOnFirstMeasure()
     {
         ProbeControl content = new() { Width = Length.Cells(5), Height = Length.Cells(2) };
         CountingView view = new(content);
 
         view.Measure(new Constraint(20, 6));
 
-        view.BuildCount.ShouldBe(0);
-        view.Installed.ShouldBeNull();
+        view.BuildCount.ShouldBe(1);
+        view.Installed.ShouldBeSameAs(content);
+    }
+
+    /// <summary>Verifies a view measured once while detached is not rebuilt by a later measure after
+    /// attach, even when that measure uses the same constraint as the detached measure.</summary>
+    [Fact]
+    public async Task Build_WhenMeasuredDetachedThenAttachedAndRemeasured_BuildsOnlyOnceAsync()
+    {
+        ProbeControl content = new() { Width = Length.Cells(5), Height = Length.Cells(2) };
+        CountingView view = new(content);
+
+        view.Measure(new Constraint(20, 6));
+
+        view.BuildCount.ShouldBe(1);
+        view.Installed.ShouldBeSameAs(content);
 
         await using Dispatcher dispatcher = Dispatcher.Start();
 
@@ -72,17 +72,11 @@ public sealed class ViewTests
 
     /// <summary>Verifies a null Build result is rejected.</summary>
     [Fact]
-    public async Task Build_WhenResultIsNull_ThrowsInvalidOperationAsync()
+    public void Build_WhenResultIsNull_ThrowsInvalidOperation()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        NullView view = new();
 
-        await dispatcher.InvokeAsync(() =>
-        {
-            NullView view = new();
-            view.Attach(dispatcher);
-
-            _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
-        }, TestContext.Current.CancellationToken);
+        _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
     }
 
     private sealed class CountingView: View
