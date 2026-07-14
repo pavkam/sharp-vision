@@ -32,8 +32,8 @@ public sealed class CapabilitiesTests
     {
         Capabilities capabilities = Capabilities.Conservative;
 
-        capabilities.OptionalFeatures.ShouldAllBe(
-            static feature => feature.State != CapabilitySupport.Supported);
+        capabilities.Features.ShouldAllBe(
+            static entry => entry.Feature.State != CapabilitySupport.Supported);
         capabilities.ColorDepth.ShouldBe(ColorDepth.Basic16);
         capabilities.ColorOrigin.ShouldBe(Origin.Default);
     }

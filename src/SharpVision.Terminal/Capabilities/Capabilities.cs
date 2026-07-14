@@ -99,24 +99,45 @@ public sealed record Capabilities
     /// <summary>Gets overline rendition support.</summary>
     public Feature Overline { get; init; } = Feature.Unknown;
 
-    /// <summary>
-    /// Gets a snapshot of every optional feature for diagnostics and tests.
-    /// </summary>
-    public IReadOnlyList<Feature> OptionalFeatures =>
+    /// <summary>Gets the support evidence for one optional protocol.</summary>
+    /// <param name="protocol">The protocol to query.</param>
+    /// <returns>The feature evidence.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="protocol"/> is unknown.</exception>
+    public Feature Support(TerminalProtocol protocol) => protocol switch
+    {
+        TerminalProtocol.SynchronizedOutput => SynchronizedOutput,
+        TerminalProtocol.FocusReporting => FocusReporting,
+        TerminalProtocol.BracketedPaste => BracketedPaste,
+        TerminalProtocol.PixelMouse => PixelMouse,
+        TerminalProtocol.CellMouse => CellMouse,
+        TerminalProtocol.KittyKeyboard => KittyKeyboard,
+        TerminalProtocol.Osc52 => Osc52,
+        TerminalProtocol.KittyClipboard => KittyClipboard,
+        TerminalProtocol.KittyGraphics => KittyGraphics,
+        TerminalProtocol.Sixel => Sixel,
+        TerminalProtocol.ItermImages => ItermImages,
+        TerminalProtocol.StyledUnderlines => StyledUnderlines,
+        TerminalProtocol.UnderlineColor => UnderlineColor,
+        TerminalProtocol.Overline => Overline,
+        _ => throw new ArgumentOutOfRangeException(nameof(protocol), protocol, "The terminal protocol is unknown."),
+    };
+
+    /// <summary>Gets every optional protocol paired with its support evidence.</summary>
+    public IReadOnlyList<ProtocolSupport> Features =>
     [
-        SynchronizedOutput,
-        FocusReporting,
-        BracketedPaste,
-        PixelMouse,
-        CellMouse,
-        KittyKeyboard,
-        Osc52,
-        KittyClipboard,
-        KittyGraphics,
-        Sixel,
-        ItermImages,
-        StyledUnderlines,
-        UnderlineColor,
-        Overline,
+        new(TerminalProtocol.SynchronizedOutput, SynchronizedOutput),
+        new(TerminalProtocol.FocusReporting, FocusReporting),
+        new(TerminalProtocol.BracketedPaste, BracketedPaste),
+        new(TerminalProtocol.PixelMouse, PixelMouse),
+        new(TerminalProtocol.CellMouse, CellMouse),
+        new(TerminalProtocol.KittyKeyboard, KittyKeyboard),
+        new(TerminalProtocol.Osc52, Osc52),
+        new(TerminalProtocol.KittyClipboard, KittyClipboard),
+        new(TerminalProtocol.KittyGraphics, KittyGraphics),
+        new(TerminalProtocol.Sixel, Sixel),
+        new(TerminalProtocol.ItermImages, ItermImages),
+        new(TerminalProtocol.StyledUnderlines, StyledUnderlines),
+        new(TerminalProtocol.UnderlineColor, UnderlineColor),
+        new(TerminalProtocol.Overline, Overline),
     ];
 }
