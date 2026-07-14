@@ -22,7 +22,7 @@ public sealed class Gallery: Screen
     [
         (BorderPane.Title, static () => new BorderPane()),
         (ButtonPane.Title, static () => new ButtonPane()),
-        (CanvasShowcasePane.Title, static () => new CanvasShowcasePane()),
+        (CanvasPane.Title, static () => new CanvasPane()),
         (CheckBoxPane.Title, static () => new CheckBoxPane()),
         (ComboBoxPane.Title, static () => new ComboBoxPane()),
         (DockPane.Title, static () => new DockPane()),
@@ -36,7 +36,7 @@ public sealed class Gallery: Screen
         (RichTextShowcasePane.Title, static () => new RichTextShowcasePane()),
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
         (ScrollViewPane.Title, static () => new ScrollViewPane()),
-        (ShadowShowcasePane.Title, static () => new ShadowShowcasePane()),
+        (ShadowPane.Title, static () => new ShadowPane()),
         (StackPane.Title, static () => new StackPane()),
         (TablePane.Title, static () => new TablePane()),
         (TextShowcasePane.Title, static () => new TextShowcasePane()),
