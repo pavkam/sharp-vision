@@ -36,15 +36,15 @@ internal sealed class ThemingPane: View
         // Button type. ThemeResolver's design-time overload reads it back by type alone, with no live
         // control involved, proving the association Theme.SetStyle<Button> stored.
         ControlStyle<Button> typedStyle = new();
-        typedStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(4));
-        typedStyle.Set(Control.BorderGlyphsProperty, State.Normal, Glyphs.Heavy);
+        typedStyle.Set(BackgroundProperty, State.Normal, Color.Indexed(4));
+        typedStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Heavy);
         Theme spotlight = new();
         spotlight.SetStyle(typedStyle);
 
         Color? resolvedBackground = ThemeResolver.Resolve(
-            spotlight, typeof(Button), Control.BackgroundProperty, State.Normal);
+            spotlight, typeof(Button), BackgroundProperty, State.Normal);
         Glyphs resolvedGlyphs = ThemeResolver.Resolve(
-            spotlight, typeof(Button), Control.BorderGlyphsProperty, State.Normal);
+            spotlight, typeof(Button), BorderGlyphsProperty, State.Normal);
 
         Button typedPreview = new()
         {
@@ -56,8 +56,8 @@ internal sealed class ThemingPane: View
 
         // A local override attaches a ControlStyle directly to one instance, skipping any theme.
         ControlStyle<Button> localStyle = new();
-        localStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(3));
-        localStyle.Set(Control.BorderGlyphsProperty, State.Normal, Glyphs.Ascii);
+        localStyle.Set(ForegroundProperty, State.Normal, Color.Indexed(3));
+        localStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Ascii);
         Button overridden = new() { Content = new Text("Only me"), Style = localStyle };
         Button plain = new() { Content = new Text("Themed sibling") };
 

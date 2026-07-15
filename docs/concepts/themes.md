@@ -146,22 +146,21 @@ Each of the twelve roles above is also exposed as a first-class
 [`Color`](../../src/SharpVision.Terminal/Protocols/Color.cs) value through the
 public `ThemeColors` static class — one property per role
 (`ThemeColors.Foreground`, `ThemeColors.Accent`, `ThemeColors.Border`, …). A
-`ThemeColors.*` value is a *deferred* color: assign it anywhere a `Color` or
+`ThemeColors.*` value is a _deferred_ color: assign it anywhere a `Color` or
 `Color?` is expected — a theme's own style (see the recipe below), a
-per-instance local value (`control.Background = ThemeColors.Accent`), or
-custom control code — and it resolves to the active theme's concrete palette
-color **during property resolution**, not when the value is assigned. Because
-resolution happens on every read rather than once at theme-build time, a
-control holding a role color keeps tracking theme swaps automatically for as
-long as it holds that value; no query API or custom control is needed to get
-this behavior.
+per-instance local value (`control.Background = ThemeColors.Accent`), or custom
+control code — and it resolves to the active theme's concrete palette color
+**during property resolution**, not when the value is assigned. Because
+resolution happens on every read rather than once at theme-build time, a control
+holding a role color keeps tracking theme swaps automatically for as long as it
+holds that value; no query API or custom control is needed to get this behavior.
 
 Under the hood, a role color is a deferred `Color` (`ColorKind.Role`, produced
 by `Color.Role(int)` and read back through `Color.RoleId`) that carries only an
 opaque role id — the terminal layer never interprets it. Because a role color
 must never reach the encoder unresolved, `CellStyle` construction and the
-lower-level `Palette`/`Sgr` encode paths throw if given one, so a resolution
-gap fails fast in a test instead of rendering garbage.
+lower-level `Palette`/`Sgr` encode paths throw if given one, so a resolution gap
+fails fast in a test instead of rendering garbage.
 
 ## The base control-style recipe
 
@@ -185,12 +184,12 @@ value. The base style stores `ThemeColors.*` values, not resolved concretes:
 | `ShadowForegroundProperty` | Normal   | `ThemeColors.Border`              |
 
 Because none of these values depend on the specific theme, this base style is
-**theme-independent** — every theme's base style is byte-identical, and a
-theme differs from another only by its resolved palette (plus any per-type
-style overrides a theme adds on top). `ThemeBuilder` still writes the palette
-itself — `theme.SetColor(role, concreteColor)` for all twelve roles, from the
-roles resolved above — which is what the base style's `ThemeColors.*` values
-resolve against at render time.
+**theme-independent** — every theme's base style is byte-identical, and a theme
+differs from another only by its resolved palette (plus any per-type style
+overrides a theme adds on top). `ThemeBuilder` still writes the palette itself —
+`theme.SetColor(role, concreteColor)` for all twelve roles, from the roles
+resolved above — which is what the base style's `ThemeColors.*` values resolve
+against at render time.
 
 The theme is then frozen and returned; a frozen `Theme` cannot be mutated
 further. This is the only recipe v1 ships — there is no per-theme override of

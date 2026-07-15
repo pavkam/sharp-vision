@@ -8,17 +8,6 @@ using SharpVision.Runtime;
 /// <summary>Verifies the application owns and disposes an injected console host restore lease.</summary>
 public sealed class ApplicationHostLeaseTests
 {
-    private sealed class TrackingLease: IAsyncDisposable
-    {
-        internal int Disposals { get; private set; }
-
-        public ValueTask DisposeAsync()
-        {
-            Disposals++;
-            return ValueTask.CompletedTask;
-        }
-    }
-
     /// <summary>Verifies disposal before start still disposes the owned host lease exactly once.</summary>
     [Fact]
     public async Task DisposeAsync_WhenNeverStarted_DisposesHostLeaseOnceAsync()

@@ -11,13 +11,6 @@ using SharpVision.Terminal.Tests.Support;
 /// </summary>
 public sealed class ConsoleConnectionTests
 {
-    private sealed class TrackingRestore: IDisposable
-    {
-        public int Disposals { get; private set; }
-
-        public void Dispose() => Disposals++;
-    }
-
     /// <summary>
     /// Verifies that DisposeAsync restores the lease exactly once when called multiple times.
     /// </summary>

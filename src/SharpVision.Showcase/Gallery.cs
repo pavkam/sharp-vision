@@ -52,7 +52,7 @@ public sealed class Gallery: Screen
 
     private static ThemeCatalogEntry[] BuildThemePickerEntries()
     {
-        IReadOnlyList<ThemeCatalogEntry> entries = SharpVision.Styling.ThemeCatalog.Default.Entries;
+        IReadOnlyList<ThemeCatalogEntry> entries = ThemeCatalog.Default.Entries;
         List<ThemeCatalogEntry> ordered = new(entries.Count);
 
         foreach (ThemeCatalogEntry entry in entries)
@@ -323,7 +323,7 @@ public sealed class Gallery: Screen
 
         if ((uint) index < (uint) ThemePickerEntries.Length)
         {
-            SetTheme(SharpVision.Styling.ThemeCatalog.Default.Load(ThemePickerEntries[index].Slug));
+            SetTheme(ThemeCatalog.Default.Load(ThemePickerEntries[index].Slug));
         }
     }
 

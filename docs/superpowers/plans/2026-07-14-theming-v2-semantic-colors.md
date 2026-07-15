@@ -1,10 +1,22 @@
 # Theming v2: Semantic Colors Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make semantic theme colors first-class `Color` values (`ThemeColors.Accent`) that resolve late through the one style cascade, retiring `Control.TryGetThemeColor` and `RoleSwatch`.
+**Goal:** Make semantic theme colors first-class `Color` values
+(`ThemeColors.Accent`) that resolve late through the one style cascade, retiring
+`Control.TryGetThemeColor` and `RoleSwatch`.
 
-**Architecture:** `Color` gains a deferred `ColorKind.Role` (opaque id) mirroring `ColorKind.Default`. `ThemeColors` (Styling) exposes one `Color` per `ColorRole`. Role colors flow through the existing style cascade and collapse to concrete colors at a single point — `Control.ResolveProperty` (and the design-time `ThemeResolver` overload) — using the active theme's palette. `CellStyle` construction rejects unresolved role colors as a fail-fast guard. The base control style becomes a fixed property→role mapping; a theme differs only by its palette.
+**Architecture:** `Color` gains a deferred `ColorKind.Role` (opaque id)
+mirroring `ColorKind.Default`. `ThemeColors` (Styling) exposes one `Color` per
+`ColorRole`. Role colors flow through the existing style cascade and collapse to
+concrete colors at a single point — `Control.ResolveProperty` (and the
+design-time `ThemeResolver` overload) — using the active theme's palette.
+`CellStyle` construction rejects unresolved role colors as a fail-fast guard.
+The base control style becomes a fixed property→role mapping; a theme differs
+only by its palette.
 
 **Tech Stack:** .NET 10 / C# 14, xUnit v3 + Shouldly. No new dependencies.
 
@@ -12,29 +24,55 @@ Spec: `docs/superpowers/specs/2026-07-14-theming-v2-semantic-colors-design.md`.
 
 ## Global Constraints
 
-- .NET 10 / C# 14. File-scoped namespaces; `using` after the namespace; `var` for locals where the type is apparent (repo `.editorconfig` enforces style; `TreatWarningsAsErrors` is on — expect analyzer-forced deviations from any literal snippet below, e.g. throw-ternaries for `IDE0046`, `<summary>` on test methods for the doc analyzer; these are acceptable when behavior/signatures match).
-- One named type per file. No primary constructors; explicit constructors validating arguments first. XML docs on every public/internal type and member; document every thrown exception.
-- 12 `ColorRole`s: Foreground, Background, Surface, Border, Accent, Muted, SelectionBackground, SelectionForeground, Error, Warning, Success, Info.
-- Zero build warnings. Tests: xUnit v3, Shouldly, Arrange/Act/Assert, `MethodName_WhenThis_ThatIsExpected`, TDD (watch it fail first).
+- .NET 10 / C# 14. File-scoped namespaces; `using` after the namespace; `var`
+  for locals where the type is apparent (repo `.editorconfig` enforces style;
+  `TreatWarningsAsErrors` is on — expect analyzer-forced deviations from any
+  literal snippet below, e.g. throw-ternaries for `IDE0046`, `<summary>` on test
+  methods for the doc analyzer; these are acceptable when behavior/signatures
+  match).
+- One named type per file. No primary constructors; explicit constructors
+  validating arguments first. XML docs on every public/internal type and member;
+  document every thrown exception.
+- 12 `ColorRole`s: Foreground, Background, Surface, Border, Accent, Muted,
+  SelectionBackground, SelectionForeground, Error, Warning, Success, Info.
+- Zero build warnings. Tests: xUnit v3, Shouldly, Arrange/Act/Assert,
+  `MethodName_WhenThis_ThatIsExpected`, TDD (watch it fail first).
 
-**Shared-branch discipline (critical):** work happens on `codex/runtime-protocol-router`, shared with a concurrent session that actively edits files under `src/SharpVision/Controls/` (esp. `Container.cs`, `Control.cs`). For EVERY task:
-- Stage ONLY the task's exact files; commit with an explicit **pathspec** (`git commit -- <files>`), never `git add -A`/`.`, `git restore`, `git stash`, `git checkout`, `git reset`.
-- `Control.ThemeValues.cs` (Tasks 4, 6) is a `Control` partial in `Controls/`. Before editing, `git status` it; if the concurrent session has it dirty/changed, coordinate rather than clobber. Do not touch any other `Controls/` file.
-- If a build/test fails on a file you didn't touch (concurrent WIP), verify in a disposable detached `git worktree` at committed HEAD with your files copied in — never stash/reset the shared tree.
+**Shared-branch discipline (critical):** work happens on
+`codex/runtime-protocol-router`, shared with a concurrent session that actively
+edits files under `src/SharpVision/Controls/` (esp. `Container.cs`,
+`Control.cs`). For EVERY task:
 
-**Setup:** record the base commit before each task (`git rev-parse --short HEAD`); review each task by its own commit (`SHA^..SHA`).
+- Stage ONLY the task's exact files; commit with an explicit **pathspec**
+  (`git commit -- <files>`), never `git add -A`/`.`, `git restore`, `git stash`,
+  `git checkout`, `git reset`.
+- `Control.ThemeValues.cs` (Tasks 4, 6) is a `Control` partial in `Controls/`.
+  Before editing, `git status` it; if the concurrent session has it
+  dirty/changed, coordinate rather than clobber. Do not touch any other
+  `Controls/` file.
+- If a build/test fails on a file you didn't touch (concurrent WIP), verify in a
+  disposable detached `git worktree` at committed HEAD with your files copied in
+  — never stash/reset the shared tree.
+
+**Setup:** record the base commit before each task
+(`git rev-parse --short HEAD`); review each task by its own commit
+(`SHA^..SHA`).
 
 ---
 
 ### Task 1: `Color.Role` / `ColorKind.Role` / `Color.RoleId`
 
 **Files:**
+
 - Modify: `src/SharpVision.Terminal/Protocols/ColorKind.cs`
 - Modify: `src/SharpVision.Terminal/Protocols/Color.cs`
-- Test: `tests/SharpVision.Terminal.Tests/Protocols/ColorRoleKindTests.cs` (create)
+- Test: `tests/SharpVision.Terminal.Tests/Protocols/ColorRoleKindTests.cs`
+  (create)
 
 **Interfaces:**
-- Produces: `ColorKind.Role`; `Color.Role(int id) : Color`; `Color.RoleId : int`.
+
+- Produces: `ColorKind.Role`; `Color.Role(int id) : Color`;
+  `Color.RoleId : int`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -85,7 +123,8 @@ public sealed class ColorRoleKindTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorRoleKindTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorRoleKindTests" --timeout 60s`
 Expected: FAIL — `ColorKind.Role`/`Color.Role`/`RoleId` do not exist.
 
 - [ ] **Step 3: Implement**
@@ -122,7 +161,8 @@ Add to `Color.cs` (after `Rgb`):
         : throw new InvalidOperationException("RoleId is only defined for a role color.");
 ```
 
-- [ ] **Step 4: Run test — PASS.** `dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorRoleKindTests" --timeout 60s`
+- [ ] **Step 4: Run test — PASS.**
+      `dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*ColorRoleKindTests" --timeout 60s`
 
 - [ ] **Step 5: Commit**
 
@@ -136,12 +176,17 @@ git commit -- src/SharpVision.Terminal/Protocols/ColorKind.cs src/SharpVision.Te
 ### Task 2: `CellStyle` rejects unresolved role colors (encode guard)
 
 **Files:**
+
 - Modify: `src/SharpVision.Terminal/Rendering/CellStyle.cs`
-- Test: `tests/SharpVision.Terminal.Tests/Rendering/CellStyleRoleGuardTests.cs` (create — confirm the `Rendering` test folder path; match the sibling test layout)
+- Test: `tests/SharpVision.Terminal.Tests/Rendering/CellStyleRoleGuardTests.cs`
+  (create — confirm the `Rendering` test folder path; match the sibling test
+  layout)
 
 **Interfaces:**
+
 - Consumes: `ColorKind.Role` (Task 1).
-- Produces: `CellStyle` constructor throws `ArgumentException` when any color argument has `Kind == Role`.
+- Produces: `CellStyle` constructor throws `ArgumentException` when any color
+  argument has `Kind == Role`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -172,9 +217,11 @@ public sealed class CellStyleRoleGuardTests
 }
 ```
 
-- [ ] **Step 2: Run — FAIL** (currently a role color is accepted). `dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*CellStyleRoleGuardTests" --timeout 60s`
+- [ ] **Step 2: Run — FAIL** (currently a role color is accepted).
+      `dotnet test --project tests/SharpVision.Terminal.Tests --filter-class "*CellStyleRoleGuardTests" --timeout 60s`
 
-- [ ] **Step 3: Implement** — in the `CellStyle` constructor validation block add (before assigning state):
+- [ ] **Step 3: Implement** — in the `CellStyle` constructor validation block
+      add (before assigning state):
 
 ```csharp
         if (foreground.Kind == ColorKind.Role || background.Kind == ColorKind.Role || underlineColor.Kind == ColorKind.Role)
@@ -197,12 +244,17 @@ git commit -- src/SharpVision.Terminal/Rendering/CellStyle.cs tests/SharpVision.
 ### Task 3: `ThemeColors` semantic-color accessor
 
 **Files:**
+
 - Create: `src/SharpVision/Styling/ThemeColors.cs`
 - Test: `tests/SharpVision.Tests/Styling/ThemeColorsTests.cs`
 
 **Interfaces:**
+
 - Consumes: `Color.Role` (Task 1), `ColorRole`.
-- Produces: `public static class ThemeColors` with 12 `Color` properties (`Foreground`, `Background`, `Surface`, `Border`, `Accent`, `Muted`, `SelectionBackground`, `SelectionForeground`, `Error`, `Warning`, `Success`, `Info`), each `Color.Role((int)ColorRole.X)`.
+- Produces: `public static class ThemeColors` with 12 `Color` properties
+  (`Foreground`, `Background`, `Surface`, `Border`, `Accent`, `Muted`,
+  `SelectionBackground`, `SelectionForeground`, `Error`, `Warning`, `Success`,
+  `Info`), each `Color.Role((int)ColorRole.X)`.
 
 - [ ] **Step 1: Failing test**
 
@@ -322,14 +374,21 @@ git commit -- src/SharpVision/Styling/ThemeColors.cs tests/SharpVision.Tests/Sty
 ### Task 4: Central late resolution of role colors
 
 **Files:**
-- Create: `src/SharpVision/Styling/SemanticColor.cs` (internal resolution helper)
+
+- Create: `src/SharpVision/Styling/SemanticColor.cs` (internal resolution
+  helper)
 - Modify: `src/SharpVision/Controls/Control.ThemeValues.cs` (`ResolveProperty`)
 - Modify: `src/SharpVision/Styling/ThemeResolver.cs` (design-time overload)
 - Test: `tests/SharpVision.Tests/Styling/SemanticColorResolutionTests.cs`
 
 **Interfaces:**
-- Consumes: `Color.Role`/`RoleId`/`ColorKind.Role`, `ColorRole`, `ThemeContext.TryGetColor`, `Theme.TryGetColor`.
-- Produces: `internal static class SemanticColor` with `static Color Resolve(Color color, Func<ColorRole, Color?> lookup)`; `Control.ResolveProperty` and `ThemeResolver.Resolve(Theme,...)` collapse role colors to concrete.
+
+- Consumes: `Color.Role`/`RoleId`/`ColorKind.Role`, `ColorRole`,
+  `ThemeContext.TryGetColor`, `Theme.TryGetColor`.
+- Produces: `internal static class SemanticColor` with
+  `static Color Resolve(Color color, Func<ColorRole, Color?> lookup)`;
+  `Control.ResolveProperty` and `ThemeResolver.Resolve(Theme,...)` collapse role
+  colors to concrete.
 
 - [ ] **Step 1: Failing test**
 
@@ -391,9 +450,13 @@ public sealed class SemanticColorResolutionTests
 }
 ```
 
-> **Implementer note:** confirm `ProbeControl` and `ThemeTestSupport.ApplyTheme` exist in `tests/SharpVision.Tests/Support` (used by `StandardThemeTests`). Reuse them. If `ApplyTheme` publishes a fresh `ThemeContext` per call, the swap assertion validates cache invalidation.
+> **Implementer note:** confirm `ProbeControl` and `ThemeTestSupport.ApplyTheme`
+> exist in `tests/SharpVision.Tests/Support` (used by `StandardThemeTests`).
+> Reuse them. If `ApplyTheme` publishes a fresh `ThemeContext` per call, the
+> swap assertion validates cache invalidation.
 
-- [ ] **Step 2: Run — FAIL** (role color returned as-is, `GetValue` yields `Color.Role(...)` not the palette color).
+- [ ] **Step 2: Run — FAIL** (role color returned as-is, `GetValue` yields
+      `Color.Role(...)` not the palette color).
 
 - [ ] **Step 3: Implement**
 
@@ -425,7 +488,8 @@ internal static class SemanticColor
 }
 ```
 
-In `Control.ThemeValues.cs`, change `ResolveProperty<T>` to collapse role colors using the control's `ThemeContext`:
+In `Control.ThemeValues.cs`, change `ResolveProperty<T>` to collapse role colors
+using the control's `ThemeContext`:
 
 ```csharp
     internal T ResolveProperty<T>(StyleProperty<T> property, State visualState)
@@ -456,7 +520,9 @@ In `Control.ThemeValues.cs`, change `ResolveProperty<T>` to collapse role colors
     }
 ```
 
-In `ThemeResolver.cs`, the design-time overload `Resolve<T>(Theme theme, Type controlType, StyleProperty<T> property, State visualState)` collapses at its return:
+In `ThemeResolver.cs`, the design-time overload
+`Resolve<T>(Theme theme, Type controlType, StyleProperty<T> property, State visualState)`
+collapses at its return:
 
 ```csharp
         // (after computing `value` from the chain, before returning)
@@ -470,15 +536,25 @@ In `ThemeResolver.cs`, the design-time overload `Resolve<T>(Theme theme, Type co
         return value;
 ```
 
-Add `using SharpVision.Terminal.Protocols;` where needed. Note `value is Color { Kind: ColorKind.Role }` matches both `Color` and a non-null `Color?`; `(T)(object)concrete` round-trips for both (unboxing a boxed `Color` to `Color?` is valid).
+Add `using SharpVision.Terminal.Protocols;` where needed. Note
+`value is Color { Kind: ColorKind.Role }` matches both `Color` and a non-null
+`Color?`; `(T)(object)concrete` round-trips for both (unboxing a boxed `Color`
+to `Color?` is valid).
 
-- [ ] **Step 4: Run the new test AND the full styling suite** (regression: `StandardThemeTests`/`ColorRoleTests` must still pass, because they read through `ResolveProperty`):
+- [ ] **Step 4: Run the new test AND the full styling suite** (regression:
+      `StandardThemeTests`/`ColorRoleTests` must still pass, because they read
+      through `ResolveProperty`):
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*SemanticColorResolutionTests" --timeout 60s`
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*Styling*" --timeout 120s`
-Expected: PASS. If `StandardThemeTests` fails, inspect whether `ThemeTestSupport.Resolve` bypasses `ResolveProperty`; route it through the collapsing path.
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*SemanticColorResolutionTests" --timeout 60s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*Styling*" --timeout 120s`
+Expected: PASS. If `StandardThemeTests` fails, inspect whether
+`ThemeTestSupport.Resolve` bypasses `ResolveProperty`; route it through the
+collapsing path.
 
-- [ ] **Step 5: Commit** (pathspec: `SemanticColor.cs`, `Control.ThemeValues.cs`, `ThemeResolver.cs`, the new test)
+- [ ] **Step 5: Commit** (pathspec: `SemanticColor.cs`,
+      `Control.ThemeValues.cs`, `ThemeResolver.cs`, the new test)
 
 ```bash
 git commit -- src/SharpVision/Styling/SemanticColor.cs src/SharpVision/Controls/Control.ThemeValues.cs src/SharpVision/Styling/ThemeResolver.cs tests/SharpVision.Tests/Styling/SemanticColorResolutionTests.cs -m "feat(styling): resolve role colors to palette during property resolution"
@@ -489,14 +565,19 @@ git commit -- src/SharpVision/Styling/SemanticColor.cs src/SharpVision/Controls/
 ### Task 5: Recipe uses role colors; base style becomes theme-independent
 
 **Files:**
+
 - Modify: `src/SharpVision/Styling/ThemeBuilder.cs`
 - Test: `tests/SharpVision.Tests/Styling/ThemeBuilderTests.cs` (update)
 
 **Interfaces:**
-- Consumes: `ThemeColors` (Task 3), resolution (Task 4).
-- Produces: `ThemeBuilder.Build` base `ControlStyle<Control>` holds `ThemeColors.*` values; palette (`SetColor`) unchanged.
 
-- [ ] **Step 1: Update the test** — replace the base-style assertions in `ThemeBuilderTests` to expect role colors in the style AND concrete resolution through the theme:
+- Consumes: `ThemeColors` (Task 3), resolution (Task 4).
+- Produces: `ThemeBuilder.Build` base `ControlStyle<Control>` holds
+  `ThemeColors.*` values; palette (`SetColor`) unchanged.
+
+- [ ] **Step 1: Update the test** — replace the base-style assertions in
+      `ThemeBuilderTests` to expect role colors in the style AND concrete
+      resolution through the theme:
 
 ```csharp
     [Fact]
@@ -527,11 +608,15 @@ git commit -- src/SharpVision/Styling/SemanticColor.cs src/SharpVision/Controls/
     }
 ```
 
-(Keep the existing `Build_ProducesFrozenThemeWithRoles` test — the palette still carries every role.)
+(Keep the existing `Build_ProducesFrozenThemeWithRoles` test — the palette still
+carries every role.)
 
-- [ ] **Step 2: Run — the new `Build_BaseStyleStoresRoleColors` FAILS** (base style currently stores resolved concretes).
+- [ ] **Step 2: Run — the new `Build_BaseStyleStoresRoleColors` FAILS** (base
+      style currently stores resolved concretes).
 
-- [ ] **Step 3: Implement** — in `ThemeBuilder.BuildBaseStyle`, replace the resolved-color locals with `ThemeColors.*` and drop the `roles` parameter usage for the style (the palette loop in `Build` still uses `roles`):
+- [ ] **Step 3: Implement** — in `ThemeBuilder.BuildBaseStyle`, replace the
+      resolved-color locals with `ThemeColors.*` and drop the `roles` parameter
+      usage for the style (the palette loop in `Build` still uses `roles`):
 
 ```csharp
     private static ControlStyle<Control> BuildBaseStyle()
@@ -554,11 +639,17 @@ git commit -- src/SharpVision/Styling/SemanticColor.cs src/SharpVision/Controls/
     }
 ```
 
-Update `Build` to call `BuildBaseStyle()` (no argument). Keep the `foreach (ColorRole role in ...) theme.SetColor(role, roles[role]);` palette loop and `theme.Freeze()`. Note in an XML remark that the base style is now theme-independent.
+Update `Build` to call `BuildBaseStyle()` (no argument). Keep the
+`foreach (ColorRole role in ...) theme.SetColor(role, roles[role]);` palette
+loop and `theme.Freeze()`. Note in an XML remark that the base style is now
+theme-independent.
 
-- [ ] **Step 4: Run** — `ThemeBuilderTests` and the full styling suite (incl. `StandardThemeTests` asserting `Themes.Dark` foreground resolves to `Indexed(15)`):
+- [ ] **Step 4: Run** — `ThemeBuilderTests` and the full styling suite (incl.
+      `StandardThemeTests` asserting `Themes.Dark` foreground resolves to
+      `Indexed(15)`):
 
-Run: `dotnet test --project tests/SharpVision.Tests --filter-class "*Styling*" --timeout 120s`
+Run:
+`dotnet test --project tests/SharpVision.Tests --filter-class "*Styling*" --timeout 120s`
 Expected: PASS (palette values unchanged → identical concrete appearance).
 
 - [ ] **Step 5: Commit**
@@ -572,19 +663,35 @@ git commit -- src/SharpVision/Styling/ThemeBuilder.cs tests/SharpVision.Tests/St
 ### Task 6: Retire `TryGetThemeColor` and `RoleSwatch`
 
 **Files:**
-- Modify: `src/SharpVision/Controls/Control.ThemeValues.cs` (remove `TryGetThemeColor`)
+
+- Modify: `src/SharpVision/Controls/Control.ThemeValues.cs` (remove
+  `TryGetThemeColor`)
 - Delete: `src/SharpVision.Showcase/Controls/RoleSwatch.cs`
 - Modify: `src/SharpVision.Showcase/Panes/ThemingPane.cs`
-- Modify/replace test: `tests/SharpVision.Showcase.Tests/RoleSwatchLiveThemeTests.cs`
-- Modify: `docs/architecture/showcase.md` (only if wording references `RoleSwatch`/mechanism; the "active theme, live" claim stays true)
+- Modify/replace test:
+  `tests/SharpVision.Showcase.Tests/RoleSwatchLiveThemeTests.cs`
+- Modify: `docs/architecture/showcase.md` (only if wording references
+  `RoleSwatch`/mechanism; the "active theme, live" claim stays true)
 
 **Interfaces:**
+
 - Consumes: `ThemeColors`, resolution (Task 4).
-- Produces: Theming page swatches are plain fill controls with `Background = ThemeColors.<role>`.
+- Produces: Theming page swatches are plain fill controls with
+  `Background = ThemeColors.<role>`.
 
-- [ ] **Step 1: Remove `TryGetThemeColor`** from `Control.ThemeValues.cs` (the `protected bool TryGetThemeColor(ColorRole, out Color)` method and its doc). Confirm no remaining references (`git grep -n TryGetThemeColor` → only the deletion site + `RoleSwatch` which is also being deleted).
+- [ ] **Step 1: Remove `TryGetThemeColor`** from `Control.ThemeValues.cs` (the
+      `protected bool TryGetThemeColor(ColorRole, out Color)` method and its
+      doc). Confirm no remaining references (`git grep -n TryGetThemeColor` →
+      only the deletion site + `RoleSwatch` which is also being deleted).
 
-- [ ] **Step 2: Rework the Theming pane swatches.** In `ThemingPane.Build()`, replace `new RoleSwatch(role)` with a small fixed-size fill control whose background is the role color — a `Border` (or the project's minimal fill control) with `Background = <role color>`, `Width = Length.Cells(6)`, `Height = Length.Cells(1)`, and an opaque fill. Map each `ColorRole` to its `ThemeColors` value (a `switch` or a `ColorRole`→`Color` helper). The description already says the swatches track the active theme; keep it. Example per row:
+- [ ] **Step 2: Rework the Theming pane swatches.** In `ThemingPane.Build()`,
+      replace `new RoleSwatch(role)` with a small fixed-size fill control whose
+      background is the role color — a `Border` (or the project's minimal fill
+      control) with `Background = <role color>`, `Width = Length.Cells(6)`,
+      `Height = Length.Cells(1)`, and an opaque fill. Map each `ColorRole` to
+      its `ThemeColors` value (a `switch` or a `ColorRole`→`Color` helper). The
+      description already says the swatches track the active theme; keep it.
+      Example per row:
 
 ```csharp
 foreach (ColorRole role in Enum.GetValues<ColorRole>())
@@ -600,55 +707,104 @@ foreach (ColorRole role in Enum.GetValues<ColorRole>())
 }
 ```
 
-Add a private `static Color ThemeColorFor(ColorRole role) => role switch { ColorRole.Foreground => ThemeColors.Foreground, ... };` (all 12). Because `Background` is a role color resolved on render (Task 4), the chip tracks theme swaps with no custom control.
+Add a private
+`static Color ThemeColorFor(ColorRole role) => role switch { ColorRole.Foreground => ThemeColors.Foreground, ... };`
+(all 12). Because `Background` is a role color resolved on render (Task 4), the
+chip tracks theme swaps with no custom control.
 
-> **Implementer note:** confirm `Border` (or whichever container) paints its `Background` across its area with `FillMode.Opaque`. If a bare `Border` with no child does not fill, use the same fill approach the deleted `RoleSwatch` used, but driven by the `Background` property rather than an `OnRender` `TryGetThemeColor` call. The control must NOT read the theme itself — it only sets `Background = <role color>` and lets resolution handle it.
+> **Implementer note:** confirm `Border` (or whichever container) paints its
+> `Background` across its area with `FillMode.Opaque`. If a bare `Border` with
+> no child does not fill, use the same fill approach the deleted `RoleSwatch`
+> used, but driven by the `Background` property rather than an `OnRender`
+> `TryGetThemeColor` call. The control must NOT read the theme itself — it only
+> sets `Background = <role color>` and lets resolution handle it.
 
 - [ ] **Step 3: Delete `RoleSwatch.cs`** (`git rm`).
 
-- [ ] **Step 4: Replace the live-theme test.** Rewrite `RoleSwatchLiveThemeTests` (rename to e.g. `ThemeSwatchLiveThemeTests`) to assert the Theming page's swatch cell shows the active theme's role color and updates after `application.Theme = ThemeCatalog.Default.Load("dracula")` — same harness, now targeting the plain chip control instead of `RoleSwatch`. Assert the rendered cell background equals `Themes.Dark`'s role color initially and Dracula's after the swap, with a distinctness guard.
+- [ ] **Step 4: Replace the live-theme test.** Rewrite
+      `RoleSwatchLiveThemeTests` (rename to e.g. `ThemeSwatchLiveThemeTests`) to
+      assert the Theming page's swatch cell shows the active theme's role color
+      and updates after
+      `application.Theme = ThemeCatalog.Default.Load("dracula")` — same harness,
+      now targeting the plain chip control instead of `RoleSwatch`. Assert the
+      rendered cell background equals `Themes.Dark`'s role color initially and
+      Dracula's after the swap, with a distinctness guard.
 
-- [ ] **Step 5: Run** — `dotnet test --project tests/SharpVision.Showcase.Tests --filter-class "*ThemeSwatchLiveThemeTests" --timeout 120s` and `--filter-class "*ThemeGalleryTests"`. Build the showcase clean.
+- [ ] **Step 5: Run** —
+      `dotnet test --project tests/SharpVision.Showcase.Tests --filter-class "*ThemeSwatchLiveThemeTests" --timeout 120s`
+      and `--filter-class "*ThemeGalleryTests"`. Build the showcase clean.
 
-- [ ] **Step 6: Commit** (pathspec incl. the `git rm`'d file, the pane, the renamed test, and Control.ThemeValues.cs)
+- [ ] **Step 6: Commit** (pathspec incl. the `git rm`'d file, the pane, the
+      renamed test, and Control.ThemeValues.cs)
 
 ```bash
 git commit -- src/SharpVision/Controls/Control.ThemeValues.cs src/SharpVision.Showcase/Controls/RoleSwatch.cs src/SharpVision.Showcase/Panes/ThemingPane.cs tests/SharpVision.Showcase.Tests/RoleSwatchLiveThemeTests.cs tests/SharpVision.Showcase.Tests/ThemeSwatchLiveThemeTests.cs -m "refactor: retire TryGetThemeColor and RoleSwatch for role-color swatches"
 ```
 
-(Adjust the pathspec to the actual renamed test file(s); a `git rm` + new file both appear.)
+(Adjust the pathspec to the actual renamed test file(s); a `git rm` + new file
+both appear.)
 
 ---
 
 ### Task 7: Documentation
 
 **Files:**
+
 - Modify: `docs/concepts/themes.md`
 - Modify: the `ColorRole` reference (`docs/concepts/theming-new-controls.md`)
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Update `docs/concepts/themes.md`.** In the roles/recipe sections, document that semantic colors are first-class `Color` values via `ThemeColors.*` (e.g. `Background = ThemeColors.Accent`), resolved late against the active theme's palette through the style cascade; that the base control style is a fixed property→role mapping (theme-independent) and a theme differs only by its palette; and that custom controls use `ThemeColors.*` directly (no `TryGetThemeColor`). Keep the JSON format / fallback / catalog / `ThemeFile` sections accurate (unchanged). No placeholders.
+- [ ] **Step 1: Update `docs/concepts/themes.md`.** In the roles/recipe
+      sections, document that semantic colors are first-class `Color` values via
+      `ThemeColors.*` (e.g. `Background = ThemeColors.Accent`), resolved late
+      against the active theme's palette through the style cascade; that the
+      base control style is a fixed property→role mapping (theme-independent)
+      and a theme differs only by its palette; and that custom controls use
+      `ThemeColors.*` directly (no `TryGetThemeColor`). Keep the JSON format /
+      fallback / catalog / `ThemeFile` sections accurate (unchanged). No
+      placeholders.
 
-- [ ] **Step 2: Update the `ColorRole` reference** (`theming-new-controls.md`) to point custom-control authors at `ThemeColors.*` values instead of a query API.
+- [ ] **Step 2: Update the `ColorRole` reference** (`theming-new-controls.md`)
+      to point custom-control authors at `ThemeColors.*` values instead of a
+      query API.
 
-- [ ] **Step 3: Validate** markdown lint on the touched files (scoped); confirm links resolve.
+- [ ] **Step 3: Validate** markdown lint on the touched files (scoped); confirm
+      links resolve.
 
-- [ ] **Step 4: Commit** (`git commit -- docs/concepts/themes.md docs/concepts/theming-new-controls.md -m "docs(styling): document semantic ThemeColors and late resolution"`)
+- [ ] **Step 4: Commit**
+      (`git commit -- docs/concepts/themes.md docs/concepts/theming-new-controls.md -m "docs(styling): document semantic ThemeColors and late resolution"`)
 
 ---
 
 ### Final verification
 
-- [ ] Build the three projects clean (0 warnings): `dotnet build src/SharpVision.Showcase/SharpVision.Showcase.csproj`.
-- [ ] Run the styling + terminal + showcase theme suites; all green: `*Styling*`, `*ColorRoleKindTests`, `*CellStyleRoleGuardTests`, `*ThemeGalleryTests`, `*ThemeSwatchLiveThemeTests`.
+- [ ] Build the three projects clean (0 warnings):
+      `dotnet build src/SharpVision.Showcase/SharpVision.Showcase.csproj`.
+- [ ] Run the styling + terminal + showcase theme suites; all green:
+      `*Styling*`, `*ColorRoleKindTests`, `*CellStyleRoleGuardTests`,
+      `*ThemeGalleryTests`, `*ThemeSwatchLiveThemeTests`.
 - [ ] `git grep -n "TryGetThemeColor\|RoleSwatch"` returns nothing.
-- [ ] Confirm no `Controls/` files other than `Control.ThemeValues.cs` were touched (concurrent session's territory).
-- [ ] Full `make format/lint/build/test` gate — run once the concurrent session's tree settles; note if deferred.
+- [ ] Confirm no `Controls/` files other than `Control.ThemeValues.cs` were
+      touched (concurrent session's territory).
+- [ ] Full `make format/lint/build/test` gate — run once the concurrent
+      session's tree settles; note if deferred.
 
 ## Self-Review notes (author)
 
-- **Spec coverage:** §1 Color.Role→T1; encode guard→T2; §2 ThemeColors→T3; §3 central resolution→T4; §4 recipe→T5; §5 retire TryGetThemeColor/RoleSwatch→T6; §6 API surface→T3/T6; docs→T7. All covered.
-- **Type consistency:** `Color.Role`/`RoleId`/`ColorKind.Role`, `ThemeColors.*`, `SemanticColor.Resolve`, `Control.ResolveProperty`, `ThemeResolver.Resolve(Theme,…)` used identically across tasks.
-- **Regression safety:** resolution lives inside `ResolveProperty`, so `StandardThemeTests`/`ColorRoleTests` and all render paths get concrete colors unchanged (Tasks 4/5 explicitly re-run `*Styling*`). The `CellStyle` guard (T2) is defense-in-depth; it should never trip in normal flow because resolution precedes composition.
-- **Flagged for implementers:** verify `ProbeControl`/`ThemeTestSupport.ApplyTheme` (T4); confirm the `Rendering` test folder path (T2); confirm a `Border` fills its `Background` with no child (T6). Shared-branch: `Control.ThemeValues.cs` is in the concurrent session's `Controls/` dir — check before editing.
+- **Spec coverage:** §1 Color.Role→T1; encode guard→T2; §2 ThemeColors→T3; §3
+  central resolution→T4; §4 recipe→T5; §5 retire TryGetThemeColor/RoleSwatch→T6;
+  §6 API surface→T3/T6; docs→T7. All covered.
+- **Type consistency:** `Color.Role`/`RoleId`/`ColorKind.Role`, `ThemeColors.*`,
+  `SemanticColor.Resolve`, `Control.ResolveProperty`,
+  `ThemeResolver.Resolve(Theme,…)` used identically across tasks.
+- **Regression safety:** resolution lives inside `ResolveProperty`, so
+  `StandardThemeTests`/`ColorRoleTests` and all render paths get concrete colors
+  unchanged (Tasks 4/5 explicitly re-run `*Styling*`). The `CellStyle` guard
+  (T2) is defense-in-depth; it should never trip in normal flow because
+  resolution precedes composition.
+- **Flagged for implementers:** verify
+  `ProbeControl`/`ThemeTestSupport.ApplyTheme` (T4); confirm the `Rendering`
+  test folder path (T2); confirm a `Border` fills its `Background` with no child
+  (T6). Shared-branch: `Control.ThemeValues.cs` is in the concurrent session's
+  `Controls/` dir — check before editing.
