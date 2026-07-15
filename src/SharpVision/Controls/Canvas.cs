@@ -217,10 +217,14 @@ public sealed class Canvas: Container
         }
     }
 
+    // bounds.X/bounds.Y (left, in the ArrangeOverride callers below) legitimately
+    // goes negative once this canvas is scrolled content inside an armed
+    // AutoScroll container: ResolveContentSlot shifts the content slot by the
+    // current offset. The increment (right) — a resolved offset or margin —
+    // remains non-negative in every caller.
     private static int Add(int left, int right)
     {
-        Debug.Assert(left >= 0, "Canvas accumulation uses non-negative extents.");
-        Debug.Assert(right >= 0, "Canvas accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Canvas accumulation uses a non-negative increment.");
 
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;

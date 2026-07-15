@@ -198,6 +198,7 @@ public sealed class InteractivePerformanceTests
     private static Stack Hidden(Control content) => new()
     {
         AutoScroll = true,
+        ScrollBars = ScrollBars.Both,
         ShowScrollBars = ShowScrollBars.Never,
         Children = { content },
     };

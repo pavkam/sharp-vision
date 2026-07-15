@@ -28,7 +28,7 @@ public sealed class InteractiveControlTests
             out RadioButton? secondRadio,
             out TextInput? input,
             out ScrollBar? scrollBar,
-            out Stack? scrollView,
+            out Stack? scroll,
             out UiList? list);
         List<string> order = [];
         button.Click += (_, _) => order.Add("button");
@@ -51,7 +51,7 @@ public sealed class InteractiveControlTests
                 Center(secondRadio),
                 Center(input),
                 new Point(scrollBar.Bounds.Right - 2, scrollBar.Bounds.Y),
-                Center(scrollView),
+                Center(scroll),
                 new Point(list.Bounds.X, list.Bounds.Y + 1),
             },
             TestContext.Current.CancellationToken);
@@ -88,7 +88,7 @@ public sealed class InteractiveControlTests
             TestContext.Current.CancellationToken);
         WheelDown(terminal, points[5]);
         await WaitUntilAsync(
-            () => scrollView.VerticalOffset == 1,
+            () => scroll.VerticalOffset == 1,
             application,
             "scroll-view wheel",
             TestContext.Current.CancellationToken);
@@ -258,7 +258,7 @@ public sealed class InteractiveControlTests
         out RadioButton secondRadio,
         out TextInput input,
         out ScrollBar scrollBar,
-        out Stack scrollView,
+        out Stack scroll,
         out UiList list)
     {
         button = new Button { Content = new Label("Go"), Width = Length.Cells(20) };
@@ -284,7 +284,7 @@ public sealed class InteractiveControlTests
             ViewportSize = 20,
             Width = Length.Cells(20),
         };
-        scrollView = new Stack
+        scroll = new Stack
         {
             AutoScroll = true,
             ShowScrollBars = ShowScrollBars.Never,
@@ -305,7 +305,7 @@ public sealed class InteractiveControlTests
         root.Children.Add(secondRadio);
         root.Children.Add(input);
         root.Children.Add(scrollBar);
-        root.Children.Add(scrollView);
+        root.Children.Add(scroll);
         root.Children.Add(list);
         return root;
     }

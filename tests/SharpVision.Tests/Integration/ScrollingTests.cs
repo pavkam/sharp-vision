@@ -36,11 +36,12 @@ public sealed class ScrollingTests
         Stack inner = new()
         {
             AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
             Width = Length.Cells(12),
             Height = Length.Cells(7),
             Children = { content },
         };
-        Stack outer = new() { AutoScroll = true, Children = { inner } };
+        Stack outer = new() { AutoScroll = true, ScrollBars = ScrollBars.Both, Children = { inner } };
         await using Application application = new(
             outer,
             terminal,
@@ -161,6 +162,7 @@ public sealed class ScrollingTests
     private static Stack Hidden(Control content) => new()
     {
         AutoScroll = true,
+        ScrollBars = ScrollBars.Both,
         ShowScrollBars = ShowScrollBars.Never,
         Children = { content },
     };

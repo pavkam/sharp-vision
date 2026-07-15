@@ -173,10 +173,15 @@ public sealed class Stack: Container
         }
     }
 
+    // The running arrange-time origin (left) legitimately goes negative once
+    // this stack is scrolled content inside an armed AutoScroll container:
+    // ResolveContentSlot shifts the content slot by the current offset, so a
+    // stack flush against its parent's origin arranges at a negative Y/X once
+    // scrolled past zero. The increment (right) — an extent, margin, or
+    // spacing value — remains non-negative in every caller.
     private static int Add(int left, int right)
     {
-        Debug.Assert(left >= 0, "Stack accumulation uses non-negative extents.");
-        Debug.Assert(right >= 0, "Stack accumulation uses non-negative extents.");
+        Debug.Assert(right >= 0, "Stack accumulation uses a non-negative increment.");
 
         long value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;

@@ -277,7 +277,21 @@ public abstract class Container: Control
         get;
         set
         {
-            if (Set(ref field, value, Invalidation.Measure) && !value)
+            if (!Set(ref field, value, Invalidation.Measure))
+            {
+                return;
+            }
+
+            // Bars are created eagerly here (mirroring the former ScrollView
+            // constructor) rather than lazily in ResolveContentSlot. Lazy
+            // creation there added children mid-arrange, which invalidates
+            // this container's own measure and can prevent nested armed
+            // containers from ever converging to a settled layout.
+            if (value)
+            {
+                EnsureBars();
+            }
+            else
             {
                 _horizontalOffset = 0;
                 _verticalOffset = 0;

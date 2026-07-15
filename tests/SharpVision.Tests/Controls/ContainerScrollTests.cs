@@ -224,4 +224,82 @@ public sealed class ContainerScrollTests
 
         _ = Should.Throw<ArgumentException>(() => container.BringIntoView(stray));
     }
+
+    /// <summary>
+    /// Verifies arming AutoScroll creates the scrollbar chrome immediately from the
+    /// property setter rather than lazily the first time this container arranges.
+    /// Lazy creation added children to this container mid-arrange, which
+    /// invalidates this container's own measure phase; a nested armed container
+    /// doing the same on every frame could prevent the tree from ever settling.
+    /// </summary>
+    [Fact]
+    public void AutoScroll_WhenArmed_CreatesBarsBeforeAnyLayoutPass()
+    {
+        LayoutProbe container = new();
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        int navigationCountBeforeArming = container.NavigationCount;
+
+        container.AutoScroll = true;
+
+        // NavigationCount folds in the owned scrollbar chrome once created
+        // (see Container.NavigationCount), so its growth proves the bars now
+        // exist before Layout ever ran once for this container.
+        container.NavigationCount.ShouldBe(navigationCountBeforeArming + 2);
+    }
+
+    /// <summary>
+    /// Verifies one Layout pass on a freshly armed container leaves no residual
+    /// Measure invalidation, proving arrange no longer re-dirties this
+    /// container's own measure phase by creating the scrollbar chrome.
+    /// </summary>
+    [Fact]
+    public void Layout_WhenContainerArmsForTheFirstTime_ConvergesInOnePass()
+    {
+        LayoutProbe container = new() { AutoScroll = true };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+
+        new Engine().Layout(container, new Size(4, 10));
+
+        // Render legitimately stays pending — Layout never renders — but a
+        // second Measure/Arrange pass would mean the first one left the tree
+        // dirty, which is exactly what lazy bar creation during arrange did.
+        (container.Pending & (Invalidation.Measure | Invalidation.Arrange))
+            .ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>
+    /// Verifies a Stack armed as scrolled content inside another armed Stack
+    /// arranges correctly at a negative origin once scrolled past zero, rather
+    /// than hanging. ResolveContentSlot legitimately shifts a scrolled
+    /// container's content slot below its own top-left corner; Stack's
+    /// internal arrange-origin accumulator must tolerate that without
+    /// asserting.
+    /// </summary>
+    [Fact]
+    public void Layout_WhenNestedArmedStacksScrollBeyondZero_ArrangesNegativeOriginContent()
+    {
+        ProbeControl leaf = new(new Size(4, 20));
+        Stack inner = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Never,
+            Height = Length.Cells(4),
+            Children = { leaf },
+        };
+        Stack outer = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Never,
+            Children = { inner },
+        };
+        new Engine().Layout(outer, new Size(4, 4));
+
+        _ = inner.ScrollBy(0, 10);
+        new Engine().Layout(outer, new Size(4, 4));
+
+        inner.VerticalOffset.ShouldBe(10);
+        leaf.Bounds.Y.ShouldBe(-10);
+    }
 }
