@@ -57,7 +57,7 @@ internal sealed class NavigationItem: Pressable
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        var labelCells = SharpVision.Terminal.Unicode.Width.Measure(Label).Cells;
+        var labelCells = Terminal.Unicode.Width.Measure(Label).Cells;
         return new Size(Add(3, labelCells), 1);
     }
 
