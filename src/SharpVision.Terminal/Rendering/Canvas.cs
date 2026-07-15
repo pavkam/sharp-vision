@@ -3,12 +3,7 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using System.Buffers;
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Unicode;
 
 /// <summary>
 /// Draws semantic grapheme clusters into a clipped frame cell region.
@@ -67,7 +62,7 @@ public readonly struct Canvas
         BackgroundMode background = BackgroundMode.Opaque)
     {
         Span<char> buffer = stackalloc char[2];
-        int length = ValidateRune(value, buffer);
+        var length = ValidateRune(value, buffer);
         _ = Draw(buffer[..length], origin, style, background: background);
     }
 
@@ -83,14 +78,14 @@ public readonly struct Canvas
     public void Fill(Rect region, Rune value, CellStyle style = default)
     {
         Span<char> buffer = stackalloc char[2];
-        int length = ValidateRune(value, buffer);
-        Rect target = _clip.Intersect(region).Intersect(_frame.Bounds);
-        int bytes = checked(target.Width * target.Height * Frame.CountUtf8(buffer[..length]));
+        var length = ValidateRune(value, buffer);
+        var target = _clip.Intersect(region).Intersect(_frame.Bounds);
+        var bytes = checked(target.Width * target.Height * Frame.CountUtf8(buffer[..length]));
         _frame.EnsureAppendable(bytes);
 
-        for (int y = target.Y; y < target.Bottom; y++)
+        for (var y = target.Y; y < target.Bottom; y++)
         {
-            for (int x = target.X; x < target.Right; x++)
+            for (var x = target.X; x < target.Right; x++)
             {
                 _frame.Write(new Point(x, y), buffer[..length], 1, style);
             }
@@ -119,14 +114,14 @@ public readonly struct Canvas
             throw new ArgumentOutOfRangeException(nameof(background), background, "The background mode is unknown.");
         }
 
-        Rect target = _clip.Intersect(region).Intersect(_frame.Bounds);
+        var target = _clip.Intersect(region).Intersect(_frame.Bounds);
 
-        for (int y = target.Y; y < target.Bottom; y++)
+        for (var y = target.Y; y < target.Bottom; y++)
         {
-            for (int x = target.X; x < target.Right; x++)
+            for (var x = target.X; x < target.Right; x++)
             {
-                Point point = new(x, y);
-                CellStyle applied = background == BackgroundMode.Transparent
+                var point = new Point(x, y);
+                var applied = background == BackgroundMode.Transparent
                     ? new CellStyle(
                         style.Foreground,
                         _frame.GetCell(point).Style.Background,
@@ -152,7 +147,7 @@ public readonly struct Canvas
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         _frame.ThrowIfDisposed();
 
-        for (int offset = 0; offset < length; offset++)
+        for (var offset = 0; offset < length; offset++)
         {
             DrawLineCell(
                 new Point(checked(origin.X + offset), origin.Y),
@@ -174,7 +169,7 @@ public readonly struct Canvas
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         _frame.ThrowIfDisposed();
 
-        for (int offset = 0; offset < length; offset++)
+        for (var offset = 0; offset < length; offset++)
         {
             DrawLineCell(
                 new Point(origin.X, checked(origin.Y + offset)),
@@ -279,11 +274,11 @@ public readonly struct Canvas
             return;
         }
 
-        ReadOnlySpan<byte> bytes = _frame.GetGrapheme(_frame.GetIndex(point));
+        var bytes = _frame.GetGrapheme(_frame.GetIndex(point));
 
-        if (Rune.DecodeFromUtf8(bytes, out Rune existing, out int consumed) == OperationStatus.Done &&
+        if (Rune.DecodeFromUtf8(bytes, out var existing, out var consumed) == OperationStatus.Done &&
             consumed == bytes.Length &&
-            BlockResolver.TryDecode(existing, out Quadrants previous))
+            BlockResolver.TryDecode(existing, out var previous))
         {
             quadrants |= previous;
         }
@@ -322,9 +317,9 @@ public readonly struct Canvas
             throw new ArgumentOutOfRangeException(nameof(background), background, "The background mode is unknown.");
         }
 
-        DrawResult preflight = Process(value, origin, style, edge, background, write: false, out int bytes);
+        var preflight = Process(value, origin, style, edge, background, write: false, out var bytes);
         _frame.EnsureAppendable(bytes);
-        DrawResult result = Process(value, origin, style, edge, background, write: true, out int written);
+        var result = Process(value, origin, style, edge, background, write: true, out var written);
         Debug.Assert(preflight == result, "Canvas preflight and mutation passes must agree.");
         Debug.Assert(bytes == written, "Canvas UTF-8 preflight and mutation must agree.");
 
@@ -338,19 +333,19 @@ public readonly struct Canvas
     public void Clear(Rect region, CellStyle style = default)
     {
         _frame.ThrowIfDisposed();
-        Rect target = _clip.Intersect(region).Intersect(_frame.Bounds);
+        var target = _clip.Intersect(region).Intersect(_frame.Bounds);
 
-        for (int y = target.Y; y < target.Bottom; y++)
+        for (var y = target.Y; y < target.Bottom; y++)
         {
-            for (int x = target.X; x < target.Right; x++)
+            for (var x = target.X; x < target.Right; x++)
             {
                 _frame.Repair(_frame.GetIndex(new Point(x, y)));
             }
         }
 
-        for (int y = target.Y; y < target.Bottom; y++)
+        for (var y = target.Y; y < target.Bottom; y++)
         {
-            for (int x = target.X; x < target.Right; x++)
+            for (var x = target.X; x < target.Right; x++)
             {
                 _frame.SetBlank(_frame.GetIndex(new Point(x, y)), style);
             }
@@ -373,18 +368,18 @@ public readonly struct Canvas
         bool write,
         out int bytes)
     {
-        int x = origin.X;
-        int y = origin.Y;
-        int graphemes = 0;
-        int cells = 0;
-        int clipped = 0;
-        int replaced = 0;
+        var x = origin.X;
+        var y = origin.Y;
+        var graphemes = 0;
+        var cells = 0;
+        var clipped = 0;
+        var replaced = 0;
         bytes = 0;
 
-        foreach (Grapheme segment in Graphemes.Enumerate(value))
+        foreach (var segment in Graphemes.Enumerate(value))
         {
-            ReadOnlySpan<char> cluster = value.Slice(segment.Offset, segment.Length);
-            Cluster classification = Width.AnalyzeCluster(
+            var cluster = value.Slice(segment.Offset, segment.Length);
+            var classification = Width.AnalyzeCluster(
                 cluster,
                 _frame.AmbiguousWidth,
                 segment.HasInvalidData);
@@ -396,9 +391,9 @@ public readonly struct Canvas
                 continue;
             }
 
-            int cellWidth = (int) classification.Width;
+            var cellWidth = (int) classification.Width;
             cells = checked(cells + cellWidth);
-            bool replacement = classification.RequiresReplacement;
+            var replacement = classification.RequiresReplacement;
 
             if (replacement)
             {
@@ -435,8 +430,8 @@ public readonly struct Canvas
                 }
             }
 
-            Point point = new(x, y);
-            bool visible = _frame.Bounds.Contains(point) &&
+            var point = new Point(x, y);
+            var visible = _frame.Bounds.Contains(point) &&
                 _clip.Contains(point) &&
                 (cellWidth == 1 ||
                     (_frame.Bounds.Contains(new Point(x + 1, y)) &&
@@ -449,12 +444,12 @@ public readonly struct Canvas
                 continue;
             }
 
-            ReadOnlySpan<char> stored = replacement ? "�".AsSpan() : cluster;
+            var stored = replacement ? "�".AsSpan() : cluster;
             bytes = checked(bytes + Frame.CountUtf8(stored));
 
             if (write)
             {
-                CellStyle applied = background == BackgroundMode.Transparent
+                var applied = background == BackgroundMode.Transparent
                     ? new CellStyle(
                         style.Foreground,
                         _frame.GetCell(point).Style.Background,
@@ -485,15 +480,15 @@ public readonly struct Canvas
         }
         else if (value.Contains('\t'))
         {
-            int relative = Math.Max(0, x - lineOrigin);
+            var relative = Math.Max(0, x - lineOrigin);
             x = checked(x + (_tabWidth - (relative % _tabWidth)));
         }
     }
 
     private int ValidateRune(Rune value, Span<char> buffer)
     {
-        int length = value.EncodeToUtf16(buffer);
-        Measurement measurement = Width.Measure(buffer[..length], _frame.AmbiguousWidth);
+        var length = value.EncodeToUtf16(buffer);
+        var measurement = Width.Measure(buffer[..length], _frame.AmbiguousWidth);
 
         return measurement.Cells == 1 && measurement.Controls == 0
             ? length
@@ -513,12 +508,12 @@ public readonly struct Canvas
             return;
         }
 
-        Topology topology = new(connections, line);
-        ReadOnlySpan<byte> bytes = _frame.GetGrapheme(_frame.GetIndex(point));
+        var topology = new Topology(connections, line);
+        var bytes = _frame.GetGrapheme(_frame.GetIndex(point));
 
-        if (Rune.DecodeFromUtf8(bytes, out Rune existing, out int consumed) == OperationStatus.Done &&
+        if (Rune.DecodeFromUtf8(bytes, out var existing, out var consumed) == OperationStatus.Done &&
             consumed == bytes.Length &&
-            LineResolver.TryDecode(existing, out Topology previous))
+            LineResolver.TryDecode(existing, out var previous))
         {
             topology = LineResolver.Merge(previous, topology);
         }

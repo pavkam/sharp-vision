@@ -5,7 +5,7 @@ namespace SharpVision.Controls;
 
 using System.ComponentModel;
 
-using SharpVision.Styling;
+
 
 public abstract partial class Control
 {
@@ -65,12 +65,12 @@ public abstract partial class Control
         EnsureThemeProperty(property);
         (IStyleProperty Property, State State) key = (Property: property, State: visualState);
 
-        if (_resolvedPropertyCache.TryGetValue(key, out object? cached))
+        if (_resolvedPropertyCache.TryGetValue(key, out var cached))
         {
             return (T) cached!;
         }
 
-        T? value = ThemeResolver.Resolve(this, property, visualState);
+        var value = ThemeResolver.Resolve(this, property, visualState);
         _resolvedPropertyCache[key] = value;
         return value;
     }
@@ -99,7 +99,7 @@ public abstract partial class Control
     {
         ArgumentNullException.ThrowIfNull(property);
 
-        if (_localValues.TryGetValue(property, out object? stored) && stored is T typed)
+        if (_localValues.TryGetValue(property, out var stored) && stored is T typed)
         {
             value = typed;
             return true;
@@ -139,7 +139,7 @@ public abstract partial class Control
 
     internal ResolvedAppearance GetResolvedAppearance(State visualState)
     {
-        int themeVersion = ThemeContext?.Version ?? -1;
+        var themeVersion = ThemeContext?.Version ?? -1;
 
         if (_cachedResolvedStyle is { } cached &&
             _cachedResolvedVisualState == visualState &&
@@ -153,7 +153,7 @@ public abstract partial class Control
             };
         }
 
-        ResolvedAppearance resolved = ControlAppearance.Resolve(this, visualState);
+        var resolved = ControlAppearance.Resolve(this, visualState);
         _cachedResolvedStyle = resolved.Style;
         _cachedHasOpaqueFill = resolved.HasOpaqueFill;
         _cachedResolvedVisualState = visualState;

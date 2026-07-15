@@ -7,6 +7,8 @@ using SharpVision.Text;
 
 using Text = SharpVision.Controls.Text;
 
+
+
 /// <summary>Documents the Table control with mixed column sizing and headerless specimens.</summary>
 internal sealed class TablePane: View
 {
@@ -16,7 +18,7 @@ internal sealed class TablePane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Table primary = new()
+        var primary = new Table()
         {
             Width = Length.Cells(58),
             ShowHeader = true,
@@ -31,7 +33,7 @@ internal sealed class TablePane: View
             new Text("Stable"),
             new Text("ANSI, OSC, CSI, and input decoding."),
         ]));
-        RichText linked = new() { Wrapping = Wrapping.Word };
+        var linked = new RichText() { Wrapping = Wrapping.Word };
         linked.Inlines.Add(new Run("Open "));
         linked.Inlines.Add(new Hyperlink("protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
         primary.Rows.Add(new TableRow([
@@ -40,7 +42,7 @@ internal sealed class TablePane: View
             linked,
         ]));
 
-        Table compact = new()
+        var compact = new Table()
         {
             Width = Length.Cells(42),
             ShowHeader = false,

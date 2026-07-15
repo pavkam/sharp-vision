@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Support;
 
-using System.Globalization;
 
-using SharpVision.Terminal.Unicode;
 
 
 using TerminalColor = Color;
@@ -31,7 +29,7 @@ internal sealed class VirtualScreen: ISequenceSink
         Size = size;
         _cells = new ModelCell[checked(size.Width * size.Height)];
 
-        for (int index = 0; index < _cells.Length; index++)
+        for (var index = 0; index < _cells.Length; index++)
         {
             _cells[index] = ModelCell.Blank;
         }
@@ -48,7 +46,7 @@ internal sealed class VirtualScreen: ISequenceSink
     internal void Apply(ReadOnlySpan<byte> value)
     {
         using Parser parser = new();
-        VirtualScreen sink = this;
+        var sink = this;
         parser.Parse(value, ref sink);
         parser.Complete(ref sink);
     }
@@ -59,14 +57,14 @@ internal sealed class VirtualScreen: ISequenceSink
     {
         Size.ShouldBe(frame.Size);
 
-        for (int y = 0; y < Size.Height; y++)
+        for (var y = 0; y < Size.Height; y++)
         {
-            for (int x = 0; x < Size.Width; x++)
+            for (var x = 0; x < Size.Width; x++)
             {
-                Point point = new(x, y);
-                CellInfo expected = frame.GetCell(point);
-                ModelCell actual = _cells[Index(point)];
-                string expectedText = FrameText(frame, point);
+                var point = new Point(x, y);
+                var expected = frame.GetCell(point);
+                var actual = _cells[Index(point)];
+                var expectedText = FrameText(frame, point);
 
                 actual.Text.ShouldBe(expectedText.Length == 0 ? " " : expectedText);
                 actual.Style.ShouldBe(expected.Style);
@@ -92,12 +90,12 @@ internal sealed class VirtualScreen: ISequenceSink
     /// <inheritdoc/>
     public void Text(ReadOnlySpan<byte> value)
     {
-        string text = Encoding.UTF8.GetString(value);
+        var text = Encoding.UTF8.GetString(value);
 
-        foreach (Grapheme segment in Graphemes.Enumerate(text.AsSpan()))
+        foreach (var segment in Graphemes.Enumerate(text.AsSpan()))
         {
-            ReadOnlySpan<char> cluster = text.AsSpan(segment.Offset, segment.Length);
-            int width = (int) Width.GetCluster(cluster, Ambiguous.Narrow, segment.HasInvalidData);
+            var cluster = text.AsSpan(segment.Offset, segment.Length);
+            var width = (int) Width.GetCluster(cluster, Ambiguous.Narrow, segment.HasInvalidData);
 
             if (width > 0)
             {
@@ -124,7 +122,7 @@ internal sealed class VirtualScreen: ISequenceSink
     {
         if (final == (byte) 'H')
         {
-            int[] values = Parse(parameters);
+            var values = Parse(parameters);
             _position = new Point(values[1] - 1, values[0] - 1);
         }
         else if (final == (byte) 'm')
@@ -148,11 +146,11 @@ internal sealed class VirtualScreen: ISequenceSink
             return;
         }
 
-        int separator = value[2..].IndexOf((byte) ';');
+        var separator = value[2..].IndexOf((byte) ';');
 
         if (separator >= 0)
         {
-            ReadOnlySpan<byte> uri = value[(separator + 3)..];
+            var uri = value[(separator + 3)..];
             _hyperlink = uri.IsEmpty ? null : Encoding.UTF8.GetString(uri);
         }
     }
@@ -172,10 +170,10 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private void ApplySgr(ReadOnlySpan<byte> parameters)
     {
-        string text = Encoding.ASCII.GetString(parameters);
-        string[] values = text.Length == 0 ? ["0"] : text.Split(';');
+        var text = Encoding.ASCII.GetString(parameters);
+        var values = text.Length == 0 ? ["0"] : text.Split(';');
 
-        for (int index = 0; index < values.Length; index++)
+        for (var index = 0; index < values.Length; index++)
         {
             if (values[index].StartsWith("4:", StringComparison.Ordinal))
             {
@@ -183,7 +181,7 @@ internal sealed class VirtualScreen: ISequenceSink
                 continue;
             }
 
-            int value = int.Parse(values[index], NumberStyles.None, CultureInfo.InvariantCulture);
+            var value = int.Parse(values[index], NumberStyles.None, CultureInfo.InvariantCulture);
 
             switch (value)
             {
@@ -261,7 +259,7 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private void ApplyTypedUnderline(string parameter)
     {
-        int value = int.Parse(parameter.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture);
+        var value = int.Parse(parameter.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture);
 
         if (!Enum.IsDefined((Underline) value))
         {
@@ -286,7 +284,7 @@ internal sealed class VirtualScreen: ISequenceSink
             Repair(_position.X + 1, _position.Y);
         }
 
-        CellStyle style = CurrentStyle;
+        var style = CurrentStyle;
         _cells[Index(_position)] = new ModelCell(value, style, width, false, _position.X);
 
         if (width == 2 && _position.X + 1 < Size.Width)
@@ -300,11 +298,11 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private void Repair(int x, int y)
     {
-        ModelCell cell = _cells[Index(new Point(x, y))];
-        int leadX = cell.IsContinuation ? cell.LeadX : x;
-        ModelCell lead = _cells[Index(new Point(leadX, y))];
+        var cell = _cells[Index(new Point(x, y))];
+        var leadX = cell.IsContinuation ? cell.LeadX : x;
+        var lead = _cells[Index(new Point(leadX, y))];
 
-        for (int offset = 0; offset < Math.Max(1, lead.Width) && leadX + offset < Size.Width; offset++)
+        for (var offset = 0; offset < Math.Max(1, lead.Width) && leadX + offset < Size.Width; offset++)
         {
             _cells[Index(new Point(leadX + offset, y))] = ModelCell.Blank with
             {
@@ -331,14 +329,14 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private static int[] Parse(ReadOnlySpan<byte> value)
     {
-        string text = Encoding.ASCII.GetString(value);
+        var text = Encoding.ASCII.GetString(value);
         return [.. text.Split(';').Select(static item =>
             int.Parse(item, NumberStyles.None, CultureInfo.InvariantCulture))];
     }
 
     private static TerminalColor ParseColor(string[] values, ref int index)
     {
-        int mode = ParseNumber(values[++index]);
+        var mode = ParseNumber(values[++index]);
 
         return mode == 5
             ? TerminalColor.Indexed(ParseNumber(values[++index]))
@@ -355,14 +353,14 @@ internal sealed class VirtualScreen: ISequenceSink
 
     private static string FrameText(Frame frame, Point point)
     {
-        int length = frame.GetGraphemeByteCount(point);
+        var length = frame.GetGraphemeByteCount(point);
 
         if (length == 0)
         {
             return string.Empty;
         }
 
-        byte[] bytes = new byte[length];
+        var bytes = new byte[length];
         _ = frame.CopyGrapheme(point, bytes);
         return Encoding.UTF8.GetString(bytes);
     }

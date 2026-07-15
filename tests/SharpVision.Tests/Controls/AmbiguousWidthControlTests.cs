@@ -4,7 +4,6 @@
 namespace SharpVision.Tests.Controls;
 
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>Verifies fixed-cell control chrome adapts to the inherited width policy.</summary>
@@ -14,7 +13,7 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Border_WhenAmbiguousWidthIsWide_RendersPortableOneCellGlyphs()
     {
-        Border border = new() { BorderThickness = new Thickness(1) };
+        var border = new Border() { BorderThickness = new Thickness(1) };
         border.SetCellPolicy(new Policy(Ambiguous.Wide));
         new Engine().Layout(border, new Size(3, 2));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
@@ -30,7 +29,7 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Shadow_WhenAmbiguousWidthIsWide_RendersPortableBlockGlyph()
     {
-        Shadow shadow = new()
+        var shadow = new Shadow()
         {
             Child = new ProbeControl(new Size(2, 1)),
             Mode = ShadowMode.BlockGlyph,
@@ -49,7 +48,7 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void ScrollBar_WhenAmbiguousWidthIsWide_RendersPortableChrome()
     {
-        ScrollBar scrollBar = new()
+        var scrollBar = new ScrollBar()
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -68,7 +67,7 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void CheckBox_WhenAmbiguousWidthIsWide_RendersPortableMark()
     {
-        CheckBox checkBox = new()
+        var checkBox = new CheckBox()
         {
             IsChecked = true,
             Marks = new Marks(new Rune('o'), new Rune('·'), new Rune('-')),
@@ -86,7 +85,7 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void PasswordCharacter_WhenAmbiguousWidthIsWide_UsesTwoCellMaskGeometry()
     {
-        TextInput input = new()
+        var input = new TextInput()
         {
             Text = "a",
             PasswordCharacter = new Rune('·'),

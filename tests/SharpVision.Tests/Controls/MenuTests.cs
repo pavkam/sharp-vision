@@ -3,10 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Terminal.Input;
 
 
-using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies typed menu ownership, selection navigation, check states, and cells.</summary>
 public sealed class MenuTests
@@ -15,11 +13,11 @@ public sealed class MenuTests
     [Fact]
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {
-        Menu menu = new() { Orientation = Orientation.Vertical };
+        var menu = new Menu() { Orientation = Orientation.Vertical };
         menu.Items.Add(new MenuItem { Header = "Open" });
         menu.Items.Add(new MenuItem { Header = "Pinned", Kind = MenuItemKind.Check, IsChecked = true });
         menu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });
-        Size size = new(12, 5);
+        var size = new Size(12, 5);
         new Engine().Layout(menu, size);
         using Frame frame = new(size);
 
@@ -37,14 +35,14 @@ public sealed class MenuTests
     [Fact]
     public async Task Dispatch_WhenDirectionalKeyArrives_SkipsSeparatorAndFocusesNextItemAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            Menu menu = new() { Orientation = Orientation.Vertical };
-            MenuItem first = new() { Header = "First" };
-            MenuItem separator = new() { Kind = MenuItemKind.Separator };
-            MenuItem second = new() { Header = "Second" };
+            var menu = new Menu() { Orientation = Orientation.Vertical };
+            var first = new MenuItem() { Header = "First" };
+            var separator = new MenuItem() { Kind = MenuItemKind.Separator };
+            var second = new MenuItem() { Header = "Second" };
             menu.Items.Add(first);
             menu.Items.Add(separator);
             menu.Items.Add(second);
@@ -68,10 +66,10 @@ public sealed class MenuTests
     [Fact]
     public void PerformInvoke_WhenCheckAndRadioItemsActivate_CommitsStateBeforeEvent()
     {
-        Menu menu = new();
-        MenuItem check = new() { Header = "Auto save", Kind = MenuItemKind.Check };
-        MenuItem first = new() { Header = "Small", Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
-        MenuItem second = new() { Header = "Large", Kind = MenuItemKind.Radio, GroupName = "size" };
+        var menu = new Menu();
+        var check = new MenuItem() { Header = "Auto save", Kind = MenuItemKind.Check };
+        var first = new MenuItem() { Header = "Small", Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        var second = new MenuItem() { Header = "Large", Kind = MenuItemKind.Radio, GroupName = "size" };
         List<string> observed = [];
         menu.Items.Add(check);
         menu.Items.Add(first);

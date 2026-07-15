@@ -3,9 +3,7 @@
 
 namespace SharpVision.Tests.Support;
 
-using SharpVision.Terminal.Input;
 
-using KeyAction = Terminal.Input.Action;
 
 /// <summary>A container probe that measures the union of its children and arranges each child to its slot.</summary>
 internal sealed class LayoutProbe: Container
@@ -50,10 +48,10 @@ internal sealed class LayoutProbe: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        int width = 0;
-        int height = 0;
+        var width = 0;
+        var height = 0;
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             child.Measure(constraint);
             width = Math.Max(width, child.DesiredSize.Width);
@@ -66,7 +64,7 @@ internal sealed class LayoutProbe: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             child.Arrange(bounds);
         }

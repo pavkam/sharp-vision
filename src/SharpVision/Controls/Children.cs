@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Collections;
 
 
 /// <summary>Owns one container's validated ordered child controls.</summary>
@@ -34,7 +33,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
         {
             ArgumentNullException.ThrowIfNull(value);
             _owner.VerifyMutable();
-            Control previous = _items[index];
+            var previous = _items[index];
 
             if (ReferenceEquals(previous, value))
             {
@@ -68,7 +67,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
             return;
         }
 
-        for (int index = _items.Count - 1; index >= 0; index--)
+        for (var index = _items.Count - 1; index >= 0; index--)
         {
             Detach(_items[index]);
         }
@@ -136,7 +135,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
             throw new InvalidOperationException("Only a capacity-one collection supports SetOnly.");
         }
 
-        Control? previous = _items.Count == 0 ? null : _items[0];
+        var previous = _items.Count == 0 ? null : _items[0];
 
         if (ReferenceEquals(previous, item))
         {
@@ -179,7 +178,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
     {
         ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutable();
-        int index = _items.IndexOf(item);
+        var index = _items.IndexOf(item);
 
         if (index < 0)
         {
@@ -194,7 +193,7 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
     public void RemoveAt(int index)
     {
         _owner.VerifyMutable();
-        Control item = _items[index];
+        var item = _items[index];
         _items.RemoveAt(index);
         Detach(item);
         _owner.Invalidate(Invalidation.Measure);

@@ -4,13 +4,10 @@
 namespace SharpVision.Tests.Integration;
 
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
 using ControlCanvas = SharpVision.Controls.Canvas;
-using Label = SharpVision.Controls.Text;
-using TerminalOptions = Terminal.Runtime.Options;
+using Label = ControlText;
 
 /// <summary>Proves raw terminal wheel input consumes nested scrolling locally then outward.</summary>
 public sealed class ScrollingTests
@@ -21,9 +18,9 @@ public sealed class ScrollingTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(8, 5), new Size(80, 50)));
-        ControlCanvas content = new() { Width = Length.Cells(14), Height = Length.Cells(9) };
-        Label label = new("界Z");
-        Button target = new()
+        var content = new ControlCanvas() { Width = Length.Cells(14), Height = Length.Cells(9) };
+        var label = new Label("界Z");
+        var target = new Button()
         {
             Content = new Label("Go"),
             Width = Length.Cells(2),
@@ -33,7 +30,7 @@ public sealed class ScrollingTests
         ControlCanvas.SetTop(target, Length.Cells(8));
         content.Children.Add(label);
         content.Children.Add(target);
-        Stack inner = new()
+        var inner = new Stack()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -41,7 +38,7 @@ public sealed class ScrollingTests
             Height = Length.Cells(7),
             Children = { content },
         };
-        Stack outer = new() { AutoScroll = true, ScrollBars = ScrollBars.Both, Children = { inner } };
+        var outer = new Stack() { AutoScroll = true, ScrollBars = ScrollBars.Both, Children = { inner } };
         await using Application application = new(
             outer,
             terminal,
@@ -59,7 +56,7 @@ public sealed class ScrollingTests
             "pixel thumb drag",
             TestContext.Current.CancellationToken);
 
-        Task rendered = NextFrame(application);
+        var rendered = NextFrame(application);
         await application.Dispatcher.InvokeAsync(() =>
         {
             outer.HorizontalOffset = 0;
@@ -68,8 +65,8 @@ public sealed class ScrollingTests
             inner.VerticalOffset = 0;
         }, TestContext.Current.CancellationToken);
         await rendered.WaitAsync(TestContext.Current.CancellationToken);
-        string horizontal = string.Concat(Enumerable.Repeat("\u001b[<66;16;16M", 10));
-        string vertical = string.Concat(Enumerable.Repeat("\u001b[<65;16;16M", 10));
+        var horizontal = string.Concat(Enumerable.Repeat("\u001b[<66;16;16M", 10));
+        var vertical = string.Concat(Enumerable.Repeat("\u001b[<65;16;16M", 10));
         terminal.QueueInput(Encoding.ASCII.GetBytes(horizontal + vertical));
         await WaitUntilAsync(
             () => inner.HorizontalOffset == 3 && outer.HorizontalOffset == 5 &&
@@ -130,14 +127,14 @@ public sealed class ScrollingTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(5, 4), new Size(50, 40)));
-        Label leaf = new(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
-        Stack inner = Hidden(leaf);
+        var leaf = new Label(string.Join('\n', Enumerable.Range(0, 20))) { Width = Length.Cells(5) };
+        var inner = Hidden(leaf);
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
-        Stack outer = Hidden(inner);
+        var outer = Hidden(inner);
         await using Application application = new(outer, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        TaskCompletionSource reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         outer.ScrollChanged += (_, _) =>
         {
             if (outer.VerticalOffset == 4)
@@ -145,14 +142,14 @@ public sealed class ScrollingTests
                 _ = reached.TrySetResult();
             }
         };
-        string wheel = string.Concat(Enumerable.Repeat("\u001b[<65;1;1M", 20));
+        var wheel = string.Concat(Enumerable.Repeat("\u001b[<65;1;1M", 20));
 
         terminal.QueueInput(Encoding.ASCII.GetBytes(wheel));
         await reached.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         inner.VerticalOffset.ShouldBe(12);
         outer.VerticalOffset.ShouldBe(4);
-        Task rendered = NextFrame(application);
+        var rendered = NextFrame(application);
         terminal.QueueResize(new Dimensions(new Size(5, 8), new Size(50, 80)));
         await rendered.WaitAsync(TestContext.Current.CancellationToken);
         outer.VerticalOffset.ShouldBe(0);
@@ -169,7 +166,7 @@ public sealed class ScrollingTests
 
     private static Task NextFrame(Application application)
     {
-        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 
@@ -188,7 +185,7 @@ public sealed class ScrollingTests
         string operation,
         CancellationToken cancellationToken)
     {
-        for (int attempt = 0; attempt < 10_000; attempt++)
+        for (var attempt = 0; attempt < 10_000; attempt++)
         {
             if (await application.Dispatcher.InvokeAsync(predicate, cancellationToken))
             {

@@ -40,7 +40,7 @@ public sealed class PointerEventArgs: RoutedEventArgs
 
     private static int Difference(int left, int right)
     {
-        long result = (long) left - right;
+        var result = (long) left - right;
         return (int) Math.Clamp(result, int.MinValue, int.MaxValue);
     }
 }

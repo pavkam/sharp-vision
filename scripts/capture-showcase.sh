@@ -72,7 +72,7 @@ for _ in {1..50}; do
 
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q 'Overview' "$plain" && grep -q 'Examples' "$plain"; then
+  if grep -q 'SHARP VISION' "$plain" && grep -q 'Overview' "$plain"; then
     ready=true
     break
   fi

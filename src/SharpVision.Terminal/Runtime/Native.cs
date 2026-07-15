@@ -3,11 +3,7 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Provides the Unix terminal-size native boundary.</summary>
 internal static partial class Native
@@ -22,7 +18,7 @@ internal static partial class Native
     {
         ArgumentOutOfRangeException.ThrowIfNegative(fileDescriptor);
         WindowSize value = default;
-        int result = OperatingSystem.IsMacOS()
+        var result = OperatingSystem.IsMacOS()
             ? GetWindowSize(fileDescriptor, out value)
             : OperatingSystem.IsLinux()
                 ? Ioctl(fileDescriptor, _linuxGetSize, (nint) (&value))
@@ -36,7 +32,7 @@ internal static partial class Native
                 new Win32Exception(Marshal.GetLastPInvokeError()));
         }
 
-        Size cells = new(value.Columns, value.Rows);
+        var cells = new Size(value.Columns, value.Rows);
         Size? pixels = value.PixelWidth > 0 && value.PixelHeight > 0
             ? new Size(value.PixelWidth, value.PixelHeight)
             : null;
@@ -71,7 +67,7 @@ internal static partial class Native
     /// <returns>The mode enabling VT input without canonical line editing or echo.</returns>
     internal static uint ComputeInputMode(uint current, bool captureControlKeys)
     {
-        uint mode = current;
+        var mode = current;
         mode &= ~(EnableLineInput | EnableEchoInput);
         mode |= EnableVirtualTerminalInput;
 

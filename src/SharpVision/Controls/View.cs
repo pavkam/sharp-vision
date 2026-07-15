@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 
 /// <summary>A composable control whose single content child is produced once by <see cref="Build"/>.</summary>
 /// <remarks>
@@ -60,7 +58,7 @@ public abstract class View: Container
             return;
         }
 
-        Control content = Build() ??
+        var content = Build() ??
             throw new InvalidOperationException("View.Build must return a non-null control.");
 
         // SetOnly re-marks this view measure-dirty mid-measure; the _built guard makes the resulting extra pass a no-op.
@@ -73,7 +71,7 @@ public abstract class View: Container
         Debug.Assert(left >= 0, "View accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "View accumulation uses non-negative extents.");
 
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 }

@@ -6,8 +6,6 @@ namespace SharpVision.Terminal.Tests.Rendering;
 
 
 
-using CellMetrics = Geometry.Metrics;
-using RenderingMetrics = Terminal.Rendering.Metrics;
 
 /// <summary>
 /// Verifies semantic frame geometry, ownership, validation, and disposal.
@@ -22,7 +20,7 @@ public sealed class FrameTests
         using Frame frame = new(new Size(length, 1));
         _ = frame.Canvas.Draw(new string('x', length), default, CellStyle.Default);
 
-        using Frame clone = frame.Clone();
+        using var clone = frame.Clone();
 
         clone.Size.ShouldBe(frame.Size);
         clone.GetGraphemeByteCount(new Point(0, 0)).ShouldBe(1);
@@ -106,7 +104,7 @@ public sealed class FrameTests
     public void Clear_WhenFrameContainsText_ResetsEveryCell()
     {
         using Frame frame = new(new Size(2, 1));
-        CellStyle style = new(attributes: Attributes.Bold);
+        var style = new CellStyle(attributes: Attributes.Bold);
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
 
         frame.Clear();
@@ -122,7 +120,7 @@ public sealed class FrameTests
     [Fact]
     public void Dispose_WhenCalled_RejectsFurtherAccess()
     {
-        Frame frame = new(new Size(1, 1));
+        var frame = new Frame(new Size(1, 1));
 
         frame.Dispose();
         frame.Dispose();
@@ -134,8 +132,8 @@ public sealed class FrameTests
 
     internal static string GetText(Frame frame, Point point)
     {
-        int count = frame.GetGraphemeByteCount(point);
-        byte[] bytes = new byte[count];
+        var count = frame.GetGraphemeByteCount(point);
+        var bytes = new byte[count];
         frame.CopyGrapheme(point, bytes).ShouldBe(count);
 
         return Encoding.UTF8.GetString(bytes);

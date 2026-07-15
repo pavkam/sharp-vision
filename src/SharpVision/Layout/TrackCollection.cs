@@ -3,7 +3,6 @@
 
 namespace SharpVision.Layout;
 
-using System.Collections;
 
 /// <summary>Owns validated Grid track definitions and reports actual mutations.</summary>
 public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
@@ -97,7 +96,7 @@ public sealed class TrackCollection: IList<Track>, IReadOnlyList<Track>
     /// <inheritdoc/>
     public bool Remove(Track item)
     {
-        int index = _items.IndexOf(item);
+        var index = _items.IndexOf(item);
 
         if (index < 0)
         {

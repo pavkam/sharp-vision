@@ -3,13 +3,7 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Runtime;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Terminal.Runtime;
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>
 /// Verifies the v2 role-color swatch mechanism (a plain control with <c>Background</c> set to a
@@ -27,12 +21,12 @@ public sealed class ThemeSwatchLiveThemeTests
     public async Task Chip_WhenApplicationThemeChanges_RepaintsSameInstanceWithNewColorAsync()
     {
         await using FakeTerminal terminal = new();
-        Size size = new(20, 4);
+        var size = new Size(20, 4);
         terminal.QueueResize(new Dimensions(size));
 
         // The same kind of chip ThemingPane.BuildRoleSwatches builds: a plain Border whose Background
         // is a deferred role color. It never reads ThemeContext itself; resolution paints it live.
-        Border chip = new()
+        var chip = new Border()
         {
             Width = Length.Cells(6),
             Height = Length.Cells(1),
@@ -47,12 +41,12 @@ public sealed class ThemeSwatchLiveThemeTests
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        Themes.Dark.TryGetColor(ColorRole.Accent, out Color expectedDark).ShouldBeTrue();
-        Color initialCell = await RenderAndReadChipCellAsync(application, size, chip);
+        Themes.Dark.TryGetColor(ColorRole.Accent, out var expectedDark).ShouldBeTrue();
+        var initialCell = await RenderAndReadChipCellAsync(application, size, chip);
         initialCell.ShouldBe(expectedDark);
 
-        Theme dracula = ThemeCatalog.Default.Load("dracula");
-        dracula.TryGetColor(ColorRole.Accent, out Color expectedDracula).ShouldBeTrue();
+        var dracula = ThemeCatalog.Default.Load("dracula");
+        dracula.TryGetColor(ColorRole.Accent, out var expectedDracula).ShouldBeTrue();
         expectedDracula.ShouldNotBe(expectedDark);
 
         await application.Dispatcher.InvokeAsync(
@@ -64,7 +58,7 @@ public sealed class ThemeSwatchLiveThemeTests
             application,
             "Dracula theme selection");
 
-        Color updatedCell = await RenderAndReadChipCellAsync(application, size, chip);
+        var updatedCell = await RenderAndReadChipCellAsync(application, size, chip);
         updatedCell.ShouldBe(expectedDracula);
 
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -77,7 +71,7 @@ public sealed class ThemeSwatchLiveThemeTests
             {
                 using Frame frame = new(size);
                 application.Root.Render(frame.Canvas);
-                Rect bounds = chip.Bounds;
+                var bounds = chip.Bounds;
 
                 // The terminal is sized to cover the chip's fixed footprint so this never reads a
                 // clipped or unlaid-out cell; that assumption breaks loudly instead of silently passing.
@@ -93,7 +87,7 @@ public sealed class ThemeSwatchLiveThemeTests
         Application application,
         string description)
     {
-        for (int attempt = 0; attempt < 200; attempt++)
+        for (var attempt = 0; attempt < 200; attempt++)
         {
             if (await application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
             {

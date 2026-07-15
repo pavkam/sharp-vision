@@ -41,7 +41,7 @@ public abstract class Container: Control
             return popup;
         }
 
-        Control? hit = base.HitTest(point);
+        var hit = base.HitTest(point);
 
         if (hit is null)
         {
@@ -50,7 +50,7 @@ public abstract class Container: Control
 
         if (AutoScroll)
         {
-            Control? bar = _bars is not null
+            var bar = _bars is not null
                 ? _vertical!.HitTest(point) ?? _horizontal!.HitTest(point)
                 : null;
 
@@ -65,14 +65,14 @@ public abstract class Container: Control
     {
         ArgumentNullException.ThrowIfNull(visitor);
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             visitor(child);
         }
 
         if (_bars is not null)
         {
-            foreach (Control child in _bars)
+            foreach (var child in _bars)
             {
                 visitor(child);
             }
@@ -81,7 +81,7 @@ public abstract class Container: Control
 
     private Control? HitTestChildren(Point point)
     {
-        for (int index = Children.Count - 1; index >= 0; index--)
+        for (var index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].HitTest(point) is { } child)
             {
@@ -95,7 +95,7 @@ public abstract class Container: Control
     /// <inheritdoc/>
     internal override Control? HitTestPopup(Point point)
     {
-        for (int index = Children.Count - 1; index >= 0; index--)
+        for (var index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].HitTestPopup(point) is { } popup)
             {
@@ -121,7 +121,7 @@ public abstract class Container: Control
 
         while (_bars.Count > 0)
         {
-            Control child = _bars[^1];
+            var child = _bars[^1];
             _bars.RemoveAt(_bars.Count - 1);
             child.Dispose();
         }
@@ -155,7 +155,7 @@ public abstract class Container: Control
     /// <inheritdoc/>
     internal override void RenderContent(TerminalCanvas canvas)
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             child.Render(canvas);
         }
@@ -167,7 +167,7 @@ public abstract class Container: Control
 
     private void RenderOwnedPopupLayer(TerminalCanvas canvas)
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             child.RenderPopupLayer(canvas);
         }
@@ -226,8 +226,8 @@ public abstract class Container: Control
 
         // Eligible axes measure unbounded so children report natural extent
         // (ResolveMeasureAxis clamps DesiredSize, which would otherwise hide overflow).
-        int? width = (ScrollBars & ScrollBars.Horizontal) != 0 ? null : content.Width;
-        int? height = (ScrollBars & ScrollBars.Vertical) != 0 ? null : content.Height;
+        var width = (ScrollBars & ScrollBars.Horizontal) != 0 ? null : content.Width;
+        var height = (ScrollBars & ScrollBars.Vertical) != 0 ? null : content.Height;
         return new Constraint(width, height);
     }
 
@@ -242,11 +242,14 @@ public abstract class Container: Control
     // fixed-cell size. Both honor Min/Max.
     private int AutoSizeAxis(int contentExtent, int padding, Length length, int minimum, int maximum)
     {
-        long content = (long) contentExtent + padding;
-        int floor = AutoSizeMode == AutoSizeMode.GrowOnly && length.Kind == Kind.Cells
+        Debug.Assert(contentExtent >= 0 && padding >= 0, "Auto-size inputs are non-negative cell extents.");
+        Debug.Assert(minimum >= 0 && maximum >= minimum, "Auto-size limits are validated and ordered.");
+
+        var content = (long) contentExtent + padding;
+        var floor = AutoSizeMode == AutoSizeMode.GrowOnly && length.Kind == Kind.Cells
             ? (int) length.Value
             : 0;
-        long requested = Math.Max(content, floor);
+        var requested = Math.Max(content, floor);
         return (int) Math.Clamp(requested, minimum, maximum);
     }
 
@@ -339,7 +342,7 @@ public abstract class Container: Control
                 return;
             }
 
-            ScrollBarVisibility visibility = value switch
+            var visibility = value switch
             {
                 ShowScrollBars.Never => ScrollBarVisibility.Hidden,
                 ShowScrollBars.WhenNeeded => ScrollBarVisibility.Auto,
@@ -515,10 +518,10 @@ public abstract class Container: Control
             throw new ArgumentException("The control must be a descendant of this container.", nameof(descendant));
         }
 
-        int logicalX = Add(Difference(descendant.Bounds.X, _viewportBounds.X), HorizontalOffset);
-        int logicalY = Add(Difference(descendant.Bounds.Y, _viewportBounds.Y), VerticalOffset);
-        int x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
-        int y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
+        var logicalX = Add(Difference(descendant.Bounds.X, _viewportBounds.X), HorizontalOffset);
+        var logicalY = Add(Difference(descendant.Bounds.Y, _viewportBounds.Y), VerticalOffset);
+        var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
+        var y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
         return Apply(x, y, Cause.BringIntoView);
     }
 
@@ -566,8 +569,8 @@ public abstract class Container: Control
             return;
         }
 
-        int page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
-        Code code = eventArgs.Stroke.Code;
+        var page = Math.Max(0, Viewport.Height - Math.Min(PageOverlap, Viewport.Height));
+        var code = eventArgs.Stroke.Code;
 
         if (code == Code.Left)
         {
@@ -611,23 +614,23 @@ public abstract class Container: Control
 
     private void Handle(PointerEventArgs eventArgs)
     {
-        Pointer pointer = eventArgs.Pointer;
+        var pointer = eventArgs.Pointer;
 
         if (pointer.Action != PointerAction.Wheel)
         {
             return;
         }
 
-        int x = MultiplyNegative(pointer.WheelX, LineSize);
-        int y = MultiplyNegative(pointer.WheelY, LineSize);
-        int remainingX = x;
-        int remainingY = y;
+        var x = MultiplyNegative(pointer.WheelX, LineSize);
+        var y = MultiplyNegative(pointer.WheelY, LineSize);
+        var remainingX = x;
+        var remainingY = y;
 
-        for (Container? current = this; current is not null && (remainingX != 0 || remainingY != 0);
+        for (var current = this; current is not null && (remainingX != 0 || remainingY != 0);
             current = Ancestor(current))
         {
-            int previousX = current.HorizontalOffset;
-            int previousY = current.VerticalOffset;
+            var previousX = current.HorizontalOffset;
+            var previousY = current.VerticalOffset;
             _ = current.ScrollBy(remainingX, remainingY, Cause.Wheel);
             remainingX = Difference(remainingX, current.HorizontalOffset - previousX);
             remainingY = Difference(remainingY, current.VerticalOffset - previousY);
@@ -638,7 +641,9 @@ public abstract class Container: Control
 
     private static Container? Ancestor(Control control)
     {
-        for (Container? current = control.Parent; current is not null; current = current.Parent)
+        Debug.Assert(control is not null, "Scrollable ancestor lookup requires a control.");
+
+        for (var current = control.Parent; current is not null; current = current.Parent)
         {
             if (current.AutoScroll)
             {
@@ -654,7 +659,7 @@ public abstract class Container: Control
     {
         if (!AutoScroll)
         {
-            Size box = new(padded.Width, padded.Height);
+            var box = new Size(padded.Width, padded.Height);
             _ = Set(ref _extent, box, Invalidation.None, nameof(Extent));
             _ = Set(ref _viewport, box, Invalidation.None, nameof(Viewport));
             _viewportBounds = padded;
@@ -668,9 +673,9 @@ public abstract class Container: Control
             EnsureBars();
         }
 
-        Resolve(new Size(padded.Width, padded.Height), ContentExtent, out bool horizontal, out bool vertical, out Size viewport);
+        Resolve(new Size(padded.Width, padded.Height), ContentExtent, out var horizontal, out var vertical, out var viewport);
         _viewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
-        bool extentChanged = _extent != ContentExtent;
+        var extentChanged = _extent != ContentExtent;
         _ = Set(ref _extent, ContentExtent, Invalidation.None, nameof(Extent));
         _ = Set(ref _viewport, viewport, Invalidation.None, nameof(Viewport));
         _reserveHorizontal = horizontal;
@@ -695,13 +700,15 @@ public abstract class Container: Control
             return;
         }
 
-        SetVisibility(_horizontal!, _reserveHorizontal);
-        SetVisibility(_vertical!, _reserveVertical);
-        _horizontal!.Arrange(
+        Debug.Assert(_horizontal is not null && _vertical is not null, "Created scrollbar chrome owns both axes.");
+
+        SetVisibility(_horizontal, _reserveHorizontal);
+        SetVisibility(_vertical, _reserveVertical);
+        _horizontal.Arrange(
             new Rect(padded.X, padded.Y + _viewportBounds.Height, _viewportBounds.Width, _reserveHorizontal ? 1 : 0),
             widthResolved: true,
             heightResolved: true);
-        _vertical!.Arrange(
+        _vertical.Arrange(
             new Rect(padded.X + _viewportBounds.Width, padded.Y, _reserveVertical ? 1 : 0, _viewportBounds.Height),
             widthResolved: true,
             heightResolved: true);
@@ -730,6 +737,8 @@ public abstract class Container: Control
         _horizontal.ValueChanged += OnHorizontalChanged;
         _vertical.ValueChanged += OnVerticalChanged;
         _bars = new Children(this, capacity: 2) { _horizontal, _vertical };
+
+        Debug.Assert(_bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
     }
 
     private void Synchronize()
@@ -739,12 +748,14 @@ public abstract class Container: Control
             return;
         }
 
+        Debug.Assert(_horizontal is not null && _vertical is not null, "Scrollbar synchronization requires both axes.");
+
         _syncing = true;
 
         try
         {
-            Configure(_horizontal!, MaximumX(), Viewport.Width, HorizontalOffset);
-            Configure(_vertical!, MaximumY(), Viewport.Height, VerticalOffset);
+            Configure(_horizontal, MaximumX(), Viewport.Width, HorizontalOffset);
+            Configure(_vertical, MaximumY(), Viewport.Height, VerticalOffset);
         }
         finally
         {
@@ -754,6 +765,10 @@ public abstract class Container: Control
 
     private static void Configure(ScrollBar bar, int maximum, int viewport, int value)
     {
+        Debug.Assert(bar is not null, "Scrollbar configuration requires an owned bar.");
+        Debug.Assert(maximum >= 0 && viewport >= 0, "Scrollbar geometry is non-negative.");
+        Debug.Assert(value >= 0 && value <= maximum, "Scrollbar value is clamped before synchronization.");
+
         if (bar.Value > maximum)
         {
             bar.Value = maximum;
@@ -790,11 +805,13 @@ public abstract class Container: Control
 
     private bool Apply(int x, int y, Cause cause)
     {
+        Debug.Assert(Enum.IsDefined(cause), "Scroll changes require a defined cause.");
+
         x = Math.Clamp(x, 0, MaximumX());
         y = Math.Clamp(y, 0, MaximumY());
-        Point previous = new(HorizontalOffset, VerticalOffset);
-        bool changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
-        bool changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
+        var previous = new Point(HorizontalOffset, VerticalOffset);
+        var changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
+        var changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
 
         if (!changedX && !changedY)
         {
@@ -808,7 +825,9 @@ public abstract class Container: Control
 
     private bool IsContentDescendant(Control value)
     {
-        for (Control? current = value; current is not null; current = current.Parent)
+        Debug.Assert(value is not null, "Descendant checks require a control.");
+
+        for (var current = value; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, this))
             {
@@ -821,12 +840,15 @@ public abstract class Container: Control
 
     private static int Reveal(int current, int viewport, int start, int length)
     {
+        Debug.Assert(current >= 0 && viewport >= 0, "Reveal uses a non-negative viewport.");
+        Debug.Assert(start >= 0 && length >= 0, "Reveal uses non-negative content geometry.");
+
         if (start < current)
         {
             return start;
         }
 
-        int end = Add(start, length);
+        var end = Add(start, length);
         return end > Add(current, viewport) ? Math.Max(0, end - viewport) : current;
     }
 
@@ -845,6 +867,9 @@ public abstract class Container: Control
         out bool vertical,
         out Size viewport)
     {
+        Debug.Assert(available.Width >= 0 && available.Height >= 0, "Scrollbar resolution uses available cell extents.");
+        Debug.Assert(extent.Width >= 0 && extent.Height >= 0, "Scrollbar resolution uses non-negative content extents.");
+
         horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
             HorizontalBarVisibility == ScrollBarVisibility.Always;
         vertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
@@ -852,19 +877,19 @@ public abstract class Container: Control
 
         // Automatic bars are added monotonically because one reserved axis can
         // induce overflow on the other. Two additions are the finite maximum.
-        for (int probe = 0; probe < 2; probe++)
+        for (var probe = 0; probe < 2; probe++)
         {
             viewport = new Size(
                 Math.Max(0, available.Width - (vertical ? 1 : 0)),
                 Math.Max(0, available.Height - (horizontal ? 1 : 0)));
-            bool addHorizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
+            var addHorizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
                 HorizontalBarVisibility == ScrollBarVisibility.Auto &&
                 extent.Width > viewport.Width;
-            bool addVertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
+            var addVertical = (ScrollBars & ScrollBars.Vertical) != 0 &&
                 VerticalBarVisibility == ScrollBarVisibility.Auto &&
                 extent.Height > viewport.Height;
-            bool nextHorizontal = horizontal || addHorizontal;
-            bool nextVertical = vertical || addVertical;
+            var nextHorizontal = horizontal || addHorizontal;
+            var nextVertical = vertical || addVertical;
 
             if (nextHorizontal == horizontal && nextVertical == vertical)
             {
@@ -882,6 +907,9 @@ public abstract class Container: Control
 
     private static void ValidateOffset(int value, int maximum, string name)
     {
+        Debug.Assert(maximum >= 0, "Offset validation uses a non-negative maximum.");
+        Debug.Assert(!string.IsNullOrWhiteSpace(name), "Offset validation identifies its public argument.");
+
         if (value < 0 || value > maximum)
         {
             throw new ArgumentOutOfRangeException(name, value, "Offset must be inside the current extent.");

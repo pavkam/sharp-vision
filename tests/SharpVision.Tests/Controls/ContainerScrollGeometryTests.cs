@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Tests.Support;
 
 /// <summary>Proves fixed-seed automatic scrollbar convergence and containment for an armed Container.</summary>
 public sealed class ContainerScrollGeometryTests
@@ -15,20 +14,20 @@ public sealed class ContainerScrollGeometryTests
     [Fact]
     public void Layout_WhenCasesAreRandomized_PreservesStableContainedGeometry()
     {
-        Random random = new(_seed);
-        Engine engine = new();
-        LayoutProbe container = new() { AutoScroll = true, ScrollBars = ScrollBars.Both };
+        var random = new Random(_seed);
+        var engine = new Engine();
+        var container = new LayoutProbe() { AutoScroll = true, ScrollBars = ScrollBars.Both };
         container.Children.Add(new ProbeControl(new Size(50, 30)));
 
-        for (int sample = 0; sample < _caseCount; sample++)
+        for (var sample = 0; sample < _caseCount; sample++)
         {
-            Size size = new(random.Next(0, 80), random.Next(0, 50));
+            var size = new Size(random.Next(0, 80), random.Next(0, 50));
             container.HorizontalBarVisibility = Policy(random);
             container.VerticalBarVisibility = Policy(random);
             engine.Layout(container, size);
-            Size first = container.Viewport;
+            var first = container.Viewport;
             engine.Layout(container, size);
-            string context = $"seed=0x{_seed:X8}, case={sample}, size={size}";
+            var context = $"seed=0x{_seed:X8}, case={sample}, size={size}";
 
             container.Viewport.ShouldBe(first, context);
             container.Viewport.Width.ShouldBeInRange(0, size.Width, context);

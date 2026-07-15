@@ -4,9 +4,8 @@
 namespace SharpVision.Runtime;
 
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 
-using TerminalDiagnostic = Terminal.Protocols.Diagnostic;
+using TerminalDiagnostic = Diagnostic;
 using TerminalFocus = Terminal.Input.Focus;
 using TerminalText = Terminal.Input.Text;
 

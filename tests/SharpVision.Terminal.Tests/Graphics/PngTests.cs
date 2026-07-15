@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Graphics;
 using SharpVision.Terminal.Graphics;
 
 
-using GraphicsImage = Terminal.Graphics.Image;
+
 
 /// <summary>Verifies bounded structural PNG ownership and recovery.</summary>
 public sealed class PngTests
@@ -15,11 +15,11 @@ public sealed class PngTests
     [Fact]
     public void FromPng_WhenStructureIsValid_OwnsBytesAndDimensions()
     {
-        byte[] source = CreatePng(3, 2);
+        var source = CreatePng(3, 2);
 
-        GraphicsImage image = GraphicsImage.FromPng(source);
+        var image = GraphicsImage.FromPng(source);
         source.AsSpan().Clear();
-        byte[] copied = new byte[image.ByteCount];
+        var copied = new byte[image.ByteCount];
         _ = image.CopyTo(copied);
 
         image.Size.ShouldBe(new Size(3, 2));
@@ -33,12 +33,12 @@ public sealed class PngTests
     [Fact]
     public void FromPng_WhenStructureIsMalformed_ThrowsDocumentedException()
     {
-        byte[] invalidSignature = CreatePng(1, 1);
+        var invalidSignature = CreatePng(1, 1);
         invalidSignature[0] = 0;
-        byte[] invalidHeader = CreatePng(1, 1);
+        var invalidHeader = CreatePng(1, 1);
         invalidHeader[24] = 1;
-        byte[] missingEnd = CreatePng(1, 1)[..45];
-        byte[] oversizedChunk = CreatePng(1, 1);
+        var missingEnd = CreatePng(1, 1)[..45];
+        var oversizedChunk = CreatePng(1, 1);
         oversizedChunk[33] = 127;
 
         _ = Should.Throw<ArgumentException>(() => GraphicsImage.FromPng(invalidSignature));
@@ -51,7 +51,7 @@ public sealed class PngTests
     [Fact]
     public void FromPng_WhenPolicyIsExceeded_ThrowsBeforeOwnership()
     {
-        byte[] source = CreatePng(2, 2);
+        var source = CreatePng(2, 2);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             GraphicsImage.FromPng(

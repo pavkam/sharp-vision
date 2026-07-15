@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using SharpVision.Terminal.Transport;
 
 /// <summary>
 /// Bundles the transport and resize source opened for one interactive console and

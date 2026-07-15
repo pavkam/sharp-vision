@@ -5,7 +5,6 @@ namespace SharpVision.Tests.Support;
 
 using System.Threading.Channels;
 
-using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
 
 
@@ -65,7 +64,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     {
         try
         {
-            byte[] value = await _input.Reader.ReadAsync(cancellationToken);
+            var value = await _input.Reader.ReadAsync(cancellationToken);
             value.AsSpan().CopyTo(destination.Span);
             return value.Length;
         }
@@ -81,7 +80,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        byte[] copy = source.ToArray();
+        var copy = source.ToArray();
         int count;
 
         lock (_gate)
@@ -102,7 +101,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     /// <inheritdoc/>
     public ValueTask FlushAsync(CancellationToken cancellationToken)
     {
-        TaskCompletionSource? gate = _flushGate;
+        var gate = _flushGate;
         return gate is null
             ? ValueTask.CompletedTask
             : new ValueTask(gate.Task.WaitAsync(cancellationToken));

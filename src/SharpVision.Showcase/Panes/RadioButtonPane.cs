@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the RadioButton control with grouped, mutually exclusive selection specimens.</summary>
 internal sealed class RadioButtonPane: View
 {
@@ -14,15 +15,15 @@ internal sealed class RadioButtonPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        RadioButton fast = new() { Content = new Text("Fast"), GroupName = "quality", IsChecked = true };
-        RadioButton balanced = new() { Content = new Text("Balanced"), GroupName = "quality" };
-        RadioButton unavailable = new()
+        var fast = new RadioButton() { Content = new Text("Fast"), GroupName = "quality", IsChecked = true };
+        var balanced = new RadioButton() { Content = new Text("Balanced"), GroupName = "quality" };
+        var unavailable = new RadioButton()
         {
             Content = new Text("Unavailable"),
             GroupName = "quality",
             IsEnabled = false,
         };
-        Border group = new()
+        var group = new Border()
         {
             Child = Doc.Column(fast, balanced, unavailable),
             BorderThickness = new Thickness(1),
@@ -30,13 +31,13 @@ internal sealed class RadioButtonPane: View
             Padding = new Thickness(1, 0),
         };
 
-        RadioButton independent = new()
+        var independent = new RadioButton()
         {
             Content = new Text("Independent selection group"),
             GroupName = "delivery",
             IsChecked = true,
         };
-        Border separate = new()
+        var separate = new Border()
         {
             Child = independent,
             BorderThickness = new Thickness(1),

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Input;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Receives stable typed terminal input synchronously and in order.</summary>
 public interface IInputSink

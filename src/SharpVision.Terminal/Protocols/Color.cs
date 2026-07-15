@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Globalization;
 
 /// <summary>Represents a validated default, indexed, RGB, or deferred role terminal color.</summary>
 public readonly record struct Color
@@ -89,7 +88,7 @@ public readonly record struct Color
     public static Color FromHex(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        return TryFromHex(value, out Color color)
+        return TryFromHex(value, out var color)
             ? color
             : throw new FormatException($"'{value}' is not a valid #rgb or #rrggbb color.");
     }
@@ -107,11 +106,11 @@ public readonly record struct Color
             return false;
         }
 
-        ReadOnlySpan<char> digits = value[0] == '#' ? value.AsSpan(1) : value.AsSpan();
+        var digits = value[0] == '#' ? value.AsSpan(1) : value.AsSpan();
 
         if (digits.Length == 3)
         {
-            if (!TryNibble(digits[0], out int r) || !TryNibble(digits[1], out int g) || !TryNibble(digits[2], out int b))
+            if (!TryNibble(digits[0], out var r) || !TryNibble(digits[1], out var g) || !TryNibble(digits[2], out var b))
             {
                 return false;
             }
@@ -122,7 +121,7 @@ public readonly record struct Color
 
         if (digits.Length == 6)
         {
-            if (!TryByte(digits[..2], out int r) || !TryByte(digits[2..4], out int g) || !TryByte(digits[4..], out int b))
+            if (!TryByte(digits[..2], out var r) || !TryByte(digits[2..4], out var g) || !TryByte(digits[4..], out var b))
             {
                 return false;
             }

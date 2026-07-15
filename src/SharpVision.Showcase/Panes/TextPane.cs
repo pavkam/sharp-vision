@@ -3,10 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Showcase.Controls;
 using SharpVision.Text;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Text control with Unicode geometry, pointer, wrapping, and alignment specimens.</summary>
@@ -18,22 +16,22 @@ internal sealed class TextPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Text geometry = new("é vs é · orphan ́ · ambiguous · · 你好 · 👩‍💻 · 🇺🇸");
+        var geometry = new Text("é vs é · orphan ́ · ambiguous · · 你好 · 👩‍💻 · 🇺🇸");
 
-        Text wrapped = new("Plain Unicode: café · 你好 · 👩‍💻\nA narrow reading column wraps words without splitting clusters.")
+        var wrapped = new Text("Plain Unicode: café · 你好 · 👩‍💻\nA narrow reading column wraps words without splitting clusters.")
         {
             Width = Length.Cells(28),
             Wrapping = Wrapping.Word,
         };
 
-        Text centered = new("Centered status")
+        var centered = new Text("Centered status")
         {
             Width = Length.Cells(28),
             TextAlignment = Alignment.Center,
             Attributes = TerminalAttributes.Bold,
         };
 
-        Text trimmed = new("This deliberately long one-line label trims safely")
+        var trimmed = new Text("This deliberately long one-line label trims safely")
         {
             Width = Length.Cells(28),
             Trimming = Trimming.GraphemeEllipsis,

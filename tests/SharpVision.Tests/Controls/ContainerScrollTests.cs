@@ -3,12 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Scrolling;
-using SharpVision.Terminal.Input;
-using SharpVision.Tests.Support;
 
-using ControlText = SharpVision.Controls.Text;
-using Wrapping = SharpVision.Text.Wrapping;
 
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
 public sealed class ContainerScrollTests
@@ -17,7 +12,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void ScrollState_WhenNotArmed_IsInert()
     {
-        LayoutProbe container = new();
+        var container = new LayoutProbe();
         container.Children.Add(new ProbeControl(new Size(4, 40)));
 
         new Engine().Layout(container, new Size(4, 10));
@@ -32,7 +27,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Extent_WhenArmedVertical_IsNaturalContentHeight()
     {
-        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var container = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
 
         new Engine().Layout(container, new Size(4, 10));
@@ -47,8 +42,8 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Arrange_WhenScrolled_TranslatesChildByOffset()
     {
-        ProbeControl child = new(new Size(4, 40));
-        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var child = new ProbeControl(new Size(4, 40));
+        var container = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(child);
         new Engine().Layout(container, new Size(4, 10));
 
@@ -62,7 +57,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void ScrollState_WhenDisarmedAfterScrolling_ResetsToInert()
     {
-        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var container = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
         new Engine().Layout(container, new Size(4, 10));
         _ = container.ScrollBy(0, 1000);
@@ -84,7 +79,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void AutoScroll_WhenDisarmedAfterBarsWereVisible_CollapsesBothBars()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -93,8 +88,8 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
         new Engine().Layout(container, new Size(4, 10));
-        Control horizontal = container.NavigationAt(container.NavigationCount - 2);
-        Control vertical = container.NavigationAt(container.NavigationCount - 1);
+        var horizontal = container.NavigationAt(container.NavigationCount - 2);
+        var vertical = container.NavigationAt(container.NavigationCount - 1);
         horizontal.Visibility.ShouldBe(Visibility.Visible);
         vertical.Visibility.ShouldBe(Visibility.Visible);
 
@@ -115,14 +110,14 @@ public sealed class ContainerScrollTests
     [Fact]
     public async Task MoveNext_WhenStackIsArmed_ReachesChildThenBothBarsAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
-        Stack panel = new()
+        await using var dispatcher = Dispatcher.Start();
+        var panel = new Stack()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
             ShowScrollBars = ShowScrollBars.Always,
         };
-        ProbeControl child = new(new Size(4, 40)) { CanFocus = true };
+        var child = new ProbeControl(new Size(4, 40)) { CanFocus = true };
         panel.Children.Add(child);
 
         await dispatcher.InvokeAsync(() =>
@@ -135,10 +130,10 @@ public sealed class ContainerScrollTests
             focus.Focused.ShouldBeSameAs(child);
 
             focus.MoveNext().ShouldBeTrue();
-            ScrollBar first = focus.Focused.ShouldBeOfType<ScrollBar>();
+            var first = focus.Focused.ShouldBeOfType<ScrollBar>();
 
             focus.MoveNext().ShouldBeTrue();
-            ScrollBar second = focus.Focused.ShouldBeOfType<ScrollBar>();
+            var second = focus.Focused.ShouldBeOfType<ScrollBar>();
 
             new[] { first.Orientation, second.Orientation }.ShouldBe(
                 [Orientation.Horizontal, Orientation.Vertical]);
@@ -154,7 +149,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Render_WhenVerticalBarIsAutomatic_UsesScrollBarGlyphs()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             AutoScroll = true,
@@ -162,7 +157,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Auto,
         };
         container.Children.Add(new ProbeControl(new Size(1, 4)));
-        Size size = new(3, 3);
+        var size = new Size(3, 3);
         new Engine().Layout(container, size);
         using Frame frame = new(size);
 
@@ -177,7 +172,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenAutomaticBarInducesOther_ConvergesWithBothBars()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -196,7 +191,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void OnEvent_WhenDownKey_ScrollsByLineSize()
     {
-        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never, LineSize = 2 };
+        var container = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never, LineSize = 2 };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
         new Engine().Layout(container, new Size(4, 10));
 
@@ -209,8 +204,8 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Wheel_WhenLeafAtEnd_PropagatesToArmedAncestor()
     {
-        LayoutProbe outer = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
-        LayoutProbe inner = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var outer = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var inner = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         inner.Children.Add(new ProbeControl(new Size(4, 4)));   // inner cannot scroll (fits)
         outer.Children.Add(inner);
         // outer content taller than viewport via a second tall child
@@ -226,7 +221,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void OnEvent_WhenDisabled_DoesNotScroll()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ShowScrollBars = ShowScrollBars.Never,
@@ -244,7 +239,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void ScrollBy_WhenOffsetChanges_RaisesScrollChanged()
     {
-        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var container = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
         new Engine().Layout(container, new Size(4, 10));
         ScrollChangedEventArgs? captured = null;
@@ -263,10 +258,10 @@ public sealed class ContainerScrollTests
     [Fact]
     public void ScrollBy_WhenOffsetUnchanged_DoesNotRaiseScrollChanged()
     {
-        LayoutProbe container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var container = new LayoutProbe() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
         new Engine().Layout(container, new Size(4, 10));
-        bool raised = false;
+        var raised = false;
         container.ScrollChanged += (_, _) => raised = true;
 
         container.ScrollBy(0, 0, Cause.Keyboard).ShouldBeFalse();
@@ -278,13 +273,13 @@ public sealed class ContainerScrollTests
     [Fact]
     public void BringIntoView_WhenDescendantBelowViewport_ScrollsToReveal()
     {
-        Stack container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var container = new Stack() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 20)));
-        ProbeControl target = new(new Size(4, 1));
+        var target = new ProbeControl(new Size(4, 1));
         container.Children.Add(target);
         new Engine().Layout(container, new Size(4, 10));
 
-        bool changed = container.BringIntoView(target);
+        var changed = container.BringIntoView(target);
 
         changed.ShouldBeTrue();
         container.VerticalOffset.ShouldBeGreaterThan(0);
@@ -294,10 +289,10 @@ public sealed class ContainerScrollTests
     [Fact]
     public void BringIntoView_WhenNotDescendant_ThrowsArgumentException()
     {
-        Stack container = new() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var container = new Stack() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 20)));
         new Engine().Layout(container, new Size(4, 10));
-        ProbeControl stray = new(new Size(4, 1));
+        var stray = new ProbeControl(new Size(4, 1));
 
         _ = Should.Throw<ArgumentException>(() => container.BringIntoView(stray));
     }
@@ -312,9 +307,9 @@ public sealed class ContainerScrollTests
     [Fact]
     public void AutoScroll_WhenArmed_CreatesBarsBeforeAnyLayoutPass()
     {
-        LayoutProbe container = new();
+        var container = new LayoutProbe();
         container.Children.Add(new ProbeControl(new Size(4, 40)));
-        int navigationCountBeforeArming = container.NavigationCount;
+        var navigationCountBeforeArming = container.NavigationCount;
 
         container.AutoScroll = true;
 
@@ -332,7 +327,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenContainerArmsForTheFirstTime_ConvergesInOnePass()
     {
-        LayoutProbe container = new() { AutoScroll = true };
+        var container = new LayoutProbe() { AutoScroll = true };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
 
         new Engine().Layout(container, new Size(4, 10));
@@ -355,8 +350,8 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenNestedArmedStacksScrollBeyondZero_ArrangesNegativeOriginContent()
     {
-        ProbeControl leaf = new(new Size(4, 20));
-        Stack inner = new()
+        var leaf = new ProbeControl(new Size(4, 20));
+        var inner = new Stack()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -364,7 +359,7 @@ public sealed class ContainerScrollTests
             Height = Length.Cells(4),
             Children = { leaf },
         };
-        Stack outer = new()
+        var outer = new Stack()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -384,14 +379,14 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Render_WhenHorizontalBarIsAutomatic_UsesScrollBarGlyphs()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Horizontal,
             HorizontalBarVisibility = ScrollBarVisibility.Auto,
         };
         container.Children.Add(new ProbeControl(new Size(4, 1)));
-        Size size = new(3, 3);
+        var size = new Size(3, 3);
         new Engine().Layout(container, size);
         using Frame frame = new(size);
 
@@ -406,7 +401,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Render_WhenVerticalChromeHasUnoccupiedTrack_UsesShadedTrackGlyph()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             AutoScroll = true,
@@ -415,7 +410,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Auto,
         };
         container.Children.Add(new ProbeControl(new Size(1, 100)));
-        Size size = new(3, 6);
+        var size = new Size(3, 6);
         new Engine().Layout(container, size);
         using Frame frame = new(size);
 
@@ -429,7 +424,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenPoliciesDiffer_UsesExactFitAndAlwaysReservation()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -437,7 +432,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Auto,
         };
         container.Children.Add(new ProbeControl(new Size(5, 3)));
-        Engine engine = new();
+        var engine = new Engine();
 
         engine.Layout(container, new Size(5, 3));
         container.Viewport.ShouldBe(new Size(5, 3));
@@ -452,7 +447,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenScrollBarsAreVerticalAndNever_ShowsNoChromeButRetainsVerticalRange()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
@@ -474,7 +469,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void ScrollBy_WhenDeltaExceedsExtent_ClampsAndRaisesOneEvent()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -501,7 +496,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenViewportGrows_ClampsOffsetsWithResizeCause()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -509,7 +504,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden,
         };
         container.Children.Add(new ProbeControl(new Size(20, 10)));
-        Engine engine = new();
+        var engine = new Engine();
         engine.Layout(container, new Size(5, 3));
         _ = container.ScrollBy(100, 100);
         ScrollChangedEventArgs? change = null;
@@ -527,8 +522,8 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Render_WhenContentIsScrolled_ClipsAndTargetsOnlyViewport()
     {
-        ProbeControl content = new(new Size(8, 1)) { Content = "ABCDEFGH".AsMemory() };
-        LayoutProbe container = new()
+        var content = new ProbeControl(new Size(8, 1)) { Content = "ABCDEFGH".AsMemory() };
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -553,8 +548,8 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenHorizontalBarIsHidden_ReflowsWordWrappedContentToViewportWidth()
     {
-        ControlText text = new("one two three") { Wrapping = Wrapping.Word };
-        LayoutProbe container = new()
+        var text = new ControlText("one two three") { Wrapping = Wrapping.Word };
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
@@ -573,7 +568,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void OnEvent_WhenCommandsArrive_UsesLinePageAndEndpointChanges()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -604,7 +599,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenContentShrinks_ClampsOffsets()
     {
-        LayoutProbe container = new()
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -612,7 +607,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden,
         };
         container.Children.Add(new ProbeControl(new Size(20, 10)));
-        Engine engine = new();
+        var engine = new Engine();
         engine.Layout(container, new Size(5, 3));
         _ = container.ScrollBy(100, 100);
         ScrollChangedEventArgs? change = null;
@@ -632,8 +627,8 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Render_WhenOffsetCrossesWideRune_ClipsCompleteCellOwner()
     {
-        ProbeControl content = new(new Size(3, 1)) { Content = "界A".AsMemory() };
-        LayoutProbe container = new()
+        var content = new ProbeControl(new Size(3, 1)) { Content = "界A".AsMemory() };
+        var container = new LayoutProbe()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
@@ -657,8 +652,8 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Dispose_WhenArmed_ReleasesCompleteComposedTree()
     {
-        ProbeControl content = new();
-        LayoutProbe container = new()
+        var content = new ProbeControl();
+        var container = new LayoutProbe()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             AutoScroll = true,
@@ -668,8 +663,8 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(content);
         new Engine().Layout(container, new Size(8, 4));
-        ScrollBar horizontal = container.HitTest(new Point(2, 3)).ShouldBeOfType<ScrollBar>();
-        ScrollBar vertical = container.HitTest(new Point(7, 2)).ShouldBeOfType<ScrollBar>();
+        var horizontal = container.HitTest(new Point(2, 3)).ShouldBeOfType<ScrollBar>();
+        var vertical = container.HitTest(new Point(7, 2)).ShouldBeOfType<ScrollBar>();
 
         container.Dispose();
 

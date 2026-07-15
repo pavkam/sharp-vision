@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Support;
 
-using SharpVision.Terminal.Transport;
 
 /// <summary>
 /// Provides deterministic writes, failures, and backpressure for terminal tests.
@@ -64,7 +63,7 @@ internal sealed class FakeTransport: ITransport
             return ValueTask.CompletedTask;
         }
 
-        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         WriteStarted = started.Task;
         return new ValueTask(WriteBlockedAsync(source, started, cancellationToken));
     }
@@ -104,9 +103,9 @@ internal sealed class FakeTransport: ITransport
 
     private void WriteCore(ReadOnlySpan<byte> source)
     {
-        if (_failures.TryDequeue(out Failure? failure))
+        if (_failures.TryDequeue(out var failure))
         {
-            int count = Math.Min(source.Length, failure.PrefixBytes);
+            var count = Math.Min(source.Length, failure.PrefixBytes);
 
             if (count > 0)
             {

@@ -7,6 +7,8 @@ namespace SharpVision.Input;
 /// <summary>Owns transactional keyboard focus within one attached control tree.</summary>
 public sealed class FocusManager: IDisposable
 {
+    #region Construction and state
+
     /// <summary>Initializes focus ownership for one attached root.</summary>
     /// <param name="root">The non-null attached tree root.</param>
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
@@ -55,6 +57,10 @@ public sealed class FocusManager: IDisposable
 
     private bool IsDisposed { get; set; }
 
+    #endregion
+
+    #region Focus operations
+
     /// <summary>Requests focus for one member, or releases focus with null.</summary>
     /// <param name="control">The requested member, or null.</param>
     /// <returns>True when focus is committed or already matches; false when ineligible or cancelled.</returns>
@@ -75,12 +81,15 @@ public sealed class FocusManager: IDisposable
     public bool MoveNext(bool reverse = false)
     {
         VerifyAccess();
-        List<(Control Control, int Order)> candidates = [];
-        int order = 0;
+        var candidates = new List<(Control Control, int Order)>();
+        var order = 0;
+
+        // Snapshot the current eligible tree before invoking Focus, because the
+        // cancellable focus transaction may mutate or reparent controls.
         Collect(Root, candidates, ref order);
         candidates.Sort(static (left, right) =>
         {
-            int tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
+            var tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
             return tab != 0 ? tab : left.Order.CompareTo(right.Order);
         });
 
@@ -89,12 +98,16 @@ public sealed class FocusManager: IDisposable
             return false;
         }
 
-        int current = candidates.FindIndex(item => ReferenceEquals(item.Control, Focused));
-        int next = reverse
+        var current = candidates.FindIndex(item => ReferenceEquals(item.Control, Focused));
+        var next = reverse
             ? (current <= 0 ? candidates.Count - 1 : current - 1)
             : (current < 0 || current == candidates.Count - 1 ? 0 : current + 1);
         return Focus(candidates[next].Control);
     }
+
+    #endregion
+
+    #region Cleanup
 
     /// <summary>Releases focus ownership and all manager references.</summary>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
@@ -120,6 +133,7 @@ public sealed class FocusManager: IDisposable
     internal void Unavailable(Control subtree)
     {
         ArgumentNullException.ThrowIfNull(subtree);
+        Debug.Assert(IsMember(subtree), "Unavailable subtrees belong to the focus root.");
 
         if (Focused is null || !IsWithin(Focused, subtree))
         {
@@ -138,6 +152,8 @@ public sealed class FocusManager: IDisposable
     /// <summary>Severs manager ownership while the root is being disposed.</summary>
     internal void RootDisposed()
     {
+        Debug.Assert(ReferenceEquals(Root.FocusOwner, this), "Root disposal severs this manager's ownership.");
+
         Root.SetFocusOwner(null);
         Changing = null;
         Lost = null;
@@ -145,8 +161,14 @@ public sealed class FocusManager: IDisposable
         IsDisposed = true;
     }
 
+    #endregion
+
+    #region Focus transaction
+
     private bool Change(Control? control, bool cancellable)
     {
+        Debug.Assert(control is null || IsMember(control), "Focus transactions target only owned controls.");
+
         if (IsChanging)
         {
             throw new InvalidOperationException("Focus cannot be changed reentrantly.");
@@ -161,23 +183,25 @@ public sealed class FocusManager: IDisposable
 
         try
         {
-            FocusChangingEventArgs preview = new(Focused, control);
+            var preview = new FocusChangingEventArgs(Focused, control);
 
             if (cancellable)
             {
                 Changing?.Invoke(this, preview);
             }
 
+            // Preview handlers may detach, hide, disable, or dispose the target.
+            // Revalidate after notification and before committing any focus flag.
             if (preview.Cancel || (control is not null && !IsEligible(control)))
             {
                 return false;
             }
 
-            Control? previous = Focused;
+            var previous = Focused;
             Focused = control;
             previous?.SetFocused(false);
             control?.SetFocused(true);
-            FocusChangedEventArgs changed = new(previous, control);
+            var changed = new FocusChangedEventArgs(previous, control);
 
             if (previous is not null)
             {
@@ -197,6 +221,8 @@ public sealed class FocusManager: IDisposable
 
             if (CleanupPending)
             {
+                // Cleanup requested during preview/notification cannot recurse
+                // until the outer transaction has released its reentrancy guard.
                 CleanupPending = false;
 
                 if (Focused is not null && !IsEligible(Focused))
@@ -207,11 +233,19 @@ public sealed class FocusManager: IDisposable
         }
     }
 
+    #endregion
+
+    #region Target resolution
+
     private void Collect(
         Control control,
         List<(Control Control, int Order)> candidates,
         ref int order)
     {
+        Debug.Assert(control is not null, "Focus traversal visits a concrete control.");
+        Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
+        Debug.Assert(order >= 0, "Focus traversal order is non-negative.");
+
         if (IsEligible(control))
         {
             candidates.Add((control, order));
@@ -221,7 +255,7 @@ public sealed class FocusManager: IDisposable
 
         if (control is Container container)
         {
-            for (int index = 0; index < container.NavigationCount; index++)
+            for (var index = 0; index < container.NavigationCount; index++)
             {
                 Collect(container.NavigationAt(index), candidates, ref order);
             }
@@ -244,7 +278,9 @@ public sealed class FocusManager: IDisposable
 
     private bool IsMember(Control control)
     {
-        for (Control? current = control; current is not null; current = current.Parent)
+        Debug.Assert(control is not null, "Focus membership requires a control instance.");
+
+        for (var current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, Root))
             {
@@ -257,7 +293,10 @@ public sealed class FocusManager: IDisposable
 
     private static bool IsWithin(Control control, Control subtree)
     {
-        for (Control? current = control; current is not null; current = current.Parent)
+        Debug.Assert(control is not null, "Focus containment requires a control instance.");
+        Debug.Assert(subtree is not null, "Focus containment requires a subtree root.");
+
+        for (var current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, subtree))
             {
@@ -272,5 +311,8 @@ public sealed class FocusManager: IDisposable
     {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
         Root.VerifyMutable();
+        Debug.Assert(ReferenceEquals(Root.FocusOwner, this), "A live manager remains registered on its root.");
     }
+
+    #endregion
 }

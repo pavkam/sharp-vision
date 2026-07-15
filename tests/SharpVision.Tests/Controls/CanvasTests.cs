@@ -14,8 +14,8 @@ public sealed class CanvasTests
     [Fact]
     public void Constructor_WhenCreated_HasValidatedDefaults()
     {
-        Panel panel = new();
-        ProbeControl child = new();
+        var panel = new Panel();
+        var child = new ProbeControl();
 
         panel.ClipToBounds.ShouldBeTrue();
         Panel.GetLeft(child).ShouldBeNull();
@@ -32,8 +32,8 @@ public sealed class CanvasTests
     [Fact]
     public void Layout_WhenLeftAndTopAreSet_PositionsIntrinsicChild()
     {
-        Panel panel = new();
-        ProbeControl child = new(new Size(3, 2));
+        var panel = new Panel();
+        var child = new ProbeControl(new Size(3, 2));
         Panel.SetLeft(child, Length.Cells(2));
         Panel.SetTop(child, Length.Cells(1));
         panel.Children.Add(child);
@@ -47,8 +47,8 @@ public sealed class CanvasTests
     [Fact]
     public void Layout_WhenRightAndBottomAreSet_PositionsFromTrailingEdges()
     {
-        Panel panel = new();
-        ProbeControl child = new(new Size(3, 2));
+        var panel = new Panel();
+        var child = new ProbeControl(new Size(3, 2));
         Panel.SetRight(child, Length.Cells(2));
         Panel.SetBottom(child, Length.Cells(1));
         panel.Children.Add(child);
@@ -62,8 +62,8 @@ public sealed class CanvasTests
     [Fact]
     public void Layout_WhenOpposingOffsetsAndAutoSize_StretchesBetweenEdges()
     {
-        Panel panel = new();
-        ProbeControl child = new(new Size(1, 1));
+        var panel = new Panel();
+        var child = new ProbeControl(new Size(1, 1));
         Panel.SetLeft(child, Length.Cells(2));
         Panel.SetRight(child, Length.Cells(3));
         Panel.SetTop(child, Length.Cells(1));
@@ -79,8 +79,8 @@ public sealed class CanvasTests
     [Fact]
     public void Layout_WhenOpposingOffsetsAndExplicitSize_UsesLeadingOffsetAndSize()
     {
-        Panel panel = new();
-        ProbeControl child = new()
+        var panel = new Panel();
+        var child = new ProbeControl()
         {
             Width = Length.Cells(4),
             Height = Length.Cells(2),
@@ -100,12 +100,12 @@ public sealed class CanvasTests
     [Fact]
     public void Layout_WhenOffsetsArePercent_RepositionsAgainstFinalSize()
     {
-        Panel panel = new();
-        ProbeControl child = new(new Size(2, 1));
+        var panel = new Panel();
+        var child = new ProbeControl(new Size(2, 1));
         Panel.SetLeft(child, Length.Percent(25));
         Panel.SetTop(child, Length.Percent(50));
         panel.Children.Add(child);
-        Engine engine = new();
+        var engine = new Engine();
 
         engine.Layout(panel, new Size(8, 4));
         child.Bounds.ShouldBe(new Rect(2, 2, 2, 1));
@@ -119,9 +119,9 @@ public sealed class CanvasTests
     [Fact]
     public void Measure_WhenOffsetsMixFixedAndPercent_ReportsFiniteIntrinsicUnion()
     {
-        Panel panel = new();
-        ProbeControl fixedChild = new(new Size(3, 2));
-        ProbeControl percentChild = new(new Size(4, 1));
+        var panel = new Panel();
+        var fixedChild = new ProbeControl(new Size(3, 2));
+        var percentChild = new ProbeControl(new Size(4, 1));
         Panel.SetLeft(fixedChild, Length.Cells(2));
         Panel.SetRight(fixedChild, Length.Cells(1));
         Panel.SetLeft(percentChild, Length.Percent(50));
@@ -137,8 +137,8 @@ public sealed class CanvasTests
     [Fact]
     public void Layout_WhenTrailingChildIsOversized_AllowsNegativeFinalOrigin()
     {
-        Panel panel = new();
-        ProbeControl child = new()
+        var panel = new Panel();
+        var child = new ProbeControl()
         {
             Width = Length.Cells(8),
             Height = Length.Cells(5),
@@ -156,12 +156,12 @@ public sealed class CanvasTests
     [Fact]
     public void ClipToBounds_WhenFalse_AllowsOutsideChildDrawingAndTargeting()
     {
-        Panel panel = new()
+        var panel = new Panel()
         {
             Bounds = new Rect(0, 0, 1, 1),
             ClipToBounds = false,
         };
-        ProbeControl child = new()
+        var child = new ProbeControl()
         {
             Bounds = new Rect(1, 0, 2, 1),
             Content = "界".AsMemory(),
@@ -180,9 +180,9 @@ public sealed class CanvasTests
     [Fact]
     public void HitTest_WhenChildrenOverlap_UsesLastEligibleChild()
     {
-        Panel panel = new() { Bounds = new Rect(0, 0, 1, 1) };
-        ProbeControl first = new() { Bounds = new Rect(0, 0, 1, 1) };
-        ProbeControl second = new()
+        var panel = new Panel() { Bounds = new Rect(0, 0, 1, 1) };
+        var first = new ProbeControl() { Bounds = new Rect(0, 0, 1, 1) };
+        var second = new ProbeControl()
         {
             Bounds = new Rect(0, 0, 1, 1),
             IsHitTestVisible = false,
@@ -204,14 +204,14 @@ public sealed class CanvasTests
     [Fact]
     public void HitTest_WhenCanvasIsArmed_TargetsBarAndExcludesClippedGutterContent()
     {
-        Panel panel = new()
+        var panel = new Panel()
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Both,
             HorizontalBarVisibility = ScrollBarVisibility.Always,
             VerticalBarVisibility = ScrollBarVisibility.Always,
         };
-        ProbeControl content = new() { Width = Length.Cells(4), Height = Length.Cells(4) };
+        var content = new ProbeControl() { Width = Length.Cells(4), Height = Length.Cells(4) };
         panel.Children.Add(content);
 
         new Engine().Layout(panel, new Size(4, 4));
@@ -229,9 +229,9 @@ public sealed class CanvasTests
     [Fact]
     public async Task SetLeft_WhenChildIsOwned_InvalidatesMeasureAndRequiresDispatcherAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
-        Panel panel = new();
-        ProbeControl child = new();
+        await using var dispatcher = Dispatcher.Start();
+        var panel = new Panel();
+        var child = new ProbeControl();
         panel.Children.Add(child);
         panel.Clear(Invalidation.All);
 

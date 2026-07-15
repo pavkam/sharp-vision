@@ -39,9 +39,9 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenParameterLimitIsExceeded_ReportsOnceAndRecovers()
     {
-        Limits limits = Limits.Default with { MaxParameterBytes = 2 };
+        var limits = Limits.Default with { MaxParameterBytes = 2 };
         using Parser parser = new(limits);
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b[123mX"u8, ref sink);
 
@@ -57,9 +57,9 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Parse_WhenIntermediateLimitIsExceeded_ReportsOnceAndRecovers()
     {
-        Limits limits = Limits.Default with { MaxIntermediateBytes = 1 };
+        var limits = Limits.Default with { MaxIntermediateBytes = 1 };
         using Parser parser = new(limits);
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b($BX"u8, ref sink);
 
@@ -75,7 +75,7 @@ public sealed class ParserFragmentationTests
     public void Parse_WhenParameterFollowsIntermediate_ReportsAndRecovers()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b[$1pX"u8, ref sink);
 
@@ -91,7 +91,7 @@ public sealed class ParserFragmentationTests
     public void Complete_WhenSequenceIsTruncated_ReportsOnceAndReturnsToGround()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b[12"u8, ref sink);
         parser.Complete(ref sink);
@@ -111,7 +111,7 @@ public sealed class ParserFragmentationTests
     public void Reset_WhenSequenceIsPartial_DiscardsWithoutDiagnostic()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b[12"u8, ref sink);
         parser.Reset();
@@ -128,7 +128,7 @@ public sealed class ParserFragmentationTests
     public void Parse_WhenMalformedCsiPrecedesKnownCsi_RecoversKnownSequence()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
         byte[] input =
         [
             0x1b,
@@ -155,8 +155,8 @@ public sealed class ParserFragmentationTests
     [Fact]
     public void Dispose_WhenCalled_PreventsFurtherUseAndRemainsIdempotent()
     {
-        Parser parser = new();
-        RecordingSink sink = new();
+        var parser = new Parser();
+        var sink = new RecordingSink();
 
         parser.Dispose();
         parser.Dispose();

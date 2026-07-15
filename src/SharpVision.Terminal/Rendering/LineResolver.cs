@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Terminal.Unicode;
 
 /// <summary>Maps line-cell topology to and from Unicode or ASCII glyphs.</summary>
 internal static class LineResolver
@@ -17,15 +14,15 @@ internal static class LineResolver
     /// <returns>The deterministic combined topology.</returns>
     internal static Topology Merge(Topology left, Topology right)
     {
-        Connections connections = left.Connections | right.Connections;
-        LineWeight weight = (LineWeight) Math.Max((int) left.Line.Weight, (int) right.Line.Weight);
-        bool straight = connections is (Connections.Left | Connections.Right) or
+        var connections = left.Connections | right.Connections;
+        var weight = (LineWeight) Math.Max((int) left.Line.Weight, (int) right.Line.Weight);
+        var straight = connections is (Connections.Left | Connections.Right) or
             (Connections.Up | Connections.Down);
-        LinePattern pattern = straight && left.Line.Pattern == right.Line.Pattern
+        var pattern = straight && left.Line.Pattern == right.Line.Pattern
             ? left.Line.Pattern
             : LinePattern.Solid;
-        bool rounded = left.Line.HasRoundedCorners && right.Line.HasRoundedCorners;
-        bool ascii = left.Line.IsAscii && right.Line.IsAscii;
+        var rounded = left.Line.HasRoundedCorners && right.Line.HasRoundedCorners;
+        var ascii = left.Line.IsAscii && right.Line.IsAscii;
         return new Topology(connections, new LineStyle(weight, pattern, rounded, ascii));
     }
 
@@ -37,7 +34,7 @@ internal static class LineResolver
     {
         return value.Line.IsAscii || ambiguousWidth == Ambiguous.Wide
             ? new Rune(ResolveAscii(value.Connections))
-            : TryResolvePattern(value, out int patterned)
+            : TryResolvePattern(value, out var patterned)
                 ? new Rune(patterned)
                 : ResolveSolid(value);
     }
@@ -48,7 +45,7 @@ internal static class LineResolver
     /// <returns>Whether the Rune belongs to a supported line family.</returns>
     internal static bool TryDecode(Rune value, out Topology topology)
     {
-        Topology decoded = value.Value switch
+        var decoded = value.Value switch
         {
             '-' => new Topology(Connections.Left | Connections.Right, LineStyle.Ascii),
             '|' => new Topology(Connections.Up | Connections.Down, LineStyle.Ascii),
@@ -273,7 +270,7 @@ internal static class LineResolver
     };
 
     private static Rune ResolveSolid(Topology value) =>
-        value.Line.HasRoundedCorners && TryResolveRounded(value.Connections, out int rounded)
+        value.Line.HasRoundedCorners && TryResolveRounded(value.Connections, out var rounded)
             ? new Rune(rounded)
             : new Rune(value.Line.Weight switch
             {

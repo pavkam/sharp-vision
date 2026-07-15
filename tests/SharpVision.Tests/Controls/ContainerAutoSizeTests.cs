@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Tests.Support;
 
 /// <summary>Verifies AutoSize grow/shrink on a container.</summary>
 public sealed class ContainerAutoSizeTests
@@ -12,7 +11,7 @@ public sealed class ContainerAutoSizeTests
     [Fact]
     public void AutoSize_WhenStretchedSlot_SizesToContent()
     {
-        LayoutProbe container = new() { AutoSize = true, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var container = new LayoutProbe() { AutoSize = true, HorizontalAlignment = HorizontalAlignment.Stretch };
         container.Children.Add(new ProbeControl(new Size(5, 3)) { HorizontalAlignment = HorizontalAlignment.Left });
 
         new Engine().Layout(container, new Size(40, 40));
@@ -25,7 +24,7 @@ public sealed class ContainerAutoSizeTests
     [Fact]
     public void AutoSizeGrowAndShrink_WhenContentSmallerThanFixedWidth_ShrinksToContent()
     {
-        LayoutProbe container = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Width = Length.Cells(10) };
+        var container = new LayoutProbe() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Width = Length.Cells(10) };
         container.Children.Add(new ProbeControl(new Size(4, 2)));
 
         new Engine().Layout(container, new Size(40, 40));
@@ -37,7 +36,7 @@ public sealed class ContainerAutoSizeTests
     [Fact]
     public void AutoSizeGrowOnly_WhenContentSmallerThanFixedWidth_KeepsFixedWidth()
     {
-        LayoutProbe container = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowOnly, Width = Length.Cells(10) };
+        var container = new LayoutProbe() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowOnly, Width = Length.Cells(10) };
         container.Children.Add(new ProbeControl(new Size(4, 2)));
 
         new Engine().Layout(container, new Size(40, 40));
@@ -49,7 +48,7 @@ public sealed class ContainerAutoSizeTests
     [Fact]
     public void AutoSize_WhenContentLargerThanFixedWidth_GrowsToContent()
     {
-        LayoutProbe container = new() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowOnly, Width = Length.Cells(10) };
+        var container = new LayoutProbe() { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowOnly, Width = Length.Cells(10) };
         container.Children.Add(new ProbeControl(new Size(20, 2)));
 
         new Engine().Layout(container, new Size(40, 40));

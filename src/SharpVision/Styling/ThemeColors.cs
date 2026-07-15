@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Semantic theme colors as first-class <see cref="Color"/> values resolved by the active theme.</summary>
 /// <remarks>

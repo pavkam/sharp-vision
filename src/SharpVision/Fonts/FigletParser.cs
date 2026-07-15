@@ -3,7 +3,6 @@
 
 namespace SharpVision.Fonts;
 
-using System.Globalization;
 
 /// <summary>Parses complete bounded FIGfont version 2 payloads.</summary>
 internal static class FigletParser
@@ -34,9 +33,9 @@ internal static class FigletParser
             text = Encoding.Latin1.GetString(bytes);
         }
 
-        string[] lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
-        int cursor = 0;
-        string[] header = ReadLine(lines, ref cursor, "header").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+        var cursor = 0;
+        var header = ReadLine(lines, ref cursor, "header").Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
         if (header.Length < 6 ||
             header[0].Length < 6 ||
@@ -46,12 +45,12 @@ internal static class FigletParser
             throw new FormatException("The FIGfont header signature is invalid.");
         }
 
-        char hardblank = header[0][5];
-        int height = Positive(header[1], "height");
-        int baseline = NonNegative(header[2], "baseline");
-        int maxLength = Positive(header[3], "maximum row length");
-        int oldLayout = Integer(header[4], "old layout");
-        int comments = NonNegative(header[5], "comment count");
+        var hardblank = header[0][5];
+        var height = Positive(header[1], "height");
+        var baseline = NonNegative(header[2], "baseline");
+        var maxLength = Positive(header[3], "maximum row length");
+        var oldLayout = Integer(header[4], "old layout");
+        var comments = NonNegative(header[5], "comment count");
 
         if (height > limits.MaxHeight)
         {
@@ -70,30 +69,30 @@ internal static class FigletParser
             throw new InvalidDataException("The FIGfont comment count exceeds the configured limit.");
         }
 
-        FigletDirection direction = header.Length > 6 &&
-            int.TryParse(header[6], NumberStyles.Integer, CultureInfo.InvariantCulture, out int directionValue)
+        var direction = header.Length > 6 &&
+            int.TryParse(header[6], NumberStyles.Integer, CultureInfo.InvariantCulture, out var directionValue)
                 ? Direction(directionValue)
                 : FigletDirection.LeftToRight;
-        int fullLayout = header.Length > 7 &&
-            int.TryParse(header[7], NumberStyles.Integer, CultureInfo.InvariantCulture, out int layoutValue)
+        var fullLayout = header.Length > 7 &&
+            int.TryParse(header[7], NumberStyles.Integer, CultureInfo.InvariantCulture, out var layoutValue)
                 ? layoutValue
                 : -1;
-        FigletLayout layout = fullLayout >= 0 ? Layout(fullLayout) : Layout(oldLayout);
+        var layout = fullLayout >= 0 ? Layout(fullLayout) : Layout(oldLayout);
 
-        for (int index = 0; index < comments; index++)
+        for (var index = 0; index < comments; index++)
         {
             _ = ReadLine(lines, ref cursor, "comment");
         }
 
         Dictionary<int, FigletGlyph> glyphs = [];
-        for (int code = 32; code <= 126; code++)
+        for (var code = 32; code <= 126; code++)
         {
             glyphs.Add(code, ReadGlyph(lines, ref cursor, height, limits));
         }
 
         if (lines.Length - cursor >= _additionalCodes.Length * height)
         {
-            foreach (int code in _additionalCodes)
+            foreach (var code in _additionalCodes)
             {
                 glyphs.Add(code, ReadGlyph(lines, ref cursor, height, limits));
             }
@@ -101,17 +100,17 @@ internal static class FigletParser
 
         while (cursor < lines.Length && glyphs.Count < limits.MaxGlyphs)
         {
-            string tag = lines[cursor++].Trim();
+            var tag = lines[cursor++].Trim();
 
             if (tag.Length == 0)
             {
                 continue;
             }
 
-            int separator = tag.IndexOfAny([' ', '\t']);
-            string token = separator < 0 ? tag : tag[..separator];
-            int code = CodePoint(token);
-            FigletGlyph glyph = ReadGlyph(lines, ref cursor, height, limits);
+            var separator = tag.IndexOfAny([' ', '\t']);
+            var token = separator < 0 ? tag : tag[..separator];
+            var code = CodePoint(token);
+            var glyph = ReadGlyph(lines, ref cursor, height, limits);
 
             // Negative code tags are FIGlet extension records such as legacy
             // character maps. They own normal glyph rows but do not identify a
@@ -148,12 +147,12 @@ internal static class FigletParser
         int height,
         FigletLimits limits)
     {
-        string[] rows = new string[height];
-        int width = 0;
+        var rows = new string[height];
+        var width = 0;
 
-        for (int row = 0; row < height; row++)
+        for (var row = 0; row < height; row++)
         {
-            string encoded = ReadLine(lines, ref cursor, "glyph row").TrimEnd();
+            var encoded = ReadLine(lines, ref cursor, "glyph row").TrimEnd();
 
             if (encoded.Length == 0 || encoded.Length > limits.MaxRowWidth)
             {
@@ -162,8 +161,8 @@ internal static class FigletParser
                     $"{limits.MaxRowWidth}.");
             }
 
-            char endmark = encoded[^1];
-            int end = encoded.Length - 1;
+            var endmark = encoded[^1];
+            var end = encoded.Length - 1;
 
             if (row == height - 1 && end > 0 && encoded[end - 1] == endmark)
             {
@@ -174,7 +173,7 @@ internal static class FigletParser
             width = Math.Max(width, rows[row].Length);
         }
 
-        for (int row = 0; row < rows.Length; row++)
+        for (var row = 0; row < rows.Length; row++)
         {
             rows[row] = rows[row].PadRight(width);
         }
@@ -189,25 +188,25 @@ internal static class FigletParser
 
     private static int Positive(string value, string area)
     {
-        int result = Integer(value, area);
+        var result = Integer(value, area);
         return result > 0 ? result : throw new FormatException($"The FIGfont {area} must be positive.");
     }
 
     private static int NonNegative(string value, string area)
     {
-        int result = Integer(value, area);
+        var result = Integer(value, area);
         return result >= 0 ? result : throw new FormatException($"The FIGfont {area} cannot be negative.");
     }
 
     private static int Integer(string value, string area) =>
-        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result)
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
             ? result
             : throw new FormatException($"The FIGfont {area} is not an integer.");
 
     private static int CodePoint(string value)
     {
-        int sign = 1;
-        ReadOnlySpan<char> token = value.AsSpan();
+        var sign = 1;
+        var token = value.AsSpan();
 
         if (!token.IsEmpty && token[0] == '-')
         {
@@ -215,8 +214,8 @@ internal static class FigletParser
             token = token[1..];
         }
 
-        NumberStyles style = NumberStyles.Integer;
-        int radix = 10;
+        var style = NumberStyles.Integer;
+        var radix = 10;
 
         if (token.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
         {
@@ -242,7 +241,7 @@ internal static class FigletParser
             }
         }
 
-        return int.TryParse(token, style, CultureInfo.InvariantCulture, out int result)
+        return int.TryParse(token, style, CultureInfo.InvariantCulture, out var result)
             ? checked(sign * result)
             : throw new FormatException($"The FIGfont code tag '{value}' is invalid.");
     }
@@ -266,7 +265,7 @@ internal static class FigletParser
             return FigletLayout.HorizontalFitting;
         }
 
-        FigletLayout layout = (FigletLayout) value;
+        var layout = (FigletLayout) value;
 
         if (value is > 0 and < 64)
         {

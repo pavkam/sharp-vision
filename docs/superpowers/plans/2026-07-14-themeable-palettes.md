@@ -1658,8 +1658,8 @@ Curated set and slugs (order values leave gaps for future insertion):
       `selectionBackground←the editor selection bg`, `selectionForeground←fg`,
       `error←red`, `warning←yellow/orange`, `success←green`, `info←blue/cyan`.
 
-Canonical example — `dracula.theme.json` (source:
-https://github.com/dracula/dracula-theme):
+Canonical example — `dracula.theme.json`
+([source](https://github.com/dracula/dracula-theme)):
 
 ```json
 {
@@ -1700,8 +1700,8 @@ https://github.com/dracula/dracula-theme):
 }
 ```
 
-Canonical example — `nord.theme.json` (source:
-https://github.com/nordtheme/nord):
+Canonical example — `nord.theme.json`
+([source](https://github.com/nordtheme/nord)):
 
 ```json
 {

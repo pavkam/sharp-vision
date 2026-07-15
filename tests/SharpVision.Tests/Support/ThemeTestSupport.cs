@@ -12,7 +12,7 @@ internal static class ThemeTestSupport
     /// <returns>The configured style instance.</returns>
     internal static ControlStyle<Control> CreateControlStyle(Action<ControlStyle<Control>>? configure = null)
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
         configure?.Invoke(style);
         return style;
     }
@@ -24,7 +24,7 @@ internal static class ThemeTestSupport
     internal static ControlStyle<TControl> CreateStyle<TControl>(Action<ControlStyle<TControl>>? configure = null)
         where TControl : Control
     {
-        ControlStyle<TControl> style = new();
+        var style = new ControlStyle<TControl>();
         configure?.Invoke(style);
         return style;
     }
@@ -86,9 +86,9 @@ internal static class ThemeTestSupport
         params (State State, ThemeOverlay Overlay)[] layers)
         where TControl : Control
     {
-        ControlStyle<TControl> style = new();
+        var style = new ControlStyle<TControl>();
 
-        foreach ((State state, ThemeOverlay overlay) in layers)
+        foreach ((var state, var overlay) in layers)
         {
             ApplyOverlay(style, state, overlay);
         }
@@ -104,7 +104,7 @@ internal static class ThemeTestSupport
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(theme);
 
-        ThemeContext context = ThemeContext.Create(theme);
+        var context = ThemeContext.Create(theme);
         ApplyThemeContext(root, context);
     }
 

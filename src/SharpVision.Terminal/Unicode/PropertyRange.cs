@@ -6,7 +6,6 @@
 
 namespace SharpVision.Terminal.Unicode;
 
-using System.Diagnostics;
 
 /// <summary>Stores one inclusive scalar range and its generated property value.</summary>
 internal readonly record struct PropertyRange

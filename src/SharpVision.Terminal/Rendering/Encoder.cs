@@ -3,12 +3,8 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using System.Buffers;
-using System.Text;
 
-using SharpVision.Terminal.Protocols;
 
-using TerminalCapabilities = Capabilities.Capabilities;
 
 /// <summary>
 /// Encodes semantic frame damage into deterministic terminal control bytes.
@@ -38,35 +34,35 @@ public static class Encoder
         ArgumentNullException.ThrowIfNull(capabilities);
         back.ThrowIfDisposed();
         front?.ThrowIfDisposed();
-        bool redraw = full || front is null || front.Size != back.Size;
-        Writer writer = new(destination);
-        CellStyle semanticStyle = CellStyle.Default;
-        CellStyle style = CellStyle.Default;
-        int spanCount = 0;
+        var redraw = full || front is null || front.Size != back.Size;
+        var writer = new Writer(destination);
+        var semanticStyle = CellStyle.Default;
+        var style = CellStyle.Default;
+        var spanCount = 0;
 
-        foreach (DamageSpan span in Damage.Enumerate(front, back, redraw))
+        foreach (var span in Damage.Enumerate(front, back, redraw))
         {
             Csi.Position(writer, span.Row + 1, span.Start + 1);
             spanCount++;
-            int end = span.Start + span.Length;
+            var end = span.Start + span.Length;
 
-            for (int column = span.Start; column < end; column++)
+            for (var column = span.Start; column < end; column++)
             {
-                int index = checked((span.Row * back.Size.Width) + column);
-                Cell cell = back.GetCell(index);
+                var index = checked((span.Row * back.Size.Width) + column);
+                var cell = back.GetCell(index);
 
                 if (cell.IsContinuation)
                 {
                     continue;
                 }
 
-                CellStyle projected = cell.Style == semanticStyle
+                var projected = cell.Style == semanticStyle
                     ? style
                     : Project(cell.Style, capabilities);
                 ApplyStyle(writer, style, projected, capabilities);
                 semanticStyle = cell.Style;
                 style = projected;
-                ReadOnlySpan<byte> grapheme = back.GetGrapheme(index);
+                var grapheme = back.GetGrapheme(index);
 
                 if (grapheme.IsEmpty)
                 {
@@ -80,7 +76,7 @@ public static class Encoder
         }
 
         ResetStyle(writer, style);
-        bool cursorChanged = redraw || front!.Cursor != back.Cursor;
+        var cursorChanged = redraw || front!.Cursor != back.Cursor;
 
         if ((spanCount > 0 || cursorChanged) && back.Size.Width > 0 && back.Size.Height > 0)
         {
@@ -158,7 +154,7 @@ public static class Encoder
     {
         if (capabilities.ColorDepth == Capabilities.ColorDepth.Basic16)
         {
-            BasicColor basic = (BasicColor) color.Red;
+            var basic = (BasicColor) color.Red;
 
             if (foreground)
             {
@@ -241,10 +237,10 @@ public static class Encoder
 
     private static CellStyle Project(CellStyle value, TerminalCapabilities capabilities)
     {
-        Attributes attributes = capabilities.Overline.IsSupported
+        var attributes = capabilities.Overline.IsSupported
             ? value.Attributes
             : value.Attributes & ~Attributes.Overline;
-        Underline underline = value.Underline;
+        var underline = value.Underline;
 
         if (underline != Underline.None && !capabilities.StyledUnderlines.IsSupported)
         {
@@ -252,7 +248,7 @@ public static class Encoder
             underline = Underline.None;
         }
 
-        Color underlineColor = capabilities.UnderlineColor.IsSupported
+        var underlineColor = capabilities.UnderlineColor.IsSupported
             ? Palette.Project(value.UnderlineColor, capabilities.ColorDepth)
             : Color.Default;
         return new CellStyle(
@@ -266,17 +262,17 @@ public static class Encoder
 
     private static void OpenHyperlink(Writer writer, string hyperlink)
     {
-        int byteCount = Encoding.UTF8.GetByteCount(hyperlink);
-        byte[]? rented = byteCount > _stackLinkBytes
+        var byteCount = Encoding.UTF8.GetByteCount(hyperlink);
+        var rented = byteCount > _stackLinkBytes
             ? ArrayPool<byte>.Shared.Rent(byteCount)
             : null;
-        Span<byte> bytes = rented is null
+        var bytes = rented is null
             ? stackalloc byte[byteCount]
             : rented.AsSpan(0, byteCount);
 
         try
         {
-            int written = Encoding.UTF8.GetBytes(hyperlink.AsSpan(), bytes);
+            var written = Encoding.UTF8.GetBytes(hyperlink.AsSpan(), bytes);
             Osc.OpenHyperlink(writer, bytes[..written]);
         }
         finally

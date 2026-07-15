@@ -29,7 +29,7 @@ internal sealed class ManualTimeProvider: TimeProvider
         ArgumentNullException.ThrowIfNull(callback);
         ValidateDuration(dueTime, nameof(dueTime));
         ValidateDuration(period, nameof(period));
-        ManualTimer timer = new(this, callback, state);
+        var timer = new ManualTimer(this, callback, state);
 
         lock (_gate)
         {
@@ -54,7 +54,7 @@ internal sealed class ManualTimeProvider: TimeProvider
             due = [.. _timers.Where(timer => timer.Prepare(_now))];
         }
 
-        foreach (ManualTimer timer in due)
+        foreach (var timer in due)
         {
             timer.Invoke();
         }

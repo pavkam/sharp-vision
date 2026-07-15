@@ -67,7 +67,7 @@ public sealed partial class Shadow: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        Control? child = Child;
+        var child = Child;
 
         if (child is null)
         {
@@ -91,7 +91,7 @@ public sealed partial class Shadow: Container
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        BackgroundMode background = ControlAppearance.HasOpaqueFill(this, GetVisualState())
+        var background = ControlAppearance.HasOpaqueFill(this, GetVisualState())
             ? BackgroundMode.Opaque
             : BackgroundMode.Transparent;
         ControlChrome.DrawShadow(
@@ -110,7 +110,7 @@ public sealed partial class Shadow: Container
         Debug.Assert(left >= 0, "Shadow accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "Shadow accumulation uses non-negative extents.");
 
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 }

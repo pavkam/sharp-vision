@@ -3,9 +3,6 @@
 
 namespace SharpVision.Terminal.Unicode;
 
-using System.Buffers;
-using System.Diagnostics;
-using System.Text;
 
 /// <summary>
 /// Measures Unicode 17 extended grapheme clusters in terminal cells.
@@ -24,13 +21,13 @@ public static class Width
         Ambiguous ambiguous = Ambiguous.Narrow)
     {
         Validate(ambiguous);
-        int cells = 0;
-        int graphemes = 0;
-        int controls = 0;
+        var cells = 0;
+        var graphemes = 0;
+        var controls = 0;
 
-        foreach (Grapheme segment in Graphemes.Enumerate(value))
+        foreach (var segment in Graphemes.Enumerate(value))
         {
-            Cluster cluster = AnalyzeCluster(
+            var cluster = AnalyzeCluster(
                 value.Slice(segment.Offset, segment.Length),
                 ambiguous,
                 segment.HasInvalidData);
@@ -78,18 +75,18 @@ public static class Width
             return new Cluster(CellWidth.Narrow, requiresReplacement: true);
         }
 
-        int baseScalar = -1;
-        bool hasTextSelector = false;
-        bool hasEmojiSelector = false;
-        bool hasEmojiPresentation = false;
-        bool hasExtendedPictographic = false;
-        bool hasZwj = false;
-        bool hasKeycap = false;
-        int position = 0;
+        var baseScalar = -1;
+        var hasTextSelector = false;
+        var hasEmojiSelector = false;
+        var hasEmojiPresentation = false;
+        var hasExtendedPictographic = false;
+        var hasZwj = false;
+        var hasKeycap = false;
+        var position = 0;
 
         while (position < value.Length)
         {
-            OperationStatus status = Rune.DecodeFromUtf16(value[position..], out Rune rune, out int consumed);
+            var status = Rune.DecodeFromUtf16(value[position..], out var rune, out var consumed);
 
             if (status != OperationStatus.Done)
             {
@@ -97,8 +94,8 @@ public static class Width
                 consumed = 1;
             }
 
-            int scalar = rune.Value;
-            GraphemeBreak graphemeBreak = Data.GetGraphemeBreak(scalar);
+            var scalar = rune.Value;
+            var graphemeBreak = Data.GetGraphemeBreak(scalar);
 
             if (graphemeBreak is GraphemeBreak.Control or GraphemeBreak.Cr or GraphemeBreak.Lf)
             {
@@ -134,9 +131,9 @@ public static class Width
             return new Cluster(CellWidth.Narrow, requiresReplacement: false);
         }
 
-        EastAsianWidth eastAsianWidth = Data.GetEastAsianWidth(baseScalar);
+        var eastAsianWidth = Data.GetEastAsianWidth(baseScalar);
 
-        CellWidth width = eastAsianWidth is EastAsianWidth.Wide or EastAsianWidth.Fullwidth
+        var width = eastAsianWidth is EastAsianWidth.Wide or EastAsianWidth.Fullwidth
             ? CellWidth.Wide
             : hasTextSelector
             ? CellWidth.Narrow

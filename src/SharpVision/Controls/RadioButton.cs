@@ -90,7 +90,7 @@ public sealed class RadioButton: Pressable
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        Control? content = Content;
+        var content = Content;
 
         if (content is null)
         {
@@ -108,7 +108,7 @@ public sealed class RadioButton: Pressable
     {
         if (Content is { } content)
         {
-            int consumed = Math.Min(2, bounds.Width);
+            var consumed = Math.Min(2, bounds.Width);
             content.Arrange(
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
                 widthResolved: true,
@@ -124,10 +124,10 @@ public sealed class RadioButton: Pressable
             return;
         }
 
-        Rune glyph = new(IsChecked ? '◉' : '○');
+        var glyph = new Rune(IsChecked ? '◉' : '○');
         Span<char> buffer = stackalloc char[2];
-        int length = glyph.EncodeToUtf16(buffer);
-        TerminalStyle style = ResolvedStyle;
+        var length = glyph.EncodeToUtf16(buffer);
+        var style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
@@ -151,7 +151,7 @@ public sealed class RadioButton: Pressable
             return;
         }
 
-        bool reverse = key.Stroke.Code is Code.Left or Code.Up;
+        var reverse = key.Stroke.Code is Code.Left or Code.Up;
 
         if (reverse || key.Stroke.Code is Code.Right or Code.Down)
         {
@@ -207,7 +207,7 @@ public sealed class RadioButton: Pressable
         Debug.Assert(left >= 0, "RadioButton accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "RadioButton accumulation uses non-negative extents.");
 
-        long value = (long) left + right;
+        var value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 

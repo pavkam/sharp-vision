@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the Canvas control with fixed, percentage, and edge-anchored placement specimens.</summary>
 internal sealed class CanvasPane: View
 {
@@ -14,39 +15,39 @@ internal sealed class CanvasPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Canvas fixedStage = Stage();
-        Border fixedCard = Card("fixed 2,1", Glyphs.Light);
+        var fixedStage = Stage();
+        var fixedCard = Card("fixed 2,1", Glyphs.Light);
         Canvas.SetLeft(fixedCard, Length.Cells(2));
         Canvas.SetTop(fixedCard, Length.Cells(1));
         fixedStage.Children.Add(fixedCard);
 
-        Canvas percentStage = Stage();
-        Border percentCard = Card("50%,50%", Glyphs.Heavy);
+        var percentStage = Stage();
+        var percentCard = Card("50%,50%", Glyphs.Heavy);
         Canvas.SetLeft(percentCard, Length.Percent(50));
         Canvas.SetTop(percentCard, Length.Percent(50));
         percentStage.Children.Add(percentCard);
 
-        Canvas edgeStage = Stage();
-        Border edgeCard = Card("Right 2 / Bottom 1", Glyphs.Paired);
+        var edgeStage = Stage();
+        var edgeCard = Card("Right 2 / Bottom 1", Glyphs.Paired);
         Canvas.SetRight(edgeCard, Length.Cells(2));
         Canvas.SetBottom(edgeCard, Length.Cells(1));
         edgeStage.Children.Add(edgeCard);
-        Border widthCard = Card("40% wide", Glyphs.Rounded);
+        var widthCard = Card("40% wide", Glyphs.Rounded);
         widthCard.Width = Length.Percent(40);
         Canvas.SetLeft(widthCard, Length.Cells(1));
         Canvas.SetTop(widthCard, Length.Cells(1));
         edgeStage.Children.Add(widthCard);
 
-        Canvas layerStage = Stage();
-        Border back = Card("Back", Glyphs.Light);
+        var layerStage = Stage();
+        var back = Card("Back", Glyphs.Light);
         Canvas.SetLeft(back, Length.Cells(2));
         Canvas.SetTop(back, Length.Cells(1));
         layerStage.Children.Add(back);
-        Border front = Card("Front", Glyphs.Heavy);
+        var front = Card("Front", Glyphs.Heavy);
         Canvas.SetLeft(front, Length.Cells(6));
         Canvas.SetTop(front, Length.Cells(2));
         layerStage.Children.Add(front);
-        Border clipped = Card("clipped", Glyphs.Ascii);
+        var clipped = Card("clipped", Glyphs.Ascii);
         Canvas.SetLeft(clipped, Length.Cells(29));
         Canvas.SetTop(clipped, Length.Cells(5));
         layerStage.Children.Add(clipped);

@@ -3,11 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies screen ownership and startup hooks.</summary>
 public sealed class ScreenTests

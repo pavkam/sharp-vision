@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using System.Reflection;
 
 /// <summary>Discovers and loads the embedded theme resources shipped with SharpVision.</summary>
 public sealed class ThemeCatalog
@@ -17,10 +16,10 @@ public sealed class ThemeCatalog
 
     private ThemeCatalog()
     {
-        Assembly assembly = typeof(ThemeCatalog).Assembly;
+        var assembly = typeof(ThemeCatalog).Assembly;
         List<ThemeCatalogEntry> entries = [];
 
-        foreach (string resource in assembly.GetManifestResourceNames())
+        foreach (var resource in assembly.GetManifestResourceNames())
         {
             if (!resource.StartsWith(_prefix, StringComparison.Ordinal) ||
                 !resource.EndsWith(_suffix, StringComparison.Ordinal))
@@ -28,9 +27,9 @@ public sealed class ThemeCatalog
                 continue;
             }
 
-            string json = ReadResource(assembly, resource);
-            ThemeDefinition definition = ThemeLoader.Deserialize(json, resource);
-            ThemeCatalogEntry entry = ToEntry(definition, resource);
+            var json = ReadResource(assembly, resource);
+            var definition = ThemeLoader.Deserialize(json, resource);
+            var entry = ToEntry(definition, resource);
 
             if (!_json.TryAdd(entry.Slug, json))
             {
@@ -42,7 +41,7 @@ public sealed class ThemeCatalog
 
         entries.Sort((left, right) =>
         {
-            int byOrder = ByOrder(left.Slug).CompareTo(ByOrder(right.Slug));
+            var byOrder = ByOrder(left.Slug).CompareTo(ByOrder(right.Slug));
             return byOrder != 0 ? byOrder : string.CompareOrdinal(left.Slug, right.Slug);
         });
 
@@ -72,17 +71,17 @@ public sealed class ThemeCatalog
 
         lock (_gate)
         {
-            if (_cache.TryGetValue(slug, out Theme? cached))
+            if (_cache.TryGetValue(slug, out var cached))
             {
                 return cached;
             }
 
-            if (!_json.TryGetValue(slug, out string? json))
+            if (!_json.TryGetValue(slug, out var json))
             {
                 throw new KeyNotFoundException($"The theme catalog does not contain '{slug}'.");
             }
 
-            Theme theme = ThemeLoader.FromJson(json, slug);
+            var theme = ThemeLoader.FromJson(json, slug);
             _cache[slug] = theme;
             return theme;
         }
@@ -90,7 +89,7 @@ public sealed class ThemeCatalog
 
     private ThemeCatalogEntry ToEntry(ThemeDefinition definition, string resource)
     {
-        string slug = Require(definition.Slug, resource, "slug");
+        var slug = Require(definition.Slug, resource, "slug");
         _orders[slug] = definition.Order;
         return new ThemeCatalogEntry(
             Require(definition.Name, resource, "name"),
@@ -115,7 +114,7 @@ public sealed class ThemeCatalog
 
     private static string ReadResource(Assembly assembly, string name)
     {
-        using Stream stream = assembly.GetManifestResourceStream(name)
+        using var stream = assembly.GetManifestResourceStream(name)
             ?? throw new InvalidDataException($"Embedded theme resource '{name}' is missing.");
         using StreamReader reader = new(stream);
         return reader.ReadToEnd();

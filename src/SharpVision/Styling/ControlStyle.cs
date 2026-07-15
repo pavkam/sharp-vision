@@ -50,11 +50,11 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
         EnsureProperty(property);
         property.ValidateValue(value);
 
-        (StyleProperty<T> property, State state) key = (property, state);
+        var key = (property, state);
 
         lock (_gate)
         {
-            if (_values.TryGetValue(key, out object? existing) && EqualityComparer<T>.Default.Equals((T) existing, value))
+            if (_values.TryGetValue(key, out var existing) && EqualityComparer<T>.Default.Equals((T) existing, value))
             {
                 return;
             }
@@ -109,7 +109,7 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
         ArgumentNullException.ThrowIfNull(property);
         ValidateState(state);
 
-        if (CurrentSnapshot.TryGet(property, state, out object? stored))
+        if (CurrentSnapshot.TryGet(property, state, out var stored))
         {
             value = (T) stored!;
             return true;
@@ -125,9 +125,9 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     {
         lock (_gate)
         {
-            ControlStyle<TControl> clone = new();
+            var clone = new ControlStyle<TControl>();
 
-            foreach (KeyValuePair<(IStyleProperty Property, State State), object> entry in _values)
+            foreach (var entry in _values)
             {
                 clone._values[entry.Key] = entry.Value;
             }
@@ -188,10 +188,10 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
 
     private ControlStyleSnapshot BuildSnapshot()
     {
-        Dictionary<(IStyleProperty Property, State State), object> copy = new(_values);
-        Impact aggregate = Impact.Render;
+        var copy = new Dictionary<(IStyleProperty Property, State State), object>(_values);
+        var aggregate = Impact.Render;
 
-        foreach ((IStyleProperty Property, State State) entry in copy.Keys)
+        foreach (var entry in copy.Keys)
         {
             if (entry.Property.Impact == Impact.Measure)
             {

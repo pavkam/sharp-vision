@@ -34,9 +34,9 @@ internal static class VisualStates
 
     private static State Combine(State[] states)
     {
-        State result = State.Normal;
+        var result = State.Normal;
 
-        foreach (State state in states)
+        foreach (var state in states)
         {
             result |= state;
         }

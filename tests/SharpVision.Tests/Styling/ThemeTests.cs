@@ -12,12 +12,12 @@ public sealed class ThemeTests
     [Fact]
     public void SetStyle_WhenControlStyleIsRegistered_GetStyleReturnsIt()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(7));
         theme.SetStyle(style);
 
-        theme.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out Color? value)
+        theme.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out var value)
             .ShouldBeTrue();
         value.ShouldBe(Color.Indexed(7));
     }
@@ -26,11 +26,11 @@ public sealed class ThemeTests
     [Fact]
     public void GetStyleChain_WhenOnlyBaseStyleExists_ResolvesOnDerivedControl()
     {
-        Theme theme = new();
-        ControlStyle<Control> baseStyle = new();
+        var theme = new Theme();
+        var baseStyle = new ControlStyle<Control>();
         baseStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
         theme.SetStyle(baseStyle);
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
@@ -41,14 +41,14 @@ public sealed class ThemeTests
     [Fact]
     public void GetStyleChain_WhenDerivedStyleExists_OverlaysBaseStyle()
     {
-        Theme theme = new();
-        ControlStyle<Control> baseStyle = new();
+        var theme = new Theme();
+        var baseStyle = new ControlStyle<Control>();
         baseStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
-        ControlStyle<ProbeControl> derivedStyle = new();
+        var derivedStyle = new ControlStyle<ProbeControl>();
         derivedStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
         theme.SetStyle(baseStyle);
         theme.SetStyle(derivedStyle);
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
@@ -59,7 +59,7 @@ public sealed class ThemeTests
     [Fact]
     public void SetStyle_WhenThemeIsFrozen_Throws()
     {
-        Theme theme = new();
+        var theme = new Theme();
         theme.Freeze();
 
         _ = Should.Throw<InvalidOperationException>(() => theme.SetStyle(new ControlStyle<Control>()));
@@ -69,14 +69,14 @@ public sealed class ThemeTests
     [Fact]
     public void Clone_WhenSourceMutatesAfterCopy_DoesNotAffectClone()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(3));
         theme.SetStyle(style);
-        Theme clone = theme.Clone();
+        var clone = theme.Clone();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(9));
 
-        clone.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out Color? value)
+        clone.GetStyle<Control>()!.TryGet(Control.ForegroundProperty, State.Normal, out var value)
             .ShouldBeTrue();
         value.ShouldBe(Color.Indexed(3));
     }

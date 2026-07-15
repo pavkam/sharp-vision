@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Runtime;
-using SharpVision.Terminal.Tests.Support;
+
 
 /// <summary>
 /// Verifies console connection initialization and asynchronous disposal behavior.
@@ -15,10 +15,10 @@ public sealed class ConsoleConnectionTests
     /// Verifies that DisposeAsync restores the lease exactly once when called multiple times.
     /// </summary>
     [Fact]
-    public async Task DisposeAsync_WhenCalledTwice_RestoresExactlyOnce()
+    public async Task DisposeAsync_WhenCalledTwice_RestoresExactlyOnceAsync()
     {
-        TrackingRestore restore = new();
-        ConsoleConnection connection = new(new FakeTransport(), new FakeResizeSource(), restore);
+        var restore = new TrackingRestore();
+        var connection = new ConsoleConnection(new FakeTransport(), new FakeResizeSource(), restore);
 
         await connection.DisposeAsync();
         await connection.DisposeAsync();
@@ -41,10 +41,10 @@ public sealed class ConsoleConnectionTests
     /// caller (e.g. the owning <c>Application</c>) is responsible for disposing.
     /// </summary>
     [Fact]
-    public async Task DisposeAsync_WhenCalled_DoesNotDisposeTransportOrResize()
+    public async Task DisposeAsync_WhenCalled_DoesNotDisposeTransportOrResizeAsync()
     {
-        FakeTransport transport = new();
-        ConsoleConnection connection = new(transport, new FakeResizeSource(), new TrackingRestore());
+        var transport = new FakeTransport();
+        var connection = new ConsoleConnection(transport, new FakeResizeSource(), new TrackingRestore());
 
         await connection.DisposeAsync();
 

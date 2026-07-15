@@ -85,7 +85,7 @@ public sealed class StyleProperty<T>: IStyleProperty
 
         validate?.Invoke(defaultValue);
 
-        StyleProperty<T> property = new(
+        var property = new StyleProperty<T>(
             typeof(TControl),
             name,
             clrName ?? DeriveClrName(name),
@@ -98,10 +98,10 @@ public sealed class StyleProperty<T>: IStyleProperty
 
     private static string DeriveClrName(string name)
     {
-        StringBuilder builder = new(name.Length);
-        bool capitalizeNext = true;
+        var builder = new StringBuilder(name.Length);
+        var capitalizeNext = true;
 
-        foreach (char character in name)
+        foreach (var character in name)
         {
             if (character is '-' or '_')
             {
@@ -152,9 +152,9 @@ public sealed class StyleProperty<T>: IStyleProperty
     {
         ArgumentNullException.ThrowIfNull(controlType);
 
-        for (Type? current = controlType; current is not null; current = current.BaseType)
+        for (var current = controlType; current is not null; current = current.BaseType)
         {
-            if (_classDefaults.TryGetValue(current, out T? candidate))
+            if (_classDefaults.TryGetValue(current, out var candidate))
             {
                 value = candidate;
                 return true;

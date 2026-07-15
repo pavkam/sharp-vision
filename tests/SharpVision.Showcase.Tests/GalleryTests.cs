@@ -3,8 +3,6 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Showcase.Panes;
-using SharpVision.Text;
 
 /// <summary>Verifies showcase registration, navigation, and public-control composition.</summary>
 public sealed class GalleryTests
@@ -53,7 +51,7 @@ public sealed class GalleryTests
     public void SelectedIndex_WhenChanged_UpdatesSelectedPageAndContent()
     {
         using Gallery gallery = new();
-        Control previous = gallery.Content;
+        var previous = gallery.Content;
 
         gallery.Select(1);
 
@@ -67,7 +65,7 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
         new Engine().Layout(gallery, new Size(80, 24));
-        Stack main = gallery.Content.Parent.ShouldBeOfType<Stack>();
+        var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
         main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
 
         gallery.Select(1);
@@ -81,7 +79,7 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
 
-        for (int index = 0; index < gallery.Pages.Count; index++)
+        for (var index = 0; index < gallery.Pages.Count; index++)
         {
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
@@ -94,7 +92,7 @@ public sealed class GalleryTests
     [Fact]
     public void Constructor_WhenRichTextIsCreated_UsesWordWrapping()
     {
-        RichText document = new();
+        var document = new RichText();
 
         document.Wrapping.ShouldBe(Wrapping.Word);
     }
@@ -107,12 +105,12 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
 
-        for (int index = 0; index < gallery.Pages.Count; index++)
+        for (var index = 0; index < gallery.Pages.Count; index++)
         {
-            string name = gallery.Pages[index];
+            var name = gallery.Pages[index];
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
-            RichText? recipe = FindRichText(gallery.Content, "Practical recipe");
+            var recipe = FindRichText(gallery.Content, "Practical recipe");
 
             if (recipe is { } found)
             {
@@ -127,12 +125,12 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
 
-        for (int index = 0; index < gallery.Pages.Count; index++)
+        for (var index = 0; index < gallery.Pages.Count; index++)
         {
-            string name = gallery.Pages[index];
-            using View first = Gallery.CreatePage(index);
-            using View second = Gallery.CreatePage(index);
-            Engine engine = new();
+            var name = gallery.Pages[index];
+            using var first = Gallery.CreatePage(index);
+            using var second = Gallery.CreatePage(index);
+            var engine = new Engine();
             engine.Layout(first, new Size(80, 24));
             engine.Layout(second, new Size(80, 24));
 
@@ -151,7 +149,7 @@ public sealed class GalleryTests
         using Gallery gallery = new();
         Control? previous = null;
 
-        for (int index = 0; index < gallery.Pages.Count; index++)
+        for (var index = 0; index < gallery.Pages.Count; index++)
         {
             gallery.Select(index);
 
@@ -174,7 +172,7 @@ public sealed class GalleryTests
             return false;
         }
 
-        foreach (Control child in container.Children)
+        foreach (var child in container.Children)
         {
             if (ContainsRichText(child))
             {
@@ -201,7 +199,7 @@ public sealed class GalleryTests
             return null;
         }
 
-        foreach (Control child in container.Children)
+        foreach (var child in container.Children)
         {
             if (FindRichText(child, content) is { } found)
             {
@@ -229,7 +227,7 @@ public sealed class GalleryTests
             return false;
         }
 
-        foreach (Control child in container.Children)
+        foreach (var child in container.Children)
         {
             if (ContainsType(child, name))
             {

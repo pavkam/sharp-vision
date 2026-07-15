@@ -3,13 +3,8 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using System.Text;
 
-using SharpVision.Runtime;
-using SharpVision.Showcase.Tests.Support;
-using SharpVision.Terminal.Runtime;
 
-using ControlText = SharpVision.Controls.Text;
 
 /// <summary>Verifies the running gallery exits through its visible control and Ctrl+C.</summary>
 public sealed class GalleryExitTests
@@ -29,10 +24,10 @@ public sealed class GalleryExitTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        Button? quit = await application.Dispatcher.InvokeAsync(
+        var quit = await application.Dispatcher.InvokeAsync(
             () => Find<Button>(gallery.Sidebar, static value => value.Content is ControlText { Content: "Quit" }),
             TestContext.Current.CancellationToken);
-        Button button = quit.ShouldNotBeNull();
+        var button = quit.ShouldNotBeNull();
 
         await application.Dispatcher.InvokeAsync(
             button.PerformClick,
@@ -82,7 +77,7 @@ public sealed class GalleryExitTests
 
         if (root is Container container)
         {
-            foreach (Control child in container.Children)
+            foreach (var child in container.Children)
             {
                 if (Find(child, predicate) is { } found)
                 {

@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies the builder produces a frozen theme with roles and a base control style.</summary>
 public sealed class ThemeBuilderTests
@@ -15,7 +12,7 @@ public sealed class ThemeBuilderTests
     {
         Dictionary<ColorRole, Color> roles = [];
 
-        foreach (ColorRole role in Enum.GetValues<ColorRole>())
+        foreach (var role in Enum.GetValues<ColorRole>())
         {
             roles[role] = Color.Indexed((int) role + 1);
         }
@@ -27,10 +24,10 @@ public sealed class ThemeBuilderTests
     [Fact]
     public void Build_ProducesFrozenThemeWithRoles()
     {
-        Theme theme = ThemeBuilder.Build(Roles());
+        var theme = ThemeBuilder.Build(Roles());
 
         theme.IsFrozen.ShouldBeTrue();
-        theme.TryGetColor(ColorRole.Accent, out Color accent).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Accent, out var accent).ShouldBeTrue();
         accent.ShouldBe(Color.Indexed((int) ColorRole.Accent + 1));
     }
 
@@ -38,12 +35,12 @@ public sealed class ThemeBuilderTests
     [Fact]
     public void Build_BaseStyleStoresRoleColors()
     {
-        Dictionary<ColorRole, Color> roles = Roles();
-        Theme theme = ThemeBuilder.Build(roles);
+        var roles = Roles();
+        var theme = ThemeBuilder.Build(roles);
 
         // The base style now carries the semantic (role) value, not a pre-resolved concrete.
-        ControlStyle<Control> style = theme.GetStyle<Control>()!;
-        style.TryGet(Control.ForegroundProperty, State.Normal, out Color? fg).ShouldBeTrue();
+        var style = theme.GetStyle<Control>()!;
+        style.TryGet(Control.ForegroundProperty, State.Normal, out var fg).ShouldBeTrue();
         fg!.Value.Kind.ShouldBe(ColorKind.Role);
         fg.Value.RoleId.ShouldBe((int) ColorRole.Foreground);
     }
@@ -52,8 +49,8 @@ public sealed class ThemeBuilderTests
     [Fact]
     public void Build_ResolvesRoleColorsToSeededPalette()
     {
-        Dictionary<ColorRole, Color> roles = Roles();
-        Theme theme = ThemeBuilder.Build(roles);
+        var roles = Roles();
+        var theme = ThemeBuilder.Build(roles);
 
         ThemeResolver.Resolve(theme, typeof(Control), Control.ForegroundProperty, State.Normal)
             .ShouldBe(roles[ColorRole.Foreground]);

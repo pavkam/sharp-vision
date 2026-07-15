@@ -4,13 +4,8 @@
 namespace SharpVision.Tests.Integration;
 
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Runtime;
 
 
-using KeyAction = Terminal.Input.Action;
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Proves real terminal bytes through routing, rendering, and output transport.</summary>
 public sealed class TerminalInputTests
@@ -21,9 +16,9 @@ public sealed class TerminalInputTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 4)));
-        ProbeContainer root = new();
-        TextInput first = new();
-        TextInput second = new();
+        var root = new ProbeContainer();
+        var first = new TextInput();
+        var second = new TextInput();
         root.Children.Add(first);
         root.Children.Add(second);
         await using Application application = new(
@@ -32,7 +27,7 @@ public sealed class TerminalInputTests
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        TaskCompletionSource focused = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var focused = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await application.Dispatcher.InvokeAsync(() =>
         {
@@ -66,8 +61,8 @@ public sealed class TerminalInputTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 3)));
-        ProbeContainer root = new();
-        ProbeControl child = new()
+        var root = new ProbeContainer();
+        var child = new ProbeControl()
         {
             Bounds = new Rect(0, 0, 4, 1),
             CanFocus = true,
@@ -79,10 +74,10 @@ public sealed class TerminalInputTests
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        TaskCompletionSource handled = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        byte[] expected = Encoding.UTF8.GetBytes("λ");
-        TaskCompletionSource written = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource rendered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var expected = Encoding.UTF8.GetBytes("λ");
+        var written = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += value =>
         {
             if (value.Span.IndexOf(expected) >= 0)
@@ -128,8 +123,8 @@ public sealed class TerminalInputTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4), new Size(80, 64)));
-        ProbeContainer root = new();
-        ProbeControl child = new()
+        var root = new ProbeContainer();
+        var child = new ProbeControl()
         {
             Bounds = new Rect(0, 0, 5, 4),
             CanFocus = true,
@@ -145,7 +140,7 @@ public sealed class TerminalInputTests
         Paste? paste = null;
         Focus? focus = null;
         Stroke? stroke = null;
-        TaskCompletionSource completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await application.Dispatcher.InvokeAsync(() =>
         {
             application.Focus.Focus(child).ShouldBeTrue();
@@ -182,7 +177,7 @@ public sealed class TerminalInputTests
                 }
             });
         }, TestContext.Current.CancellationToken);
-        byte[] bytes = Encoding.UTF8.GetBytes(
+        var bytes = Encoding.UTF8.GetBytes(
             "\u001b[I\u001b[<0;17;33M\u001b[200~ok\u001b[201~\u001b[97;256:2u");
 
         terminal.QueueInput(bytes);

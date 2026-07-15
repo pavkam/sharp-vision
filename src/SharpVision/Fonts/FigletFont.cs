@@ -3,7 +3,6 @@
 
 namespace SharpVision.Fonts;
 
-using System.Buffers;
 
 /// <summary>Represents one validated immutable FIGfont version 2 definition.</summary>
 public sealed class FigletFont
@@ -84,13 +83,13 @@ public sealed class FigletFont
         }
 
         using MemoryStream buffer = new();
-        byte[] rented = ArrayPool<byte>.Shared.Rent(8192);
+        var rented = ArrayPool<byte>.Shared.Rent(8192);
 
         try
         {
             while (true)
             {
-                int read = source.Read(rented, 0, rented.Length);
+                var read = source.Read(rented, 0, rented.Length);
 
                 if (read == 0)
                 {
@@ -136,7 +135,7 @@ public sealed class FigletFont
     /// <param name="value">The Unicode scalar value.</param>
     /// <returns>The matching immutable glyph.</returns>
     internal FigletGlyph GetGlyph(int value) =>
-        _glyphs.TryGetValue(value, out FigletGlyph? glyph)
+        _glyphs.TryGetValue(value, out var glyph)
             ? glyph
             : _glyphs['?'];
 

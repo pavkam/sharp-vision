@@ -84,8 +84,8 @@ public sealed partial class Window: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        Control? child = Child;
-        int titleWidth = Title.Length == 0 ? 0 : Add(2, Terminal.Unicode.Width.Measure(Title).Cells);
+        var child = Child;
+        var titleWidth = Title.Length == 0 ? 0 : Add(2, Terminal.Unicode.Width.Measure(Title).Cells);
 
         if (child is null)
         {
@@ -105,7 +105,7 @@ public sealed partial class Window: Container
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        bool opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
 
         if (opaque)
         {
@@ -117,23 +117,23 @@ public sealed partial class Window: Container
             return;
         }
 
-        TerminalStyle border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
-        BackgroundMode background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        var border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, background);
 
         if (!string.IsNullOrEmpty(Title) && Bounds.Width > 3)
         {
-            string text = $" {Title} ";
-            int available = Bounds.Width - 2;
-            int cells = Terminal.Unicode.Width.Measure(text).Cells;
-            int offset = TitlePlacement switch
+            var text = $" {Title} ";
+            var available = Bounds.Width - 2;
+            var cells = Terminal.Unicode.Width.Measure(text).Cells;
+            var offset = TitlePlacement switch
             {
                 WindowTitlePlacement.Left => 0,
                 WindowTitlePlacement.Center => Math.Max(0, (available - cells) / 2),
                 WindowTitlePlacement.Right => Math.Max(0, available - cells),
                 _ => throw new InvalidOperationException("The validated title placement is unknown."),
             };
-            TerminalCanvas title = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, available, 1));
+            var title = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, available, 1));
             _ = title.Draw(
                 text.AsSpan(),
                 new Point(Bounds.X + 1 + offset, Bounds.Y),
@@ -157,7 +157,7 @@ public sealed partial class Window: Container
             return;
         }
 
-        Button? button = key.Stroke.Code == Code.Enter
+        var button = key.Stroke.Code == Code.Enter
             ? FindButton(this, static candidate => candidate.IsDefault)
             : key.Stroke.Code == Code.Escape
                 ? FindButton(this, static candidate => candidate.IsCancel)
@@ -179,7 +179,7 @@ public sealed partial class Window: Container
         Debug.Assert(left >= 0, "Window accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "Window accumulation uses non-negative extents.");
 
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 

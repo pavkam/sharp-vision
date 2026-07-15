@@ -78,18 +78,18 @@ public sealed class Menu: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        int main = 0;
-        int cross = 0;
-        int count = 0;
+        var main = 0;
+        var cross = 0;
+        var count = 0;
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
-            MenuItem item = RequireItem(child);
+            var item = RequireItem(child);
             item.Measure(Orientation == Orientation.Horizontal
                 ? new Constraint(width: null, constraint.Height)
                 : new Constraint(constraint.Width, height: null));
-            int desiredMain = Orientation == Orientation.Horizontal ? item.DesiredSize.Width : item.DesiredSize.Height;
-            int desiredCross = Orientation == Orientation.Horizontal ? item.DesiredSize.Height : item.DesiredSize.Width;
+            var desiredMain = Orientation == Orientation.Horizontal ? item.DesiredSize.Width : item.DesiredSize.Height;
+            var desiredCross = Orientation == Orientation.Horizontal ? item.DesiredSize.Height : item.DesiredSize.Width;
             main = Add(main, desiredMain);
             cross = Math.Max(cross, desiredCross);
             count++;
@@ -102,13 +102,13 @@ public sealed class Menu: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        int position = Orientation == Orientation.Horizontal ? bounds.X : bounds.Y;
+        var position = Orientation == Orientation.Horizontal ? bounds.X : bounds.Y;
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
-            MenuItem item = RequireItem(child);
-            int desired = Orientation == Orientation.Horizontal ? item.DesiredSize.Width : item.DesiredSize.Height;
-            Rect slot = Orientation == Orientation.Horizontal
+            var item = RequireItem(child);
+            var desired = Orientation == Orientation.Horizontal ? item.DesiredSize.Width : item.DesiredSize.Height;
+            var slot = Orientation == Orientation.Horizontal
                 ? new Rect(position, bounds.Y, Math.Min(desired, Math.Max(0, bounds.Right - position)), bounds.Height)
                 : new Rect(bounds.X, position, bounds.Width, Math.Min(desired, Math.Max(0, bounds.Bottom - position)));
             item.Arrange(slot, widthResolved: true, heightResolved: true);
@@ -126,9 +126,9 @@ public sealed class Menu: Container
             return;
         }
 
-        Code previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
-        Code next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
-        int target = key.Stroke.Code == previous ? FindAvailable(_selectedIndex, -1) :
+        var previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
+        var next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
+        var target = key.Stroke.Code == previous ? FindAvailable(_selectedIndex, -1) :
             key.Stroke.Code == next ? FindAvailable(_selectedIndex, 1) : -1;
 
         if (target < 0)
@@ -151,7 +151,7 @@ public sealed class Menu: Container
             throw new ArgumentException("The radio item must belong to this menu.", nameof(item));
         }
 
-        foreach (MenuItem candidate in Items)
+        foreach (var candidate in Items)
         {
             if (candidate.Kind == MenuItemKind.Radio && candidate.GroupName == item.GroupName)
             {
@@ -190,7 +190,7 @@ public sealed class Menu: Container
     internal bool Remove(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        int index = Children.IndexOf(item);
+        var index = Children.IndexOf(item);
 
         if (index < 0)
         {
@@ -206,7 +206,7 @@ public sealed class Menu: Container
     /// <summary>Clears items and subscriptions.</summary>
     internal void ClearItems()
     {
-        foreach (MenuItem? item in Items.ToArray())
+        foreach (var item in Items.ToArray())
         {
             item.Invoked -= OnItemInvoked;
         }
@@ -222,7 +222,7 @@ public sealed class Menu: Container
 
         if (reason == ReleaseReason.Disposed)
         {
-            foreach (MenuItem item in Items)
+            foreach (var item in Items)
             {
                 item.Invoked -= OnItemInvoked;
             }
@@ -234,7 +234,7 @@ public sealed class Menu: Container
     private void OnItemInvoked(object? sender, MenuItemInvokedEventArgs eventArgs)
     {
         _ = sender;
-        int index = Children.IndexOf(eventArgs.Item);
+        var index = Children.IndexOf(eventArgs.Item);
 
         if (index >= 0)
         {
@@ -262,7 +262,7 @@ public sealed class Menu: Container
 
         if (index >= 0)
         {
-            MenuItem item = ItemAt(index);
+            var item = ItemAt(index);
             item.CommitSelection(true);
 
             if (focus)
@@ -281,10 +281,10 @@ public sealed class Menu: Container
             return -1;
         }
 
-        for (int offset = 1; offset <= Children.Count; offset++)
+        for (var offset = 1; offset <= Children.Count; offset++)
         {
-            int index = (start + (direction * offset) + Children.Count) % Children.Count;
-            MenuItem item = ItemAt(index);
+            var index = (start + (direction * offset) + Children.Count) % Children.Count;
+            var item = ItemAt(index);
 
             if (item.Kind != MenuItemKind.Separator && item.EffectiveIsEnabled && item.EffectiveIsVisible)
             {

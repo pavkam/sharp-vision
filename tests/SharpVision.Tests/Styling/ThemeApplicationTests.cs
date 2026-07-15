@@ -3,11 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application-wide theme ownership and propagation.</summary>
 public sealed class ThemeApplicationTests
@@ -36,7 +33,7 @@ public sealed class ThemeApplicationTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        ProbeControl root = new();
+        var root = new ProbeControl();
         await using Application application = new(
             root,
             terminal,
@@ -77,7 +74,7 @@ public sealed class ThemeApplicationTests
 
         application.Theme = Themes.White;
 
-        for (int attempt = 0; attempt < 200; attempt++)
+        for (var attempt = 0; attempt < 200; attempt++)
         {
             if (ReferenceEquals(application.Theme, Themes.White))
             {

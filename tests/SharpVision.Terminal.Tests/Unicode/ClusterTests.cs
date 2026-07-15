@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Unicode;
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>Verifies width and safe presentation classification for one cluster.</summary>
@@ -24,7 +23,7 @@ public sealed class ClusterTests
     public void AnalyzeCluster_WhenClusterHasNoBase_RequiresReplacement(string value)
     {
         // Act
-        Cluster cluster = Width.AnalyzeCluster(value.AsSpan(), Ambiguous.Narrow);
+        var cluster = Width.AnalyzeCluster(value.AsSpan(), Ambiguous.Narrow);
 
         // Assert
         cluster.Width.ShouldBe(CellWidth.Narrow);
@@ -45,7 +44,7 @@ public sealed class ClusterTests
         CellWidth expected)
     {
         // Act
-        Cluster cluster = Width.AnalyzeCluster(value.AsSpan(), Ambiguous.Narrow);
+        var cluster = Width.AnalyzeCluster(value.AsSpan(), Ambiguous.Narrow);
 
         // Assert
         cluster.Width.ShouldBe(expected);
@@ -57,7 +56,7 @@ public sealed class ClusterTests
     public void AnalyzeCluster_WhenUtf16IsInvalid_RequiresReplacement()
     {
         // Act
-        Cluster cluster = Width.AnalyzeCluster("\ud800".AsSpan(), Ambiguous.Narrow, hasInvalidData: true);
+        var cluster = Width.AnalyzeCluster("\ud800".AsSpan(), Ambiguous.Narrow, hasInvalidData: true);
 
         // Assert
         cluster.Width.ShouldBe(CellWidth.Narrow);
@@ -69,7 +68,7 @@ public sealed class ClusterTests
     public void AnalyzeCluster_WhenClusterIsControl_RemainsContextual()
     {
         // Act
-        Cluster cluster = Width.AnalyzeCluster("\n".AsSpan(), Ambiguous.Narrow);
+        var cluster = Width.AnalyzeCluster("\n".AsSpan(), Ambiguous.Narrow);
 
         // Assert
         cluster.Width.ShouldBe(CellWidth.Control);

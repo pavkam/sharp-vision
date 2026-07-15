@@ -3,10 +3,7 @@
 
 namespace SharpVision.Text;
 
-using System.Globalization;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Parses lenient inline text markup into visible text and semantic style spans.</summary>
 internal static class Markup

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Runtime;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Provides one dispatcher-affine typed terminal protocol response.</summary>
 public sealed class ProtocolResponseEventArgs: EventArgs

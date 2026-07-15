@@ -15,7 +15,7 @@ public sealed class ShadowTests
     [Fact]
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
-        Shadow shadow = new();
+        var shadow = new Shadow();
 
         shadow.Child.ShouldBeNull();
         shadow.Mode.ShouldBe(ShadowMode.Composite);
@@ -28,7 +28,7 @@ public sealed class ShadowTests
     [Fact]
     public void Properties_WhenValueIsInvalid_ThrowBeforeMutation()
     {
-        Shadow shadow = new();
+        var shadow = new Shadow();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             shadow.Mode = (ShadowMode) 99);
@@ -42,8 +42,8 @@ public sealed class ShadowTests
     [Fact]
     public void Layout_WhenChildIsPresent_DoesNotReserveShadowOffset()
     {
-        ProbeControl child = new(new Size(3, 2));
-        Shadow shadow = new() { Child = child };
+        var child = new ProbeControl(new Size(3, 2));
+        var shadow = new Shadow() { Child = child };
 
         new Engine().Layout(shadow, new Size(3, 2));
 
@@ -60,7 +60,7 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenModeIsBlockGlyph_DrawsTurboVisionFootprint()
     {
-        Shadow shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
+        var shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
         using Frame frame = new(new Size(5, 3));
 
         shadow.Render(frame.Canvas);
@@ -77,7 +77,7 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenModeIsComposite_PreservesUnderlyingGlyphs()
     {
-        Shadow shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
+        var shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
         shadow.Background = Color.Indexed(4);
         using Frame frame = new(new Size(5, 3));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
@@ -86,14 +86,14 @@ public sealed class ShadowTests
 
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
         frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(Color.Indexed(4));
-        frame.GetCell(new Point(2, 1)).Style.ShouldBe(CellStyle.Default);
+        frame.GetCell(new Point(2, 1)).Style.ShouldBe(TerminalStyle.Default);
     }
 
     /// <summary>Verifies composite mode restyles a complete wide owner.</summary>
     [Fact]
     public void Render_WhenShadowTouchesWideGlyph_StylesCompleteOwner()
     {
-        Shadow shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
+        var shadow = CreateArranged(ShadowMode.Composite, new Point(2, 1));
         shadow.Background = Color.Indexed(4);
         using Frame frame = new(new Size(5, 3));
         _ = frame.Canvas.Draw("界", new Point(3, 1));
@@ -109,7 +109,7 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenOffsetIsNegative_DrawsVisualOverflowWithoutHitTarget()
     {
-        Shadow shadow = new()
+        var shadow = new Shadow()
         {
             Child = new ProbeControl(new Size(3, 2)),
             Mode = ShadowMode.BlockGlyph,
@@ -131,7 +131,7 @@ public sealed class ShadowTests
     [Fact]
     public void Render_WhenAncestorCanvasClipsShadow_DoesNotEscapeClip()
     {
-        Shadow shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
+        var shadow = CreateArranged(ShadowMode.BlockGlyph, new Point(2, 1));
         using Frame frame = new(new Size(5, 3));
 
         shadow.Render(frame.Canvas.Clip(new Rect(0, 0, 4, 3)));
@@ -145,7 +145,7 @@ public sealed class ShadowTests
 
     private static Shadow CreateArranged(ShadowMode mode, Point offset)
     {
-        Shadow shadow = new()
+        var shadow = new Shadow()
         {
             Child = new ProbeControl(new Size(3, 2)),
             Mode = mode,

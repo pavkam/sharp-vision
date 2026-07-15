@@ -78,8 +78,8 @@ public readonly record struct Thickness
     /// <returns>The deflated rectangle.</returns>
     public Rect Deflate(Rect value)
     {
-        int consumedLeft = Math.Min(Left, value.Width);
-        int consumedTop = Math.Min(Top, value.Height);
+        var consumedLeft = Math.Min(Left, value.Width);
+        var consumedTop = Math.Min(Top, value.Height);
 
         return new Rect(
             SaturatingAdd(value.X, consumedLeft),
@@ -90,7 +90,7 @@ public readonly record struct Thickness
 
     private static int SaturatingAdd(int value, int extent)
     {
-        long result = (long) value + extent;
+        var result = (long) value + extent;
         return result > int.MaxValue ? int.MaxValue : (int) result;
     }
 }

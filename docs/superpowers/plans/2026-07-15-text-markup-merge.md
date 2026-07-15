@@ -69,7 +69,7 @@ facet.
 
 ## File structure
 
-**Create**
+### Create
 
 - `src/SharpVision/Text/Overflow.cs` — the single overflow enum.
 - `src/SharpVision/Text/StyleSpan.cs` — resolved non-overlapping styled slice of
@@ -80,7 +80,7 @@ facet.
 - `tests/SharpVision.Tests/Text/MarkupTests.cs` — parser unit tests.
 - `tests/SharpVision.Tests/Text/RandomizedMarkupTests.cs` — property tests.
 
-**Modify**
+### Modify
 
 - `src/SharpVision/Text/Layout.cs` — `Format` takes `Overflow`; delete the
   `Wrapping`/`Trimming` parameters and branches map from `Overflow`.
@@ -97,7 +97,7 @@ facet.
   `tests/SharpVision.Tests/Text/RandomizedLayoutTests.cs` — rewrite to the new
   API.
 
-**Delete**
+### Delete
 
 - `src/SharpVision/Controls/RichText.cs`, `Inline.cs`, `Inlines.cs`, `Run.cs`,
   `LineBreak.cs`, `Hyperlink.cs`.

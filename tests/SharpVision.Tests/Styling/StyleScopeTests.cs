@@ -10,7 +10,7 @@ public sealed class StyleScopeTests
 {
     private static ControlStyle<Control> Foreground(int index)
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(index));
         return style;
     }
@@ -19,8 +19,8 @@ public sealed class StyleScopeTests
     [Fact]
     public void Resolve_WhenAncestorIsStyleScope_DescendantInheritsScopeInstanceStyle()
     {
-        ProbeScope scope = new() { Style = Foreground(7) };
-        ProbeControl child = new();
+        var scope = new ProbeScope() { Style = Foreground(7) };
+        var child = new ProbeControl();
         scope.Children.Add(child);
 
         child.Foreground.ShouldBe(Color.Indexed(7));
@@ -30,9 +30,9 @@ public sealed class StyleScopeTests
     [Fact]
     public void Resolve_WhenNestedScopes_NearestScopeWins()
     {
-        ProbeScope outer = new() { Style = Foreground(1) };
-        ProbeScope inner = new() { Style = Foreground(2) };
-        ProbeControl child = new();
+        var outer = new ProbeScope() { Style = Foreground(1) };
+        var inner = new ProbeScope() { Style = Foreground(2) };
+        var child = new ProbeControl();
         outer.Children.Add(inner);
         inner.Children.Add(child);
 
@@ -43,8 +43,8 @@ public sealed class StyleScopeTests
     [Fact]
     public void Resolve_WhenDescendantHasLocalValue_WinsOverScope()
     {
-        ProbeScope scope = new() { Style = Foreground(1) };
-        ProbeControl child = new() { Foreground = Color.Indexed(9) };
+        var scope = new ProbeScope() { Style = Foreground(1) };
+        var child = new ProbeControl() { Foreground = Color.Indexed(9) };
         scope.Children.Add(child);
 
         child.Foreground.ShouldBe(Color.Indexed(9));
@@ -54,9 +54,9 @@ public sealed class StyleScopeTests
     [Fact]
     public void Resolve_WhenReparentedToDifferentScope_UpdatesResolvedValue()
     {
-        ProbeScope scopeA = new() { Style = Foreground(1) };
-        ProbeScope scopeB = new() { Style = Foreground(2) };
-        ProbeControl child = new();
+        var scopeA = new ProbeScope() { Style = Foreground(1) };
+        var scopeB = new ProbeScope() { Style = Foreground(2) };
+        var child = new ProbeControl();
         scopeA.Children.Add(child);
         child.Foreground.ShouldBe(Color.Indexed(1));
 
@@ -70,14 +70,14 @@ public sealed class StyleScopeTests
     [Fact]
     public async Task Resolve_WhenScopeStyleMutates_InvalidatesDescendantAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(
             () =>
             {
-                ControlStyle<Control> style = Foreground(1);
-                ProbeScope scope = new() { Style = style };
-                ProbeControl child = new();
+                var style = Foreground(1);
+                var scope = new ProbeScope() { Style = style };
+                var child = new ProbeControl();
                 scope.Children.Add(child);
                 scope.Attach(dispatcher);
                 child.Foreground.ShouldBe(Color.Indexed(1));

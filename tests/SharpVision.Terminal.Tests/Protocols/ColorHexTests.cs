@@ -10,7 +10,7 @@ public sealed class ColorHexTests
     [Fact]
     public void FromHex_WhenSixDigits_ParsesRgb()
     {
-        Color color = Color.FromHex("#1a2b3c");
+        var color = Color.FromHex("#1a2b3c");
 
         color.Kind.ShouldBe(ColorKind.Rgb);
         color.Red.ShouldBe((byte) 0x1a);
@@ -22,7 +22,7 @@ public sealed class ColorHexTests
     [Fact]
     public void FromHex_WhenThreeDigits_ExpandsNibbles()
     {
-        Color color = Color.FromHex("f80");
+        var color = Color.FromHex("f80");
 
         color.ShouldBe(Color.Rgb(0xff, 0x88, 0x00));
     }
@@ -57,7 +57,7 @@ public sealed class ColorHexTests
     [Fact]
     public void TryFromHex_WhenMalformed_ReturnsFalseAndDefault()
     {
-        Color.TryFromHex("#nope", out Color color).ShouldBeFalse();
+        Color.TryFromHex("#nope", out var color).ShouldBeFalse();
         color.ShouldBe(Color.Default);
     }
 
@@ -70,7 +70,7 @@ public sealed class ColorHexTests
     {
         _ = Should.Throw<FormatException>(() => Color.FromHex(value));
 
-        Color.TryFromHex(value, out Color color).ShouldBeFalse();
+        Color.TryFromHex(value, out var color).ShouldBeFalse();
         color.ShouldBe(Color.Default);
     }
 }

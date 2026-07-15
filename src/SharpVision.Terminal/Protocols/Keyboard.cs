@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers.Text;
-using System.Diagnostics;
 
 /// <summary>Encodes Kitty keyboard query and mode-stack commands.</summary>
 public static class Keyboard
@@ -30,7 +28,7 @@ public static class Keyboard
         Validate(flags);
         Span<byte> parameters = stackalloc byte[12];
         parameters[0] = (byte) '>';
-        bool formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out int written);
+        var formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out var written);
         Debug.Assert(formatted, "A 32-bit enhancement value must fit its stack buffer.");
         writer.Csi(parameters[..(written + 1)], [], (byte) 'u');
     }
@@ -44,11 +42,11 @@ public static class Keyboard
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         Span<byte> parameters = stackalloc byte[12];
         parameters[0] = (byte) '<';
-        int length = 1;
+        var length = 1;
 
         if (count != 1)
         {
-            bool formatted = Utf8Formatter.TryFormat(count, parameters[1..], out int written);
+            var formatted = Utf8Formatter.TryFormat(count, parameters[1..], out var written);
             Debug.Assert(formatted, "A positive 32-bit pop count must fit its stack buffer.");
             length += written;
         }
@@ -73,9 +71,9 @@ public static class Keyboard
 
         Span<byte> parameters = stackalloc byte[16];
         parameters[0] = (byte) '=';
-        bool formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out int written);
+        var formatted = Utf8Formatter.TryFormat((int) flags, parameters[1..], out var written);
         Debug.Assert(formatted, "A 32-bit enhancement value must fit its stack buffer.");
-        int position = written + 1;
+        var position = written + 1;
         parameters[position++] = (byte) ';';
         formatted = Utf8Formatter.TryFormat((int) mode, parameters[position..], out written);
         Debug.Assert(formatted, "An enhancement mode must fit its stack buffer.");

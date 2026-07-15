@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Verifies the WPF-named layout override seams are the extension points.</summary>
 public sealed class OverrideSeamTests
@@ -13,7 +11,7 @@ public sealed class OverrideSeamTests
     [Fact]
     public void MeasureOverride_WhenControlReportsContent_DrivesDesiredSize()
     {
-        FixedContent control = new();
+        var control = new FixedContent();
 
         control.Measure(new Constraint(20, 6));
 

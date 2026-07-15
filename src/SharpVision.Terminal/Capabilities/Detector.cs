@@ -18,19 +18,19 @@ public static class Detector
     /// <exception cref="ArgumentNullException">
     /// <paramref name="environment"/> is <see langword="null"/>.
     /// </exception>
-    public static Capabilities Detect(
+    public static TerminalCapabilities Detect(
         IReadOnlyDictionary<string, string?> environment,
         Queries? queries = null,
         Settings? overrides = null)
     {
         ArgumentNullException.ThrowIfNull(environment);
 
-        Capabilities capabilities = Capabilities.Conservative;
-        _ = environment.TryGetValue("TERM", out string? term);
-        _ = environment.TryGetValue("COLORTERM", out string? colorTerm);
-        _ = environment.TryGetValue("TERM_PROGRAM", out string? program);
-        bool kitty = Contains(term, "kitty");
-        bool xterm = Contains(term, "xterm");
+        var capabilities = TerminalCapabilities.Conservative;
+        _ = environment.TryGetValue("TERM", out var term);
+        _ = environment.TryGetValue("COLORTERM", out var colorTerm);
+        _ = environment.TryGetValue("TERM_PROGRAM", out var program);
+        var kitty = Contains(term, "kitty");
+        var xterm = Contains(term, "xterm");
 
         if (Contains(colorTerm, "truecolor") || Contains(colorTerm, "24bit") || kitty)
         {
@@ -51,7 +51,7 @@ public static class Detector
 
         if (kitty)
         {
-            Feature hint = new(Support.Tentative, Origin.Environment);
+            var hint = new Feature(Support.Tentative, Origin.Environment);
             capabilities = capabilities with
             {
                 SynchronizedOutput = hint,
@@ -70,7 +70,7 @@ public static class Detector
         }
         else if (xterm)
         {
-            Feature hint = new(Support.Tentative, Origin.Environment);
+            var hint = new Feature(Support.Tentative, Origin.Environment);
             capabilities = capabilities with
             {
                 FocusReporting = hint,
@@ -91,13 +91,13 @@ public static class Detector
             };
         }
 
-        bool multiplexer = environment.ContainsKey("TMUX") || Contains(term, "screen");
-        bool remote = environment.ContainsKey("SSH_CONNECTION") ||
+        var multiplexer = environment.ContainsKey("TMUX") || Contains(term, "screen");
+        var remote = environment.ContainsKey("SSH_CONNECTION") ||
             environment.ContainsKey("SSH_TTY");
 
         if (multiplexer)
         {
-            Feature unavailable = new(Support.Unsupported, Origin.Environment);
+            var unavailable = new Feature(Support.Unsupported, Origin.Environment);
             capabilities = capabilities with
             {
                 KittyClipboard = unavailable,
@@ -121,7 +121,7 @@ public static class Detector
         return capabilities;
     }
 
-    private static Capabilities ApplyOverrides(Capabilities value, Settings? overrides) =>
+    private static TerminalCapabilities ApplyOverrides(TerminalCapabilities value, Settings? overrides) =>
         overrides is null
             ? value
             : value with
@@ -145,7 +145,7 @@ public static class Detector
                 Overline = Apply(value.Overline, overrides.Overline, Origin.Override),
             };
 
-    private static Capabilities ApplyQueries(Capabilities value, Queries? queries) =>
+    private static TerminalCapabilities ApplyQueries(TerminalCapabilities value, Queries? queries) =>
         queries is null
             ? value
             : value with

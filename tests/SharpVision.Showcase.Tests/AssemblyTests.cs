@@ -15,7 +15,7 @@ public sealed class AssemblyTests
     [Fact]
     public void Assembly_WhenLoaded_HasExpectedName()
     {
-        string? name = typeof(AssemblyMarker).Assembly.GetName().Name;
+        var name = typeof(AssemblyMarker).Assembly.GetName().Name;
 
         name.ShouldBe("SharpVision.Showcase");
     }

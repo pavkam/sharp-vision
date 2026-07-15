@@ -3,11 +3,7 @@
 
 namespace SharpVision.Showcase.Controls;
 
-using SharpVision.Input;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Input;
 
-using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Displays live pixel and optional mapped-cell coordinates for pointer input.</summary>
 internal sealed class PointerProbe: Control
@@ -40,7 +36,7 @@ internal sealed class PointerProbe: Control
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        Terminal.Rendering.CellStyle style = ResolvedStyle;
+        var style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         _ = canvas.Draw(_pixelText.AsSpan(), new Point(Bounds.X, Bounds.Y), style);
         _ = canvas.Draw(_cellText.AsSpan(), new Point(Bounds.X, Bounds.Y + 1), style);

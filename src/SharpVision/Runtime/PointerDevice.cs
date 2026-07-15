@@ -3,10 +3,7 @@
 
 namespace SharpVision.Runtime;
 
-using System.Diagnostics;
 
-using SharpVision.Controls;
-using SharpVision.Input;
 using SharpVision.Terminal.Input;
 
 /// <summary>Exposes the last observed pointer state and current pointer targets.</summary>

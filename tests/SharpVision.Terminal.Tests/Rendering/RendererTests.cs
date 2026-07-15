@@ -6,9 +6,8 @@ namespace SharpVision.Terminal.Tests.Rendering;
 using SharpVision.Terminal.Capabilities;
 
 
-using CapabilitySupport = Terminal.Capabilities.Support;
-using RenderMetrics = Terminal.Rendering.Metrics;
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
+
+using RenderMetrics = RenderingMetrics;
 
 /// <summary>
 /// Verifies commit-on-success rendering, invalidation, cleanup, and backpressure.
@@ -23,14 +22,14 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("ab");
+        using var frame = Create("ab");
 
-        RenderMetrics first = await renderer.RenderAsync(
+        var first = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
-        RenderMetrics second = await renderer.RenderAsync(
+        var second = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -56,7 +55,7 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("ab");
+        using var frame = Create("ab");
         _ = await renderer.RenderAsync(
             frame,
             transport,
@@ -64,16 +63,16 @@ public sealed class RendererTests
             TestContext.Current.CancellationToken);
 
         renderer.Invalidate();
-        RenderMetrics explicitResult = await renderer.RenderAsync(
+        var explicitResult = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
-        TerminalCapabilities changedCapabilities = TerminalCapabilities.Conservative with
+        var changedCapabilities = TerminalCapabilities.Conservative with
         {
             ColorDepth = ColorDepth.TrueColor,
         };
-        RenderMetrics capabilityResult = await renderer.RenderAsync(
+        var capabilityResult = await renderer.RenderAsync(
             frame,
             transport,
             changedCapabilities,
@@ -91,17 +90,17 @@ public sealed class RendererTests
         await using FakeTransport transport = new();
         using Frame frame = new(new Size(1, 1));
         _ = frame.Canvas.Draw("x", default, new CellStyle(Color.Rgb(255, 0, 0)));
-        TerminalCapabilities trueColor = TerminalCapabilities.Conservative with
+        var trueColor = TerminalCapabilities.Conservative with
         {
             ColorDepth = ColorDepth.TrueColor,
         };
 
-        RenderMetrics first = await renderer.RenderAsync(
+        var first = await renderer.RenderAsync(
             frame,
             transport,
             trueColor,
             TestContext.Current.CancellationToken);
-        RenderMetrics second = await renderer.RenderAsync(
+        var second = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -123,20 +122,20 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame first = Create("a");
-        using Frame resized = Create("ab");
+        using var first = Create("a");
+        using var resized = Create("ab");
         _ = await renderer.RenderAsync(
             first,
             transport,
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
 
-        RenderMetrics result = await renderer.RenderAsync(
+        var result = await renderer.RenderAsync(
             resized,
             transport,
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
-        RenderMetrics unchanged = await renderer.RenderAsync(
+        var unchanged = await renderer.RenderAsync(
             resized,
             transport,
             TerminalCapabilities.Conservative,
@@ -154,8 +153,8 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("x");
-        TerminalCapabilities capabilities = TerminalCapabilities.Conservative with
+        using var frame = Create("x");
+        var capabilities = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = new Feature(CapabilitySupport.Supported, Origin.Query),
         };
@@ -184,17 +183,17 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("ab");
-        IOException failure = new("write failed");
+        using var frame = Create("ab");
+        var failure = new IOException("write failed");
         transport.QueueFailure(failure, prefixBytes: 3);
 
-        IOException thrown = await Should.ThrowAsync<IOException>(async () =>
+        var thrown = await Should.ThrowAsync<IOException>(async () =>
             await renderer.RenderAsync(
                 frame,
                 transport,
                 TerminalCapabilities.Conservative,
                 TestContext.Current.CancellationToken));
-        RenderMetrics recovered = await renderer.RenderAsync(
+        var recovered = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -212,7 +211,7 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("ab");
+        using var frame = Create("ab");
         transport.FlushFailure = new IOException("flush failed");
 
         _ = await Should.ThrowAsync<IOException>(async () =>
@@ -221,7 +220,7 @@ public sealed class RendererTests
                 transport,
                 TerminalCapabilities.Conservative,
                 TestContext.Current.CancellationToken));
-        RenderMetrics recovered = await renderer.RenderAsync(
+        var recovered = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -238,13 +237,13 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("a");
+        using var frame = Create("a");
         _ = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
-        using CancellationTokenSource cancellation = new();
+        using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
         _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
@@ -253,7 +252,7 @@ public sealed class RendererTests
                 transport,
                 TerminalCapabilities.Conservative,
                 cancellation.Token));
-        RenderMetrics unchanged = await renderer.RenderAsync(
+        var unchanged = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -270,10 +269,10 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("a");
+        using var frame = Create("a");
         transport.Block();
-        using CancellationTokenSource cancellation = new();
-        Task<RenderMetrics> pending = renderer.RenderAsync(
+        using var cancellation = new CancellationTokenSource();
+        var pending = renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -283,7 +282,7 @@ public sealed class RendererTests
         cancellation.Cancel();
         _ = await Should.ThrowAsync<OperationCanceledException>(pending);
         transport.Release();
-        RenderMetrics recovered = await renderer.RenderAsync(
+        var recovered = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -300,17 +299,17 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("x");
-        TerminalCapabilities capabilities = TerminalCapabilities.Conservative with
+        using var frame = Create("x");
+        var capabilities = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = new Feature(CapabilitySupport.Supported, Origin.Query),
         };
-        IOException original = new("frame failed");
-        IOException cleanup = new("cleanup failed");
+        var original = new IOException("frame failed");
+        var cleanup = new IOException("cleanup failed");
         transport.QueueFailure(original, prefixBytes: 2);
         transport.QueueFailure(cleanup);
 
-        IOException thrown = await Should.ThrowAsync<IOException>(async () =>
+        var thrown = await Should.ThrowAsync<IOException>(async () =>
             await renderer.RenderAsync(
                 frame,
                 transport,
@@ -329,10 +328,10 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("a");
+        using var frame = Create("a");
         transport.Block();
 
-        Task<RenderMetrics> pending = renderer.RenderAsync(
+        var pending = renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -341,7 +340,7 @@ public sealed class RendererTests
 
         pending.IsCompleted.ShouldBeFalse();
         transport.Release();
-        RenderMetrics result = await pending;
+        var result = await pending;
         result.Writes.ShouldBe(1);
     }
 
@@ -353,9 +352,9 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("a");
+        using var frame = Create("a");
         transport.Block();
-        Task<RenderMetrics> first = renderer.RenderAsync(
+        var first = renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
@@ -380,7 +379,7 @@ public sealed class RendererTests
     {
         using Renderer renderer = new(maxOutputBytes: 1);
         await using FakeTransport transport = new();
-        using Frame frame = Create("a");
+        using var frame = Create("a");
 
         _ = await Should.ThrowAsync<InvalidOperationException>(async () =>
             await renderer.RenderAsync(
@@ -400,14 +399,14 @@ public sealed class RendererTests
     {
         using Renderer renderer = new();
         await using FakeTransport transport = new();
-        using Frame frame = Create("unchanged");
+        using var frame = Create("unchanged");
         _ = await renderer.RenderAsync(
             frame,
             transport,
             TerminalCapabilities.Conservative,
             TestContext.Current.CancellationToken);
 
-        for (int index = 0; index < 10_000; index++)
+        for (var index = 0; index < 10_000; index++)
         {
             _ = await renderer.RenderAsync(
                 frame,
@@ -416,9 +415,9 @@ public sealed class RendererTests
                 CancellationToken.None);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
+        var before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (int index = 0; index < 10_000; index++)
+        for (var index = 0; index < 10_000; index++)
         {
             _ = await renderer.RenderAsync(
                 frame,
@@ -427,7 +426,7 @@ public sealed class RendererTests
                 CancellationToken.None);
         }
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         allocated.ShouldBe(0);
     }
 
@@ -437,9 +436,9 @@ public sealed class RendererTests
     [Fact]
     public async Task Dispose_WhenCalledTwice_ReleasesOnlyRendererOwnershipAsync()
     {
-        Renderer renderer = new();
+        var renderer = new Renderer();
         await using FakeTransport transport = new();
-        using Frame frame = Create("a");
+        using var frame = Create("a");
         _ = await renderer.RenderAsync(
             frame,
             transport,
@@ -455,7 +454,7 @@ public sealed class RendererTests
 
     private static Frame Create(string value)
     {
-        Frame frame = new(new Size(value.Length, 1));
+        var frame = new Frame(new Size(value.Length, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

@@ -3,19 +3,15 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Controls;
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies role colors resolve to the active theme's palette during property resolution.</summary>
 public sealed class SemanticColorResolutionTests
 {
     private static Theme ThemeWith(Color foreground, Color accent)
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, ThemeColors.Foreground);
         theme.SetStyle(style);
         theme.SetColor(ColorRole.Foreground, foreground);
@@ -28,7 +24,7 @@ public sealed class SemanticColorResolutionTests
     [Fact]
     public void GetValue_WhenPropertyIsRoleColor_ResolvesToPaletteColor()
     {
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, ThemeWith(Color.Indexed(15), Color.Rgb(10, 20, 30)));
 
         control.GetValue(Control.ForegroundProperty).ShouldBe(Color.Indexed(15));
@@ -38,7 +34,7 @@ public sealed class SemanticColorResolutionTests
     [Fact]
     public void DesignTimeResolve_WhenRoleColor_ResolvesAgainstTheme()
     {
-        Theme theme = ThemeWith(Color.Indexed(7), Color.Indexed(4));
+        var theme = ThemeWith(Color.Indexed(7), Color.Indexed(4));
 
         ThemeResolver.Resolve(theme, typeof(Control), Control.ForegroundProperty, State.Normal)
             .ShouldBe(Color.Indexed(7));
@@ -48,7 +44,7 @@ public sealed class SemanticColorResolutionTests
     [Fact]
     public void LocalRoleColor_ResolvesAndTracksThemeSwap()
     {
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, ThemeWith(Color.Indexed(1), Color.Indexed(2)));
         control.SetValue(Control.BackgroundProperty, ThemeColors.Accent);
 
@@ -62,7 +58,7 @@ public sealed class SemanticColorResolutionTests
     [Fact]
     public void LiveResolve_WhenLocalRoleColor_ResolvesToPaletteColor()
     {
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, ThemeWith(Color.Indexed(1), Color.Indexed(2)));
         control.SetValue(Control.BackgroundProperty, ThemeColors.Accent);
 
@@ -74,8 +70,8 @@ public sealed class SemanticColorResolutionTests
     [Fact]
     public void Resolve_WhenDefinedRoleUndefinedByTheme_FallsBackToDefault()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, ThemeColors.Warning);
         theme.SetStyle(style);
         theme.SetColor(ColorRole.Foreground, Color.Indexed(15));
@@ -90,7 +86,7 @@ public sealed class SemanticColorResolutionTests
     [Fact]
     public void GetValue_WhenRoleIdIsUnknown_Throws()
     {
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, ThemeWith(Color.Indexed(1), Color.Indexed(2)));
         control.SetValue(Control.BackgroundProperty, Color.Role(99));
 

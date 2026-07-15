@@ -4,12 +4,9 @@
 namespace SharpVision.Tests.Integration;
 
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
-using Label = SharpVision.Controls.Text;
-using TerminalOptions = Terminal.Runtime.Options;
+using Label = ControlText;
 using UiList = List;
 
 /// <summary>Proves real terminal text, paste, keys, focus, frames, and bytes through TextInput.</summary>
@@ -21,15 +18,15 @@ public sealed class InteractiveControlTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(32, 16)));
-        Stack root = CreateControls(
-            out Button? button,
-            out CheckBox? checkBox,
-            out RadioButton? firstRadio,
-            out RadioButton? secondRadio,
-            out TextInput? input,
-            out ScrollBar? scrollBar,
-            out Stack? scroll,
-            out UiList? list);
+        var root = CreateControls(
+            out var button,
+            out var checkBox,
+            out var firstRadio,
+            out var secondRadio,
+            out var input,
+            out var scrollBar,
+            out var scroll,
+            out var list);
         List<string> order = [];
         button.Click += (_, _) => order.Add("button");
         checkBox.Checked += (_, _) => order.Add("check-checked");
@@ -43,7 +40,7 @@ public sealed class InteractiveControlTests
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        Point[] points = await application.Dispatcher.InvokeAsync(
+        var points = await application.Dispatcher.InvokeAsync(
             () => new[]
             {
                 Center(button),
@@ -135,8 +132,8 @@ public sealed class InteractiveControlTests
             .AsSpan()
             .IndexOf(Encoding.UTF8.GetBytes("界"))
             .ShouldBeGreaterThanOrEqualTo(0);
-        int previousWrites = terminal.Writes.Count;
-        Task rendered = NextFrame(application);
+        var previousWrites = terminal.Writes.Count;
+        var rendered = NextFrame(application);
         await application.Dispatcher.InvokeAsync(
             () =>
             {
@@ -172,7 +169,7 @@ public sealed class InteractiveControlTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 2)));
-        TextInput input = new();
+        var input = new TextInput();
         await using Application application = new(input, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(() =>
@@ -210,7 +207,7 @@ public sealed class InteractiveControlTests
         terminal.Writes.SelectMany(static bytes => bytes)
             .Contains((byte) 'e').ShouldBeTrue();
 
-        TaskCompletionSource focusLost = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var focusLost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await application.Dispatcher.InvokeAsync(() =>
         {
             _ = input.AddHandler(Events.Focus, (_, eventArgs) =>
@@ -236,7 +233,7 @@ public sealed class InteractiveControlTests
         string operation,
         CancellationToken cancellationToken)
     {
-        for (int attempt = 0; attempt < 10_000; attempt++)
+        for (var attempt = 0; attempt < 10_000; attempt++)
         {
             if (await application.Dispatcher.InvokeAsync(predicate, cancellationToken))
             {
@@ -298,7 +295,7 @@ public sealed class InteractiveControlTests
             Width = Length.Cells(20),
             Height = Length.Cells(3),
         };
-        Stack root = new();
+        var root = new Stack();
         root.Children.Add(button);
         root.Children.Add(checkBox);
         root.Children.Add(firstRadio);
@@ -316,8 +313,8 @@ public sealed class InteractiveControlTests
 
     private static void Click(FakeTerminal terminal, Point point)
     {
-        int x = point.X + 1;
-        int y = point.Y + 1;
+        var x = point.X + 1;
+        var y = point.Y + 1;
         terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<0;{x};{y}M\u001b[<0;{x};{y}m"));
     }
 
@@ -327,7 +324,7 @@ public sealed class InteractiveControlTests
 
     private static Task NextFrame(Application application)
     {
-        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 

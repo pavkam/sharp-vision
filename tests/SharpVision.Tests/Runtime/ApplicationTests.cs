@@ -3,11 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed class ApplicationTests
@@ -19,7 +16,7 @@ public sealed class ApplicationTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
         List<string> order = [];
-        ProbeControl root = new()
+        var root = new ProbeControl()
         {
             Measuring = _ => order.Add("layout"),
             Rendering = _ => order.Add("control-frame"),
@@ -61,10 +58,10 @@ public sealed class ApplicationTests
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        bool rendered = false;
+        var rendered = false;
         application.FrameRendered += (_, _) => rendered = true;
 
-        Task starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
         await application.Dispatcher.InvokeAsync(
             static () => { },
             TestContext.Current.CancellationToken);
@@ -88,7 +85,7 @@ public sealed class ApplicationTests
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        int frames = 0;
+        var frames = 0;
         application.FrameRendered += (_, _) => frames++;
 
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -109,8 +106,8 @@ public sealed class ApplicationTests
             terminal,
             terminal,
             TerminalOptions.Minimal with { AlternateScreen = true });
-        int stopping = 0;
-        int stopped = 0;
+        var stopping = 0;
+        var stopped = 0;
         application.Stopping += (_, _) => stopping++;
         application.Stopped += (_, _) => stopped++;
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -157,7 +154,7 @@ public sealed class ApplicationTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        IOException cleanup = new("cleanup");
+        var cleanup = new IOException("cleanup");
         terminal.FailWriteNumber = 2;
         terminal.WriteFailure = cleanup;
         await using Application application = new(
@@ -165,10 +162,10 @@ public sealed class ApplicationTests
             terminal,
             terminal,
             TerminalOptions.Minimal with { AlternateScreen = true });
-        InvalidOperationException failure = new("resize-handler");
+        var failure = new InvalidOperationException("resize-handler");
         application.Resize += (_, _) => throw failure;
 
-        InvalidOperationException thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
             await application.StartAsync(TestContext.Current.CancellationToken));
 
         thrown.ShouldBeSameAs(failure);
@@ -182,8 +179,8 @@ public sealed class ApplicationTests
     public async Task DisposeAsync_WhenNeverStarted_ReleasesOwnedResourcesAsync()
     {
         await using FakeTerminal terminal = new();
-        ProbeControl root = new();
-        Application application = new(
+        var root = new ProbeControl();
+        var application = new Application(
             root,
             terminal,
             terminal,

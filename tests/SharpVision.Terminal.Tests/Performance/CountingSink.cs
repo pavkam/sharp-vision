@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Performance;
 
 using SharpVision.Terminal.Input;
 
+
 /// <summary>Counts every input callback in allocation measurements.</summary>
 internal sealed class CountingSink: IInputSink
 {
@@ -15,7 +16,7 @@ internal sealed class CountingSink: IInputSink
     public void Input(in Stroke value) => Count++;
 
     /// <inheritdoc/>
-    public void Input(in Text value) => Count++;
+    public void Input(in InputText value) => Count++;
 
     /// <inheritdoc/>
     public void Input(in Pointer value) => Count++;

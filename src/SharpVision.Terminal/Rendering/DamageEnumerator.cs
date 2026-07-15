@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using System.Diagnostics;
 
 /// <summary>Finds deterministic row-major semantic damage without retaining frame memory.</summary>
 public ref struct DamageEnumerator
@@ -35,8 +34,8 @@ public ref struct DamageEnumerator
     /// <returns><see langword="true"/> when a run is available.</returns>
     public bool MoveNext()
     {
-        int width = _back.Size.Width;
-        int height = _back.Size.Height;
+        var width = _back.Size.Width;
+        var height = _back.Size.Height;
 
         while (_row < height)
         {
@@ -68,17 +67,17 @@ public ref struct DamageEnumerator
                 continue;
             }
 
-            int start = Math.Min(
+            var start = Math.Min(
                 _front.GetLeadColumn(_row, _column),
                 _back.GetLeadColumn(_row, _column));
-            int end = _column + 1;
+            var end = _column + 1;
 
             while (end < width && !CellsEqual(_row, end))
             {
                 end++;
             }
 
-            int expanded = Math.Max(
+            var expanded = Math.Max(
                 _front.GetOwnedEnd(_row, end - 1),
                 _back.GetOwnedEnd(_row, end - 1));
             end = Math.Max(end, expanded);
@@ -93,7 +92,7 @@ public ref struct DamageEnumerator
     private readonly bool CellsEqual(int row, int column)
     {
         Debug.Assert(_front is not null, "Incremental comparison requires a front frame.");
-        int index = checked((row * _back.Size.Width) + column);
+        var index = checked((row * _back.Size.Width) + column);
         return _front.SemanticallyEquals(_back, index);
     }
 }

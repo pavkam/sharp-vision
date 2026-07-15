@@ -3,9 +3,6 @@
 
 namespace SharpVision.Terminal.Unicode;
 
-using System.Buffers;
-using System.Diagnostics;
-using System.Text;
 
 /// <summary>Segments borrowed UTF-16 text using Unicode 17 extended-grapheme rules.</summary>
 public ref struct GraphemeEnumerator
@@ -34,22 +31,22 @@ public ref struct GraphemeEnumerator
             return false;
         }
 
-        int start = _position;
-        Decode(_position, out Rune previous, out int consumed, out bool invalid);
-        bool hasInvalidData = invalid;
-        GraphemeBreak previousBreak = Data.GetGraphemeBreak(previous.Value);
-        int regionalIndicators = previousBreak == GraphemeBreak.RegionalIndicator ? 1 : 0;
-        bool extendedPictographicCandidate = Data.IsExtendedPictographic(previous.Value);
-        bool previousZwjAfterPictographic = false;
-        int indicState = NextIndicState(0, Data.GetIndicConjunct(previous.Value));
+        var start = _position;
+        Decode(_position, out var previous, out var consumed, out var invalid);
+        var hasInvalidData = invalid;
+        var previousBreak = Data.GetGraphemeBreak(previous.Value);
+        var regionalIndicators = previousBreak == GraphemeBreak.RegionalIndicator ? 1 : 0;
+        var extendedPictographicCandidate = Data.IsExtendedPictographic(previous.Value);
+        var previousZwjAfterPictographic = false;
+        var indicState = NextIndicState(0, Data.GetIndicConjunct(previous.Value));
         _position += consumed;
 
         while (_position < _value.Length)
         {
-            Decode(_position, out Rune current, out consumed, out invalid);
-            GraphemeBreak currentBreak = Data.GetGraphemeBreak(current.Value);
-            IndicConjunct currentIndic = Data.GetIndicConjunct(current.Value);
-            bool currentPictographic = Data.IsExtendedPictographic(current.Value);
+            Decode(_position, out var current, out consumed, out invalid);
+            var currentBreak = Data.GetGraphemeBreak(current.Value);
+            var currentIndic = Data.GetIndicConjunct(current.Value);
+            var currentPictographic = Data.IsExtendedPictographic(current.Value);
 
             if (ShouldBreak(
                 previousBreak,
@@ -87,7 +84,7 @@ public ref struct GraphemeEnumerator
             _position += consumed;
         }
 
-        int length = _position - start;
+        var length = _position - start;
         Debug.Assert(length > 0, "Every grapheme segment must consume UTF-16 input.");
         Debug.Assert(_position <= _value.Length, "A grapheme cannot exceed its source span.");
         Current = new Grapheme(start, length, hasInvalidData);
@@ -179,7 +176,7 @@ public ref struct GraphemeEnumerator
         out int consumed,
         out bool invalid)
     {
-        OperationStatus status = Rune.DecodeFromUtf16(_value[offset..], out rune, out consumed);
+        var status = Rune.DecodeFromUtf16(_value[offset..], out rune, out consumed);
         invalid = status != OperationStatus.Done;
 
         if (invalid)

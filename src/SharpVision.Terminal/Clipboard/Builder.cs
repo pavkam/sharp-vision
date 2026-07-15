@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Clipboard;
 
-using System.Buffers;
 
 /// <summary>Builds one bounded Kitty clipboard MIME value in pooled storage.</summary>
 internal sealed class Builder: IDisposable
@@ -27,7 +26,7 @@ internal sealed class Builder: IDisposable
     /// <summary>Clears and returns pooled storage.</summary>
     public void Dispose()
     {
-        byte[]? buffer = _buffer;
+        var buffer = _buffer;
 
         if (buffer is null)
         {
@@ -46,10 +45,10 @@ internal sealed class Builder: IDisposable
             return;
         }
 
-        int size = _buffer is null
+        var size = _buffer is null
             ? Math.Max(256, required)
             : Math.Max(required, checked(_buffer.Length * 2));
-        byte[] replacement = ArrayPool<byte>.Shared.Rent(size);
+        var replacement = ArrayPool<byte>.Shared.Rent(size);
 
         if (_buffer is not null)
         {

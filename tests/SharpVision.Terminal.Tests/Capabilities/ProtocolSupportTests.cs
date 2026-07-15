@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
 
+
 /// <summary>Verifies protocol/feature pair validation and exposure.</summary>
 public sealed class ProtocolSupportTests
 {
@@ -12,8 +13,8 @@ public sealed class ProtocolSupportTests
     [Fact]
     public void Constructor_WhenGivenProtocolAndFeature_ExposesBoth()
     {
-        Feature feature = new(Support.Supported, Origin.Query);
-        ProtocolSupport pair = new(TerminalProtocol.Sixel, feature);
+        var feature = new Feature(CapabilitySupport.Supported, Origin.Query);
+        var pair = new ProtocolSupport(TerminalProtocol.Sixel, feature);
 
         pair.Protocol.ShouldBe(TerminalProtocol.Sixel);
         pair.Feature.ShouldBe(feature);

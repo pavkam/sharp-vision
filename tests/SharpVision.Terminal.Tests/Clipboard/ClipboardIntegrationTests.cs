@@ -4,7 +4,6 @@
 namespace SharpVision.Terminal.Tests.Clipboard;
 
 
-using SharpVision.Terminal.Clipboard;
 
 
 /// <summary>
@@ -18,30 +17,30 @@ public sealed class ClipboardIntegrationTests
     [Fact]
     public void Read_WhenResponseIsFragmented_CompletesAtEverySplit()
     {
-        ArrayBufferWriter<byte> requestBytes = new();
+        var requestBytes = new ArrayBufferWriter<byte>();
         KittyWriter.Read(
             new Writer(requestBytes),
             "application/octet-stream"u8,
             id: "req-1"u8);
-        KittyPacket request = ParsePackets(requestBytes.WrittenSpan).ShouldHaveSingleItem();
+        var request = ParsePackets(requestBytes.WrittenSpan).ShouldHaveSingleItem();
 
         request.Operation.ShouldBe(KittyOperation.Read);
         request.Id.ShouldBe("req-1");
 
-        ArrayBufferWriter<byte> responseBytes = new();
-        Writer writer = new(responseBytes);
+        var responseBytes = new ArrayBufferWriter<byte>();
+        var writer = new Writer(responseBytes);
         writer.Osc(5522, "type=read:status=OK:id=req-1"u8);
         writer.Osc(
             5522,
             "type=read:status=DATA:mime=YXBwbGljYXRpb24vb2N0ZXQtc3RyZWFt:id=req-1;AAEC/w=="u8);
         writer.Osc(5522, "type=read:status=DONE:id=req-1"u8);
-        byte[] response = responseBytes.WrittenSpan.ToArray();
+        var response = responseBytes.WrittenSpan.ToArray();
 
-        for (int split = 0; split <= response.Length; split++)
+        for (var split = 0; split <= response.Length; split++)
         {
-            using KittyTransaction transaction = KittyTransaction.Read(id: "req-1");
+            using var transaction = KittyTransaction.Read(id: "req-1");
             using Parser parser = new();
-            TransactionSink sink = new(transaction);
+            var sink = new TransactionSink(transaction);
 
             parser.Parse(response.AsSpan(0, split), ref sink);
             parser.Parse(response.AsSpan(split), ref sink);
@@ -49,7 +48,7 @@ public sealed class ClipboardIntegrationTests
             transaction.State.ShouldBe(
                 KittyTransactionState.Completed,
                 $"Response failed at split {split}.");
-            KittyResult result = transaction.Result.ShouldNotBeNull();
+            var result = transaction.Result.ShouldNotBeNull();
             result.Items.ShouldHaveSingleItem().Data.ToArray().ShouldBe([0, 1, 2, 255]);
             result.Dispose();
         }
@@ -61,15 +60,15 @@ public sealed class ClipboardIntegrationTests
     [Fact]
     public void Read_WhenPermissionFails_DoesNotPoisonNextTransaction()
     {
-        using KittyTransaction denied = KittyTransaction.Read();
+        using var denied = KittyTransaction.Read();
         denied.Accept(KittyPacket.Parse("5522;type=read:status=EPERM"u8)).ShouldBe(
             KittyAcceptResult.Failed);
 
-        using KittyTransaction malformed = KittyTransaction.Read();
+        using var malformed = KittyTransaction.Read();
         malformed.Accept(KittyPacket.Parse("5522;type=read;***"u8)).ShouldBe(
             KittyAcceptResult.Failed);
 
-        using KittyTransaction next = KittyTransaction.Read();
+        using var next = KittyTransaction.Read();
         _ = next.Accept(KittyPacket.Parse("5522;type=read:status=OK"u8));
         _ = next.Accept(KittyPacket.Parse("5522;type=read:status=DONE"u8));
 
@@ -84,14 +83,14 @@ public sealed class ClipboardIntegrationTests
     [Fact]
     public void WriteAlias_WhenParsed_PreservesTargetAndAliases()
     {
-        ArrayBufferWriter<byte> bytes = new();
+        var bytes = new ArrayBufferWriter<byte>();
 
         KittyWriter.WriteAlias(
             new Writer(bytes),
             "text/plain"u8,
             "text/plain text/utf8"u8);
 
-        KittyPacket packet = ParsePackets(bytes.WrittenSpan).ShouldHaveSingleItem();
+        var packet = ParsePackets(bytes.WrittenSpan).ShouldHaveSingleItem();
         packet.Operation.ShouldBe(KittyOperation.WriteAlias);
         packet.Mime.ToArray().ShouldBe("text/plain"u8.ToArray());
         packet.Data.ToArray().ShouldBe("text/plain text/utf8"u8.ToArray());
@@ -100,7 +99,7 @@ public sealed class ClipboardIntegrationTests
     private static KittyPacket[] ParsePackets(ReadOnlySpan<byte> input)
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
         parser.Parse(input, ref sink);
 
         return

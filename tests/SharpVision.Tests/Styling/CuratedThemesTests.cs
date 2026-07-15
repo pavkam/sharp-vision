@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies every embedded theme loads and the curated set is complete.</summary>
 public sealed class CuratedThemesTests
@@ -31,12 +28,12 @@ public sealed class CuratedThemesTests
     [Fact]
     public void EveryTheme_LoadsFrozenWithAllRoles()
     {
-        foreach (string slug in ThemeCatalog.Default.Slugs)
+        foreach (var slug in ThemeCatalog.Default.Slugs)
         {
-            Theme theme = ThemeCatalog.Default.Load(slug);
+            var theme = ThemeCatalog.Default.Load(slug);
             theme.IsFrozen.ShouldBeTrue();
 
-            foreach (ColorRole role in Enum.GetValues<ColorRole>())
+            foreach (var role in Enum.GetValues<ColorRole>())
             {
                 theme.TryGetColor(role, out _).ShouldBeTrue($"{slug} missing {role}");
             }
@@ -47,7 +44,7 @@ public sealed class CuratedThemesTests
     [Fact]
     public void EditorThemes_UseRgbAccents()
     {
-        ThemeCatalog.Default.Load("dracula").TryGetColor(ColorRole.Accent, out Color accent).ShouldBeTrue();
+        ThemeCatalog.Default.Load("dracula").TryGetColor(ColorRole.Accent, out var accent).ShouldBeTrue();
         accent.Kind.ShouldBe(ColorKind.Rgb);
     }
 }

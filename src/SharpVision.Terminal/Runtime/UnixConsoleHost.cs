@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using System.Runtime.Versioning;
 
-using SharpVision.Terminal.Transport;
 
 /// <summary>Opens an interactive console on Linux and macOS with SIGWINCH pixel resize.</summary>
 [SupportedOSPlatform("linux")]
@@ -18,11 +16,11 @@ internal static class UnixConsoleHost
     /// <exception cref="IOException">Raw mode or the tty streams cannot be prepared.</exception>
     internal static ConsoleConnection Open(ConsoleHostOptions options)
     {
-        UnixConsoleMode mode = UnixConsoleMode.Enter(options.CaptureControlKeys);
+        var mode = UnixConsoleMode.Enter(options.CaptureControlKeys);
 
         try
         {
-            FileStream input = new(
+            var input = new FileStream(
                 "/dev/tty",
                 new FileStreamOptions
                 {
@@ -32,13 +30,13 @@ internal static class UnixConsoleHost
                     Share = FileShare.ReadWrite,
                     BufferSize = 1,
                 });
-            Stream output = Console.OpenStandardOutput();
-            StreamTransport transport = new(input, output, leaveOpen: true);
+            var output = Console.OpenStandardOutput();
+            var transport = new StreamTransport(input, output, leaveOpen: true);
 
             // The tty read descriptor answers TIOCGWINSZ, giving cell and pixel
             // dimensions and SIGWINCH-driven resize rather than cell-only polling.
-            int descriptor = (int) input.SafeFileHandle.DangerousGetHandle();
-            UnixResizeSource resize = new(descriptor);
+            var descriptor = (int) input.SafeFileHandle.DangerousGetHandle();
+            var resize = new UnixResizeSource(descriptor);
 
             return new ConsoleConnection(transport, resize, mode);
         }

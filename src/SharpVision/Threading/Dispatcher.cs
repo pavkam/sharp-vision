@@ -63,7 +63,7 @@ public sealed class Dispatcher: IAsyncDisposable
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
 
-        string threadName = name is null
+        var threadName = name is null
             ? "SharpVision.Dispatcher"
             : !string.IsNullOrWhiteSpace(name)
                 ? name
@@ -130,7 +130,7 @@ public sealed class Dispatcher: IAsyncDisposable
             }
         }
 
-        ActionWork work = new(action, cancellationToken);
+        var work = new ActionWork(action, cancellationToken);
         Enqueue(work);
         return new ValueTask(work.Completion);
     }
@@ -166,7 +166,7 @@ public sealed class Dispatcher: IAsyncDisposable
             }
         }
 
-        FunctionWork<T> work = new(function, cancellationToken);
+        var work = new FunctionWork<T>(function, cancellationToken);
         Enqueue(work);
         return new ValueTask<T>(work.Completion);
     }
@@ -209,7 +209,7 @@ public sealed class Dispatcher: IAsyncDisposable
             Monitor.PulseAll(_gate);
         }
 
-        foreach (Work work in cancelled)
+        foreach (var work in cancelled)
         {
             work.Cancel();
         }
@@ -243,7 +243,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
         try
         {
-            while (TryTake(out Work? work, out bool raiseIdle))
+            while (TryTake(out var work, out var raiseIdle))
             {
                 if (work is not null)
                 {
@@ -311,7 +311,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
     private void Report(Exception exception)
     {
-        UnhandledEventArgs eventArgs = new(exception);
+        var eventArgs = new UnhandledEventArgs(exception);
 
         try
         {
@@ -345,7 +345,7 @@ public sealed class Dispatcher: IAsyncDisposable
             Monitor.PulseAll(_gate);
         }
 
-        foreach (Work work in cancelled)
+        foreach (var work in cancelled)
         {
             work.Cancel();
         }

@@ -12,7 +12,7 @@ public sealed class StyleTests
     [Fact]
     public void Constructor_WhenDecorationsAreValid_PreservesValues()
     {
-        CellStyle style = new(
+        var style = new CellStyle(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(1, 2, 3));

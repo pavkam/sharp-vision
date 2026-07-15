@@ -12,10 +12,10 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenValueIsStored_TryGetReturnsIt()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(3));
 
-        style.TryGet(Control.ForegroundProperty, State.Normal, out Color? value).ShouldBeTrue();
+        style.TryGet(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(3));
         style.Remove(Control.ForegroundProperty, State.Normal).ShouldBeTrue();
         style.TryGet(Control.ForegroundProperty, State.Normal, out _).ShouldBeFalse();
@@ -25,12 +25,12 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenOverlayStatesAreCombined_StoresValue()
     {
-        ControlStyle<Control> style = new();
-        State combined = State.Hovered | State.Focused;
+        var style = new ControlStyle<Control>();
+        var combined = State.Hovered | State.Focused;
 
         style.Set(Control.ForegroundProperty, combined, Color.Indexed(1));
 
-        style.TryGet(Control.ForegroundProperty, combined, out Color? value).ShouldBeTrue();
+        style.TryGet(Control.ForegroundProperty, combined, out var value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(1));
     }
 
@@ -38,7 +38,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenStateHasUnknownFlags_Throws()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             style.Set(Control.ForegroundProperty, (State) (1 << 20), Color.Indexed(1)));
@@ -48,11 +48,11 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenMeasurePropertyUsesOverlayState_StoresValue()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
 
         style.Set(Control.PaddingProperty, State.Pressed, new Thickness(1));
 
-        style.TryGet(Control.PaddingProperty, State.Pressed, out Thickness value).ShouldBeTrue();
+        style.TryGet(Control.PaddingProperty, State.Pressed, out var value).ShouldBeTrue();
         value.ShouldBe(new Thickness(1));
     }
 
@@ -60,9 +60,9 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenStyleIsFrozen_Throws()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
-        ControlStyle<Control> frozen = style.FreezeCopy();
+        var frozen = style.FreezeCopy();
 
         _ = Should.Throw<InvalidOperationException>(() =>
             frozen.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4)));
@@ -72,12 +72,12 @@ public sealed class ControlStyleTests
     [Fact]
     public void Clone_WhenSourceMutatesAfterCopy_DoesNotAffectClone()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
-        ControlStyle<Control> clone = style.Clone();
+        var clone = style.Clone();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(5));
 
-        clone.TryGet(Control.ForegroundProperty, State.Normal, out Color? value).ShouldBeTrue();
+        clone.TryGet(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(1));
     }
 
@@ -85,10 +85,10 @@ public sealed class ControlStyleTests
     [Fact]
     public void TryGetValue_ThroughPublicInterface_ReadsStoredValue()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
 
-        style.TryGetValue(Control.ForegroundProperty, State.Normal, out object? value).ShouldBeTrue();
+        style.TryGetValue(Control.ForegroundProperty, State.Normal, out var value).ShouldBeTrue();
         value.ShouldBe(Color.Indexed(4));
     }
 
@@ -96,8 +96,8 @@ public sealed class ControlStyleTests
     [Fact]
     public void Set_WhenValueChanges_RaisesChanged()
     {
-        ControlStyle<Control> style = new();
-        int raised = 0;
+        var style = new ControlStyle<Control>();
+        var raised = 0;
         style.Changed += (_, _) => raised++;
 
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(6));
@@ -109,13 +109,13 @@ public sealed class ControlStyleTests
     [Fact]
     public async Task Set_WhenHandlerReentersStyle_DoesNotDeadlockAsync()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
         style.Changed += (_, _) => _ = style.Clone();
 
-        Task work = Task.Run(
+        var work = Task.Run(
             () => style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1)),
             TestContext.Current.CancellationToken);
-        Task finished = await Task.WhenAny(
+        var finished = await Task.WhenAny(
             work,
             Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
 

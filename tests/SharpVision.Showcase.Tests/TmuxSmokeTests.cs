@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using System.Diagnostics;
 
 
 /// <summary>Runs the Release showcase under tmux when the host provides it.</summary>
@@ -20,9 +19,9 @@ public sealed class TmuxSmokeTests
             FindExecutable("tmux") is not null,
             "tmux is not installed.");
 
-        string session = $"sharpvision-geometry-{Environment.ProcessId}";
-        string root = RepositoryRoot();
-        ProcessStartInfo build = new()
+        var session = $"sharpvision-geometry-{Environment.ProcessId}";
+        var root = RepositoryRoot();
+        var build = new ProcessStartInfo()
         {
             FileName = "dotnet",
             Arguments = "build src/SharpVision.Showcase/SharpVision.Showcase.csproj --configuration Release --verbosity quiet /p:RunAnalyzersDuringBuild=false /p:EnforceCodeStyleInBuild=false",
@@ -32,13 +31,13 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        Process buildProcess = Process.Start(build).ShouldNotBeNull();
+        var buildProcess = Process.Start(build).ShouldNotBeNull();
         await buildProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
         buildProcess.ExitCode.ShouldBe(0);
 
         try
         {
-            ProcessStartInfo start = new()
+            var start = new ProcessStartInfo()
             {
                 FileName = "tmux",
                 Arguments =
@@ -49,13 +48,13 @@ public sealed class TmuxSmokeTests
                 UseShellExecute = false,
             };
 
-            Process startProcess = Process.Start(start).ShouldNotBeNull();
+            var startProcess = Process.Start(start).ShouldNotBeNull();
             await startProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
             startProcess.ExitCode.ShouldBe(0);
 
             _ = await WaitForPaneTextAsync(session, "Overview", TimeSpan.FromSeconds(15));
 
-            ProcessStartInfo navigate = new()
+            var navigate = new ProcessStartInfo()
             {
                 FileName = "tmux",
                 Arguments = $"send-keys -t {session} " + string.Join(' ', Enumerable.Repeat("Down", 18)),
@@ -64,11 +63,11 @@ public sealed class TmuxSmokeTests
                 UseShellExecute = false,
             };
 
-            Process navigateProcess = Process.Start(navigate).ShouldNotBeNull();
+            var navigateProcess = Process.Start(navigate).ShouldNotBeNull();
             await navigateProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
             navigateProcess.ExitCode.ShouldBe(0);
 
-            string pane = await WaitForPaneTextAsync(session, "Cell geometry specimen", TimeSpan.FromSeconds(5));
+            var pane = await WaitForPaneTextAsync(session, "Cell geometry specimen", TimeSpan.FromSeconds(5));
             pane.ShouldContain("Uneven pixel pointer grid");
         }
         finally
@@ -79,7 +78,7 @@ public sealed class TmuxSmokeTests
 
     private static async Task<string> ReadPaneAsync(string session)
     {
-        ProcessStartInfo capture = new()
+        var capture = new ProcessStartInfo()
         {
             FileName = "tmux",
             Arguments = $"capture-pane -t {session} -p -J",
@@ -88,8 +87,8 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        Process process = Process.Start(capture).ShouldNotBeNull();
-        string text = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+        var process = Process.Start(capture).ShouldNotBeNull();
+        var text = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
         await process.WaitForExitAsync(TestContext.Current.CancellationToken);
         process.ExitCode.ShouldBe(0);
         return text;
@@ -100,7 +99,7 @@ public sealed class TmuxSmokeTests
         string needle,
         TimeSpan timeout)
     {
-        long deadline = Environment.TickCount64 + (long) timeout.TotalMilliseconds;
+        var deadline = Environment.TickCount64 + (long) timeout.TotalMilliseconds;
 
         while (Environment.TickCount64 < deadline)
         {
@@ -109,7 +108,7 @@ public sealed class TmuxSmokeTests
                 throw new InvalidOperationException("The showcase terminated before tmux smoke completed.");
             }
 
-            string text = await ReadPaneAsync(session);
+            var text = await ReadPaneAsync(session);
 
             if (text.Contains(needle, StringComparison.Ordinal))
             {
@@ -124,7 +123,7 @@ public sealed class TmuxSmokeTests
 
     private static bool SessionExists(string session)
     {
-        ProcessStartInfo probe = new()
+        var probe = new ProcessStartInfo
         {
             FileName = "tmux",
             Arguments = $"has-session -t {session}",
@@ -133,13 +132,13 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        using Process? process = Process.Start(probe);
+        using var process = Process.Start(probe);
         return process is not null && process.WaitForExit(1000) && process.ExitCode == 0;
     }
 
     private static void KillSession(string session)
     {
-        ProcessStartInfo kill = new()
+        var kill = new ProcessStartInfo
         {
             FileName = "tmux",
             Arguments = $"kill-session -t {session}",
@@ -148,15 +147,15 @@ public sealed class TmuxSmokeTests
             UseShellExecute = false,
         };
 
-        using Process? process = Process.Start(kill);
+        using var process = Process.Start(kill);
         _ = process?.WaitForExit(1000);
     }
 
     private static string? FindExecutable(string name)
     {
-        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(':', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(':', StringSplitOptions.RemoveEmptyEntries))
         {
-            string candidate = Path.Combine(directory, name);
+            var candidate = Path.Combine(directory, name);
 
             if (File.Exists(candidate))
             {
@@ -169,7 +168,7 @@ public sealed class TmuxSmokeTests
 
     private static string RepositoryRoot()
     {
-        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        var current = (DirectoryInfo?) new DirectoryInfo(AppContext.BaseDirectory);
 
         while (current is not null)
         {

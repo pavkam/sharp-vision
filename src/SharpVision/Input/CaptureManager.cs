@@ -9,6 +9,8 @@ using SharpVision.Terminal.Input;
 /// <summary>Owns hit targeting, hover, press, and exclusive pointer capture.</summary>
 public sealed class CaptureManager: IDisposable
 {
+    #region Construction and state
+
     /// <summary>Initializes pointer ownership for one attached root.</summary>
     /// <param name="root">The non-null attached tree root.</param>
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
@@ -52,6 +54,10 @@ public sealed class CaptureManager: IDisposable
     public Control? Pressed { get; private set; }
 
     private bool IsDisposed { get; set; }
+
+    #endregion
+
+    #region Capture and dispatch
 
     /// <summary>Captures all subsequent pointer input to one eligible tree member.</summary>
     /// <param name="control">The non-null requested member.</param>
@@ -100,10 +106,10 @@ public sealed class CaptureManager: IDisposable
     public Control? Dispatch(Pointer pointer)
     {
         VerifyAccess();
-        Control? physical = pointer.Action == PointerAction.Leave || pointer.Cells is not { } cells
+        var physical = pointer.Action == PointerAction.Leave || pointer.Cells is not { } cells
             ? null
             : Root.HitTest(cells);
-        Control? target = IsEligible(Captured) ? Captured : physical;
+        var target = IsEligible(Captured) ? Captured : physical;
 
         // Capture governs routed input, while hover tracks the physical pointer
         // position so a drag never leaves stale visual feedback behind.
@@ -141,6 +147,10 @@ public sealed class CaptureManager: IDisposable
         Cancel(ReleaseReason.TerminalFocusLost, Root);
     }
 
+    #endregion
+
+    #region Cleanup
+
     /// <summary>Releases pointer ownership and all manager references.</summary>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     public void Dispose()
@@ -164,6 +174,8 @@ public sealed class CaptureManager: IDisposable
     internal void Unavailable(Control subtree, ReleaseReason reason)
     {
         ArgumentNullException.ThrowIfNull(subtree);
+        Debug.Assert(IsMember(subtree), "Unavailable subtrees belong to the capture root.");
+        Debug.Assert(Enum.IsDefined(reason), "Implicit capture release requires a defined reason.");
 
         if (IsWithin(Captured, subtree) || IsWithin(Hovered, subtree) || IsWithin(Pressed, subtree))
         {
@@ -174,6 +186,8 @@ public sealed class CaptureManager: IDisposable
     /// <summary>Severs manager ownership while the root is being disposed.</summary>
     internal void RootDisposed()
     {
+        Debug.Assert(ReferenceEquals(Root.CaptureOwner, this), "Root disposal severs this manager's ownership.");
+
         Root.SetCaptureOwner(null);
         Cancelled = null;
         IsDisposed = true;
@@ -181,7 +195,10 @@ public sealed class CaptureManager: IDisposable
 
     private void Cancel(ReleaseReason reason, Control subtree)
     {
-        Control? cancelled = IsWithin(Captured, subtree) ? Captured : Pressed;
+        Debug.Assert(Enum.IsDefined(reason), "Capture cancellation requires a defined release reason.");
+        Debug.Assert(IsMember(subtree), "Capture cancellation is scoped to the owned tree.");
+
+        var cancelled = IsWithin(Captured, subtree) ? Captured : Pressed;
 
         if (IsWithin(Captured, subtree))
         {
@@ -204,13 +221,19 @@ public sealed class CaptureManager: IDisposable
         }
     }
 
+    #endregion
+
+    #region Target resolution
+
     private bool IsEligible(Control? control) =>
         control is not null && IsMember(control) && !control.IsDisposed &&
         control.Dispatcher is not null && control.EffectiveIsVisible && control.EffectiveIsEnabled;
 
     private bool IsMember(Control control)
     {
-        for (Control? current = control; current is not null; current = current.Parent)
+        Debug.Assert(control is not null, "Capture membership requires a control instance.");
+
+        for (var current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, Root))
             {
@@ -223,7 +246,9 @@ public sealed class CaptureManager: IDisposable
 
     private static bool IsWithin(Control? control, Control subtree)
     {
-        for (Control? current = control; current is not null; current = current.Parent)
+        Debug.Assert(subtree is not null, "Subtree containment requires a non-null root.");
+
+        for (var current = control; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, subtree))
             {
@@ -236,6 +261,8 @@ public sealed class CaptureManager: IDisposable
 
     private void SetHovered(Control? control)
     {
+        Debug.Assert(control is null || IsMember(control), "Hover state remains inside the capture tree.");
+
         if (ReferenceEquals(Hovered, control))
         {
             return;
@@ -248,7 +275,7 @@ public sealed class CaptureManager: IDisposable
 
     private static Control? ResolveHover(Control? physical)
     {
-        for (Control? current = physical; current is not null; current = current.Parent)
+        for (var current = physical; current is not null; current = current.Parent)
         {
             if (current.OwnsHover)
             {
@@ -262,7 +289,7 @@ public sealed class CaptureManager: IDisposable
 
     private static void FocusTarget(Control? target)
     {
-        for (Control? current = target; current is not null; current = current.Parent)
+        for (var current = target; current is not null; current = current.Parent)
         {
             if (current.CanFocus)
             {
@@ -274,6 +301,8 @@ public sealed class CaptureManager: IDisposable
 
     private void SetPressed(Control? control)
     {
+        Debug.Assert(control is null || IsMember(control), "Pressed state remains inside the capture tree.");
+
         if (ReferenceEquals(Pressed, control))
         {
             return;
@@ -288,5 +317,8 @@ public sealed class CaptureManager: IDisposable
     {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
         Root.VerifyMutable();
+        Debug.Assert(ReferenceEquals(Root.CaptureOwner, this), "A live manager remains registered on its root.");
     }
+
+    #endregion
 }

@@ -3,9 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Layout;
-using SharpVision.Terminal.Geometry;
-using SharpVision.Threading;
 
 /// <summary>Verifies View builds its content once, on its first measure, whether attached or not.</summary>
 public sealed class ViewTests
@@ -14,12 +11,12 @@ public sealed class ViewTests
     [Fact]
     public async Task Build_WhenViewMeasuredAfterAttach_RunsOnceAndInstallsContentAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeControl content = new() { Width = Length.Cells(5), Height = Length.Cells(2) };
-            CountingView view = new(content);
+            var content = new ProbeControl() { Width = Length.Cells(5), Height = Length.Cells(2) };
+            var view = new CountingView(content);
             view.Attach(dispatcher);
 
             view.Measure(new Constraint(20, 6));
@@ -35,8 +32,8 @@ public sealed class ViewTests
     [Fact]
     public void Build_WhenMeasuredWhileDetached_BuildsOnFirstMeasure()
     {
-        ProbeControl content = new() { Width = Length.Cells(5), Height = Length.Cells(2) };
-        CountingView view = new(content);
+        var content = new ProbeControl() { Width = Length.Cells(5), Height = Length.Cells(2) };
+        var view = new CountingView(content);
 
         view.Measure(new Constraint(20, 6));
 
@@ -49,15 +46,15 @@ public sealed class ViewTests
     [Fact]
     public async Task Build_WhenMeasuredDetachedThenAttachedAndRemeasured_BuildsOnlyOnceAsync()
     {
-        ProbeControl content = new() { Width = Length.Cells(5), Height = Length.Cells(2) };
-        CountingView view = new(content);
+        var content = new ProbeControl() { Width = Length.Cells(5), Height = Length.Cells(2) };
+        var view = new CountingView(content);
 
         view.Measure(new Constraint(20, 6));
 
         view.BuildCount.ShouldBe(1);
         view.Installed.ShouldBeSameAs(content);
 
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
@@ -73,7 +70,7 @@ public sealed class ViewTests
     [Fact]
     public void Build_WhenResultIsNull_ThrowsInvalidOperation()
     {
-        NullView view = new();
+        var view = new NullView();
 
         _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
     }
@@ -84,8 +81,8 @@ public sealed class ViewTests
     [Fact]
     public void Measure_ThenArrangeLargerThanChild_ChildFillsContentBounds()
     {
-        ProbeControl content = new(new Size(5, 2));
-        CountingView view = new(content)
+        var content = new ProbeControl(new Size(5, 2));
+        var view = new CountingView(content)
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -105,7 +102,7 @@ public sealed class ViewTests
     [Fact]
     public void Measure_WhenBuildThrows_PropagatesAndLeavesMeasureInvalidated()
     {
-        ThrowingView view = new();
+        var view = new ThrowingView();
 
         _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));
         _ = Should.Throw<InvalidOperationException>(() => view.Measure(new Constraint(20, 6)));

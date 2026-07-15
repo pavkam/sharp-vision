@@ -4,9 +4,7 @@
 namespace SharpVision.Fonts;
 
 using System.IO.Compression;
-using System.Reflection;
 using System.Security.Cryptography;
-using System.Text.Json;
 
 /// <summary>Provides case-sensitive lazy access to the audited embedded font archive.</summary>
 public sealed class FigletCatalog
@@ -18,9 +16,9 @@ public sealed class FigletCatalog
 
     private FigletCatalog()
     {
-        Assembly assembly = typeof(FigletCatalog).Assembly;
+        var assembly = typeof(FigletCatalog).Assembly;
         _archive = ReadResource(assembly, _archiveResource);
-        byte[] manifest = ReadResource(assembly, _manifestResource);
+        var manifest = ReadResource(assembly, _manifestResource);
         _entries = ParseManifest(manifest);
         Names = _entries.Keys.Order(StringComparer.Ordinal).ToArray();
 
@@ -44,7 +42,7 @@ public sealed class FigletCatalog
     public FigletFontInfo GetInfo(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
-        return _entries.TryGetValue(name, out FigletFontInfo value)
+        return _entries.TryGetValue(name, out var value)
             ? value
             : throw new KeyNotFoundException($"The FIGlet catalog does not contain '{name}'.");
     }
@@ -58,12 +56,12 @@ public sealed class FigletCatalog
     /// <exception cref="FormatException">The selected entry is not a supported FIGfont.</exception>
     public FigletFont Load(string name)
     {
-        FigletFontInfo info = GetInfo(name);
+        var info = GetInfo(name);
         using ZipArchive archive = new(
             new MemoryStream(_archive, writable: false),
             ZipArchiveMode.Read,
             leaveOpen: false);
-        ZipArchiveEntry entry = archive.GetEntry(info.File) ??
+        var entry = archive.GetEntry(info.File) ??
             throw new InvalidDataException($"The archive is missing audited entry '{info.File}'.");
 
         if (entry.Length != info.Bytes || entry.Length > FigletLimits.Default.MaxInputBytes)
@@ -71,8 +69,8 @@ public sealed class FigletCatalog
             throw new InvalidDataException($"The archive length for '{info.File}' is invalid.");
         }
 
-        byte[] bytes = ReadEntry(entry, checked((int) entry.Length));
-        string hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        var bytes = ReadEntry(entry, checked((int) entry.Length));
+        var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
 
         if (!hash.Equals(info.Sha256, StringComparison.Ordinal))
         {
@@ -85,7 +83,7 @@ public sealed class FigletCatalog
 
     private static byte[] ReadResource(Assembly assembly, string name)
     {
-        using Stream stream = assembly.GetManifestResourceStream(name) ??
+        using var stream = assembly.GetManifestResourceStream(name) ??
             throw new InvalidDataException($"Embedded resource '{name}' is missing.");
         using MemoryStream buffer = new();
         stream.CopyTo(buffer);
@@ -94,8 +92,8 @@ public sealed class FigletCatalog
 
     private static byte[] ReadEntry(ZipArchiveEntry entry, int length)
     {
-        byte[] bytes = new byte[length];
-        using Stream stream = entry.Open();
+        var bytes = new byte[length];
+        using var stream = entry.Open();
         stream.ReadExactly(bytes);
 
         return stream.ReadByte() == -1
@@ -125,7 +123,7 @@ public sealed class FigletCatalog
             throw new InvalidDataException($"Nested font archive '{file}' must have exactly one entry.");
         }
 
-        ZipArchiveEntry entry = nested.Entries[0];
+        var entry = nested.Entries[0];
 
         return entry.Length > 0 && entry.Length <= FigletLimits.Default.MaxInputBytes
             ? ReadEntry(entry, checked((int) entry.Length))
@@ -135,19 +133,19 @@ public sealed class FigletCatalog
 
     private static Dictionary<string, FigletFontInfo> ParseManifest(byte[] bytes)
     {
-        using JsonDocument document = JsonDocument.Parse(bytes);
-        JsonElement root = document.RootElement;
+        using var document = JsonDocument.Parse(bytes);
+        var root = document.RootElement;
 
         if (root.GetProperty("count").GetInt32() != 400)
         {
             throw new InvalidDataException("The embedded FIGlet manifest count is invalid.");
         }
 
-        Dictionary<string, FigletFontInfo> result = new(StringComparer.Ordinal);
+        var result = new Dictionary<string, FigletFontInfo>(StringComparer.Ordinal);
 
-        foreach (JsonElement element in root.GetProperty("fonts").EnumerateArray())
+        foreach (var element in root.GetProperty("fonts").EnumerateArray())
         {
-            FigletFontInfo info = new(
+            var info = new FigletFontInfo(
                 element.GetProperty("name").GetString()!,
                 element.GetProperty("file").GetString()!,
                 element.GetProperty("format").GetString()!,

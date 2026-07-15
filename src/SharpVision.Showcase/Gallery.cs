@@ -3,23 +3,12 @@
 
 namespace SharpVision.Showcase;
 
-using System.Diagnostics;
-
-using SharpVision.Input;
-using SharpVision.Runtime;
-using SharpVision.Showcase.Controls;
-using SharpVision.Showcase.Panes;
-using SharpVision.Styling;
-using SharpVision.Terminal.Input;
-
-using KeyAction = Terminal.Input.Action;
-using TerminalAttributes = Terminal.Rendering.Attributes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
 {
-    private static readonly (string Name, Func<View> Create)[] Catalog =
+    private static readonly (string Name, Func<View> Create)[] _catalog =
     [
         (BorderPane.Title, static () => new BorderPane()),
         (ButtonPane.Title, static () => new ButtonPane()),
@@ -48,14 +37,14 @@ public sealed class Gallery: Screen
     // Ordered theme catalog surfaced by the sidebar picker: every embedded theme from
     // SharpVision.Styling.ThemeCatalog.Default, dark group first then light, preserving each
     // group's catalog (order, slug) sequence. A new embedded theme JSON resource is one entry.
-    private static readonly ThemeCatalogEntry[] ThemePickerEntries = BuildThemePickerEntries();
+    private static readonly ThemeCatalogEntry[] _themePickerEntries = BuildThemePickerEntries();
 
     private static ThemeCatalogEntry[] BuildThemePickerEntries()
     {
-        IReadOnlyList<ThemeCatalogEntry> entries = ThemeCatalog.Default.Entries;
-        List<ThemeCatalogEntry> ordered = new(entries.Count);
+        var entries = ThemeCatalog.Default.Entries;
+        var ordered = new List<ThemeCatalogEntry>(entries.Count);
 
-        foreach (ThemeCatalogEntry entry in entries)
+        foreach (var entry in entries)
         {
             if (entry.ColorScheme == ColorScheme.Dark)
             {
@@ -63,7 +52,7 @@ public sealed class Gallery: Screen
             }
         }
 
-        foreach (ThemeCatalogEntry entry in entries)
+        foreach (var entry in entries)
         {
             if (entry.ColorScheme == ColorScheme.Light)
             {
@@ -87,7 +76,7 @@ public sealed class Gallery: Screen
     /// <summary>Initializes the complete sidebar and first selected control page.</summary>
     public Gallery()
     {
-        Pages = Array.ConvertAll(Catalog, static entry => entry.Name);
+        Pages = Array.ConvertAll(_catalog, static entry => entry.Name);
         _main = new Stack
         {
             AutoScroll = true,
@@ -98,15 +87,15 @@ public sealed class Gallery: Screen
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
         };
         _navigation = new NavigationItem[Pages.Count];
-        Stack entries = new() { Padding = new Thickness(1, 0) };
+        var entries = new Stack() { Padding = new Thickness(1, 0) };
         entries.Children.Add(new Text("Components")
         {
             Attributes = TerminalAttributes.Bold,
         });
 
-        for (int index = 0; index < Pages.Count; index++)
+        for (var index = 0; index < Pages.Count; index++)
         {
-            NavigationItem item = new(index, Pages[index])
+            var item = new NavigationItem(index, Pages[index])
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
@@ -124,19 +113,19 @@ public sealed class Gallery: Screen
             ScrollBarFill = ScrollBarFill.Line,
             Children = { entries },
         };
-        Dock sidebarLayout = new();
-        Stack header = CreateSidebarHeader();
-        int darkIndex = Array.FindIndex(ThemePickerEntries, static entry => entry.Slug == "default-dark");
+        var sidebarLayout = new Dock();
+        var header = CreateSidebarHeader();
+        var darkIndex = Array.FindIndex(_themePickerEntries, static entry => entry.Slug == "default-dark");
         _themePicker = new ComboBox
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Items = Array.ConvertAll(ThemePickerEntries, static entry => (object?) entry.Name),
+            Items = Array.ConvertAll(_themePickerEntries, static entry => (object?) entry.Name),
             SelectedIndex = darkIndex >= 0 ? darkIndex : 0,
         };
         _themePicker.SelectionChanged += OnThemeSelected;
         _quit = new Button { Content = new Text("Quit") };
         _quit.Click += OnQuitClicked;
-        Stack footer = CreateSidebarFooter(_themePicker, _quit);
+        var footer = CreateSidebarFooter(_themePicker, _quit);
         Dock.SetSide(header, Side.Top);
         Dock.SetSide(footer, Side.Bottom);
         sidebarLayout.Children.Add(header);
@@ -155,11 +144,11 @@ public sealed class Gallery: Screen
         // anywhere, including terminals whose Kitty keyboard protocol delivers it as a key event
         // rather than a host cancellation signal.
         _ = AddHandler(Events.Key, OnGlobalKey);
-        Border surface = new()
+        var surface = new Border()
         {
             Child = _main,
         };
-        Dock layout = new()
+        var layout = new Dock()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -197,21 +186,29 @@ public sealed class Gallery: Screen
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
     internal static View CreatePage(int index)
     {
-        return (uint) index >= (uint) Catalog.Length
+        return (uint) index >= (uint) _catalog.Length
             ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
-            : Catalog[index].Create();
+            : _catalog[index].Create();
     }
 
     /// <inheritdoc/>
     protected override Control Build() => _root;
 
     /// <inheritdoc/>
-    protected override void OnAttach(Application application) =>
+    /// <exception cref="ArgumentNullException"><paramref name="application"/> is null.</exception>
+    protected override void OnAttach(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
         application.Theme = Themes.Dark;
+    }
 
     /// <inheritdoc/>
-    protected override void OnStarted(Application application) =>
+    /// <exception cref="ArgumentNullException"><paramref name="application"/> is null.</exception>
+    protected override void OnStarted(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
         _ = FocusSelected(application.Focus);
+    }
 
     /// <summary>Focuses the selected sidebar entry after the application has attached the gallery tree.</summary>
     /// <param name="focus">The non-null attached root focus manager.</param>
@@ -229,13 +226,13 @@ public sealed class Gallery: Screen
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
     internal void Select(int index)
     {
-        if ((uint) index >= (uint) Catalog.Length)
+        if ((uint) index >= (uint) _catalog.Length)
         {
             throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.");
         }
 
-        Debug.Assert(_navigation[index].Label == Catalog[index].Name);
-        Control? previous = _main.Children.Count > 0 ? _main.Children[0] : null;
+        Debug.Assert(_navigation[index].Label == _catalog[index].Name);
+        var previous = _main.Children.Count > 0 ? _main.Children[0] : null;
         SelectedIndex = index;
 
         // A catalog selection changes subject, not just content. Preserve the
@@ -251,9 +248,9 @@ public sealed class Gallery: Screen
         }
 
         _main.Children.Clear();
-        _main.Children.Add(Catalog[index].Create());
+        _main.Children.Add(_catalog[index].Create());
 
-        for (int navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)
+        for (var navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)
         {
             _navigation[navigationIndex].SetSelected(navigationIndex == index);
         }
@@ -263,7 +260,7 @@ public sealed class Gallery: Screen
 
     private static Stack CreateSidebarHeader()
     {
-        Stack header = new()
+        var header = new Stack()
         {
             Height = Length.Cells(4),
             Padding = new Thickness(1, 0),
@@ -282,14 +279,14 @@ public sealed class Gallery: Screen
 
     private static Stack CreateSidebarFooter(ComboBox themePicker, Button quit)
     {
-        Stack themeGroup = new() { Spacing = 0 };
+        var themeGroup = new Stack() { Spacing = 0 };
         themeGroup.Children.Add(new Text("Theme")
         {
             Attributes = TerminalAttributes.Dim,
         });
         themeGroup.Children.Add(themePicker);
 
-        Stack exitGroup = new() { Spacing = 0 };
+        var exitGroup = new Stack() { Spacing = 0 };
         exitGroup.Children.Add(quit);
         exitGroup.Children.Add(new Text("Ctrl+C to quit")
         {
@@ -319,11 +316,11 @@ public sealed class Gallery: Screen
     {
         _ = sender;
         _ = eventArgs;
-        int index = _themePicker.SelectedIndex;
+        var index = _themePicker.SelectedIndex;
 
-        if ((uint) index < (uint) ThemePickerEntries.Length)
+        if ((uint) index < (uint) _themePickerEntries.Length)
         {
-            SetTheme(ThemeCatalog.Default.Load(ThemePickerEntries[index].Slug));
+            SetTheme(ThemeCatalog.Default.Load(_themePickerEntries[index].Slug));
         }
     }
 
@@ -377,8 +374,8 @@ public sealed class Gallery: Screen
             return;
         }
 
-        NavigationItem current = FindNavigation(eventArgs.OriginalSource) ?? _navigation[SelectedIndex];
-        int target = ResolveNavigation(current.Index, eventArgs.Stroke);
+        var current = FindNavigation(eventArgs.OriginalSource) ?? _navigation[SelectedIndex];
+        var target = ResolveNavigation(current.Index, eventArgs.Stroke);
 
         if (target < 0)
         {
@@ -393,7 +390,7 @@ public sealed class Gallery: Screen
 
     private int ResolveNavigation(int current, Stroke stroke)
     {
-        int count = _navigation.Length;
+        var count = _navigation.Length;
 
         if (stroke.Code is Code.Up or Code.Left ||
             (stroke.Code == Code.Tab && (stroke.Modifiers & Modifiers.Shift) != 0))
@@ -416,7 +413,7 @@ public sealed class Gallery: Screen
             return count - 1;
         }
 
-        int page = Math.Max(1, _navigationScroll.Viewport.Height - 1);
+        var page = Math.Max(1, _navigationScroll.Viewport.Height - 1);
 
         return stroke.Code == Code.PageUp
             ? Math.Max(0, current - page)
@@ -427,7 +424,7 @@ public sealed class Gallery: Screen
 
     private static NavigationItem? FindNavigation(Control? source)
     {
-        for (Control? current = source; current is not null; current = current.Parent)
+        for (var current = source; current is not null; current = current.Parent)
         {
             if (current is NavigationItem item)
             {
@@ -441,7 +438,7 @@ public sealed class Gallery: Screen
     /// <inheritdoc/>
     protected override void OnDispose()
     {
-        foreach (NavigationItem item in _navigation)
+        foreach (var item in _navigation)
         {
             item.Invoked -= OnNavigationInvoked;
         }

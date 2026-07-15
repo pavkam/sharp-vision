@@ -3,7 +3,6 @@
 
 namespace SharpVision.Runtime;
 
-using SharpVision.Terminal.Clipboard;
 
 /// <summary>Writes and requests terminal clipboard selections when supported.</summary>
 public interface IClipboard

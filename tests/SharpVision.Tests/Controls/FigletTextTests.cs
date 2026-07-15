@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Fonts;
 
 
 /// <summary>Verifies FIGletText validation, layout, caching, and exact cells.</summary>
@@ -13,8 +12,8 @@ public sealed class FigletTextTests
     [Fact]
     public void Constructor_WhenFontIsProvided_UsesDocumentedDefaults()
     {
-        FigletFont font = FigletCatalog.Default.Load("Standard");
-        FigletText control = new(font);
+        var font = FigletCatalog.Default.Load("Standard");
+        var control = new FigletText(font);
 
         control.Font.ShouldBeSameAs(font);
         control.Content.ShouldBe(string.Empty);
@@ -25,7 +24,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Layout_WhenContentIsSet_MeasuresRenderedFontOutput()
     {
-        FigletText control = new(FigletCatalog.Default.Load("Standard"))
+        var control = new FigletText(FigletCatalog.Default.Load("Standard"))
         {
             Content = "H",
         };
@@ -39,7 +38,7 @@ public sealed class FigletTextTests
     [Fact]
     public void Render_WhenContentIsSet_WritesExactFigletCells()
     {
-        FigletText control = new(FigletCatalog.Default.Load("Standard"))
+        var control = new FigletText(FigletCatalog.Default.Load("Standard"))
         {
             Content = "H",
         };
@@ -57,8 +56,8 @@ public sealed class FigletTextTests
     [Fact]
     public void Font_WhenValueIsNull_ThrowsBeforeMutation()
     {
-        FigletFont font = FigletCatalog.Default.Load("Standard");
-        FigletText control = new(font);
+        var font = FigletCatalog.Default.Load("Standard");
+        var control = new FigletText(font);
 
         _ = Should.Throw<ArgumentNullException>(() => control.Font = null!);
 

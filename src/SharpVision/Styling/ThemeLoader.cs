@@ -3,9 +3,7 @@
 
 namespace SharpVision.Styling;
 
-using System.Text.Json;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Turns theme JSON and definitions into frozen <see cref="Theme"/> instances.</summary>
 internal static class ThemeLoader
@@ -72,22 +70,22 @@ internal static class ThemeLoader
     {
         ArgumentNullException.ThrowIfNull(definition);
 
-        Dictionary<string, Color> palette = ResolvePalette(definition, source);
-        Dictionary<ColorRole, Color> roles = ResolveRoles(definition, palette, source);
+        var palette = ResolvePalette(definition, source);
+        var roles = ResolveRoles(definition, palette, source);
         FillFallbacks(roles, source);
         return ThemeBuilder.Build(roles);
     }
 
     private static Dictionary<string, Color> ResolvePalette(ThemeDefinition definition, string source)
     {
-        Dictionary<string, Color> palette = new(StringComparer.Ordinal);
+        var palette = new Dictionary<string, Color>(StringComparer.Ordinal);
 
         if (definition.Palette is null)
         {
             return palette;
         }
 
-        foreach (KeyValuePair<string, string> entry in definition.Palette)
+        foreach (var entry in definition.Palette)
         {
             if (entry.Value is null)
             {
@@ -119,9 +117,9 @@ internal static class ThemeLoader
             return roles;
         }
 
-        foreach (KeyValuePair<string, string> entry in definition.Roles)
+        foreach (var entry in definition.Roles)
         {
-            if (!_roleNames.TryGetValue(entry.Key, out ColorRole role))
+            if (!_roleNames.TryGetValue(entry.Key, out var role))
             {
                 throw new InvalidDataException($"Theme '{source}' has unknown role '{entry.Key}'.");
             }
@@ -133,7 +131,7 @@ internal static class ThemeLoader
 
             roles[role] = ThemeColorValue.IsLiteral(entry.Value)
                 ? ParseOrThrow(entry.Value, source, $"role '{entry.Key}'")
-                : palette.TryGetValue(entry.Value, out Color color)
+                : palette.TryGetValue(entry.Value, out var color)
                     ? color
                     : throw new InvalidDataException(
                         $"Theme '{source}' role '{entry.Key}' references unknown palette key '{entry.Value}'.");
@@ -156,7 +154,7 @@ internal static class ThemeLoader
         // Muted first: takes explicit Border if present, else Foreground.
         if (!roles.ContainsKey(ColorRole.Muted))
         {
-            roles[ColorRole.Muted] = roles.TryGetValue(ColorRole.Border, out Color border)
+            roles[ColorRole.Muted] = roles.TryGetValue(ColorRole.Border, out var border)
                 ? border
                 : roles[ColorRole.Foreground];
         }

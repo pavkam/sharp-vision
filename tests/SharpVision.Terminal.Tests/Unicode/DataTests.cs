@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Unicode;
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>
@@ -60,9 +59,9 @@ public sealed class DataTests
     {
         ranges.IsEmpty.ShouldBeFalse();
 
-        for (int index = 0; index < ranges.Length; index++)
+        for (var index = 0; index < ranges.Length; index++)
         {
-            PropertyRange current = ranges[index];
+            var current = ranges[index];
 
             current.Start.ShouldBeLessThanOrEqualTo(current.End);
 

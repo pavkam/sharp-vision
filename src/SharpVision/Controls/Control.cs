@@ -4,12 +4,9 @@
 namespace SharpVision.Controls;
 
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
-using SharpVision.Styling;
+
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Unicode;
-using SharpVision.Threading;
 
 /// <summary>
 /// Defines a traditional mutable UI element with dispatcher affinity and box layout.
@@ -172,7 +169,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set
         {
             Validate(value);
-            Invalidation invalidation = value == Visibility.Collapsed || field == Visibility.Collapsed
+            var invalidation = value == Visibility.Collapsed || field == Visibility.Collapsed
                 ? Invalidation.Measure
                 : Invalidation.Render;
 
@@ -375,7 +372,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 nameof(handler));
         }
 
-        Registration<TArgs> registration = new(
+        var registration = new Registration<TArgs>(
             this,
             routedEvent,
             handler,
@@ -423,7 +420,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Detaches this subtree from its dispatcher.</summary>
     internal void Detach()
     {
-        Dispatcher? dispatcher = Dispatcher;
+        var dispatcher = Dispatcher;
 
         if (dispatcher is null)
         {
@@ -488,10 +485,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            Constraint contentConstraint = OnMeasuringContent(CreateContentConstraint(constraint));
-            Size content = MeasureOverride(contentConstraint);
+            var contentConstraint = OnMeasuringContent(CreateContentConstraint(constraint));
+            var content = MeasureOverride(contentConstraint);
             ContentExtent = content;
-            Size desired = OnMeasuredDesired(ResolveDesiredSize(constraint, content));
+            var desired = OnMeasuredDesired(ResolveDesiredSize(constraint, content));
 
             DesiredSize = desired;
             LastMeasureConstraint = constraint;
@@ -555,8 +552,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            Rect available = Margin.Deflate(slot);
-            int width = widthResolved
+            var available = Margin.Deflate(slot);
+            var width = widthResolved
                 ? available.Width
                 : ShrinkWrapsWidth
                     ? Math.Min(available.Width, Math.Clamp(DesiredSize.Width, MinWidth, MaxWidth))
@@ -568,7 +565,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                         DesiredSize.Width,
                         MinWidth,
                         MaxWidth);
-            int height = heightResolved
+            var height = heightResolved
                 ? available.Height
                 : ShrinkWrapsHeight
                     ? Math.Min(available.Height, Math.Clamp(DesiredSize.Height, MinHeight, MaxHeight))
@@ -580,15 +577,15 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                         DesiredSize.Height,
                         MinHeight,
                         MaxHeight);
-            int x = Align(available.X, available.Width, width, HorizontalAlignment);
-            int y = Align(available.Y, available.Height, height, VerticalAlignment);
-            Rect bounds = new(x, y, width, height);
+            var x = Align(available.X, available.Width, width, HorizontalAlignment);
+            var y = Align(available.Y, available.Height, height, VerticalAlignment);
+            var bounds = new Rect(x, y, width, height);
 
             Bounds = bounds;
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
-            Rect padded = Padding.Deflate(bounds);
+            var padded = Padding.Deflate(bounds);
             ArrangeOverride(ResolveContentSlot(padded));
             ArrangeOverlays(padded);
         }
@@ -633,8 +630,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             // coordinate system remains absolute, so no transform can drift.
             // Panels may deliberately retain the ancestor clip for children,
             // while their own drawing always remains inside their bounds.
-            TerminalCanvas visual = canvas.Clip(VisualBounds);
-            TerminalCanvas clipped = canvas.Clip(Bounds);
+            var visual = canvas.Clip(VisualBounds);
+            var clipped = canvas.Clip(Bounds);
             OnRender(visual);
             RenderChildren(ClipsChildren ? clipped : canvas);
         }
@@ -653,8 +650,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="value">The earliest dirty phase.</param>
     internal void Invalidate(Invalidation value)
     {
-        Invalidation expanded = Expand(value);
-        Invalidation added = expanded & ~Pending;
+        var expanded = Expand(value);
+        var added = expanded & ~Pending;
 
         if (added == Invalidation.None)
         {
@@ -717,7 +714,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="value">The new parent or null.</param>
     internal void SetParent(Container? value)
     {
-        Container? previous = Parent;
+        var previous = Parent;
         Parent = value;
         InvalidateSubtreeResolvedStyleCache();
         OnParentChanged(previous, value);
@@ -735,7 +732,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(routedEvent);
         ArgumentNullException.ThrowIfNull(eventArgs);
-        List<IHandler>? handlers = Handlers;
+        var handlers = Handlers;
 
         if (handlers is null || handlers.Count == 0)
         {
@@ -747,13 +744,13 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             pointer.SetLocal(this);
         }
 
-        IHandler[] snapshot = System.Buffers.ArrayPool<IHandler>.Shared.Rent(handlers.Count);
+        var snapshot = ArrayPool<IHandler>.Shared.Rent(handlers.Count);
         handlers.CopyTo(snapshot);
-        int count = handlers.Count;
+        var count = handlers.Count;
 
         try
         {
-            for (int index = 0; index < count; index++)
+            for (var index = 0; index < count; index++)
             {
                 snapshot[index].Invoke(this, routedEvent, eventArgs, sequence);
             }
@@ -761,7 +758,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         finally
         {
             Array.Clear(snapshot, 0, count);
-            System.Buffers.ArrayPool<IHandler>.Shared.Return(snapshot);
+            ArrayPool<IHandler>.Shared.Return(snapshot);
         }
     }
 
@@ -1007,7 +1004,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <returns>The current defined visual-state flags.</returns>
     protected virtual State GetVisualState()
     {
-        State result = State.Normal;
+        var result = State.Normal;
 
         if (IsHovered)
         {
@@ -1049,7 +1046,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Gets whether the control currently holds a checked value.</summary>
     /// <remarks>
-    /// Overridden by checkable controls (checkbox, radio, menu item) to drive <see cref="State.Checked"/>.
+    /// Overridden by checkable controls (checkbox, radio, menu item) to drive
+    /// <see cref="State.Checked"/>.
     /// This is the supported seam for participating in checked styling without overriding
     /// <see cref="GetVisualState"/>.
     /// </remarks>
@@ -1063,7 +1061,9 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     protected virtual bool IsSelectedState => HasSelectedState;
 
     /// <summary>Gets whether the control holds a mixed or indeterminate value.</summary>
-    /// <remarks>Overridden by tri-state controls to drive <see cref="State.Indeterminate"/>.</remarks>
+    /// <remarks>
+    /// Overridden by tri-state controls to drive <see cref="State.Indeterminate"/>.
+    /// </remarks>
     protected virtual bool IsIndeterminateState => false;
 
     /// <summary>Gets the invalidation a visual-state change requires for this control.</summary>
@@ -1080,7 +1080,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         if (ThemeContext is { } context)
         {
-            foreach (IControlStyle style in context.GetStyleChain(GetType()))
+            foreach (var style in context.GetStyleChain(GetType()))
             {
                 if (style.AggregateImpact == Impact.Measure)
                 {
@@ -1089,7 +1089,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             }
         }
 
-        for (Container? current = Parent; current is not null; current = current.Parent)
+        for (var current = Parent; current is not null; current = current.Parent)
         {
             if (current is IStyleScope && current.InstanceStyle?.AggregateImpact == Impact.Measure)
             {
@@ -1146,7 +1146,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         int minimum,
         int maximum)
     {
-        int requested = length.Kind switch
+        var requested = length.Kind switch
         {
             Kind.Auto when stretch => available,
             Kind.Auto => desired,
@@ -1168,7 +1168,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         int minimum,
         int maximum)
     {
-        int requested = length.Kind switch
+        var requested = length.Kind switch
         {
             Kind.Auto => SaturatingAdd(intrinsic, padding),
             Kind.Cells => (int) length.Value,
@@ -1180,7 +1180,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 : SaturatingAdd(intrinsic, padding),
             _ => throw new UnreachableException(),
         };
-        int clamped = Math.Clamp(requested, minimum, maximum);
+        var clamped = Math.Clamp(requested, minimum, maximum);
 
         return slot.HasValue
             ? Math.Min(Math.Max(0, slot.Value - margin), clamped)
@@ -1207,19 +1207,19 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             return null;
         }
 
-        int available = slot.HasValue ? Math.Max(0, slot.Value - margin) : int.MaxValue;
+        var available = slot.HasValue ? Math.Max(0, slot.Value - margin) : int.MaxValue;
         return Math.Max(0, Math.Min(border.Value, available) - padding);
     }
 
     private static int ResolvePercent(int value, double percent)
     {
-        double result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
+        var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private static int SaturatingAdd(int value, int extent)
     {
-        long result = (long) value + extent;
+        var result = (long) value + extent;
         return result > int.MaxValue ? int.MaxValue : (int) result;
     }
 
@@ -1281,7 +1281,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private void OnInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs)
     {
-        Dispatcher? dispatcher = Dispatcher;
+        var dispatcher = Dispatcher;
         if (dispatcher is not null && !dispatcher.CheckAccess())
         {
             dispatcher.Post(() => ApplyInstanceStyleChanged(sender, eventArgs)); return;
@@ -1298,7 +1298,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         InvalidateResolvedStyleCache();
 
-        Invalidation invalidation = eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
+        var invalidation = eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
         Invalidate(invalidation);
         CascadeStyleScopeInvalidation(invalidation);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
@@ -1311,7 +1311,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             return;
         }
 
-        foreach (IHandler handler in handlers)
+        foreach (var handler in handlers)
         {
             handler.Detach();
         }
@@ -1322,8 +1322,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     internal void NotifyUnavailable(ReleaseReason reason)
     {
-        FocusManager? focus = FocusOwner;
-        CaptureManager? capture = CaptureOwner;
+        var focus = FocusOwner;
+        var capture = CaptureOwner;
         focus?.Unavailable(this);
         capture?.Unavailable(this, reason);
         OnUnavailable(reason);

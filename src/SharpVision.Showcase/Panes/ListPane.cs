@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the List control with live, themed selection specimens.</summary>
 internal sealed class ListPane: View
 {
@@ -14,8 +15,8 @@ internal sealed class ListPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Text status = new("Selected item: Beta");
-        List active = new()
+        var status = new Text("Selected item: Beta");
+        var active = new List()
         {
             Width = Length.Cells(18),
             Height = Length.Cells(6),
@@ -38,7 +39,7 @@ internal sealed class ListPane: View
         active.ItemInvoked += (_, eventArgs) =>
             status.Content = $"Activated {eventArgs.Item} via {eventArgs.Cause}.";
 
-        List disabled = new()
+        var disabled = new List()
         {
             Width = Length.Cells(18),
             Height = Length.Cells(4),

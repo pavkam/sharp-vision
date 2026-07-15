@@ -4,9 +4,6 @@
 namespace SharpVision.Controls;
 
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Unicode;
 
 public abstract partial class Control
 {
@@ -297,8 +294,8 @@ public abstract partial class Control
     private static void ValidateThemeShadowGlyph(Rune value)
     {
         Span<char> buffer = stackalloc char[2];
-        int length = value.EncodeToUtf16(buffer);
-        Measurement measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
+        var length = value.EncodeToUtf16(buffer);
+        var measurement = Terminal.Unicode.Width.Measure(buffer[..length]);
 
         if (measurement.Cells != 1 || measurement.Controls != 0)
         {

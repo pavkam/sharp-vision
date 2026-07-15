@@ -3,12 +3,11 @@
 
 namespace SharpVision.Tests.Performance;
 
-using System.Diagnostics;
-using System.Globalization;
+using Action = System.Action;
 
 
 
-using ControlText = SharpVision.Controls.Text;
+
 
 /// <summary>Gates allocation reuse for representative and large display trees.</summary>
 [Collection(PerformanceGroup.Name)]
@@ -20,13 +19,13 @@ public sealed class DisplayPanelPerformanceTests
     [InlineData(200, 60)]
     public void Render_WhenDisplayTreeIsWarm_AllocatesNoManagedMemory(int width, int height)
     {
-        Grid root = Representative();
-        Size size = new(width, height);
-        Engine engine = new();
+        var root = Representative();
+        var size = new Size(width, height);
+        var engine = new Engine();
         using Frame frame = new(size);
         Run();
 
-        long allocated = Minimum(Run, iterations: 500, out TimeSpan elapsed);
+        var allocated = Minimum(Run, iterations: 500, out var elapsed);
 
         allocated.ShouldBe(0);
         TestContext.Current.TestOutputHelper?.WriteLine(
@@ -45,22 +44,22 @@ public sealed class DisplayPanelPerformanceTests
     [Fact]
     public void Layout_WhenTreeHasOneThousandChildren_AllocatesNoManagedMemoryAfterWarmup()
     {
-        Grid grid = new();
+        var grid = new Grid();
         grid.Rows.Add(Track.Star(1));
         grid.Columns.Add(Track.Star(1));
-        Stack stack = new();
+        var stack = new Stack();
         grid.Children.Add(stack);
 
-        for (int index = 0; index < 1_000; index++)
+        for (var index = 0; index < 1_000; index++)
         {
             stack.Children.Add(new ControlText((index % 10).ToString(CultureInfo.InvariantCulture)));
         }
 
-        Engine engine = new();
-        Size size = new(200, 60);
+        var engine = new Engine();
+        var size = new Size(200, 60);
         engine.Layout(grid, size);
 
-        long allocated = Minimum(() => engine.Layout(grid, size), 1_000, out TimeSpan elapsed);
+        var allocated = Minimum(() => engine.Layout(grid, size), 1_000, out var elapsed);
 
         allocated.ShouldBe(0);
         stack.Children.Count.ShouldBe(1_000);
@@ -70,19 +69,19 @@ public sealed class DisplayPanelPerformanceTests
 
     private static long Minimum(Action action, int iterations, out TimeSpan elapsed)
     {
-        for (int index = 0; index < iterations; index++)
+        for (var index = 0; index < iterations; index++)
         {
             action();
         }
 
-        long minimum = long.MaxValue;
-        Stopwatch watch = Stopwatch.StartNew();
+        var minimum = long.MaxValue;
+        var watch = Stopwatch.StartNew();
 
-        for (int sample = 0; sample < 5; sample++)
+        for (var sample = 0; sample < 5; sample++)
         {
-            long before = GC.GetAllocatedBytesForCurrentThread();
+            var before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (int index = 0; index < iterations; index++)
+            for (var index = 0; index < iterations; index++)
             {
                 action();
             }
@@ -97,17 +96,17 @@ public sealed class DisplayPanelPerformanceTests
 
     private static Grid Representative()
     {
-        Grid root = new();
+        var root = new Grid();
         root.Columns.Add(Track.Cells(24));
         root.Columns.Add(Track.Star(1));
-        Stack navigation = new() { Spacing = 1 };
+        var navigation = new Stack() { Spacing = 1 };
         Grid.SetColumn(navigation, 0);
-        Overlay content = new();
+        var content = new Overlay();
         Grid.SetColumn(content, 1);
         root.Children.Add(navigation);
         root.Children.Add(content);
 
-        for (int index = 0; index < 12; index++)
+        for (var index = 0; index < 12; index++)
         {
             navigation.Children.Add(new Border
             {
@@ -118,7 +117,7 @@ public sealed class DisplayPanelPerformanceTests
 
         content.Children.Add(new ControlText("e\u0301 · 界 · 👩‍💻")
         {
-            Wrapping = SharpVision.Text.Wrapping.Word,
+            Wrapping = Wrapping.Word,
         });
         return root;
     }

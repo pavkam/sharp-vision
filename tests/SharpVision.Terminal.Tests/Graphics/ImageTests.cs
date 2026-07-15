@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Tests.Graphics;
 using SharpVision.Terminal.Graphics;
 
 
-using GraphicsImage = Terminal.Graphics.Image;
+
 
 /// <summary>Verifies bounded owned RGBA image values.</summary>
 public sealed class ImageTests
@@ -17,10 +17,10 @@ public sealed class ImageTests
     {
         byte[] source = [1, 2, 3, 4, 5, 6, 7, 8];
 
-        GraphicsImage image = GraphicsImage.FromRgba(new Size(2, 1), source);
+        var image = GraphicsImage.FromRgba(new Size(2, 1), source);
         source.AsSpan().Clear();
-        byte[] copied = new byte[image.ByteCount];
-        int written = image.CopyTo(copied);
+        var copied = new byte[image.ByteCount];
+        var written = image.CopyTo(copied);
 
         image.Size.ShouldBe(new Size(2, 1));
         image.Format.ShouldBe(Format.Rgba);
@@ -48,7 +48,7 @@ public sealed class ImageTests
     [Fact]
     public void CopyTo_WhenDestinationIsShort_ThrowsBeforeMutation()
     {
-        GraphicsImage image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 4]);
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 4]);
         byte[] destination = [9, 9, 9];
 
         _ = Should.Throw<ArgumentException>(() => image.CopyTo(destination));

@@ -4,8 +4,6 @@
 namespace SharpVision.Controls;
 
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Draws shared control border, shadow, and body-fill chrome into semantic cells.</summary>
 internal static class ControlChrome
@@ -31,11 +29,11 @@ internal static class ControlChrome
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        ChromeRenderOptions settings = options ?? default;
-        Rect body = settings.BodyBounds ?? control.Bounds;
-        TerminalStyle bodyStyle = control.GetResolvedAppearance(visualState).Style;
-        bool opaque = ControlAppearance.HasOpaqueFill(control, visualState);
-        BackgroundMode background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        var settings = options ?? default;
+        var body = settings.BodyBounds ?? control.Bounds;
+        var bodyStyle = control.GetResolvedAppearance(visualState).Style;
+        var opaque = ControlAppearance.HasOpaqueFill(control, visualState);
+        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
 
         if (control.HasShadow && !settings.SkipShadow)
         {
@@ -61,8 +59,8 @@ internal static class ControlChrome
 
         if (!settings.SkipBorder && control.BorderThickness != default)
         {
-            TerminalStyle borderStyle = ControlAppearance.ResolveBorderStyle(control, visualState);
-            Glyphs glyphs = settings.BorderGlyphs ?? control.BorderGlyphs;
+            var borderStyle = ControlAppearance.ResolveBorderStyle(control, visualState);
+            var glyphs = settings.BorderGlyphs ?? control.BorderGlyphs;
             DrawPartialBorder(
                 canvas,
                 body,
@@ -92,10 +90,10 @@ internal static class ControlChrome
             return;
         }
 
-        for (int x = bounds.X; x < bounds.Right; x++)
+        for (var x = bounds.X; x < bounds.Right; x++)
         {
-            Rune top = x == bounds.X ? glyphs.TopLeft : x == bounds.Right - 1 ? glyphs.TopRight : glyphs.Top;
-            Rune bottom = x == bounds.X ? glyphs.BottomLeft : x == bounds.Right - 1 ? glyphs.BottomRight : glyphs.Bottom;
+            var top = x == bounds.X ? glyphs.TopLeft : x == bounds.Right - 1 ? glyphs.TopRight : glyphs.Top;
+            var bottom = x == bounds.X ? glyphs.BottomLeft : x == bounds.Right - 1 ? glyphs.BottomRight : glyphs.Bottom;
             canvas.DrawRune(top, new Point(x, bounds.Y), style, background);
 
             if (bounds.Height > 1)
@@ -104,7 +102,7 @@ internal static class ControlChrome
             }
         }
 
-        for (int y = bounds.Y + 1; y < bounds.Bottom - 1; y++)
+        for (var y = bounds.Y + 1; y < bounds.Bottom - 1; y++)
         {
             canvas.DrawRune(glyphs.Left, new Point(bounds.X, y), style, background);
 
@@ -130,7 +128,7 @@ internal static class ControlChrome
         Glyphs glyphs,
         TerminalStyle style,
         BackgroundMode background,
-        Terminal.Unicode.Policy cellPolicy)
+        Policy cellPolicy)
     {
         if (bounds.Width == 0 || bounds.Height == 0)
         {
@@ -169,15 +167,15 @@ internal static class ControlChrome
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        Rect target = Shift(sourceBounds, control.ShadowOffset).Intersect(canvas.Bounds);
-        Color shadowBackground = control.ShadowBackground ?? control.Background ?? appearanceSource.Background;
-        TerminalStyle style = ResolveShadowStyle(control, appearanceSource, shadowBackground);
+        var target = Shift(sourceBounds, control.ShadowOffset).Intersect(canvas.Bounds);
+        var shadowBackground = control.ShadowBackground ?? control.Background ?? appearanceSource.Background;
+        var style = ResolveShadowStyle(control, appearanceSource, shadowBackground);
 
-        for (int y = target.Y; y < target.Bottom; y++)
+        for (var y = target.Y; y < target.Bottom; y++)
         {
-            for (int x = target.X; x < target.Right; x++)
+            for (var x = target.X; x < target.Right; x++)
             {
-                Point point = new(x, y);
+                var point = new Point(x, y);
 
                 if (excludeBounds.Contains(point))
                 {
@@ -200,7 +198,7 @@ internal static class ControlChrome
                     Debug.Assert(
                         control.ShadowMode == ShadowMode.BlockGlyph,
                         "Public validation limits shadow modes.");
-                    Rune glyph = CellGlyph.Resolve(
+                    var glyph = CellGlyph.Resolve(
                         control.ShadowGlyph,
                         new Rune('#'),
                         control.CellPolicy.AmbiguousWidth);
@@ -218,10 +216,10 @@ internal static class ControlChrome
 
     internal static Rect Union(Rect left, Rect right)
     {
-        int x = Math.Min(left.X, right.X);
-        int y = Math.Min(left.Y, right.Y);
-        int rightEdge = Math.Max(left.Right, right.Right);
-        int bottom = Math.Max(left.Bottom, right.Bottom);
+        var x = Math.Min(left.X, right.X);
+        var y = Math.Min(left.Y, right.Y);
+        var rightEdge = Math.Max(left.Right, right.Right);
+        var bottom = Math.Max(left.Bottom, right.Bottom);
         return new Rect(x, y, Extent(x, rightEdge), Extent(y, bottom));
     }
 
@@ -230,7 +228,7 @@ internal static class ControlChrome
         TerminalStyle appearanceSource,
         Color shadowBackground)
     {
-        (TerminalAttributes attributes, Underline underline, Color underlineColor) = Decoration.Resolve(
+        (var attributes, var underline, var underlineColor) = Decoration.Resolve(
             appearanceSource,
             control.ShadowAttributes);
         return new TerminalStyle(
@@ -249,21 +247,21 @@ internal static class ControlChrome
         Glyphs glyphs,
         TerminalStyle style,
         BackgroundMode background,
-        Terminal.Unicode.Policy cellPolicy,
+        Policy cellPolicy,
         bool top)
     {
-        bool active = top ? thickness.Top != 0 : thickness.Bottom != 0;
+        var active = top ? thickness.Top != 0 : thickness.Bottom != 0;
 
         if (!active)
         {
             return;
         }
 
-        int y = top ? bounds.Y : bounds.Bottom - 1;
+        var y = top ? bounds.Y : bounds.Bottom - 1;
 
-        for (int x = bounds.X; x < bounds.Right; x++)
+        for (var x = bounds.X; x < bounds.Right; x++)
         {
-            Rune glyph = top ? glyphs.Top : glyphs.Bottom;
+            var glyph = top ? glyphs.Top : glyphs.Bottom;
 
             if (x == bounds.X && thickness.Left != 0)
             {
@@ -274,7 +272,7 @@ internal static class ControlChrome
                 glyph = top ? glyphs.TopRight : glyphs.BottomRight;
             }
 
-            Rune fallback = x == bounds.X || x == bounds.Right - 1
+            var fallback = x == bounds.X || x == bounds.Right - 1
                 ? new Rune('+')
                 : new Rune('-');
             canvas.DrawRune(
@@ -292,23 +290,23 @@ internal static class ControlChrome
         Glyphs glyphs,
         TerminalStyle style,
         BackgroundMode background,
-        Terminal.Unicode.Policy cellPolicy,
+        Policy cellPolicy,
         bool left)
     {
-        bool active = left ? thickness.Left != 0 : thickness.Right != 0;
+        var active = left ? thickness.Left != 0 : thickness.Right != 0;
 
         if (!active)
         {
             return;
         }
 
-        int x = left ? bounds.X : bounds.Right - 1;
-        int start = bounds.Y + thickness.Top;
-        int end = bounds.Bottom - thickness.Bottom;
+        var x = left ? bounds.X : bounds.Right - 1;
+        var start = bounds.Y + thickness.Top;
+        var end = bounds.Bottom - thickness.Bottom;
 
-        for (int y = start; y < end; y++)
+        for (var y = start; y < end; y++)
         {
-            Rune glyph = left ? glyphs.Left : glyphs.Right;
+            var glyph = left ? glyphs.Left : glyphs.Right;
             canvas.DrawRune(
                 CellGlyph.Resolve(glyph, new Rune('|'), cellPolicy.AmbiguousWidth),
                 new Point(x, y),

@@ -17,8 +17,8 @@ public sealed class ParserControlTests
     public void Parse_WhenInputIsUtf8Text_DeliversBorrowedBytes()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
-        byte[] input = "A🦄"u8.ToArray();
+        var sink = new RecordingSink();
+        var input = "A🦄"u8.ToArray();
 
         parser.Parse(input, ref sink);
 
@@ -35,7 +35,7 @@ public sealed class ParserControlTests
     public void Parse_WhenInputContainsC0Control_DeliversOrderedEvents()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("a\nb"u8, ref sink);
 
@@ -55,7 +55,7 @@ public sealed class ParserControlTests
     public void Parse_WhenEscapeHasFinal_DeliversEscape()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b7"u8, ref sink);
 
@@ -72,7 +72,7 @@ public sealed class ParserControlTests
     public void Parse_WhenEscapeHasIntermediate_DeliversIntermediateAndFinal()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b(B"u8, ref sink);
 
@@ -89,7 +89,7 @@ public sealed class ParserControlTests
     public void Parse_WhenEightBitControlsAreDisabled_DeliversBytesAsText()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
         byte[] input = [0xdb, 0x9b, (byte) '3', (byte) 'A'];
 
         parser.Parse(input, ref sink);
@@ -104,7 +104,7 @@ public sealed class ParserControlTests
     public void Parse_WhenEightBitControlsAreEnabled_DeliversCsi()
     {
         using Parser parser = new(Limits.Default with { AcceptEightBitControls = true });
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
         byte[] input = [0x9b, (byte) '3', (byte) 'A'];
 
         parser.Parse(input, ref sink);
@@ -122,7 +122,7 @@ public sealed class ParserControlTests
     public void Parse_WhenEightBitC1IsEnabled_DeliversControl()
     {
         using Parser parser = new(Limits.Default with { AcceptEightBitControls = true });
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse([0x85], ref sink);
 

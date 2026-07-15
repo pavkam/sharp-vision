@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Runtime.CompilerServices;
 
 
 /// <summary>Positions children by optional physical offsets and resolved sizes.</summary>
@@ -60,7 +59,7 @@ public sealed class Canvas: Container
     public static void SetLeft(Control control, Length? value)
     {
         Validate(control, value);
-        Position position = _positions.GetOrCreateValue(control);
+        var position = _positions.GetOrCreateValue(control);
 
         if (position.Left != value)
         {
@@ -79,7 +78,7 @@ public sealed class Canvas: Container
     public static void SetTop(Control control, Length? value)
     {
         Validate(control, value);
-        Position position = _positions.GetOrCreateValue(control);
+        var position = _positions.GetOrCreateValue(control);
 
         if (position.Top != value)
         {
@@ -98,7 +97,7 @@ public sealed class Canvas: Container
     public static void SetRight(Control control, Length? value)
     {
         Validate(control, value);
-        Position position = _positions.GetOrCreateValue(control);
+        var position = _positions.GetOrCreateValue(control);
 
         if (position.Right != value)
         {
@@ -117,7 +116,7 @@ public sealed class Canvas: Container
     public static void SetBottom(Control control, Length? value)
     {
         Validate(control, value);
-        Position position = _positions.GetOrCreateValue(control);
+        var position = _positions.GetOrCreateValue(control);
 
         if (position.Bottom != value)
         {
@@ -145,7 +144,7 @@ public sealed class Canvas: Container
 
         if (AutoScroll)
         {
-            Control? bar = _bars is not null
+            var bar = _bars is not null
                 ? _bars[1].HitTest(point) ?? _bars[0].HitTest(point)
                 : null;
 
@@ -160,7 +159,7 @@ public sealed class Canvas: Container
             }
         }
 
-        for (int index = Children.Count - 1; index >= 0; index--)
+        for (var index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].HitTest(point) is { } child)
             {
@@ -175,10 +174,10 @@ public sealed class Canvas: Container
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        int width = 0;
-        int height = 0;
+        var width = 0;
+        var height = 0;
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             child.Measure(new Constraint(width: null, height: null));
 
@@ -187,9 +186,9 @@ public sealed class Canvas: Container
                 continue;
             }
 
-            Position? position = GetPosition(child);
-            int outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
-            int outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
+            var position = GetPosition(child);
+            var outerWidth = Add(child.DesiredSize.Width, child.Margin.Horizontal);
+            var outerHeight = Add(child.DesiredSize.Height, child.Margin.Vertical);
             width = Math.Max(width, Add(Add(Fixed(position?.Left), outerWidth), Fixed(position?.Right)));
             height = Math.Max(
                 height,
@@ -202,7 +201,7 @@ public sealed class Canvas: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
             {
@@ -210,19 +209,19 @@ public sealed class Canvas: Container
                 continue;
             }
 
-            Position? position = GetPosition(child);
-            int left = Resolve(position?.Left, bounds.Width);
-            int right = Resolve(position?.Right, bounds.Width);
-            int top = Resolve(position?.Top, bounds.Height);
-            int bottom = Resolve(position?.Bottom, bounds.Height);
-            int width = Outer(child, horizontal: true, bounds.Width, left, right);
-            int height = Outer(child, horizontal: false, bounds.Height, top, bottom);
-            int x = position?.Left is not null
+            var position = GetPosition(child);
+            var left = Resolve(position?.Left, bounds.Width);
+            var right = Resolve(position?.Right, bounds.Width);
+            var top = Resolve(position?.Top, bounds.Height);
+            var bottom = Resolve(position?.Bottom, bounds.Height);
+            var width = Outer(child, horizontal: true, bounds.Width, left, right);
+            var height = Outer(child, horizontal: false, bounds.Height, top, bottom);
+            var x = position?.Left is not null
                 ? Add(bounds.X, left)
                 : position?.Right is not null
                     ? bounds.Right - right - width
                     : bounds.X;
-            int y = position?.Top is not null
+            var y = position?.Top is not null
                 ? Add(bounds.Y, top)
                 : position?.Bottom is not null
                     ? bounds.Bottom - bottom - height
@@ -243,7 +242,7 @@ public sealed class Canvas: Container
     {
         Debug.Assert(right >= 0, "Canvas accumulation uses a non-negative increment.");
 
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
@@ -254,7 +253,7 @@ public sealed class Canvas: Container
     private static Position? GetPosition(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return _positions.TryGetValue(control, out Position? position) ? position : null;
+        return _positions.TryGetValue(control, out var position) ? position : null;
     }
 
     private static void InvalidateParent(Control control)
@@ -276,9 +275,9 @@ public sealed class Canvas: Container
         Debug.Assert(leading >= 0, "Leading canvas offset is non-negative.");
         Debug.Assert(trailing >= 0, "Trailing canvas offset is non-negative.");
 
-        Length length = horizontal ? child.Width : child.Height;
-        int margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
-        Position? position = GetPosition(child);
+        var length = horizontal ? child.Width : child.Height;
+        var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+        var position = GetPosition(child);
 
         // Dual anchored automatic children stretch between the two offsets.
         if (length.Kind == Kind.Auto &&
@@ -288,11 +287,11 @@ public sealed class Canvas: Container
             return Math.Max(0, axis - leading - trailing);
         }
 
-        int desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
-        int minimum = horizontal ? child.MinWidth : child.MinHeight;
-        int maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+        var desired = horizontal ? child.DesiredSize.Width : child.DesiredSize.Height;
+        var minimum = horizontal ? child.MinWidth : child.MinHeight;
+        var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
 
-        int border = length.Kind switch
+        var border = length.Kind switch
         {
             Kind.Auto => desired,
             Kind.Cells => (int) length.Value,
@@ -322,7 +321,7 @@ public sealed class Canvas: Container
     {
         Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
 
-        double result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
+        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 

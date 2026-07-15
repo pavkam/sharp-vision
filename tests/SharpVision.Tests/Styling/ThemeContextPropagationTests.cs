@@ -10,8 +10,8 @@ public sealed class ThemeContextPropagationTests
 {
     private static Theme ForegroundTheme(int index)
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(index));
         theme.SetStyle(style);
         return theme;
@@ -21,10 +21,10 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Add_WhenChildAttachedToThemedParent_InheritsThemeContext()
     {
-        ProbeContainer root = new();
+        var root = new ProbeContainer();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(3));
 
-        ProbeControl child = new();
+        var child = new ProbeControl();
         root.Children.Add(child);
 
         child.Foreground.ShouldBe(Color.Indexed(3));
@@ -34,10 +34,10 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Add_WhenSubtreeAttachedToThemedParent_InheritsThemeContext()
     {
-        ProbeContainer root = new();
+        var root = new ProbeContainer();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(5));
-        ProbeContainer branch = new();
-        ProbeControl leaf = new();
+        var branch = new ProbeContainer();
+        var leaf = new ProbeControl();
         branch.Children.Add(leaf);
 
         root.Children.Add(branch);
@@ -49,9 +49,9 @@ public sealed class ThemeContextPropagationTests
     [Fact]
     public void Remove_WhenChildDetached_ClearsInheritedThemeContext()
     {
-        ProbeContainer root = new();
+        var root = new ProbeContainer();
         ThemeTestSupport.ApplyTheme(root, ForegroundTheme(3));
-        ProbeControl child = new();
+        var child = new ProbeControl();
         root.Children.Add(child);
 
         _ = root.Children.Remove(child);

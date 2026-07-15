@@ -4,7 +4,6 @@
 namespace SharpVision.Controls;
 
 
-using SharpVision.Terminal.Unicode;
 
 /// <summary>Defines immutable printable narrow glyphs for CheckBox states.</summary>
 public readonly record struct Marks
@@ -36,8 +35,8 @@ public readonly record struct Marks
     private static Rune Validate(Rune value, string name)
     {
         Span<char> buffer = stackalloc char[2];
-        int length = value.EncodeToUtf16(buffer);
-        Measurement measurement = Width.Measure(buffer[..length]);
+        var length = value.EncodeToUtf16(buffer);
+        var measurement = Width.Measure(buffer[..length]);
 
         return measurement.Cells == 1 && measurement.Controls == 0
             ? value

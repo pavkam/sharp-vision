@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Collections;
 
 /// <summary>Owns validated rows and transfers their cell controls into one Table.</summary>
 public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>
@@ -21,10 +20,15 @@ public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ArgumentNullException">The assigned value is null.</exception>
     public TableRow this[int index]
     {
         get => _items[index];
-        set => _owner.ReplaceRow(this, index, value);
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _owner.ReplaceRow(this, index, value);
+        }
     }
 
     /// <inheritdoc/>
@@ -34,7 +38,12 @@ public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>
     public bool IsReadOnly => false;
 
     /// <inheritdoc/>
-    public void Add(TableRow item) => _owner.InsertRow(this, Count, item);
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    public void Add(TableRow item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        _owner.InsertRow(this, Count, item);
+    }
 
     /// <inheritdoc/>
     public void Clear() => _owner.ClearRows(this);
@@ -64,13 +73,18 @@ public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>
     }
 
     /// <inheritdoc/>
-    public void Insert(int index, TableRow item) => _owner.InsertRow(this, index, item);
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    public void Insert(int index, TableRow item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        _owner.InsertRow(this, index, item);
+    }
 
     /// <inheritdoc/>
     public bool Remove(TableRow item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        int index = _items.IndexOf(item);
+        var index = _items.IndexOf(item);
 
         if (index < 0)
         {
@@ -87,11 +101,22 @@ public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>
     /// <summary>Adds a row after the owner has validated and attached its cells.</summary>
     /// <param name="index">The validated insertion index.</param>
     /// <param name="row">The validated row.</param>
-    internal void InsertAttached(int index, TableRow row) => _items.Insert(index, row);
+    internal void InsertAttached(int index, TableRow row)
+    {
+        Debug.Assert((uint) index <= (uint) _items.Count, "Attached row insertion requires a valid collection index.");
+        Debug.Assert(row is not null, "Only a validated non-null row reaches the attachment boundary.");
+
+        _items.Insert(index, row);
+    }
 
     /// <summary>Removes a row after the owner has detached its cells.</summary>
     /// <param name="index">The valid row index.</param>
-    internal void RemoveAttached(int index) => _items.RemoveAt(index);
+    internal void RemoveAttached(int index)
+    {
+        Debug.Assert((uint) index < (uint) _items.Count, "Attached row removal requires an existing collection index.");
+
+        _items.RemoveAt(index);
+    }
 
     /// <summary>Clears rows after the owner has detached their cells.</summary>
     internal void ClearAttached() => _items.Clear();
@@ -99,7 +124,13 @@ public sealed class TableRows: IList<TableRow>, IReadOnlyList<TableRow>
     /// <summary>Replaces one row after the owner has completed ownership transfer.</summary>
     /// <param name="index">The valid row index.</param>
     /// <param name="row">The validated new row.</param>
-    internal void ReplaceAttached(int index, TableRow row) => _items[index] = row;
+    internal void ReplaceAttached(int index, TableRow row)
+    {
+        Debug.Assert((uint) index < (uint) _items.Count, "Attached row replacement requires an existing collection index.");
+        Debug.Assert(row is not null, "Only a validated non-null row reaches the replacement boundary.");
+
+        _items[index] = row;
+    }
 
     /// <inheritdoc/>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

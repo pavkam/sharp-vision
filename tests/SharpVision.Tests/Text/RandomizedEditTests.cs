@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Text;
 
-using SharpVision.Terminal.Unicode;
-using SharpVision.Text;
 
 
 /// <summary>Proves deterministic grapheme-safe editing across mixed Unicode sequences.</summary>
@@ -27,18 +25,18 @@ public sealed class RandomizedEditTests
     [Fact]
     public void Apply_WhenOperationsAreRandomized_PreservesEveryEditInvariant()
     {
-        EditResult first = Replay(_seed);
-        EditResult second = Replay(_seed);
+        var first = Replay(_seed);
+        var second = Replay(_seed);
 
         second.ShouldBe(first);
     }
 
     private static EditResult Replay(int seed)
     {
-        Random random = new(seed);
-        EditResult state = new(string.Empty, new Selection(0, 0), changed: false);
+        var random = new Random(seed);
+        var state = new EditResult(string.Empty, new Selection(0, 0), changed: false);
 
-        for (int sample = 0; sample < _caseCount; sample++)
+        for (var sample = 0; sample < _caseCount; sample++)
         {
             state = random.Next(0, 5) switch
             {
@@ -53,7 +51,7 @@ public sealed class RandomizedEditTests
                 _ => Edit.MoveNext(state.Text, state.Selection, random.Next(0, 2) == 0),
             };
 
-            string context = $"seed=0x{seed:X8}, case={sample}";
+            var context = $"seed=0x{seed:X8}, case={sample}";
             Edit.Validate(state.Text, state.Selection);
             Edit.GraphemeCount(state.Text).ShouldBeLessThanOrEqualTo(64, context);
             Boundary(state.Text, state.Selection.Anchor).ShouldBeTrue(context);
@@ -70,7 +68,7 @@ public sealed class RandomizedEditTests
             return true;
         }
 
-        foreach (Grapheme grapheme in Graphemes.Enumerate(value))
+        foreach (var grapheme in Graphemes.Enumerate(value))
         {
             if (grapheme.Offset == index)
             {

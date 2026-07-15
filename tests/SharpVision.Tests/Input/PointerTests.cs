@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Input;
 
-using SharpVision.Terminal.Input;
 
 
 /// <summary>Verifies hit testing, local coordinates, capture, and pointer state cleanup.</summary>
@@ -13,16 +12,16 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerHasNoCells_DoesNotFabricateHitAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 5) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 5) };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);
-            Pointer pointer = new(
+            var pointer = new Pointer(
                 null,
                 new Point(5, 5),
                 Buttons.None,
@@ -43,17 +42,17 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPixelOnlyPointerIsCaptured_RoutesWithoutLocalCellsAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 5) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 5) };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);
             Point? local = default;
-            bool routed = false;
+            var routed = false;
             _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
                 if (eventArgs.Phase == Phase.Bubble)
@@ -63,7 +62,7 @@ public sealed class PointerTests
                 }
             });
             manager.Capture(child).ShouldBeTrue();
-            Pointer pointer = new(
+            var pointer = new Pointer(
                 null,
                 new Point(15, 8),
                 Buttons.Primary,
@@ -85,9 +84,9 @@ public sealed class PointerTests
     [Fact]
     public void HitTest_WhenChildrenOverlap_ReturnsHighestEligibleClippedControl()
     {
-        ProbeContainer root = new() { Bounds = new Rect(0, 0, 10, 6) };
-        ProbeControl lower = new() { Bounds = new Rect(1, 1, 8, 4) };
-        ProbeControl higher = new() { Bounds = new Rect(2, 1, 8, 4) };
+        var root = new ProbeContainer() { Bounds = new Rect(0, 0, 10, 6) };
+        var lower = new ProbeControl() { Bounds = new Rect(1, 1, 8, 4) };
+        var higher = new ProbeControl() { Bounds = new Rect(2, 1, 8, 4) };
         root.Children.Add(lower);
         root.Children.Add(higher);
 
@@ -101,12 +100,12 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerHitsChild_ProvidesLocalCoordinatesAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(4, 3, 8, 4), CanFocus = true };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl() { Bounds = new Rect(4, 3, 8, 4), CanFocus = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);
@@ -142,12 +141,12 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerHitsNonInteractiveControl_DoesNotHoverAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 10) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);
@@ -164,13 +163,13 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerHitsChildOfInteractiveAncestor_HoversAncestorAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeContainer ancestor = new() { Bounds = new Rect(0, 0, 12, 8), CanFocus = true };
-            ProbeControl child = new() { Bounds = new Rect(2, 2, 6, 4) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var ancestor = new ProbeContainer() { Bounds = new Rect(0, 0, 12, 8), CanFocus = true };
+            var child = new ProbeControl() { Bounds = new Rect(2, 2, 6, 4) };
             ancestor.Children.Add(child);
             root.Children.Add(ancestor);
             root.Attach(dispatcher);
@@ -189,12 +188,12 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPrimaryPointerPressesFocusableControl_FocusesItAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new()
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
             {
                 Bounds = new Rect(4, 3, 8, 4),
                 CanFocus = true,
@@ -218,13 +217,13 @@ public sealed class PointerTests
     [Fact]
     public async Task Capture_WhenActive_TakesPrecedenceUntilReleasedAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl first = new() { Bounds = new Rect(0, 0, 10, 10) };
-            ProbeControl second = new() { Bounds = new Rect(10, 0, 10, 10) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
+            var second = new ProbeControl() { Bounds = new Rect(10, 0, 10, 10) };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -243,13 +242,13 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenCaptureIsActive_HoversPhysicalTargetAndRoutesToCaptureAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbePressable first = new() { Bounds = new Rect(0, 0, 10, 10) };
-            ProbePressable second = new() { Bounds = new Rect(10, 0, 10, 10) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbePressable() { Bounds = new Rect(0, 0, 10, 10) };
+            var second = new ProbePressable() { Bounds = new Rect(10, 0, 10, 10) };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -279,12 +278,12 @@ public sealed class PointerTests
     [Fact]
     public async Task Capture_WhenStateBecomesInvalid_ReleasesWithReasonAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 10) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);
@@ -308,12 +307,12 @@ public sealed class PointerTests
     [Fact]
     public async Task Capture_WhenTargetDisablesOrHides_CancelsImmediatelyAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 10) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);
@@ -335,20 +334,20 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispose_WhenRootOwnsManagers_SeversAllReferencesAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new()
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
             {
                 Bounds = new Rect(0, 0, 10, 10),
                 CanFocus = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            FocusManager focus = new(root);
-            CaptureManager capture = new(root);
+            var focus = new FocusManager(root);
+            var capture = new CaptureManager(root);
             focus.Focus(child).ShouldBeTrue();
             capture.Capture(child).ShouldBeTrue();
 
@@ -367,12 +366,12 @@ public sealed class PointerTests
     [Fact]
     public async Task Dispatch_WhenPointerMovesPressesAndLeaves_UpdatesVisualStatesAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 10) };
-            ProbeControl child = new() { Bounds = new Rect(0, 0, 10, 10), CanFocus = true };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10), CanFocus = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using CaptureManager manager = new(root);

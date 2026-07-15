@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the Popup control with an anchored, keyboard- and pointer-driven action menu.</summary>
 internal sealed class PopupPane: View
 {
@@ -14,16 +15,16 @@ internal sealed class PopupPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Text status = new("Choose an item with the mouse, arrows, or Enter.");
-        Button trigger = new() { Content = new Text("Actions ▼") };
-        List choices = new()
+        var status = new Text("Choose an item with the mouse, arrows, or Enter.");
+        var trigger = new Button() { Content = new Text("Actions ▼") };
+        var choices = new List()
         {
             Width = Length.Cells(24),
             Height = Length.Cells(5),
             Items = ["Duplicate", "Rename", "Archive", "Delete"],
             SelectedIndex = 0,
         };
-        Popup popup = new()
+        var popup = new Popup()
         {
             Anchor = trigger,
             Placement = PopupPlacement.Below,
@@ -39,12 +40,12 @@ internal sealed class PopupPane: View
             popup.IsOpen = false;
         };
 
-        Overlay overlay = new() { ClipToBounds = false };
+        var overlay = new Overlay() { ClipToBounds = false };
         overlay.Children.Add(Doc.Column(trigger, status));
         Overlay.SetZIndex(popup, 10);
         overlay.Children.Add(popup);
 
-        Stack variants = new() { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var variants = new Stack() { Orientation = Orientation.Horizontal, Spacing = 6 };
         variants.Children.Add(PlacementDemo("Above", PopupPlacement.Above));
         variants.Children.Add(PlacementDemo("Left", PopupPlacement.Left));
         variants.Children.Add(PlacementDemo("Right", PopupPlacement.Right));
@@ -64,8 +65,8 @@ internal sealed class PopupPane: View
 
     private static Overlay PlacementDemo(string label, PopupPlacement placement)
     {
-        Button trigger = new() { Content = new Text(label) };
-        Popup popup = new()
+        var trigger = new Button() { Content = new Text(label) };
+        var popup = new Popup()
         {
             Anchor = trigger,
             Placement = placement,
@@ -74,7 +75,7 @@ internal sealed class PopupPane: View
         };
         trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
 
-        Overlay overlay = new()
+        var overlay = new Overlay()
         {
             Width = Length.Cells(14),
             Height = Length.Cells(3),

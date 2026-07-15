@@ -13,21 +13,21 @@ public sealed class RandomizedTrackTests
     public void Resolve_WhenInputsAreRandomized_PreservesBoundedInvariants()
     {
         const int caseCount = 20_000;
-        Random random = new(0x4A70);
+        var random = new Random(0x4A70);
 
-        for (int sample = 0; sample < caseCount; sample++)
+        for (var sample = 0; sample < caseCount; sample++)
         {
-            int count = random.Next(1, 17);
-            int available = random.Next(0, 501);
-            Length[] lengths = new Length[count];
-            int[] automatic = new int[count];
-            int[] minimum = new int[count];
-            int[] maximum = new int[count];
-            int[] first = new int[count];
-            int[] second = new int[count];
-            int minimumBudget = available;
+            var count = random.Next(1, 17);
+            var available = random.Next(0, 501);
+            var lengths = new Length[count];
+            var automatic = new int[count];
+            var minimum = new int[count];
+            var maximum = new int[count];
+            var first = new int[count];
+            var second = new int[count];
+            var minimumBudget = available;
 
-            for (int index = 0; index < count; index++)
+            for (var index = 0; index < count; index++)
             {
                 lengths[index] = index == count - 1
                     ? Length.Star(random.NextDouble() + 0.01)
@@ -46,7 +46,7 @@ public sealed class RandomizedTrackTests
             second.ShouldBe(first);
             first.Sum().ShouldBe(available);
 
-            for (int index = 0; index < count; index++)
+            for (var index = 0; index < count; index++)
             {
                 first[index].ShouldBeGreaterThanOrEqualTo(minimum[index]);
                 first[index].ShouldBeLessThanOrEqualTo(maximum[index]);
@@ -65,14 +65,14 @@ public sealed class RandomizedTrackTests
         ReadOnlySpan<int> maximum = [10, 20, 100, 100];
         Span<int> destination = stackalloc int[4];
         Tracks.Resolve(80, lengths, automatic, minimum, maximum, destination);
-        long before = GC.GetAllocatedBytesForCurrentThread();
+        var before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (int iteration = 0; iteration < 1_000; iteration++)
+        for (var iteration = 0; iteration < 1_000; iteration++)
         {
             Tracks.Resolve(80, lengths, automatic, minimum, maximum, destination);
         }
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         allocated.ShouldBe(0);
     }
 

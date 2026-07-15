@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Buffers;
 
 
 /// <summary>Arranges owned children sequentially on one terminal-cell axis.</summary>
@@ -64,11 +63,11 @@ public sealed class Stack: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        int axis = 0;
-        int cross = 0;
-        int count = 0;
+        var axis = 0;
+        var cross = 0;
+        var count = 0;
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             child.Measure(Orientation == Orientation.Vertical
                 ? new Constraint(constraint.Width, height: null)
@@ -79,10 +78,10 @@ public sealed class Stack: Container
                 continue;
             }
 
-            int desiredAxis = Orientation == Orientation.Vertical
+            var desiredAxis = Orientation == Orientation.Vertical
                 ? Add(child.DesiredSize.Height, child.Margin.Vertical)
                 : Add(child.DesiredSize.Width, child.Margin.Horizontal);
-            int desiredCross = Orientation == Orientation.Vertical
+            var desiredCross = Orientation == Orientation.Vertical
                 ? Add(child.DesiredSize.Width, child.Margin.Horizontal)
                 : Add(child.DesiredSize.Height, child.Margin.Vertical);
             axis = Add(axis, desiredAxis);
@@ -99,38 +98,38 @@ public sealed class Stack: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        int count = CountParticipants();
+        var count = CountParticipants();
 
         if (count == 0)
         {
             return;
         }
 
-        Control[] rentedChildren = ArrayPool<Control>.Shared.Rent(count);
-        Length[] rentedLengths = ArrayPool<Length>.Shared.Rent(count);
-        int[] rentedAutomatic = ArrayPool<int>.Shared.Rent(count);
-        int[] rentedMinimum = ArrayPool<int>.Shared.Rent(count);
-        int[] rentedMaximum = ArrayPool<int>.Shared.Rent(count);
-        int[] rentedExtents = ArrayPool<int>.Shared.Rent(count);
-        Span<Control> children = rentedChildren.AsSpan(0, count);
-        Span<Length> lengths = rentedLengths.AsSpan(0, count);
-        Span<int> automatic = rentedAutomatic.AsSpan(0, count);
-        Span<int> minimum = rentedMinimum.AsSpan(0, count);
-        Span<int> maximum = rentedMaximum.AsSpan(0, count);
-        Span<int> extents = rentedExtents.AsSpan(0, count);
+        var rentedChildren = ArrayPool<Control>.Shared.Rent(count);
+        var rentedLengths = ArrayPool<Length>.Shared.Rent(count);
+        var rentedAutomatic = ArrayPool<int>.Shared.Rent(count);
+        var rentedMinimum = ArrayPool<int>.Shared.Rent(count);
+        var rentedMaximum = ArrayPool<int>.Shared.Rent(count);
+        var rentedExtents = ArrayPool<int>.Shared.Rent(count);
+        var children = rentedChildren.AsSpan(0, count);
+        var lengths = rentedLengths.AsSpan(0, count);
+        var automatic = rentedAutomatic.AsSpan(0, count);
+        var minimum = rentedMinimum.AsSpan(0, count);
+        var maximum = rentedMaximum.AsSpan(0, count);
+        var extents = rentedExtents.AsSpan(0, count);
 
         try
         {
             Fill(children, lengths, automatic, minimum, maximum);
-            int axis = Orientation == Orientation.Vertical ? bounds.Height : bounds.Width;
-            int spacing = SpacingExtent(count, axis);
-            int margins = SumMargins(children);
-            int available = Math.Max(0, axis - spacing - margins);
+            var axis = Orientation == Orientation.Vertical ? bounds.Height : bounds.Width;
+            var spacing = SpacingExtent(count, axis);
+            var margins = SumMargins(children);
+            var available = Math.Max(0, axis - spacing - margins);
 
             // Percentages use the complete final content axis. Converting the
             // resolved request to cells lets margins reserve their own space
             // without changing that percentage base or star remainder.
-            for (int index = 0; index < count; index++)
+            for (var index = 0; index < count; index++)
             {
                 if (lengths[index].Kind == Kind.Percent)
                 {
@@ -167,7 +166,7 @@ public sealed class Stack: Container
             return;
         }
 
-        for (int index = Children.Count - 1; index >= 0; index--)
+        for (var index = Children.Count - 1; index >= 0; index--)
         {
             Children[index].Render(canvas);
         }
@@ -183,7 +182,7 @@ public sealed class Stack: Container
     {
         Debug.Assert(right >= 0, "Stack accumulation uses a non-negative increment.");
 
-        long value = (long) left + right;
+        var value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
@@ -191,15 +190,15 @@ public sealed class Stack: Container
     {
         Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
 
-        double result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
+        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private int CountParticipants()
     {
-        int count = 0;
+        var count = 0;
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             if (child.Visibility != Visibility.Collapsed)
             {
@@ -217,12 +216,12 @@ public sealed class Stack: Container
         Span<int> minimum,
         Span<int> maximum)
     {
-        int position = 0;
+        var position = 0;
 
-        for (int offset = 0; offset < Children.Count; offset++)
+        for (var offset = 0; offset < Children.Count; offset++)
         {
-            int index = Reverse ? Children.Count - offset - 1 : offset;
-            Control child = Children[index];
+            var index = Reverse ? Children.Count - offset - 1 : offset;
+            var child = Children[index];
 
             if (child.Visibility == Visibility.Collapsed)
             {
@@ -246,9 +245,9 @@ public sealed class Stack: Container
     {
         Debug.Assert(children.Length >= 0, "Stack margin sum requires a valid span.");
 
-        int result = 0;
+        var result = 0;
 
-        foreach (Control child in children)
+        foreach (var child in children)
         {
             result = Add(
                 result,
@@ -269,17 +268,17 @@ public sealed class Stack: Container
         Debug.Assert(children.Length == extents.Length, "Every arranged child must have one extent.");
         Debug.Assert(spacing >= 0, "Stack spacing is non-negative.");
 
-        int origin = Orientation == Orientation.Vertical ? bounds.Y : bounds.X;
-        int remainingSpacing = spacing;
+        var origin = Orientation == Orientation.Vertical ? bounds.Y : bounds.X;
+        var remainingSpacing = spacing;
 
-        for (int index = 0; index < children.Length; index++)
+        for (var index = 0; index < children.Length; index++)
         {
-            Control child = children[index];
-            int margin = Orientation == Orientation.Vertical
+            var child = children[index];
+            var margin = Orientation == Orientation.Vertical
                 ? child.Margin.Vertical
                 : child.Margin.Horizontal;
-            int outer = Add(extents[index], margin);
-            Rect slot = Orientation == Orientation.Vertical
+            var outer = Add(extents[index], margin);
+            var slot = Orientation == Orientation.Vertical
                 ? new Rect(bounds.X, origin, bounds.Width, outer)
                 : new Rect(origin, bounds.Y, outer, bounds.Height);
 
@@ -291,7 +290,7 @@ public sealed class Stack: Container
 
             if (index < children.Length - 1)
             {
-                int gap = Math.Min(Spacing, remainingSpacing);
+                var gap = Math.Min(Spacing, remainingSpacing);
                 origin = Add(origin, gap);
                 remainingSpacing -= gap;
             }
@@ -308,7 +307,7 @@ public sealed class Stack: Container
             return 0;
         }
 
-        long requested = (long) Spacing * (count - 1);
+        var requested = (long) Spacing * (count - 1);
         return (int) Math.Min(limit, Math.Min(int.MaxValue, requested));
     }
 }

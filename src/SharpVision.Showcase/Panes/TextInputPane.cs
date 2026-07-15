@@ -12,34 +12,34 @@ internal sealed class TextInputPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        TextInput editable = new()
+        var editable = new TextInput()
         {
             Width = Length.Cells(28),
             Text = "Edit me: café 👩‍💻",
         };
 
-        TextInput readOnly = new()
+        var readOnly = new TextInput()
         {
             Width = Length.Cells(28),
             Text = "Read-only value",
             IsReadOnly = true,
         };
 
-        TextInput password = new()
+        var password = new TextInput()
         {
             Width = Length.Cells(28),
             Text = "secret",
             PasswordCharacter = new Rune('•'),
         };
 
-        TextInput limited = new()
+        var limited = new TextInput()
         {
             Width = Length.Cells(28),
             Text = "12 chars max",
             MaxLength = 12,
         };
 
-        TextInput multiline = new()
+        var multiline = new TextInput()
         {
             Width = Length.Cells(28),
             Height = Length.Cells(3),

@@ -16,8 +16,8 @@ public sealed class ResponsesTests
     [Fact]
     public void TryCsi_WhenDeviceAttributesAreValid_ReturnsTypedValues()
     {
-        Responses.TryCsi("?1;2"u8, [], (byte) 'c', out Response primary).ShouldBeTrue();
-        Responses.TryCsi(">41;410;0"u8, [], (byte) 'c', out Response secondary).ShouldBeTrue();
+        Responses.TryCsi("?1;2"u8, [], (byte) 'c', out var primary).ShouldBeTrue();
+        Responses.TryCsi(">41;410;0"u8, [], (byte) 'c', out var secondary).ShouldBeTrue();
 
         primary.Kind.ShouldBe(ResponseKind.PrimaryAttributes);
         primary.Values.ToArray().ShouldBe([1, 2]);
@@ -37,13 +37,13 @@ public sealed class ResponsesTests
         string parameters,
         bool supported)
     {
-        byte[] bytes = Encoding.ASCII.GetBytes(parameters);
+        var bytes = Encoding.ASCII.GetBytes(parameters);
 
-        Responses.TryCsi(bytes, "$"u8, (byte) 'y', out Response response).ShouldBeTrue();
+        Responses.TryCsi(bytes, "$"u8, (byte) 'y', out var response).ShouldBeTrue();
 
         response.Kind.ShouldBe(ResponseKind.PrivateMode);
         response.Values.ToArray().ShouldBe(
-            [5522, int.Parse(parameters[6..], System.Globalization.CultureInfo.InvariantCulture)]);
+            [5522, int.Parse(parameters[6..], CultureInfo.InvariantCulture)]);
         response.IsSupported.ShouldBe(supported);
     }
 
@@ -53,7 +53,7 @@ public sealed class ResponsesTests
     [Fact]
     public void TryCsi_WhenCursorPositionIsValid_ReturnsCoordinates()
     {
-        Responses.TryCsi("12;4"u8, [], (byte) 'R', out Response response).ShouldBeTrue();
+        Responses.TryCsi("12;4"u8, [], (byte) 'R', out var response).ShouldBeTrue();
 
         response.Kind.ShouldBe(ResponseKind.CursorPosition);
         response.Values.ToArray().ShouldBe([12, 4]);
@@ -69,7 +69,7 @@ public sealed class ResponsesTests
         string value,
         ResponseKind expected)
     {
-        Responses.TryOsc(Encoding.ASCII.GetBytes(value), out Response response)
+        Responses.TryOsc(Encoding.ASCII.GetBytes(value), out var response)
             .ShouldBeTrue();
 
         response.Kind.ShouldBe(expected);

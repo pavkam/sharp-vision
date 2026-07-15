@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Input;
 
-using SharpVision.Terminal.Geometry;
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Defines finite immutable input decoding policy.</summary>
 public sealed record Options

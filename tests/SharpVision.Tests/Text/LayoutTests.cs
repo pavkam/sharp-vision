@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Text;
 
-using SharpVision.Terminal.Unicode;
-using SharpVision.Text;
 
 
 using TextLayout = SharpVision.Text.Layout;
@@ -16,7 +14,7 @@ public sealed class LayoutTests
     [Fact]
     public void Format_WhenContentIsEmpty_ReturnsOneEmptyLine()
     {
-        Line[] lines = Format(string.Empty, width: 8);
+        var lines = Format(string.Empty, width: 8);
 
         lines.ShouldBe([new Line(0, 0, 0, 0, false)]);
     }
@@ -28,7 +26,7 @@ public sealed class LayoutTests
     [InlineData("a\r\nb", 2)]
     public void Format_WhenContentContainsNewlines_ExcludesDelimiters(string content, int count)
     {
-        Line[] lines = Format(content, width: 8);
+        var lines = Format(content, width: 8);
 
         lines.Length.ShouldBe(count);
         content.AsSpan(lines[0].Offset, lines[0].Length).ToString().ShouldBe("a");
@@ -40,7 +38,7 @@ public sealed class LayoutTests
     public void Format_WhenWrappingByGrapheme_PreservesClusterBoundaries()
     {
         const string content = "e\u0301界x";
-        Line[] lines = Format(content, width: 2, wrapping: Wrapping.Grapheme);
+        var lines = Format(content, width: 2, wrapping: Wrapping.Grapheme);
 
         lines.ShouldBe([
             new Line(0, 2, 1, 0, false),
@@ -54,7 +52,7 @@ public sealed class LayoutTests
     public void Format_WhenWrappingWords_MovesWholeWordToNextLine()
     {
         const string content = "one two";
-        Line[] lines = Format(content, width: 5, wrapping: Wrapping.Word);
+        var lines = Format(content, width: 5, wrapping: Wrapping.Word);
 
         lines.Length.ShouldBe(2);
         content.AsSpan(lines[0].Offset, lines[0].Length).ToString().ShouldBe("one ");
@@ -67,7 +65,7 @@ public sealed class LayoutTests
     public void Format_WhenClipping_TruncatesAtGraphemeBoundary()
     {
         const string content = "ab界c";
-        Line[] lines = Format(content, width: 3, trimming: Trimming.Clip);
+        var lines = Format(content, width: 3, trimming: Trimming.Clip);
 
         lines.ShouldBe([new Line(0, 2, 2, 0, false)]);
     }
@@ -77,7 +75,7 @@ public sealed class LayoutTests
     public void Format_WhenUsingGraphemeEllipsis_ReservesEllipsisCell()
     {
         const string content = "ab界c";
-        Line[] lines = Format(content, width: 4, trimming: Trimming.GraphemeEllipsis);
+        var lines = Format(content, width: 4, trimming: Trimming.GraphemeEllipsis);
 
         lines.ShouldBe([new Line(0, 2, 3, 0, true)]);
     }
@@ -87,7 +85,7 @@ public sealed class LayoutTests
     public void Format_WhenUsingWordEllipsis_RemovesPartialWord()
     {
         const string content = "one two";
-        Line[] lines = Format(content, width: 6, trimming: Trimming.WordEllipsis);
+        var lines = Format(content, width: 6, trimming: Trimming.WordEllipsis);
 
         lines.ShouldBe([new Line(0, 3, 4, 0, true)]);
     }
@@ -99,7 +97,7 @@ public sealed class LayoutTests
     [InlineData(Alignment.End, 7)]
     public void Format_WhenAlignmentChanges_ComputesLeadingCells(Alignment alignment, int leading)
     {
-        Line[] lines = Format("abc", width: 10, alignment: alignment);
+        var lines = Format("abc", width: 10, alignment: alignment);
 
         lines[0].Leading.ShouldBe(leading);
     }
@@ -108,7 +106,7 @@ public sealed class LayoutTests
     [Fact]
     public void Format_WhenContentContainsTabs_UsesFourCellStops()
     {
-        Line[] lines = Format("a\tb", width: 10);
+        var lines = Format("a\tb", width: 10);
 
         lines[0].Cells.ShouldBe(5);
     }
@@ -118,7 +116,7 @@ public sealed class LayoutTests
     public void Format_WhenContentIsComplexUnicode_UsesSharedWidthPolicy()
     {
         const string content = "👩‍💻\uFE0F\uD800";
-        Line[] lines = Format(content, width: 8);
+        var lines = Format(content, width: 8);
 
         lines[0].Length.ShouldBe(content.Length);
         lines[0].Cells.ShouldBe(3);
@@ -128,7 +126,7 @@ public sealed class LayoutTests
     [Fact]
     public void Format_WhenWidthIsZero_ReturnsEmptyClippedLine()
     {
-        Line[] lines = Format("界", width: 0, wrapping: Wrapping.Grapheme);
+        var lines = Format("界", width: 0, wrapping: Wrapping.Grapheme);
 
         lines.ShouldBe([new Line(1, 0, 0, 0, false)]);
     }
@@ -137,9 +135,9 @@ public sealed class LayoutTests
     [Fact]
     public void Format_WhenDestinationIsShort_ReportsRequiredCapacityAndWritesPrefix()
     {
-        Line[] lines = new Line[1];
+        var lines = new Line[1];
 
-        int required = TextLayout.Format(
+        var required = TextLayout.Format(
             "a\nb".AsSpan(),
             8,
             Wrapping.None,
@@ -156,7 +154,7 @@ public sealed class LayoutTests
     [Fact]
     public void Format_WhenArgumentsAreInvalid_ThrowsBeforeWritingDestination()
     {
-        Line[] lines = [new Line(1, 1, 1, 1, true)];
+        var lines = new[] { new Line(1, 1, 1, 1, true) };
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             TextLayout.Format("x", -1, Wrapping.None, Trimming.None, Alignment.Start, Ambiguous.Narrow, lines));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
@@ -173,7 +171,7 @@ public sealed class LayoutTests
         Alignment alignment = Alignment.Start)
     {
         Span<Line> initial = stackalloc Line[4];
-        int required = TextLayout.Format(
+        var required = TextLayout.Format(
             content,
             width,
             wrapping,
@@ -181,7 +179,7 @@ public sealed class LayoutTests
             alignment,
             Ambiguous.Narrow,
             initial);
-        Line[] result = new Line[required];
+        var result = new Line[required];
         _ = TextLayout.Format(
             content,
             width,

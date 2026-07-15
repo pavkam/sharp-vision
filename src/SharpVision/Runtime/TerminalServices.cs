@@ -3,12 +3,7 @@
 
 namespace SharpVision.Runtime;
 
-using System.Buffers;
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Terminal.Clipboard;
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Encodes implemented output protocols and posts them through the ordered write path.</summary>
 internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
@@ -38,13 +33,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
     public void SetTitle(string title)
     {
         ArgumentNullException.ThrowIfNull(title);
-        int byteCount = Encoding.UTF8.GetByteCount(title);
-        ArrayBufferWriter<byte> destination = new(byteCount + 8);
-        byte[] rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, byteCount));
+        var byteCount = Encoding.UTF8.GetByteCount(title);
+        var destination = new ArrayBufferWriter<byte>(byteCount + 8);
+        var rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, byteCount));
 
         try
         {
-            int written = Encoding.UTF8.GetBytes(title, rented);
+            var written = Encoding.UTF8.GetBytes(title, rented);
             Osc.Title(new Writer(destination), rented.AsSpan(0, written));
             _application.PostOutOfBand(destination.WrittenMemory);
         }
@@ -62,13 +57,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
             return;
         }
 
-        int byteCount = Encoding.UTF8.GetByteCount(text);
-        ArrayBufferWriter<byte> destination = new(byteCount + 16);
-        byte[] rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, byteCount));
+        var byteCount = Encoding.UTF8.GetByteCount(text);
+        var destination = new ArrayBufferWriter<byte>(byteCount + 16);
+        var rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, byteCount));
 
         try
         {
-            int written = Encoding.UTF8.GetBytes(text, rented);
+            var written = Encoding.UTF8.GetBytes(text, rented);
             Osc52.Write(new Writer(destination), selection, rented.AsSpan(0, written));
             _application.PostOutOfBand(destination.WrittenMemory);
         }
@@ -86,7 +81,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
             return;
         }
 
-        ArrayBufferWriter<byte> destination = new(8);
+        var destination = new ArrayBufferWriter<byte>(8);
         Osc52.Query(new Writer(destination), selection);
         _application.PostOutOfBand(destination.WrittenMemory);
     }

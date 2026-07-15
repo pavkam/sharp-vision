@@ -3,13 +3,8 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
-using SharpVision.Terminal.Runtime;
 
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies the Text page geometry specimens render and explain the active contract.</summary>
 public sealed class CellGeometryTests
@@ -20,11 +15,11 @@ public sealed class CellGeometryTests
     {
         using Gallery gallery = new();
         gallery.Select(IndexOf(gallery, "Text"));
-        Size size = new(120, 80);
+        var size = new Size(120, 80);
         new Engine().Layout(gallery, size);
         using Frame frame = new(size);
         gallery.Render(frame.Canvas);
-        Screen screen = new(frame);
+        var screen = new Screen(frame);
 
         screen.Text.ShouldContain("Cell geometry specimen");
         screen.Text.ShouldContain("orphan");
@@ -52,7 +47,7 @@ public sealed class CellGeometryTests
         await application.Dispatcher.InvokeAsync(
             () => gallery.Render(frame.Canvas),
             TestContext.Current.CancellationToken);
-        Screen screen = new(frame);
+        var screen = new Screen(frame);
 
         screen.Text.ShouldContain("Pixels: unavailable");
         screen.Text.ShouldContain("Cells: unavailable");
@@ -63,7 +58,7 @@ public sealed class CellGeometryTests
     {
         ArgumentNullException.ThrowIfNull(gallery);
         ArgumentException.ThrowIfNullOrWhiteSpace(page);
-        int index = gallery.Pages.Select(static value => value).ToList().IndexOf(page);
+        var index = gallery.Pages.Select(static value => value).ToList().IndexOf(page);
         return index >= 0 ? index : throw new InvalidOperationException($"The {page} page is not registered.");
     }
 }

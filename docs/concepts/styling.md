@@ -52,6 +52,9 @@ properties are normal-state values only. Render-impact properties may vary by
 overlay state. Visual overlays never control behavior: `IsEnabled` determines
 input acceptance.
 
+Public theme resolution accepts any combination of defined state flags and
+rejects unknown bits before evaluating the cascade.
+
 ## Invalidation and tests
 
 Property metadata declares the earliest affected phase: measure, arrange, or

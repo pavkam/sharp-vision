@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Runtime;
 
+
 /// <summary>Verifies the Unix raw-input lease.</summary>
 public sealed class UnixConsoleModeTests
 {
@@ -17,7 +18,7 @@ public sealed class UnixConsoleModeTests
             return;
         }
 
-        using UnixConsoleMode mode = UnixConsoleMode.Enter(captureControlKeys: false);
+        using var mode = UnixConsoleMode.Enter(captureControlKeys: false);
         _ = mode.ShouldNotBeNull();
     }
 }

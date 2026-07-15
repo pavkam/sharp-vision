@@ -19,11 +19,11 @@ public sealed class ParserRandomizedTests
     [Fact]
     public void Parse_WhenValidSequencesAreRandomized_MatchesEveryFragmentation()
     {
-        Random random = new(_validSeed);
+        var random = new Random(_validSeed);
 
-        for (int index = 0; index < 64; index++)
+        for (var index = 0; index < 64; index++)
         {
-            byte[] input = CreateValid(random);
+            var input = CreateValid(random);
 
             try
             {
@@ -44,11 +44,11 @@ public sealed class ParserRandomizedTests
     [Fact]
     public void Parse_WhenHostileBytesAreRandomized_RecoversKnownTrailingCsi()
     {
-        Random random = new(_hostileSeed);
+        var random = new Random(_hostileSeed);
 
-        for (int index = 0; index < 256; index++)
+        for (var index = 0; index < 256; index++)
         {
-            byte[] input = new byte[69];
+            var input = new byte[69];
             random.NextBytes(input.AsSpan(0, 64));
             input[64] = 0x18;
             "\u001b[2J"u8.CopyTo(input.AsSpan(65));
@@ -58,7 +58,7 @@ public sealed class ParserRandomizedTests
                 MaxIntermediateBytes = 4,
                 MaxStringBytes = 64,
             });
-            RecordingSink sink = new();
+            var sink = new RecordingSink();
 
             parser.Parse(input, ref sink);
             parser.Complete(ref sink);
@@ -76,8 +76,8 @@ public sealed class ParserRandomizedTests
 
     private static byte[] CreateValid(Random random)
     {
-        int selector = random.Next(4);
-        int value = random.Next(1, 10_000);
+        var selector = random.Next(4);
+        var value = random.Next(1, 10_000);
 
         return selector switch
         {

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Collections;
 
 /// <summary>Exposes one menu's typed managed item collection.</summary>
 public sealed class MenuItems: IReadOnlyList<MenuItem>
@@ -57,7 +56,7 @@ public sealed class MenuItems: IReadOnlyList<MenuItem>
     /// <inheritdoc/>
     public IEnumerator<MenuItem> GetEnumerator()
     {
-        for (int index = 0; index < Count; index++)
+        for (var index = 0; index < Count; index++)
         {
             yield return this[index];
         }

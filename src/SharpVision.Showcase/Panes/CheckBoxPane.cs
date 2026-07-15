@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the CheckBox control with live, themed toggle specimens.</summary>
 internal sealed class CheckBoxPane: View
 {
@@ -14,18 +15,18 @@ internal sealed class CheckBoxPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Text status = new("State log: waiting");
-        CheckBox live = new() { Content = new Text("Toggle with Space, Enter, or a pointer click") };
+        var status = new Text("State log: waiting");
+        var live = new CheckBox() { Content = new Text("Toggle with Space, Enter, or a pointer click") };
         live.StateChanged += (_, eventArgs) =>
             status.Content = $"State log: {eventArgs.Current?.ToString() ?? "indeterminate"} ({eventArgs.Cause})";
 
-        CheckBox square = new() { Content = new Text("Square marks"), MarkStyle = CheckBoxMarks.Square, IsChecked = true };
-        CheckBox brackets = new() { Content = new Text("Bracket marks"), MarkStyle = CheckBoxMarks.Brackets, IsChecked = true };
-        CheckBox tick = new() { Content = new Text("Tick marks"), MarkStyle = CheckBoxMarks.Tick, IsChecked = true };
+        var square = new CheckBox() { Content = new Text("Square marks"), MarkStyle = CheckBoxMarks.Square, IsChecked = true };
+        var brackets = new CheckBox() { Content = new Text("Bracket marks"), MarkStyle = CheckBoxMarks.Brackets, IsChecked = true };
+        var tick = new CheckBox() { Content = new Text("Tick marks"), MarkStyle = CheckBoxMarks.Tick, IsChecked = true };
 
-        CheckBox unchecked_ = new() { Content = new Text("Unchecked"), MarkStyle = CheckBoxMarks.Brackets };
-        CheckBox checked_ = new() { Content = new Text("Checked"), MarkStyle = CheckBoxMarks.Brackets, IsChecked = true };
-        CheckBox indeterminate = new()
+        var unchecked_ = new CheckBox() { Content = new Text("Unchecked"), MarkStyle = CheckBoxMarks.Brackets };
+        var checked_ = new CheckBox() { Content = new Text("Checked"), MarkStyle = CheckBoxMarks.Brackets, IsChecked = true };
+        var indeterminate = new CheckBox()
         {
             Content = new Text("Indeterminate"),
             MarkStyle = CheckBoxMarks.Brackets,
@@ -33,7 +34,7 @@ internal sealed class CheckBoxPane: View
             IsChecked = null,
         };
 
-        CheckBox disabled = new()
+        var disabled = new CheckBox()
         {
             Content = new Text("Disabled, checked"),
             MarkStyle = CheckBoxMarks.Brackets,

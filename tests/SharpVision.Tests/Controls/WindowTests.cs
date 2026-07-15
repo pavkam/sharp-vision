@@ -3,10 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Terminal.Input;
 
 
-using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies framed terminal window layout, title chrome, and visual shadow behavior.</summary>
 public sealed class WindowTests
@@ -15,14 +13,14 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenTitleAndChildArePresent_DrawsFramedChromeAndInterior()
     {
-        ProbeControl child = new(new Size(3, 1)) { Content = "app".AsMemory() };
-        Window window = new()
+        var child = new ProbeControl(new Size(3, 1)) { Content = "app".AsMemory() };
+        var window = new Window()
         {
             Title = "Tools",
             Child = child,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        Size size = new(10, 4);
+        var size = new Size(10, 4);
         new Engine().Layout(window, size);
         using Frame frame = new(size);
 
@@ -42,12 +40,12 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
-        ControlStyle<Window> style = ThemeTestSupport.OverlayStyle<Window>(
+        var style = ThemeTestSupport.OverlayStyle<Window>(
             (State.Normal, new ThemeOverlay(
                 attributes: Attributes.Overline,
                 underline: Underline.Paired,
                 underlineColor: Color.Indexed(6))));
-        Window window = new()
+        var window = new Window()
         {
             Bounds = new Rect(0, 0, 4, 3),
             Background = Color.Indexed(0),
@@ -57,7 +55,7 @@ public sealed class WindowTests
 
         window.Render(frame.Canvas);
 
-        CellStyle rendered = frame.GetCell(default).Style;
+        var rendered = frame.GetCell(default).Style;
         rendered.Attributes.ShouldBe(Attributes.Overline);
         rendered.Underline.ShouldBe(Underline.Paired);
         rendered.UnderlineColor.ShouldBe(Color.Indexed(6));
@@ -67,7 +65,7 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenBlockShadowIsEnabled_DrawsOutsideBodyWithoutCoveringContent()
     {
-        Window window = new()
+        var window = new Window()
         {
             Bounds = new Rect(0, 0, 4, 3),
             HasShadow = true,
@@ -88,8 +86,8 @@ public sealed class WindowTests
     [Fact]
     public void Render_WhenTitleExceedsFrameWidth_PreservesTopCorners()
     {
-        Window window = new() { Title = "A deliberately long title" };
-        Size size = new(6, 2);
+        var window = new Window() { Title = "A deliberately long title" };
+        var size = new Size(6, 2);
         new Engine().Layout(window, size);
         using Frame frame = new(size);
 
@@ -107,7 +105,7 @@ public sealed class WindowTests
         WindowTitlePlacement placement,
         int expectedTitleColumn)
     {
-        Window window = new()
+        var window = new Window()
         {
             Bounds = new Rect(0, 0, 20, 3),
             Title = "Hi",
@@ -126,16 +124,16 @@ public sealed class WindowTests
     [Fact]
     public void Dispatch_WhenEnterOrEscapeIsUnhandled_InvokesWindowDefaultOrCancelButton()
     {
-        int defaults = 0;
-        int cancels = 0;
-        Stack content = new();
-        Button accept = new() { IsDefault = true };
-        Button cancel = new() { IsCancel = true };
+        var defaults = 0;
+        var cancels = 0;
+        var content = new Stack();
+        var accept = new Button() { IsDefault = true };
+        var cancel = new Button() { IsCancel = true };
         accept.Click += (_, _) => defaults++;
         cancel.Click += (_, _) => cancels++;
         content.Children.Add(accept);
         content.Children.Add(cancel);
-        Window window = new() { Child = content };
+        var window = new Window() { Child = content };
 
         Router.Route(window, Events.Key, Key(Code.Enter));
         Router.Route(window, Events.Key, Key(Code.Escape));

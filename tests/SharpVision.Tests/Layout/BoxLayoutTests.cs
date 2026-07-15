@@ -12,7 +12,7 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenLengthIsPercent_ResolvesBorderBoxAndContent()
     {
-        ProbeControl control = new(new Size(7, 3))
+        var control = new ProbeControl(new Size(7, 3))
         {
             Width = Length.Percent(50),
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -33,7 +33,7 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenLengthsAreFixedAndStar_UsesRequestedAndRemainingSlot()
     {
-        ProbeControl control = new(new Size(1, 1))
+        var control = new ProbeControl(new Size(1, 1))
         {
             Width = Length.Cells(6),
             Height = Length.Star(1),
@@ -51,7 +51,7 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Measure_WhenPercentAndStarAreUnbounded_UsesIntrinsicContent()
     {
-        ProbeControl control = new(new Size(7, 3))
+        var control = new ProbeControl(new Size(7, 3))
         {
             Width = Length.Percent(50),
             Height = Length.Star(1),
@@ -68,7 +68,7 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenConstraintsAndEdgesExceedSlot_SaturatesInsideAvailableArea()
     {
-        ProbeControl control = new(new Size(50, 50))
+        var control = new ProbeControl(new Size(50, 50))
         {
             MinWidth = 8,
             MaxWidth = 12,
@@ -99,7 +99,7 @@ public sealed class BoxLayoutTests
         int x,
         int y)
     {
-        ProbeControl control = new(new Size(3, 2))
+        var control = new ProbeControl(new Size(3, 2))
         {
             HorizontalAlignment = horizontal,
             VerticalAlignment = vertical,
@@ -114,7 +114,7 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenStretchHasExplicitWidth_PreservesExplicitWidth()
     {
-        ProbeControl control = new(new Size(2, 2))
+        var control = new ProbeControl(new Size(2, 2))
         {
             Width = Length.Cells(4),
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -129,8 +129,8 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenCollapsed_ClearsGeometryWithoutCallingCore()
     {
-        ProbeControl control = new(new Size(4, 2));
-        Engine engine = new();
+        var control = new ProbeControl(new Size(4, 2));
+        var engine = new Engine();
         engine.Layout(control, new Size(10, 6));
         control.Visibility = Visibility.Collapsed;
 
@@ -146,8 +146,8 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenConstraintIsUnchanged_CachesUntilResize()
     {
-        ProbeControl control = new(new Size(4, 2));
-        Engine engine = new();
+        var control = new ProbeControl(new Size(4, 2));
+        var engine = new Engine();
 
         engine.Layout(control, new Size(10, 6));
         engine.Layout(control, new Size(10, 6));
@@ -161,7 +161,7 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenCoreInvalidates_DoesNotReenterAndLeavesLaterPassPending()
     {
-        ProbeControl control = new(new Size(4, 2))
+        var control = new ProbeControl(new Size(4, 2))
         {
             Measuring = current => current.Width = Length.Cells(5),
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -179,8 +179,8 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Layout_WhenReentered_ThrowsInvalidOperationException()
     {
-        ProbeControl control = new(new Size(4, 2));
-        Engine engine = new();
+        var control = new ProbeControl(new Size(4, 2));
+        var engine = new Engine();
         control.Measuring = current => engine.Layout(current, new Size(5, 5));
 
         _ = Should.Throw<InvalidOperationException>(() =>
@@ -191,9 +191,9 @@ public sealed class BoxLayoutTests
     [Fact]
     public void Measure_WhenReenteredAfterCachedPass_ThrowsInvalidOperationException()
     {
-        ProbeControl control = new(new Size(4, 2));
-        Engine engine = new();
-        Constraint constraint = new(10, 6);
+        var control = new ProbeControl(new Size(4, 2));
+        var engine = new Engine();
+        var constraint = new Constraint(10, 6);
         engine.Layout(control, new Size(10, 6));
         control.Width = Length.Cells(5);
         control.Measuring = current => current.Measure(constraint);
@@ -208,8 +208,8 @@ public sealed class BoxLayoutTests
     [Fact]
     public async Task Layout_WhenAttachedOffThread_ThrowsBeforeCoreAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
-        ProbeControl control = new(new Size(4, 2));
+        await using var dispatcher = Dispatcher.Start();
+        var control = new ProbeControl(new Size(4, 2));
         await dispatcher.InvokeAsync(
             () => control.Attach(dispatcher),
             TestContext.Current.CancellationToken);
@@ -225,14 +225,14 @@ public sealed class BoxLayoutTests
     public void Layout_WhenInputsAreRandomized_ProducesContainedDeterministicBounds()
     {
         const int caseCount = 10_000;
-        List<(Rect Bounds, Rect Available)> first = GenerateBounds(seed: 0x5A17, caseCount);
-        List<(Rect Bounds, Rect Available)> second = GenerateBounds(seed: 0x5A17, caseCount);
+        var first = GenerateBounds(seed: 0x5A17, caseCount);
+        var second = GenerateBounds(seed: 0x5A17, caseCount);
 
         second.ShouldBe(first);
 
-        for (int index = 0; index < caseCount; index++)
+        for (var index = 0; index < caseCount; index++)
         {
-            (Rect bounds, Rect available) = first[index];
+            (var bounds, var available) = first[index];
             bounds.Width.ShouldBeGreaterThanOrEqualTo(0);
             bounds.Height.ShouldBeGreaterThanOrEqualTo(0);
             bounds.X.ShouldBeGreaterThanOrEqualTo(available.X);
@@ -244,19 +244,19 @@ public sealed class BoxLayoutTests
 
     private static List<(Rect Bounds, Rect Available)> GenerateBounds(int seed, int count)
     {
-        Random random = new(seed);
-        List<(Rect Bounds, Rect Available)> result = new(count);
-        Engine engine = new();
+        var random = new Random(seed);
+        var result = new List<(Rect Bounds, Rect Available)>(count);
+        var engine = new Engine();
 
-        for (int index = 0; index < count; index++)
+        for (var index = 0; index < count; index++)
         {
-            Size size = new(random.Next(0, 121), random.Next(0, 61));
-            Thickness margin = new(
+            var size = new Size(random.Next(0, 121), random.Next(0, 61));
+            var margin = new Thickness(
                 random.Next(0, 8),
                 random.Next(0, 5),
                 random.Next(0, 8),
                 random.Next(0, 5));
-            ProbeControl control = new(new Size(random.Next(0, 30), random.Next(0, 15)))
+            var control = new ProbeControl(new Size(random.Next(0, 30), random.Next(0, 15)))
             {
                 Width = NextLength(random),
                 Height = NextLength(random),

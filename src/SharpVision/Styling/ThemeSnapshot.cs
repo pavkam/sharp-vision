@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Immutable theme contents used during value resolution.</summary>
 internal sealed class ThemeSnapshot
@@ -30,16 +29,16 @@ internal sealed class ThemeSnapshot
 
     internal IReadOnlyList<IControlStyle> GetStyleChain(Type controlType)
     {
-        if (_styleChains.TryGetValue(controlType, out IReadOnlyList<IControlStyle>? cached))
+        if (_styleChains.TryGetValue(controlType, out var cached))
         {
             return cached;
         }
 
         List<IControlStyle> chain = [];
 
-        foreach (Type type in ControlHierarchy.BaseToDerived(controlType))
+        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
         {
-            if (_styles.TryGetValue(type, out IControlStyle? style))
+            if (_styles.TryGetValue(type, out var style))
             {
                 chain.Add(style);
             }

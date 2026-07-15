@@ -3,12 +3,7 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using SharpVision.Runtime;
-using SharpVision.Showcase.Panes;
-using SharpVision.Styling;
-using SharpVision.Terminal.Runtime;
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
 public sealed class ThemeGalleryTests
@@ -28,15 +23,15 @@ public sealed class ThemeGalleryTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        ComboBox? picker = await application.Dispatcher.InvokeAsync(
+        var picker = await application.Dispatcher.InvokeAsync(
             () => Find<ComboBox>(gallery.Sidebar, static _ => true),
             TestContext.Current.CancellationToken);
-        ComboBox themePicker = picker.ShouldNotBeNull();
+        var themePicker = picker.ShouldNotBeNull();
 
         await application.Dispatcher.InvokeAsync(
             () =>
             {
-                int light = themePicker.Items.ToList().IndexOf("Light");
+                var light = themePicker.Items.ToList().IndexOf("Light");
                 light.ShouldBeGreaterThanOrEqualTo(0);
                 themePicker.SelectedIndex = light;
             },
@@ -65,21 +60,21 @@ public sealed class ThemeGalleryTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        ComboBox? picker = await application.Dispatcher.InvokeAsync(
+        var picker = await application.Dispatcher.InvokeAsync(
             () => Find<ComboBox>(gallery.Sidebar, static _ => true),
             TestContext.Current.CancellationToken);
-        ComboBox themePicker = picker.ShouldNotBeNull();
+        var themePicker = picker.ShouldNotBeNull();
 
         await application.Dispatcher.InvokeAsync(
             () =>
             {
-                int dracula = themePicker.Items.ToList().IndexOf("Dracula");
+                var dracula = themePicker.Items.ToList().IndexOf("Dracula");
                 dracula.ShouldBeGreaterThanOrEqualTo(0);
                 themePicker.SelectedIndex = dracula;
             },
             TestContext.Current.CancellationToken);
 
-        Theme expected = ThemeCatalog.Default.Load("dracula");
+        var expected = ThemeCatalog.Default.Load("dracula");
 
         await WaitUntilAsync(
             () => ReferenceEquals(application.Theme, expected),
@@ -104,14 +99,14 @@ public sealed class ThemeGalleryTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        ComboBox? picker = await application.Dispatcher.InvokeAsync(
+        var picker = await application.Dispatcher.InvokeAsync(
             () => Find<ComboBox>(gallery.Sidebar, static _ => true),
             TestContext.Current.CancellationToken);
-        ComboBox themePicker = picker.ShouldNotBeNull();
+        var themePicker = picker.ShouldNotBeNull();
 
-        IReadOnlyList<ThemeCatalogEntry> entries = ThemeCatalog.Default.Entries;
-        Dictionary<string, ColorScheme> schemesByName = new(StringComparer.Ordinal);
-        foreach (ThemeCatalogEntry entry in entries)
+        var entries = ThemeCatalog.Default.Entries;
+        var schemesByName = new Dictionary<string, ColorScheme>(StringComparer.Ordinal);
+        foreach (var entry in entries)
         {
             schemesByName[entry.Name] = entry.ColorScheme;
         }
@@ -121,10 +116,10 @@ public sealed class ThemeGalleryTests
             {
                 themePicker.Items.Count.ShouldBe(entries.Count);
 
-                bool sawLight = false;
-                foreach (object? item in themePicker.Items)
+                var sawLight = false;
+                foreach (var item in themePicker.Items)
                 {
-                    string name = item.ShouldBeOfType<string>();
+                    var name = item.ShouldBeOfType<string>();
                     schemesByName.ShouldContainKey(name);
 
                     if (schemesByName[name] == ColorScheme.Light)
@@ -157,7 +152,7 @@ public sealed class ThemeGalleryTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
-        int themingIndex = gallery.Pages.ToList().FindIndex(static page => page == "Theming");
+        var themingIndex = gallery.Pages.ToList().FindIndex(static page => page == "Theming");
         themingIndex.ShouldBeGreaterThan(-1);
 
         await application.Dispatcher.InvokeAsync(
@@ -180,7 +175,7 @@ public sealed class ThemeGalleryTests
             return match;
         }
 
-        foreach (Control child in Visit(root))
+        foreach (var child in Visit(root))
         {
             if (child is T typed && predicate(typed))
             {
@@ -195,11 +190,11 @@ public sealed class ThemeGalleryTests
     {
         if (control is Container container)
         {
-            foreach (Control child in container.Children)
+            foreach (var child in container.Children)
             {
                 yield return child;
 
-                foreach (Control descendant in Visit(child))
+                foreach (var descendant in Visit(child))
                 {
                     yield return descendant;
                 }
@@ -212,7 +207,7 @@ public sealed class ThemeGalleryTests
         Application application,
         string description)
     {
-        for (int attempt = 0; attempt < 200; attempt++)
+        for (var attempt = 0; attempt < 200; attempt++)
         {
             if (await application.Dispatcher.InvokeAsync(predicate, TestContext.Current.CancellationToken))
             {

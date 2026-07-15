@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Unicode;
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>
@@ -29,19 +28,19 @@ public sealed class MeasurementTests
     [Fact]
     public void Measure_WhenEmptyAndWarm_AllocatesNoManagedBytes()
     {
-        for (int index = 0; index < 100; index++)
+        for (var index = 0; index < 100; index++)
         {
             _ = Width.Measure([], Ambiguous.Narrow);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
+        var before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (int index = 0; index < 10_000; index++)
+        for (var index = 0; index < 10_000; index++)
         {
             _ = Width.Measure([], Ambiguous.Narrow);
         }
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         allocated.ShouldBe(0);
     }
@@ -52,7 +51,7 @@ public sealed class MeasurementTests
     [Fact]
     public void Measure_WhenTextContainsControls_ReportsThemSeparately()
     {
-        Measurement result = Width.Measure("\t\r\n".AsSpan(), Ambiguous.Narrow);
+        var result = Width.Measure("\t\r\n".AsSpan(), Ambiguous.Narrow);
 
         result.Cells.ShouldBe(0);
         result.Graphemes.ShouldBe(2);
@@ -65,22 +64,22 @@ public sealed class MeasurementTests
     [Fact]
     public void Measure_WhenWarm_AllocatesNoManagedBytes()
     {
-        string value = "ASCII e\u0301 · 界 👩🏽‍💻 🇵🇹";
+        var value = "ASCII e\u0301 · 界 👩🏽‍💻 🇵🇹";
 
-        for (int index = 0; index < 10_000; index++)
+        for (var index = 0; index < 10_000; index++)
         {
             _ = Width.Measure(value.AsSpan(), Ambiguous.Narrow);
         }
 
-        long minimum = long.MaxValue;
+        var minimum = long.MaxValue;
 
         // Sample multiple windows so a one-time tiered-PGO bookkeeping
         // allocation from another concurrently run test cannot become data.
-        for (int sample = 0; sample < 5; sample++)
+        for (var sample = 0; sample < 5; sample++)
         {
-            long before = GC.GetAllocatedBytesForCurrentThread();
+            var before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (int index = 0; index < 10_000; index++)
+            for (var index = 0; index < 10_000; index++)
             {
                 _ = Width.Measure(value.AsSpan(), Ambiguous.Narrow);
             }

@@ -10,7 +10,7 @@ public sealed class ColorRoleKindTests
     [Fact]
     public void Role_StoresIdAndReportsRoleKind()
     {
-        Color color = Color.Role(5);
+        var color = Color.Role(5);
 
         color.Kind.ShouldBe(ColorKind.Role);
         color.RoleId.ShouldBe(5);

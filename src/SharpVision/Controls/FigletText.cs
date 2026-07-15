@@ -70,9 +70,9 @@ public sealed class FigletText: Control
     {
         _ = constraint;
         EnsureOutput();
-        int width = 0;
+        var width = 0;
 
-        foreach (string line in _lines)
+        foreach (var line in _lines)
         {
             width = Math.Max(
                 width,
@@ -86,10 +86,10 @@ public sealed class FigletText: Control
     protected override void OnRender(TerminalCanvas canvas)
     {
         EnsureOutput();
-        Rect bounds = ContentBounds;
-        TerminalStyle style = ResolveTextStyle();
+        var bounds = ContentBounds;
+        var style = ResolveTextStyle();
 
-        for (int row = 0; row < _lines.Length && row < bounds.Height; row++)
+        for (var row = 0; row < _lines.Length && row < bounds.Height; row++)
         {
             _ = canvas.Draw(_lines[row], new Point(bounds.X, bounds.Y + row), style);
         }

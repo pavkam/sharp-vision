@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Runtime;
 
+
 /// <summary>
 /// Verifies the pure bit-math behind the Windows console-mode boundary.
 /// </summary>
@@ -16,9 +17,9 @@ public sealed class NativeConsoleModeTests
     [Fact]
     public void ComputeInputMode_WhenDefault_EnablesVtInputAndClearsLineAndEcho()
     {
-        uint current = Native.EnableProcessedInput | Native.EnableLineInput | Native.EnableEchoInput;
+        var current = Native.EnableProcessedInput | Native.EnableLineInput | Native.EnableEchoInput;
 
-        uint result = Native.ComputeInputMode(current, captureControlKeys: false);
+        var result = Native.ComputeInputMode(current, captureControlKeys: false);
 
         (result & Native.EnableVirtualTerminalInput).ShouldNotBe(0u);
         (result & Native.EnableLineInput).ShouldBe(0u);
@@ -32,9 +33,9 @@ public sealed class NativeConsoleModeTests
     [Fact]
     public void ComputeInputMode_WhenCapturingControlKeys_ClearsProcessedInput()
     {
-        uint current = Native.EnableProcessedInput | Native.EnableLineInput | Native.EnableEchoInput;
+        var current = Native.EnableProcessedInput | Native.EnableLineInput | Native.EnableEchoInput;
 
-        uint result = Native.ComputeInputMode(current, captureControlKeys: true);
+        var result = Native.ComputeInputMode(current, captureControlKeys: true);
 
         (result & Native.EnableProcessedInput).ShouldBe(0u);
         (result & Native.EnableVirtualTerminalInput).ShouldNotBe(0u);
@@ -46,7 +47,7 @@ public sealed class NativeConsoleModeTests
     [Fact]
     public void ComputeOutputMode_WhenDefault_EnablesVtProcessingAndDisablesAutoReturn()
     {
-        uint result = Native.ComputeOutputMode(Native.EnableProcessedOutput);
+        var result = Native.ComputeOutputMode(Native.EnableProcessedOutput);
 
         (result & Native.EnableVirtualTerminalProcessing).ShouldNotBe(0u);
         (result & Native.DisableNewlineAutoReturn).ShouldNotBe(0u);

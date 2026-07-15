@@ -3,9 +3,9 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Terminal.Geometry;
-
 using Text = SharpVision.Controls.Text;
+
+
 
 /// <summary>Documents the Window control with framed chrome and titled application surface specimens.</summary>
 internal sealed class WindowPane: View
@@ -16,19 +16,19 @@ internal sealed class WindowPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Stack chromeOptions = Doc.Row(
+        var chromeOptions = Doc.Row(
             WindowVariant("Left", Glyphs.Rounded, WindowTitlePlacement.Left),
             WindowVariant("Center", Glyphs.Paired, WindowTitlePlacement.Center),
             WindowVariant("Right", Glyphs.Ascii, WindowTitlePlacement.Right));
 
-        Button apply = ActionButton(new Text("Apply"));
+        var apply = ActionButton(new Text("Apply"));
         apply.IsDefault = true;
-        Button cancel = ActionButton(new Text("Cancel"));
+        var cancel = ActionButton(new Text("Cancel"));
         cancel.IsCancel = true;
-        Stack actions = Doc.Row(apply, cancel);
+        var actions = Doc.Row(apply, cancel);
         actions.HorizontalAlignment = HorizontalAlignment.Center;
 
-        Stack form = Doc.Column(
+        var form = Doc.Column(
             new Text("Choose how this project opens."),
             new CheckBox
             {
@@ -43,7 +43,7 @@ internal sealed class WindowPane: View
             },
             actions);
 
-        Window window = new()
+        var window = new Window()
         {
             Width = Length.Cells(42),
             Height = Length.Auto,
@@ -54,7 +54,7 @@ internal sealed class WindowPane: View
             Child = form,
         };
 
-        Canvas stage = new()
+        var stage = new Canvas()
         {
             Width = Length.Cells(48),
             Height = Length.Cells(13),

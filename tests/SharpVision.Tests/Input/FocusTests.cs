@@ -12,14 +12,14 @@ public sealed class FocusTests
     [Fact]
     public async Task Focus_WhenTargetIsEligible_CommitsBeforeNotificationsAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
             List<string> order = [];
-            RecordingControl root = new("root", order);
-            ProbeControl first = new() { CanFocus = true };
-            ProbeControl second = new() { CanFocus = true };
+            var root = new RecordingControl("root", order);
+            var first = new ProbeControl() { CanFocus = true };
+            var second = new ProbeControl() { CanFocus = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -57,13 +57,13 @@ public sealed class FocusTests
     [Fact]
     public async Task Focus_WhenPreviewCancels_PreservesPreviousFocusAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new();
-            ProbeControl first = new() { CanFocus = true };
-            ProbeControl second = new() { CanFocus = true };
+            var root = new ProbeContainer();
+            var first = new ProbeControl() { CanFocus = true };
+            var second = new ProbeControl() { CanFocus = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -83,14 +83,14 @@ public sealed class FocusTests
     [Fact]
     public async Task MoveNext_WhenTreeHasFocusableControls_OrdersAndWrapsAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new();
-            ProbeControl first = new() { CanFocus = true, TabIndex = 1 };
-            ProbeControl second = new() { CanFocus = true, TabIndex = 0 };
-            ProbeControl third = new() { CanFocus = true, TabIndex = 1 };
+            var root = new ProbeContainer();
+            var first = new ProbeControl() { CanFocus = true, TabIndex = 1 };
+            var second = new ProbeControl() { CanFocus = true, TabIndex = 0 };
+            var third = new ProbeControl() { CanFocus = true, TabIndex = 1 };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Children.Add(third);
@@ -114,17 +114,17 @@ public sealed class FocusTests
     [Fact]
     public async Task Focus_WhenTargetIsForeignOrIneligible_RejectsWithoutMutationAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new();
-            ProbeControl hidden = new()
+            var root = new ProbeContainer();
+            var hidden = new ProbeControl()
             {
                 CanFocus = true,
                 Visibility = Visibility.Hidden,
             };
-            ProbeControl foreign = new() { CanFocus = true };
+            var foreign = new ProbeControl() { CanFocus = true };
             root.Children.Add(hidden);
             root.Attach(dispatcher);
             using FocusManager manager = new(root);
@@ -139,13 +139,13 @@ public sealed class FocusTests
     [Fact]
     public async Task Focus_WhenTreeMutates_ReleasesInvalidReferencesAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new();
-            ProbeControl child = new() { CanFocus = true };
-            ProbeControl replacement = new() { CanFocus = true };
+            var root = new ProbeContainer();
+            var child = new ProbeControl() { CanFocus = true };
+            var replacement = new ProbeControl() { CanFocus = true };
             root.Children.Add(child);
             root.Children.Add(replacement);
             root.Attach(dispatcher);

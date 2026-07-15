@@ -4,12 +4,9 @@
 namespace SharpVision.Tests.Controls;
 
 
-using SharpVision.Terminal.Input;
 
 
-using KeyAction = Terminal.Input.Action;
-using Label = SharpVision.Controls.Text;
-using TerminalStyle = CellStyle;
+using Label = ControlText;
 using UiList = List;
 
 /// <summary>Verifies realized List ownership, selection, input, scrolling, and rendering.</summary>
@@ -20,7 +17,7 @@ public sealed class ListTests
     public void Items_WhenAssigned_RealizesOwnedControlsAndExactCells()
     {
         List<Label> realized = [];
-        UiList control = new()
+        var control = new UiList()
         {
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
             Items = new object?[] { "One", "界", null },
@@ -46,10 +43,10 @@ public sealed class ListTests
     [Fact]
     public void Render_WhenStyledAndSelected_PaintsSurfaceAndSelectedRow()
     {
-        ControlStyle<UiList> style = ThemeTestSupport.OverlayStyle<UiList>(
+        var style = ThemeTestSupport.OverlayStyle<UiList>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
             (State.Selected, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(99))));
-        UiList control = new()
+        var control = new UiList()
         {
             Items = new object?[] { "One", "Two" },
             SelectedIndex = 1,
@@ -57,7 +54,7 @@ public sealed class ListTests
             Style = style,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        Size size = new(8, 2);
+        var size = new Size(8, 2);
         new Engine().Layout(control, size);
         using Frame frame = new(size);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(234)));
@@ -72,7 +69,7 @@ public sealed class ListTests
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardCommonPolicyToComposedViewport()
     {
-        UiList control = Create("one", "two", "three", "four", "five", "six");
+        var control = Create("one", "two", "three", "four", "five", "six");
         control.HorizontalAlignment = HorizontalAlignment.Stretch;
         control.ScrollBars = ScrollBars.Vertical;
         control.ShowScrollBars = ShowScrollBars.Always;
@@ -84,7 +81,7 @@ public sealed class ListTests
         control.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
         control.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         control.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
-        ScrollBar rail = control.HitTest(new Point(5, 0)).ShouldBeOfType<ScrollBar>();
+        var rail = control.HitTest(new Point(5, 0)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
         rail.Fill.ShouldBe(ScrollBarFill.Line);
@@ -100,8 +97,8 @@ public sealed class ListTests
     [Fact]
     public void ShowScrollBars_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
     {
-        UiList control = new();
-        int notifications = 0;
+        var control = new UiList();
+        var notifications = 0;
         control.PropertyChanged += (_, eventArgs) =>
         {
             if (eventArgs.PropertyName == nameof(UiList.ShowScrollBars))
@@ -123,12 +120,12 @@ public sealed class ListTests
     {
         List<Label> previous = [];
         ItemTemplate valid = item => Add(previous, new Label((string) item!));
-        UiList control = new()
+        var control = new UiList()
         {
             ItemTemplate = valid,
             Items = new object?[] { "A", "B" },
         };
-        Label duplicate = new("bad");
+        var duplicate = new Label("bad");
 
         _ = Should.Throw<ArgumentNullException>(() => control.Items = null!);
         _ = Should.Throw<ArgumentNullException>(() => control.ItemTemplate = null!);
@@ -145,7 +142,7 @@ public sealed class ListTests
     public void Items_WhenReplaced_DisposesPreviousRealizationWithoutStateLeakage()
     {
         List<Label> realized = [];
-        UiList control = new()
+        var control = new UiList()
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B" },
@@ -163,7 +160,7 @@ public sealed class ListTests
     [Fact]
     public void SetSelected_WhenModesDiffer_EnforcesModeAndIndexContracts()
     {
-        UiList control = Create("A", "B", "C");
+        var control = Create("A", "B", "C");
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SelectedIndex = 3);
         control.SelectedIndex = 1;
@@ -184,8 +181,8 @@ public sealed class ListTests
     [Fact]
     public void SelectedIndex_WhenChangingIsCancelled_PreservesStateAndStableSelectedView()
     {
-        UiList control = Create("A", "B", "C");
-        IReadOnlyList<object?> view = control.SelectedItems;
+        var control = Create("A", "B", "C");
+        var view = control.SelectedItems;
         List<string> order = [];
         control.SelectionChanging += (_, eventArgs) =>
         {
@@ -213,9 +210,9 @@ public sealed class ListTests
     [Fact]
     public async Task Dispatch_WhenKeyboardNavigates_UsesStableRealizedOrderAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
         List<Label> realized = [];
-        UiList control = new()
+        var control = new UiList()
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B", "C" },
@@ -247,8 +244,8 @@ public sealed class ListTests
     [Fact]
     public async Task Dispatch_WhenPointerUsesModifiers_AppliesToggleAndRangeSelectionAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
-        UiList control = Create("A", "B", "C", "D");
+        await using var dispatcher = Dispatcher.Start();
+        var control = Create("A", "B", "C", "D");
         control.Bounds = new Rect(0, 0, 4, 4);
         control.SelectionMode = SelectionMode.Multiple;
         new Engine().Layout(control, new Size(4, 4));
@@ -268,9 +265,9 @@ public sealed class ListTests
     [Fact]
     public async Task Dispatch_WhenActiveItemMovesBeyondViewport_BringsItIntoViewAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
         List<Label> realized = [];
-        UiList control = new()
+        var control = new UiList()
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
@@ -283,7 +280,7 @@ public sealed class ListTests
             using FocusManager focus = new(control);
             focus.Focus(realized[0].Parent!).ShouldBeTrue();
 
-            for (int index = 0; index < 7; index++)
+            for (var index = 0; index < 7; index++)
             {
                 Key(focus.Focused!, Code.Down);
             }
@@ -297,9 +294,9 @@ public sealed class ListTests
     [Fact]
     public void Render_WhenItemIsSelected_UsesSelectedStyleWithoutChangingTemplateContent()
     {
-        ControlStyle<UiList> style = ThemeTestSupport.OverlayStyle<UiList>(
+        var style = ThemeTestSupport.OverlayStyle<UiList>(
             (State.Selected, new ThemeOverlay(attributes: Attributes.Reverse)));
-        UiList control = Create("界", "B");
+        var control = Create("界", "B");
         control.Style = style;
         control.SelectedIndex = 0;
         new Engine().Layout(control, new Size(3, 2));
@@ -321,14 +318,14 @@ public sealed class ListTests
     [Fact]
     public void Dispose_WhenBaseAutoScrollIsArmedExternally_DisposesTheOwnedBaseBars()
     {
-        UiList list = new() { AutoScroll = true };
-        System.Reflection.FieldInfo field = typeof(Container).GetField(
+        var list = new UiList() { AutoScroll = true };
+        var field = typeof(Container).GetField(
             "_bars",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        Children bars = (Children) field.GetValue(list)!;
+        var bars = (Children) field.GetValue(list)!;
         bars.Count.ShouldBe(2);
-        ScrollBar horizontal = bars[0].ShouldBeOfType<ScrollBar>();
-        ScrollBar vertical = bars[1].ShouldBeOfType<ScrollBar>();
+        var horizontal = bars[0].ShouldBeOfType<ScrollBar>();
+        var vertical = bars[1].ShouldBeOfType<ScrollBar>();
 
         list.Dispose();
 

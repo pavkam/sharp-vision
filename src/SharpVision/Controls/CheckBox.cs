@@ -122,7 +122,7 @@ public sealed class CheckBox: Pressable
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        Control? content = Content;
+        var content = Content;
 
         if (content is null)
         {
@@ -140,7 +140,7 @@ public sealed class CheckBox: Pressable
     {
         if (Content is { } content)
         {
-            int consumed = Math.Min(MarkWidth + 1, bounds.Width);
+            var consumed = Math.Min(MarkWidth + 1, bounds.Width);
             content.Arrange(
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
                 widthResolved: true,
@@ -156,7 +156,7 @@ public sealed class CheckBox: Pressable
             return;
         }
 
-        TerminalStyle style = ResolvedStyle;
+        var style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
@@ -195,7 +195,7 @@ public sealed class CheckBox: Pressable
         Debug.Assert(left >= 0, "CheckBox accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "CheckBox accumulation uses non-negative extents.");
 
-        long value = (long) left + right;
+        var value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
@@ -213,14 +213,14 @@ public sealed class CheckBox: Pressable
             throw new ArgumentOutOfRangeException(nameof(cause), cause, "The activation cause is unknown.");
         }
 
-        bool? previous = _isChecked;
+        var previous = _isChecked;
 
         if (!Set(ref _isChecked, value, Invalidation.Render, nameof(IsChecked)))
         {
             return;
         }
 
-        CheckChangedEventArgs eventArgs = new(previous, value, cause);
+        var eventArgs = new CheckChangedEventArgs(previous, value, cause);
 
         if (value == true)
         {

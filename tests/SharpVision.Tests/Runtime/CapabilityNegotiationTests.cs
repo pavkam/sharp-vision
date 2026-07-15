@@ -4,16 +4,11 @@
 namespace SharpVision.Tests.Runtime;
 
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Runtime;
 
 
-using Ambiguous = Terminal.Unicode.Ambiguous;
-using CapabilityOrigin = Terminal.Capabilities.Origin;
+using CapabilityOrigin = Origin;
 using CapabilitySupport = Terminal.Capabilities.Support;
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
-using TerminalOptions = Terminal.Runtime.Options;
+using TerminalCapabilities = Capabilities;
 
 /// <summary>Verifies negotiated profiles become active before layout and rendering.</summary>
 public sealed class CapabilityNegotiationTests
@@ -25,14 +20,14 @@ public sealed class CapabilityNegotiationTests
         // Arrange
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        ProbeControl root = new() { Content = "x".AsMemory() };
-        TerminalOptions options = TerminalOptions.Minimal with
+        var root = new ProbeControl() { Content = "x".AsMemory() };
+        var options = TerminalOptions.Minimal with
         {
             Negotiation = new NegotiationOptions(new Dictionary<string, string?>()),
         };
         await using Application application = new(root, terminal, terminal, options);
         List<string> order = [];
-        TaskCompletionSource queryWritten = new(
+        var queryWritten = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         CapabilitiesChangedEventArgs? changed = null;
         terminal.Written += value =>
@@ -52,7 +47,7 @@ public sealed class CapabilityNegotiationTests
         application.FrameRendered += (_, _) => order.Add("frame");
 
         // Act
-        Task starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
+        var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
         await queryWritten.Task.WaitAsync(TestContext.Current.CancellationToken);
         starting.IsCompleted.ShouldBeFalse();
         terminal.Writes.Count.ShouldBe(1);
@@ -62,12 +57,12 @@ public sealed class CapabilityNegotiationTests
         await starting;
 
         // Assert
-        CapabilitiesChangedEventArgs eventArgs = changed.ShouldNotBeNull();
+        var eventArgs = changed.ShouldNotBeNull();
         eventArgs.Previous.ShouldBeSameAs(TerminalCapabilities.Conservative);
         eventArgs.Current.ShouldBeSameAs(application.Capabilities);
         application.Capabilities.SynchronizedOutput.IsSupported.ShouldBeTrue();
         order.ShouldBe(["capabilities", "resize", "frame"]);
-        string frame = Encoding.UTF8.GetString(terminal.Writes[^1]);
+        var frame = Encoding.UTF8.GetString(terminal.Writes[^1]);
         frame.ShouldStartWith("\u001b[?2026h");
         frame.ShouldEndWith("\u001b[?2026l");
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -80,7 +75,7 @@ public sealed class CapabilityNegotiationTests
         // Arrange
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(12, 4)));
-        ProbeControl root = new() { Content = "·".AsMemory() };
+        var root = new ProbeControl() { Content = "·".AsMemory() };
         await using Application application = new(
             root,
             terminal,
@@ -90,11 +85,11 @@ public sealed class CapabilityNegotiationTests
         application.CapabilitiesChanged += (_, eventArgs) => changes.Add(eventArgs);
         await application.StartAsync(TestContext.Current.CancellationToken);
         terminal.PauseFlush();
-        TaskCompletionSource synchronizedWrite = new(
+        var synchronizedWrite = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource thirdFrame = new(
+        var thirdFrame = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        int frames = 1;
+        var frames = 1;
         terminal.Written += value =>
         {
             if (value.Span.StartsWith("\u001b[?2026h"u8))
@@ -111,13 +106,13 @@ public sealed class CapabilityNegotiationTests
                 _ = thirdFrame.TrySetResult();
             }
         };
-        Feature supported = new(CapabilitySupport.Supported, CapabilityOrigin.Override);
-        Feature unsupported = new(CapabilitySupport.Unsupported, CapabilityOrigin.Override);
-        TerminalCapabilities first = TerminalCapabilities.Conservative with
+        var supported = new Feature(CapabilitySupport.Supported, CapabilityOrigin.Override);
+        var unsupported = new Feature(CapabilitySupport.Unsupported, CapabilityOrigin.Override);
+        var first = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = supported,
         };
-        TerminalCapabilities second = TerminalCapabilities.Conservative with
+        var second = TerminalCapabilities.Conservative with
         {
             SynchronizedOutput = unsupported,
             AmbiguousWidth = Ambiguous.Wide,

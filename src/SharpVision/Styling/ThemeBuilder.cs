@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Builds a frozen <see cref="Theme"/> from resolved semantic role colors using the standard recipe.</summary>
 internal static class ThemeBuilder
@@ -16,9 +15,9 @@ internal static class ThemeBuilder
     {
         ArgumentNullException.ThrowIfNull(roles);
 
-        Theme theme = new();
+        var theme = new Theme();
 
-        foreach (ColorRole role in Enum.GetValues<ColorRole>())
+        foreach (var role in Enum.GetValues<ColorRole>())
         {
             theme.SetColor(role, roles[role]);
         }
@@ -36,7 +35,7 @@ internal static class ThemeBuilder
     /// </returns>
     private static ControlStyle<Control> BuildBaseStyle()
     {
-        ControlStyle<Control> style = new();
+        var style = new ControlStyle<Control>();
 
         style.Set(Control.ForegroundProperty, State.Normal, ThemeColors.Foreground);
         style.Set(Control.BackgroundProperty, State.Normal, ThemeColors.Background);

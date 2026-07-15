@@ -5,9 +5,8 @@ namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
 
-using CapabilitySupport = Terminal.Capabilities.Support;
-using Encoder = Terminal.Rendering.Encoder;
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
+
+using Encoder = FrameEncoder;
 
 /// <summary>
 /// Verifies incremental output reaches the same semantic terminal state as full output.
@@ -28,12 +27,12 @@ public sealed class EquivalenceTests
         string frontText,
         string backText)
     {
-        using Frame front = Create(frontText);
-        using Frame back = Create(backText);
-        VirtualScreen incremental = new(back.Size);
+        using var front = Create(frontText);
+        using var back = Create(backText);
+        var incremental = new VirtualScreen(back.Size);
         incremental.Apply(Encode(null, front));
         incremental.Apply(Encode(front, back));
-        VirtualScreen full = new(back.Size);
+        var full = new VirtualScreen(back.Size);
         full.Apply(Encode(null, back));
 
         incremental.ShouldMatch(back);
@@ -55,10 +54,10 @@ public sealed class EquivalenceTests
             new Point(0, 0),
             new CellStyle(attributes: Attributes.Bold, hyperlink: "https://example.test"));
         back.SetCursor(new Point(1, 0), visible: true);
-        VirtualScreen incremental = new(back.Size);
+        var incremental = new VirtualScreen(back.Size);
         incremental.Apply(Encode(null, front));
         incremental.Apply(Encode(front, back));
-        VirtualScreen full = new(back.Size);
+        var full = new VirtualScreen(back.Size);
         full.Apply(Encode(null, back));
 
         incremental.ShouldMatch(back);
@@ -72,12 +71,12 @@ public sealed class EquivalenceTests
     public void Encode_WhenModernDecorationsAreSupported_AgreesWithFullRender()
     {
         using Frame frame = new(new Size(2, 1));
-        CellStyle style = new(
+        var style = new CellStyle(
             attributes: Attributes.RapidBlink | Attributes.Overline,
             underline: Underline.Curly,
             underlineColor: Color.Rgb(12, 34, 56));
         _ = frame.Canvas.Draw("ab".AsSpan(), new Point(0, 0), style);
-        VirtualScreen screen = new(frame.Size);
+        var screen = new VirtualScreen(frame.Size);
 
         screen.Apply(Encode(null, frame, ModernDecorationCapabilities));
 
@@ -98,7 +97,7 @@ public sealed class EquivalenceTests
         Frame back,
         TerminalCapabilities? capabilities = null)
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
         _ = Encoder.Encode(
             front,
             back,
@@ -109,7 +108,7 @@ public sealed class EquivalenceTests
 
     private static Frame Create(string value)
     {
-        Frame frame = new(new Size(3, 1));
+        var frame = new Frame(new Size(3, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

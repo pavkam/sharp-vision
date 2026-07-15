@@ -158,11 +158,11 @@ public sealed class MenuItem: Pressable
             return;
         }
 
-        TerminalStyle style = ResolvedStyle;
+        var style = ResolvedStyle;
 
         if (Kind == MenuItemKind.Separator)
         {
-            for (int x = Bounds.X; x < Bounds.Right; x++)
+            for (var x = Bounds.X; x < Bounds.Right; x++)
             {
                 _ = canvas.Draw("─".AsSpan(), new Point(x, Bounds.Y), style, background: BackgroundMode.Transparent);
             }
@@ -170,7 +170,7 @@ public sealed class MenuItem: Pressable
             return;
         }
 
-        string marker = Kind switch
+        var marker = Kind switch
         {
             MenuItemKind.Check => _isChecked ? "[x] " : "[ ] ",
             MenuItemKind.Radio => _isChecked ? "◉ " : "○ ",

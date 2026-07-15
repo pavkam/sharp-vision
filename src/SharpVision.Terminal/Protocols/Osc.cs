@@ -3,9 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers;
-using System.Buffers.Text;
-using System.Diagnostics;
 
 /// <summary>
 /// Encodes typed operating system commands used by the terminal runtime.
@@ -45,18 +42,18 @@ public static class Osc
     {
         ValidateIdentifier(id);
 
-        int prefixLength = id.IsEmpty ? 0 : 3;
-        int length = checked(prefixLength + id.Length + uri.Length + 1);
-        byte[]? rented = length > _stackPayloadLimit
+        var prefixLength = id.IsEmpty ? 0 : 3;
+        var length = checked(prefixLength + id.Length + uri.Length + 1);
+        var rented = length > _stackPayloadLimit
             ? ArrayPool<byte>.Shared.Rent(length)
             : null;
-        Span<byte> payload = rented is null
+        var payload = rented is null
             ? stackalloc byte[length]
             : rented.AsSpan();
 
         try
         {
-            int position = 0;
+            var position = 0;
 
             if (!id.IsEmpty)
             {
@@ -95,7 +92,7 @@ public static class Osc
         ArgumentOutOfRangeException.ThrowIfGreaterThan(index, byte.MaxValue);
 
         Span<byte> payload = stackalloc byte[5];
-        bool formatted = Utf8Formatter.TryFormat(index, payload, out int written);
+        var formatted = Utf8Formatter.TryFormat(index, payload, out var written);
         Debug.Assert(formatted, "Three bytes must hold a palette index.");
         payload[written++] = (byte) ';';
         payload[written++] = (byte) '?';
@@ -112,9 +109,9 @@ public static class Osc
 
     private static void ValidateIdentifier(ReadOnlySpan<byte> value)
     {
-        foreach (byte item in value)
+        foreach (var item in value)
         {
-            bool valid = item is (>= (byte) 'a' and <= (byte) 'z') or
+            var valid = item is (>= (byte) 'a' and <= (byte) 'z') or
                 (>= (byte) 'A' and <= (byte) 'Z') or
                 (>= (byte) '0' and <= (byte) '9') or
                 (byte) '-' or (byte) '_' or (byte) '.' or (byte) '+';

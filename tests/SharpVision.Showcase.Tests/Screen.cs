@@ -3,10 +3,7 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using System.Text;
 
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Rendering;
 
 /// <summary>Copies a terminal frame into a deterministic text and continuation-cell test oracle.</summary>
 internal sealed class Screen
@@ -33,8 +30,8 @@ internal sealed class Screen
     internal int Count(string value)
     {
         ArgumentException.ThrowIfNullOrEmpty(value);
-        int count = 0;
-        int offset = 0;
+        var count = 0;
+        var offset = 0;
 
         while ((offset = Text.IndexOf(value, offset, StringComparison.Ordinal)) >= 0)
         {
@@ -48,11 +45,11 @@ internal sealed class Screen
     /// <summary>Gets whether the copied frame contains an explicit foreground or background color.</summary>
     internal bool HasNonDefaultColor()
     {
-        for (int y = 0; y < _frame.Size.Height; y++)
+        for (var y = 0; y < _frame.Size.Height; y++)
         {
-            for (int x = 0; x < _frame.Size.Width; x++)
+            for (var x = 0; x < _frame.Size.Width; x++)
             {
-                CellInfo cell = _frame.GetCell(new Point(x, y));
+                var cell = _frame.GetCell(new Point(x, y));
 
                 if (cell.Style.Foreground != Color.Default || cell.Style.Background != Color.Default)
                 {
@@ -68,12 +65,12 @@ internal sealed class Screen
     /// <exception cref="InvalidDataException">A continuation relationship is structurally invalid.</exception>
     internal void ValidateContinuations()
     {
-        for (int y = 0; y < _frame.Size.Height; y++)
+        for (var y = 0; y < _frame.Size.Height; y++)
         {
-            for (int x = 0; x < _frame.Size.Width; x++)
+            for (var x = 0; x < _frame.Size.Width; x++)
             {
-                Point point = new(x, y);
-                CellInfo cell = _frame.GetCell(point);
+                var point = new Point(x, y);
+                var cell = _frame.GetCell(point);
 
                 if (!cell.IsContinuation)
                 {
@@ -85,7 +82,7 @@ internal sealed class Screen
                     throw new InvalidDataException($"Continuation {point} has invalid lead {cell.Lead}.");
                 }
 
-                CellInfo lead = _frame.GetCell(cell.Lead);
+                var lead = _frame.GetCell(cell.Lead);
 
                 if (lead.IsContinuation || lead.Width != 2)
                 {
@@ -97,26 +94,26 @@ internal sealed class Screen
 
     private static string CopyText(Frame frame)
     {
-        StringBuilder text = new();
+        var text = new StringBuilder();
 
-        for (int y = 0; y < frame.Size.Height; y++)
+        for (var y = 0; y < frame.Size.Height; y++)
         {
             if (y > 0)
             {
                 _ = text.Append('\n');
             }
 
-            for (int x = 0; x < frame.Size.Width; x++)
+            for (var x = 0; x < frame.Size.Width; x++)
             {
-                Point point = new(x, y);
-                CellInfo cell = frame.GetCell(point);
+                var point = new Point(x, y);
+                var cell = frame.GetCell(point);
 
                 if (cell.IsContinuation)
                 {
                     continue;
                 }
 
-                int length = frame.GetGraphemeByteCount(point);
+                var length = frame.GetGraphemeByteCount(point);
 
                 if (length == 0)
                 {
@@ -124,7 +121,7 @@ internal sealed class Screen
                     continue;
                 }
 
-                byte[] bytes = new byte[length];
+                var bytes = new byte[length];
                 _ = frame.CopyGrapheme(point, bytes);
                 _ = text.Append(Encoding.UTF8.GetString(bytes));
             }

@@ -216,8 +216,8 @@ public sealed class ComboBox: Pressable
     protected override Size MeasureOverride(Constraint constraint)
     {
         _popup.Measure(new Constraint(constraint.Width, Add(DropDownHeight, 2)));
-        string text = SelectedText();
-        int width = Add(Terminal.Unicode.Width.Measure(text).Cells, 2);
+        var text = SelectedText();
+        var width = Add(Terminal.Unicode.Width.Measure(text).Cells, 2);
         return new Size(width, 1);
     }
 
@@ -238,14 +238,14 @@ public sealed class ComboBox: Pressable
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        TerminalStyle style = ResolvedStyle;
+        var style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
             canvas.Clear(Bounds, style);
         }
 
-        TerminalCanvas label = canvas.Clip(new Rect(Bounds.X, Bounds.Y, Math.Max(0, Bounds.Width - 2), 1));
+        var label = canvas.Clip(new Rect(Bounds.X, Bounds.Y, Math.Max(0, Bounds.Width - 2), 1));
         _ = label.Draw(SelectedText().AsSpan(), new Point(Bounds.X, Bounds.Y), style, background: BackgroundMode.Transparent);
         _ = canvas.Draw(" ▼".AsSpan(), new Point(Math.Max(Bounds.X, Bounds.Right - 2), Bounds.Y), style, background: BackgroundMode.Transparent);
     }
@@ -323,7 +323,7 @@ public sealed class ComboBox: Pressable
 
     private string SelectedText()
     {
-        int index = _list.SelectedIndex;
+        var index = _list.SelectedIndex;
 
         return index < 0 || index >= _list.Items.Count ? string.Empty : _list.Items[index]?.ToString() ?? string.Empty;
     }
@@ -352,7 +352,7 @@ public sealed class ComboBox: Pressable
 
         // A standalone field may deliberately be one cell high. Its popup is
         // still constrained by the measure viewport, not by that field box.
-        Constraint? viewport = LastMeasureConstraint;
+        var viewport = LastMeasureConstraint;
         return new Rect(
             fallback.X,
             fallback.Y,
@@ -362,7 +362,7 @@ public sealed class ComboBox: Pressable
 
     private static bool IsWithin(Control ancestor, Control? candidate)
     {
-        for (Control? current = candidate; current is not null; current = current.Parent)
+        for (var current = candidate; current is not null; current = current.Parent)
         {
             if (ReferenceEquals(current, ancestor))
             {
@@ -375,10 +375,10 @@ public sealed class ComboBox: Pressable
 
     private static Rect Union(Rect left, Rect right)
     {
-        int x = Math.Min(left.X, right.X);
-        int y = Math.Min(left.Y, right.Y);
-        int rightEdge = Math.Max(left.Right, right.Right);
-        int bottom = Math.Max(left.Bottom, right.Bottom);
+        var x = Math.Min(left.X, right.X);
+        var y = Math.Min(left.Y, right.Y);
+        var rightEdge = Math.Max(left.Right, right.Right);
+        var bottom = Math.Max(left.Bottom, right.Bottom);
 
         return new Rect(
             x,

@@ -3,10 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Terminal.Protocols;
 using SharpVision.Text;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the RichText control with styled runs, hyperlinks, and an interactive mutation specimen.</summary>
@@ -24,7 +22,7 @@ internal sealed class RichTextPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        RichText introductory = new() { Wrapping = Wrapping.Word };
+        var introductory = new RichText() { Wrapping = Wrapping.Word };
         introductory.Inlines.Add(new Run("Rich ") { Attributes = TerminalAttributes.Bold });
         introductory.Inlines.Add(new Run("terminal text") { Attributes = TerminalAttributes.Italic });
         introductory.Inlines.Add(new LineBreak());
@@ -34,7 +32,7 @@ internal sealed class RichTextPane: View
             Attributes = TerminalAttributes.Underline,
         });
 
-        RichText attributes = new() { Wrapping = Wrapping.Word };
+        var attributes = new RichText() { Wrapping = Wrapping.Word };
         AddAttributeLine(attributes, "Bold", "increased intensity", TerminalAttributes.Bold, _bright);
         AddAttributeLine(attributes, "Dim", "reduced intensity", TerminalAttributes.Dim, _muted);
         AddAttributeLine(attributes, "Italic", "slanted presentation", TerminalAttributes.Italic, _accent);
@@ -61,18 +59,18 @@ internal sealed class RichTextPane: View
             TerminalAttributes.Bold | TerminalAttributes.Underline | TerminalAttributes.Italic,
             _success);
 
-        RichText wrapped = new() { Width = Length.Cells(30), Wrapping = Wrapping.Word };
+        var wrapped = new RichText() { Width = Length.Cells(30), Wrapping = Wrapping.Word };
         wrapped.Inlines.Add(new Run("Resize this narrow reading column. RichText wraps between words while keeping Unicode graphemes intact. "));
         wrapped.Inlines.Add(new Hyperlink("Read the protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
 
-        Text activity = new("Activity log: waiting for an inline mutation.");
-        Button append = new()
+        var activity = new Text("Activity log: waiting for an inline mutation.");
+        var append = new Button()
         {
             Content = new Text("Append a Run"),
             HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(0, 0, 1, 1),
         };
-        int mutation = 0;
+        var mutation = 0;
         (string Name, TerminalAttributes Value, Color Color)[] mutationStyles =
         [
             (Name: "underline", Value: TerminalAttributes.Underline, Color: _success),
@@ -82,7 +80,7 @@ internal sealed class RichTextPane: View
         ];
         append.Click += (_, eventArgs) =>
         {
-            (string Name, TerminalAttributes Value, Color Color) selectedStyle = mutationStyles[mutation % mutationStyles.Length];
+            var selectedStyle = mutationStyles[mutation % mutationStyles.Length];
             mutation++;
             wrapped.Inlines.Add(new LineBreak());
             wrapped.Inlines.Add(new Run(

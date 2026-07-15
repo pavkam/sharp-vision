@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Represents the desired terminal cursor position and visibility after a frame.</summary>
 public readonly record struct Cursor

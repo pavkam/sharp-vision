@@ -17,18 +17,18 @@ public sealed class DiagnosticTests
     public void ToString_WhenDiagnosticIsSensitive_DoesNotExposePayload()
     {
         const string secret = "clipboard-password-do-not-log";
-        Diagnostic diagnostic = new(
+        var diagnostic = new Diagnostic(
             DiagnosticCode.StringLimit,
             SequenceKind.Osc,
             42,
             secret.Length);
 
-        string text = diagnostic.ToString();
+        var text = diagnostic.ToString();
 
         text.ShouldContain(nameof(DiagnosticCode.StringLimit));
         text.ShouldContain(nameof(SequenceKind.Osc));
         text.ShouldContain("42");
-        text.ShouldContain(secret.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        text.ShouldContain(secret.Length.ToString(CultureInfo.InvariantCulture));
         text.ShouldNotContain(secret);
     }
 

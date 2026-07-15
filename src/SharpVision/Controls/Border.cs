@@ -32,7 +32,7 @@ public sealed class Border: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        Control? child = Child;
+        var child = Child;
 
         if (child is null)
         {
@@ -62,7 +62,7 @@ public sealed class Border: Container
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        bool opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
 
         if (opaque)
         {
@@ -74,8 +74,8 @@ public sealed class Border: Container
             return;
         }
 
-        TerminalStyle borderStyle = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
-        BackgroundMode background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        var borderStyle = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         ControlChrome.DrawPartialBorder(
             canvas,
             Bounds,
@@ -91,7 +91,7 @@ public sealed class Border: Container
         Debug.Assert(left >= 0, "Border accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "Border accumulation uses non-negative extents.");
 
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 

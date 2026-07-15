@@ -3,12 +3,12 @@
 
 namespace SharpVision.Terminal.Tests.Input;
 
-
 using SharpVision.Terminal.Input;
 
 
+
+
 using InputAction = Terminal.Input.Action;
-using InputDecoder = Terminal.Input.Decoder;
 
 /// <summary>
 /// Verifies Kitty CSI-u key identity, modifiers, events, text, and recovery.
@@ -21,7 +21,7 @@ public sealed class KittyKeyboardTests
     [Fact]
     public void Decode_WhenFullKittyEventArrives_PreservesEveryField()
     {
-        RecordingInputSink sink = Decode("\u001b[97:65:99;6:2;65:98u"u8.ToArray());
+        var sink = Decode("\u001b[97:65:99;6:2;65:98u"u8.ToArray());
 
         sink.Strokes.ShouldBe(
         [
@@ -49,7 +49,7 @@ public sealed class KittyKeyboardTests
         string input,
         InputAction action)
     {
-        Stroke stroke = Decode(Encoding.UTF8.GetBytes(input)).Strokes.Single();
+        var stroke = Decode(Encoding.UTF8.GetBytes(input)).Strokes.Single();
 
         stroke.Action.ShouldBe(action);
         stroke.Modifiers.ShouldBe(
@@ -75,7 +75,7 @@ public sealed class KittyKeyboardTests
     [InlineData(57376, Code.F13)]
     public void Decode_WhenKittyCodeIsKnown_MapsLogicalCode(int native, Code code)
     {
-        RecordingInputSink sink = Decode(Encoding.ASCII.GetBytes($"\u001b[{native}u"));
+        var sink = Decode(Encoding.ASCII.GetBytes($"\u001b[{native}u"));
 
         sink.Strokes.Single().ShouldBe(
             new Stroke(code, null, native, Modifiers.None, InputAction.Press));
@@ -87,7 +87,7 @@ public sealed class KittyKeyboardTests
     [Fact]
     public void Decode_WhenKittyCodeIsUnknown_PreservesNativeCode()
     {
-        Stroke stroke = Decode("\u001b[63743u"u8.ToArray()).Strokes.Single();
+        var stroke = Decode("\u001b[63743u"u8.ToArray()).Strokes.Single();
 
         stroke.Code.ShouldBe(Code.Unknown);
         stroke.NativeCode.ShouldBe(63743);
@@ -99,7 +99,7 @@ public sealed class KittyKeyboardTests
     [Fact]
     public void Decode_WhenKittyEventIsPureText_EmitsStrokeThenText()
     {
-        RecordingInputSink sink = Decode("\u001b[0;;229:946u"u8.ToArray());
+        var sink = Decode("\u001b[0;;229:946u"u8.ToArray());
 
         sink.Strokes.ShouldBe(
         [
@@ -115,11 +115,11 @@ public sealed class KittyKeyboardTests
     [Fact]
     public void Decode_WhenKittyEventIsFragmented_MapsAtEverySplit()
     {
-        byte[] bytes = "\u001b[97:65:99;6:2;65:98u"u8.ToArray();
+        var bytes = "\u001b[97:65:99;6:2;65:98u"u8.ToArray();
 
-        for (int split = 0; split <= bytes.Length; split++)
+        for (var split = 0; split <= bytes.Length; split++)
         {
-            RecordingInputSink sink = new();
+            var sink = new RecordingInputSink();
             using InputDecoder decoder = new(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
@@ -142,8 +142,8 @@ public sealed class KittyKeyboardTests
     [InlineData("\u001b[97;1;65;66u")]
     public void Decode_WhenKittyEventIsMalformed_ReportsAndRecovers(string input)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(input + "x");
-        RecordingInputSink sink = Decode(bytes);
+        var bytes = Encoding.UTF8.GetBytes(input + "x");
+        var sink = Decode(bytes);
 
         sink.Diagnostics.Count.ShouldBe(1);
         sink.Text.Single().Value.ShouldBe(new Rune('x'));
@@ -151,7 +151,7 @@ public sealed class KittyKeyboardTests
 
     private static RecordingInputSink Decode(byte[] bytes)
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
 
         using (InputDecoder decoder = new(sink))
         {

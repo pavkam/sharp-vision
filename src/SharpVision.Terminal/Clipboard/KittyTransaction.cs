@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Clipboard;
 
-using System.Diagnostics;
-using System.Text;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Enforces bounded Kitty OSC 5522 read or write response ordering.
@@ -248,7 +245,7 @@ public sealed class KittyTransaction: IDisposable
                 packet.Data.Length));
         }
 
-        if (!_builders.TryGetValue(mime, out Builder? builder))
+        if (!_builders.TryGetValue(mime, out var builder))
         {
             builder = new Builder();
             _builders.Add(mime, builder);
@@ -293,7 +290,7 @@ public sealed class KittyTransaction: IDisposable
 
     private void ClearBuilders()
     {
-        foreach (Builder builder in _builders.Values)
+        foreach (var builder in _builders.Values)
         {
             builder.Dispose();
         }
@@ -309,11 +306,11 @@ public sealed class KittyTransaction: IDisposable
     {
         Debug.Assert(!IsTerminal, "Only an active transaction can complete.");
 
-        KittyMimeData[] items = new KittyMimeData[_mimeOrder.Count];
+        var items = new KittyMimeData[_mimeOrder.Count];
 
-        for (int index = 0; index < _mimeOrder.Count; index++)
+        for (var index = 0; index < _mimeOrder.Count; index++)
         {
-            string mime = _mimeOrder[index];
+            var mime = _mimeOrder[index];
             items[index] = new KittyMimeData(mime, _builders[mime].ToArray());
         }
 
@@ -347,7 +344,7 @@ public sealed class KittyTransaction: IDisposable
             return false;
         }
 
-        foreach (char item in value)
+        foreach (var item in value)
         {
             if (item is not (
                 (>= 'a' and <= 'z') or

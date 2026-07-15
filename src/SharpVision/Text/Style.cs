@@ -3,7 +3,6 @@
 
 namespace SharpVision.Text;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Represents the flattened active markup facets at one visible offset.</summary>
 internal readonly record struct Style

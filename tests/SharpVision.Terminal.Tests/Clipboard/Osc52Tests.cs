@@ -4,7 +4,6 @@
 namespace SharpVision.Terminal.Tests.Clipboard;
 
 
-using SharpVision.Terminal.Clipboard;
 
 
 /// <summary>
@@ -28,7 +27,7 @@ public sealed class Osc52Tests
         Selection selection,
         char identifier)
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
         Osc52.Write(new Writer(destination), selection, []);
 
@@ -42,8 +41,8 @@ public sealed class Osc52Tests
     [Fact]
     public void Write_WhenTextIsValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         Osc52.Write(writer, Selection.Clipboard, "hello"u8);
         Osc52.Write(writer, Selection.Primary, "🦄"u8);
@@ -60,7 +59,7 @@ public sealed class Osc52Tests
     [Fact]
     public void Query_WhenSelectionIsKnown_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
         Osc52.Query(new Writer(destination), Selection.Clipboard);
 
@@ -73,8 +72,8 @@ public sealed class Osc52Tests
     [Fact]
     public void Write_WhenArgumentIsInvalid_ThrowsBeforeWriting()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Osc52.Write(writer, (Selection) 999, []));
@@ -94,7 +93,7 @@ public sealed class Osc52Tests
     [Fact]
     public void Decode_WhenReplyIsValid_ReturnsOwnedText()
     {
-        ClipboardReply result = Osc52.Decode("52;c;8J+mhA=="u8, maxBytes: 16);
+        var result = Osc52.Decode("52;c;8J+mhA=="u8, maxBytes: 16);
 
         result.Status.ShouldBe(ClipboardStatus.Success);
         result.Selection.ShouldBe(Selection.Clipboard);
@@ -107,7 +106,7 @@ public sealed class Osc52Tests
     [Fact]
     public void Decode_WhenPayloadIsQuery_ReturnsQueryStatus()
     {
-        ClipboardReply result = Osc52.Decode("52;p;?"u8, maxBytes: 16);
+        var result = Osc52.Decode("52;p;?"u8, maxBytes: 16);
 
         result.Status.ShouldBe(ClipboardStatus.Query);
         result.Selection.ShouldBe(Selection.Primary);
@@ -127,7 +126,7 @@ public sealed class Osc52Tests
     [InlineData("52;c;YWJj", 2)]
     public void Decode_WhenReplyIsInvalid_ReturnsMalformed(string payload, int maximum)
     {
-        ClipboardReply result = Osc52.Decode(
+        var result = Osc52.Decode(
             Encoding.ASCII.GetBytes(payload),
             maximum);
 
@@ -144,11 +143,11 @@ public sealed class Osc52Tests
     public void Decode_WhenParserDeliversOsc_ReturnsClipboardText(string sequence)
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse(Encoding.ASCII.GetBytes(sequence), ref sink);
-        Observation observation = sink.Observations.ShouldHaveSingleItem();
-        ClipboardReply result = Osc52.Decode(observation.First, maxBytes: 16);
+        var observation = sink.Observations.ShouldHaveSingleItem();
+        var result = Osc52.Decode(observation.First, maxBytes: 16);
 
         observation.Type.ShouldStartWith("Osc:");
         result.Status.ShouldBe(ClipboardStatus.Success);

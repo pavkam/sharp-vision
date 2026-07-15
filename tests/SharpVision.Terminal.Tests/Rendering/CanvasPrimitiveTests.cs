@@ -29,7 +29,7 @@ public sealed class CanvasPrimitiveTests
     public void DrawRune_WhenRuneIsNarrow_WritesExactCell()
     {
         using Frame frame = new(new Size(1, 1));
-        CellStyle style = new(Color.Indexed(2), Color.Indexed(4));
+        var style = new CellStyle(Color.Indexed(2), Color.Indexed(4));
 
         frame.Canvas.DrawRune(new Rune('┼'), default, style);
 
@@ -42,7 +42,7 @@ public sealed class CanvasPrimitiveTests
     public void DrawRune_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
         using Frame frame = new(new Size(1, 1));
-        CellStyle surface = new(Color.Indexed(255), Color.Indexed(238));
+        var surface = new CellStyle(Color.Indexed(255), Color.Indexed(238));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
 
         frame.Canvas.DrawRune(
@@ -63,7 +63,7 @@ public sealed class CanvasPrimitiveTests
     public void Fill_WhenRegionIsClipped_WritesOnlyIntersection()
     {
         using Frame frame = new(new Size(4, 1));
-        Canvas canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
+        var canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
 
         canvas.Fill(new Rect(0, 0, 4, 1), new Rune('x'));
 
@@ -79,7 +79,7 @@ public sealed class CanvasPrimitiveTests
     {
         using Frame frame = new(new Size(2, 1));
         _ = frame.Canvas.Draw("界", default);
-        CellStyle style = new(background: Color.Indexed(5));
+        var style = new CellStyle(background: Color.Indexed(5));
 
         frame.Canvas.ApplyStyle(new Rect(1, 0, 1, 1), style);
 
@@ -109,7 +109,7 @@ public sealed class CanvasPrimitiveTests
     {
         using Frame frame = new(new Size(2, 1));
         _ = frame.Canvas.Draw("界", default);
-        CellStyle style = new(background: Color.Indexed(5));
+        var style = new CellStyle(background: Color.Indexed(5));
 
         frame.Canvas.Clip(new Rect(1, 0, 1, 1)).ApplyStyle(new Rect(1, 0, 1, 1), style);
 

@@ -3,11 +3,8 @@
 
 namespace SharpVision.Runtime;
 
-using SharpVision.Styling;
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Configures one interactive console screen run and the terminal policy it produces.</summary>
@@ -153,7 +150,7 @@ public sealed record ConsoleRunOptions
     /// <returns>The validated terminal options.</returns>
     public TerminalOptions ToTerminalOptions()
     {
-        TerminalCapabilities capabilities = ResolveCapabilities();
+        var capabilities = ResolveCapabilities();
 
         return new TerminalOptions
         {
@@ -178,16 +175,16 @@ public sealed record ConsoleRunOptions
             return ColorDepth is { } depth ? profile with { ColorDepth = depth } : profile;
         }
 
-        Settings overrides = new() { CellMouse = true };
-        TerminalCapabilities detected = Detector.Detect(new Dictionary<string, string?>(), overrides: overrides);
+        var overrides = new Settings() { CellMouse = true };
+        var detected = Detector.Detect(new Dictionary<string, string?>(), overrides: overrides);
         return ColorDepth is { } forced ? detected with { ColorDepth = forced } : detected;
     }
 
     private NegotiationOptions DefaultNegotiation()
     {
-        Dictionary<string, string?> environment = new(StringComparer.Ordinal);
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal);
 
-        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
         {
             if (entry.Key is string key)
             {

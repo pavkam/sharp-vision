@@ -5,7 +5,6 @@ namespace SharpVision.Controls;
 
 
 using SharpVision.Terminal.Rendering;
-using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
 using TextLayout = SharpVision.Text.Layout;
@@ -140,9 +139,9 @@ public sealed class Text: Control
     protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureLayout(constraint.Width ?? int.MaxValue);
-        int width = 0;
+        var width = 0;
 
-        foreach (Line line in Lines.Span)
+        foreach (var line in Lines.Span)
         {
             width = Math.Max(width, line.Cells);
         }
@@ -156,16 +155,16 @@ public sealed class Text: Control
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        Rect bounds = ContentBounds;
+        var bounds = ContentBounds;
         EnsureLayout(bounds.Width);
-        TerminalStyle style = ResolveStyle();
-        ReadOnlySpan<Line> lines = Lines.Span;
+        var style = ResolveStyle();
+        var lines = Lines.Span;
 
-        for (int index = 0; index < lines.Length && index < bounds.Height; index++)
+        for (var index = 0; index < lines.Length && index < bounds.Height; index++)
         {
-            Line line = lines[index];
-            Point origin = new(bounds.X + line.Leading, bounds.Y + index);
-            DrawResult result = canvas.Draw(
+            var line = lines[index];
+            var origin = new Point(bounds.X + line.Leading, bounds.Y + index);
+            var result = canvas.Draw(
                 Content.AsSpan(line.Offset, line.Length),
                 origin,
                 style,
@@ -201,7 +200,7 @@ public sealed class Text: Control
 
     private void Format(int width)
     {
-        int required = TextLayout.Format(
+        var required = TextLayout.Format(
             Content,
             width,
             Wrapping,
@@ -235,11 +234,11 @@ public sealed class Text: Control
 
     private void Align(int width)
     {
-        for (int index = 0; index < _lineCount; index++)
+        for (var index = 0; index < _lineCount; index++)
         {
-            Line line = _lines[index];
-            int remaining = Math.Max(0, width - line.Cells);
-            int leading = TextAlignment switch
+            var line = _lines[index];
+            var remaining = Math.Max(0, width - line.Cells);
+            var leading = TextAlignment switch
             {
                 Alignment.Start => 0,
                 Alignment.Center => remaining / 2,

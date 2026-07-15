@@ -3,14 +3,9 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using System.Buffers;
-using System.Runtime.ExceptionServices;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
-using SharpVision.Terminal.Transport;
 
-using TerminalCapabilities = Capabilities.Capabilities;
 
 /// <summary>
 /// Owns terminal mode leases and serializes input, resize, closure, and cleanup.
@@ -26,6 +21,8 @@ public sealed class Session: IAsyncDisposable
     private readonly List<Lease> _leases = [];
     private int _disposed;
     private int _running;
+
+    #region Construction and lifecycle
 
     /// <summary>Initializes a session that owns transport and resize-source disposal.</summary>
     /// <param name="transport">The non-null terminal transport.</param>
@@ -73,7 +70,7 @@ public sealed class Session: IAsyncDisposable
 
         try
         {
-            using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
                 _lifetime.Token);
             await StartAsync(linked.Token).ConfigureAwait(false);
@@ -126,8 +123,14 @@ public sealed class Session: IAsyncDisposable
         _lifetime.Dispose();
     }
 
+    #endregion
+
+    #region Mode startup
+
     private async ValueTask StartAsync(CancellationToken cancellationToken)
     {
+        Debug.Assert(_leases.Count == 0, "A new session run starts without retained terminal-mode leases.");
+
         if (_options.AlternateScreen)
         {
             await EnableAsync(Lease.AlternateScreen, cancellationToken).ConfigureAwait(false);
@@ -144,6 +147,8 @@ public sealed class Session: IAsyncDisposable
         TerminalCapabilities capabilities,
         CancellationToken cancellationToken)
     {
+        Debug.Assert(capabilities is not null, "Session options always supply an immutable capability profile.");
+
         if (_options.Focus && capabilities.FocusReporting.IsSupported)
         {
             await EnableAsync(Lease.Focus, cancellationToken).ConfigureAwait(false);
@@ -167,23 +172,30 @@ public sealed class Session: IAsyncDisposable
 
     private async ValueTask EnableAsync(Lease lease, CancellationToken cancellationToken)
     {
+        Debug.Assert(Enum.IsDefined(lease), "Only a defined terminal-mode lease can be enabled.");
+        Debug.Assert(!_leases.Contains(lease), "Each terminal mode is enabled at most once per run.");
+
         _leases.Add(lease);
         await WriteAsync(lease, enabled: true, cancellationToken).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Event loop
+
     private async ValueTask EventsAsync(CancellationToken cancellationToken)
     {
-        Input.Options inputOptions = _options.Input with
+        var inputOptions = _options.Input with
         {
             PixelMouse = _options.Coordinates == MouseCoordinates.Pixel,
         };
-        Negotiator? negotiator = _options.Negotiation is null
+        var negotiator = _options.Negotiation is null
             ? null
             : new Negotiator(_options.Negotiation, _timeProvider);
-        IProtocolSink routeSink = negotiator is null
-            ? _sink
+        var routeSink = negotiator is null
+            ? (IProtocolSink) _sink
             : new NegotiationSink(_sink, negotiator);
-        using ProtocolRouter router = new(routeSink, inputOptions, _timeProvider);
+        using var router = new ProtocolRouter(routeSink, inputOptions, _timeProvider);
 
         if (negotiator is null)
         {
@@ -192,32 +204,35 @@ public sealed class Session: IAsyncDisposable
         }
         else
         {
-            ArrayBufferWriter<byte> queries = new();
+            var queries = new ArrayBufferWriter<byte>();
             negotiator.Start(queries);
             await _transport.WriteAsync(queries.WrittenMemory, cancellationToken)
                 .ConfigureAwait(false);
             await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(_options.ReadBufferSize);
-        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task? deadline = negotiator is null
+        var buffer = ArrayPool<byte>.Shared.Rent(_options.ReadBufferSize);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var deadline = negotiator is null
             ? null
             : DelayUntilAsync(negotiator.Deadline, linked.Token);
-        bool ready = negotiator is null;
-        bool hasPendingResize = false;
-        Dimensions pendingResize = default;
+        var ready = negotiator is null;
+        var hasPendingResize = false;
+        var pendingResize = default(Dimensions);
 
+        // Capability publication is the startup barrier. Input may refine the
+        // negotiator immediately, while only the newest pre-publication resize
+        // is retained so controls never observe geometry under a stale profile.
         try
         {
-            Task<int> read = _transport.ReadAsync(
+            var read = _transport.ReadAsync(
                 buffer.AsMemory(0, _options.ReadBufferSize),
                 linked.Token).AsTask();
-            Task<Dimensions> resize = _resize.ReadAsync(linked.Token).AsTask();
+            var resize = _resize.ReadAsync(linked.Token).AsTask();
 
             while (true)
             {
-                Task completed = deadline is null
+                var completed = deadline is null
                     ? await Task.WhenAny(read, resize).ConfigureAwait(false)
                     : await Task.WhenAny(read, resize, deadline).ConfigureAwait(false);
 
@@ -225,7 +240,7 @@ public sealed class Session: IAsyncDisposable
                 {
                     await deadline.ConfigureAwait(false);
                     _ = negotiator!.Expire();
-                    TerminalCapabilities capabilities = negotiator.Capabilities;
+                    var capabilities = negotiator.Capabilities;
                     _sink.Profile(capabilities);
                     await EnableOptionalAsync(capabilities, linked.Token)
                         .ConfigureAwait(false);
@@ -243,7 +258,7 @@ public sealed class Session: IAsyncDisposable
 
                 if (ReferenceEquals(completed, resize))
                 {
-                    Dimensions dimensions = await resize.ConfigureAwait(false);
+                    var dimensions = await resize.ConfigureAwait(false);
                     router.SetCellMetrics(dimensions.CellMetrics);
 
                     if (ready)
@@ -260,7 +275,8 @@ public sealed class Session: IAsyncDisposable
                     continue;
                 }
 
-                int count = await read.ConfigureAwait(false);
+                var count = await read.ConfigureAwait(false);
+                Debug.Assert((uint) count <= (uint) _options.ReadBufferSize, "Transport reads fit the rented session buffer.");
 
                 if (count == 0)
                 {
@@ -286,9 +302,11 @@ public sealed class Session: IAsyncDisposable
 
                 router.Route(buffer.AsSpan(0, count));
 
+                Debug.Assert(ready || negotiator is not null, "Incomplete startup always owns a negotiator.");
+
                 if (!ready && negotiator!.IsComplete)
                 {
-                    TerminalCapabilities capabilities = negotiator.Capabilities;
+                    var capabilities = negotiator.Capabilities;
                     _sink.Profile(capabilities);
                     await EnableOptionalAsync(capabilities, linked.Token)
                         .ConfigureAwait(false);
@@ -314,9 +332,13 @@ public sealed class Session: IAsyncDisposable
         }
     }
 
+    #endregion
+
+    #region Cleanup and mode encoding
+
     private Task DelayUntilAsync(DateTimeOffset deadline, CancellationToken cancellationToken)
     {
-        TimeSpan delay = deadline - _timeProvider.GetUtcNow();
+        var delay = deadline - _timeProvider.GetUtcNow();
 
         if (delay < TimeSpan.Zero)
         {
@@ -328,11 +350,13 @@ public sealed class Session: IAsyncDisposable
 
     private async ValueTask CleanupAsync()
     {
-        using CancellationTokenSource timeout = new(
+        using var timeout = new CancellationTokenSource(
             _options.CleanupTimeout,
             _timeProvider);
 
-        for (int index = _leases.Count - 1; index >= 0; index--)
+        // Terminal modes form a stack: unwind in reverse enable order and keep
+        // attempting later restores even when one terminal write fails.
+        for (var index = _leases.Count - 1; index >= 0; index--)
         {
             try
             {
@@ -353,8 +377,10 @@ public sealed class Session: IAsyncDisposable
         bool enabled,
         CancellationToken cancellationToken)
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        Debug.Assert(Enum.IsDefined(lease), "Mode encoding requires a defined lease.");
+
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         switch (lease)
         {
@@ -371,16 +397,18 @@ public sealed class Session: IAsyncDisposable
                 Modes.BracketedPaste(writer, enabled);
                 break;
             case Lease.Mouse:
+                Debug.Assert(_options.Tracking.HasValue, "A mouse lease requires configured tracking.");
                 Modes.Mouse(
                     writer,
-                    _options.Tracking!.Value,
+                    _options.Tracking.Value,
                     _options.Coordinates,
                     enabled);
                 break;
             case Lease.Keyboard:
                 if (enabled)
                 {
-                    Keyboard.Push(writer, _options.Keyboard!.Value);
+                    Debug.Assert(_options.Keyboard.HasValue, "A keyboard lease requires configured enhancement flags.");
+                    Keyboard.Push(writer, _options.Keyboard.Value);
                 }
                 else
                 {
@@ -397,12 +425,17 @@ public sealed class Session: IAsyncDisposable
         await _transport.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private bool MouseSupported(TerminalCapabilities capabilities) =>
-        _options.Coordinates == MouseCoordinates.Pixel
+    private bool MouseSupported(TerminalCapabilities capabilities)
+    {
+        Debug.Assert(capabilities is not null, "Mouse capability checks require the active immutable profile.");
+
+        return _options.Coordinates == MouseCoordinates.Pixel
             ? capabilities.PixelMouse.IsSupported
             : capabilities.CellMouse.IsSupported;
+    }
 
     private void ThrowIfDisposed() =>
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
+    #endregion
 }

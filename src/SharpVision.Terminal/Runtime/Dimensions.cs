@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Represents terminal cell dimensions and optional pixel dimensions.</summary>
 public readonly record struct Dimensions

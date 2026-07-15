@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers.Text;
-using System.Diagnostics;
 
 /// <summary>
 /// Encodes DEC private modes required by lifecycle, input, and output handling.
@@ -28,7 +26,7 @@ public static class Modes
 
         Span<byte> parameters = stackalloc byte[11];
         parameters[0] = (byte) '?';
-        bool formatted = Utf8Formatter.TryFormat(mode, parameters[1..], out int written);
+        var formatted = Utf8Formatter.TryFormat(mode, parameters[1..], out var written);
         Debug.Assert(formatted, "Ten bytes must hold a positive Int32.");
         writer.Csi(parameters[..(written + 1)], [], enabled ? (byte) 'h' : (byte) 'l');
     }

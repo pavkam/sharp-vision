@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Validates one complete optional inline-decoration proposal before mutation.</summary>
 internal static class Decoration
@@ -20,8 +19,8 @@ internal static class Decoration
         Underline? underline = null,
         Color? underlineColor = null)
     {
-        TerminalAttributes resolvedAttributes = attributes ?? inherited.Attributes;
-        Underline resolvedUnderline = underline ?? inherited.Underline;
+        var resolvedAttributes = attributes ?? inherited.Attributes;
+        var resolvedUnderline = underline ?? inherited.Underline;
 
         if ((resolvedAttributes & TerminalAttributes.Underline) != 0)
         {
@@ -32,7 +31,7 @@ internal static class Decoration
             resolvedAttributes &= ~TerminalAttributes.Underline;
         }
 
-        Color resolvedColor = underlineColor ?? inherited.UnderlineColor;
+        var resolvedColor = underlineColor ?? inherited.UnderlineColor;
 
         if ((resolvedAttributes & TerminalAttributes.Underline) == 0 &&
             resolvedUnderline == Underline.None)

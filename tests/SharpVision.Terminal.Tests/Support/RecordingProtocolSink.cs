@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Support;
 
 using SharpVision.Terminal.Input;
 
-using InputText = Terminal.Input.Text;
+
 
 /// <summary>Records typed input and complete protocol events in delivery order.</summary>
 internal sealed class RecordingProtocolSink: IProtocolSink

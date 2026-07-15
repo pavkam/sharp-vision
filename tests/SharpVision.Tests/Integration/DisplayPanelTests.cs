@@ -4,13 +4,9 @@
 namespace SharpVision.Tests.Integration;
 
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
 using ControlCanvas = SharpVision.Controls.Canvas;
-using ControlText = SharpVision.Controls.Text;
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Proves display controls compose through Application, layout, and semantic cells.</summary>
 public sealed class DisplayPanelTests
@@ -21,7 +17,7 @@ public sealed class DisplayPanelTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        Grid root = Create(out ControlText? label, out ControlCanvas? canvas);
+        var root = Create(out var label, out var canvas);
         await using Application application = new(
             root,
             terminal,
@@ -36,8 +32,8 @@ public sealed class DisplayPanelTests
             TestContext.Current.CancellationToken);
         Bytes(terminal).AsSpan().IndexOf(Encoding.UTF8.GetBytes("界"))
             .ShouldBeGreaterThanOrEqualTo(0);
-        int writes = terminal.Writes.Count;
-        Task rendered = NextFrame(application);
+        var writes = terminal.Writes.Count;
+        var rendered = NextFrame(application);
 
         await application.Dispatcher.InvokeAsync(
             () =>
@@ -89,13 +85,13 @@ public sealed class DisplayPanelTests
 
     private static Grid Create(out ControlText label, out ControlCanvas canvas)
     {
-        Grid root = new();
+        var root = new Grid();
         root.Columns.Add(Track.Star(1));
         root.Rows.Add(Track.Star(1));
-        Dock dock = new();
+        var dock = new Dock();
         root.Children.Add(dock);
         label = new ControlText("界");
-        Border border = new()
+        var border = new Border()
         {
             Width = Length.Cells(6),
             BorderThickness = new Thickness(1),
@@ -103,13 +99,13 @@ public sealed class DisplayPanelTests
         };
         Dock.SetSide(border, Side.Left);
         dock.Children.Add(border);
-        Stack stack = new();
+        var stack = new Stack();
         dock.Children.Add(stack);
-        Overlay overlay = new() { Height = Length.Cells(2) };
+        var overlay = new Overlay() { Height = Length.Cells(2) };
         overlay.Children.Add(new ControlText("O"));
         stack.Children.Add(overlay);
         canvas = new ControlCanvas();
-        ControlText canvasText = new("C");
+        var canvasText = new ControlText("C");
         ControlCanvas.SetLeft(canvasText, Length.Cells(1));
         canvas.Children.Add(canvasText);
         stack.Children.Add(canvas);
@@ -118,7 +114,7 @@ public sealed class DisplayPanelTests
 
     private static Task NextFrame(Application application)
     {
-        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.FrameRendered += Complete;
         return completion.Task;
 

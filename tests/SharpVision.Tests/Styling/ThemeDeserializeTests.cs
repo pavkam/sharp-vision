@@ -3,9 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
 
-using Shouldly;
 
 /// <summary>Verifies theme JSON deserialization into the definition DTO.</summary>
 public sealed class ThemeDeserializeTests
@@ -23,7 +21,7 @@ public sealed class ThemeDeserializeTests
     [Fact]
     public void Deserialize_WhenValidJson_MapsFields()
     {
-        ThemeDefinition definition = ThemeLoader.Deserialize(_json, "sample");
+        var definition = ThemeLoader.Deserialize(_json, "sample");
 
         definition.Slug.ShouldBe("sample");
         definition.Order.ShouldBe(5);
@@ -36,7 +34,7 @@ public sealed class ThemeDeserializeTests
     [Fact]
     public void Deserialize_WhenMalformedJson_Throws()
     {
-        InvalidDataException error = Should.Throw<InvalidDataException>(
+        var error = Should.Throw<InvalidDataException>(
             () => ThemeLoader.Deserialize("{ not json", "broken"));
 
         error.Message.ShouldContain("broken");

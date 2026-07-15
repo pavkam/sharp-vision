@@ -3,9 +3,7 @@
 
 namespace SharpVision.Text;
 
-using System.Buffers;
 
-using SharpVision.Terminal.Unicode;
 
 /// <summary>Formats borrowed UTF-16 text into grapheme-safe terminal-cell lines.</summary>
 public static class Layout
@@ -52,12 +50,12 @@ public static class Layout
         Validate(trimming);
         Validate(alignment);
         Validate(ambiguous);
-        int count = 0;
-        int start = 0;
+        var count = 0;
+        var start = 0;
 
         while (true)
         {
-            int end = start;
+            var end = start;
 
             while (end < value.Length && value[end] is not ('\r' or '\n'))
             {
@@ -104,7 +102,7 @@ public static class Layout
 
     private static int Align(int width, int cells, Alignment alignment)
     {
-        int remaining = Math.Max(0, width - cells);
+        var remaining = Math.Max(0, width - cells);
         return alignment switch
         {
             Alignment.Start => 0,
@@ -116,13 +114,13 @@ public static class Layout
 
     private static int Cells(ReadOnlySpan<char> value, Ambiguous ambiguous)
     {
-        int result = 0;
-        int position = 0;
+        var result = 0;
+        var position = 0;
 
         while (position < value.Length)
         {
-            Grapheme grapheme = Next(value[position..]);
-            int cells = ClusterCells(value.Slice(position, grapheme.Length), result, ambiguous);
+            var grapheme = Next(value[position..]);
+            var cells = ClusterCells(value.Slice(position, grapheme.Length), result, ambiguous);
             result = SaturatingAdd(result, cells);
             position += grapheme.Length;
         }
@@ -173,7 +171,7 @@ public static class Layout
         Span<Line> destination,
         ref int count)
     {
-        int completeCells = Cells(value, ambiguous);
+        var completeCells = Cells(value, ambiguous);
 
         if (trimming == Trimming.None || completeCells <= width)
         {
@@ -189,20 +187,20 @@ public static class Layout
             return;
         }
 
-        int ellipsisCells = Width.Measure(_ellipsis, ambiguous).Cells;
-        bool ellipsis = trimming is Trimming.GraphemeEllipsis or Trimming.WordEllipsis &&
+        var ellipsisCells = Width.Measure(_ellipsis, ambiguous).Cells;
+        var ellipsis = trimming is Trimming.GraphemeEllipsis or Trimming.WordEllipsis &&
             width >= ellipsisCells;
-        int limit = Math.Max(0, width - (ellipsis ? ellipsisCells : 0));
-        int position = 0;
-        int cells = 0;
-        int wordEnd = 0;
-        int wordCells = 0;
+        var limit = Math.Max(0, width - (ellipsis ? ellipsisCells : 0));
+        var position = 0;
+        var cells = 0;
+        var wordEnd = 0;
+        var wordCells = 0;
 
         while (position < value.Length)
         {
-            Grapheme grapheme = Next(value[position..]);
-            ReadOnlySpan<char> cluster = value.Slice(position, grapheme.Length);
-            int clusterCells = ClusterCells(cluster, cells, ambiguous);
+            var grapheme = Next(value[position..]);
+            var cluster = value.Slice(position, grapheme.Length);
+            var clusterCells = ClusterCells(cluster, cells, ambiguous);
 
             if (clusterCells > limit - cells)
             {
@@ -252,17 +250,17 @@ public static class Layout
             return;
         }
 
-        int lineStart = 0;
-        int position = 0;
-        int cells = 0;
-        int breakEnd = 0;
-        int breakCells = 0;
+        var lineStart = 0;
+        var position = 0;
+        var cells = 0;
+        var breakEnd = 0;
+        var breakCells = 0;
 
         while (position < value.Length)
         {
-            Grapheme grapheme = Next(value[position..]);
-            ReadOnlySpan<char> cluster = value.Slice(position, grapheme.Length);
-            int clusterCells = ClusterCells(cluster, cells, ambiguous);
+            var grapheme = Next(value[position..]);
+            var cluster = value.Slice(position, grapheme.Length);
+            var clusterCells = ClusterCells(cluster, cells, ambiguous);
 
             if (clusterCells <= width - cells)
             {
@@ -341,20 +339,20 @@ public static class Layout
 
     private static bool IsWhitespace(ReadOnlySpan<char> value)
     {
-        OperationStatus status = Rune.DecodeFromUtf16(value, out Rune rune, out _);
+        var status = Rune.DecodeFromUtf16(value, out var rune, out _);
         return status == OperationStatus.Done && Rune.IsWhiteSpace(rune);
     }
 
     private static int SaturatingAdd(int left, int right)
     {
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private static Grapheme Next(ReadOnlySpan<char> value)
     {
-        GraphemeEnumerator enumerator = Graphemes.Enumerate(value).GetEnumerator();
-        bool moved = enumerator.MoveNext();
+        var enumerator = Graphemes.Enumerate(value).GetEnumerator();
+        var moved = enumerator.MoveNext();
         Debug.Assert(moved, "A non-empty source suffix must contain one grapheme.");
         return enumerator.Current;
     }

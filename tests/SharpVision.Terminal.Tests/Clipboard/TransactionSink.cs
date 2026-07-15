@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Clipboard;
 
-using SharpVision.Terminal.Clipboard;
 
 /// <summary>Feeds parsed Kitty OSC packets into one transaction.</summary>
 internal sealed class TransactionSink: ISequenceSink

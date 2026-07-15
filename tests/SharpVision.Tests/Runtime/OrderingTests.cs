@@ -3,13 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Runtime;
 
 
-using KeyAction = Terminal.Input.Action;
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies resize coalescing, input targeting, and application idleness.</summary>
 public sealed class OrderingTests
@@ -27,7 +22,7 @@ public sealed class OrderingTests
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         using ManualResetEventSlim release = new();
-        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Dispatcher.Post(() =>
         {
             entered.SetResult();
@@ -56,8 +51,8 @@ public sealed class OrderingTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
-        ProbeContainer root = new();
-        ProbeControl child = new() { CanFocus = true };
+        var root = new ProbeContainer();
+        var child = new ProbeControl() { CanFocus = true };
         root.Children.Add(child);
         await using Application application = new(
             root,
@@ -72,7 +67,7 @@ public sealed class OrderingTests
             _ = child.AddHandler(Events.Key, (_, eventArgs) =>
                 phases.Add(eventArgs.Phase));
         }, TestContext.Current.CancellationToken);
-        Stroke stroke = new(
+        var stroke = new Stroke(
             Code.Enter,
             character: null,
             nativeCode: 0,
@@ -93,15 +88,15 @@ public sealed class OrderingTests
     public async Task Input_WhenReceivedBeforeResize_DeliversAfterTreeAttachmentAsync()
     {
         await using FakeTerminal terminal = new();
-        ProbeContainer root = new();
-        int calls = 0;
+        var root = new ProbeContainer();
+        var calls = 0;
         _ = root.AddHandler(Events.Focus, (_, _) => calls++);
         await using Application application = new(
             root,
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        Focus focus = new(gained: true);
+        var focus = new Focus(gained: true);
         application.Input(in focus);
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -119,7 +114,7 @@ public sealed class OrderingTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        ProbeControl root = new();
+        var root = new ProbeControl();
         await using Application application = new(
             root,
             terminal,
@@ -146,10 +141,10 @@ public sealed class OrderingTests
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
-        IOException failure = new("terminal");
+        var failure = new IOException("terminal");
 
         application.Fault(failure);
-        IOException thrown = await Should.ThrowAsync<IOException>(application.Completion);
+        var thrown = await Should.ThrowAsync<IOException>(application.Completion);
 
         thrown.ShouldBeSameAs(failure);
         application.Failure.ShouldBeSameAs(failure);
@@ -167,7 +162,7 @@ public sealed class OrderingTests
             terminal,
             TerminalOptions.Minimal);
         List<string> order = [];
-        TaskCompletionSource completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Idle += (_, _) =>
         {
             order.Add("idle");

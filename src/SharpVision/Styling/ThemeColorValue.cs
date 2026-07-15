@@ -3,9 +3,7 @@
 
 namespace SharpVision.Styling;
 
-using System.Globalization;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Parses the theme color-value grammar: <c>#hex</c>, <c>idx:N</c>, or (elsewhere) a palette key.</summary>
 internal static class ThemeColorValue
@@ -26,9 +24,9 @@ internal static class ThemeColorValue
     {
         if (value.StartsWith(_indexPrefix, StringComparison.Ordinal))
         {
-            ReadOnlySpan<char> digits = value.AsSpan(_indexPrefix.Length);
+            var digits = value.AsSpan(_indexPrefix.Length);
 
-            return !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out int index) ||
+            return !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var index) ||
                 index is < 0 or > 255
                 ? throw new FormatException($"'{value}' is not a valid idx:0-255 color.")
                 : Color.Indexed(index);

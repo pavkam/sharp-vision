@@ -3,13 +3,12 @@
 
 namespace SharpVision.Terminal.Tests.Input;
 
-
 using SharpVision.Terminal.Input;
 
 
+
+
 using InputAction = Terminal.Input.Action;
-using InputDecoder = Terminal.Input.Decoder;
-using InputText = Terminal.Input.Text;
 
 /// <summary>
 /// Verifies streaming UTF-8, Alt text, Escape ambiguity, and allocation behavior.
@@ -22,11 +21,11 @@ public sealed class TextTests
     [Fact]
     public void Decode_WhenUtf8IsFragmented_EmitsCompleteRunes()
     {
-        byte[] bytes = Encoding.UTF8.GetBytes("Aé👩");
+        var bytes = Encoding.UTF8.GetBytes("Aé👩");
 
-        for (int split = 0; split <= bytes.Length; split++)
+        for (var split = 0; split <= bytes.Length; split++)
         {
-            RecordingInputSink sink = new();
+            var sink = new RecordingInputSink();
             using InputDecoder decoder = new(sink);
 
             decoder.Decode(bytes.AsSpan(0, split));
@@ -48,9 +47,9 @@ public sealed class TextTests
     {
         byte[] bytes = [0xF0, 0x28, 0x8C, 0x28, (byte) 'x'];
 
-        for (int split = 0; split <= bytes.Length; split++)
+        for (var split = 0; split <= bytes.Length; split++)
         {
-            RecordingInputSink sink = new();
+            var sink = new RecordingInputSink();
             using InputDecoder decoder = new(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
@@ -69,7 +68,7 @@ public sealed class TextTests
     [Fact]
     public void Decode_WhenTextIsPlainOrAltModified_EmitsTypedPairs()
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(sink);
 
         decoder.Decode("x\u001by"u8);
@@ -89,11 +88,11 @@ public sealed class TextTests
     [Fact]
     public void Decode_WhenAltUtf8IsFragmented_PreservesOneScalar()
     {
-        byte[] bytes = Encoding.UTF8.GetBytes("\u001bé");
+        var bytes = Encoding.UTF8.GetBytes("\u001bé");
 
-        for (int split = 0; split <= bytes.Length; split++)
+        for (var split = 0; split <= bytes.Length; split++)
         {
-            RecordingInputSink sink = new();
+            var sink = new RecordingInputSink();
             using InputDecoder decoder = new(sink);
             decoder.Decode(bytes.AsSpan(0, split));
             decoder.Decode(bytes.AsSpan(split));
@@ -118,8 +117,8 @@ public sealed class TextTests
     [Fact]
     public void ExpireEscape_WhenDeadlineIsReached_EmitsEscape()
     {
-        RecordingInputSink sink = new();
-        ManualTimeProvider clock = new();
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
         using InputDecoder decoder = new(
             sink,
             new Options { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
@@ -145,8 +144,8 @@ public sealed class TextTests
     [Fact]
     public void Decode_WhenEscapeExpired_PreservesAbsoluteDiagnosticOffset()
     {
-        RecordingInputSink sink = new();
-        ManualTimeProvider clock = new();
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
         using InputDecoder decoder = new(
             sink,
             new Options { EscapeTimeout = TimeSpan.FromMilliseconds(1) },
@@ -167,7 +166,7 @@ public sealed class TextTests
     [Fact]
     public void Complete_WhenInputIsPending_ResolvesWithoutDroppingData()
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(sink);
 
         decoder.Decode([0xF0, 0x9F]);
@@ -184,7 +183,7 @@ public sealed class TextTests
     [Fact]
     public void Complete_WhenCsiIsTruncated_ReportsDiagnostic()
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(sink);
 
         decoder.Decode("\u001b[1;"u8);
@@ -200,29 +199,29 @@ public sealed class TextTests
     [Fact]
     public void Decode_WhenAsciiPathIsWarm_AllocatesZeroBytes()
     {
-        CountingInputSink sink = new();
+        var sink = new CountingInputSink();
         using InputDecoder decoder = new(sink);
 
-        for (int index = 0; index < 10_000; index++)
+        for (var index = 0; index < 10_000; index++)
         {
             decoder.Decode("a"u8);
             decoder.Decode("é"u8);
         }
 
         // Cross any tiered-PGO transition before the asserted allocation window.
-        for (int index = 0; index < 10_000; index++)
+        for (var index = 0; index < 10_000; index++)
         {
             decoder.Decode("a"u8);
             decoder.Decode("é"u8);
         }
 
-        long minimum = long.MaxValue;
+        var minimum = long.MaxValue;
 
-        for (int sample = 0; sample < 5; sample++)
+        for (var sample = 0; sample < 5; sample++)
         {
-            long before = GC.GetAllocatedBytesForCurrentThread();
+            var before = GC.GetAllocatedBytesForCurrentThread();
 
-            for (int index = 0; index < 10_000; index++)
+            for (var index = 0; index < 10_000; index++)
             {
                 decoder.Decode("a"u8);
                 decoder.Decode("é"u8);
@@ -270,7 +269,7 @@ public sealed class TextTests
     public void Constructor_WhenPointerCoordinateFamiliesVary_PreservesAvailability()
     {
         // Arrange / Act
-        Pointer cell = new(
+        var cell = new Pointer(
             new Point(2, 3),
             null,
             Buttons.None,
@@ -280,7 +279,7 @@ public sealed class TextTests
             Modifiers.None,
             true,
             false);
-        Pointer pixel = new(
+        var pixel = new Pointer(
             null,
             new Point(20, 30),
             Buttons.None,
@@ -290,7 +289,7 @@ public sealed class TextTests
             Modifiers.None,
             true,
             false);
-        Pointer leave = new(
+        var leave = new Pointer(
             null,
             null,
             Buttons.None,

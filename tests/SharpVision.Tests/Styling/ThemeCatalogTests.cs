@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies the embedded theme catalog discovers, orders, loads, and caches themes.</summary>
 public sealed class ThemeCatalogTests
@@ -15,7 +12,7 @@ public sealed class ThemeCatalogTests
     [Fact]
     public void Default_ContainsBuiltInDefaults()
     {
-        ThemeCatalog catalog = ThemeCatalog.Default;
+        var catalog = ThemeCatalog.Default;
 
         catalog.Slugs.ShouldContain("default-dark");
         catalog.Slugs.ShouldContain("default-light");
@@ -25,7 +22,7 @@ public sealed class ThemeCatalogTests
     [Fact]
     public void Entries_AreOrderedByOrderThenSlug()
     {
-        IReadOnlyList<ThemeCatalogEntry> entries = ThemeCatalog.Default.Entries;
+        var entries = ThemeCatalog.Default.Entries;
 
         entries[0].Slug.ShouldBe("default-dark"); // order 0
         entries[1].Slug.ShouldBe("default-light"); // order 1
@@ -35,12 +32,12 @@ public sealed class ThemeCatalogTests
     [Fact]
     public void Load_WhenDefaultDark_ReproducesIndexedRoles()
     {
-        Theme theme = ThemeCatalog.Default.Load("default-dark");
+        var theme = ThemeCatalog.Default.Load("default-dark");
 
         theme.IsFrozen.ShouldBeTrue();
-        theme.TryGetColor(ColorRole.Foreground, out Color fg).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Foreground, out var fg).ShouldBeTrue();
         fg.ShouldBe(Color.Indexed(15));
-        theme.TryGetColor(ColorRole.Background, out Color bg).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Background, out var bg).ShouldBeTrue();
         bg.ShouldBe(Color.Indexed(0));
     }
 
@@ -48,8 +45,8 @@ public sealed class ThemeCatalogTests
     [Fact]
     public void Load_WhenCalledTwice_ReturnsSameInstance()
     {
-        Theme first = ThemeCatalog.Default.Load("default-dark");
-        Theme second = ThemeCatalog.Default.Load("default-dark");
+        var first = ThemeCatalog.Default.Load("default-dark");
+        var second = ThemeCatalog.Default.Load("default-dark");
 
         ReferenceEquals(first, second).ShouldBeTrue();
     }

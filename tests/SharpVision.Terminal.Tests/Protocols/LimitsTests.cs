@@ -41,7 +41,7 @@ public sealed class LimitsTests
     [Fact]
     public void Default_WhenRead_HasFiniteInteractiveBounds()
     {
-        Limits limits = Limits.Default;
+        var limits = Limits.Default;
 
         limits.MaxParameterBytes.ShouldBeInRange(1, 4_096);
         limits.MaxIntermediateBytes.ShouldBeInRange(1, 256);

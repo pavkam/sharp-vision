@@ -3,11 +3,8 @@
 
 namespace SharpVision.Tests.Integration;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies suspension and resize ordering across session, layout, and renderer.</summary>
 public sealed class ResizeRenderTests
@@ -18,7 +15,7 @@ public sealed class ResizeRenderTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(0, 0)));
-        ProbeControl root = new();
+        var root = new ProbeControl();
         await using Application application = new(
             root,
             terminal,
@@ -26,7 +23,7 @@ public sealed class ResizeRenderTests
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
         List<string> order = [];
-        TaskCompletionSource rendered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var rendered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Resize += (_, eventArgs) =>
         {
             root.Bounds.Width.ShouldBe(eventArgs.Dimensions.Cells.Width);

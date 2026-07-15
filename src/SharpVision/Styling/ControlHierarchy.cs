@@ -19,7 +19,7 @@ internal static class ControlHierarchy
     {
         List<Type> chain = [];
 
-        for (Type? current = controlType;
+        for (var current = controlType;
             current is not null && typeof(Control).IsAssignableFrom(current);
             current = current.BaseType)
         {

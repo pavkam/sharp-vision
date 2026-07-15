@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies the theme color-value grammar (hex, indexed, palette-key discrimination).</summary>
 public sealed class ThemeColorValueTests

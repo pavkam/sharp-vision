@@ -24,7 +24,7 @@ public sealed class LineTests
 
         frame.Canvas.DrawHorizontalLine(default, 3, new LineStyle(weight));
 
-        for (int x = 0; x < 3; x++)
+        for (var x = 0; x < 3; x++)
         {
             FrameTests.GetText(frame, new Point(x, 0)).ShouldBe(expected);
         }
@@ -65,7 +65,7 @@ public sealed class LineTests
     public void DrawVerticalLine_WhenPatternIsTripleDash_WritesDashedGlyph()
     {
         using Frame frame = new(new Size(1, 2));
-        LineStyle line = new(LineWeight.Heavy, LinePattern.TripleDash);
+        var line = new LineStyle(LineWeight.Heavy, LinePattern.TripleDash);
 
         frame.Canvas.DrawVerticalLine(default, 2, line);
 
@@ -78,13 +78,13 @@ public sealed class LineTests
     public void DrawHorizontalLine_WhenSurfaceIsPainted_PreservesDestinationBackground()
     {
         using Frame frame = new(new Size(3, 1));
-        CellStyle surface = new(Color.Indexed(255), Color.Indexed(238));
-        CellStyle line = new(Color.Indexed(45), Color.Default);
+        var surface = new CellStyle(Color.Indexed(255), Color.Indexed(238));
+        var line = new CellStyle(Color.Indexed(45), Color.Default);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), surface);
 
         frame.Canvas.DrawHorizontalLine(default, 3, LineStyle.Light, line);
 
-        for (int x = 0; x < 3; x++)
+        for (var x = 0; x < 3; x++)
         {
             frame.GetCell(new Point(x, 0)).Style.ShouldBe(
                 new CellStyle(Color.Indexed(45), Color.Indexed(238)));

@@ -4,7 +4,6 @@
 namespace SharpVision.Terminal.Tests.Rendering;
 
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>
@@ -30,7 +29,7 @@ public sealed class CanvasTests
         _ = frame.Canvas.Draw("a".AsSpan(), new Point(0, 0));
 
         // Act
-        DrawResult result = frame.Canvas.Draw(value.AsSpan(), new Point(1, 0));
+        var result = frame.Canvas.Draw(value.AsSpan(), new Point(1, 0));
 
         // Assert
         FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
@@ -45,8 +44,8 @@ public sealed class CanvasTests
     public void Draw_WhenBackgroundIsTransparent_PreservesDestinationBackground()
     {
         using Frame frame = new(new Size(1, 1));
-        CellStyle surface = new(Color.Indexed(255), Color.Indexed(238));
-        CellStyle text = new(
+        var surface = new CellStyle(Color.Indexed(255), Color.Indexed(238));
+        var text = new CellStyle(
             Color.Indexed(45),
             Color.Default,
             Attributes.Bold | Attributes.Overline,
@@ -86,7 +85,7 @@ public sealed class CanvasTests
     {
         using Frame frame = new(new Size(4, 1));
 
-        DrawResult result = frame.Canvas.Draw("A界".AsSpan(), new Point(0, 0));
+        var result = frame.Canvas.Draw("A界".AsSpan(), new Point(0, 0));
 
         result.Final.ShouldBe(new Point(3, 0));
         result.Graphemes.ShouldBe(2);
@@ -152,7 +151,7 @@ public sealed class CanvasTests
     {
         using Frame frame = new(new Size(2, 1));
 
-        DrawResult result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Clip);
+        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Clip);
 
         result.Clipped.ShouldBe(1);
         FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("a");
@@ -167,7 +166,7 @@ public sealed class CanvasTests
     {
         using Frame frame = new(new Size(2, 2));
 
-        DrawResult result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Wrap);
+        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Wrap);
 
         result.Final.ShouldBe(new Point(2, 1));
         FrameTests.GetText(frame, new Point(0, 1)).ShouldBe("界");
@@ -182,7 +181,7 @@ public sealed class CanvasTests
     {
         using Frame frame = new(new Size(2, 1));
 
-        DrawResult result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Replace);
+        var result = frame.Canvas.Draw("a界".AsSpan(), new Point(0, 0), edge: Edge.Replace);
 
         result.Replaced.ShouldBe(1);
         FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("�");
@@ -240,7 +239,7 @@ public sealed class CanvasTests
     public void Clip_WhenDrawingCrossesIntersection_PreservesOutsideCells()
     {
         using Frame frame = new(new Size(4, 1));
-        Canvas canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
+        var canvas = frame.Canvas.Clip(new Rect(1, 0, 2, 1));
 
         _ = canvas.Draw("abcd".AsSpan(), new Point(0, 0));
 

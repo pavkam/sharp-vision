@@ -12,12 +12,12 @@ public sealed class StateModelTests
     [Fact]
     public void SelectedUncheckedControl_ResolvesSelectedNotChecked()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Checked, Color.Indexed(1));
         style.Set(Control.ForegroundProperty, State.Selected, Color.Indexed(2));
         theme.SetStyle(style);
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         control.SetSelectedState(true);
@@ -29,12 +29,12 @@ public sealed class StateModelTests
     [Fact]
     public void UncheckedCheckBox_WhenRowSelected_DoesNotResolveCheckedStyle()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.BackgroundProperty, State.Checked, Color.Indexed(1));
         style.Set(Control.BackgroundProperty, State.Selected, Color.Indexed(2));
         theme.SetStyle(style);
-        CheckBox box = new();
+        var box = new CheckBox();
         ThemeTestSupport.ApplyTheme(box, theme);
 
         box.SetSelectedState(true);
@@ -46,13 +46,13 @@ public sealed class StateModelTests
     [Fact]
     public void Resolve_WhenCombinedStateDefined_WinsOverSingleStates()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Hovered, Color.Indexed(1));
         style.Set(Control.ForegroundProperty, State.Focused, Color.Indexed(2));
         style.Set(Control.ForegroundProperty, State.Hovered | State.Focused, Color.Indexed(3));
         theme.SetStyle(style);
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Hovered | State.Focused)
@@ -65,11 +65,11 @@ public sealed class StateModelTests
     [Fact]
     public void IndeterminateCheckBox_ResolvesIndeterminateStyle()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Indeterminate, Color.Indexed(5));
         theme.SetStyle(style);
-        CheckBox box = new() { IsThreeState = true, IsChecked = null };
+        var box = new CheckBox() { IsThreeState = true, IsChecked = null };
         ThemeTestSupport.ApplyTheme(box, theme);
 
         box.Foreground.ShouldBe(Color.Indexed(5));
@@ -79,14 +79,14 @@ public sealed class StateModelTests
     [Fact]
     public async Task Pressed_WhenMeasureOverlayDefined_InvalidatesMeasureAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(
             () =>
             {
-                ControlStyle<Control> style = ThemeTestSupport.CreateStyle<Control>();
+                var style = ThemeTestSupport.CreateStyle<Control>();
                 style.Set(Control.PaddingProperty, State.Pressed, new Thickness(2));
-                ProbeControl control = new() { Style = style };
+                var control = new ProbeControl() { Style = style };
                 control.Attach(dispatcher);
                 control.Clear(Invalidation.All);
 
@@ -101,14 +101,14 @@ public sealed class StateModelTests
     [Fact]
     public async Task Pressed_WhenOnlyRenderOverlayDefined_InvalidatesRenderOnlyAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(
             () =>
             {
-                ControlStyle<Control> style = ThemeTestSupport.CreateStyle<Control>();
+                var style = ThemeTestSupport.CreateStyle<Control>();
                 style.Set(Control.ForegroundProperty, State.Pressed, Color.Indexed(3));
-                ProbeControl control = new() { Style = style };
+                var control = new ProbeControl() { Style = style };
                 control.Attach(dispatcher);
                 control.Clear(Invalidation.All);
 

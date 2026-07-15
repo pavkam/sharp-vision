@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies role resolution, fallbacks, and failure modes of the theme loader.</summary>
 public sealed class ThemeLoaderTests
@@ -22,15 +19,15 @@ public sealed class ThemeLoaderTests
     [Fact]
     public void FromJson_WhenPaletteKeyAndInlineHexAndIndex_Resolves()
     {
-        Theme theme = ThemeLoader.FromJson(
+        var theme = ThemeLoader.FromJson(
             Json("\"background\": \"bg\", \"foreground\": \"fg\", \"accent\": \"#ff8800\", \"border\": \"idx:8\""),
             "t");
 
-        theme.TryGetColor(ColorRole.Background, out Color bg).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Background, out var bg).ShouldBeTrue();
         bg.ShouldBe(Color.Rgb(0x10, 0x10, 0x10));
-        theme.TryGetColor(ColorRole.Accent, out Color accent).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Accent, out var accent).ShouldBeTrue();
         accent.ShouldBe(Color.Rgb(0xff, 0x88, 0x00));
-        theme.TryGetColor(ColorRole.Border, out Color border).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Border, out var border).ShouldBeTrue();
         border.ShouldBe(Color.Indexed(8));
     }
 
@@ -38,15 +35,15 @@ public sealed class ThemeLoaderTests
     [Fact]
     public void FromJson_WhenOnlyBackgroundAndForeground_FillsFallbacks()
     {
-        Theme theme = ThemeLoader.FromJson(
+        var theme = ThemeLoader.FromJson(
             Json("\"background\": \"bg\", \"foreground\": \"fg\""), "t");
 
         // accent -> foreground; surface -> background; border/muted -> foreground; selection -> accent(=fg)
-        theme.TryGetColor(ColorRole.Accent, out Color accent).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Accent, out var accent).ShouldBeTrue();
         accent.ShouldBe(Color.Rgb(0xe0, 0xe0, 0xe0));
-        theme.TryGetColor(ColorRole.Surface, out Color surface).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Surface, out var surface).ShouldBeTrue();
         surface.ShouldBe(Color.Rgb(0x10, 0x10, 0x10));
-        theme.TryGetColor(ColorRole.Info, out Color info).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Info, out var info).ShouldBeTrue();
         info.ShouldBe(accent);
     }
 
@@ -54,12 +51,12 @@ public sealed class ThemeLoaderTests
     [Fact]
     public void FromJson_WhenBorderAndMutedAbsent_BothFallBackToForeground()
     {
-        Theme theme = ThemeLoader.FromJson(
+        var theme = ThemeLoader.FromJson(
             Json("\"background\": \"bg\", \"foreground\": \"fg\""), "t");
 
-        theme.TryGetColor(ColorRole.Foreground, out Color fg).ShouldBeTrue();
-        theme.TryGetColor(ColorRole.Border, out Color border).ShouldBeTrue();
-        theme.TryGetColor(ColorRole.Muted, out Color muted).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Foreground, out var fg).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Border, out var border).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Muted, out var muted).ShouldBeTrue();
         border.ShouldBe(fg);
         muted.ShouldBe(fg);
     }
@@ -68,10 +65,10 @@ public sealed class ThemeLoaderTests
     [Fact]
     public void FromJson_WhenBorderPresentMutedAbsent_MutedTakesBorder()
     {
-        Theme theme = ThemeLoader.FromJson(
+        var theme = ThemeLoader.FromJson(
             Json("\"background\": \"bg\", \"foreground\": \"fg\", \"border\": \"#123456\""), "t");
 
-        theme.TryGetColor(ColorRole.Muted, out Color muted).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Muted, out var muted).ShouldBeTrue();
         muted.ShouldBe(Color.Rgb(0x12, 0x34, 0x56));
     }
 
@@ -79,10 +76,10 @@ public sealed class ThemeLoaderTests
     [Fact]
     public void FromJson_WhenMutedPresentBorderAbsent_BorderTakesMuted()
     {
-        Theme theme = ThemeLoader.FromJson(
+        var theme = ThemeLoader.FromJson(
             Json("\"background\": \"bg\", \"foreground\": \"fg\", \"muted\": \"#654321\""), "t");
 
-        theme.TryGetColor(ColorRole.Border, out Color border).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Border, out var border).ShouldBeTrue();
         border.ShouldBe(Color.Rgb(0x65, 0x43, 0x21));
     }
 

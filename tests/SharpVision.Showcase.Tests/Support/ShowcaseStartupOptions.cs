@@ -3,10 +3,8 @@
 
 namespace SharpVision.Showcase.Tests.Support;
 
-using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 
-using RuntimeOptions = Terminal.Runtime.Options;
+using RuntimeOptions = TerminalOptions;
 
 /// <summary>Creates terminal session options for interactive showcase tests.</summary>
 internal static class ShowcaseStartupOptions
@@ -23,8 +21,8 @@ internal static class ShowcaseStartupOptions
         bool negotiate = false)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        Settings overrides = new() { CellMouse = true };
-        Capabilities capabilities = negotiate
+        var overrides = new Settings() { CellMouse = true };
+        var capabilities = negotiate
             ? Detector.Detect(new Dictionary<string, string?>(), overrides: overrides)
             : Detector.Detect(environment, overrides: overrides);
 

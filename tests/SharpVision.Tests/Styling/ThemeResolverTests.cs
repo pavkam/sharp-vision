@@ -8,15 +8,32 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies theme resolver precedence through the public cascade.</summary>
 public sealed class ThemeResolverTests
 {
+    /// <summary>Verifies both public resolver overloads reject undefined visual-state bits.</summary>
+    [Fact]
+    public void Resolve_WhenVisualStateContainsUnknownBits_Throws()
+    {
+        var control = new ProbeControl();
+        var theme = new Theme();
+        var unknown = (State) (1 << 20);
+
+        var live = Should.Throw<ArgumentOutOfRangeException>(() =>
+            ThemeResolver.Resolve(control, Control.ForegroundProperty, unknown));
+        var designTime = Should.Throw<ArgumentOutOfRangeException>(() =>
+            ThemeResolver.Resolve(theme, typeof(ProbeControl), Control.ForegroundProperty, unknown));
+
+        live.ParamName.ShouldBe("visualState");
+        designTime.ParamName.ShouldBe("visualState");
+    }
+
     /// <summary>Verifies local values win over themed and per-instance overlays.</summary>
     [Fact]
     public void Resolve_WhenLocalValueExists_WinsOverThemeAndInstanceStyle()
     {
-        Theme theme = new();
-        ControlStyle<Control> themed = new();
+        var theme = new Theme();
+        var themed = new ControlStyle<Control>();
         themed.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(4));
         theme.SetStyle(themed);
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, theme);
         control.Foreground = Color.Indexed(9);
 
@@ -28,15 +45,15 @@ public sealed class ThemeResolverTests
     [Fact]
     public void Resolve_WhenInstanceStyleExists_OverlaysThemeWithoutInheritance()
     {
-        Theme theme = new();
-        ControlStyle<Control> themed = new();
+        var theme = new Theme();
+        var themed = new ControlStyle<Control>();
         themed.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
         theme.SetStyle(themed);
-        ProbeContainer root = new();
-        ProbeControl child = new();
+        var root = new ProbeContainer();
+        var child = new ProbeControl();
         root.Children.Add(child);
         ThemeTestSupport.ApplyTheme(root, theme);
-        ControlStyle<Control> overlay = new();
+        var overlay = new ControlStyle<Control>();
         overlay.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
         child.Style = overlay;
 

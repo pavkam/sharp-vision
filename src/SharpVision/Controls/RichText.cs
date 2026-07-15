@@ -4,7 +4,6 @@
 namespace SharpVision.Controls;
 
 
-using SharpVision.Terminal.Unicode;
 using SharpVision.Text;
 
 using TextLayout = SharpVision.Text.Layout;
@@ -59,24 +58,24 @@ public sealed class RichText: Control
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        int limit = Wrapping == Wrapping.None ? int.MaxValue : constraint.Width ?? int.MaxValue;
+        var limit = Wrapping == Wrapping.None ? int.MaxValue : constraint.Width ?? int.MaxValue;
 
         if (Wrapping == Wrapping.Word)
         {
-            Line[] wordLines = GetWordLines(limit);
-            int wordWidth = wordLines.Length == 0 ? 0 : wordLines.Max(static line => line.Cells);
+            var wordLines = GetWordLines(limit);
+            var wordWidth = wordLines.Length == 0 ? 0 : wordLines.Max(static line => line.Cells);
             return new Size(wordWidth, wordLines.Length);
         }
 
-        int[] widths = GetLineWidths(limit);
-        int width = widths.Length == 0 ? 0 : widths.Max();
+        var widths = GetLineWidths(limit);
+        var width = widths.Length == 0 ? 0 : widths.Max();
         return new Size(width, widths.Length);
     }
 
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        Rect bounds = ContentBounds;
+        var bounds = ContentBounds;
 
         if (Wrapping == Wrapping.Word)
         {
@@ -84,12 +83,12 @@ public sealed class RichText: Control
             return;
         }
 
-        int limit = Wrapping == Wrapping.None ? int.MaxValue : bounds.Width;
-        int[] widths = GetLineWidths(limit);
-        int line = 0;
-        int cells = 0;
+        var limit = Wrapping == Wrapping.None ? int.MaxValue : bounds.Width;
+        var widths = GetLineWidths(limit);
+        var line = 0;
+        var cells = 0;
 
-        foreach (Inline inline in Inlines)
+        foreach (var inline in Inlines)
         {
             switch (inline)
             {
@@ -136,10 +135,10 @@ public sealed class RichText: Control
     private int[] GetLineWidths(int limit)
     {
         List<int> widths = [];
-        int cells = 0;
-        bool hasContent = false;
+        var cells = 0;
+        var hasContent = false;
 
-        foreach (Inline inline in Inlines)
+        foreach (var inline in Inlines)
         {
             if (inline is LineBreak)
             {
@@ -149,7 +148,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            string content = inline switch
+            var content = inline switch
             {
                 Run run => run.Content,
                 Hyperlink hyperlink => hyperlink.Content,
@@ -171,15 +170,15 @@ public sealed class RichText: Control
     private Line[] GetWordLines(int width)
     {
         // Format the whole inline sequence so a word can span styled Run and Hyperlink boundaries.
-        string document = GetDocument();
+        var document = GetDocument();
 
         if (document.Length == 0)
         {
             return [];
         }
 
-        Line[] buffer = new Line[document.Length + 1];
-        int count = TextLayout.Format(
+        var buffer = new Line[document.Length + 1];
+        var count = TextLayout.Format(
             document,
             width,
             Wrapping.Word,
@@ -192,9 +191,9 @@ public sealed class RichText: Control
 
     private string GetDocument()
     {
-        StringBuilder builder = new();
+        var builder = new StringBuilder();
 
-        foreach (Inline inline in Inlines)
+        foreach (var inline in Inlines)
         {
             _ = builder.Append(inline switch
             {
@@ -214,9 +213,9 @@ public sealed class RichText: Control
         Debug.Assert(widths is not null, "RichText measurement requires a non-null width list.");
         Debug.Assert(limit >= 0, "RichText measurement limit is non-negative.");
 
-        foreach (Grapheme segment in Graphemes.Enumerate(content))
+        foreach (var segment in Graphemes.Enumerate(content))
         {
-            ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
+            var cluster = content.AsSpan(segment.Offset, segment.Length);
 
             if (cluster.Contains('\r') || cluster.Contains('\n'))
             {
@@ -225,7 +224,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            int width = Terminal.Unicode.Width.Measure(
+            var width = Terminal.Unicode.Width.Measure(
                 cluster,
                 CellPolicy.AmbiguousWidth).Cells;
 
@@ -254,9 +253,9 @@ public sealed class RichText: Control
         Debug.Assert(line >= 0, "RichText render line index is non-negative.");
         Debug.Assert(cells >= 0, "RichText render cell offset is non-negative.");
 
-        foreach (Grapheme segment in Graphemes.Enumerate(content))
+        foreach (var segment in Graphemes.Enumerate(content))
         {
-            ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
+            var cluster = content.AsSpan(segment.Offset, segment.Length);
 
             if (cluster.Contains('\r') || cluster.Contains('\n'))
             {
@@ -265,7 +264,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            int width = Terminal.Unicode.Width.Measure(
+            var width = Terminal.Unicode.Width.Measure(
                 cluster,
                 CellPolicy.AmbiguousWidth).Cells;
 
@@ -281,7 +280,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            int leading = Align(bounds.Width, widths[line]);
+            var leading = Align(bounds.Width, widths[line]);
             _ = canvas.Draw(
                 cluster,
                 new Point(bounds.X + leading + cells, bounds.Y + line),
@@ -294,12 +293,12 @@ public sealed class RichText: Control
     private void RenderWordWrapped(TerminalCanvas canvas, Rect bounds)
     {
         // Reuse the shared source offsets from Text.Layout while applying each inline's own rendition.
-        Line[] lines = GetWordLines(bounds.Width);
-        int sourceOffset = 0;
-        int line = 0;
-        int cells = 0;
+        var lines = GetWordLines(bounds.Width);
+        var sourceOffset = 0;
+        var line = 0;
+        var cells = 0;
 
-        foreach (Inline inline in Inlines)
+        foreach (var inline in Inlines)
         {
             switch (inline)
             {
@@ -356,10 +355,10 @@ public sealed class RichText: Control
         Debug.Assert(line >= 0, "RichText word render line index is non-negative.");
         Debug.Assert(cells >= 0, "RichText word render cell offset is non-negative.");
 
-        foreach (Grapheme segment in Graphemes.Enumerate(content))
+        foreach (var segment in Graphemes.Enumerate(content))
         {
-            ReadOnlySpan<char> cluster = content.AsSpan(segment.Offset, segment.Length);
-            int offset = sourceOffset + segment.Offset;
+            var cluster = content.AsSpan(segment.Offset, segment.Length);
+            var offset = sourceOffset + segment.Offset;
 
             if (cluster.Contains('\r') || cluster.Contains('\n'))
             {
@@ -377,7 +376,7 @@ public sealed class RichText: Control
                 continue;
             }
 
-            int width = Terminal.Unicode.Width.Measure(cluster, ambiguous).Cells;
+            var width = Terminal.Unicode.Width.Measure(cluster, ambiguous).Cells;
             _ = canvas.Draw(
                 cluster,
                 new Point(bounds.X + lines[line].Leading + cells, bounds.Y + line),
@@ -391,8 +390,8 @@ public sealed class RichText: Control
 
     private TerminalStyle ResolveInlineStyle(Run run)
     {
-        TerminalStyle inherited = ResolvedStyle;
-        (TerminalAttributes attributes, Terminal.Protocols.Underline underline, Terminal.Protocols.Color underlineColor) = Decoration.Resolve(
+        var inherited = ResolvedStyle;
+        (var attributes, var underline, var underlineColor) = Decoration.Resolve(
             inherited,
             run.Attributes,
             run.Underline,
@@ -408,8 +407,8 @@ public sealed class RichText: Control
 
     private TerminalStyle ResolveInlineStyle(Hyperlink hyperlink)
     {
-        TerminalStyle inherited = ResolvedStyle;
-        (TerminalAttributes attributes, Terminal.Protocols.Underline underline, Terminal.Protocols.Color underlineColor) = Decoration.Resolve(
+        var inherited = ResolvedStyle;
+        (var attributes, var underline, var underlineColor) = Decoration.Resolve(
             inherited,
             hyperlink.Attributes,
             hyperlink.Underline,
@@ -428,7 +427,7 @@ public sealed class RichText: Control
         Debug.Assert(left >= 0, "RichText accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "RichText accumulation uses non-negative extents.");
 
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
@@ -451,7 +450,7 @@ public sealed class RichText: Control
         Debug.Assert(width >= 0, "RichText alignment width is non-negative.");
         Debug.Assert(cells >= 0, "RichText alignment cell count is non-negative.");
 
-        int remaining = Math.Max(0, width - cells);
+        var remaining = Math.Max(0, width - cells);
         return TextAlignment switch
         {
             Alignment.Start => 0,

@@ -6,7 +6,6 @@ namespace SharpVision.Terminal.Tests.Transport;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Runtime;
 
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Records one expected pseudoterminal resize and runtime faults.</summary>
 internal sealed class RuntimeSink: ISink
@@ -28,7 +27,7 @@ internal sealed class RuntimeSink: ISink
     public void Input(in Stroke value) => _ = value;
 
     /// <inheritdoc/>
-    public void Input(in Text value) => _ = value;
+    public void Input(in InputText value) => _ = value;
 
     /// <inheritdoc/>
     public void Input(in Pointer value) => _ = value;

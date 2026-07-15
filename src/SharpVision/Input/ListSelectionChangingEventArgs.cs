@@ -5,6 +5,7 @@ namespace SharpVision.Input;
 
 using System.ComponentModel;
 
+
 /// <summary>Provides a cancellable proposed List selection delta.</summary>
 public sealed class ListSelectionChangingEventArgs: CancelEventArgs
 {
@@ -30,7 +31,7 @@ public sealed class ListSelectionChangingEventArgs: CancelEventArgs
 
     private static void Validate(ReadOnlySpan<int> values, string name)
     {
-        foreach (int value in values)
+        foreach (var value in values)
         {
             if (value < 0)
             {

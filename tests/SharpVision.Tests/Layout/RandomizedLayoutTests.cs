@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Layout;
 
-using SharpVision.Terminal.Input;
 
 
 /// <summary>Exercises hostile fixed-seed tree, state, layout, focus, and capture mutation.</summary>
@@ -16,15 +15,15 @@ public sealed class RandomizedLayoutTests
     [Fact]
     public async Task Layout_WhenTreeMutatesRandomly_PreservesInfrastructureInvariantsAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() => Run(dispatcher), TestContext.Current.CancellationToken);
     }
 
     private static void Run(Dispatcher dispatcher)
     {
-        Random random = new(_seed);
-        ProbeContainer root = new()
+        var random = new Random(_seed);
+        var root = new ProbeContainer()
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
@@ -33,16 +32,16 @@ public sealed class RandomizedLayoutTests
         using FocusManager focus = new(root);
         using CaptureManager capture = new(root);
         List<ProbeControl> controls = [];
-        Engine engine = new();
-        Size size = new(80, 24);
+        var engine = new Engine();
+        var size = new Size(80, 24);
 
-        for (int sample = 0; sample < _caseCount; sample++)
+        for (var sample = 0; sample < _caseCount; sample++)
         {
-            int operation = random.Next(0, 10);
+            var operation = random.Next(0, 10);
             Apply(operation, random, root, controls, focus, capture, ref size);
             engine.Layout(root, size);
 
-            foreach (ProbeControl control in controls)
+            foreach (var control in controls)
             {
                 engine.Layout(control, size);
             }
@@ -69,12 +68,12 @@ public sealed class RandomizedLayoutTests
         CaptureManager capture,
         ref Size size)
     {
-        ProbeControl? control = controls.Count == 0 ? null : controls[random.Next(controls.Count)];
+        var control = controls.Count == 0 ? null : controls[random.Next(controls.Count)];
 
         switch (operation)
         {
             case 0 when controls.Count < 32:
-                ProbeControl added = new(new Size(random.Next(0, 20), random.Next(0, 8)))
+                var added = new ProbeControl(new Size(random.Next(0, 20), random.Next(0, 8)))
                 {
                     CanFocus = random.Next(0, 2) == 0,
                     Content = random.Next(0, 2) == 0 ? "界".AsMemory() : "x".AsMemory(),
@@ -146,12 +145,12 @@ public sealed class RandomizedLayoutTests
         CaptureManager capture,
         Size size)
     {
-        string context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}, size={size}";
+        var context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}, size={size}";
         root.Bounds.Width.ShouldBe(size.Width, context);
         root.Bounds.Height.ShouldBe(size.Height, context);
         root.Children.Count.ShouldBe(controls.Count, context);
 
-        foreach (ProbeControl control in controls)
+        foreach (var control in controls)
         {
             control.Parent.ShouldBeSameAs(root, context);
             control.Dispatcher.ShouldBeSameAs(root.Dispatcher, context);
@@ -179,14 +178,14 @@ public sealed class RandomizedLayoutTests
 
     private static void AssertWideOwnership(int sample, int operation, Frame frame)
     {
-        string context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}";
+        var context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}";
 
-        for (int y = 0; y < frame.Size.Height; y++)
+        for (var y = 0; y < frame.Size.Height; y++)
         {
-            for (int x = 0; x < frame.Size.Width; x++)
+            for (var x = 0; x < frame.Size.Width; x++)
             {
-                Point point = new(x, y);
-                CellInfo cell = frame.GetCell(point);
+                var point = new Point(x, y);
+                var cell = frame.GetCell(point);
 
                 if (!cell.IsContinuation)
                 {
@@ -194,7 +193,7 @@ public sealed class RandomizedLayoutTests
                 }
 
                 cell.Lead.X.ShouldBeLessThan(x, context);
-                CellInfo lead = frame.GetCell(cell.Lead);
+                var lead = frame.GetCell(cell.Lead);
                 lead.IsContinuation.ShouldBeFalse(context);
                 lead.Width.ShouldBe(2, context);
             }

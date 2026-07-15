@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
-using System.Diagnostics;
 
 /// <summary>Stores one bounded recent query outcome.</summary>
 internal readonly record struct History

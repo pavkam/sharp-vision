@@ -3,13 +3,12 @@
 
 namespace SharpVision.Terminal.Tests.Input;
 
-
 using SharpVision.Terminal.Input;
 
 
-using CellMetrics = Geometry.Metrics;
+
+
 using InputAction = Terminal.Input.PointerAction;
-using InputDecoder = Terminal.Input.Decoder;
 
 /// <summary>
 /// Verifies cell, UTF-8, SGR, pixel, and urxvt pointer decoding.
@@ -39,7 +38,7 @@ public sealed class MouseTests
         Modifiers modifiers,
         bool motion)
     {
-        Pointer pointer = Decode(Encoding.UTF8.GetBytes(input));
+        var pointer = Decode(Encoding.UTF8.GetBytes(input));
 
         pointer.Cells.ShouldBe(new Point(9, 4));
         pointer.Pixels.ShouldBeNull();
@@ -57,7 +56,7 @@ public sealed class MouseTests
     [Fact]
     public void Decode_WhenPixelMouseArrives_PreservesPixelsAndInfersCells()
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
             new Options
@@ -68,7 +67,7 @@ public sealed class MouseTests
 
         decoder.Decode("\u001b[<0;17;33M"u8);
 
-        Pointer pointer = sink.Pointers.Single();
+        var pointer = sink.Pointers.Single();
         pointer.Pixels.ShouldBe(new Point(16, 32));
         pointer.Cells.ShouldBe(new Point(2, 2));
         pointer.IsCellPositionInferred.ShouldBeTrue();
@@ -79,7 +78,7 @@ public sealed class MouseTests
     public void Decode_WhenPixelGridIsUneven_UsesExactRationalMapping()
     {
         // Arrange
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
             new Options
@@ -94,7 +93,7 @@ public sealed class MouseTests
         decoder.Decode("\u001b[<0;101;31M"u8);
 
         // Assert
-        Pointer pointer = sink.Pointers.Single();
+        var pointer = sink.Pointers.Single();
         pointer.Pixels.ShouldBe(new Point(100, 30));
         pointer.Cells.ShouldBe(new Point(9, 2));
         pointer.IsCellPositionInferred.ShouldBeTrue();
@@ -105,7 +104,7 @@ public sealed class MouseTests
     public void Decode_WhenPixelMetricsAreMissing_PreservesOnlyPixels()
     {
         // Arrange
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
             new Options { PixelMouse = true });
@@ -114,7 +113,7 @@ public sealed class MouseTests
         decoder.Decode("\u001b[<0;17;33M"u8);
 
         // Assert
-        Pointer pointer = sink.Pointers.Single();
+        var pointer = sink.Pointers.Single();
         pointer.Pixels.ShouldBe(new Point(16, 32));
         pointer.Cells.ShouldBeNull();
         pointer.IsCellPositionInferred.ShouldBeFalse();
@@ -125,7 +124,7 @@ public sealed class MouseTests
     public void Decode_WhenPixelIsOutsideExactGrid_PreservesOnlyPixels()
     {
         // Arrange
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(
             sink,
             new Options
@@ -140,7 +139,7 @@ public sealed class MouseTests
         decoder.Decode("\u001b[<0;102;31M"u8);
 
         // Assert
-        Pointer pointer = sink.Pointers.Single();
+        var pointer = sink.Pointers.Single();
         pointer.Pixels.ShouldBe(new Point(101, 30));
         pointer.Cells.ShouldBeNull();
         pointer.IsCellPositionInferred.ShouldBeFalse();
@@ -152,7 +151,7 @@ public sealed class MouseTests
     [Fact]
     public void Decode_WhenMouseLeaves_EmitsLeaveWithoutCoordinates()
     {
-        Pointer pointer = Decode("\u001b[<35;0;0M"u8.ToArray());
+        var pointer = Decode("\u001b[<35;0;0M"u8.ToArray());
 
         pointer.Action.ShouldBe(InputAction.Leave);
         pointer.Cells.ShouldBe(default);
@@ -165,7 +164,7 @@ public sealed class MouseTests
     [Fact]
     public void Decode_WhenCoordinatesAreMaximum_PreservesBoundedCells()
     {
-        Pointer pointer = Decode(Encoding.UTF8.GetBytes(
+        var pointer = Decode(Encoding.UTF8.GetBytes(
             $"\u001b[<0;{int.MaxValue};{int.MaxValue}M"));
 
         pointer.Cells.ShouldBe(new Point(int.MaxValue - 1, int.MaxValue - 1));
@@ -179,7 +178,7 @@ public sealed class MouseTests
     [InlineData("\u001b[32;10;5M")]
     public void Decode_WhenLegacyMouseArrives_MapsCellPress(string input)
     {
-        Pointer pointer = Decode(Encoding.UTF8.GetBytes(input));
+        var pointer = Decode(Encoding.UTF8.GetBytes(input));
 
         pointer.ShouldBe(new Pointer(
             new Point(9, 4),
@@ -199,17 +198,17 @@ public sealed class MouseTests
     [Fact]
     public void Decode_WhenMouseIsFragmented_MapsAtEverySplit()
     {
-        byte[] x10 = "\u001b[M "u8.ToArray()
+        var x10 = "\u001b[M "u8.ToArray()
             .Concat(Encoding.UTF8.GetBytes(new Rune(333).ToString()))
             .Concat(Encoding.UTF8.GetBytes(new Rune(233).ToString()))
             .ToArray();
-        byte[] sgr = "\u001b[<0;10;5M"u8.ToArray();
+        var sgr = "\u001b[<0;10;5M"u8.ToArray();
 
-        foreach (byte[]? bytes in new[] { x10, sgr })
+        foreach (var bytes in new[] { x10, sgr })
         {
-            for (int split = 0; split <= bytes.Length; split++)
+            for (var split = 0; split <= bytes.Length; split++)
             {
-                RecordingInputSink sink = new();
+                var sink = new RecordingInputSink();
                 using InputDecoder decoder = new(sink);
                 decoder.Decode(bytes.AsSpan(0, split));
                 decoder.Decode(bytes.AsSpan(split));
@@ -227,7 +226,7 @@ public sealed class MouseTests
     [Fact]
     public void Decode_WhenMouseIsMalformed_ReportsAndRecovers()
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(sink);
 
         decoder.Decode("\u001b[<0;0;5Mx"u8);
@@ -246,7 +245,7 @@ public sealed class MouseTests
     [InlineData("\u001b[M *")]
     public void Complete_WhenMouseEncodingIsInvalid_ReportsWithoutPointer(string input)
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
         using InputDecoder decoder = new(sink);
 
         decoder.Decode(Encoding.UTF8.GetBytes(input));
@@ -258,7 +257,7 @@ public sealed class MouseTests
 
     private static Pointer Decode(byte[] bytes)
     {
-        RecordingInputSink sink = new();
+        var sink = new RecordingInputSink();
 
         using (InputDecoder decoder = new(sink))
         {

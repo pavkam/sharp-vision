@@ -23,8 +23,8 @@ public sealed class CsiTests
     [InlineData(Movement.Back, "\u001b[3D")]
     public void Move_WhenCountIsValid_WritesExactBytes(Movement operation, string expected)
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         Csi.Move(writer, operation, 3);
 
@@ -37,7 +37,7 @@ public sealed class CsiTests
     [Fact]
     public void Position_WhenCoordinatesAreValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
         Csi.Position(new Writer(destination), row: 12, column: 4);
 
@@ -50,8 +50,8 @@ public sealed class CsiTests
     [Fact]
     public void Erase_WhenAreasAreValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         Csi.EraseDisplay(writer, EraseArea.Scrollback);
         Csi.EraseLine(writer, EraseArea.All);
@@ -65,8 +65,8 @@ public sealed class CsiTests
     [Fact]
     public void Edit_WhenCountsAreValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         Csi.InsertCharacters(writer, 2);
         Csi.DeleteCharacters(writer, 3);
@@ -85,8 +85,8 @@ public sealed class CsiTests
     [Fact]
     public void Query_WhenRequested_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         Csi.SaveCursor(writer);
         Csi.RestoreCursor(writer);
@@ -105,8 +105,8 @@ public sealed class CsiTests
     [Fact]
     public void Command_WhenArgumentIsInvalid_ThrowsBeforeWriting()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Csi.Move(writer, Movement.Up, 0));

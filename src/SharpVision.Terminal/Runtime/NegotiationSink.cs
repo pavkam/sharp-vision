@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Runtime;
 
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Protocols;
 
 using InputText = Input.Text;
 

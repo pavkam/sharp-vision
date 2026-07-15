@@ -3,9 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers;
-using System.Buffers.Text;
-using System.Diagnostics;
 
 /// <summary>
 /// Writes validated ECMA-48 sequence grammar directly to a byte buffer.
@@ -58,8 +55,8 @@ public readonly struct Writer
         ValidateIntermediates(intermediates, nameof(intermediates));
         ValidateFinal(final, 0x30, nameof(final));
 
-        int length = checked(intermediates.Length + 2);
-        Span<byte> destination = _destination.GetSpan(length);
+        var length = checked(intermediates.Length + 2);
+        var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
@@ -90,8 +87,8 @@ public readonly struct Writer
         ValidateIntermediates(intermediates, nameof(intermediates));
         ValidateFinal(final, 0x40, nameof(final));
 
-        int length = checked(parameters.Length + intermediates.Length + 3);
-        Span<byte> destination = _destination.GetSpan(length);
+        var length = checked(parameters.Length + intermediates.Length + 3);
+        var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
@@ -119,14 +116,14 @@ public readonly struct Writer
         ArgumentOutOfRangeException.ThrowIfNegative(selector);
         ValidatePayload(payload, nameof(payload));
 
-        int selectorLength = CountDecimalBytes(selector);
-        int length = checked(selectorLength + payload.Length + 5);
-        Span<byte> destination = _destination.GetSpan(length);
+        var selectorLength = CountDecimalBytes(selector);
+        var length = checked(selectorLength + payload.Length + 5);
+        var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
         destination[1] = (byte) ']';
-        bool formatted = Utf8Formatter.TryFormat(selector, destination[2..], out int written);
+        var formatted = Utf8Formatter.TryFormat(selector, destination[2..], out var written);
         Debug.Assert(formatted && written == selectorLength, "Validated selector did not format exactly.");
         destination[selectorLength + 2] = (byte) ';';
         payload.CopyTo(destination[(selectorLength + 3)..]);
@@ -148,7 +145,7 @@ public readonly struct Writer
     /// </exception>
     public void Command(SequenceKind kind, ReadOnlySpan<byte> payload)
     {
-        byte introducer = kind switch
+        var introducer = kind switch
         {
             SequenceKind.Apc => (byte) '_',
             SequenceKind.Pm => (byte) '^',
@@ -168,8 +165,8 @@ public readonly struct Writer
         };
         ValidatePayload(payload, nameof(payload));
 
-        int length = checked(payload.Length + 4);
-        Span<byte> destination = _destination.GetSpan(length);
+        var length = checked(payload.Length + 4);
+        var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
@@ -204,16 +201,16 @@ public readonly struct Writer
         ValidateFinal(final, 0x40, nameof(final));
         ValidatePayload(payload, nameof(payload));
 
-        int length = checked(parameters.Length + intermediates.Length + payload.Length + 5);
-        Span<byte> destination = _destination.GetSpan(length);
+        var length = checked(parameters.Length + intermediates.Length + payload.Length + 5);
+        var destination = _destination.GetSpan(length);
         Debug.Assert(destination.Length >= length, "IBufferWriter returned less than its size hint.");
 
         destination[0] = _escape;
         destination[1] = (byte) 'P';
         parameters.CopyTo(destination[2..]);
-        int intermediateStart = parameters.Length + 2;
+        var intermediateStart = parameters.Length + 2;
         intermediates.CopyTo(destination[intermediateStart..]);
-        int finalIndex = intermediateStart + intermediates.Length;
+        var finalIndex = intermediateStart + intermediates.Length;
         destination[finalIndex] = final;
         payload.CopyTo(destination[(finalIndex + 1)..]);
         WriteTerminator(destination[(length - 2)..]);
@@ -223,7 +220,7 @@ public readonly struct Writer
 
     private static int CountDecimalBytes(int value)
     {
-        int count = 1;
+        var count = 1;
 
         while (value >= 10)
         {
@@ -236,7 +233,7 @@ public readonly struct Writer
 
     private static void ValidateParameters(ReadOnlySpan<byte> value, string parameterName)
     {
-        foreach (byte item in value)
+        foreach (var item in value)
         {
             if (item is < 0x30 or > 0x3f)
             {
@@ -249,7 +246,7 @@ public readonly struct Writer
 
     private static void ValidateIntermediates(ReadOnlySpan<byte> value, string parameterName)
     {
-        foreach (byte item in value)
+        foreach (var item in value)
         {
             if (item is < 0x20 or > 0x2f)
             {
@@ -273,7 +270,7 @@ public readonly struct Writer
 
     private static void ValidatePayload(ReadOnlySpan<byte> value, string parameterName)
     {
-        foreach (byte item in value)
+        foreach (var item in value)
         {
             if (item is < 0x20 or 0x7f)
             {

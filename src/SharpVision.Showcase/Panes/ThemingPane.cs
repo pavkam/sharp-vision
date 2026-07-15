@@ -3,10 +3,9 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
-
 using Text = SharpVision.Controls.Text;
+
+
 
 /// <summary>Documents application theming, type-keyed styles, local overrides, and third-party style properties.</summary>
 internal sealed class ThemingPane: View
@@ -17,51 +16,51 @@ internal sealed class ThemingPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        ShowcasePanel panel = new();
+        var panel = new ShowcasePanel();
 
-        Button left = new() { Content = new Text("Left") };
-        Button right = new() { Content = new Text("Right") };
-        Button above = new() { Content = new Text("Above") };
-        Button below = new() { Content = new Text("Below") };
+        var left = new Button() { Content = new Text("Left") };
+        var right = new Button() { Content = new Text("Right") };
+        var above = new Button() { Content = new Text("Above") };
+        var below = new Button() { Content = new Text("Below") };
         left.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Left;
         right.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Right;
         above.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Above;
         below.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Below;
 
-        Stack placement = Doc.Column(
+        var placement = Doc.Column(
             new Text("Label placement"),
             Doc.Row(left, right, above, below));
 
         // A scratch theme, never installed as the application theme, holds one style keyed to the
         // Button type. ThemeResolver's design-time overload reads it back by type alone, with no live
         // control involved, proving the association Theme.SetStyle<Button> stored.
-        ControlStyle<Button> typedStyle = new();
+        var typedStyle = new ControlStyle<Button>();
         typedStyle.Set(BackgroundProperty, State.Normal, Color.Indexed(4));
         typedStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Heavy);
-        Theme spotlight = new();
+        var spotlight = new Theme();
         spotlight.SetStyle(typedStyle);
 
-        Color? resolvedBackground = ThemeResolver.Resolve(
+        var resolvedBackground = ThemeResolver.Resolve(
             spotlight, typeof(Button), BackgroundProperty, State.Normal);
-        Glyphs resolvedGlyphs = ThemeResolver.Resolve(
+        var resolvedGlyphs = ThemeResolver.Resolve(
             spotlight, typeof(Button), BorderGlyphsProperty, State.Normal);
 
-        Button typedPreview = new()
+        var typedPreview = new Button()
         {
             Content = new Text("Every Button"),
             Style = spotlight.GetStyle<Button>(),
         };
-        Text typedReadout = new(
+        var typedReadout = new Text(
             $"ThemeResolver.Resolve(theme, typeof(Button), ...) reports background set: {resolvedBackground.HasValue}, border glyphs: {resolvedGlyphs}. The preview button borrows the same style object as a local override so the values are visible here.");
 
         // A local override attaches a ControlStyle directly to one instance, skipping any theme.
-        ControlStyle<Button> localStyle = new();
+        var localStyle = new ControlStyle<Button>();
         localStyle.Set(ForegroundProperty, State.Normal, Color.Indexed(3));
         localStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Ascii);
-        Button overridden = new() { Content = new Text("Only me"), Style = localStyle };
-        Button plain = new() { Content = new Text("Themed sibling") };
+        var overridden = new Button() { Content = new Text("Only me"), Style = localStyle };
+        var plain = new Button() { Content = new Text("Themed sibling") };
 
-        Stack roleSwatches = BuildRoleSwatches();
+        var roleSwatches = BuildRoleSwatches();
 
         return Doc.Page(
             Title,
@@ -90,13 +89,13 @@ internal sealed class ThemingPane: View
 
     private static Stack BuildRoleSwatches()
     {
-        ColorRole[] roles = Enum.GetValues<ColorRole>();
-        Control[] rows = new Control[roles.Length];
+        var roles = Enum.GetValues<ColorRole>();
+        var rows = new Control[roles.Length];
 
-        for (int index = 0; index < roles.Length; index++)
+        for (var index = 0; index < roles.Length; index++)
         {
-            ColorRole role = roles[index];
-            Border chip = new()
+            var role = roles[index];
+            var chip = new Border()
             {
                 Width = Length.Cells(6),
                 Height = Length.Cells(1),

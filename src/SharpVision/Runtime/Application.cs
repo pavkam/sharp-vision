@@ -3,26 +3,22 @@
 
 namespace SharpVision.Runtime;
 
-using System.Buffers;
 
-using SharpVision.Styling;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Runtime;
 using SharpVision.Terminal.Transport;
-using SharpVision.Threading;
 
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
-using TerminalDiagnostic = Terminal.Protocols.Diagnostic;
-using TerminalDiagnosticCode = Terminal.Protocols.DiagnosticCode;
+using TerminalDiagnostic = Diagnostic;
+using TerminalDiagnosticCode = DiagnosticCode;
 using TerminalFocus = Terminal.Input.Focus;
 using TerminalOptions = Terminal.Runtime.Options;
-using TerminalResponse = Terminal.Protocols.Response;
-using TerminalSequence = Terminal.Protocols.ProtocolSequence;
-using TerminalSequenceKind = Terminal.Protocols.SequenceKind;
+using TerminalResponse = Response;
+using TerminalSequence = ProtocolSequence;
+using TerminalSequenceKind = SequenceKind;
 using TerminalText = Terminal.Input.Text;
-using UnicodePolicy = Terminal.Unicode.Policy;
+using UnicodePolicy = Policy;
 
 /// <summary>Owns the dispatcher-affine UI tree and asynchronous terminal runtime.</summary>
 public sealed partial class Application: ISink, IAsyncDisposable
@@ -167,7 +163,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
                 return;
             }
 
-            Dispatcher? dispatcher = Dispatcher;
+            var dispatcher = Dispatcher;
 
             if (dispatcher is not null && !dispatcher.CheckAccess())
             {
@@ -268,7 +264,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
         _sessionTask = _session.RunAsync(_lifetime.Token).AsTask();
         _ = ObserveSessionAsync();
-        Task completed = await Task.WhenAny(_started.Task, _completion.Task)
+        var completed = await Task.WhenAny(_started.Task, _completion.Task)
             .WaitAsync(cancellationToken);
         await completed.WaitAsync(cancellationToken);
     }
@@ -373,7 +369,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     public void Sequence(TerminalSequence value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        long discardedBytes = checked(
+        var discardedBytes = checked(
             (long) value.Parameters.Length +
             value.Intermediates.Length +
             value.Payload.Length +
@@ -452,7 +448,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        StoppingEventArgs eventArgs = new();
+        var eventArgs = new StoppingEventArgs();
         Stopping?.Invoke(this, eventArgs);
 
         if (eventArgs.Cancel && !forced)
@@ -718,8 +714,8 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        TerminalCapabilities previous = Capabilities;
-        bool measure = previous.AmbiguousWidth != value.AmbiguousWidth;
+        var previous = Capabilities;
+        var measure = previous.AmbiguousWidth != value.AmbiguousWidth;
         Capabilities = value;
         CellPolicy = new UnicodePolicy(value.AmbiguousWidth);
 
@@ -762,7 +758,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
     private void OnThemeChanged(object? sender, ThemeChangedEventArgs eventArgs)
     {
-        Dispatcher? dispatcher = Dispatcher;
+        var dispatcher = Dispatcher;
 
         if (dispatcher is not null && !dispatcher.CheckAccess())
         {
@@ -937,7 +933,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private void Report(Exception exception)
     {
         Failure ??= exception;
-        UnhandledEventArgs eventArgs = new(exception);
+        var eventArgs = new UnhandledEventArgs(exception);
         UnhandledException?.Invoke(this, eventArgs);
 
         if (!eventArgs.Handled)
@@ -1011,11 +1007,11 @@ public sealed partial class Application: ISink, IAsyncDisposable
             _outOfBand.Clear();
         }
 
-        IDisposable hold = Dispatcher.Hold();
-        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var hold = Dispatcher.Hold();
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _renderTask = completion.Task;
         _rendering = true;
-        ValueTask operation = WriteOutOfBandAsync(payload);
+        var operation = WriteOutOfBandAsync(payload);
         _ = ObserveOutOfBandAsync(operation, hold, completion);
     }
 
@@ -1111,7 +1107,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             return;
         }
 
-        Frame frame = new(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
+        var frame = new Frame(Size, ambiguousWidth: CellPolicy.AmbiguousWidth);
 
         try
         {
@@ -1123,12 +1119,12 @@ public sealed partial class Application: ISink, IAsyncDisposable
             throw;
         }
 
-        IDisposable hold = Dispatcher.Hold();
-        TaskCompletionSource completion = new(
+        var hold = Dispatcher.Hold();
+        var completion = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         _renderTask = completion.Task;
         _rendering = true;
-        ValueTask<Metrics> operation = _renderer.RenderAsync(
+        var operation = _renderer.RenderAsync(
             frame,
             _transport,
             Capabilities,
@@ -1138,7 +1134,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
     private void WakeInput()
     {
-        bool post = false;
+        var post = false;
 
         lock (_gate)
         {

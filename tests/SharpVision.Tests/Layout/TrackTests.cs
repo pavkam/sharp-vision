@@ -12,7 +12,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenPercentAndStarsShareOddSpace_UsesCumulativeEdges()
     {
-        int[] result = Tracks.Resolve(
+        var result = Tracks.Resolve(
             available: 11,
             [Length.Percent(50), Length.Star(1), Length.Star(1)],
             [0, 0, 0]);
@@ -25,7 +25,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenKindsAreMixed_UsesFinalAxisAndRemainingSpace()
     {
-        int[] result = Tracks.Resolve(
+        var result = Tracks.Resolve(
             available: 20,
             [Length.Cells(3), Length.Auto, Length.Percent(25), Length.Star(1)],
             [0, 4, 0, 0]);
@@ -37,7 +37,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenAxisIsUnbounded_UsesIntrinsicForPercentAndStar()
     {
-        int[] result = Tracks.Resolve(
+        var result = Tracks.Resolve(
             available: null,
             [Length.Percent(50), Length.Star(1), Length.Cells(5), Length.Auto],
             [4, 3, 0, 2]);
@@ -49,11 +49,11 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenTracksHaveLimits_ClampsAndRedistributesRemainder()
     {
-        Length[] lengths = [Length.Auto, Length.Star(1), Length.Star(1)];
-        int[] automatic = [10, 0, 0];
-        int[] minimum = [0, 4, 0];
-        int[] maximum = [6, 5, int.MaxValue];
-        int[] result = new int[3];
+        var lengths = new[] { Length.Auto, Length.Star(1), Length.Star(1) };
+        var automatic = new[] { 10, 0, 0 };
+        var minimum = new[] { 0, 4, 0 };
+        var maximum = new[] { 6, 5, int.MaxValue };
+        var result = new int[3];
 
         Tracks.Resolve(20, lengths, automatic, minimum, maximum, result);
 
@@ -64,7 +64,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenRequestsExceedAvailable_ShrinksByDeterministicPriority()
     {
-        int[] result = Tracks.Resolve(
+        var result = Tracks.Resolve(
             available: 8,
             [Length.Cells(10), Length.Auto, Length.Percent(50), Length.Star(1)],
             [0, 5, 0, 0]);
@@ -76,7 +76,7 @@ public sealed class TrackTests
     [Fact]
     public void Resolve_WhenAvailableIsZero_ReturnsZeroTracks()
     {
-        int[] result = Tracks.Resolve(
+        var result = Tracks.Resolve(
             available: 0,
             [Length.Cells(4), Length.Auto, Length.Percent(50), Length.Star(1)],
             [0, 3, 0, 0]);

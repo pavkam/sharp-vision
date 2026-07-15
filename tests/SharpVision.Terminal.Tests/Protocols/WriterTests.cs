@@ -17,8 +17,8 @@ public sealed class WriterTests
     [Fact]
     public void Escape_WhenFinalIsValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         writer.Escape([], (byte) '7');
 
@@ -31,8 +31,8 @@ public sealed class WriterTests
     [Fact]
     public void Csi_WhenParametersAreValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         writer.Csi("12;4"u8, [], (byte) 'H');
 
@@ -46,8 +46,8 @@ public sealed class WriterTests
     [Fact]
     public void Osc_WhenPayloadIsValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         writer.Osc(2, "title"u8);
 
@@ -78,8 +78,8 @@ public sealed class WriterTests
     [InlineData(SequenceKind.Sos, (byte) 'X')]
     public void Command_WhenKindIsValid_WritesExactBytes(SequenceKind kind, byte introducer)
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         writer.Command(kind, "payload"u8);
 
@@ -105,8 +105,8 @@ public sealed class WriterTests
     [Fact]
     public void Dcs_WhenHeaderAndPayloadAreValid_WritesExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         writer.Dcs("1;2"u8, "$"u8, (byte) 'q', "data"u8);
 
@@ -134,8 +134,8 @@ public sealed class WriterTests
     [Fact]
     public void Write_WhenGrammarIsInvalid_ThrowsBeforeWriting()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => writer.Escape([], 0x2f));

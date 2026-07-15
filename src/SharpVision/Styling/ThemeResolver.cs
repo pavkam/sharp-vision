@@ -5,12 +5,13 @@ namespace SharpVision.Styling;
 
 using System.Numerics;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Resolves effective style-property values through the theme cascade.</summary>
 public static class ThemeResolver
 {
     private static readonly List<Control> _noScopes = [];
+
+    #region Public resolution
 
     /// <summary>Resolves one property for a control using theme, style, and local values.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
@@ -22,15 +23,19 @@ public static class ThemeResolver
     /// <exception cref="ArgumentException">
     /// The property does not apply to the control's runtime type.
     /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="visualState"/> contains an unknown flag.
+    /// </exception>
     public static T Resolve<T>(Control control, StyleProperty<T> property, State visualState)
     {
         ArgumentNullException.ThrowIfNull(control);
         ArgumentNullException.ThrowIfNull(property);
+        ValidateVisualState(visualState);
         EnsureApplies(control, property);
 
         T? value;
 
-        if (control.TryGetLocalValue(property, out T? local))
+        if (control.TryGetLocalValue(property, out var local))
         {
             value = local;
         }
@@ -38,28 +43,28 @@ public static class ThemeResolver
         {
             value = property.DefaultValue;
 
-            if (property.TryGetClassDefault(control.GetType(), out object? classDefault))
+            if (property.TryGetClassDefault(control.GetType(), out var classDefault))
             {
                 value = (T) classDefault!;
             }
 
-            ThemeContext? themeContext = control.ThemeContext;
-            List<Control> scopes = CollectStyleScopes(control);
+            var themeContext = control.ThemeContext;
+            var scopes = CollectStyleScopes(control);
 
-            foreach (State state in ResolutionOrder(visualState))
+            foreach (var state in ResolutionOrder(visualState))
             {
                 ApplyState(control, property, state, themeContext, scopes, ref value);
             }
         }
 
-        // Single collapse point: a role color (from a local value OR the theme cascade) becomes concrete,
-        // so every consumer of this public overload sees a concrete color, never a deferred role.
+        // Collapse semantic colors only after local and cascade precedence is
+        // complete, so no consumer observes a deferred role value.
         if (value is Color { Kind: ColorKind.Role } role)
         {
-            ThemeContext? context = control.ThemeContext;
+            var context = control.ThemeContext;
             value = (T) (object) SemanticColor.Resolve(
                 role,
-                r => context is not null && context.TryGetColor(r, out Color c) ? c : null);
+                r => context is not null && context.TryGetColor(r, out var c) ? c : null);
         }
 
         return value;
@@ -78,11 +83,15 @@ public static class ThemeResolver
     /// </remarks>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     /// <exception cref="ArgumentException">The property does not apply to <paramref name="controlType"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="visualState"/> contains an unknown flag.
+    /// </exception>
     public static T Resolve<T>(Theme theme, Type controlType, StyleProperty<T> property, State visualState)
     {
         ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(controlType);
         ArgumentNullException.ThrowIfNull(property);
+        ValidateVisualState(visualState);
 
         if (!property.AppliesTo(controlType))
         {
@@ -91,14 +100,14 @@ public static class ThemeResolver
                 nameof(property));
         }
 
-        T? value = property.DefaultValue;
+        var value = property.DefaultValue;
 
-        if (property.TryGetClassDefault(controlType, out object? classDefault))
+        if (property.TryGetClassDefault(controlType, out var classDefault))
         {
             value = (T) classDefault!;
         }
 
-        foreach (State state in ResolutionOrder(visualState))
+        foreach (var state in ResolutionOrder(visualState))
         {
             ApplyChain(theme.GetStyleChain(controlType), property, state, ref value);
         }
@@ -107,11 +116,15 @@ public static class ThemeResolver
         {
             value = (T) (object) SemanticColor.Resolve(
                 role,
-                r => theme.TryGetColor(r, out Color c) ? c : null);
+                r => theme.TryGetColor(r, out var c) ? c : null);
         }
 
         return value;
     }
+
+    #endregion
+
+    #region Visual-state ordering
 
     /// <summary>Builds the ordered list of state keys to apply for one active visual state.</summary>
     /// <param name="visualState">The active visual-state flags.</param>
@@ -122,10 +135,12 @@ public static class ThemeResolver
     /// </returns>
     private static List<State> ResolutionOrder(State visualState)
     {
-        List<State> order = [State.Normal];
-        List<State> active = [];
+        Debug.Assert((visualState & ~VisualStates.Overlays) == 0, "Resolution receives only known visual-state flags.");
 
-        foreach (State overlay in VisualStates.PrecedenceOrder)
+        var order = new List<State> { State.Normal };
+        var active = new List<State>();
+
+        foreach (var overlay in VisualStates.PrecedenceOrder)
         {
             if ((visualState & overlay) != 0)
             {
@@ -138,13 +153,16 @@ public static class ThemeResolver
             return order;
         }
 
-        List<State> combos = [];
+        // Seven known overlays cap this power set at 127 entries. Enumerating
+        // every active subset lets increasingly specific combinations override
+        // their component states deterministically.
+        var combos = new List<State>();
 
-        for (int mask = 1; mask < 1 << active.Count; mask++)
+        for (var mask = 1; mask < 1 << active.Count; mask++)
         {
-            State combo = State.Normal;
+            var combo = State.Normal;
 
-            for (int index = 0; index < active.Count; index++)
+            for (var index = 0; index < active.Count; index++)
             {
                 if ((mask & (1 << index)) != 0)
                 {
@@ -162,15 +180,19 @@ public static class ThemeResolver
 
     private static int CompareSpecificity(State left, State right)
     {
-        int byCount = BitOperations.PopCount((uint) left).CompareTo(BitOperations.PopCount((uint) right));
+        Debug.Assert(left != State.Normal && right != State.Normal, "Only overlay combinations are specificity-sorted.");
+
+        var byCount = BitOperations.PopCount((uint) left).CompareTo(BitOperations.PopCount((uint) right));
         return byCount != 0 ? byCount : MaxRank(left).CompareTo(MaxRank(right));
     }
 
     private static int MaxRank(State state)
     {
-        int rank = -1;
+        Debug.Assert((state & ~VisualStates.Overlays) == 0, "State ranking receives only known overlays.");
 
-        foreach (State overlay in VisualStates.PrecedenceOrder)
+        var rank = -1;
+
+        foreach (var overlay in VisualStates.PrecedenceOrder)
         {
             if ((state & overlay) != 0)
             {
@@ -181,6 +203,10 @@ public static class ThemeResolver
         return rank;
     }
 
+    #endregion
+
+    #region Cascade application
+
     private static void ApplyState<T>(
         Control control,
         StyleProperty<T> property,
@@ -189,26 +215,30 @@ public static class ThemeResolver
         List<Control> scopes,
         ref T value)
     {
+        Debug.Assert(control is not null, "Cascade application requires a live control.");
+        Debug.Assert(property is not null, "Cascade application requires registered property metadata.");
+        Debug.Assert(scopes is not null, "Cascade application requires a scope collection.");
+
         if (context is not null)
         {
             ApplyChain(context.GetStyleChain(control.GetType()), property, state, ref value);
 
             // Farthest scope first so a nearer scope overrides a farther one.
-            for (int index = scopes.Count - 1; index >= 0; index--)
+            for (var index = scopes.Count - 1; index >= 0; index--)
             {
                 ApplyChain(context.GetStyleChain(scopes[index].GetType()), property, state, ref value);
             }
         }
 
-        if (control.InstanceStyle is { } own && TryGetSnapshotValue(own, property, state, out object? ownValue))
+        if (control.InstanceStyle is { } own && TryGetSnapshotValue(own, property, state, out var ownValue))
         {
             value = (T) ownValue!;
         }
 
-        for (int index = scopes.Count - 1; index >= 0; index--)
+        for (var index = scopes.Count - 1; index >= 0; index--)
         {
             if (scopes[index].InstanceStyle is { } scopeStyle &&
-                TryGetSnapshotValue(scopeStyle, property, state, out object? scopeValue))
+                TryGetSnapshotValue(scopeStyle, property, state, out var scopeValue))
             {
                 value = (T) scopeValue!;
             }
@@ -221,9 +251,12 @@ public static class ThemeResolver
         State state,
         ref T value)
     {
-        foreach (IControlStyle style in chain)
+        Debug.Assert(chain is not null, "Theme cascade application requires a style chain.");
+        Debug.Assert(property is not null, "Theme cascade application requires property metadata.");
+
+        foreach (var style in chain)
         {
-            if (TryGetSnapshotValue(style, property, state, out object? themed))
+            if (TryGetSnapshotValue(style, property, state, out var themed))
             {
                 value = (T) themed!;
             }
@@ -232,9 +265,11 @@ public static class ThemeResolver
 
     private static List<Control> CollectStyleScopes(Control control)
     {
+        Debug.Assert(control is not null, "Scope collection requires a live control.");
+
         List<Control>? scopes = null;
 
-        for (Container? current = control.Parent; current is not null; current = current.Parent)
+        for (var current = control.Parent; current is not null; current = current.Parent)
         {
             if (current is IStyleScope)
             {
@@ -245,13 +280,31 @@ public static class ThemeResolver
         return scopes ?? _noScopes;
     }
 
+    #endregion
+
+    #region Validation
+
     private static void EnsureApplies<T>(Control control, StyleProperty<T> property)
     {
+        Debug.Assert(control is not null, "Property applicability requires a live control.");
+        Debug.Assert(property is not null, "Property applicability requires registered metadata.");
+
         if (!property.AppliesTo(control.GetType()))
         {
             throw new ArgumentException(
                 $"The property '{property.Name}' does not apply to {control.GetType().Name}.",
                 nameof(property));
+        }
+    }
+
+    private static void ValidateVisualState(State visualState)
+    {
+        if ((visualState & ~VisualStates.Overlays) != 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(visualState),
+                visualState,
+                "The visual state contains an unknown flag.");
         }
     }
 
@@ -261,4 +314,6 @@ public static class ThemeResolver
         State state,
         out object? value) =>
         style.TryGetValue(property, state, out value);
+
+    #endregion
 }

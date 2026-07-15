@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using System.Text;
 
-using SharpVision.Terminal.Unicode;
 
 /// <summary>Maps shade and quadrant values to Unicode Block Elements Runes.</summary>
 internal static class BlockResolver

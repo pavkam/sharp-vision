@@ -15,7 +15,7 @@ public sealed class ParserStringTests
     public void Parse_WhenOscEndsWithSt_DeliversPayloadAndTerminator()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b]2;title\u001b\\"u8, ref sink);
 
@@ -29,7 +29,7 @@ public sealed class ParserStringTests
     public void Parse_WhenOscEndsWithAllowedBell_DeliversBellTerminator()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b]2;title\a"u8, ref sink);
 
@@ -42,9 +42,9 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenOscContainsDisallowedBell_ReportsMalformedAtSt()
     {
-        Limits limits = Limits.Default with { AcceptBellTerminatedOsc = false };
+        var limits = Limits.Default with { AcceptBellTerminatedOsc = false };
         using Parser parser = new(limits);
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b]2;secret\aignored\u001b\\X"u8, ref sink);
 
@@ -67,7 +67,7 @@ public sealed class ParserStringTests
         SequenceKind kind)
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse(Encoding.ASCII.GetBytes(input), ref sink);
 
@@ -81,7 +81,7 @@ public sealed class ParserStringTests
     public void Parse_WhenApcContainsBell_PreservesBellUntilSt()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b_a\ab\u001b\\"u8, ref sink);
 
@@ -93,7 +93,7 @@ public sealed class ParserStringTests
     public void Parse_WhenStringContainsNonTerminatingEscape_PreservesBothBytes()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b]2;a\u001bXb\u001b\\"u8, ref sink);
 
@@ -106,7 +106,7 @@ public sealed class ParserStringTests
     public void Parse_WhenCanCancelsOsc_ReportsAndRecoversToText()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
         byte[] input = [0x1b, (byte) ']', (byte) '2', (byte) ';', (byte) 'x', 0x18, (byte) 'Y'];
 
         parser.Parse(input, ref sink);
@@ -122,7 +122,7 @@ public sealed class ParserStringTests
     public void Parse_WhenStringsAreAdjacent_DeliversEachSequence()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b]2;a\u001b\\\u001b_b\u001b\\"u8, ref sink);
 
@@ -142,9 +142,9 @@ public sealed class ParserStringTests
     [Fact]
     public void Parse_WhenEightBitStringsAreEnabled_DeliversOsc()
     {
-        Limits limits = Limits.Default with { AcceptEightBitControls = true };
+        var limits = Limits.Default with { AcceptEightBitControls = true };
         using Parser parser = new(limits);
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
         byte[] input = [0x9d, (byte) '2', (byte) ';', (byte) 'x', 0x9c];
 
         parser.Parse(input, ref sink);

@@ -7,6 +7,8 @@ namespace SharpVision.Layout;
 /// <summary>Allocates integer cells across fixed, intrinsic, percentage, and star tracks.</summary>
 public static class Tracks
 {
+    #region Public allocation API
+
     /// <summary>Resolves tracks into a newly allocated array.</summary>
     /// <param name="available">The bounded axis, or null during intrinsic measure.</param>
     /// <param name="lengths">The validated track definitions.</param>
@@ -22,7 +24,7 @@ public static class Tracks
         ReadOnlySpan<int> automatic)
     {
         Validate(available, lengths, automatic, [], [], lengths.Length);
-        int[] result = new int[lengths.Length];
+        var result = new int[lengths.Length];
         ResolveCore(available, lengths, automatic, [], [], result);
         return result;
     }
@@ -74,9 +76,9 @@ public static class Tracks
                 "The span must fit within the track storage.");
         }
 
-        long current = 0;
+        var current = 0L;
 
-        for (int index = 0; index < tracks.Length; index++)
+        for (var index = 0; index < tracks.Length; index++)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(tracks[index], nameof(tracks));
 
@@ -93,16 +95,20 @@ public static class Tracks
 
         // Cumulative edges make every intermediate round deterministic while
         // the last track receives the exact deficit.
-        int deficit = required - (int) current;
-        int previous = 0;
+        var deficit = required - (int) current;
+        var previous = 0;
 
-        for (int offset = 0; offset < count; offset++)
+        for (var offset = 0; offset < count; offset++)
         {
-            int edge = RoundRatio(deficit, offset + 1, count);
+            var edge = RoundRatio(deficit, offset + 1, count);
             tracks[start + offset] += edge - previous;
             previous = edge;
         }
     }
+
+    #endregion
+
+    #region Allocation core
 
     private static void AllocateStars(
         ReadOnlySpan<Length> lengths,
@@ -110,11 +116,15 @@ public static class Tracks
         Span<int> destination,
         ref int remaining)
     {
+        Debug.Assert(lengths.Length == destination.Length, "Star allocation requires one destination per track.");
+        Debug.Assert(maximum.IsEmpty || maximum.Length == lengths.Length, "Star maxima align with track definitions.");
+        Debug.Assert(remaining >= 0, "Star allocation receives a non-negative remainder.");
+
         while (remaining > 0)
         {
-            double totalWeight = 0d;
+            var totalWeight = 0d;
 
-            for (int index = 0; index < lengths.Length; index++)
+            for (var index = 0; index < lengths.Length; index++)
             {
                 if (lengths[index].Kind == Kind.Star &&
                     destination[index] < MaximumAt(maximum, index))
@@ -130,12 +140,12 @@ public static class Tracks
 
             // Re-run the distribution when a maximum clips one share. Any
             // clipped remainder is then divided only among eligible stars.
-            int pass = remaining;
-            double cumulativeWeight = 0d;
-            int previousEdge = 0;
-            int distributed = 0;
+            var pass = remaining;
+            var cumulativeWeight = 0d;
+            var previousEdge = 0;
+            var distributed = 0;
 
-            for (int index = 0; index < lengths.Length; index++)
+            for (var index = 0; index < lengths.Length; index++)
             {
                 if (lengths[index].Kind != Kind.Star ||
                     destination[index] >= MaximumAt(maximum, index))
@@ -144,10 +154,10 @@ public static class Tracks
                 }
 
                 cumulativeWeight += lengths[index].Value;
-                int edge = RoundWeighted(pass, cumulativeWeight, totalWeight);
-                int share = edge - previousEdge;
-                int capacity = MaximumAt(maximum, index) - destination[index];
-                int added = Math.Min(share, capacity);
+                var edge = RoundWeighted(pass, cumulativeWeight, totalWeight);
+                var share = edge - previousEdge;
+                var capacity = MaximumAt(maximum, index) - destination[index];
+                var added = Math.Min(share, capacity);
                 destination[index] += added;
                 distributed += added;
                 previousEdge = edge;
@@ -173,17 +183,26 @@ public static class Tracks
 
     private static int RoundPercent(int available, double percent)
     {
-        double value = Math.Round(available * percent / 100, MidpointRounding.AwayFromZero);
+        Debug.Assert(available >= 0, "Percentage allocation uses a non-negative axis.");
+        Debug.Assert(double.IsFinite(percent) && percent >= 0, "Percentage allocation uses a validated value.");
+
+        var value = Math.Round(available * percent / 100, MidpointRounding.AwayFromZero);
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
-    private static int RoundRatio(int value, int numerator, int denominator) =>
-        (int) ((((long) value * numerator) + (denominator / 2L)) / denominator);
+    private static int RoundRatio(int value, int numerator, int denominator)
+    {
+        Debug.Assert(value >= 0, "Ratio rounding uses a non-negative extent.");
+        Debug.Assert(numerator >= 0 && numerator <= denominator, "Ratio rounding uses a bounded numerator.");
+        Debug.Assert(denominator > 0, "Ratio rounding requires a positive denominator.");
+
+        return (int) ((((long) value * numerator) + (denominator / 2L)) / denominator);
+    }
 
     private static int RoundWeighted(int value, double cumulative, double total)
     {
         Debug.Assert(total > 0, "Weighted allocation requires a positive denominator.");
-        double result = Math.Round(value * cumulative / total, MidpointRounding.AwayFromZero);
+        var result = Math.Round(value * cumulative / total, MidpointRounding.AwayFromZero);
         return Math.Min(value, (int) result);
     }
 
@@ -195,11 +214,16 @@ public static class Tracks
         ReadOnlySpan<int> maximum,
         Span<int> destination)
     {
+        Debug.Assert(lengths.Length == automatic.Length, "Validated resolution inputs have aligned lengths.");
+        Debug.Assert(lengths.Length == destination.Length, "Validated resolution output matches track count.");
+        Debug.Assert(minimum.IsEmpty || minimum.Length == lengths.Length, "Validated minima align with tracks.");
+        Debug.Assert(maximum.IsEmpty || maximum.Length == lengths.Length, "Validated maxima align with tracks.");
+
         if (!available.HasValue)
         {
-            for (int index = 0; index < lengths.Length; index++)
+            for (var index = 0; index < lengths.Length; index++)
             {
-                int requested = lengths[index].Kind == Kind.Cells
+                var requested = lengths[index].Kind == Kind.Cells
                     ? (int) lengths[index].Value
                     : automatic[index];
                 destination[index] = Clamp(requested, minimum, maximum, index);
@@ -209,14 +233,14 @@ public static class Tracks
         }
 
         long total = 0;
-        double cumulativePercent = 0d;
-        int previousPercentEdge = 0;
+        var cumulativePercent = 0d;
+        var previousPercentEdge = 0;
 
         // Fixed and intrinsic reservations are independent. Percentage edges
         // share one cumulative coordinate system based on the final axis.
-        for (int index = 0; index < lengths.Length; index++)
+        for (var index = 0; index < lengths.Length; index++)
         {
-            int requested = lengths[index].Kind switch
+            var requested = lengths[index].Kind switch
             {
                 Kind.Auto => automatic[index],
                 Kind.Cells => (int) lengths[index].Value,
@@ -235,7 +259,7 @@ public static class Tracks
 
         if (total > available.Value)
         {
-            long deficit = total - available.Value;
+            var deficit = total - available.Value;
             Shrink(Kind.Percent, lengths, minimum, destination, ref deficit);
             Shrink(Kind.Auto, lengths, minimum, destination, ref deficit);
             Shrink(Kind.Cells, lengths, minimum, destination, ref deficit);
@@ -251,7 +275,7 @@ public static class Tracks
             total = available.Value;
         }
 
-        int remaining = available.Value - (int) total;
+        var remaining = available.Value - (int) total;
         AllocateStars(lengths, maximum, destination, ref remaining);
     }
 
@@ -261,9 +285,13 @@ public static class Tracks
         ref double cumulative,
         ref int previousEdge)
     {
+        Debug.Assert(available >= 0, "Percentage requests use a non-negative final axis.");
+        Debug.Assert(double.IsFinite(percent) && percent >= 0, "Percentage requests use a validated percentage.");
+        Debug.Assert(cumulative >= 0 && previousEdge >= 0, "Cumulative percentage state is non-negative.");
+
         cumulative += percent;
-        int edge = RoundPercent(available, cumulative);
-        int requested = Math.Max(0, edge - previousEdge);
+        var edge = RoundPercent(available, cumulative);
+        var requested = Math.Max(0, edge - previousEdge);
         previousEdge = edge;
         return requested;
     }
@@ -275,15 +303,20 @@ public static class Tracks
         Span<int> destination,
         ref long deficit)
     {
-        for (int index = lengths.Length - 1; index >= 0 && deficit > 0; index--)
+        Debug.Assert(Enum.IsDefined(kind), "Track shrinking requires a defined length kind.");
+        Debug.Assert(lengths.Length == destination.Length, "Track shrinking aligns definitions and extents.");
+        Debug.Assert(minimum.IsEmpty || minimum.Length == lengths.Length, "Track shrinking aligns minima.");
+        Debug.Assert(deficit >= 0, "Track shrinking receives a non-negative deficit.");
+
+        for (var index = lengths.Length - 1; index >= 0 && deficit > 0; index--)
         {
             if (lengths[index].Kind != kind)
             {
                 continue;
             }
 
-            int removable = destination[index] - MinimumAt(minimum, index);
-            int removed = (int) Math.Min(deficit, removable);
+            var removable = destination[index] - MinimumAt(minimum, index);
+            var removed = (int) Math.Min(deficit, removable);
             destination[index] -= removed;
             deficit -= removed;
         }
@@ -294,23 +327,30 @@ public static class Tracks
         Span<int> destination,
         ref long deficit)
     {
+        Debug.Assert(lengths.Length == destination.Length, "Below-minimum shrinking aligns definitions and extents.");
+        Debug.Assert(deficit >= 0, "Below-minimum shrinking receives a non-negative deficit.");
+
         ReadOnlySpan<Kind> priority = [Kind.Percent, Kind.Auto, Kind.Cells, Kind.Star];
 
-        foreach (Kind kind in priority)
+        foreach (var kind in priority)
         {
-            for (int index = lengths.Length - 1; index >= 0 && deficit > 0; index--)
+            for (var index = lengths.Length - 1; index >= 0 && deficit > 0; index--)
             {
                 if (lengths[index].Kind != kind)
                 {
                     continue;
                 }
 
-                int removed = (int) Math.Min(deficit, destination[index]);
+                var removed = (int) Math.Min(deficit, destination[index]);
                 destination[index] -= removed;
                 deficit -= removed;
             }
         }
     }
+
+    #endregion
+
+    #region Validation
 
     private static void Validate(
         int? available,
@@ -320,6 +360,8 @@ public static class Tracks
         ReadOnlySpan<int> maximum,
         int destinationLength)
     {
+        Debug.Assert(destinationLength >= 0, "Destination lengths are non-negative.");
+
         if (available.HasValue)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(available.Value, nameof(available));
@@ -333,7 +375,7 @@ public static class Tracks
             throw new ArgumentException("Every track input and output must have the same length.");
         }
 
-        for (int index = 0; index < lengths.Length; index++)
+        for (var index = 0; index < lengths.Length; index++)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(automatic[index], nameof(automatic));
 
@@ -351,4 +393,6 @@ public static class Tracks
             }
         }
     }
+
+    #endregion
 }

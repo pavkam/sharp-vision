@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Exposes non-owning semantic cell metadata without pooled grapheme memory.</summary>
 public readonly record struct CellInfo

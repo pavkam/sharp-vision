@@ -5,6 +5,8 @@ namespace SharpVision.Runtime;
 
 using SharpVision.Terminal.Runtime;
 
+using Screen = Controls.Screen;
+
 /// <summary>Provides the fluent entry point for interactive console applications.</summary>
 public static class ConsoleApplication
 {
@@ -24,7 +26,7 @@ public static class ConsoleApplication
         Action<ConsoleApplicationBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(screen);
-        ConsoleApplicationBuilder builder = new(screen);
+        var builder = new ConsoleApplicationBuilder(screen);
         configure?.Invoke(builder);
         return RunCoreAsync(builder, CancellationToken.None);
     }
@@ -38,7 +40,7 @@ public static class ConsoleApplication
     {
         ArgumentNullException.ThrowIfNull(screen);
         ArgumentNullException.ThrowIfNull(options);
-        ConsoleApplicationBuilder builder = new ConsoleApplicationBuilder(screen).ConfigureOptions(_ => options);
+        var builder = new ConsoleApplicationBuilder(screen).ConfigureOptions(_ => options);
         return RunCoreAsync(builder, CancellationToken.None);
     }
 
@@ -56,9 +58,9 @@ public static class ConsoleApplication
             return ConsoleRunStatus.Redirected;
         }
 
-        await using Application application = builder.Build();
+        await using var application = builder.Build();
 
-        using CancellationTokenSource cancellation =
+        using var cancellation =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         void OnCancel(object? sender, ConsoleCancelEventArgs eventArgs)
@@ -67,7 +69,7 @@ public static class ConsoleApplication
             cancellation.Cancel();
         }
 
-        bool observeCtrlC = !builder.Options.TreatControlCAsInput;
+        var observeCtrlC = !builder.Options.TreatControlCAsInput;
 
         if (observeCtrlC)
         {

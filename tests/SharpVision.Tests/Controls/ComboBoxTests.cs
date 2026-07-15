@@ -3,11 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Terminal.Input;
 
 
-using KeyAction = Terminal.Input.Action;
-using TerminalStyle = CellStyle;
 
 /// <summary>Verifies popup-style combo box geometry, keyboard opening, focus, and committed selection.</summary>
 public sealed class ComboBoxTests
@@ -16,13 +13,13 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenClosed_ShowsSelectedLabelWithoutDropDown()
     {
-        ComboBox box = new()
+        var box = new ComboBox()
         {
             Height = Length.Cells(1),
             Items = ["Small", "Large"],
             SelectedIndex = 1,
         };
-        Size size = new(12, 6);
+        var size = new Size(12, 6);
         new Engine().Layout(box, size);
         using Frame frame = new(size);
 
@@ -37,19 +34,19 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpen_UsesOpaqueFramedDropDownSurface()
     {
-        Theme theme = new();
-        ControlStyle<Control> controlStyle = ThemeTestSupport.CreateControlStyle();
+        var theme = new Theme();
+        var controlStyle = ThemeTestSupport.CreateControlStyle();
         controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
         controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(42));
         theme.SetStyle(controlStyle);
-        ComboBox box = new()
+        var box = new ComboBox()
         {
             Height = Length.Cells(1),
             Items = ["Small", "Large"],
             IsOpen = true,
         };
         ThemeTestSupport.ApplyTheme(box, theme);
-        Size size = new(12, 6);
+        var size = new Size(12, 6);
         new Engine().Layout(box, size);
         using Frame frame = new(size);
         frame.Canvas.Fill(
@@ -59,8 +56,8 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        Popup popup = box.Children[0].ShouldBeOfType<Popup>();
-        List list = popup.Child.ShouldBeOfType<List>();
+        var popup = box.Children[0].ShouldBeOfType<Popup>();
+        var list = popup.Child.ShouldBeOfType<List>();
         list.DesiredSize.Height.ShouldBeGreaterThan(0);
         popup.SurfaceBounds.Height.ShouldBeGreaterThan(2);
         frame.GetCell(new Point(popup.SurfaceBounds.X + 1, popup.SurfaceBounds.Y + 1)).Style.Background
@@ -71,20 +68,20 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpen_RendersChoicesInsideFramedSurface()
     {
-        ComboBox box = new()
+        var box = new ComboBox()
         {
             DropDownHeight = 4,
             Items = ["1Row", "3-D", "Standard"],
             IsOpen = true,
         };
-        Size size = new(24, 12);
+        var size = new Size(24, 12);
         new Engine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
 
-        Popup popup = box.Children[0].ShouldBeOfType<Popup>();
-        List list = popup.Child.ShouldBeOfType<List>();
+        var popup = box.Children[0].ShouldBeOfType<Popup>();
+        var list = popup.Child.ShouldBeOfType<List>();
         FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("1");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 1, list.Bounds.Y)).ShouldBe("R");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 2, list.Bounds.Y)).ShouldBe("o");
@@ -98,14 +95,14 @@ public sealed class ComboBoxTests
     [Fact]
     public void Render_WhenOpenWithSelectedChoice_FillsTheCompleteListRow()
     {
-        Theme theme = new();
-        ControlStyle<Control> controlStyle = ThemeTestSupport.CreateControlStyle();
+        var theme = new Theme();
+        var controlStyle = ThemeTestSupport.CreateControlStyle();
         controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
         controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(240));
         controlStyle.Set(Control.ForegroundProperty, State.Selected, Color.Indexed(255));
         controlStyle.Set(Control.BackgroundProperty, State.Selected, Color.Indexed(99));
         theme.SetStyle(controlStyle);
-        ComboBox box = new()
+        var box = new ComboBox()
         {
             Width = Length.Cells(20),
             Items = ["Compact", "Comfortable", "Spacious"],
@@ -113,13 +110,13 @@ public sealed class ComboBoxTests
             IsOpen = true,
         };
         ThemeTestSupport.ApplyTheme(box, theme);
-        Size size = new(24, 8);
+        var size = new Size(24, 8);
         new Engine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
 
-        List list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y)).Style.Background.ShouldBe(Color.Indexed(99));
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y + 1)).Style.Background.ShouldBe(Color.Indexed(240));
     }
@@ -128,7 +125,7 @@ public sealed class ComboBoxTests
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardPolicyToOpenDropDown()
     {
-        ComboBox box = new()
+        var box = new ComboBox()
         {
             Items = ["one", "two", "three", "four", "five", "six"],
             DropDownHeight = 3,
@@ -144,8 +141,8 @@ public sealed class ComboBoxTests
         box.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
         box.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         box.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
-        List list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
-        ScrollBar rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
+        var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        var rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
         rail.Fill.ShouldBe(ScrollBarFill.Line);
@@ -155,11 +152,11 @@ public sealed class ComboBoxTests
     [Fact]
     public async Task Dispatch_WhenEnterOpens_TransfersFocusAndInvokesSelectedListItemAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ComboBox box = new() { Items = ["Small", "Large"], SelectedIndex = 0 };
+            var box = new ComboBox() { Items = ["Small", "Large"], SelectedIndex = 0 };
             new Engine().Layout(box, new Size(12, 6));
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
@@ -168,9 +165,9 @@ public sealed class ComboBoxTests
             Router.Route(box, Events.Key, Key(Code.Enter));
 
             box.IsOpen.ShouldBeTrue();
-            List list = focus.Focused.ShouldBeOfType<List>();
+            var list = focus.Focused.ShouldBeOfType<List>();
             Router.Route(list, Events.Key, Key(Code.Down));
-            ListItem selectedItem = focus.Focused.ShouldBeOfType<ListItem>();
+            var selectedItem = focus.Focused.ShouldBeOfType<ListItem>();
             Router.Route(selectedItem, Events.Key, Key(Code.Enter));
 
             box.SelectedIndex.ShouldBe(1);
@@ -183,11 +180,11 @@ public sealed class ComboBoxTests
     [Fact]
     public async Task Dispatch_WhenEscapeClosesDropDown_ReturnsFocusToComboBoxAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ComboBox box = new() { Items = ["Small", "Large"], SelectedIndex = 0 };
+            var box = new ComboBox() { Items = ["Small", "Large"], SelectedIndex = 0 };
             new Engine().Layout(box, new Size(12, 6));
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
@@ -205,18 +202,18 @@ public sealed class ComboBoxTests
     [Fact]
     public async Task Dispatch_WhenPopupItemIsClicked_CommitsChoiceClosesAndRestoresFocusAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ComboBox box = new()
+            var box = new ComboBox()
             {
                 Height = Length.Cells(1),
                 Items = ["Small", "Large"],
                 SelectedIndex = 1,
                 DropDownHeight = 2,
             };
-            Size size = new(12, 6);
+            var size = new Size(12, 6);
             new Engine().Layout(box, size);
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
@@ -224,7 +221,7 @@ public sealed class ComboBoxTests
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
             new Engine().Layout(box, size);
-            List list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+            var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
 
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Release));

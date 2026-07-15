@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Unicode;
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>
@@ -17,7 +16,7 @@ public sealed class WidthTests
     [Fact]
     public void Measure_WhenTextMixesAsciiCjkAndEmoji_ReturnsCellTotal()
     {
-        Measurement result = Width.Measure("A界👩‍💻".AsSpan(), Ambiguous.Narrow);
+        var result = Width.Measure("A界👩‍💻".AsSpan(), Ambiguous.Narrow);
 
         result.Cells.ShouldBe(5);
         result.Graphemes.ShouldBe(3);

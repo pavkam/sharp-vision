@@ -12,7 +12,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void RegisterClassDefault_WhenTypeIsDuplicated_ThrowsBeforePublication()
     {
-        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-default-dup", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-default-dup", 0, Impact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(7);
 
         _ = Should.Throw<ArgumentException>(() => property.RegisterClassDefault<ProbeControl>(8));
@@ -22,9 +22,9 @@ public sealed class StylePropertyTests
     [Fact]
     public void Resolve_WhenClassDefaultExists_UsesMostDerivedDefault()
     {
-        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-class-host", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-class-host", 0, Impact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(7);
-        ProbeControl control = new();
+        var control = new ProbeControl();
 
         ThemeTestSupport.Resolve(control, property, State.Normal).ShouldBe(7);
     }
@@ -33,11 +33,11 @@ public sealed class StylePropertyTests
     [Fact]
     public void TryGetClassDefault_WhenBaseAndDerivedRegistered_PrefersMostDerived()
     {
-        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-derived-precedence", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-derived-precedence", 0, Impact.Render);
         _ = property.RegisterClassDefault<Control>(1);
         _ = property.RegisterClassDefault<ProbeControl>(2);
 
-        property.TryGetClassDefault(typeof(ProbeControl), out object? value).ShouldBeTrue();
+        property.TryGetClassDefault(typeof(ProbeControl), out var value).ShouldBeTrue();
         value.ShouldBe(2);
     }
 
@@ -45,9 +45,9 @@ public sealed class StylePropertyTests
     [Fact]
     public void GetProperties_IncludesInheritedAndDeclaredProperties()
     {
-        StyleProperty<DemoLabelPlacement> declared = DemoPanel.LabelPlacementProperty;
+        var declared = DemoPanel.LabelPlacementProperty;
 
-        IReadOnlyList<IStyleProperty> properties = StylePropertyRegistry.GetProperties(typeof(DemoPanel));
+        var properties = StylePropertyRegistry.GetProperties(typeof(DemoPanel));
 
         properties.ShouldContain(declared);
         properties.ShouldContain(Control.ForegroundProperty);
@@ -57,7 +57,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void FindProperty_ReturnsRegisteredPropertyByName()
     {
-        StyleProperty<DemoLabelPlacement> declared = DemoPanel.LabelPlacementProperty;
+        var declared = DemoPanel.LabelPlacementProperty;
 
         StylePropertyRegistry.FindProperty(typeof(DemoPanel), "label-placement").ShouldBeSameAs(declared);
         StylePropertyRegistry.FindProperty(typeof(DemoPanel), "missing").ShouldBeNull();
@@ -67,13 +67,13 @@ public sealed class StylePropertyTests
     [Fact]
     public void Resolve_WhenThemeDefinesPerControlDefault_OverridesClassDefault()
     {
-        StyleProperty<int> property = StyleProperty<int>.Register<Control>("probe-theme-vs-class", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-theme-vs-class", 0, Impact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(1);
-        Theme theme = new();
-        ControlStyle<ProbeControl> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<ProbeControl>();
         style.Set(property, State.Normal, 2);
         theme.SetStyle(style);
-        ProbeControl themed = new();
+        var themed = new ProbeControl();
         ThemeTestSupport.ApplyTheme(themed, theme);
 
         themed.GetValue(property).ShouldBe(2);
@@ -84,8 +84,8 @@ public sealed class StylePropertyTests
     [Fact]
     public void Resolve_WithoutControl_UsesThemeCascadeForType()
     {
-        Theme theme = new();
-        ControlStyle<Control> style = new();
+        var theme = new Theme();
+        var style = new ControlStyle<Control>();
         style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(7));
         theme.SetStyle(style);
 

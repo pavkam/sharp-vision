@@ -3,7 +3,6 @@
 
 namespace SharpVision.Text;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Describes one non-overlapping semantic style slice of parsed visible text.</summary>
 internal readonly record struct StyleSpan

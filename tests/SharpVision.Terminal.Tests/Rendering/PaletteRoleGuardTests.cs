@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Rendering;
 
 using SharpVision.Terminal.Capabilities;
 
+
 /// <summary>Verifies a role color is rejected before palette projection at every color depth.</summary>
 public sealed class PaletteRoleGuardTests
 {

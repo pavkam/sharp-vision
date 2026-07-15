@@ -3,10 +3,7 @@
 
 namespace SharpVision.Showcase.Tests;
 
-using System.Threading.Channels;
 
-using SharpVision.Terminal.Runtime;
-using SharpVision.Terminal.Transport;
 
 /// <summary>Provides deterministic owned transport and resize streams for the running showcase.</summary>
 internal sealed class FakeTerminal: ITransport, IResizeSource
@@ -67,7 +64,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
         ArgumentOutOfRangeException.ThrowIfZero(destination.Length);
         try
         {
-            byte[] value = await _input.Reader.ReadAsync(cancellationToken);
+            var value = await _input.Reader.ReadAsync(cancellationToken);
 
             if (value.Length > destination.Length)
             {
@@ -89,7 +86,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        byte[] copy = source.ToArray();
+        var copy = source.ToArray();
 
         lock (_gate)
         {
@@ -110,7 +107,7 @@ internal sealed class FakeTerminal: ITransport, IResizeSource
     /// <inheritdoc/>
     public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken)
     {
-        Dimensions value = await _resize.Reader.ReadAsync(cancellationToken);
+        var value = await _resize.Reader.ReadAsync(cancellationToken);
         return value;
     }
 

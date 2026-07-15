@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using SharpVision.Terminal.Protocols;
 
-using TerminalCapabilities = Capabilities.Capabilities;
 
 /// <summary>
 /// Receives ordered terminal input, protocol, resize, closure, and fault events.

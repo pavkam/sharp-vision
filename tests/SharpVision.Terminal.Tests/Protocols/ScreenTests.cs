@@ -13,7 +13,7 @@ public sealed class ScreenTests
     [Fact]
     public void WritePassthrough_WhenSequenceContainsEsc_WritesExactDcsEnvelope()
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
         Screen.WritePassthrough(destination, "\u001b]52;c;YQ==\u001b\\"u8);
 

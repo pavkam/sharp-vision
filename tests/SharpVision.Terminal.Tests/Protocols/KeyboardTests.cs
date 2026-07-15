@@ -3,8 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Protocols;
 
-
 using SharpVision.Terminal.Capabilities;
+
+
 
 
 /// <summary>
@@ -18,8 +19,8 @@ public sealed class KeyboardTests
     [Fact]
     public void Commands_WhenValuesAreValid_WriteExactBytes()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         Keyboard.Query(writer);
         Keyboard.Push(writer, Enhancement.Disambiguate | Enhancement.EventTypes);
@@ -37,8 +38,8 @@ public sealed class KeyboardTests
     [Fact]
     public void Commands_WhenValueIsInvalid_ThrowBeforeWriting()
     {
-        ArrayBufferWriter<byte> destination = new();
-        Writer writer = new(destination);
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new Writer(destination);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(
             () => Keyboard.Push(writer, (Enhancement) 32));
@@ -57,7 +58,7 @@ public sealed class KeyboardTests
     [Fact]
     public void TryCsi_WhenKeyboardStatusIsValid_ReturnsFlags()
     {
-        Responses.TryCsi("?31"u8, [], (byte) 'u', out Response response).ShouldBeTrue();
+        Responses.TryCsi("?31"u8, [], (byte) 'u', out var response).ShouldBeTrue();
 
         response.Kind.ShouldBe(ResponseKind.Keyboard);
         response.Values.ToArray().ShouldBe([31]);
@@ -69,10 +70,10 @@ public sealed class KeyboardTests
     [Fact]
     public void Match_WhenDeviceAttributesArriveFirst_ClassifiesKeyboardUnsupported()
     {
-        QueryTracker tracker = new();
+        var tracker = new QueryTracker();
         _ = tracker.TryRegister(QueryKind.Keyboard, null, out _);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
-        _ = Responses.TryCsi("?1"u8, [], (byte) 'c', out Response response);
+        _ = Responses.TryCsi("?1"u8, [], (byte) 'c', out var response);
 
         tracker.Match(response).ShouldBe(QueryMatch.Matched);
 
@@ -86,11 +87,11 @@ public sealed class KeyboardTests
     [Fact]
     public void Match_WhenKeyboardStatusArrivesFirst_MatchesBothQueries()
     {
-        QueryTracker tracker = new();
+        var tracker = new QueryTracker();
         _ = tracker.TryRegister(QueryKind.Keyboard, null, out _);
         _ = tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
-        _ = Responses.TryCsi("?3"u8, [], (byte) 'u', out Response keyboard);
-        _ = Responses.TryCsi("?1"u8, [], (byte) 'c', out Response attributes);
+        _ = Responses.TryCsi("?3"u8, [], (byte) 'u', out var keyboard);
+        _ = Responses.TryCsi("?1"u8, [], (byte) 'c', out var attributes);
 
         tracker.Match(keyboard).ShouldBe(QueryMatch.Matched);
         tracker.Match(attributes).ShouldBe(QueryMatch.Matched);

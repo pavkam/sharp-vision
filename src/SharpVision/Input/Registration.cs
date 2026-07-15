@@ -36,7 +36,7 @@ internal sealed class Registration<TArgs>: IHandler, IDisposable where TArgs : R
     /// <inheritdoc/>
     public void Dispose()
     {
-        Control? owner = Owner;
+        var owner = Owner;
 
         if (owner is null)
         {
@@ -57,7 +57,7 @@ internal sealed class Registration<TArgs>: IHandler, IDisposable where TArgs : R
         RoutedEventArgs eventArgs,
         long sequence)
     {
-        EventHandler<TArgs>? handler = Handler;
+        var handler = Handler;
 
         if (handler is null || Order > sequence ||
             !ReferenceEquals(RoutedEvent, routedEvent) ||

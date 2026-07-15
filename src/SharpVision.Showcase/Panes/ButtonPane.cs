@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the Button control with live, themed activation specimens.</summary>
 internal sealed class ButtonPane: View
 {
@@ -14,22 +15,22 @@ internal sealed class ButtonPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Text status = new("Activation log: waiting");
-        Button primary = new() { Content = new Text("Click or press Enter") };
+        var status = new Text("Activation log: waiting");
+        var primary = new Button() { Content = new Text("Click or press Enter") };
         primary.Click += (_, eventArgs) => status.Content = $"Activation log: {eventArgs.Cause}";
 
-        Button dialogDefault = new() { Content = new Text("OK"), IsDefault = true };
-        Button dialogCancel = new() { Content = new Text("Cancel"), IsCancel = true };
+        var dialogDefault = new Button() { Content = new Text("OK"), IsDefault = true };
+        var dialogCancel = new Button() { Content = new Text("Cancel"), IsCancel = true };
 
-        Button composite = new() { Content = new Text("Composite shadow") };
-        Button blockShadow = new()
+        var composite = new Button() { Content = new Text("Composite shadow") };
+        var blockShadow = new Button()
         {
             Content = new Text("Block glyph shadow"),
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowGlyph = new Rune('░'),
         };
-        Button flat = new() { Content = new Text("Flat, no shadow"), HasShadow = false };
-        Button disabled = new() { Content = new Text("Disabled"), IsEnabled = false };
+        var flat = new Button() { Content = new Text("Flat, no shadow"), HasShadow = false };
+        var disabled = new Button() { Content = new Text("Disabled"), IsEnabled = false };
 
         return Doc.Page(
             Title,

@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Unicode;
+
 
 
 /// <summary>
@@ -18,7 +18,7 @@ public sealed class UnicodeCapabilitiesTests
     [Fact]
     public void Conservative_WhenRead_ReportsPinnedUnicodePolicy()
     {
-        Capabilities capabilities = Capabilities.Conservative;
+        var capabilities = TerminalCapabilities.Conservative;
 
         capabilities.UnicodeVersion.ShouldBe(Info.Version);
         capabilities.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
@@ -30,7 +30,7 @@ public sealed class UnicodeCapabilitiesTests
     [Fact]
     public void Detect_WhenAmbiguousWidthIsOverridden_AppliesOverrideLast()
     {
-        Capabilities capabilities = Detector.Detect(
+        var capabilities = Detector.Detect(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
             overrides: new Settings { AmbiguousWidth = Ambiguous.Wide });
 

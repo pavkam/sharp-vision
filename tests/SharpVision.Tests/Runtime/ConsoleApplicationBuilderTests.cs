@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
 
 /// <summary>Verifies <see cref="ConsoleApplicationBuilder"/> fluent setters accumulate onto <see cref="ConsoleRunOptions"/>.</summary>
 public sealed class ConsoleApplicationBuilderTests
@@ -12,7 +11,7 @@ public sealed class ConsoleApplicationBuilderTests
     [Fact]
     public void FluentSetters_WhenChained_AccumulateOntoOptions()
     {
-        ConsoleApplicationBuilder builder = new ConsoleApplicationBuilder(new ProbeScreen())
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
             .UseAlternateScreen(false)
             .WithoutMouse()
             .TreatControlCAsInput();
@@ -26,7 +25,7 @@ public sealed class ConsoleApplicationBuilderTests
     [Fact]
     public void UseMouse_WhenGivenLevel_SetsTrackingAndCoordinates()
     {
-        ConsoleApplicationBuilder builder = new ConsoleApplicationBuilder(new ProbeScreen())
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
             .UseMouse(MouseTracking.Press, MouseCoordinates.Pixel);
 
         builder.Options.MouseTracking.ShouldBe(MouseTracking.Press);

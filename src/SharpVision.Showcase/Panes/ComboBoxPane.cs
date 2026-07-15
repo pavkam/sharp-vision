@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the ComboBox control with live popup-selection specimens.</summary>
 internal sealed class ComboBoxPane: View
 {
@@ -14,8 +15,8 @@ internal sealed class ComboBoxPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Text density = new("Selected: Comfortable");
-        ComboBox comboBox = new()
+        var density = new Text("Selected: Comfortable");
+        var comboBox = new ComboBox()
         {
             Width = Length.Cells(28),
             Items = ["Compact", "Comfortable", "Spacious"],
@@ -26,7 +27,7 @@ internal sealed class ComboBoxPane: View
             density.Content = comboBox.SelectedIndex >= 0
                 ? $"Selected: {comboBox.Items[comboBox.SelectedIndex]}."
                 : "No selection.";
-        Canvas stage = new()
+        var stage = new Canvas()
         {
             Width = Length.Cells(30),
             Height = Length.Cells(6),
@@ -34,14 +35,14 @@ internal sealed class ComboBoxPane: View
         };
         stage.Children.Add(comboBox);
 
-        object?[] manyItems = new object?[12];
-        for (int index = 0; index < manyItems.Length; index++)
+        var manyItems = new object?[12];
+        for (var index = 0; index < manyItems.Length; index++)
         {
             manyItems[index] = $"Item {index + 1}";
         }
 
-        Text tallStatus = new("Selected: Item 1");
-        ComboBox tall = new()
+        var tallStatus = new Text("Selected: Item 1");
+        var tall = new ComboBox()
         {
             Width = Length.Cells(24),
             Items = manyItems,
@@ -52,7 +53,7 @@ internal sealed class ComboBoxPane: View
             tallStatus.Content = tall.SelectedIndex >= 0
                 ? $"Selected: {tall.Items[tall.SelectedIndex]}."
                 : "No selection.";
-        Canvas tallStage = new()
+        var tallStage = new Canvas()
         {
             Width = Length.Cells(26),
             Height = Length.Cells(8),
@@ -60,7 +61,7 @@ internal sealed class ComboBoxPane: View
         };
         tallStage.Children.Add(tall);
 
-        ComboBox disabled = new()
+        var disabled = new ComboBox()
         {
             Width = Length.Cells(24),
             Items = ["Locked choice"],

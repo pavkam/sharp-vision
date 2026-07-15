@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Runtime.CompilerServices;
 
 
 /// <summary>Owns row/column definitions and attached placement for a track Grid.</summary>
@@ -92,7 +91,7 @@ public sealed class Grid: Container
     {
         ArgumentOutOfRangeException.ThrowIfNegative(value);
         Validate(control, value, GetRowSpan(control), rows: true);
-        GridPlacement placement = _placements.GetOrCreateValue(control);
+        var placement = _placements.GetOrCreateValue(control);
 
         if (placement.Row != value)
         {
@@ -112,7 +111,7 @@ public sealed class Grid: Container
     {
         ArgumentOutOfRangeException.ThrowIfNegative(value);
         Validate(control, value, GetColumnSpan(control), rows: false);
-        GridPlacement placement = _placements.GetOrCreateValue(control);
+        var placement = _placements.GetOrCreateValue(control);
 
         if (placement.Column != value)
         {
@@ -132,7 +131,7 @@ public sealed class Grid: Container
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0);
         Validate(control, GetRow(control), value, rows: true);
-        GridPlacement placement = _placements.GetOrCreateValue(control);
+        var placement = _placements.GetOrCreateValue(control);
 
         if (placement.RowSpan != value)
         {
@@ -152,7 +151,7 @@ public sealed class Grid: Container
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0);
         Validate(control, GetColumn(control), value, rows: false);
-        GridPlacement placement = _placements.GetOrCreateValue(control);
+        var placement = _placements.GetOrCreateValue(control);
 
         if (placement.ColumnSpan != value)
         {
@@ -165,14 +164,14 @@ public sealed class Grid: Container
     protected override Size MeasureOverride(Constraint constraint)
     {
         ValidatePlacements();
-        Track[] rows = Definitions(Rows);
-        Track[] columns = Definitions(Columns);
+        var rows = Definitions(Rows);
+        var columns = Definitions(Columns);
 
         MeasureChildren(new Constraint(width: null, height: null));
-        int[] rowRequests = Requests(rows.Length, rows: true);
-        int[] columnRequests = Requests(columns.Length, rows: false);
-        int[] rowExtents = Resolve(constraint.Height, RowSpacing, rows, rowRequests);
-        int[] columnExtents = Resolve(constraint.Width, ColumnSpacing, columns, columnRequests);
+        var rowRequests = Requests(rows.Length, rows: true);
+        var columnRequests = Requests(columns.Length, rows: false);
+        var rowExtents = Resolve(constraint.Height, RowSpacing, rows, rowRequests);
+        var columnExtents = Resolve(constraint.Width, ColumnSpacing, columns, columnRequests);
 
         // A finite track slot can alter wrapping and therefore the intrinsic
         // request on the other axis. Re-measure once, then resolve the stable
@@ -201,12 +200,12 @@ public sealed class Grid: Container
     protected override void ArrangeOverride(Rect bounds)
     {
         ValidatePlacements();
-        Track[] rows = Definitions(Rows);
-        Track[] columns = Definitions(Columns);
-        int[] rowRequests = Requests(rows.Length, rows: true);
-        int[] columnRequests = Requests(columns.Length, rows: false);
-        int[] rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
-        int[] columnExtents = Resolve(bounds.Width, ColumnSpacing, columns, columnRequests);
+        var rows = Definitions(Rows);
+        var columns = Definitions(Columns);
+        var rowRequests = Requests(rows.Length, rows: true);
+        var columnRequests = Requests(columns.Length, rows: false);
+        var rowExtents = Resolve(bounds.Height, RowSpacing, rows, rowRequests);
+        var columnExtents = Resolve(bounds.Width, ColumnSpacing, columns, columnRequests);
 
         // Final viewport dimensions can differ from measure. Re-measuring the
         // exact spanned slots keeps wrapped content deterministic after resize.
@@ -222,7 +221,7 @@ public sealed class Grid: Container
     private static GridPlacement? GetPlacement(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return _placements.TryGetValue(control, out GridPlacement? placement) ? placement : null;
+        return _placements.TryGetValue(control, out var placement) ? placement : null;
     }
 
     private static void InvalidateParent(Control control)
@@ -243,7 +242,7 @@ public sealed class Grid: Container
             return;
         }
 
-        int count = rows ? Math.Max(1, parent.Rows.Count) : Math.Max(1, parent.Columns.Count);
+        var count = rows ? Math.Max(1, parent.Rows.Count) : Math.Max(1, parent.Columns.Count);
 
         if (origin >= count || span > count - origin)
         {
@@ -259,7 +258,7 @@ public sealed class Grid: Container
         Debug.Assert(left >= 0, "Grid accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "Grid accumulation uses non-negative extents.");
 
-        long result = (long) left + right;
+        var result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
@@ -272,7 +271,7 @@ public sealed class Grid: Container
             return [Track.Auto()];
         }
 
-        Track[] result = new Track[source.Count];
+        var result = new Track[source.Count];
         source.CopyTo(result, 0);
 
         return result;
@@ -287,12 +286,12 @@ public sealed class Grid: Container
         Debug.Assert(spacing >= 0, "Grid spacing is non-negative.");
         Debug.Assert(definitions.Length == requests.Length, "Every track definition must have one request.");
 
-        Length[] lengths = new Length[definitions.Length];
-        int[] minimum = new int[definitions.Length];
-        int[] maximum = new int[definitions.Length];
-        int[] result = new int[definitions.Length];
+        var lengths = new Length[definitions.Length];
+        var minimum = new int[definitions.Length];
+        var maximum = new int[definitions.Length];
+        var result = new int[definitions.Length];
 
-        for (int index = 0; index < definitions.Length; index++)
+        for (var index = 0; index < definitions.Length; index++)
         {
             lengths[index] = definitions[index].Length;
             minimum[index] = definitions[index].Minimum;
@@ -317,15 +316,15 @@ public sealed class Grid: Container
             return 0;
         }
 
-        long requested = Math.Min(int.MaxValue, (long) value * (count - 1));
+        var requested = Math.Min(int.MaxValue, (long) value * (count - 1));
         return limit.HasValue ? (int) Math.Min(limit.Value, requested) : (int) requested;
     }
 
     private static int Sum(ReadOnlySpan<int> values)
     {
-        int result = 0;
+        var result = 0;
 
-        foreach (int value in values)
+        foreach (var value in values)
         {
             result = Add(result, value);
         }
@@ -341,10 +340,10 @@ public sealed class Grid: Container
         Debug.Assert(rowExtents.Length >= 0, "Grid arrangement requires valid row extents.");
         Debug.Assert(columnExtents.Length >= 0, "Grid arrangement requires valid column extents.");
 
-        int[] rowOrigins = Origins(bounds.Y, bounds.Height, RowSpacing, rowExtents);
-        int[] columnOrigins = Origins(bounds.X, bounds.Width, ColumnSpacing, columnExtents);
+        var rowOrigins = Origins(bounds.Y, bounds.Height, RowSpacing, rowExtents);
+        var columnOrigins = Origins(bounds.X, bounds.Width, ColumnSpacing, columnExtents);
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
             {
@@ -352,15 +351,15 @@ public sealed class Grid: Container
                 continue;
             }
 
-            int row = GetRow(child);
-            int column = GetColumn(child);
-            int width = SpanExtent(
+            var row = GetRow(child);
+            var column = GetColumn(child);
+            var width = SpanExtent(
                 columnExtents,
                 column,
                 GetColumnSpan(child),
                 ColumnSpacing,
                 bounds.Width);
-            int height = SpanExtent(
+            var height = SpanExtent(
                 rowExtents,
                 row,
                 GetRowSpan(child),
@@ -382,18 +381,18 @@ public sealed class Grid: Container
         Debug.Assert(available >= 0, "Grid origin base is non-negative.");
         Debug.Assert(spacing >= 0, "Grid origin spacing is non-negative.");
 
-        int[] result = new int[extents.Length];
-        int position = origin;
-        int remainingSpacing = Spacing(spacing, extents.Length, available);
+        var result = new int[extents.Length];
+        var position = origin;
+        var remainingSpacing = Spacing(spacing, extents.Length, available);
 
-        for (int index = 0; index < extents.Length; index++)
+        for (var index = 0; index < extents.Length; index++)
         {
             result[index] = position;
             position = Add(position, extents[index]);
 
             if (index < extents.Length - 1)
             {
-                int gap = Math.Min(spacing, remainingSpacing);
+                var gap = Math.Min(spacing, remainingSpacing);
                 position = Add(position, gap);
                 remainingSpacing -= gap;
             }
@@ -406,25 +405,25 @@ public sealed class Grid: Container
     {
         Debug.Assert(count >= 1, "Grid requests require at least one track.");
 
-        int[] result = new int[count];
+        var result = new int[count];
 
         // Non-spanning requests establish the individual intrinsic tracks.
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
             {
                 continue;
             }
 
-            int span = rows ? GetRowSpan(child) : GetColumnSpan(child);
+            var span = rows ? GetRowSpan(child) : GetColumnSpan(child);
 
             if (span != 1)
             {
                 continue;
             }
 
-            int origin = rows ? GetRow(child) : GetColumn(child);
-            int desired = rows
+            var origin = rows ? GetRow(child) : GetColumn(child);
+            var desired = rows
                 ? Add(child.DesiredSize.Height, child.Margin.Vertical)
                 : Add(child.DesiredSize.Width, child.Margin.Horizontal);
             result[origin] = Math.Max(result[origin], desired);
@@ -432,26 +431,26 @@ public sealed class Grid: Container
 
         // Spanning requests expand the established tracks only by the cells
         // still required after their internal Grid gaps are accounted for.
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
             {
                 continue;
             }
 
-            int span = rows ? GetRowSpan(child) : GetColumnSpan(child);
+            var span = rows ? GetRowSpan(child) : GetColumnSpan(child);
 
             if (span == 1)
             {
                 continue;
             }
 
-            int origin = rows ? GetRow(child) : GetColumn(child);
-            int desired = rows
+            var origin = rows ? GetRow(child) : GetColumn(child);
+            var desired = rows
                 ? Add(child.DesiredSize.Height, child.Margin.Vertical)
                 : Add(child.DesiredSize.Width, child.Margin.Horizontal);
-            int spacing = rows ? RowSpacing : ColumnSpacing;
-            int internalSpacing = Spacing(spacing, span, desired);
+            var spacing = rows ? RowSpacing : ColumnSpacing;
+            var internalSpacing = Spacing(spacing, span, desired);
             Tracks.Satisfy(result, origin, span, Math.Max(0, desired - internalSpacing));
         }
 
@@ -460,7 +459,7 @@ public sealed class Grid: Container
 
     private void MeasureChildren(Constraint constraint)
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             child.Measure(constraint);
         }
@@ -472,7 +471,7 @@ public sealed class Grid: Container
         int? availableHeight,
         int? availableWidth)
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
             {
@@ -500,7 +499,7 @@ public sealed class Grid: Container
         ReadOnlySpan<int> columnExtents,
         int? availableWidth)
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed ||
                 !IsAutomaticSpan(rows, GetRow(child), GetRowSpan(child)))
@@ -508,7 +507,7 @@ public sealed class Grid: Container
                 continue;
             }
 
-            int width = SpanExtent(
+            var width = SpanExtent(
                 columnExtents,
                 GetColumn(child),
                 GetColumnSpan(child),
@@ -523,7 +522,7 @@ public sealed class Grid: Container
         Debug.Assert(span >= 1, "Grid automatic span is positive.");
         Debug.Assert(origin >= 0 && origin + span <= definitions.Length, "Grid automatic span fits definitions.");
 
-        for (int index = origin; index < origin + span; index++)
+        for (var index = origin; index < origin + span; index++)
         {
             if (definitions[index].Length.Kind != Kind.Auto)
             {
@@ -545,18 +544,18 @@ public sealed class Grid: Container
         Debug.Assert(origin >= 0 && origin + span <= extents.Length, "Grid span fits extents.");
         Debug.Assert(spacing >= 0, "Grid span spacing is non-negative.");
 
-        int result = 0;
+        var result = 0;
 
-        for (int index = origin; index < origin + span; index++)
+        for (var index = origin; index < origin + span; index++)
         {
             result = Add(result, extents[index]);
         }
 
-        int totalSpacing = Spacing(spacing, extents.Length, available);
+        var totalSpacing = Spacing(spacing, extents.Length, available);
 
-        for (int gap = origin; gap < origin + span - 1; gap++)
+        for (var gap = origin; gap < origin + span - 1; gap++)
         {
-            long used = Math.Min(int.MaxValue, (long) gap * spacing);
+            var used = Math.Min(int.MaxValue, (long) gap * spacing);
             result = Add(result, (int) Math.Min(spacing, Math.Max(0, totalSpacing - used)));
         }
 
@@ -565,7 +564,7 @@ public sealed class Grid: Container
 
     private void ValidatePlacements()
     {
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             ValidatePlacement(child, Math.Max(1, Rows.Count), rows: true);
             ValidatePlacement(child, Math.Max(1, Columns.Count), rows: false);
@@ -577,8 +576,8 @@ public sealed class Grid: Container
         Debug.Assert(child is not null, "Grid placement validation requires a non-null child.");
         Debug.Assert(count >= 1, "Grid placement validation requires at least one track.");
 
-        int origin = rows ? GetRow(child) : GetColumn(child);
-        int span = rows ? GetRowSpan(child) : GetColumnSpan(child);
+        var origin = rows ? GetRow(child) : GetColumn(child);
+        var span = rows ? GetRowSpan(child) : GetColumnSpan(child);
 
         if (origin >= count || span > count - origin)
         {
@@ -592,9 +591,9 @@ public sealed class Grid: Container
     private void DefinitionsChanging(int candidateCount, bool rows)
     {
         VerifyMutable();
-        int effectiveCount = Math.Max(1, candidateCount);
+        var effectiveCount = Math.Max(1, candidateCount);
 
-        foreach (Control child in Children)
+        foreach (var child in Children)
         {
             ValidatePlacement(child, effectiveCount, rows);
         }

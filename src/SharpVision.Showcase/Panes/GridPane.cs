@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the Grid control with fixed, star, auto, and spanning track specimens.</summary>
 internal sealed class GridPane: View
 {
@@ -14,7 +15,7 @@ internal sealed class GridPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Grid fixedTracks = new()
+        var fixedTracks = new Grid()
         {
             Width = Length.Cells(33),
             Height = Length.Cells(4),
@@ -29,7 +30,7 @@ internal sealed class GridPane: View
         AddCell(fixedTracks, "9 cells", 0, 1);
         AddCell(fixedTracks, "9 cells", 0, 2);
 
-        Grid proportionalTracks = new()
+        var proportionalTracks = new Grid()
         {
             Width = Length.Cells(40),
             Height = Length.Cells(7),
@@ -42,7 +43,7 @@ internal sealed class GridPane: View
         proportionalTracks.Columns.Add(Track.Star(1));
         proportionalTracks.Columns.Add(Track.Star(2));
         AddCell(proportionalTracks, "Auto", 0, 0);
-        Border autoWide = Card("Auto sizes to this content");
+        var autoWide = Card("Auto sizes to this content");
         Grid.SetRow(autoWide, 0);
         Grid.SetColumn(autoWide, 1);
         proportionalTracks.Children.Add(autoWide);
@@ -51,7 +52,7 @@ internal sealed class GridPane: View
         AddCell(proportionalTracks, "Star 1", 2, 0);
         AddCell(proportionalTracks, "Star 2", 2, 1);
 
-        Grid spans = new()
+        var spans = new Grid()
         {
             Width = Length.Cells(36),
             Height = Length.Cells(9),
@@ -64,17 +65,17 @@ internal sealed class GridPane: View
         spans.Columns.Add(Track.Star(1));
         spans.Columns.Add(Track.Star(1));
         spans.Columns.Add(Track.Star(1));
-        Border rowSpan = Card("RowSpan = 2");
+        var rowSpan = Card("RowSpan = 2");
         Grid.SetRow(rowSpan, 0);
         Grid.SetColumn(rowSpan, 0);
         Grid.SetRowSpan(rowSpan, 2);
         spans.Children.Add(rowSpan);
-        Border columnSpan = Card("ColumnSpan = 2");
+        var columnSpan = Card("ColumnSpan = 2");
         Grid.SetRow(columnSpan, 0);
         Grid.SetColumn(columnSpan, 1);
         Grid.SetColumnSpan(columnSpan, 2);
         spans.Children.Add(columnSpan);
-        Border both = Card("Row + Column span");
+        var both = Card("Row + Column span");
         Grid.SetRow(both, 1);
         Grid.SetColumn(both, 1);
         Grid.SetRowSpan(both, 2);
@@ -101,7 +102,7 @@ internal sealed class GridPane: View
 
     private static void AddCell(Grid grid, string text, int row, int column)
     {
-        Border cell = Card(text);
+        var cell = Card(text);
         Grid.SetRow(cell, row);
         Grid.SetColumn(cell, column);
         grid.Children.Add(cell);

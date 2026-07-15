@@ -24,7 +24,7 @@ public sealed class TableRow
 
         HashSet<Control> seen = [];
 
-        foreach (Control cell in _cells)
+        foreach (var cell in _cells)
         {
             ArgumentNullException.ThrowIfNull(cell);
 

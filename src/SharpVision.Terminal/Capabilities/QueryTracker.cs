@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Tracks a finite number of correlated and uncorrelated terminal queries.
@@ -43,10 +42,10 @@ public sealed class QueryTracker
     public bool TryRegister(QueryKind kind, string? id, out QueryToken token)
     {
         Validate(kind, id);
-        DateTimeOffset now = _timeProvider.GetUtcNow();
+        var now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
-        Key key = new(kind, id);
+        var key = new Key(kind, id);
 
         if (_active.Count >= _limits.MaxConcurrentQueries ||
             _active.ContainsKey(key) ||
@@ -57,7 +56,7 @@ public sealed class QueryTracker
             return false;
         }
 
-        long value = checked(++_nextToken);
+        var value = checked(++_nextToken);
         token = new QueryToken(value);
         _active.Add(key, new Active(token, now + _limits.QueryTimeout));
         _tokens.Add(value, key);
@@ -74,12 +73,12 @@ public sealed class QueryTracker
     public QueryMatch Match(QueryKind kind, string? id = null)
     {
         Validate(kind, id);
-        DateTimeOffset now = _timeProvider.GetUtcNow();
+        var now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
-        Key key = new(kind, id);
+        var key = new Key(kind, id);
 
-        if (_active.Remove(key, out Active active))
+        if (_active.Remove(key, out var active))
         {
             _ = _tokens.Remove(active.Token.Value);
             AddHistory(key, Outcome.Completed, now);
@@ -87,7 +86,7 @@ public sealed class QueryTracker
             return QueryMatch.Matched;
         }
 
-        if (_history.TryGetValue(key, out History history))
+        if (_history.TryGetValue(key, out var history))
         {
             if (history.Outcome == Outcome.Completed)
             {
@@ -109,7 +108,7 @@ public sealed class QueryTracker
     /// <exception cref="ArgumentOutOfRangeException">The response kind is not query-trackable.</exception>
     public QueryMatch Match(Response response)
     {
-        QueryKind kind = response.Kind switch
+        var kind = response.Kind switch
         {
             ResponseKind.PrimaryAttributes => QueryKind.PrimaryAttributes,
             ResponseKind.SecondaryAttributes => QueryKind.SecondaryAttributes,
@@ -127,9 +126,9 @@ public sealed class QueryTracker
                 response,
                 "The response kind is not query-trackable."),
         };
-        bool keyboardUnsupported = kind == QueryKind.PrimaryAttributes &&
+        var keyboardUnsupported = kind == QueryKind.PrimaryAttributes &&
             CompleteUnsupported(QueryKind.Keyboard);
-        QueryMatch result = Match(kind);
+        var result = Match(kind);
 
         if (keyboardUnsupported)
         {
@@ -144,11 +143,11 @@ public sealed class QueryTracker
     /// <returns>Whether an active query was cancelled.</returns>
     public bool Cancel(QueryToken token)
     {
-        DateTimeOffset now = _timeProvider.GetUtcNow();
+        var now = _timeProvider.GetUtcNow();
         _ = ExpireCore(now);
         PruneHistory(now);
 
-        if (!_tokens.Remove(token.Value, out Key key) || !_active.Remove(key))
+        if (!_tokens.Remove(token.Value, out var key) || !_active.Remove(key))
         {
             return false;
         }
@@ -161,8 +160,8 @@ public sealed class QueryTracker
     /// <returns>The number of queries expired by this call.</returns>
     public int Expire()
     {
-        DateTimeOffset now = _timeProvider.GetUtcNow();
-        int expired = ExpireCore(now);
+        var now = _timeProvider.GetUtcNow();
+        var expired = ExpireCore(now);
         PruneHistory(now);
         return expired;
     }
@@ -171,7 +170,7 @@ public sealed class QueryTracker
     {
         while (_history.Count >= _limits.MaxConcurrentQueries && _historyOrder.Count > 0)
         {
-            Key oldest = _historyOrder.Dequeue();
+            var oldest = _historyOrder.Dequeue();
             _ = _history.Remove(oldest);
         }
 
@@ -181,9 +180,9 @@ public sealed class QueryTracker
 
     private bool CompleteUnsupported(QueryKind kind)
     {
-        Key key = new(kind, null);
+        var key = new Key(kind, null);
 
-        if (!_active.Remove(key, out Active active))
+        if (!_active.Remove(key, out var active))
         {
             return false;
         }
@@ -199,9 +198,9 @@ public sealed class QueryTracker
             .Where(pair => pair.Value.Deadline <= now)
             .Select(static pair => pair.Key)];
 
-        foreach (Key key in expired)
+        foreach (var key in expired)
         {
-            Active active = _active[key];
+            var active = _active[key];
             _ = _active.Remove(key);
             _ = _tokens.Remove(active.Token.Value);
             AddHistory(key, Outcome.TimedOut, now);
@@ -214,9 +213,9 @@ public sealed class QueryTracker
     {
         while (_historyOrder.Count > 0)
         {
-            Key key = _historyOrder.Peek();
+            var key = _historyOrder.Peek();
 
-            if (!_history.TryGetValue(key, out History history))
+            if (!_history.TryGetValue(key, out var history))
             {
                 _ = _historyOrder.Dequeue();
                 continue;

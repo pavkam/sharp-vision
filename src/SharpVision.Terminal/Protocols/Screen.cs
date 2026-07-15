@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers;
-using System.Diagnostics;
 
 /// <summary>Writes one terminal sequence through GNU screen DCS passthrough framing.</summary>
 /// <remarks>
@@ -25,8 +23,8 @@ public static class Screen
     {
         ArgumentNullException.ThrowIfNull(destination);
 
-        int length = checked(Header.Length + sequence.Length + Terminator.Length);
-        Span<byte> output = destination.GetSpan(length);
+        var length = checked(Header.Length + sequence.Length + Terminator.Length);
+        var output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
         Header.CopyTo(output);
         sequence.CopyTo(output[Header.Length..]);

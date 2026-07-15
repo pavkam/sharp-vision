@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
 
 /// <summary>Verifies the application owns and disposes an injected console host restore lease.</summary>
 public sealed class ApplicationHostLeaseTests
@@ -13,8 +12,8 @@ public sealed class ApplicationHostLeaseTests
     public async Task DisposeAsync_WhenNeverStarted_DisposesHostLeaseOnceAsync()
     {
         await using FakeTerminal terminal = new();
-        TrackingLease lease = new();
-        Application application = new(
+        var lease = new TrackingLease();
+        var application = new Application(
             new ProbeControl(),
             terminal,
             terminal,

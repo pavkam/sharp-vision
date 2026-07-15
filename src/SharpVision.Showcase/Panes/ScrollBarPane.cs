@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the ScrollBar control with full-rail, vertical, and thin-chrome specimens.</summary>
 internal sealed class ScrollBarPane: View
 {
@@ -14,7 +15,7 @@ internal sealed class ScrollBarPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        ScrollBar horizontal = new()
+        var horizontal = new ScrollBar()
         {
             Width = Length.Cells(28),
             Orientation = Orientation.Horizontal,
@@ -26,13 +27,13 @@ internal sealed class ScrollBarPane: View
             TrackGlyph = new Rune('─'),
             ThumbGlyph = new Rune('█'),
         };
-        Text status = new($"Thumb value: {horizontal.Value}");
+        var status = new Text($"Thumb value: {horizontal.Value}");
         horizontal.ValueChanged += (_, eventArgs) => status.Content = $"Thumb value: {eventArgs.Value}";
-        Stack full = new() { Spacing = 1 };
+        var full = new Stack() { Spacing = 1 };
         full.Children.Add(horizontal);
         full.Children.Add(status);
 
-        ScrollBar vertical = new()
+        var vertical = new ScrollBar()
         {
             Height = Length.Cells(8),
             Maximum = 40,
@@ -44,7 +45,7 @@ internal sealed class ScrollBarPane: View
             ThumbGlyph = new Rune('█'),
         };
 
-        ScrollBar thin = new()
+        var thin = new ScrollBar()
         {
             Width = Length.Cells(28),
             Orientation = Orientation.Horizontal,

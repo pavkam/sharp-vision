@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the Dock control with side-attached and fill layout specimens.</summary>
 internal sealed class DockPane: View
 {
@@ -14,54 +15,54 @@ internal sealed class DockPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Dock allSides = new()
+        var allSides = new Dock()
         {
             Width = Length.Cells(38),
             Height = Length.Cells(9),
             LastChildFills = true,
             Spacing = 1,
         };
-        Border left = Card("Left", Glyphs.Light);
+        var left = Card("Left", Glyphs.Light);
         left.Width = Length.Cells(7);
         Dock.SetSide(left, Side.Left);
         allSides.Children.Add(left);
-        Border top = Card("Top", Glyphs.Heavy);
+        var top = Card("Top", Glyphs.Heavy);
         top.Height = Length.Cells(2);
         Dock.SetSide(top, Side.Top);
         allSides.Children.Add(top);
-        Border right = Card("Right", Glyphs.Paired);
+        var right = Card("Right", Glyphs.Paired);
         right.Width = Length.Cells(8);
         Dock.SetSide(right, Side.Right);
         allSides.Children.Add(right);
-        Border bottom = Card("Bottom", Glyphs.Ascii);
+        var bottom = Card("Bottom", Glyphs.Ascii);
         bottom.Height = Length.Cells(2);
         Dock.SetSide(bottom, Side.Bottom);
         allSides.Children.Add(bottom);
         allSides.Children.Add(Card("Fill", Glyphs.Rounded));
 
-        Dock order = new()
+        var order = new Dock()
         {
             Width = Length.Cells(30),
             Height = Length.Cells(7),
             LastChildFills = true,
         };
-        Border first = Card("1: Left", Glyphs.Light);
+        var first = Card("1: Left", Glyphs.Light);
         first.Width = Length.Cells(9);
         Dock.SetSide(first, Side.Left);
         order.Children.Add(first);
-        Border second = Card("2: Left", Glyphs.Light);
+        var second = Card("2: Left", Glyphs.Light);
         second.Width = Length.Cells(9);
         Dock.SetSide(second, Side.Left);
         order.Children.Add(second);
         order.Children.Add(Card("3: Fill", Glyphs.Rounded));
 
-        Dock noFill = new()
+        var noFill = new Dock()
         {
             Width = Length.Cells(30),
             Height = Length.Cells(4),
             LastChildFills = false,
         };
-        Border onlyChild = Card("No remainder claimed", Glyphs.Heavy);
+        var onlyChild = Card("No remainder claimed", Glyphs.Heavy);
         onlyChild.Width = Length.Cells(20);
         Dock.SetSide(onlyChild, Side.Top);
         noFill.Children.Add(onlyChild);

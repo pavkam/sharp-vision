@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Graphics;
 
 using System.Buffers.Binary;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Validates the bounded PNG container subset required for owned transmission.</summary>
 internal static class Png
@@ -23,23 +22,23 @@ internal static class Png
             throw Invalid();
         }
 
-        int offset = Signature.Length;
-        bool first = true;
-        bool hasData = false;
+        var offset = Signature.Length;
+        var first = true;
+        var hasData = false;
         Size size = default;
 
         while (offset <= source.Length - 12)
         {
-            uint length = BinaryPrimitives.ReadUInt32BigEndian(source[offset..]);
+            var length = BinaryPrimitives.ReadUInt32BigEndian(source[offset..]);
 
             if (length > int.MaxValue || length > (uint) (source.Length - offset - 12))
             {
                 throw Invalid();
             }
 
-            int count = (int) length;
-            ReadOnlySpan<byte> type = source.Slice(offset + 4, 4);
-            ReadOnlySpan<byte> data = source.Slice(offset + 8, count);
+            var count = (int) length;
+            var type = source.Slice(offset + 4, 4);
+            var data = source.Slice(offset + 8, count);
             offset = checked(offset + count + 12);
 
             if (first)
@@ -73,10 +72,10 @@ internal static class Png
 
     private static Size ReadHeader(ReadOnlySpan<byte> value)
     {
-        uint width = BinaryPrimitives.ReadUInt32BigEndian(value);
-        uint height = BinaryPrimitives.ReadUInt32BigEndian(value[4..]);
-        byte bitDepth = value[8];
-        byte colorType = value[9];
+        var width = BinaryPrimitives.ReadUInt32BigEndian(value);
+        var height = BinaryPrimitives.ReadUInt32BigEndian(value[4..]);
+        var bitDepth = value[8];
+        var colorType = value[9];
 
         return width is 0 or > int.MaxValue ||
             height is 0 or > int.MaxValue ||

@@ -5,7 +5,7 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 
 using SharpVision.Terminal.Capabilities;
 
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
+
 
 /// <summary>
 /// Verifies the named protocol-discovery facade on <see cref="TerminalCapabilities"/>.
@@ -16,7 +16,7 @@ public sealed class CapabilitiesDiscoveryTests
     [Fact]
     public void Support_WhenSixelUnknownOnConservative_ReturnsSameStateAsProperty()
     {
-        TerminalCapabilities capabilities = TerminalCapabilities.Conservative;
+        var capabilities = TerminalCapabilities.Conservative;
 
         capabilities.Support(TerminalProtocol.Sixel).State.ShouldBe(capabilities.Sixel.State);
     }
@@ -25,9 +25,9 @@ public sealed class CapabilitiesDiscoveryTests
     [Fact]
     public void Features_WhenEnumerated_ListsEveryProtocolExactlyOnce()
     {
-        IReadOnlyList<ProtocolSupport> features = TerminalCapabilities.Conservative.Features;
+        var features = TerminalCapabilities.Conservative.Features;
 
-        int protocolCount = Enum.GetValues<TerminalProtocol>().Length;
+        var protocolCount = Enum.GetValues<TerminalProtocol>().Length;
         features.Count.ShouldBe(protocolCount);
         features.Select(f => f.Protocol).Distinct().Count().ShouldBe(protocolCount);
     }

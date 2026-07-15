@@ -3,13 +3,8 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using System.Buffers;
-using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 
-using SharpVision.Terminal.Transport;
 
-using TerminalCapabilities = Capabilities.Capabilities;
 
 /// <summary>
 /// Encodes semantic frame changes and commits state only after complete output.
@@ -45,7 +40,7 @@ public sealed class Renderer: IDisposable
         TimeProvider? timeProvider = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOutputBytes);
-        TimeSpan timeout = cleanupTimeout ?? TimeSpan.FromSeconds(1);
+        var timeout = cleanupTimeout ?? TimeSpan.FromSeconds(1);
 
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
         {
@@ -101,14 +96,14 @@ public sealed class Renderer: IDisposable
         }
 
         Frame? replacement = null;
-        bool synchronized = capabilities.SynchronizedOutput.IsSupported;
-        long started = Stopwatch.GetTimestamp();
+        var synchronized = capabilities.SynchronizedOutput.IsSupported;
+        var started = Stopwatch.GetTimestamp();
         LastCleanupException = null;
 
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            bool forceFull = _invalidated ||
+            var forceFull = _invalidated ||
                 _front is null ||
                 !Equals(_capabilities, capabilities);
 
@@ -126,7 +121,7 @@ public sealed class Renderer: IDisposable
             }
 
             _buffer.Reset();
-            EncodeResult encoded = Encoder.Encode(_front, back, _buffer, capabilities, forceFull);
+            var encoded = Encoder.Encode(_front, back, _buffer, capabilities, forceFull);
 
             if (_buffer.WrittenCount == 0)
             {
@@ -211,7 +206,7 @@ public sealed class Renderer: IDisposable
             // Only fully transferred and flushed terminal state becomes the new front.
             if (replacement is not null)
             {
-                Frame? previous = _front;
+                var previous = _front;
                 _front = replacement;
                 replacement = null;
                 previous?.Dispose();
@@ -254,7 +249,7 @@ public sealed class Renderer: IDisposable
     {
         try
         {
-            using CancellationTokenSource timeout = new(_cleanupTimeout, _timeProvider);
+            using var timeout = new CancellationTokenSource(_cleanupTimeout, _timeProvider);
             await transport.WriteAsync(_synchronizedEnd, timeout.Token).ConfigureAwait(false);
             await transport.FlushAsync(timeout.Token).ConfigureAwait(false);
         }

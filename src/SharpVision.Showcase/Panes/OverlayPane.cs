@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using TerminalAttributes = Terminal.Rendering.Attributes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Overlay control with layered, z-ordered, aligned, and clipped specimens.</summary>
@@ -15,17 +14,17 @@ internal sealed class OverlayPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Overlay zOrder = new()
+        var zOrder = new Overlay()
         {
             Width = Length.Cells(32),
             Height = Length.Cells(7),
             ClipToBounds = true,
         };
-        Text back = new("Background layer") { Padding = new Thickness(1) };
+        var back = new Text("Background layer") { Padding = new Thickness(1) };
         Overlay.SetZIndex(back, -1);
         zOrder.Children.Add(back);
 
-        Border middle = new()
+        var middle = new Border()
         {
             Child = new Text("Middle layer"),
             BorderThickness = new Thickness(1),
@@ -35,7 +34,7 @@ internal sealed class OverlayPane: View
         };
         zOrder.Children.Add(middle);
 
-        Text front = new("Front layer")
+        var front = new Text("Front layer")
         {
             Attributes = TerminalAttributes.Bold,
             HorizontalAlignment = HorizontalAlignment.Right,
@@ -44,7 +43,7 @@ internal sealed class OverlayPane: View
         Overlay.SetZIndex(front, 10);
         zOrder.Children.Add(front);
 
-        Overlay alignment = new()
+        var alignment = new Overlay()
         {
             Width = Length.Cells(32),
             Height = Length.Cells(7),
@@ -56,7 +55,7 @@ internal sealed class OverlayPane: View
         alignment.Children.Add(new Text("Bottom-left") { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom });
         alignment.Children.Add(new Text("Bottom-right") { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom });
 
-        Border oversizedContent = new()
+        var oversizedContent = new Border()
         {
             Child = new Text("Overflowing card"),
             BorderThickness = new Thickness(1),
@@ -65,7 +64,7 @@ internal sealed class OverlayPane: View
             Height = Length.Cells(3),
             Margin = new Thickness(6, 1, 0, 0),
         };
-        Overlay clipped = new()
+        var clipped = new Overlay()
         {
             Width = Length.Cells(16),
             Height = Length.Cells(4),
@@ -73,7 +72,7 @@ internal sealed class OverlayPane: View
         };
         clipped.Children.Add(oversizedContent);
 
-        Border unclippedContent = new()
+        var unclippedContent = new Border()
         {
             Child = new Text("Overflowing card"),
             BorderThickness = new Thickness(1),
@@ -82,7 +81,7 @@ internal sealed class OverlayPane: View
             Height = Length.Cells(3),
             Margin = new Thickness(6, 1, 0, 0),
         };
-        Overlay unclipped = new()
+        var unclipped = new Overlay()
         {
             Width = Length.Cells(16),
             Height = Length.Cells(4),

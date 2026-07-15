@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Input;
 
 /// <summary>Verifies PointerDevice correctly snapshots pointer state.</summary>
 public sealed class PointerDeviceTests
@@ -13,8 +11,8 @@ public sealed class PointerDeviceTests
     [Fact]
     public void Observe_WhenMove_UpdatesPositionAndButtons()
     {
-        PointerDevice device = new(() => null);
-        Pointer pointer = new(
+        var device = new PointerDevice(() => null);
+        var pointer = new Pointer(
             cells: new Point(4, 2),
             pixels: null,
             buttons: Buttons.Primary,
@@ -37,7 +35,7 @@ public sealed class PointerDeviceTests
     [Fact]
     public void Observe_WhenLeave_ClearsPosition()
     {
-        PointerDevice device = new(() => null);
+        var device = new PointerDevice(() => null);
         device.Observe(new Pointer(new Point(1, 1), null, Buttons.None, PointerAction.Move, 0, 0, Modifiers.None, true, false));
 
         device.Observe(new Pointer(null, null, Buttons.None, PointerAction.Leave, 0, 0, Modifiers.None, false, false));

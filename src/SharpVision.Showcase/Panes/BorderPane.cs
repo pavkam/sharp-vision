@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the Border control with framed glyph-family and color specimens.</summary>
 internal sealed class BorderPane: View
 {
@@ -14,17 +15,17 @@ internal sealed class BorderPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Border light = Frame("Light", Glyphs.Light);
-        Border heavy = Frame("Heavy", Glyphs.Heavy);
-        Border paired = Frame("Paired", Glyphs.Paired);
-        Border rounded = Frame("Rounded", Glyphs.Rounded);
-        Border ascii = Frame("ASCII fallback", Glyphs.Ascii);
-        Border solid = Frame("Solid block", Glyphs.Solid);
-        Border lightShade = Frame("Light shade", Glyphs.LightShade);
-        Border mediumShade = Frame("Medium shade", Glyphs.MediumShade);
-        Border darkShade = Frame("Dark shade", Glyphs.DarkShade);
+        var light = Frame("Light", Glyphs.Light);
+        var heavy = Frame("Heavy", Glyphs.Heavy);
+        var paired = Frame("Paired", Glyphs.Paired);
+        var rounded = Frame("Rounded", Glyphs.Rounded);
+        var ascii = Frame("ASCII fallback", Glyphs.Ascii);
+        var solid = Frame("Solid block", Glyphs.Solid);
+        var lightShade = Frame("Light shade", Glyphs.LightShade);
+        var mediumShade = Frame("Medium shade", Glyphs.MediumShade);
+        var darkShade = Frame("Dark shade", Glyphs.DarkShade);
 
-        Border partial = new()
+        var partial = new Border()
         {
             Child = new Text("Top and left edges only"),
             BorderThickness = new Thickness(1, 1, 0, 0),
@@ -32,14 +33,14 @@ internal sealed class BorderPane: View
             Padding = new Thickness(1, 0),
         };
 
-        Border tintedChild = new()
+        var tintedChild = new Border()
         {
             Child = new Text("Owned child"),
             BorderThickness = new Thickness(1),
             Glyphs = Glyphs.Rounded,
             Padding = new Thickness(1, 0),
         };
-        Border tinted = new()
+        var tinted = new Border()
         {
             Child = tintedChild,
             BorderThickness = new Thickness(1),

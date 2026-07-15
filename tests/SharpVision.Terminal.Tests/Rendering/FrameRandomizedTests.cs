@@ -18,7 +18,7 @@ public sealed class FrameRandomizedTests
     [Fact]
     public void Mutate_WhenOperationsAreRandomized_PreservesOwnership()
     {
-        Random random = new(_seed);
+        var random = new Random(_seed);
         (string Source, string Presentation)[] values =
         [
             (Source: "a", Presentation: "a"),
@@ -33,9 +33,9 @@ public sealed class FrameRandomizedTests
         ];
         using Frame frame = new(new Size(20, 5));
 
-        for (int operation = 0; operation < 1_000; operation++)
+        for (var operation = 0; operation < 1_000; operation++)
         {
-            Point point = new(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
+            var point = new Point(random.Next(frame.Size.Width), random.Next(frame.Size.Height));
 
             if (random.Next(4) == 0)
             {
@@ -43,8 +43,8 @@ public sealed class FrameRandomizedTests
             }
             else
             {
-                (string? source, string? presentation) = values[random.Next(values.Length)];
-                Edge edge = (Edge) random.Next(3);
+                (var source, var presentation) = values[random.Next(values.Length)];
+                var edge = (Edge) random.Next(3);
                 _ = frame.Canvas.Draw(source.AsSpan(), point, edge: edge);
 
                 if (presentation == "�")
@@ -61,26 +61,26 @@ public sealed class FrameRandomizedTests
 
     private static void AssertOwnership(Frame frame, int operation)
     {
-        for (int y = 0; y < frame.Size.Height; y++)
+        for (var y = 0; y < frame.Size.Height; y++)
         {
-            for (int x = 0; x < frame.Size.Width; x++)
+            for (var x = 0; x < frame.Size.Width; x++)
             {
-                Point point = new(x, y);
-                CellInfo cell = frame.GetCell(point);
-                string message = $"Seed {_seed}, operation {operation}, cell ({x},{y}).";
+                var point = new Point(x, y);
+                var cell = frame.GetCell(point);
+                var message = $"Seed {_seed}, operation {operation}, cell ({x},{y}).";
 
                 if (cell.IsContinuation)
                 {
                     cell.Lead.Y.ShouldBe(y, message);
                     cell.Lead.X.ShouldBe(x - 1, message);
-                    CellInfo lead = frame.GetCell(cell.Lead);
+                    var lead = frame.GetCell(cell.Lead);
                     lead.IsContinuation.ShouldBeFalse(message);
                     lead.Width.ShouldBe(2, message);
                 }
                 else if (cell.Width == 2)
                 {
                     x.ShouldBeLessThan(frame.Size.Width - 1, message);
-                    CellInfo continuation = frame.GetCell(new Point(x + 1, y));
+                    var continuation = frame.GetCell(new Point(x + 1, y));
                     continuation.IsContinuation.ShouldBeTrue(message);
                     continuation.Lead.ShouldBe(point, message);
                 }

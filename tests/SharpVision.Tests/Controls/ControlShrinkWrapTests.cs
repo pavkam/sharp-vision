@@ -10,7 +10,7 @@ public sealed class ControlShrinkWrapTests
     [Fact]
     public void Arrange_WhenShrinkWrapsWidth_SizesToContentDespiteStretch()
     {
-        ShrinkProbe probe = new(new Size(6, 2)) { HorizontalAlignment = HorizontalAlignment.Stretch };
+        var probe = new ShrinkProbe(new Size(6, 2)) { HorizontalAlignment = HorizontalAlignment.Stretch };
 
         probe.Measure(new Constraint(20, 20));
         probe.Arrange(new Rect(0, 0, 20, 20));

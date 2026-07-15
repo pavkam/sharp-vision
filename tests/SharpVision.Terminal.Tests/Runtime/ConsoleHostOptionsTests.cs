@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Runtime;
 
+
 /// <summary>
 /// Verifies console host options validation and defaults.
 /// </summary>
@@ -16,7 +17,7 @@ public sealed class ConsoleHostOptionsTests
     [Fact]
     public void Defaults_WhenConstructed_MatchDocumentedPolicy()
     {
-        ConsoleHostOptions options = new();
+        var options = new ConsoleHostOptions();
 
         options.ResizeInterval.ShouldBe(TimeSpan.FromMilliseconds(100));
         options.CaptureControlKeys.ShouldBeFalse();

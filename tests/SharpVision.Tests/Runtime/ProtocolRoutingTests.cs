@@ -3,11 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies terminal protocol responses traverse Session and Application onto the dispatcher.</summary>
 public sealed class ProtocolRoutingTests
@@ -23,7 +20,7 @@ public sealed class ProtocolRoutingTests
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        TaskCompletionSource<Response> received = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var received = new TaskCompletionSource<Response>(TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
             application.Dispatcher.CheckAccess().ShouldBeTrue();
@@ -33,7 +30,7 @@ public sealed class ProtocolRoutingTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         terminal.QueueInput("\u001b[?1;2c"u8);
 
-        Response response = await received.Task.WaitAsync(
+        var response = await received.Task.WaitAsync(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken);
 
@@ -53,7 +50,7 @@ public sealed class ProtocolRoutingTests
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        TaskCompletionSource<Diagnostic> received = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var received = new TaskCompletionSource<Diagnostic>(TaskCreationOptions.RunContinuationsAsynchronously);
         application.Diagnostic += (_, eventArgs) =>
         {
             application.Dispatcher.CheckAccess().ShouldBeTrue();
@@ -63,7 +60,7 @@ public sealed class ProtocolRoutingTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         terminal.QueueInput("\u001b]777;secret\u001b\\"u8);
 
-        Diagnostic diagnostic = await received.Task.WaitAsync(
+        var diagnostic = await received.Task.WaitAsync(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken);
 
@@ -86,7 +83,7 @@ public sealed class ProtocolRoutingTests
             terminal,
             terminal,
             TerminalOptions.Minimal);
-        TaskCompletionSource<Diagnostic> received = new(
+        var received = new TaskCompletionSource<Diagnostic>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.Diagnostic += (_, eventArgs) =>
             _ = received.TrySetResult(eventArgs.Diagnostic);
@@ -94,7 +91,7 @@ public sealed class ProtocolRoutingTests
 
         // Act
         terminal.QueueInput("\u001bP1;2$qpayload\u001b\\"u8);
-        Diagnostic diagnostic = await received.Task.WaitAsync(
+        var diagnostic = await received.Task.WaitAsync(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken);
 

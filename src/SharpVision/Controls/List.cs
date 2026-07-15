@@ -4,9 +4,7 @@
 namespace SharpVision.Controls;
 
 using System.Collections.ObjectModel;
-using System.Globalization;
 
-using SharpVision.Styling;
 using SharpVision.Terminal.Input;
 
 using GenericList = List<object?>;
@@ -69,8 +67,8 @@ public sealed class List: Container, IStyleScope
         {
             ArgumentNullException.ThrowIfNull(value);
             VerifyMutable();
-            object?[] copied = Copy(value);
-            ListItem[] realized = Build(copied, ItemTemplate);
+            var copied = Copy(value);
+            var realized = Build(copied, ItemTemplate);
             Replace(copied, realized, replaceItems: true);
         }
     }
@@ -93,7 +91,7 @@ public sealed class List: Container, IStyleScope
                 return;
             }
 
-            ListItem[] realized = Build(_items, value);
+            var realized = Build(_items, value);
             _ = Set(ref field, value, Invalidation.Measure);
             Replace(_items, realized, replaceItems: false);
         }
@@ -128,7 +126,7 @@ public sealed class List: Container, IStyleScope
             }
             else if (value == SelectionMode.Single && normalized.Count > 1)
             {
-                int retained = normalized.Min();
+                var retained = normalized.Min();
                 normalized.Clear();
                 _ = normalized.Add(retained);
             }
@@ -298,7 +296,7 @@ public sealed class List: Container, IStyleScope
             _ = next.Remove(index);
         }
 
-        bool changed = ApplySelection(next, cancellable: true);
+        var changed = ApplySelection(next, cancellable: true);
 
         if (changed && selected)
         {
@@ -312,7 +310,7 @@ public sealed class List: Container, IStyleScope
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
     {
-        Control? self = base.HitTest(point);
+        var self = base.HitTest(point);
 
         return self is null ? null : _stack.HitTestPopup(point) ?? _stack.HitTest(point) ?? this;
     }
@@ -328,7 +326,7 @@ public sealed class List: Container, IStyleScope
     {
         ArgumentNullException.ThrowIfNull(visitor);
 
-        foreach (Control child in _chrome)
+        foreach (var child in _chrome)
         {
             visitor(child);
         }
@@ -339,7 +337,7 @@ public sealed class List: Container, IStyleScope
     {
         while (_chrome.Count > 0)
         {
-            Control child = _chrome[^1];
+            var child = _chrome[^1];
             _chrome.RemoveAt(_chrome.Count - 1);
             child.Dispose();
         }
@@ -397,9 +395,9 @@ public sealed class List: Container, IStyleScope
     {
         Debug.Assert(values is not null, "List copy requires a non-null source.");
 
-        object?[] result = new object?[values.Count];
+        var result = new object?[values.Count];
 
-        for (int index = 0; index < result.Length; index++)
+        for (var index = 0; index < result.Length; index++)
         {
             result[index] = values[index];
         }
@@ -412,14 +410,14 @@ public sealed class List: Container, IStyleScope
         Debug.Assert(items is not null, "List build requires a non-null item source.");
         Debug.Assert(template is not null, "List build requires a non-null template.");
 
-        Control[] controls = new Control[items.Count];
-        HashSet<Control> unique = new(ReferenceEqualityComparer.Instance);
+        var controls = new Control[items.Count];
+        var unique = new HashSet<Control>(ReferenceEqualityComparer.Instance);
 
         try
         {
-            for (int index = 0; index < controls.Length; index++)
+            for (var index = 0; index < controls.Length; index++)
             {
-                Control? control = template(items[index]);
+                var control = template(items[index]);
 
                 if (control is null || !unique.Add(control))
                 {
@@ -435,9 +433,9 @@ public sealed class List: Container, IStyleScope
                 controls[index] = control;
             }
 
-            ListItem[] result = new ListItem[controls.Length];
+            var result = new ListItem[controls.Length];
 
-            for (int index = 0; index < result.Length; index++)
+            for (var index = 0; index < result.Length; index++)
             {
                 result[index] = new ListItem(index, controls[index]);
             }
@@ -448,7 +446,7 @@ public sealed class List: Container, IStyleScope
         }
         catch
         {
-            foreach (Control control in unique)
+            foreach (var control in unique)
             {
                 if (control.Parent is null && !control.IsDisposed)
                 {
@@ -467,7 +465,7 @@ public sealed class List: Container, IStyleScope
 
         while (_stack.Children.Count > 0)
         {
-            ListItem previous = (ListItem) _stack.Children[^1];
+            var previous = (ListItem) _stack.Children[^1];
             previous.Activated -= OnActivated;
             _stack.Children.RemoveAt(_stack.Children.Count - 1);
             previous.Dispose();
@@ -477,13 +475,13 @@ public sealed class List: Container, IStyleScope
         {
             _items.Clear();
 
-            for (int index = 0; index < items.Count; index++)
+            for (var index = 0; index < items.Count; index++)
             {
                 _items.Add(items[index]);
             }
         }
 
-        foreach (ListItem item in realized)
+        foreach (var item in realized)
         {
             item.Activated += OnActivated;
             _stack.Children.Add(item);
@@ -494,7 +492,7 @@ public sealed class List: Container, IStyleScope
 
         if (SelectionMode == SelectionMode.Single && normalized.Count > 1)
         {
-            int retained = normalized.Min();
+            var retained = normalized.Min();
             normalized.Clear();
             _ = normalized.Add(retained);
         }
@@ -516,11 +514,11 @@ public sealed class List: Container, IStyleScope
             return false;
         }
 
-        int version = _selectionVersion;
+        var version = _selectionVersion;
 
         if (cancellable)
         {
-            ListSelectionChangingEventArgs changing = new(added, removed);
+            var changing = new ListSelectionChangingEventArgs(added, removed);
             SelectionChanging?.Invoke(this, changing);
 
             if (changing.Cancel || version != _selectionVersion)
@@ -533,7 +531,7 @@ public sealed class List: Container, IStyleScope
         _selection.UnionWith(next);
         _selectionVersion++;
 
-        for (int index = 0; index < _stack.Children.Count; index++)
+        for (var index = 0; index < _stack.Children.Count; index++)
         {
             ((ListItem) _stack.Children[index]).CommitSelection(_selection.Contains(index));
         }
@@ -550,7 +548,7 @@ public sealed class List: Container, IStyleScope
     {
         _selectedItems.Clear();
 
-        foreach (int index in _selection.Order())
+        foreach (var index in _selection.Order())
         {
             if (index < Items.Count)
             {
@@ -561,7 +559,7 @@ public sealed class List: Container, IStyleScope
 
     private void OnActivated(object? sender, ActivationEventArgs eventArgs)
     {
-        ListItem item = (ListItem) sender!;
+        var item = (ListItem) sender!;
         ActiveIndex = item.Index;
 
         if (item.LastKey == Code.Enter)
@@ -588,14 +586,14 @@ public sealed class List: Container, IStyleScope
         }
 
         HashSet<int> next = [.. _selection];
-        bool control = (modifiers & Modifiers.Control) != 0;
-        bool shift = (modifiers & Modifiers.Shift) != 0;
+        var control = (modifiers & Modifiers.Control) != 0;
+        var shift = (modifiers & Modifiers.Shift) != 0;
 
         if (SelectionMode == SelectionMode.Multiple && shift && _selectionAnchor >= 0)
         {
             next.Clear();
 
-            for (int item = Math.Min(index, _selectionAnchor); item <= Math.Max(index, _selectionAnchor); item++)
+            for (var item = Math.Min(index, _selectionAnchor); item <= Math.Max(index, _selectionAnchor); item++)
             {
                 _ = next.Add(item);
             }
@@ -628,14 +626,14 @@ public sealed class List: Container, IStyleScope
             return;
         }
 
-        ListItem? current = FindItem(eventArgs.OriginalSource) ?? ItemAt(ActiveIndex);
+        var current = FindItem(eventArgs.OriginalSource) ?? ItemAt(ActiveIndex);
 
         if (current is null)
         {
             return;
         }
 
-        ListItem? target = ResolveNavigation(current, eventArgs.Stroke.Code);
+        var target = ResolveNavigation(current, eventArgs.Stroke.Code);
 
         if (target is null)
         {
@@ -670,7 +668,7 @@ public sealed class List: Container, IStyleScope
             return FindEligible(Items.Count - 1, -1);
         }
 
-        int page = Math.Max(1, _stack.Viewport.Height);
+        var page = Math.Max(1, _stack.Viewport.Height);
 
         return code == Code.PageUp
             ? FindEligible(current.Index - page, -1)
@@ -681,11 +679,11 @@ public sealed class List: Container, IStyleScope
 
     private ListItem? FindEligible(int start, int direction)
     {
-        for (int index = Math.Clamp(start, 0, Math.Max(0, Items.Count - 1));
+        for (var index = Math.Clamp(start, 0, Math.Max(0, Items.Count - 1));
             index >= 0 && index < Items.Count;
             index += direction)
         {
-            ListItem? item = ItemAt(index);
+            var item = ItemAt(index);
 
             if (item?.IsAvailable == true)
             {
@@ -700,7 +698,7 @@ public sealed class List: Container, IStyleScope
 
     private static ListItem? FindItem(Control? source)
     {
-        for (Control? current = source; current is not null; current = current.Parent)
+        for (var current = source; current is not null; current = current.Parent)
         {
             if (current is ListItem item)
             {

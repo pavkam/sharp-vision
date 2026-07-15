@@ -3,12 +3,9 @@
 
 namespace SharpVision.Runtime;
 
-using SharpVision.Styling;
 using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Runtime;
 
-using TerminalCapabilities = Terminal.Capabilities.Capabilities;
 
 /// <summary>Configures and builds one interactive console <see cref="Application"/> fluently.</summary>
 public sealed class ConsoleApplicationBuilder
@@ -237,7 +234,7 @@ public sealed class ConsoleApplicationBuilder
             throw new IOException("The console host is not interactive.");
         }
 
-        ConsoleConnection connection = ConsoleHost.Open(Options.ToHostOptions());
+        var connection = ConsoleHost.Open(Options.ToHostOptions());
         Application? application = null;
 
         try

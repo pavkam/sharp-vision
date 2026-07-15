@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies semantic color roles are stored, cloned, and readable from built-in themes.</summary>
 public sealed class ColorRoleTests
@@ -15,10 +12,10 @@ public sealed class ColorRoleTests
     [Fact]
     public void SetColor_ThenTryGetColor_ReturnsValue()
     {
-        Theme theme = new();
+        var theme = new Theme();
         theme.SetColor(ColorRole.Accent, Color.Indexed(45));
 
-        theme.TryGetColor(ColorRole.Accent, out Color color).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Accent, out var color).ShouldBeTrue();
         color.ShouldBe(Color.Indexed(45));
     }
 
@@ -26,7 +23,7 @@ public sealed class ColorRoleTests
     [Fact]
     public void TryGetColor_WhenUndefined_ReturnsFalse()
     {
-        Theme theme = new();
+        var theme = new Theme();
 
         theme.TryGetColor(ColorRole.Accent, out _).ShouldBeFalse();
     }
@@ -35,8 +32,8 @@ public sealed class ColorRoleTests
     [Fact]
     public void BuiltInThemes_DefineAccentRole()
     {
-        Themes.White.TryGetColor(ColorRole.Accent, out Color white).ShouldBeTrue();
-        Themes.Dark.TryGetColor(ColorRole.Accent, out Color dark).ShouldBeTrue();
+        Themes.White.TryGetColor(ColorRole.Accent, out var white).ShouldBeTrue();
+        Themes.Dark.TryGetColor(ColorRole.Accent, out var dark).ShouldBeTrue();
 
         white.ShouldNotBe(dark);
     }
@@ -45,12 +42,12 @@ public sealed class ColorRoleTests
     [Fact]
     public void Clone_PreservesColorRoles()
     {
-        Theme theme = new();
+        var theme = new Theme();
         theme.SetColor(ColorRole.Border, Color.Indexed(67));
 
-        Theme clone = theme.Clone();
+        var clone = theme.Clone();
 
-        clone.TryGetColor(ColorRole.Border, out Color color).ShouldBeTrue();
+        clone.TryGetColor(ColorRole.Border, out var color).ShouldBeTrue();
         color.ShouldBe(Color.Indexed(67));
     }
 
@@ -58,16 +55,16 @@ public sealed class ColorRoleTests
     [Fact]
     public void SetColor_WhenStatusRole_RoundTrips()
     {
-        Theme theme = new();
+        var theme = new Theme();
         theme.SetColor(ColorRole.Error, Color.Rgb(255, 0, 0));
         theme.SetColor(ColorRole.SelectionBackground, Color.Indexed(4));
         theme.SetColor(ColorRole.SelectionForeground, Color.Indexed(15));
 
-        theme.TryGetColor(ColorRole.Error, out Color error).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Error, out var error).ShouldBeTrue();
         error.ShouldBe(Color.Rgb(255, 0, 0));
-        theme.TryGetColor(ColorRole.SelectionBackground, out Color selBg).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.SelectionBackground, out var selBg).ShouldBeTrue();
         selBg.ShouldBe(Color.Indexed(4));
-        theme.TryGetColor(ColorRole.SelectionForeground, out Color selFg).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.SelectionForeground, out var selFg).ShouldBeTrue();
         selFg.ShouldBe(Color.Indexed(15));
     }
 }

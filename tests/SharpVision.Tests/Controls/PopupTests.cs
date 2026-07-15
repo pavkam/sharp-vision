@@ -3,10 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Terminal.Input;
 
 
-using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies anchored popup visibility, placement, and dismissal behavior.</summary>
 public sealed class PopupTests
@@ -15,8 +13,8 @@ public sealed class PopupTests
     [Fact]
     public void Render_WhenClosed_DoesNotRenderOrHitTestChild()
     {
-        ProbeControl child = new(new Size(3, 1)) { Content = "pop".AsMemory() };
-        Popup popup = new() { Child = child };
+        var child = new ProbeControl(new Size(3, 1)) { Content = "pop".AsMemory() };
+        var popup = new Popup() { Child = child };
         new Engine().Layout(popup, new Size(8, 4));
         using Frame frame = new(new Size(8, 4));
 
@@ -31,9 +29,9 @@ public sealed class PopupTests
     [Fact]
     public void Arrange_WhenBelowWouldOverflow_FlipsAboveAnchor()
     {
-        ProbeControl anchor = new() { Bounds = new Rect(2, 3, 2, 1) };
-        ProbeControl child = new(new Size(4, 2));
-        Popup popup = new() { Anchor = anchor, Child = child, IsOpen = true };
+        var anchor = new ProbeControl() { Bounds = new Rect(2, 3, 2, 1) };
+        var child = new ProbeControl(new Size(4, 2));
+        var popup = new Popup() { Anchor = anchor, Child = child, IsOpen = true };
 
         new Engine().Layout(popup, new Size(10, 5));
 
@@ -44,10 +42,10 @@ public sealed class PopupTests
     [Fact]
     public void Render_WhenOpen_DrawsSurfaceFrameAndContainsChild()
     {
-        ProbeControl anchor = new() { Bounds = new Rect(2, 0, 2, 1) };
-        ProbeControl child = new(new Size(4, 1)) { Content = "pick".AsMemory() };
-        Popup popup = new() { Anchor = anchor, Child = child, IsOpen = true };
-        Size size = new(12, 6);
+        var anchor = new ProbeControl() { Bounds = new Rect(2, 0, 2, 1) };
+        var child = new ProbeControl(new Size(4, 1)) { Content = "pick".AsMemory() };
+        var popup = new Popup() { Anchor = anchor, Child = child, IsOpen = true };
+        var size = new Size(12, 6);
         new Engine().Layout(popup, size);
         using Frame frame = new(size);
 
@@ -65,24 +63,24 @@ public sealed class PopupTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesSurfaceStyle()
     {
-        ControlStyle<Popup> style = ThemeTestSupport.OverlayStyle<Popup>(
+        var style = ThemeTestSupport.OverlayStyle<Popup>(
             (State.Normal, new ThemeOverlay(
                 attributes: Attributes.Overline,
                 underline: Underline.Dotted,
                 underlineColor: Color.Indexed(4))));
-        Popup popup = new()
+        var popup = new Popup()
         {
             Child = new ProbeControl(new Size(1, 1)),
             IsOpen = true,
             Style = style,
         };
-        Size size = new(6, 4);
+        var size = new Size(6, 4);
         new Engine().Layout(popup, size);
         using Frame frame = new(size);
 
         popup.Render(frame.Canvas);
 
-        CellStyle rendered = frame.GetCell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Style;
+        var rendered = frame.GetCell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Style;
         rendered.Attributes.ShouldBe(Attributes.Overline);
         rendered.Underline.ShouldBe(Underline.Dotted);
         rendered.UnderlineColor.ShouldBe(Color.Indexed(4));
@@ -92,7 +90,7 @@ public sealed class PopupTests
     [Fact]
     public void Render_WhenLaterSiblingOverlaps_PopupRetainsTopmostInputAndSurface()
     {
-        ComboBox comboBox = new()
+        var comboBox = new ComboBox()
         {
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
@@ -102,14 +100,14 @@ public sealed class PopupTests
             DropDownHeight = 2,
             IsOpen = true,
         };
-        Border cover = new() { Background = Color.Indexed(7) };
-        Overlay root = new() { ClipToBounds = false };
+        var cover = new Border() { Background = Color.Indexed(7) };
+        var root = new Overlay() { ClipToBounds = false };
         root.Children.Add(comboBox);
         root.Children.Add(cover);
-        Size size = new(16, 8);
+        var size = new Size(16, 8);
         new Engine().Layout(root, size);
-        List list = comboBox.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
-        Point point = new(list.Bounds.X + 1, list.Bounds.Y);
+        var list = comboBox.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        var point = new Point(list.Bounds.X + 1, list.Bounds.Y);
         using Frame frame = new(size);
 
         root.Render(frame.Canvas);
@@ -122,9 +120,9 @@ public sealed class PopupTests
     [Fact]
     public void Dispatch_WhenEscapeArrives_ClosesOpenPopup()
     {
-        ProbeControl child = new();
-        Popup popup = new() { Child = child, IsOpen = true };
-        KeyEventArgs eventArgs = new(new Stroke(
+        var child = new ProbeControl();
+        var popup = new Popup() { Child = child, IsOpen = true };
+        var eventArgs = new KeyEventArgs(new Stroke(
             Code.Escape,
             default,
             nativeCode: 0,
@@ -141,13 +139,13 @@ public sealed class PopupTests
     [Fact]
     public async Task IsOpen_WhenFocusableChildExists_MovesFocusToChildAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            List child = new() { Items = ["first", "second"] };
-            Popup popup = new() { Child = child };
-            Overlay root = new();
+            var child = new List() { Items = ["first", "second"] };
+            var popup = new Popup() { Child = child };
+            var root = new Overlay();
             root.Children.Add(popup);
             root.Attach(dispatcher);
             using FocusManager focus = new(root);

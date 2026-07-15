@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Rendering;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Represents immutable semantic cell colors, attributes, and hyperlink.
@@ -98,7 +97,7 @@ public readonly record struct CellStyle
                 throw new ArgumentException("A hyperlink cannot be empty.", nameof(hyperlink));
             }
 
-            foreach (char value in hyperlink)
+            foreach (var value in hyperlink)
             {
                 if (char.IsControl(value))
                 {

@@ -10,7 +10,7 @@ public sealed class ControlExtentTests
     [Fact]
     public void ContentExtent_WhenConstraintClampsDesired_KeepsNaturalSize()
     {
-        ProbeControl probe = new(new Size(20, 40));
+        var probe = new ProbeControl(new Size(20, 40));
 
         probe.Measure(new Constraint(10, 12));
 

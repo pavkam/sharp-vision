@@ -3,9 +3,9 @@
 
 namespace SharpVision.Terminal.Tests.Support;
 
-using System.Threading.Channels;
-
 using SharpVision.Terminal.Runtime;
+
+
 
 /// <summary>Provides deterministic queued resize changes.</summary>
 internal sealed class FakeResizeSource: IResizeSource
@@ -27,7 +27,7 @@ internal sealed class FakeResizeSource: IResizeSource
     /// <inheritdoc/>
     public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken)
     {
-        Dimensions value = await _changes.Reader.ReadAsync(cancellationToken);
+        var value = await _changes.Reader.ReadAsync(cancellationToken);
 
         if (Interlocked.Increment(ref _readCount) >= SignalAfterReads)
         {

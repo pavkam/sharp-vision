@@ -3,7 +3,6 @@
 
 namespace SharpVision.Text;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Stores one active markup facet until a matching close removes it.</summary>
 internal readonly record struct OpenTag

@@ -23,7 +23,7 @@ public sealed class KittyResult: IDisposable
             return;
         }
 
-        foreach (KittyMimeData item in Items)
+        foreach (var item in Items)
         {
             item.Clear();
         }

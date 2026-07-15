@@ -3,9 +3,9 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Fonts;
-
 using Text = SharpVision.Controls.Text;
+
+
 
 /// <summary>Documents the FigletText control with a live editable FIGfont preview.</summary>
 internal sealed class FigletTextPane: View
@@ -16,14 +16,14 @@ internal sealed class FigletTextPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        FigletCatalog catalog = FigletCatalog.Default;
-        TextInput text = new()
+        var catalog = FigletCatalog.Default;
+        var text = new TextInput()
         {
             Width = Length.Cells(30),
             Text = "SharpVision",
         };
         string[] fontNames = [.. catalog.Names];
-        ComboBox picker = new()
+        var picker = new ComboBox()
         {
             Width = Length.Cells(30),
             Items = fontNames,
@@ -34,11 +34,11 @@ internal sealed class FigletTextPane: View
             ScrollBarChrome = ScrollBarChrome.Thin,
             ScrollBarFill = ScrollBarFill.Line,
         };
-        FigletText preview = new(catalog.Load("Standard"))
+        var preview = new FigletText(catalog.Load("Standard"))
         {
             Content = text.Text,
         };
-        Text status = new("Type text, then choose a font from the dropdown.");
+        var status = new Text("Type text, then choose a font from the dropdown.");
         text.TextChanged += (_, eventArgs) => preview.Content = eventArgs.Text;
         picker.SelectionChanged += (_, _) =>
         {

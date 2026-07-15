@@ -3,12 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
-using System.Text;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies the public runtime theme-file loader.</summary>
 public sealed class ThemeFileTests
@@ -24,10 +20,10 @@ public sealed class ThemeFileTests
     [Fact]
     public void Parse_WhenValid_ReturnsFrozenTheme()
     {
-        Theme theme = ThemeFile.Parse(_json);
+        var theme = ThemeFile.Parse(_json);
 
         theme.IsFrozen.ShouldBeTrue();
-        theme.TryGetColor(ColorRole.Accent, out Color accent).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Accent, out var accent).ShouldBeTrue();
         accent.ShouldBe(Color.Rgb(0x77, 0xaa, 0xff));
     }
 
@@ -47,9 +43,9 @@ public sealed class ThemeFileTests
     {
         using MemoryStream stream = new(Encoding.UTF8.GetBytes(_json));
 
-        Theme theme = ThemeFile.Load(stream);
+        var theme = ThemeFile.Load(stream);
 
-        theme.TryGetColor(ColorRole.Background, out Color bg).ShouldBeTrue();
+        theme.TryGetColor(ColorRole.Background, out var bg).ShouldBeTrue();
         bg.ShouldBe(Color.Rgb(0x10, 0x10, 0x20));
     }
 
@@ -82,14 +78,14 @@ public sealed class ThemeFileTests
     [Fact]
     public void LoadFile_WhenValid_ReturnsFrozenTheme()
     {
-        string path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
         File.WriteAllText(path, _json);
 
         try
         {
-            Theme theme = ThemeFile.LoadFile(path);
+            var theme = ThemeFile.LoadFile(path);
 
-            theme.TryGetColor(ColorRole.Accent, out Color accent).ShouldBeTrue();
+            theme.TryGetColor(ColorRole.Accent, out var accent).ShouldBeTrue();
             accent.ShouldBe(Color.Rgb(0x77, 0xaa, 0xff));
         }
         finally
@@ -107,7 +103,7 @@ public sealed class ThemeFileTests
     [Fact]
     public void LoadFile_WhenFileMissing_Throws()
     {
-        string path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
 
         _ = Should.Throw<FileNotFoundException>(() => ThemeFile.LoadFile(path));
     }
@@ -116,7 +112,7 @@ public sealed class ThemeFileTests
     [Fact]
     public void LoadFile_WhenMalformedJson_Throws()
     {
-        string path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
         File.WriteAllText(path, "{ not json");
 
         try

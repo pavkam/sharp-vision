@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
-using SharpVision.Terminal.Unicode;
 
 /// <summary>
 /// Publishes an immutable terminal feature profile.
@@ -11,7 +10,7 @@ using SharpVision.Terminal.Unicode;
 public sealed record Capabilities
 {
     /// <summary>Gets the conservative profile used before detection.</summary>
-    public static Capabilities Conservative { get; } = new();
+    public static TerminalCapabilities Conservative { get; } = new();
 
     /// <summary>Gets the safe color fidelity.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The assigned color depth is unknown.</exception>

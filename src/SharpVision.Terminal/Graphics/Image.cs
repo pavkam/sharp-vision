@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Graphics;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Owns one immutable bounded RGBA or encoded PNG terminal image.</summary>
 public sealed class Image
@@ -40,9 +39,9 @@ public sealed class Image
     /// <exception cref="ArgumentException"><paramref name="source"/> is not exactly four bytes per pixel.</exception>
     public static Image FromRgba(Size size, ReadOnlySpan<byte> source, Limits? limits = null)
     {
-        Limits policy = limits ?? Limits.Default;
+        var policy = limits ?? Limits.Default;
         policy.Validate(size, source.Length);
-        long expected = checked((long) size.Width * size.Height * 4);
+        var expected = checked((long) size.Width * size.Height * 4);
 
         return source.Length != expected
             ? throw new ArgumentException(
@@ -59,7 +58,7 @@ public sealed class Image
     /// <exception cref="ArgumentOutOfRangeException">Dimensions, pixels, or bytes exceed policy.</exception>
     public static Image FromPng(ReadOnlySpan<byte> source, Limits? limits = null)
     {
-        Limits policy = limits ?? Limits.Default;
+        var policy = limits ?? Limits.Default;
 
         if (source.Length > policy.MaxSourceBytes)
         {
@@ -69,7 +68,7 @@ public sealed class Image
                 "The image source byte count exceeds policy.");
         }
 
-        Size size = Png.ReadSize(source);
+        var size = Png.ReadSize(source);
         policy.Validate(size, source.Length);
         return new Image(size, Format.Png, source);
     }

@@ -3,9 +3,7 @@
 
 namespace SharpVision.Text;
 
-using System.Buffers;
 
-using SharpVision.Terminal.Unicode;
 
 /// <summary>Provides pure grapheme-boundary text navigation and mutation transactions.</summary>
 public static class Edit
@@ -55,7 +53,7 @@ public static class Edit
             return true;
         }
 
-        foreach (Grapheme grapheme in Graphemes.Enumerate(text))
+        foreach (var grapheme in Graphemes.Enumerate(text))
         {
             if (grapheme.Offset == index)
             {
@@ -87,7 +85,7 @@ public static class Edit
     public static EditResult MovePrevious(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
-        int caret = !extend && !selection.IsEmpty
+        var caret = !extend && !selection.IsEmpty
             ? selection.Start
             : PreviousBoundary(text, selection.Caret);
         return Move(text, selection, caret, extend);
@@ -104,7 +102,7 @@ public static class Edit
     public static EditResult MoveNext(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
-        int caret = !extend && !selection.IsEmpty
+        var caret = !extend && !selection.IsEmpty
             ? selection.End
             : NextBoundary(text, selection.Caret);
         return Move(text, selection, caret, extend);
@@ -121,7 +119,7 @@ public static class Edit
     public static EditResult MoveHome(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
-        int separator = text.AsSpan(0, selection.Caret).LastIndexOfAny('\r', '\n');
+        var separator = text.AsSpan(0, selection.Caret).LastIndexOfAny('\r', '\n');
         return Move(text, selection, separator < 0 ? 0 : separator + 1, extend);
     }
 
@@ -136,8 +134,8 @@ public static class Edit
     public static EditResult MoveEnd(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
-        int relative = text.AsSpan(selection.Caret).IndexOfAny('\r', '\n');
-        int caret = relative < 0 ? text.Length : selection.Caret + relative;
+        var relative = text.AsSpan(selection.Caret).IndexOfAny('\r', '\n');
+        var caret = relative < 0 ? text.Length : selection.Caret + relative;
         return Move(text, selection, caret, extend);
     }
 
@@ -152,7 +150,7 @@ public static class Edit
     public static EditResult MoveNextWord(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
-        int position = !extend && !selection.IsEmpty ? selection.End : selection.Caret;
+        var position = !extend && !selection.IsEmpty ? selection.End : selection.Caret;
 
         if (position < text.Length && Kind(text, position) == 2)
         {
@@ -178,7 +176,7 @@ public static class Edit
     public static EditResult MovePreviousWord(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
-        int position = !extend && !selection.IsEmpty ? selection.Start : selection.Caret;
+        var position = !extend && !selection.IsEmpty ? selection.Start : selection.Caret;
 
         while (position > 0 && Kind(text, PreviousBoundary(text, position)) != 2)
         {
@@ -209,7 +207,7 @@ public static class Edit
             return Replace(text, selection, string.Empty);
         }
 
-        int previous = PreviousBoundary(text, selection.Caret);
+        var previous = PreviousBoundary(text, selection.Caret);
         return previous == selection.Caret
             ? Unchanged(text, selection)
             : Replace(text, new Selection(previous, selection.Caret), string.Empty);
@@ -231,7 +229,7 @@ public static class Edit
             return Replace(text, selection, string.Empty);
         }
 
-        int next = NextBoundary(text, selection.Caret);
+        var next = NextBoundary(text, selection.Caret);
         return next == selection.Caret
             ? Unchanged(text, selection)
             : Replace(text, new Selection(selection.Caret, next), string.Empty);
@@ -260,7 +258,7 @@ public static class Edit
         ArgumentOutOfRangeException.ThrowIfNegative(maxLength);
         Validate(text, selection);
         ValidateControls(replacement, acceptsReturn, acceptsTab);
-        int retained = Count(text.AsSpan()) - Count(text.AsSpan(selection.Start, selection.Length));
+        var retained = Count(text.AsSpan()) - Count(text.AsSpan(selection.Start, selection.Length));
 
         if (maxLength > 0 && retained > maxLength)
         {
@@ -269,15 +267,15 @@ public static class Edit
                 nameof(maxLength));
         }
 
-        int allowed = maxLength == 0 ? int.MaxValue : maxLength - retained;
-        int replacementLength = Prefix(replacement, allowed);
-        string next = string.Concat(
+        var allowed = maxLength == 0 ? int.MaxValue : maxLength - retained;
+        var replacementLength = Prefix(replacement, allowed);
+        var next = string.Concat(
             text.AsSpan(0, selection.Start),
             replacement.AsSpan(0, replacementLength),
             text.AsSpan(selection.End));
-        int caret = checked(selection.Start + replacementLength);
-        Selection nextSelection = new(caret, caret);
-        bool changed = !string.Equals(text, next, StringComparison.Ordinal) || selection != nextSelection;
+        var caret = checked(selection.Start + replacementLength);
+        var nextSelection = new Selection(caret, caret);
+        var changed = !string.Equals(text, next, StringComparison.Ordinal) || selection != nextSelection;
 
         return changed
             ? new EditResult(next, nextSelection, changed: true)
@@ -295,21 +293,21 @@ public static class Edit
     {
         ArgumentNullException.ThrowIfNull(text);
         Span<char> encoded = stackalloc char[2];
-        int encodedLength = mask.EncodeToUtf16(encoded);
-        Measurement measurement = Width.Measure(encoded[..encodedLength]);
+        var encodedLength = mask.EncodeToUtf16(encoded);
+        var measurement = Width.Measure(encoded[..encodedLength]);
 
         if (measurement.Controls != 0 || measurement.Cells != 1)
         {
             throw new ArgumentException("Password mask must be printable and one cell wide.", nameof(mask));
         }
 
-        int count = Count(text.AsSpan());
+        var count = Count(text.AsSpan());
         return string.Create(
             checked(count * encodedLength),
             (Mask: mask, Length: encodedLength),
             static (destination, state) =>
             {
-                for (int offset = 0; offset < destination.Length; offset += state.Length)
+                for (var offset = 0; offset < destination.Length; offset += state.Length)
                 {
                     _ = state.Mask.EncodeToUtf16(destination[offset..]);
                 }
@@ -318,7 +316,7 @@ public static class Edit
 
     private static EditResult Move(string text, Selection previous, int caret, bool extend)
     {
-        Selection next = extend ? new Selection(previous.Anchor, caret) : new Selection(caret, caret);
+        var next = extend ? new Selection(previous.Anchor, caret) : new Selection(caret, caret);
         return next == previous
             ? Unchanged(text, previous)
             : new EditResult(text, next, changed: true);
@@ -329,9 +327,9 @@ public static class Edit
 
     private static int PreviousBoundary(string text, int index)
     {
-        int previous = 0;
+        var previous = 0;
 
-        foreach (Grapheme grapheme in Graphemes.Enumerate(text.AsSpan(0, index)))
+        foreach (var grapheme in Graphemes.Enumerate(text.AsSpan(0, index)))
         {
             previous = grapheme.Offset;
         }
@@ -346,8 +344,8 @@ public static class Edit
             return text.Length;
         }
 
-        GraphemeEnumerator enumerator = Graphemes.Enumerate(text.AsSpan(index)).GetEnumerator();
-        bool moved = enumerator.MoveNext();
+        var enumerator = Graphemes.Enumerate(text.AsSpan(index)).GetEnumerator();
+        var moved = enumerator.MoveNext();
         Debug.Assert(moved, "A non-empty valid suffix contains one grapheme.");
         return index + enumerator.Current.Length;
     }
@@ -364,16 +362,16 @@ public static class Edit
 
     private static int Kind(string text, int position)
     {
-        OperationStatus status = Rune.DecodeFromUtf16(text.AsSpan(position), out Rune rune, out _);
+        var status = Rune.DecodeFromUtf16(text.AsSpan(position), out var rune, out _);
 
         return status != OperationStatus.Done ? 0 : Rune.IsLetterOrDigit(rune) || rune.Value == '_' ? 2 : Rune.IsWhiteSpace(rune) ? 1 : 0;
     }
 
     private static int Count(ReadOnlySpan<char> value)
     {
-        int count = 0;
+        var count = 0;
 
-        foreach (Grapheme unused in Graphemes.Enumerate(value))
+        foreach (var unused in Graphemes.Enumerate(value))
         {
             _ = unused;
             count = checked(count + 1);
@@ -384,10 +382,10 @@ public static class Edit
 
     private static int Prefix(string value, int allowed)
     {
-        int count = 0;
-        int length = 0;
+        var count = 0;
+        var length = 0;
 
-        foreach (Grapheme grapheme in Graphemes.Enumerate(value))
+        foreach (var grapheme in Graphemes.Enumerate(value))
         {
             if (count == allowed)
             {

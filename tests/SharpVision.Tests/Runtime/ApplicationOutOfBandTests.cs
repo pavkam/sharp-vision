@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies out-of-band protocol bytes share the render write gate.</summary>
 public sealed class ApplicationOutOfBandTests
@@ -17,7 +14,7 @@ public sealed class ApplicationOutOfBandTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        TaskCompletionSource bell = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var bell = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += memory =>
         {
             if (memory.Span.IndexOf((byte) 0x07) >= 0)

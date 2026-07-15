@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using System.Runtime.CompilerServices;
 
 /// <summary>Read-only catalog of registered style-property metadata keyed by declaring type and name.</summary>
 /// <remarks>
@@ -29,9 +28,9 @@ public static class StylePropertyRegistry
 
         lock (_gate)
         {
-            foreach (Type type in ControlHierarchy.BaseToDerived(controlType))
+            foreach (var type in ControlHierarchy.BaseToDerived(controlType))
             {
-                if (_properties.TryGetValue(type, out Dictionary<string, IStyleProperty>? byName))
+                if (_properties.TryGetValue(type, out var byName))
                 {
                     result.AddRange(byName.Values);
                 }
@@ -54,8 +53,8 @@ public static class StylePropertyRegistry
 
         lock (_gate)
         {
-            return _properties.TryGetValue(declaringType, out Dictionary<string, IStyleProperty>? byName) &&
-                byName.TryGetValue(name, out IStyleProperty? property)
+            return _properties.TryGetValue(declaringType, out var byName) &&
+                byName.TryGetValue(name, out var property)
                     ? property
                     : null;
         }
@@ -73,13 +72,13 @@ public static class StylePropertyRegistry
 
         lock (_gate)
         {
-            if (!_properties.TryGetValue(property.DeclaringType, out Dictionary<string, IStyleProperty>? byName))
+            if (!_properties.TryGetValue(property.DeclaringType, out var byName))
             {
                 byName = new Dictionary<string, IStyleProperty>(StringComparer.Ordinal);
                 _properties[property.DeclaringType] = byName;
             }
 
-            if (byName.TryGetValue(property.Name, out IStyleProperty? existing))
+            if (byName.TryGetValue(property.Name, out var existing))
             {
                 if (ReferenceEquals(existing, property))
                 {
@@ -104,7 +103,7 @@ public static class StylePropertyRegistry
     /// </remarks>
     internal static void EnsureRegistered(Type controlType)
     {
-        foreach (Type type in ControlHierarchy.BaseToDerived(controlType))
+        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
         {
             RuntimeHelpers.RunClassConstructor(type.TypeHandle);
         }

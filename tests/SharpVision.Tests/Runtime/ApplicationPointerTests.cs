@@ -3,9 +3,7 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies the application-owned pointer snapshot and focus state.</summary>
 public sealed class ApplicationPointerTests

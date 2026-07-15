@@ -92,14 +92,14 @@ public ref struct Parameters
         }
 
         _count++;
-        int start = _position;
-        ParameterStatus status = ParameterStatus.Value;
+        var start = _position;
+        var status = ParameterStatus.Value;
 
         // Preserve the delimiter kind because colon fields have different
         // semantics from independent semicolon parameters.
         while (_position < _input.Length)
         {
-            byte item = _input[_position];
+            var item = _input[_position];
 
             if (item is (byte) ';' or (byte) ':')
             {
@@ -115,7 +115,7 @@ public ref struct Parameters
             }
             else if (status == ParameterStatus.Value)
             {
-                int digit = item - (byte) '0';
+                var digit = item - (byte) '0';
 
                 if (value > _maxValue / 10 ||
                     (value == _maxValue / 10 && digit > _maxValue % 10))

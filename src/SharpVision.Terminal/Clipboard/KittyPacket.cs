@@ -3,17 +3,15 @@
 
 namespace SharpVision.Terminal.Clipboard;
 
-using System.Buffers;
-using System.Buffers.Text;
-using System.Text;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>
 /// Represents an immutable, redaction-safe Kitty OSC 5522 packet.
 /// </summary>
 public sealed class KittyPacket
 {
+    #region Construction and properties
+
     private KittyPacket(
         bool isValid,
         KittyOperation operation,
@@ -28,6 +26,9 @@ public sealed class KittyPacket
         string[] unknownKeys,
         Diagnostic? diagnostic)
     {
+        Debug.Assert(unknownKeys is not null, "Packet construction always owns a non-null unknown-key array.");
+        Debug.Assert(isValid == (diagnostic is null), "Exactly invalid packets carry a structural diagnostic.");
+
         IsValid = isValid;
         Operation = operation;
         ReplyStatus = replyStatus;
@@ -80,6 +81,10 @@ public sealed class KittyPacket
     /// <summary>Gets the non-sensitive diagnostic for an invalid packet.</summary>
     public Diagnostic? Diagnostic { get; }
 
+    #endregion
+
+    #region Parsing
+
     /// <summary>
     /// Parses a bounded raw OSC callback value including the <c>5522;</c>
     /// selector.
@@ -95,54 +100,57 @@ public sealed class KittyPacket
         Limits? limits = null,
         bool decodePayload = true)
     {
-        Limits effectiveLimits = limits ?? Limits.Default;
+        var effectiveLimits = limits ?? Limits.Default;
 
         if (!value.StartsWith("5522;"u8))
         {
             return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
         }
 
-        ReadOnlySpan<byte> body = value[5..];
-        int separator = body.IndexOf((byte) ';');
-        ReadOnlySpan<byte> metadata = separator < 0 ? body : body[..separator];
-        ReadOnlySpan<byte> payload = separator < 0 ? [] : body[(separator + 1)..];
-        bool hasPayload = separator >= 0;
+        var body = value[5..];
+        var separator = body.IndexOf((byte) ';');
+        var metadata = separator < 0 ? body : body[..separator];
+        var payload = separator < 0 ? [] : body[(separator + 1)..];
+        var hasPayload = separator >= 0;
 
         if (metadata.IsEmpty || metadata.Length > effectiveLimits.MaxMetadataBytes)
         {
             return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
         }
 
-        KittyOperation operation = KittyOperation.None;
-        KittyReplyStatus replyStatus = KittyReplyStatus.None;
-        Selection selection = Selection.Clipboard;
+        var operation = KittyOperation.None;
+        var replyStatus = KittyReplyStatus.None;
+        var selection = Selection.Clipboard;
         string? id = null;
         byte[] mime = [];
         byte[] password = [];
         byte[] name = [];
         List<string> unknownKeys = [];
-        bool seenType = false;
-        bool seenStatus = false;
-        bool seenLocation = false;
-        bool seenId = false;
-        bool seenMime = false;
-        bool seenPassword = false;
-        bool seenName = false;
+        var seenType = false;
+        var seenStatus = false;
+        var seenLocation = false;
+        var seenId = false;
+        var seenMime = false;
+        var seenPassword = false;
+        var seenName = false;
 
+        // Metadata is a flat, order-independent map on the wire. Parse it in
+        // one pass while the seen flags reject duplicate semantic fields before
+        // any decoded payload is published by the immutable result.
         while (!metadata.IsEmpty)
         {
-            int next = metadata.IndexOf((byte) ':');
-            ReadOnlySpan<byte> field = next < 0 ? metadata : metadata[..next];
+            var next = metadata.IndexOf((byte) ':');
+            var field = next < 0 ? metadata : metadata[..next];
             metadata = next < 0 ? [] : metadata[(next + 1)..];
-            int equals = field.IndexOf((byte) '=');
+            var equals = field.IndexOf((byte) '=');
 
             if (equals <= 0 || equals == field.Length - 1)
             {
                 return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
             }
 
-            ReadOnlySpan<byte> key = field[..equals];
-            ReadOnlySpan<byte> fieldValue = field[(equals + 1)..];
+            var key = field[..equals];
+            var fieldValue = field[(equals + 1)..];
 
             if (!IsMetadataAscii(key) || !IsMetadataAscii(fieldValue))
             {
@@ -260,13 +268,17 @@ public sealed class KittyPacket
             diagnostic: null);
     }
 
+    #endregion
+
+    #region Diagnostics and validation
+
     /// <summary>
     /// Returns structural packet details while redacting payloads and credentials.
     /// </summary>
     /// <returns>A non-sensitive packet description.</returns>
     public override string ToString()
     {
-        string unknown = UnknownKeys.Count == 0
+        var unknown = UnknownKeys.Count == 0
             ? "none"
             : string.Join(',', UnknownKeys);
 
@@ -277,7 +289,10 @@ public sealed class KittyPacket
 
     private static KittyPacket Invalid(DiagnosticCode code, int discarded)
     {
-        Diagnostic diagnostic = new(code, SequenceKind.Osc, 0, discarded);
+        Debug.Assert(Enum.IsDefined(code), "Invalid packets require a defined diagnostic code.");
+        Debug.Assert(discarded >= 0, "Discarded packet byte counts are non-negative.");
+
+        var diagnostic = new Diagnostic(code, SequenceKind.Osc, 0, discarded);
 
         return new KittyPacket(
             isValid: false,
@@ -296,14 +311,17 @@ public sealed class KittyPacket
 
     private static bool IsCanonicalBase64(ReadOnlySpan<byte> value)
     {
+        // The span decoder accepts some non-canonical final quanta. Kitty
+        // packets are correlation-sensitive, so require complete quartets and
+        // terminal-only padding before allocating an owned decoded copy.
         if (value.Length % 4 != 0)
         {
             return false;
         }
 
-        int padding = 0;
+        var padding = 0;
 
-        for (int index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
+        for (var index = value.Length - 1; index >= 0 && value[index] == (byte) '='; index--)
         {
             padding++;
         }
@@ -313,7 +331,7 @@ public sealed class KittyPacket
             return false;
         }
 
-        for (int index = 0; index < value.Length - padding; index++)
+        for (var index = 0; index < value.Length - padding; index++)
         {
             if (value[index] is not (
                 (>= (byte) 'A' and <= (byte) 'Z') or
@@ -335,7 +353,7 @@ public sealed class KittyPacket
             return false;
         }
 
-        foreach (byte item in value)
+        foreach (var item in value)
         {
             if (item is not (
                 (>= (byte) 'a' and <= (byte) 'z') or
@@ -352,7 +370,7 @@ public sealed class KittyPacket
 
     private static bool IsMetadataAscii(ReadOnlySpan<byte> value)
     {
-        foreach (byte item in value)
+        foreach (var item in value)
         {
             if (item is < 0x21 or > 0x7e)
             {
@@ -367,11 +385,12 @@ public sealed class KittyPacket
     {
         while (!value.IsEmpty)
         {
-            if (Rune.DecodeFromUtf8(value, out _, out int consumed) != OperationStatus.Done)
+            if (Rune.DecodeFromUtf8(value, out _, out var consumed) != OperationStatus.Done)
             {
                 return false;
             }
 
+            Debug.Assert(consumed > 0, "Successful UTF-8 decoding always advances the input span.");
             value = value[consumed..];
         }
 
@@ -383,6 +402,8 @@ public sealed class KittyPacket
         int maximum,
         out byte[] decoded)
     {
+        Debug.Assert(maximum >= 0, "Decoded clipboard limits are validated before parsing.");
+
         decoded = [];
 
         if (encoded.IsEmpty)
@@ -396,16 +417,16 @@ public sealed class KittyPacket
             return false;
         }
 
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(
+        var buffer = ArrayPool<byte>.Shared.Rent(
             Math.Max(1, Base64.GetMaxDecodedFromUtf8Length(encoded.Length)));
 
         try
         {
-            OperationStatus status = Base64.DecodeFromUtf8(
+            var status = Base64.DecodeFromUtf8(
                 encoded,
                 buffer,
-                out int consumed,
-                out int written);
+                out var consumed,
+                out var written);
 
             if (status != OperationStatus.Done || consumed != encoded.Length || written > maximum)
             {
@@ -481,4 +502,6 @@ public sealed class KittyPacket
 
         return status != KittyReplyStatus.None;
     }
+
+    #endregion
 }

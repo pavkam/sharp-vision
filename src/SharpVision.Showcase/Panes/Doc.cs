@@ -3,8 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Terminal.Rendering;
 using SharpVision.Text;
+
 
 /// <summary>Small composable helpers for building example-rich showcase pages.</summary>
 internal static class Doc
@@ -22,17 +22,17 @@ internal static class Doc
         ArgumentException.ThrowIfNullOrWhiteSpace(overview);
         ArgumentNullException.ThrowIfNull(sections);
 
-        RichText heading = new() { Wrapping = Wrapping.Word };
-        heading.Inlines.Add(new Run(name) { Attributes = Attributes.Bold });
+        var heading = new RichText() { Wrapping = Wrapping.Word };
+        heading.Inlines.Add(new Run(name) { Attributes = TerminalAttributes.Bold });
         heading.Inlines.Add(new LineBreak());
-        heading.Inlines.Add(new Run("Overview") { Attributes = Attributes.Bold });
+        heading.Inlines.Add(new Run("Overview") { Attributes = TerminalAttributes.Bold });
         heading.Inlines.Add(new LineBreak());
         heading.Inlines.Add(new Run(overview));
 
-        Stack page = new() { Padding = new Thickness(1), Spacing = 1 };
+        var page = new Stack() { Padding = new Thickness(1), Spacing = 1 };
         page.Children.Add(heading);
 
-        foreach (Control section in sections)
+        foreach (var section in sections)
         {
             page.Children.Add(section);
         }
@@ -53,12 +53,12 @@ internal static class Doc
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(specimen);
 
-        RichText text = new() { Wrapping = Wrapping.Word };
-        text.Inlines.Add(new Run(heading) { Attributes = Attributes.Bold });
+        var text = new RichText() { Wrapping = Wrapping.Word };
+        text.Inlines.Add(new Run(heading) { Attributes = TerminalAttributes.Bold });
         text.Inlines.Add(new LineBreak());
-        text.Inlines.Add(new Run(description) { Attributes = Attributes.Dim });
+        text.Inlines.Add(new Run(description) { Attributes = TerminalAttributes.Dim });
 
-        Stack block = new() { Spacing = 1 };
+        var block = new Stack() { Spacing = 1 };
         block.Children.Add(text);
         block.Children.Add(specimen);
         return block;
@@ -87,8 +87,8 @@ internal static class Doc
     internal static Stack Row(params Control[] children)
     {
         ArgumentNullException.ThrowIfNull(children);
-        Stack row = new() { Orientation = Orientation.Horizontal, Spacing = 2 };
-        foreach (Control child in children)
+        var row = new Stack() { Orientation = Orientation.Horizontal, Spacing = 2 };
+        foreach (var child in children)
         {
             row.Children.Add(child);
         }
@@ -103,8 +103,8 @@ internal static class Doc
     internal static Stack Column(params Control[] children)
     {
         ArgumentNullException.ThrowIfNull(children);
-        Stack column = new() { Spacing = 1 };
-        foreach (Control child in children)
+        var column = new Stack() { Spacing = 1 };
+        foreach (var child in children)
         {
             column.Children.Add(child);
         }

@@ -5,6 +5,7 @@ namespace SharpVision.Input;
 
 using System.ComponentModel;
 
+
 using SharpVision.Text;
 
 /// <summary>Provides a cancellable immutable proposed text-edit snapshot.</summary>

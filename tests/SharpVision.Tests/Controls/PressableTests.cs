@@ -4,10 +4,8 @@
 namespace SharpVision.Tests.Controls;
 
 
-using SharpVision.Terminal.Input;
 
 
-using KeyAction = Terminal.Input.Action;
 
 /// <summary>Verifies shared keyboard, pointer, focus, and cancellation activation behavior.</summary>
 public sealed class PressableTests
@@ -16,7 +14,7 @@ public sealed class PressableTests
     [Fact]
     public void Dispatch_WhenKeyboardActivates_UsesExactTransitionAndCause()
     {
-        ProbePressable control = new();
+        var control = new ProbePressable();
 
         Key(control, Code.Character, new Rune(' '), KeyAction.Press);
         control.IsPressed.ShouldBeTrue();
@@ -37,12 +35,12 @@ public sealed class PressableTests
     [Fact]
     public async Task Dispatch_WhenPointerReleasesInside_ActivatesOnceAndReleasesCaptureAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 8) };
+            var control = new ProbePressable() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
@@ -64,12 +62,12 @@ public sealed class PressableTests
     [Fact]
     public async Task Dispatch_WhenCapturedPointerLeaves_CancelsPressedActivationAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 8) };
+            var control = new ProbePressable() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
             using CaptureManager capture = new(root);
@@ -88,13 +86,13 @@ public sealed class PressableTests
     [Fact]
     public async Task Dispatch_WhenControlBecomesUnavailable_ClearsEveryHeldStateAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
-            ProbePressable other = new() { Bounds = new Rect(12, 2, 6, 3) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 8) };
+            var control = new ProbePressable() { Bounds = new Rect(2, 2, 8, 3) };
+            var other = new ProbePressable() { Bounds = new Rect(12, 2, 6, 3) };
             root.Children.Add(control);
             root.Children.Add(other);
             root.Attach(dispatcher);
@@ -125,12 +123,12 @@ public sealed class PressableTests
     [Fact]
     public async Task Dispatch_WhenPointerIsNotPrimary_IgnoresTransitionAsync()
     {
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            ProbeContainer root = new() { Bounds = new Rect(0, 0, 20, 8) };
-            ProbePressable control = new() { Bounds = new Rect(2, 2, 8, 3) };
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 8) };
+            var control = new ProbePressable() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
             using CaptureManager capture = new(root);

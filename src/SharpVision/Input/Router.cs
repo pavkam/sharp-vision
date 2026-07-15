@@ -3,7 +3,6 @@
 
 namespace SharpVision.Input;
 
-using System.Buffers;
 
 
 /// <summary>Dispatches typed events over stable ancestry and handler snapshots.</summary>
@@ -29,23 +28,23 @@ public static class Router
         ArgumentNullException.ThrowIfNull(eventArgs);
         target.VerifyMutable();
 
-        int depth = 0;
+        var depth = 0;
 
-        for (Control? current = (Control?) target; current is not null; current = current.Parent)
+        for (var current = (Control?) target; current is not null; current = current.Parent)
         {
             depth++;
         }
 
-        Control[] route = ArrayPool<Control>.Shared.Rent(depth);
-        int index = 0;
+        var route = ArrayPool<Control>.Shared.Rent(depth);
+        var index = 0;
 
-        for (Control? current = (Control?) target; current is not null; current = current.Parent)
+        for (var current = (Control?) target; current is not null; current = current.Parent)
         {
             route[index++] = current;
         }
 
-        long sequence = Sequence.Current;
-        bool began = false;
+        var sequence = Sequence.Current;
+        var began = false;
 
         try
         {
@@ -64,7 +63,7 @@ public static class Router
 
             eventArgs.Phase = Phase.Bubble;
 
-            int bubbleCount = routedEvent.Strategy == Strategy.Direct ? 1 : depth;
+            var bubbleCount = routedEvent.Strategy == Strategy.Direct ? 1 : depth;
 
             for (index = 0; index < bubbleCount; index++)
             {

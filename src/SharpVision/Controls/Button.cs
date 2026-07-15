@@ -5,8 +5,6 @@ namespace SharpVision.Controls;
 
 using System.Windows.Input;
 
-using SharpVision.Threading;
-
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
 public sealed partial class Button: Pressable
 {
@@ -120,15 +118,15 @@ public sealed partial class Button: Pressable
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {
-        ICommand? command = Command;
-        object? parameter = CommandParameter;
+        var command = Command;
+        var parameter = CommandParameter;
 
         if (command is not null && !command.CanExecute(parameter))
         {
             return;
         }
 
-        ActivationEventArgs eventArgs = new(cause);
+        var eventArgs = new ActivationEventArgs(cause);
         Click?.Invoke(this, eventArgs);
         command?.Execute(parameter);
     }
@@ -136,7 +134,7 @@ public sealed partial class Button: Pressable
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        Control? content = Content;
+        var content = Content;
 
         if (content is null)
         {
@@ -160,7 +158,7 @@ public sealed partial class Button: Pressable
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        Rect face = FaceBounds;
+        var face = FaceBounds;
         ControlChrome.Render(
             this,
             canvas,
@@ -213,7 +211,7 @@ public sealed partial class Button: Pressable
         Debug.Assert(left >= 0, "Button accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "Button accumulation uses non-negative extents.");
 
-        long value = (long) left + right;
+        var value = (long) left + right;
         return value >= int.MaxValue ? int.MaxValue : (int) value;
     }
 
@@ -235,7 +233,7 @@ public sealed partial class Button: Pressable
             return;
         }
 
-        Dispatcher? dispatcher = Dispatcher;
+        var dispatcher = Dispatcher;
 
         if (dispatcher is not null && !dispatcher.CheckAccess())
         {

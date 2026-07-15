@@ -13,7 +13,8 @@ model.
 - `Columns` owns non-empty `TableColumn` definitions. A column has a non-empty
   header plus automatic, fixed-cell, percentage, or fill width.
 - `Rows` owns `TableRow` values. Each row transfers its unique detached cells to
-  the table and must exactly match the column count.
+  the table, must be non-null, and must exactly match the column count. Null row
+  insertion and replacement fail at the public collection boundary.
 - `ShowHeader`, `HeaderForeground`, and `HeaderBackground` control header
   chrome.
 - `CellPadding`, `RowSpacing`, and `ColumnSpacing` define physical cell gaps.

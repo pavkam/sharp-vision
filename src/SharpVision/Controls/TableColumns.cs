@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Collections;
 
 /// <summary>Owns validated mutable column definitions for one Table.</summary>
 public sealed class TableColumns: IList<TableColumn>, IReadOnlyList<TableColumn>
@@ -92,7 +91,7 @@ public sealed class TableColumns: IList<TableColumn>, IReadOnlyList<TableColumn>
     /// <inheritdoc/>
     public bool Remove(TableColumn item)
     {
-        int index = _items.IndexOf(item);
+        var index = _items.IndexOf(item);
 
         if (index < 0)
         {

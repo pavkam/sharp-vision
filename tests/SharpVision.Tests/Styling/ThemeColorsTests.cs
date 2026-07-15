@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Styling;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
-using Shouldly;
 
 /// <summary>Verifies the semantic-color accessor maps to color roles.</summary>
 public sealed class ThemeColorsTests
@@ -40,7 +37,7 @@ public sealed class ThemeColorsTests
             (ThemeColors.Info, ColorRole.Info),
         ];
 
-        foreach ((Color color, ColorRole role) in map)
+        foreach ((var color, var role) in map)
         {
             color.RoleId.ShouldBe((int) role);
         }

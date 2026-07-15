@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
 
 /// <summary>Verifies <see cref="ConsoleApplication"/> validation and the redirected-console fast path.</summary>
 public sealed class ConsoleApplicationTests
@@ -15,10 +14,10 @@ public sealed class ConsoleApplicationTests
 
     /// <summary>Verifies a redirected console short-circuits without starting the application.</summary>
     [Fact]
-    public async Task RunAsync_WhenConsoleRedirected_ReturnsRedirected()
+    public async Task RunAsync_WhenConsoleRedirected_ReturnsRedirectedAsync()
     {
         // The test host runs with redirected standard streams, so ConsoleHost.IsInteractive is false.
-        ConsoleRunStatus status = await ConsoleApplication.RunAsync(new ProbeScreen());
+        var status = await ConsoleApplication.RunAsync(new ProbeScreen());
 
         status.ShouldBe(ConsoleRunStatus.Redirected);
     }

@@ -6,6 +6,7 @@ namespace SharpVision.Terminal.Tests.Rendering;
 using SharpVision.Terminal.Capabilities;
 
 
+
 /// <summary>Verifies deterministic semantic-color projection to terminal tiers.</summary>
 public sealed class PaletteTests
 {
@@ -42,11 +43,11 @@ public sealed class PaletteTests
     [Fact]
     public void Project_WhenEveryIndexIsDegraded_RemainsInsideTier()
     {
-        for (int index = 0; index <= byte.MaxValue; index++)
+        for (var index = 0; index <= byte.MaxValue; index++)
         {
-            Color source = Color.Indexed(index);
-            Color basic = Palette.Project(source, ColorDepth.Basic16);
-            Color indexed = Palette.Project(source, ColorDepth.Indexed256);
+            var source = Color.Indexed(index);
+            var basic = Palette.Project(source, ColorDepth.Basic16);
+            var indexed = Palette.Project(source, ColorDepth.Indexed256);
 
             basic.Kind.ShouldBe(ColorKind.Indexed);
             basic.Red.ShouldBeLessThan((byte) 16);
@@ -58,16 +59,16 @@ public sealed class PaletteTests
     [Fact]
     public void Project_WhenRandomColorsAreRepeated_IsDeterministicAndIdempotent()
     {
-        Random random = new(0x00C01012);
+        var random = new Random(0x00C01012);
 
-        for (int iteration = 0; iteration < 2_000; iteration++)
+        for (var iteration = 0; iteration < 2_000; iteration++)
         {
-            Color source = Color.Rgb(random.Next(256), random.Next(256), random.Next(256));
+            var source = Color.Rgb(random.Next(256), random.Next(256), random.Next(256));
 
-            foreach (ColorDepth depth in Enum.GetValues<ColorDepth>())
+            foreach (var depth in Enum.GetValues<ColorDepth>())
             {
-                Color first = Palette.Project(source, depth);
-                Color second = Palette.Project(source, depth);
+                var first = Palette.Project(source, depth);
+                var second = Palette.Project(source, depth);
 
                 second.ShouldBe(first);
                 Palette.Project(first, depth).ShouldBe(first);

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Text;
 
-using SharpVision.Text;
 
 /// <summary>Verifies inline markup parsing into visible text and semantic style spans.</summary>
 public sealed class MarkupTests

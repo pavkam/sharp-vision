@@ -6,10 +6,9 @@ namespace SharpVision.Controls;
 
 using SharpVision.Scrolling;
 using SharpVision.Terminal.Input;
-using SharpVision.Terminal.Unicode;
 
 using ScrollRange = Scrolling.Range;
-using UnicodeWidth = Terminal.Unicode.Width;
+using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
 public sealed class ScrollBar: Control
@@ -197,9 +196,9 @@ public sealed class ScrollBar: Control
         get => DefaultDecrementGlyph;
         set
         {
-            Rune glyph = Validate(value, nameof(value));
+            var glyph = Validate(value, nameof(value));
             VerifyMutable();
-            bool wasCustom = _hasDecrementGlyph;
+            var wasCustom = _hasDecrementGlyph;
             _hasDecrementGlyph = true;
 
             if (DefaultDecrementGlyph == glyph)
@@ -226,9 +225,9 @@ public sealed class ScrollBar: Control
         get => DefaultIncrementGlyph;
         set
         {
-            Rune glyph = Validate(value, nameof(value));
+            var glyph = Validate(value, nameof(value));
             VerifyMutable();
-            bool wasCustom = _hasIncrementGlyph;
+            var wasCustom = _hasIncrementGlyph;
             _hasIncrementGlyph = true;
 
             if (DefaultIncrementGlyph == glyph)
@@ -255,9 +254,9 @@ public sealed class ScrollBar: Control
         get => DefaultTrackGlyph;
         set
         {
-            Rune glyph = Validate(value, nameof(value));
+            var glyph = Validate(value, nameof(value));
             VerifyMutable();
-            bool wasCustom = _hasTrackGlyph;
+            var wasCustom = _hasTrackGlyph;
             _hasTrackGlyph = true;
 
             if (DefaultTrackGlyph == glyph)
@@ -284,9 +283,9 @@ public sealed class ScrollBar: Control
         get => DefaultThumbGlyph;
         set
         {
-            Rune glyph = Validate(value, nameof(value));
+            var glyph = Validate(value, nameof(value));
             VerifyMutable();
-            bool wasCustom = _hasThumbGlyph;
+            var wasCustom = _hasThumbGlyph;
             _hasThumbGlyph = true;
 
             if (DefaultThumbGlyph == glyph)
@@ -315,7 +314,7 @@ public sealed class ScrollBar: Control
     {
         Validate(cause);
         VerifyMutable();
-        ScrollRange range = CurrentRange();
+        var range = CurrentRange();
         return Commit(range.Move(delta), cause);
     }
 
@@ -324,7 +323,7 @@ public sealed class ScrollBar: Control
     {
         _ = constraint.Width;
         Debug.Assert(Enum.IsDefined(Orientation), "Orientation is validated before assignment.");
-        int extent = Chrome == ScrollBarChrome.Thin ? 1 : 3;
+        var extent = Chrome == ScrollBarChrome.Thin ? 1 : 3;
         return Orientation == Orientation.Vertical ? new Size(1, extent) : new Size(extent, 1);
     }
 
@@ -374,27 +373,27 @@ public sealed class ScrollBar: Control
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        Rect bounds = ContentBounds;
-        int length = AxisLength(bounds);
+        var bounds = ContentBounds;
+        var length = AxisLength(bounds);
 
         if (length == 0)
         {
             return;
         }
 
-        int buttons = ButtonCount(length);
-        int trackLength = Math.Max(0, length - (buttons * 2));
-        Thumb thumb = Thumb.Resolve(CurrentRange(), trackLength);
-        TerminalStyle style = ResolvedStyle;
+        var buttons = ButtonCount(length);
+        var trackLength = Math.Max(0, length - (buttons * 2));
+        var thumb = Thumb.Resolve(CurrentRange(), trackLength);
+        var style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
         {
             canvas.Clear(bounds, style);
         }
 
-        for (int position = 0; position < length; position++)
+        for (var position = 0; position < length; position++)
         {
-            Rune glyph = ResolveGlyph(position, length, buttons, thumb);
+            var glyph = ResolveGlyph(position, length, buttons, thumb);
             Draw(canvas, PointAt(bounds, position), glyph, style);
         }
     }
@@ -402,7 +401,7 @@ public sealed class ScrollBar: Control
     private bool Commit(int value, Cause cause)
     {
         value = Math.Clamp(value, Minimum, Maximum);
-        int previous = _value;
+        var previous = _value;
 
         if (!Set(ref _value, value, Invalidation.Render, nameof(Value)))
         {
@@ -421,9 +420,9 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        Code code = eventArgs.Stroke.Code;
-        Code decrement = Orientation == Orientation.Vertical ? Code.Up : Code.Left;
-        Code increment = Orientation == Orientation.Vertical ? Code.Down : Code.Right;
+        var code = eventArgs.Stroke.Code;
+        var decrement = Orientation == Orientation.Vertical ? Code.Up : Code.Left;
+        var increment = Orientation == Orientation.Vertical ? Code.Down : Code.Right;
 
         if (code == decrement)
         {
@@ -459,7 +458,7 @@ public sealed class ScrollBar: Control
 
     private void Handle(PointerEventArgs eventArgs)
     {
-        Pointer pointer = eventArgs.Pointer;
+        var pointer = eventArgs.Pointer;
 
         if (pointer.Action == PointerAction.Wheel)
         {
@@ -481,9 +480,9 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        Rect bounds = ContentBounds;
-        int length = AxisLength(bounds);
-        int position = Axis(cells) - AxisOrigin(bounds);
+        var bounds = ContentBounds;
+        var length = AxisLength(bounds);
+        var position = Axis(cells) - AxisOrigin(bounds);
 
         if (length == 0 || position < 0 || position >= length)
         {
@@ -493,7 +492,7 @@ public sealed class ScrollBar: Control
         _ = FocusOwner?.Focus(this);
         eventArgs.Handled = true;
 
-        int buttons = ButtonCount(length);
+        var buttons = ButtonCount(length);
 
         if (buttons != 0 && position == 0)
         {
@@ -507,10 +506,10 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        int trackLength = Math.Max(0, length - (buttons * 2));
-        int trackPosition = position - buttons;
-        ScrollRange range = CurrentRange();
-        Thumb thumb = Thumb.Resolve(range, trackLength);
+        var trackLength = Math.Max(0, length - (buttons * 2));
+        var trackPosition = position - buttons;
+        var range = CurrentRange();
+        var thumb = Thumb.Resolve(range, trackLength);
 
         if (trackPosition < thumb.Start)
         {
@@ -528,7 +527,7 @@ public sealed class ScrollBar: Control
 
     private void HandleWheel(PointerEventArgs eventArgs)
     {
-        int wheel = Orientation == Orientation.Vertical
+        var wheel = Orientation == Orientation.Vertical
             ? eventArgs.Pointer.WheelY
             : eventArgs.Pointer.WheelX;
 
@@ -537,8 +536,8 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        long requested = -(long) wheel * SmallChange;
-        int delta = (int) Math.Clamp(requested, int.MinValue, int.MaxValue);
+        var requested = -(long) wheel * SmallChange;
+        var delta = (int) Math.Clamp(requested, int.MinValue, int.MaxValue);
 
         // A pinned rail must not swallow the next viewport's wheel gesture.
         // The unchanged routed event can continue to an enclosing scroll host.
@@ -552,7 +551,7 @@ public sealed class ScrollBar: Control
         Thumb thumb,
         ScrollRange range)
     {
-        CaptureManager? capture = CaptureOwner;
+        var capture = CaptureOwner;
 
         if (capture is null || !capture.Capture(this))
         {
@@ -571,7 +570,7 @@ public sealed class ScrollBar: Control
 
     private void Drag(PointerEventArgs eventArgs)
     {
-        Pointer pointer = eventArgs.Pointer;
+        var pointer = eventArgs.Pointer;
 
         if (pointer.Cells is not { } cells)
         {
@@ -585,21 +584,21 @@ public sealed class ScrollBar: Control
             return;
         }
 
-        Rect bounds = ContentBounds;
-        int buttons = ButtonCount(AxisLength(bounds));
-        int position = Axis(cells) - AxisOrigin(bounds) - buttons;
-        int delta = Difference(position, _dragPointerStart);
+        var bounds = ContentBounds;
+        var buttons = ButtonCount(AxisLength(bounds));
+        var position = Axis(cells) - AxisOrigin(bounds) - buttons;
+        var delta = Difference(position, _dragPointerStart);
 
         if (_dragPixelStart.HasValue && pointer.Pixels is { } pixels)
         {
-            int pixelDelta = Difference(Axis(pixels), _dragPixelStart.Value);
+            var pixelDelta = Difference(Axis(pixels), _dragPixelStart.Value);
             Debug.Assert(
                 delta == 0 || pixelDelta == 0 || Math.Sign(delta) == Math.Sign(pixelDelta),
                 "Inferred cell and pixel drag directions must agree.");
         }
 
-        int start = SaturatingAdd(_dragThumbStart, delta);
-        int value = Thumb.ValueAt(_dragRange, _dragTrackLength, start);
+        var start = SaturatingAdd(_dragThumbStart, delta);
+        var value = Thumb.ValueAt(_dragRange, _dragTrackLength, start);
         _ = Commit(value, Cause.Pointer);
         eventArgs.Handled = true;
 
@@ -651,7 +650,7 @@ public sealed class ScrollBar: Control
 
     private Rune ResolveGlyph(int position, int length, int buttons, Thumb thumb)
     {
-        int trackPosition = position - buttons;
+        var trackPosition = position - buttons;
 
         return buttons == 0
             ? trackPosition >= thumb.Start && trackPosition < thumb.Start + thumb.Length
@@ -703,7 +702,7 @@ public sealed class ScrollBar: Control
     private static void Draw(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style)
     {
         Span<char> buffer = stackalloc char[2];
-        int length = glyph.EncodeToUtf16(buffer);
+        var length = glyph.EncodeToUtf16(buffer);
         _ = canvas.Draw(buffer[..length], point, style, background: BackgroundMode.Transparent);
     }
 
@@ -737,8 +736,8 @@ public sealed class ScrollBar: Control
     private static Rune Validate(Rune value, string name)
     {
         Span<char> buffer = stackalloc char[2];
-        int length = value.EncodeToUtf16(buffer);
-        Measurement measurement = UnicodeWidth.Measure(buffer[..length]);
+        var length = value.EncodeToUtf16(buffer);
+        var measurement = UnicodeWidth.Measure(buffer[..length]);
 
         return measurement.Cells == 1 && measurement.Controls == 0
             ? value

@@ -63,7 +63,7 @@ public readonly record struct Range
     /// <returns>The contained resulting value.</returns>
     public int Move(int delta)
     {
-        long value = (long) Value + delta;
+        var value = (long) Value + delta;
         return (int) Math.Clamp(value, Minimum, Maximum);
     }
 }

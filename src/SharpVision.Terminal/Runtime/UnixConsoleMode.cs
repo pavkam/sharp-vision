@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using System.Diagnostics;
 
 /// <summary>Owns one best-effort Unix terminal raw-input lease for interactive console hosts.</summary>
 internal sealed class UnixConsoleMode: IDisposable
@@ -43,7 +42,7 @@ internal sealed class UnixConsoleMode: IDisposable
             return new UnixConsoleMode(restore: null);
         }
 
-        string restore = Run("-g").Trim();
+        var restore = Run("-g").Trim();
 
         try
         {
@@ -89,22 +88,22 @@ internal sealed class UnixConsoleMode: IDisposable
 
     private static string Run(params string[] arguments)
     {
-        ProcessStartInfo start = new("/bin/stty")
+        var start = new ProcessStartInfo("/bin/stty")
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
 
-        foreach (string argument in arguments)
+        foreach (var argument in arguments)
         {
             start.ArgumentList.Add(argument);
         }
 
-        using Process process = Process.Start(start)
+        using var process = Process.Start(start)
             ?? throw new IOException("The terminal raw-mode utility could not start.");
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
         return process.ExitCode == 0

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Fonts;
 
-using SharpVision.Fonts;
 
 
 /// <summary>Verifies the embedded audited 400-font catalog.</summary>
@@ -15,7 +14,7 @@ public sealed class FigletCatalogTests
     [Fact]
     public void Names_WhenCatalogLoads_ContainsFourHundredSortedFonts()
     {
-        IReadOnlyList<string> names = FigletCatalog.Default.Names;
+        var names = FigletCatalog.Default.Names;
 
         names.Count.ShouldBe(400);
         names.ShouldBe(names.Order(StringComparer.Ordinal).ToArray());
@@ -26,7 +25,7 @@ public sealed class FigletCatalogTests
     [Fact]
     public void GetInfo_WhenFontExists_ReturnsAuditedMetadata()
     {
-        FigletFontInfo info = FigletCatalog.Default.GetInfo("Standard");
+        var info = FigletCatalog.Default.GetInfo("Standard");
 
         info.File.ShouldBe("Standard.flf");
         info.Sha256.Length.ShouldBe(64);
@@ -50,9 +49,9 @@ public sealed class FigletCatalogTests
     [Fact]
     public void Load_WhenStandardIsSelected_RendersText()
     {
-        FigletFont font = FigletCatalog.Default.Load("Standard");
+        var font = FigletCatalog.Default.Load("Standard");
 
-        string output = font.Render("Hi");
+        var output = font.Render("Hi");
 
         output.ShouldBe(
             " _   _ _ \n" +
@@ -67,9 +66,9 @@ public sealed class FigletCatalogTests
     [Fact]
     public void Load_WhenEveryCatalogEntryIsSelected_ParsesAllFonts()
     {
-        FigletCatalog catalog = FigletCatalog.Default;
+        var catalog = FigletCatalog.Default;
 
-        foreach (string name in catalog.Names)
+        foreach (var name in catalog.Names)
         {
             _ = Should.NotThrow(() => catalog.Load(name), name);
         }

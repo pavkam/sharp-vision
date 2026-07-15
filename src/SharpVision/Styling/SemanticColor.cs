@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Collapses a deferred role color to a concrete color against a theme palette.</summary>
 internal static class SemanticColor
@@ -25,7 +24,7 @@ internal static class SemanticColor
             return color;
         }
 
-        ColorRole role = (ColorRole) color.RoleId;
+        var role = (ColorRole) color.RoleId;
 
         if (!Enum.IsDefined(role))
         {

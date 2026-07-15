@@ -3,18 +3,14 @@
 
 namespace SharpVision.Tests.Integration;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
-using SharpVision.Terminal.Unicode;
 
 
 using ComboBoxControl = ComboBox;
 using RichTextControl = RichText;
 using RunInline = Run;
-using TerminalOptions = Terminal.Runtime.Options;
-using TextControl = SharpVision.Controls.Text;
+using TextControl = ControlText;
 using TextInputControl = TextInput;
-using TextWrapping = SharpVision.Text.Wrapping;
+using TextWrapping = Wrapping;
 
 /// <summary>Verifies end-to-end Unicode geometry across controls, frames, and pointer routing.</summary>
 public sealed class UnicodeGeometryTests
@@ -24,20 +20,20 @@ public sealed class UnicodeGeometryTests
     public async Task Layout_WhenAmbiguousWidthIsWide_AgreesAcrossTextConsumersAsync()
     {
         // Arrange
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            Policy policy = new(Ambiguous.Wide);
-            TextControl text = new() { Content = "·" };
-            RichTextControl rich = new() { Wrapping = TextWrapping.None };
+            var policy = new Policy(Ambiguous.Wide);
+            var text = new TextControl() { Content = "·" };
+            var rich = new RichTextControl() { Wrapping = TextWrapping.None };
             rich.Inlines.Add(new RunInline("·"));
-            TextInputControl input = new() { Text = "·" };
-            Table table = new();
+            var input = new TextInputControl() { Text = "·" };
+            var table = new Table();
             table.Columns.Add(TableColumn.Fixed("Value", 4));
             table.Rows.Add(new TableRow([new TextControl("·")]));
-            ComboBoxControl combo = new() { Items = ["·"] };
-            Stack stack = new();
+            var combo = new ComboBoxControl() { Items = ["·"] };
+            var stack = new Stack();
             stack.Children.Add(text);
             stack.Children.Add(rich);
             stack.Children.Add(input);
@@ -62,11 +58,11 @@ public sealed class UnicodeGeometryTests
     {
         // Arrange
         const string source = "\u0301";
-        await using Dispatcher dispatcher = Dispatcher.Start();
+        await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
-            TextInputControl input = new() { Text = source, Width = Length.Cells(2) };
+            var input = new TextInputControl() { Text = source, Width = Length.Cells(2) };
             input.Attach(dispatcher, Policy.Default);
             new Engine().Layout(input, new Size(2, 1));
             using Frame frame = new(new Size(2, 1));
@@ -88,7 +84,7 @@ public sealed class UnicodeGeometryTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4), new Size(101, 31)));
         List<Point?> hits = [];
-        ProbePressable root = new()
+        var root = new ProbePressable()
         {
             Width = Length.Cells(10),
             Height = Length.Cells(4),
@@ -105,7 +101,7 @@ public sealed class UnicodeGeometryTests
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
-        TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
             if (eventArgs.Response.Kind == ResponseKind.PrimaryAttributes)
@@ -129,7 +125,7 @@ public sealed class UnicodeGeometryTests
 
     private static async Task WaitForPointerHitAsync(List<Point?> hits)
     {
-        for (int attempt = 0; attempt < 100; attempt++)
+        for (var attempt = 0; attempt < 100; attempt++)
         {
             if (hits.Count > 0)
             {

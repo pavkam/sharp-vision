@@ -6,7 +6,6 @@ namespace SharpVision.Tests.Styling;
 
 
 
-using ControlText = SharpVision.Controls.Text;
 
 /// <summary>Verifies shared control chrome rasterization and geometry.</summary>
 public sealed class ControlChromeTests
@@ -15,7 +14,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawPartialBorder_WhenOnlyTopEdgeIsEnabled_DrawsSingleRow()
     {
-        Border border = new()
+        var border = new Border()
         {
             Bounds = new Rect(0, 0, 3, 2),
             BorderThickness = new Thickness(0, 1, 0, 0),
@@ -35,7 +34,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawShadow_WhenCompositeModeIsUsed_LeavesBodyCellsUntouched()
     {
-        Shadow shadow = new()
+        var shadow = new Shadow()
         {
             Bounds = new Rect(0, 0, 2, 2),
             Mode = ShadowMode.Composite,
@@ -55,7 +54,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void ContentBounds_WhenBorderAndPaddingAreSet_DeflatesBeforePadding()
     {
-        ChromeProbe control = new()
+        var control = new ChromeProbe()
         {
             Bounds = new Rect(0, 0, 6, 4),
             BorderThickness = new Thickness(1),
@@ -69,7 +68,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void Measure_WhenBorderThicknessIsSet_ReservesActiveEdges()
     {
-        Border border = new()
+        var border = new Border()
         {
             BorderThickness = new Thickness(1, 0, 0, 0),
             Child = new ControlText("ab"),

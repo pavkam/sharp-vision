@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
 internal static class ControlAppearance
 {
@@ -12,13 +10,13 @@ internal static class ControlAppearance
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        Color? foreground = control.ResolveProperty(Control.ForegroundProperty, visualState);
-        Color? background = control.ResolveProperty(Control.BackgroundProperty, visualState);
-        TerminalAttributes? attributes = control.ResolveProperty(Control.AttributesProperty, visualState);
-        Underline? underline = control.ResolveProperty(Control.UnderlineProperty, visualState);
-        Color? underlineColor = control.ResolveProperty(Control.UnderlineColorProperty, visualState);
-        FillMode fillMode = control.ResolveProperty(Control.FillModeProperty, visualState);
-        (TerminalAttributes resolvedAttributes, Underline resolvedUnderline, Color resolvedUnderlineColor) = Decoration.Resolve(
+        var foreground = control.ResolveProperty(Control.ForegroundProperty, visualState);
+        var background = control.ResolveProperty(Control.BackgroundProperty, visualState);
+        var attributes = control.ResolveProperty(Control.AttributesProperty, visualState);
+        var underline = control.ResolveProperty(Control.UnderlineProperty, visualState);
+        var underlineColor = control.ResolveProperty(Control.UnderlineColorProperty, visualState);
+        var fillMode = control.ResolveProperty(Control.FillModeProperty, visualState);
+        (var resolvedAttributes, var resolvedUnderline, var resolvedUnderlineColor) = Decoration.Resolve(
             new TerminalStyle(
                 foreground ?? Color.Default,
                 background ?? Color.Default,
@@ -27,14 +25,14 @@ internal static class ControlAppearance
             underline,
             underlineColor);
 
-        TerminalStyle style = new(
+        var style = new TerminalStyle(
             foreground ?? Color.Default,
             background ?? Color.Default,
             resolvedAttributes,
             underline: resolvedUnderline,
             underlineColor: resolvedUnderlineColor);
-        bool hasOpaqueFill = fillMode == FillMode.Opaque ||
-            (control.TryGetLocalValue(Control.BackgroundProperty, out Color? local) && local.HasValue) ||
+        var hasOpaqueFill = fillMode == FillMode.Opaque ||
+            (control.TryGetLocalValue(Control.BackgroundProperty, out var local) && local.HasValue) ||
             background.HasValue;
 
         return new ResolvedAppearance
@@ -54,10 +52,10 @@ internal static class ControlAppearance
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        TerminalStyle body = control.GetResolvedAppearance(visualState).Style;
-        Color? borderColor = control.ResolveProperty(Control.BorderColorProperty, visualState);
-        TerminalAttributes? borderAttributes = control.ResolveProperty(Control.BorderAttributesProperty, visualState);
-        (TerminalAttributes attributes, Underline underline, Color underlineColor) = Decoration.Resolve(body, borderAttributes);
+        var body = control.GetResolvedAppearance(visualState).Style;
+        var borderColor = control.ResolveProperty(Control.BorderColorProperty, visualState);
+        var borderAttributes = control.ResolveProperty(Control.BorderAttributesProperty, visualState);
+        (var attributes, var underline, var underlineColor) = Decoration.Resolve(body, borderAttributes);
 
         return new TerminalStyle(
             borderColor ?? body.Foreground,

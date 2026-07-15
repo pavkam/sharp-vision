@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 
 using SharpVision.Terminal.Runtime;
 
+
 /// <summary>
 /// Verifies <see cref="ConsoleHost.Open"/> argument validation.
 /// </summary>

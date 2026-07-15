@@ -24,15 +24,15 @@ public static class Responses
 
         if (final == (byte) 'c' && intermediates.IsEmpty)
         {
-            Parameters reader = new(parameters, maxCount: 32, maxValue: int.MaxValue);
-            ResponseKind kind = reader.PrivateMarker switch
+            var reader = new Parameters(parameters, maxCount: 32, maxValue: int.MaxValue);
+            var kind = reader.PrivateMarker switch
             {
                 (byte) '?' => ResponseKind.PrimaryAttributes,
                 (byte) '>' => ResponseKind.SecondaryAttributes,
                 _ => ResponseKind.None,
             };
 
-            if (kind == ResponseKind.None || !TryReadValues(ref reader, minimum: 1, out int[]? values))
+            if (kind == ResponseKind.None || !TryReadValues(ref reader, minimum: 1, out var values))
             {
                 return false;
             }
@@ -43,10 +43,10 @@ public static class Responses
 
         if (final == (byte) 'R' && intermediates.IsEmpty)
         {
-            Parameters reader = new(parameters, maxCount: 2, maxValue: int.MaxValue);
+            var reader = new Parameters(parameters, maxCount: 2, maxValue: int.MaxValue);
 
             if (reader.PrivateMarker != 0 ||
-                !TryReadValues(ref reader, minimum: 2, out int[]? values) ||
+                !TryReadValues(ref reader, minimum: 2, out var values) ||
                 values.Length != 2 ||
                 values[0] <= 0 ||
                 values[1] <= 0)
@@ -60,10 +60,10 @@ public static class Responses
 
         if (final == (byte) 'y' && intermediates.SequenceEqual("$"u8))
         {
-            Parameters reader = new(parameters, maxCount: 2, maxValue: int.MaxValue);
+            var reader = new Parameters(parameters, maxCount: 2, maxValue: int.MaxValue);
 
             if (reader.PrivateMarker != (byte) '?' ||
-                !TryReadValues(ref reader, minimum: 2, out int[]? values) ||
+                !TryReadValues(ref reader, minimum: 2, out var values) ||
                 values.Length != 2 ||
                 values[0] <= 0 ||
                 values[1] is < 0 or > 4)
@@ -80,10 +80,10 @@ public static class Responses
 
         if (final == (byte) 'u' && intermediates.IsEmpty)
         {
-            Parameters reader = new(parameters, maxCount: 1, maxValue: 31);
+            var reader = new Parameters(parameters, maxCount: 1, maxValue: 31);
 
             if (reader.PrivateMarker != (byte) '?' ||
-                !TryReadValues(ref reader, minimum: 1, out int[]? values) ||
+                !TryReadValues(ref reader, minimum: 1, out var values) ||
                 values.Length != 1)
             {
                 return false;
@@ -120,12 +120,12 @@ public static class Responses
             return false;
         }
 
-        int[] values = new int[3];
+        var values = new int[3];
 
-        for (int index = 0; index < values.Length; index++)
+        for (var index = 0; index < values.Length; index++)
         {
-            int separator = value.IndexOf((byte) '/');
-            ReadOnlySpan<byte> field = separator < 0 ? value : value[..separator];
+            var separator = value.IndexOf((byte) '/');
+            var field = separator < 0 ? value : value[..separator];
 
             if (!TryHex(field, out values[index]) ||
                 (index < values.Length - 1 && separator < 0) ||
@@ -150,7 +150,7 @@ public static class Responses
             return false;
         }
 
-        foreach (byte item in field)
+        foreach (var item in field)
         {
             int digit;
 
@@ -186,7 +186,7 @@ public static class Responses
 
         while (true)
         {
-            ParameterStatus status = reader.Read(out int value, out ParameterSeparator separator);
+            var status = reader.Read(out var value, out var separator);
 
             if (status == ParameterStatus.End)
             {

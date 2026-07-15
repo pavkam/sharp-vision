@@ -17,7 +17,7 @@ public sealed class ParserCsiTests
     public void Parse_WhenCsiHasNoParameters_DeliversFinal()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b[H"u8, ref sink);
 
@@ -35,7 +35,7 @@ public sealed class ParserCsiTests
     public void Parse_WhenCsiIsPrivate_PreservesParameterBytes()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b[?25h"u8, ref sink);
 
@@ -51,7 +51,7 @@ public sealed class ParserCsiTests
     public void Parse_WhenCsiHasSubparameters_PreservesColonBytes()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("\u001b[38:2:1:2:3m"u8, ref sink);
 
@@ -65,7 +65,7 @@ public sealed class ParserCsiTests
     public void Parse_WhenReadContainsMultipleEvents_DeliversInOrder()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
 
         parser.Parse("a\u001b[2J\nb"u8, ref sink);
 
@@ -80,7 +80,7 @@ public sealed class ParserCsiTests
     public void Parse_WhenCanCancelsCsi_ReportsAndRecoversToText()
     {
         using Parser parser = new();
-        RecordingSink sink = new();
+        var sink = new RecordingSink();
         byte[] input = [0x1b, (byte) '[', (byte) '1', (byte) '2', 0x18, (byte) 'x'];
 
         parser.Parse(input, ref sink);

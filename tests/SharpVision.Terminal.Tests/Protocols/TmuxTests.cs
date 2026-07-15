@@ -13,7 +13,7 @@ public sealed class TmuxTests
     [Fact]
     public void WritePassthrough_WhenSequenceContainsEsc_WritesExactDcsEnvelope()
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
         Tmux.WritePassthrough(destination, "\u001b]52;c;YQ==\u001b\\"u8);
 
@@ -25,7 +25,7 @@ public sealed class TmuxTests
     [Fact]
     public void WritePassthrough_WhenSequenceIsEmpty_WritesEmptyDcsEnvelope()
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
         Tmux.WritePassthrough(destination, []);
 
@@ -36,9 +36,9 @@ public sealed class TmuxTests
     [Fact]
     public void TryUnwrap_WhenPayloadIsValid_RestoresOuterSequence()
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
-        bool unwrapped = Tmux.TryUnwrap("tmux;\u001b\u001b]52;c;YQ==\u001b\u001b\\"u8, destination);
+        var unwrapped = Tmux.TryUnwrap("tmux;\u001b\u001b]52;c;YQ==\u001b\u001b\\"u8, destination);
 
         unwrapped.ShouldBeTrue();
         destination.WrittenSpan.ToArray().ShouldBe("\u001b]52;c;YQ==\u001b\\"u8.ToArray());
@@ -50,9 +50,9 @@ public sealed class TmuxTests
     [InlineData("tmux;\u001b]52")]
     public void TryUnwrap_WhenPayloadIsInvalid_RejectsWithoutWriting(string value)
     {
-        ArrayBufferWriter<byte> destination = new();
+        var destination = new ArrayBufferWriter<byte>();
 
-        bool unwrapped = Tmux.TryUnwrap(Encoding.UTF8.GetBytes(value), destination);
+        var unwrapped = Tmux.TryUnwrap(Encoding.UTF8.GetBytes(value), destination);
 
         unwrapped.ShouldBeFalse();
         destination.WrittenCount.ShouldBe(0);

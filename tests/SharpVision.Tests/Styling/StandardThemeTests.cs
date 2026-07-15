@@ -12,7 +12,7 @@ public sealed class StandardThemeTests
     [Fact]
     public void Dark_WhenResolvedOnControl_UsesIndexedSemanticCells()
     {
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, Themes.Dark);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)
@@ -27,7 +27,7 @@ public sealed class StandardThemeTests
     [Fact]
     public void White_WhenResolvedOnControl_UsesIndexedSemanticCells()
     {
-        ProbeControl control = new();
+        var control = new ProbeControl();
         ThemeTestSupport.ApplyTheme(control, Themes.White);
 
         ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Normal)

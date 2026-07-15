@@ -75,8 +75,8 @@ public abstract class Pressable: Container
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        Stroke stroke = eventArgs.Stroke;
-        bool space = stroke.Code == Code.Character && stroke.Character == new Rune(' ');
+        var stroke = eventArgs.Stroke;
+        var space = stroke.Code == Code.Character && stroke.Character == new Rune(' ');
 
         if (space)
         {
@@ -110,7 +110,7 @@ public abstract class Pressable: Container
 
     private void Handle(PointerEventArgs eventArgs)
     {
-        Pointer pointer = eventArgs.Pointer;
+        var pointer = eventArgs.Pointer;
 
         if ((pointer.Buttons & Buttons.Primary) == 0)
         {
@@ -122,11 +122,11 @@ public abstract class Pressable: Container
             return;
         }
 
-        bool inside = pointer.Cells is { } cells && Bounds.Contains(cells);
+        var inside = pointer.Cells is { } cells && Bounds.Contains(cells);
 
         if (pointer.Action == PointerAction.Press && inside)
         {
-            CaptureManager? capture = CaptureOwner;
+            var capture = CaptureOwner;
 
             if (capture is null || !capture.Capture(this))
             {

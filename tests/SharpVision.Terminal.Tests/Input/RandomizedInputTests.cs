@@ -3,11 +3,11 @@
 
 namespace SharpVision.Terminal.Tests.Input;
 
-
 using SharpVision.Terminal.Input;
 
 
-using InputDecoder = Terminal.Input.Decoder;
+
+
 
 /// <summary>Verifies fixed-seed decoder boundedness and recovery.</summary>
 public sealed class RandomizedInputTests
@@ -20,14 +20,14 @@ public sealed class RandomizedInputTests
     [Fact]
     public void Decode_WhenBytesAreHostile_RemainsBoundedAndRecoversKnownKey()
     {
-        Random random = new(_seed);
+        var random = new Random(_seed);
 
-        for (int testCase = 0; testCase < 256; testCase++)
+        for (var testCase = 0; testCase < 256; testCase++)
         {
-            byte[] hostile = new byte[random.Next(1, 513)];
+            var hostile = new byte[random.Next(1, 513)];
             random.NextBytes(hostile);
-            RecordingInputSink sink = new();
-            Options options = Options.Default with
+            var sink = new RecordingInputSink();
+            var options = Options.Default with
             {
                 MaxPasteBytes = 32,
                 Limits = Limits.Default with
@@ -42,7 +42,7 @@ public sealed class RandomizedInputTests
             {
                 using InputDecoder decoder = new(sink, options);
 
-                foreach (ReadOnlyMemory<byte> fragment in Fragment(hostile, random))
+                foreach (var fragment in Fragment(hostile, random))
                 {
                     decoder.Decode(fragment.Span);
                 }
@@ -70,11 +70,11 @@ public sealed class RandomizedInputTests
 
     private static IEnumerable<ReadOnlyMemory<byte>> Fragment(byte[] input, Random random)
     {
-        int offset = 0;
+        var offset = 0;
 
         while (offset < input.Length)
         {
-            int length = Math.Min(random.Next(1, 9), input.Length - offset);
+            var length = Math.Min(random.Next(1, 9), input.Length - offset);
             yield return input.AsMemory(offset, length);
             offset += length;
         }

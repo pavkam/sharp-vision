@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls;
 
-using System.Collections;
 
 /// <summary>Owns a mutable ordered single-document inline collection.</summary>
 public sealed class Inlines: IList<Inline>
@@ -33,7 +32,7 @@ public sealed class Inlines: IList<Inline>
         {
             ArgumentNullException.ThrowIfNull(value);
             _owner.VerifyMutable();
-            Inline previous = _items[index];
+            var previous = _items[index];
 
             if (ReferenceEquals(previous, value))
             {
@@ -61,7 +60,7 @@ public sealed class Inlines: IList<Inline>
             return;
         }
 
-        foreach (Inline item in _items)
+        foreach (var item in _items)
         {
             item.Detach();
         }
@@ -108,7 +107,7 @@ public sealed class Inlines: IList<Inline>
     {
         ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutable();
-        int index = _items.IndexOf(item);
+        var index = _items.IndexOf(item);
 
         if (index < 0)
         {
@@ -123,7 +122,7 @@ public sealed class Inlines: IList<Inline>
     public void RemoveAt(int index)
     {
         _owner.VerifyMutable();
-        Inline item = _items[index];
+        var item = _items[index];
         _items.RemoveAt(index);
         item.Detach();
         _owner.InlineChanged();

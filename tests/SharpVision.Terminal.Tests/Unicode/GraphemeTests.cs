@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Unicode;
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>
@@ -34,8 +33,8 @@ public sealed class GraphemeTests
     [Fact]
     public void Enumerate_WhenRegionalIndicatorCountIsOdd_PairsByParity()
     {
-        string value = "🇵🇹🇬";
-        (int Offset, int Length, bool Invalid)[] segments = GetSegments(value);
+        var value = "🇵🇹🇬";
+        var segments = GetSegments(value);
 
         segments.ShouldBe([(0, 4, false), (4, 2, false)]);
     }
@@ -46,8 +45,8 @@ public sealed class GraphemeTests
     [Fact]
     public void Enumerate_WhenUtf16IsInvalid_ReportsReplacementSegment()
     {
-        string value = "\ud800a\udc00";
-        (int Offset, int Length, bool Invalid)[] segments = GetSegments(value);
+        var value = "\ud800a\udc00";
+        var segments = GetSegments(value);
 
         segments.ShouldBe(
         [
@@ -63,30 +62,30 @@ public sealed class GraphemeTests
     [Fact]
     public void Enumerate_WhenWarm_AllocatesNoManagedBytes()
     {
-        string value = "ASCII e\u0301 界 👩🏽‍💻 🇵🇹";
+        var value = "ASCII e\u0301 界 👩🏽‍💻 🇵🇹";
 
-        for (int index = 0; index < 100; index++)
+        for (var index = 0; index < 100; index++)
         {
             _ = Count(Graphemes.Enumerate(value.AsSpan()));
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
+        var before = GC.GetAllocatedBytesForCurrentThread();
 
-        for (int index = 0; index < 10_000; index++)
+        for (var index = 0; index < 10_000; index++)
         {
             _ = Count(Graphemes.Enumerate(value.AsSpan()));
         }
 
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         allocated.ShouldBe(0);
     }
 
     private static int Count(GraphemeEnumerable value)
     {
-        int count = 0;
+        var count = 0;
 
-        foreach (Grapheme unused in value)
+        foreach (var unused in value)
         {
             _ = unused;
             count++;
@@ -99,7 +98,7 @@ public sealed class GraphemeTests
     {
         List<(int, int, bool)> result = [];
 
-        foreach (Grapheme segment in Graphemes.Enumerate(value.AsSpan()))
+        foreach (var segment in Graphemes.Enumerate(value.AsSpan()))
         {
             result.Add((segment.Offset, segment.Length, segment.HasInvalidData));
         }

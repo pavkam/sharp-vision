@@ -70,7 +70,7 @@ internal sealed class ProbeControl: Control
     internal void Draw(TerminalCanvas canvas, Rune value)
     {
         Span<char> buffer = stackalloc char[2];
-        int length = value.EncodeToUtf16(buffer);
+        var length = value.EncodeToUtf16(buffer);
         _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
     }
 }

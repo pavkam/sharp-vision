@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Support;
 
-using SharpVision.Runtime;
 
 
 /// <summary>Records screen lifecycle hook order for Application startup tests.</summary>

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Tests.Text;
 
-using SharpVision.Text;
 
 /// <summary>Verifies deterministic markup invariants over fixed-seed hostile input.</summary>
 public sealed class RandomizedMarkupTests

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Runtime;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Provides one redacted terminal protocol diagnostic.</summary>
 public sealed class DiagnosticEventArgs: EventArgs

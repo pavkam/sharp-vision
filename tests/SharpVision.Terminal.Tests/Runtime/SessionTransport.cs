@@ -3,9 +3,7 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
-using System.Threading.Channels;
 
-using SharpVision.Terminal.Transport;
 
 /// <summary>Provides deterministic terminal session input, output, and failures.</summary>
 internal sealed class SessionTransport: ITransport
@@ -51,7 +49,7 @@ internal sealed class SessionTransport: ITransport
 
         try
         {
-            byte[] value = await _input.Reader.ReadAsync(cancellationToken);
+            var value = await _input.Reader.ReadAsync(cancellationToken);
             value.AsMemory().CopyTo(destination);
             return value.Length;
         }

@@ -3,11 +3,8 @@
 
 namespace SharpVision.Tests.Integration;
 
-using SharpVision.Runtime;
-using SharpVision.Terminal.Runtime;
 
 
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies pixel-only terminal input cannot fabricate control cells.</summary>
 public sealed class PixelPointerTests
@@ -21,7 +18,7 @@ public sealed class PixelPointerTests
         terminal.QueueResize(new Dimensions(
             new Size(10, 4),
             new Size(80, 64)));
-        ProbePressable root = new()
+        var root = new ProbePressable()
         {
             Width = Length.Cells(10),
             Height = Length.Cells(4),
@@ -31,9 +28,9 @@ public sealed class PixelPointerTests
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
-        TaskCompletionSource primary = new(
+        var primary = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource secondary = new(
+        var secondary = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {
@@ -71,7 +68,7 @@ public sealed class PixelPointerTests
         terminal.QueueResize(new Dimensions(
             new Size(10, 4),
             new Size(80, 64)));
-        ProbePressable root = new()
+        var root = new ProbePressable()
         {
             Width = Length.Cells(10),
             Height = Length.Cells(4),
@@ -81,9 +78,9 @@ public sealed class PixelPointerTests
             terminal,
             terminal,
             TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel });
-        int pointers = 0;
+        var pointers = 0;
         _ = root.AddHandler(Events.Pointer, (_, _) => pointers++);
-        TaskCompletionSource observed = new(
+        var observed = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         application.ResponseReceived += (_, eventArgs) =>
         {

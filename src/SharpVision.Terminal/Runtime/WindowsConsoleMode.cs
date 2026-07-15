@@ -3,9 +3,6 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 
 /// <summary>Owns one Windows console raw/VT mode lease with guaranteed restoration.</summary>
 [SupportedOSPlatform("windows")]
@@ -31,11 +28,11 @@ internal sealed class WindowsConsoleMode: IDisposable
     /// <exception cref="IOException">A console mode cannot be read or written.</exception>
     internal static WindowsConsoleMode Enter(bool captureControlKeys)
     {
-        nint input = Native.GetStandardHandle(Native.StdInputHandle);
-        nint output = Native.GetStandardHandle(Native.StdOutputHandle);
+        var input = Native.GetStandardHandle(Native.StdInputHandle);
+        var output = Native.GetStandardHandle(Native.StdOutputHandle);
 
-        if (!Native.TryGetConsoleMode(input, out uint savedInput) ||
-            !Native.TryGetConsoleMode(output, out uint savedOutput))
+        if (!Native.TryGetConsoleMode(input, out var savedInput) ||
+            !Native.TryGetConsoleMode(output, out var savedOutput))
         {
             throw Failure();
         }
@@ -47,7 +44,7 @@ internal sealed class WindowsConsoleMode: IDisposable
 
         if (!Native.TrySetConsoleMode(output, Native.ComputeOutputMode(savedOutput)))
         {
-            IOException failure = Failure();
+            var failure = Failure();
             _ = Native.TrySetConsoleMode(input, savedInput);
             throw failure;
         }

@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Provides immutable theme snapshots to attached controls.</summary>
 internal sealed class ThemeContext

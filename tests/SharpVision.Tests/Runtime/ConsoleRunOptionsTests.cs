@@ -3,14 +3,9 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using SharpVision.Runtime;
-using SharpVision.Styling;
-using SharpVision.Terminal.Capabilities;
-using SharpVision.Terminal.Protocols;
 
-using CapabilityOrigin = Terminal.Capabilities.Origin;
+using CapabilityOrigin = Origin;
 using CapabilitySupport = Terminal.Capabilities.Support;
-using TerminalOptions = Terminal.Runtime.Options;
 
 /// <summary>Verifies <see cref="ConsoleRunOptions"/> defaults and terminal/host mapping.</summary>
 public sealed class ConsoleRunOptionsTests
@@ -19,7 +14,7 @@ public sealed class ConsoleRunOptionsTests
     [Fact]
     public void Defaults_WhenConstructed_ReproduceInteractiveConsolePolicy()
     {
-        ConsoleRunOptions options = new();
+        var options = new ConsoleRunOptions();
 
         options.AlternateScreen.ShouldBeTrue();
         options.ShowCursor.ShouldBeFalse();
@@ -35,10 +30,10 @@ public sealed class ConsoleRunOptionsTests
     public void ToTerminalOptions_WhenDefault_EnablesNegotiatedCellMouse()
     {
         // Act
-        TerminalOptions terminal = new ConsoleRunOptions().ToTerminalOptions();
+        var terminal = new ConsoleRunOptions().ToTerminalOptions();
 
         // Assert
-        NegotiationOptions negotiation = terminal.Negotiation.ShouldNotBeNull();
+        var negotiation = terminal.Negotiation.ShouldNotBeNull();
         negotiation.Overrides.ShouldNotBeNull().CellMouse.ShouldBe(true);
         terminal.Capabilities.CellMouse.ShouldBe(
             new Feature(CapabilitySupport.Supported, CapabilityOrigin.Override));
@@ -50,9 +45,9 @@ public sealed class ConsoleRunOptionsTests
     [Fact]
     public void ToTerminalOptions_WhenMouseDisabled_LeavesTrackingNull()
     {
-        ConsoleRunOptions options = new() { MouseTracking = null };
+        var options = new ConsoleRunOptions() { MouseTracking = null };
 
-        TerminalOptions terminal = options.ToTerminalOptions();
+        var terminal = options.ToTerminalOptions();
 
         terminal.Tracking.ShouldBeNull();
     }
@@ -61,7 +56,7 @@ public sealed class ConsoleRunOptionsTests
     [Fact]
     public void ToHostOptions_WhenControlCAsInput_CapturesControlKeys()
     {
-        ConsoleRunOptions options = new() { TreatControlCAsInput = true };
+        var options = new ConsoleRunOptions() { TreatControlCAsInput = true };
 
         options.ToHostOptions().CaptureControlKeys.ShouldBeTrue();
     }
@@ -75,9 +70,9 @@ public sealed class ConsoleRunOptionsTests
     [Fact]
     public void ToTerminalOptions_WhenColorDepthForced_ThreadsItIntoNegotiationOverrides()
     {
-        ConsoleRunOptions options = new() { ColorDepth = ColorDepth.Monochrome };
+        var options = new ConsoleRunOptions() { ColorDepth = ColorDepth.Monochrome };
 
-        TerminalOptions terminal = options.ToTerminalOptions();
+        var terminal = options.ToTerminalOptions();
 
         terminal.Negotiation.ShouldNotBeNull().Overrides.ShouldNotBeNull().ColorDepth.ShouldBe(ColorDepth.Monochrome);
     }
@@ -86,7 +81,7 @@ public sealed class ConsoleRunOptionsTests
     [Fact]
     public void ToTerminalOptions_WhenColorDepthDefault_LeavesNegotiationOverrideNull()
     {
-        TerminalOptions terminal = new ConsoleRunOptions().ToTerminalOptions();
+        var terminal = new ConsoleRunOptions().ToTerminalOptions();
 
         terminal.Negotiation.ShouldNotBeNull().Overrides.ShouldNotBeNull().ColorDepth.ShouldBeNull();
     }

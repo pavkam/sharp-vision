@@ -3,10 +3,7 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
-using System.Buffers;
-using System.Diagnostics;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Coordinates one bounded terminal capability query batch.</summary>
 public sealed class Negotiator
@@ -27,7 +24,7 @@ public sealed class Negotiator
     private bool? _synchronizedOutput;
     private bool _keyboardQueried;
 
-    private Capabilities? Published { get; set; }
+    private TerminalCapabilities? Published { get; set; }
 
     /// <summary>Initializes one bounded negotiator.</summary>
     /// <param name="options">The non-null owned negotiation policy.</param>
@@ -57,7 +54,7 @@ public sealed class Negotiator
 
     /// <summary>Gets the published immutable profile.</summary>
     /// <exception cref="InvalidOperationException">Negotiation is incomplete.</exception>
-    public Capabilities Capabilities => Published ??
+    public TerminalCapabilities Capabilities => Published ??
         throw new InvalidOperationException("Negotiation has not published a profile.");
 
     /// <summary>Writes the complete bounded startup query batch.</summary>
@@ -73,12 +70,12 @@ public sealed class Negotiator
             throw new InvalidOperationException("The capability negotiator already started.");
         }
 
-        int capacity = _options.Limits.MaxConcurrentQueries;
-        bool queryKeyboard = capacity >= 2;
+        var capacity = _options.Limits.MaxConcurrentQueries;
+        var queryKeyboard = capacity >= 2;
         _keyboardQueried = queryKeyboard;
-        bool keyboard = !queryKeyboard ||
+        var keyboard = !queryKeyboard ||
             _tracker.TryRegister(QueryKind.Keyboard, null, out _);
-        bool attributes = _tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
+        var attributes = _tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _);
         Debug.Assert(
             keyboard && attributes,
             "A fresh tracker must admit the selected bounded query families.");
@@ -91,7 +88,7 @@ public sealed class Negotiator
 
         IsStarted = true;
         Deadline = _timeProvider.GetUtcNow() + _options.Limits.QueryTimeout;
-        Writer writer = new(destination);
+        var writer = new Writer(destination);
 
         if (queryKeyboard)
         {
@@ -99,9 +96,9 @@ public sealed class Negotiator
         }
 
         Csi.PrimaryDeviceAttributes(writer);
-        int remaining = capacity - (queryKeyboard ? 2 : 1);
+        var remaining = capacity - (queryKeyboard ? 2 : 1);
 
-        foreach (int mode in _modes.Take(remaining))
+        foreach (var mode in _modes.Take(remaining))
         {
             _ = _pendingModes.Add(mode);
             Csi.QueryPrivateMode(writer, mode);
@@ -124,7 +121,7 @@ public sealed class Negotiator
             return AcceptPrivateMode(in response);
         }
 
-        QueryMatch match = _tracker.Match(response);
+        var match = _tracker.Match(response);
         LastDiagnostic = _tracker.LastDiagnostic;
 
         if (match == QueryMatch.Matched)
@@ -162,7 +159,7 @@ public sealed class Negotiator
 
         _ = _tracker.Expire();
 
-        foreach (int mode in _pendingModes)
+        foreach (var mode in _pendingModes)
         {
             _ = _expiredModes.Add(mode);
         }
@@ -189,7 +186,7 @@ public sealed class Negotiator
             return false;
         }
 
-        foreach (int mode in _pendingModes)
+        foreach (var mode in _pendingModes)
         {
             _ = _expiredModes.Add(mode);
         }
@@ -201,7 +198,7 @@ public sealed class Negotiator
 
     private QueryMatch AcceptPrivateMode(in Response response)
     {
-        ReadOnlySpan<int> values = response.Values.Span;
+        var values = response.Values.Span;
 
         if (values.Length != 2)
         {
@@ -209,7 +206,7 @@ public sealed class Negotiator
             return QueryMatch.Unknown;
         }
 
-        int mode = values[0];
+        var mode = values[0];
 
         if (_completedModes.Contains(mode))
         {
@@ -277,7 +274,7 @@ public sealed class Negotiator
 
     private void Publish()
     {
-        Queries queries = new()
+        var queries = new Queries()
         {
             SynchronizedOutput = _synchronizedOutput,
             FocusReporting = _focusReporting,

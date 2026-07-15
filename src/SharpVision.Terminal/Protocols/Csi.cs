@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers.Text;
-using System.Diagnostics;
 
 /// <summary>
 /// Encodes typed control sequence commands used by the terminal runtime.
@@ -29,7 +27,7 @@ public static class Csi
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
-        byte final = direction switch
+        var final = direction switch
         {
             Movement.Up => (byte) 'A',
             Movement.Down => (byte) 'B',
@@ -40,7 +38,7 @@ public static class Csi
         };
 
         Span<byte> parameters = stackalloc byte[10];
-        int length = Format(count, parameters);
+        var length = Format(count, parameters);
         writer.Csi(parameters[..length], [], final);
     }
 
@@ -55,7 +53,7 @@ public static class Csi
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(column);
 
         Span<byte> parameters = stackalloc byte[21];
-        int length = Format(row, parameters);
+        var length = Format(row, parameters);
         parameters[length++] = (byte) ';';
         length += Format(column, parameters[length..]);
         writer.Csi(parameters[..length], [], (byte) 'H');
@@ -155,13 +153,13 @@ public static class Csi
 
         Span<byte> parameters = stackalloc byte[11];
         parameters[0] = (byte) '?';
-        int length = Format(mode, parameters[1..]) + 1;
+        var length = Format(mode, parameters[1..]) + 1;
         writer.Csi(parameters[..length], "$"u8, (byte) 'p');
     }
 
     private static int Format(int value, Span<byte> destination)
     {
-        bool formatted = Utf8Formatter.TryFormat(value, destination, out int written);
+        var formatted = Utf8Formatter.TryFormat(value, destination, out var written);
         Debug.Assert(formatted, "A ten-byte span must hold any positive Int32 value.");
 
         return written;
@@ -179,7 +177,7 @@ public static class Csi
     private static void WriteNumber(Writer writer, int value, byte final)
     {
         Span<byte> parameters = stackalloc byte[10];
-        int length = Format(value, parameters);
+        var length = Format(value, parameters);
         writer.Csi(parameters[..length], [], final);
     }
 

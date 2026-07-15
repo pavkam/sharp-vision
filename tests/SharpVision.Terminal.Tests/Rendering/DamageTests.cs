@@ -16,8 +16,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenFramesAreEqual_ReturnsNoSpans()
     {
-        using Frame front = Create("abcd");
-        using Frame back = Create("abcd");
+        using var front = Create("abcd");
+        using var back = Create("abcd");
 
         GetSpans(front, back).ShouldBeEmpty();
     }
@@ -28,8 +28,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenChangesAreSparse_ReturnsMergedAdjacentRuns()
     {
-        using Frame front = Create("abcdef");
-        using Frame back = Create("aXYdeZ");
+        using var front = Create("abcdef");
+        using var back = Create("aXYdeZ");
 
         GetSpans(front, back).ShouldBe(
         [
@@ -44,8 +44,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenWideGraphemeChanges_ExpandsThroughContinuation()
     {
-        using Frame front = Create("界x", width: 3);
-        using Frame back = Create("語x", width: 3);
+        using var front = Create("界x", width: 3);
+        using var back = Create("語x", width: 3);
 
         GetSpans(front, back).ShouldBe([new DamageSpan(0, 0, 2)]);
     }
@@ -56,8 +56,8 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenWidthChanges_IncludesRepairedRange()
     {
-        using Frame front = Create("界x", width: 3);
-        using Frame back = Create("abx", width: 3);
+        using var front = Create("界x", width: 3);
+        using var back = Create("abx", width: 3);
 
         GetSpans(front, back).ShouldBe([new DamageSpan(0, 0, 2)]);
     }
@@ -68,7 +68,7 @@ public sealed class DamageTests
     [Fact]
     public void Enumerate_WhenOnlyStyleChanges_ReturnsChangedCell()
     {
-        using Frame front = Create("x");
+        using var front = Create("x");
         using Frame back = new(new Size(1, 1));
         _ = back.Canvas.Draw(
             "x".AsSpan(),
@@ -104,7 +104,7 @@ public sealed class DamageTests
 
     private static Frame Create(string value, int? width = null)
     {
-        Frame frame = new(new Size(width ?? value.Length, 1));
+        var frame = new Frame(new Size(width ?? value.Length, 1));
         _ = frame.Canvas.Draw(value.AsSpan(), new Point(0, 0));
         return frame;
     }

@@ -4,7 +4,6 @@
 namespace SharpVision.Terminal.Tests.Rendering;
 
 
-using SharpVision.Terminal.Unicode;
 
 
 /// <summary>Verifies physical-cell primitives honor the frame ambiguous-width policy.</summary>

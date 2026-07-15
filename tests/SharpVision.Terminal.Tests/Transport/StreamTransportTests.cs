@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Transport;
 
-using SharpVision.Terminal.Transport;
 
 
 /// <summary>
@@ -20,9 +19,9 @@ public sealed class StreamTransportTests
         await using MemoryStream input = new("input"u8.ToArray());
         await using MemoryStream output = new();
         await using StreamTransport transport = new(input, output, leaveOpen: true);
-        byte[] destination = new byte[5];
+        var destination = new byte[5];
 
-        int read = await transport.ReadAsync(destination, TestContext.Current.CancellationToken);
+        var read = await transport.ReadAsync(destination, TestContext.Current.CancellationToken);
         await transport.WriteAsync("output"u8.ToArray(), TestContext.Current.CancellationToken);
         await transport.FlushAsync(TestContext.Current.CancellationToken);
 
@@ -55,9 +54,9 @@ public sealed class StreamTransportTests
         await using BlockingStream output = new();
         await using StreamTransport transport = new(Stream.Null, output, leaveOpen: true);
 
-        ValueTask first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
+        var first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
         await output.FirstStarted;
-        ValueTask second = transport.WriteAsync("two"u8.ToArray(), TestContext.Current.CancellationToken);
+        var second = transport.WriteAsync("two"u8.ToArray(), TestContext.Current.CancellationToken);
 
         output.MaximumActive.ShouldBe(1);
         output.Release();
@@ -75,9 +74,9 @@ public sealed class StreamTransportTests
     {
         await using BlockingStream output = new();
         await using StreamTransport transport = new(Stream.Null, output, leaveOpen: true);
-        ValueTask first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
+        var first = transport.WriteAsync("one"u8.ToArray(), TestContext.Current.CancellationToken);
         await output.FirstStarted;
-        using CancellationTokenSource cancellation = new();
+        using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
         _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
@@ -94,10 +93,10 @@ public sealed class StreamTransportTests
     [Fact]
     public async Task DisposeAsync_WhenLeaveOpenVaries_UsesDocumentedOwnershipAsync()
     {
-        TrackingStream owned = new();
-        TrackingStream borrowed = new();
-        StreamTransport ownedTransport = new(Stream.Null, owned);
-        StreamTransport borrowedTransport = new(Stream.Null, borrowed, leaveOpen: true);
+        var owned = new TrackingStream();
+        var borrowed = new TrackingStream();
+        var ownedTransport = new StreamTransport(Stream.Null, owned);
+        var borrowedTransport = new StreamTransport(Stream.Null, borrowed, leaveOpen: true);
 
         await ownedTransport.DisposeAsync();
         await ownedTransport.DisposeAsync();

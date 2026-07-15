@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using SharpVision.Terminal.Geometry;
 
 /// <summary>Polls portable console cell dimensions at a finite non-spinning interval.</summary>
 public sealed class ConsoleResizeSource: IResizeSource
@@ -48,7 +47,7 @@ public sealed class ConsoleResizeSource: IResizeSource
         {
             while (true)
             {
-                Size current = ReadCells();
+                var current = ReadCells();
 
                 if (_last != current)
                 {

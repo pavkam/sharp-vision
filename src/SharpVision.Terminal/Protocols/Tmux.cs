@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers;
-using System.Diagnostics;
 
 /// <summary>Writes one terminal sequence through tmux DCS passthrough framing.</summary>
 /// <remarks>
@@ -26,9 +24,9 @@ public static class Tmux
     {
         ArgumentNullException.ThrowIfNull(destination);
 
-        int escapeCount = 0;
+        var escapeCount = 0;
 
-        foreach (byte value in sequence)
+        foreach (var value in sequence)
         {
             if (value == 0x1b)
             {
@@ -36,14 +34,14 @@ public static class Tmux
             }
         }
 
-        int length = checked(Header.Length + sequence.Length + escapeCount + Terminator.Length);
-        Span<byte> output = destination.GetSpan(length);
+        var length = checked(Header.Length + sequence.Length + escapeCount + Terminator.Length);
+        var output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
-        int written = 0;
+        var written = 0;
         Header.CopyTo(output);
         written += Header.Length;
 
-        foreach (byte value in sequence)
+        foreach (var value in sequence)
         {
             output[written++] = value;
 
@@ -71,10 +69,10 @@ public static class Tmux
             return false;
         }
 
-        ReadOnlySpan<byte> source = payload[Prefix.Length..];
-        int length = 0;
+        var source = payload[Prefix.Length..];
+        var length = 0;
 
-        for (int index = 0; index < source.Length; index++)
+        for (var index = 0; index < source.Length; index++)
         {
             if (source[index] != 0x1b)
             {
@@ -90,11 +88,11 @@ public static class Tmux
             length++;
         }
 
-        Span<byte> output = destination.GetSpan(length);
+        var output = destination.GetSpan(length);
         Debug.Assert(output.Length >= length, "IBufferWriter returned less than its requested span.");
-        int written = 0;
+        var written = 0;
 
-        for (int index = 0; index < source.Length; index++)
+        for (var index = 0; index < source.Length; index++)
         {
             output[written++] = source[index];
 

@@ -3,9 +3,9 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Terminal.Geometry;
-
 using Text = SharpVision.Controls.Text;
+
+
 
 /// <summary>Documents the Shadow control with composite darkening and block-glyph overflow specimens.</summary>
 internal sealed class ShadowPane: View
@@ -16,13 +16,13 @@ internal sealed class ShadowPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Shadow composite = new()
+        var composite = new Shadow()
         {
             Child = Card("Composite", Glyphs.Rounded),
             Offset = new Point(2, 1),
         };
 
-        Shadow blockGlyph = new()
+        var blockGlyph = new Shadow()
         {
             Child = Card("Block glyph", Glyphs.Paired),
             Mode = ShadowMode.BlockGlyph,
@@ -30,7 +30,7 @@ internal sealed class ShadowPane: View
             Offset = new Point(2, 1),
         };
 
-        Shadow deepOffset = new()
+        var deepOffset = new Shadow()
         {
             Child = Card("Offset 4,2", Glyphs.Light),
             Offset = new Point(4, 2),
@@ -63,7 +63,7 @@ internal sealed class ShadowPane: View
 
     private static Border Stage(Shadow shadow)
     {
-        Canvas canvas = new()
+        var canvas = new Canvas()
         {
             Width = Length.Cells(28),
             Height = Length.Cells(5),

@@ -5,7 +5,6 @@ namespace SharpVision.Tests.Controls;
 
 
 
-using Wrapping = SharpVision.Text.Wrapping;
 
 /// <summary>Verifies RichText inline ownership, layout, styling, and cells.</summary>
 public sealed class RichTextTests
@@ -16,9 +15,9 @@ public sealed class RichTextTests
     [Fact]
     public void Add_WhenInlineIsAlreadyOwned_ThrowsBeforeMutation()
     {
-        RichText first = new();
-        RichText second = new();
-        Run run = new("hello");
+        var first = new RichText();
+        var second = new RichText();
+        var run = new Run("hello");
         first.Inlines.Add(run);
 
         _ = Should.Throw<ArgumentException>(() => first.Inlines.Add(run));
@@ -32,9 +31,9 @@ public sealed class RichTextTests
     [Fact]
     public void Remove_WhenInlineIsOwned_ReleasesItForReuse()
     {
-        RichText first = new();
-        RichText second = new();
-        Run run = new("hello");
+        var first = new RichText();
+        var second = new RichText();
+        var run = new Run("hello");
         first.Inlines.Add(run);
 
         first.Inlines.Remove(run).ShouldBeTrue();
@@ -47,8 +46,8 @@ public sealed class RichTextTests
     [Fact]
     public void Indexer_WhenValueIsCurrentInline_DoesNotRejectOwnership()
     {
-        RichText control = new();
-        Run run = new("hello");
+        var control = new RichText();
+        var run = new Run("hello");
         control.Inlines.Add(run);
 
         _ = Should.NotThrow(() => control.Inlines[0] = run);
@@ -61,9 +60,9 @@ public sealed class RichTextTests
     [Fact]
     public void Dispose_WhenDocumentOwnsInline_ReleasesOwnership()
     {
-        RichText first = new();
-        RichText second = new();
-        Run run = new("hello");
+        var first = new RichText();
+        var second = new RichText();
+        var run = new Run("hello");
         first.Inlines.Add(run);
 
         first.Dispose();
@@ -80,7 +79,7 @@ public sealed class RichTextTests
     [Fact]
     public void Render_WhenRunsHaveStylesAndBreaks_WritesExactCells()
     {
-        RichText control = new();
+        var control = new RichText();
         control.Inlines.Add(new Run("Hi") { Foreground = Color.Indexed(2) });
         control.Inlines.Add(new LineBreak());
         control.Inlines.Add(new Hyperlink("Go", "https://example.test"));
@@ -99,20 +98,20 @@ public sealed class RichTextTests
     [Fact]
     public void Render_WhenRunHasModernDecorations_WritesCompleteStyle()
     {
-        Run run = new("x")
+        var run = new Run("x")
         {
             Attributes = Attributes.RapidBlink | Attributes.Overline,
             Underline = Underline.Curly,
             UnderlineColor = Color.Rgb(1, 2, 3),
         };
-        RichText control = new();
+        var control = new RichText();
         control.Inlines.Add(run);
         new Engine().Layout(control, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         control.Render(frame.Canvas);
 
-        CellStyle style = frame.GetCell(default).Style;
+        var style = frame.GetCell(default).Style;
         style.Attributes.ShouldBe(Attributes.RapidBlink | Attributes.Overline);
         style.Underline.ShouldBe(Underline.Curly);
         style.UnderlineColor.ShouldBe(Color.Rgb(1, 2, 3));
@@ -122,7 +121,7 @@ public sealed class RichTextTests
     [Fact]
     public void Decorations_WhenCombinationIsInvalid_ThrowBeforeMutation()
     {
-        Run run = new("x");
+        var run = new Run("x");
 
         _ = Should.Throw<ArgumentException>(() =>
             run.UnderlineColor = Color.Indexed(1));
@@ -142,7 +141,7 @@ public sealed class RichTextTests
     [Fact]
     public void Render_WhenWideGraphemeWraps_MovesCompleteOwnerToNextLine()
     {
-        RichText control = new() { Wrapping = Wrapping.Grapheme };
+        var control = new RichText() { Wrapping = Wrapping.Grapheme };
         control.Inlines.Add(new Run("a界"));
         new Engine().Layout(control, new Size(2, 2));
         using Frame frame = new(new Size(2, 2));
@@ -158,7 +157,7 @@ public sealed class RichTextTests
     [Fact]
     public void Render_WhenWordWrappingFindsWhitespaceBoundary_MovesWholeWordToNextLine()
     {
-        RichText control = new() { Wrapping = Wrapping.Word };
+        var control = new RichText() { Wrapping = Wrapping.Word };
         control.Inlines.Add(new Run("one two"));
         new Engine().Layout(control, new Size(5, 2));
         using Frame frame = new(new Size(5, 2));
@@ -174,10 +173,10 @@ public sealed class RichTextTests
     [Fact]
     public void Content_WhenRunChanges_RecomputesDocumentLayout()
     {
-        Run run = new("a");
-        RichText control = new();
+        var run = new Run("a");
+        var control = new RichText();
         control.Inlines.Add(run);
-        Engine engine = new();
+        var engine = new Engine();
         engine.Layout(control, new Size(10, 1));
 
         run.Content = "abcd";

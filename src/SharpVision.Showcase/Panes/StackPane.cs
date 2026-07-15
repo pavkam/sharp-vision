@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
+
 /// <summary>Documents the Stack control with orientation, spacing, and reverse-order specimens.</summary>
 internal sealed class StackPane: View
 {
@@ -14,23 +15,23 @@ internal sealed class StackPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        Stack horizontal = new() { Orientation = Orientation.Horizontal, Spacing = 2, Width = Length.Cells(40) };
-        Border fixedCard = Card("Fixed 10", Glyphs.Light);
+        var horizontal = new Stack() { Orientation = Orientation.Horizontal, Spacing = 2, Width = Length.Cells(40) };
+        var fixedCard = Card("Fixed 10", Glyphs.Light);
         fixedCard.Width = Length.Cells(10);
         horizontal.Children.Add(fixedCard);
-        Border percentCard = Card("35%", Glyphs.Heavy);
+        var percentCard = Card("35%", Glyphs.Heavy);
         percentCard.Width = Length.Percent(35);
         horizontal.Children.Add(percentCard);
-        Border starCard = Card("1*", Glyphs.Paired);
+        var starCard = Card("1*", Glyphs.Paired);
         starCard.Width = Length.Star(1);
         horizontal.Children.Add(starCard);
 
-        Stack reversed = new() { Orientation = Orientation.Horizontal, Spacing = 2, Reverse = true };
+        var reversed = new Stack() { Orientation = Orientation.Horizontal, Spacing = 2, Reverse = true };
         reversed.Children.Add(Card("First", Glyphs.Light));
         reversed.Children.Add(Card("Second", Glyphs.Heavy));
         reversed.Children.Add(Card("Third", Glyphs.Paired));
 
-        Stack vertical = new() { Spacing = 1 };
+        var vertical = new Stack() { Spacing = 1 };
         vertical.Children.Add(Card("Top", Glyphs.Rounded));
         vertical.Children.Add(Card("Spacing = 1", Glyphs.Light));
         vertical.Children.Add(Card("Bottom", Glyphs.Heavy));

@@ -12,7 +12,7 @@ public sealed class ResolvedPropertyCacheTests
     [Fact]
     public void Foreground_WhenNoValueResolves_CachesNullAndUpdatesAfterSetAndClear()
     {
-        ProbeControl control = new();
+        var control = new ProbeControl();
 
         control.Foreground.ShouldBeNull();
         control.Foreground.ShouldBeNull();

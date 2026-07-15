@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Capabilities;
 
 using System.Collections.ObjectModel;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Owns finite policy and evidence inputs for one startup negotiation.</summary>
 public sealed class NegotiationOptions
@@ -21,9 +20,9 @@ public sealed class NegotiationOptions
         Limits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        Dictionary<string, string?> copy = new(StringComparer.Ordinal);
+        var copy = new Dictionary<string, string?>(StringComparer.Ordinal);
 
-        foreach (KeyValuePair<string, string?> pair in environment)
+        foreach (var pair in environment)
         {
             copy.Add(pair.Key, pair.Value);
         }

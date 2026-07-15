@@ -3,10 +3,8 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using SharpVision.Terminal.Protocols;
 
 using InputOptions = Input.Options;
-using TerminalCapabilities = Capabilities.Capabilities;
 using TerminalNegotiationOptions = Capabilities.NegotiationOptions;
 
 /// <summary>Defines validated terminal session modes, bounds, and cleanup policy.</summary>

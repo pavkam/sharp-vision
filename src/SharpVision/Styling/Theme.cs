@@ -3,7 +3,6 @@
 
 namespace SharpVision.Styling;
 
-using SharpVision.Terminal.Protocols;
 
 /// <summary>Owns one style per control type and publishes immutable style-chain snapshots.</summary>
 public sealed class Theme
@@ -48,7 +47,7 @@ public sealed class Theme
 
         lock (_gate)
         {
-            if (_styles.TryGetValue(typeof(TControl), out IControlStyle? existing))
+            if (_styles.TryGetValue(typeof(TControl), out var existing))
             {
                 Unsubscribe(existing);
             }
@@ -74,7 +73,7 @@ public sealed class Theme
 
         lock (_gate)
         {
-            if (!_styles.Remove(typeof(TControl), out IControlStyle? existing))
+            if (!_styles.Remove(typeof(TControl), out var existing))
             {
                 return false;
             }
@@ -96,7 +95,7 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            return _styles.TryGetValue(typeof(TControl), out IControlStyle? style) ? (ControlStyle<TControl>) style : null;
+            return _styles.TryGetValue(typeof(TControl), out var style) ? (ControlStyle<TControl>) style : null;
         }
     }
 
@@ -157,16 +156,16 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            Theme clone = new();
+            var clone = new Theme();
 
-            foreach (KeyValuePair<Type, IControlStyle> entry in _styles)
+            foreach (var entry in _styles)
             {
-                IControlStyle cloned = CloneStyle(entry.Value);
+                var cloned = CloneStyle(entry.Value);
                 clone._styles[entry.Key] = cloned;
                 clone.Subscribe(cloned);
             }
 
-            foreach (KeyValuePair<ColorRole, Color> entry in _colors)
+            foreach (var entry in _colors)
             {
                 clone._colors[entry.Key] = entry.Value;
             }
@@ -184,7 +183,7 @@ public sealed class Theme
 
         lock (_gate)
         {
-            foreach (KeyValuePair<Type, IControlStyle> entry in _styles.ToArray())
+            foreach (var entry in _styles.ToArray())
             {
                 Unsubscribe(entry.Value);
                 _styles[entry.Key] = FreezeStyle(entry.Value);
@@ -211,12 +210,12 @@ public sealed class Theme
     {
         lock (_gate)
         {
-            if (_styleChains.TryGetValue(controlType, out IReadOnlyList<IControlStyle>? cached))
+            if (_styleChains.TryGetValue(controlType, out var cached))
             {
                 return cached;
             }
 
-            List<IControlStyle> chain = BuildChain(controlType);
+            var chain = BuildChain(controlType);
             _styleChains[controlType] = chain;
             return chain;
         }
@@ -226,9 +225,9 @@ public sealed class Theme
     {
         List<IControlStyle> chain = [];
 
-        foreach (Type type in ControlHierarchy.BaseToDerived(controlType))
+        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
         {
-            if (_styles.TryGetValue(type, out IControlStyle? style))
+            if (_styles.TryGetValue(type, out var style))
             {
                 chain.Add(style);
             }
@@ -264,7 +263,7 @@ public sealed class Theme
 
     private void Unsubscribe(IControlStyle style)
     {
-        for (int index = _subscriptions.Count - 1; index >= 0; index--)
+        for (var index = _subscriptions.Count - 1; index >= 0; index--)
         {
             if (ReferenceEquals(_subscriptions[index].Style, style))
             {

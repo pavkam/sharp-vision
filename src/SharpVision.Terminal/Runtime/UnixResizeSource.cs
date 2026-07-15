@@ -3,8 +3,6 @@
 
 namespace SharpVision.Terminal.Runtime;
 
-using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 using System.Threading.Channels;
 
 /// <summary>

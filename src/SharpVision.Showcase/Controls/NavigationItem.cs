@@ -3,10 +3,7 @@
 
 namespace SharpVision.Showcase.Controls;
 
-using SharpVision.Input;
-using SharpVision.Terminal.Geometry;
 
-using TerminalCanvas = Terminal.Rendering.Canvas;
 
 /// <summary>Renders one stateful, focusable control-page entry in the dashboard sidebar.</summary>
 internal sealed class NavigationItem: Pressable
@@ -65,9 +62,9 @@ internal sealed class NavigationItem: Pressable
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        Terminal.Rendering.CellStyle style = ResolvedStyle;
+        var style = ResolvedStyle;
         canvas.Clear(Bounds, style);
-        string marker = IsSelected || IsHovered ? "›" : "·";
+        var marker = IsSelected || IsHovered ? "›" : "·";
         _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
 

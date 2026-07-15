@@ -6,20 +6,48 @@ namespace SharpVision.Tests.Controls;
 
 
 
-using ControlText = SharpVision.Controls.Text;
-using TerminalStyle = CellStyle;
 
 /// <summary>Verifies table ownership, track geometry, headers, grid cells, and row validation.</summary>
 public sealed class TableTests
 {
+    /// <summary>Verifies every public row insertion boundary reports its own null parameter.</summary>
+    [Fact]
+    public void Rows_WhenNullIsInserted_ReportsPublicParameterName()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+
+        var add = Should.Throw<ArgumentNullException>(() => table.Rows.Add(null!));
+        var insert = Should.Throw<ArgumentNullException>(() => table.Rows.Insert(0, null!));
+
+        add.ParamName.ShouldBe("item");
+        insert.ParamName.ShouldBe("item");
+        table.Rows.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies row replacement reports the public indexer value parameter before mutation.</summary>
+    [Fact]
+    public void Rows_WhenNullReplacesRow_ReportsValueParameterWithoutMutation()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        var original = new TableRow([new ControlText("Original")]);
+        table.Rows.Add(original);
+
+        var exception = Should.Throw<ArgumentNullException>(() => table.Rows[0] = null!);
+
+        exception.ParamName.ShouldBe("value");
+        table.Rows.ShouldBe([original]);
+    }
+
     /// <summary>Verifies fixed, percentage, and fill columns resolve exact contained cell slots.</summary>
     [Fact]
     public void Layout_WhenColumnsMixFixedPercentAndFill_ResolvesContainedCellSlots()
     {
-        ControlText first = new("Alpha");
-        ControlText second = new("Ready");
-        ControlText third = new("Details");
-        Table table = new();
+        var first = new ControlText("Alpha");
+        var second = new ControlText("Ready");
+        var third = new ControlText("Details");
+        var table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Percent("Status", 50));
         table.Columns.Add(TableColumn.Fill("Details"));
@@ -37,11 +65,11 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenHeaderAndGridLinesAreEnabled_WritesHeaderCellsAndIntersections()
     {
-        Table table = new();
+        var table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
-        Size size = new(14, 4);
+        var size = new Size(14, 4);
         new Engine().Layout(table, size);
         using Frame frame = new(size);
 
@@ -59,13 +87,13 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenTableStyleHasForegroundOnly_PreservesSurfaceBackgroundOnDividers()
     {
-        ControlStyle<Control> style = ThemeTestSupport.OverlayStyle<Control>(
+        var style = ThemeTestSupport.OverlayStyle<Control>(
             (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        Table table = new() { Style = style };
+        var table = new Table() { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
-        Size size = new(14, 4);
+        var size = new Size(14, 4);
         new Engine().Layout(table, size);
         using Frame frame = new(size);
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
@@ -80,22 +108,22 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
     {
-        ControlStyle<Table> style = ThemeTestSupport.OverlayStyle<Table>(
+        var style = ThemeTestSupport.OverlayStyle<Table>(
             (State.Normal, new ThemeOverlay(
                 attributes: Attributes.RapidBlink,
                 underline: Underline.Dashed,
                 underlineColor: Color.Indexed(5))));
-        Table table = new() { Style = style };
+        var table = new Table() { Style = style };
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Rows.Add(new TableRow([new ControlText("A")]));
-        Size size = new(6, 3);
+        var size = new Size(6, 3);
         new Engine().Layout(table, size);
         using Frame frame = new(size);
 
         table.Render(frame.Canvas);
 
-        TerminalStyle header = frame.GetCell(default).Style;
-        TerminalStyle grid = frame.GetCell(new Point(0, 1)).Style;
+        var header = frame.GetCell(default).Style;
+        var grid = frame.GetCell(new Point(0, 1)).Style;
         header.Attributes.ShouldBe(Attributes.RapidBlink);
         header.Underline.ShouldBe(Underline.Dashed);
         header.UnderlineColor.ShouldBe(Color.Indexed(5));
@@ -106,7 +134,7 @@ public sealed class TableTests
     [Fact]
     public void Render_WhenTableIsOffset_DrawsHeaderDividerBelowItsOwnHeader()
     {
-        Table table = new();
+        var table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
@@ -124,10 +152,10 @@ public sealed class TableTests
     [Fact]
     public void Layout_WhenTableHasNoRows_UsesOnlyTheHeaderHeight()
     {
-        Table table = new();
+        var table = new Table();
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fixed("Value", 5));
-        Size size = new(12, 4);
+        var size = new Size(12, 4);
         new Engine().Layout(table, size);
         using Frame frame = new(size);
 
@@ -142,11 +170,11 @@ public sealed class TableTests
     [Fact]
     public void Extent_WhenRowsExceedViewport_ExposesVerticalScroll()
     {
-        Table table = new();
+        var table = new Table();
         table.Columns.Add(TableColumn.Auto("Name"));
         table.Columns.Add(TableColumn.Fill("Value"));
 
-        for (int index = 0; index < 40; index++)
+        for (var index = 0; index < 40; index++)
         {
             table.Rows.Add(new TableRow([new ControlText($"Row {index}"), new ControlText("Value")]));
         }
@@ -160,11 +188,11 @@ public sealed class TableTests
     [Fact]
     public void Rows_WhenCellCountDiffersFromColumns_RejectsRowWithoutOwnershipTransfer()
     {
-        Table table = new();
+        var table = new Table();
         table.Columns.Add(TableColumn.Auto("One"));
         table.Columns.Add(TableColumn.Auto("Two"));
-        ControlText cell = new("Only one");
-        TableRow row = new([cell]);
+        var cell = new ControlText("Only one");
+        var row = new TableRow([cell]);
 
         _ = Should.Throw<ArgumentException>(() => table.Rows.Add(row));
 

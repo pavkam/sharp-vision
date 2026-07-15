@@ -3,9 +3,6 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-using System.Buffers;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Parses bounded ECMA-48 terminal sequences across arbitrary input reads.
@@ -108,27 +105,27 @@ public sealed class Parser: IDisposable
         ThrowIfDisposed();
         ThrowIfNull(ref sink);
 
-        int position = 0;
+        var position = 0;
 
         while (position < input.Length)
         {
             if (_state == State.Ground && IsText(input[position]))
             {
-                int start = position++;
+                var start = position++;
 
                 while (position < input.Length && IsText(input[position]))
                 {
                     position++;
                 }
 
-                ReadOnlySpan<byte> text = input[start..position];
+                var text = input[start..position];
                 Offset = checked(Offset + text.Length);
                 sink.Text(text);
                 continue;
             }
 
-            byte value = input[position++];
-            long currentOffset = Offset;
+            var value = input[position++];
+            var currentOffset = Offset;
             Offset = checked(Offset + 1);
             Process(value, currentOffset, ref sink);
         }
@@ -157,7 +154,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                Diagnostic diagnostic = new(
+                var diagnostic = new Diagnostic(
                     DiagnosticCode.Truncated,
                     CurrentKind,
                     Offset,
@@ -185,9 +182,9 @@ public sealed class Parser: IDisposable
     /// </summary>
     public void Dispose()
     {
-        byte[]? parameters = _parameters;
-        byte[]? intermediates = _intermediates;
-        byte[]? payload = _payload;
+        var parameters = _parameters;
+        var intermediates = _intermediates;
+        var payload = _payload;
 
         if (parameters is null || intermediates is null)
         {
@@ -303,8 +300,8 @@ public sealed class Parser: IDisposable
     private void EmitCsi<TSink>(byte final, ref TSink sink)
         where TSink : ISequenceSink
     {
-        Span<byte> parameters = _parameters.AsSpan(0, _parameterLength);
-        Span<byte> intermediates = _intermediates.AsSpan(0, _intermediateLength);
+        var parameters = _parameters.AsSpan(0, _parameterLength);
+        var intermediates = _intermediates.AsSpan(0, _intermediateLength);
         _state = State.Ground;
 
         try
@@ -320,7 +317,7 @@ public sealed class Parser: IDisposable
     private void EmitEscape<TSink>(byte final, ref TSink sink)
         where TSink : ISequenceSink
     {
-        Span<byte> intermediates = _intermediates.AsSpan(0, _intermediateLength);
+        var intermediates = _intermediates.AsSpan(0, _intermediateLength);
         _state = State.Ground;
 
         try
@@ -336,11 +333,11 @@ public sealed class Parser: IDisposable
     private void EmitString<TSink>(StringTerminator terminator, ref TSink sink)
         where TSink : ISequenceSink
     {
-        Span<byte> payload = _payload.AsSpan(0, _payloadLength);
-        SequenceKind kind = _stringKind;
-        Span<byte> parameters = _parameters.AsSpan(0, _parameterLength);
-        Span<byte> intermediates = _intermediates.AsSpan(0, _intermediateLength);
-        byte final = _dcsFinal;
+        var payload = _payload.AsSpan(0, _payloadLength);
+        var kind = _stringKind;
+        var parameters = _parameters.AsSpan(0, _parameterLength);
+        var intermediates = _intermediates.AsSpan(0, _intermediateLength);
+        var final = _dcsFinal;
         _state = State.Ground;
 
         try
@@ -386,10 +383,10 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        int size = _payload is null
+        var size = _payload is null
             ? Math.Min(_limits.MaxStringBytes, Math.Max(256, required))
             : Math.Min(_limits.MaxStringBytes, Math.Max(required, _payload.Length * 2));
-        byte[] replacement = ArrayPool<byte>.Shared.Rent(size);
+        var replacement = ArrayPool<byte>.Shared.Rent(size);
 
         if (_payload is not null)
         {
@@ -402,7 +399,7 @@ public sealed class Parser: IDisposable
 
     private void BeginStringIgnore(DiagnosticCode code, long currentOffset)
     {
-        SequenceKind kind = _stringKind;
+        var kind = _stringKind;
         ClearPayload();
         BeginIgnore(code, kind, currentOffset, State.StringIgnore);
     }
@@ -445,7 +442,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                Diagnostic diagnostic = new(
+                var diagnostic = new Diagnostic(
                     DiagnosticCode.Cancelled,
                     CurrentKind,
                     currentOffset,
@@ -557,7 +554,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        Diagnostic diagnostic = new(
+        var diagnostic = new Diagnostic(
             DiagnosticCode.Malformed,
             SequenceKind.Csi,
             currentOffset,
@@ -635,7 +632,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        Diagnostic diagnostic = new(
+        var diagnostic = new Diagnostic(
             DiagnosticCode.Malformed,
             SequenceKind.Dcs,
             currentOffset,
@@ -668,7 +665,7 @@ public sealed class Parser: IDisposable
             }
             else
             {
-                Diagnostic diagnostic = new(
+                var diagnostic = new Diagnostic(
                     DiagnosticCode.Cancelled,
                     CurrentKind,
                     currentOffset,
@@ -837,7 +834,7 @@ public sealed class Parser: IDisposable
             return;
         }
 
-        Diagnostic diagnostic = new(
+        var diagnostic = new Diagnostic(
             DiagnosticCode.Malformed,
             SequenceKind.Escape,
             currentOffset,
@@ -902,7 +899,7 @@ public sealed class Parser: IDisposable
     {
         Debug.Assert(IsIgnoring, "A pending diagnostic belongs to an ignore state.");
 
-        Diagnostic diagnostic = new(
+        var diagnostic = new Diagnostic(
             _pendingCode,
             _pendingKind,
             _pendingOffset,
