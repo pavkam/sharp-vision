@@ -6,6 +6,70 @@ namespace SharpVision.Consumer.Tests;
 /// <summary>Verifies third-party controls need only the documented public and protected surface.</summary>
 public sealed class ExternalContractTests
 {
+    /// <summary>Verifies an external single-content role publishes committed replacement state.</summary>
+    [Fact]
+    public void Content_WhenExternalRoleReplacesValue_UsesPublicOwnershipContract()
+    {
+        var owner = new ExternalContentControl();
+        var previous = new Gauge();
+        var current = new Gauge();
+        var notifications = 0;
+        owner.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ContentControl.Content))
+            {
+                notifications++;
+            }
+        };
+
+        owner.Content = previous;
+        owner.Content = current;
+
+        owner.Content.ShouldBeSameAs(current);
+        owner.ContentChangeCount.ShouldBe(2);
+        owner.PreviousContent.ShouldBeSameAs(previous);
+        owner.CurrentContent.ShouldBeSameAs(current);
+        owner.CallbackObservedCommittedStructure.ShouldBeTrue();
+        previous.Parent.ShouldBeNull();
+        previous.IsDisposed.ShouldBeFalse();
+        current.Parent.ShouldBeSameAs(owner);
+        notifications.ShouldBe(2);
+    }
+
+    /// <summary>Verifies inherited layout, rendering, and hit testing need no internal tree access.</summary>
+    [Fact]
+    public async Task Layout_WhenExternalRoleOwnsContent_UsesInheritedRegistryBehaviorAsync()
+    {
+        await using var terminal = new ConsumerTerminal();
+        terminal.QueueResize(new Dimensions(new Size(12, 3)));
+        var content = new Gauge
+        {
+            Value = 42,
+            Margin = new Thickness(1),
+        };
+        var owner = new ExternalContentControl
+        {
+            Content = content,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        await using var application = new Application(
+            owner,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        content.Parent.ShouldBeSameAs(owner);
+        content.Bounds.ShouldBe(new Rect(1, 1, 10, 1));
+        content.LastMeasuredPolicy.ShouldBeSameAs(application.CellPolicy);
+        content.RenderCount.ShouldBeGreaterThan(0);
+        owner.HitTest(new Point(1, 1)).ShouldBeSameAs(content);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies protected property mutation publishes once and suppresses equivalent assignments.</summary>
     [Fact]
     public void Value_WhenChanged_PublishesOneObservableChange()

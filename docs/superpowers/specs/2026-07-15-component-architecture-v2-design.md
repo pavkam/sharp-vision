@@ -208,9 +208,10 @@ Only these shipped controls remain `Container`s:
 
 ### `ContentControl`
 
-`ContentControl : Control` owns zero or one publicly replaceable `Content`
-control. It supplies default child measure/arrange, rendering, hit testing,
-navigation, theme/context propagation, and disposal.
+[`ContentControl`](../../controls/content-control.md#contentcontrol-contract)
+derives directly from `Control` and owns zero or one publicly replaceable
+`Content` control. It supplies default child measure/arrange, rendering, hit
+testing, navigation, theme/context propagation, and disposal.
 
 The following types migrate to it:
 
@@ -317,10 +318,12 @@ and table-row batches:
    callback failure without abandoning the transaction.
 4. Commit collection membership, parents, inherited managers, theme, cell
    policy, dispatcher, and slot metadata without user callbacks.
-5. Publish parent, theme, detach, attach, and slot notifications in that order
-   from the committed tree, continuing after callback failures.
-6. Request the earliest invalidation once, then rethrow the first captured
-   callback failure.
+5. Publish parent, theme, detach, and attach notifications from the committed
+   tree, continuing after callback failures.
+6. Request the earliest invalidation exactly once, then publish the slot
+   notification while guarded publication remains active. A `finally` path
+   requests invalidation if an unexpected earlier failure bypasses this point.
+7. Rethrow the first captured callback failure.
 
 Removed controls detach but are not disposed. Owner disposal disposes every
 remaining descendant exactly once. A child disposed directly asks its owning

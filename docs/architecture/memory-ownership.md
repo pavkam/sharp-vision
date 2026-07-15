@@ -66,16 +66,16 @@ Every `SharpVision.Controls.Control` owns one central registry of ordered visual
 slots. `Container.Children` exposes only its public container-child slot; the
 current foundation also registers the List presentation host and private
 container/editor scrollbar rails in distinct item-host or framework-part slots.
-Content, composition-root, and item-visual roles are reserved by the same
-registry for the role migration. Normal and popup are independent render layers,
-not ownership roles. Until popup owners register dedicated popup-layer slots, a
-`Popup` promotes its ordinary ownership edge for rendering and hit testing
-without changing parentage. Removal transfers the now-detached control back to
-the caller, while owner disposal recursively disposes every remaining slot
-member. Attachment borrows one dispatcher reference for the lifetime of the
-attachment. A control subscribes only to its direct `Style`; replacement,
-detachment where applicable, and disposal remove owned registrations
-deterministically.
+`ContentControl` registers the capacity-one public content role;
+composition-root and item-visual roles remain reserved for later migration
+slices. Normal and popup are independent render layers, not ownership roles.
+Until popup owners register dedicated popup-layer slots, a `Popup` promotes its
+ordinary ownership edge for rendering and hit testing without changing
+parentage. Removal transfers the now-detached control back to the caller, while
+owner disposal recursively disposes every remaining slot member. Attachment
+borrows one dispatcher reference for the lifetime of the attachment. A control
+subscribes only to its direct `Style`; replacement, detachment where applicable,
+and disposal remove owned registrations deterministically.
 
 Intrinsic border and shadow chrome are style state on the decorated `Control`;
 they allocate no child, add no registry edge, and do not change parentage,

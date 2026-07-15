@@ -553,7 +553,19 @@ internal sealed class OwnedControlRegistry
         var attached = new List<Control>();
         var detached = new List<Control>();
         var failure = (ExceptionDispatchInfo?) null;
+        var invalidated = false;
         List<OwnedControlRegistry>? entered = null;
+
+        void InvalidateOnce()
+        {
+            if (invalidated)
+            {
+                return;
+            }
+
+            invalidated = true;
+            Owner.Invalidate(Control.InvalidationFor(slot.Options.Impact));
+        }
 
         if (!publicationAlreadyActive)
         {
@@ -637,11 +649,13 @@ internal sealed class OwnedControlRegistry
                 CaptureFailure(control.PublishAttached, ref failure);
             }
 
+            InvalidateOnce();
             CaptureFailure(slot.PublishChanged, ref failure);
         }
         finally
         {
-            Owner.Invalidate(Control.InvalidationFor(slot.Options.Impact));
+            InvalidateOnce();
+
             if (entered is not null)
             {
                 ExitPublication(entered);

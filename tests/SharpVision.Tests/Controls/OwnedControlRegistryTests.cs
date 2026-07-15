@@ -6,6 +6,22 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies central ownership slots, transactional publication, and disposal.</summary>
 public sealed class OwnedControlRegistryTests
 {
+    /// <summary>Verifies slot impact is pending before the committed slot notification runs.</summary>
+    [Fact]
+    public void Add_WhenSlotPublishesChange_InvalidatesBeforeNotification()
+    {
+        var owner = new ProbeOwnedControl();
+        new Engine().Layout(owner, new Size(4, 1));
+        (owner.Pending & Invalidation.Measure).ShouldBe(Invalidation.None);
+        var pendingDuringNotification = Invalidation.None;
+        owner.PrimaryChanging = control =>
+            pendingDuringNotification = control.Pending & Invalidation.Measure;
+
+        owner.AddPrimary(new ProbeControl());
+
+        pendingDuringNotification.ShouldBe(Invalidation.Measure);
+    }
+
     /// <summary>Verifies same-role slots remain independent and traverse in registration order.</summary>
     [Fact]
     public void Slots_WhenOwnerRegistersSameRoleTwice_RemainDistinctAndOrdered()

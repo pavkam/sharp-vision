@@ -30,10 +30,12 @@ tree: focus releases, capture state clears before cancellation callbacks, and
 `OnUnavailable` runs after those availability callbacks. Disposal of a control
 that owns a focus or capture manager may perform that manager's root cleanup
 after `OnUnavailable`. Membership, parent, dispatcher, Unicode, theme, and
-manager context then commit as one new tree. Parent, theme, detached, attached,
-and slot notifications publish in that order from committed state. A callback
-failure cannot roll the tree back or suppress later cleanup; the first failure
-is rethrown after invalidation. Direct child disposal uses only
+manager context then commit as one new tree. Parent, theme, detached, and
+attached notifications publish from committed state; the slot impact is then
+invalidated exactly once before the slot notification. A callback failure cannot
+roll the tree back or suppress later cleanup; an unexpected earlier failure
+still requests invalidation from the transaction's `finally` path, and the first
+failure is rethrown afterward. Direct child disposal uses only
 `ReleaseReason.Disposed`, even though clearing attached context still publishes
 the normal `OnDetached` lifecycle hook.
 

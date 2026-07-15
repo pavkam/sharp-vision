@@ -45,6 +45,9 @@ internal sealed class ProbeOwnedControl: Control
     /// <summary>Gets the number of committed primary-slot changes.</summary>
     internal int PrimaryChanges { get; private set; }
 
+    /// <summary>Gets or sets work invoked from the primary-slot notification.</summary>
+    internal Action<ProbeOwnedControl>? PrimaryChanging { get; set; }
+
     /// <summary>Gets or sets work invoked after this owner's parent commits.</summary>
     internal Action<ProbeOwnedControl, Control?, Control?>? ParentChanging { get; set; }
 
@@ -129,7 +132,11 @@ internal sealed class ProbeOwnedControl: Control
         IsPrimaryChangeSubscribed = true;
     }
 
-    private void OnPrimaryChanged() => PrimaryChanges++;
+    private void OnPrimaryChanged()
+    {
+        PrimaryChanges++;
+        PrimaryChanging?.Invoke(this);
+    }
 
     /// <inheritdoc/>
     protected override void OnParentChanged(Control? previous, Control? current) =>

@@ -34,20 +34,23 @@ remain inset exactly once.
 
 `SharpVision.Consumer.Tests` references only the production `SharpVision`
 project and receives no friend access. Its independently compiled `Gauge`,
-`FlowPanel`, `OverflowPanel`, and `InteractiveProbe` prove protected property
-mutation, Unicode-aware measurement/rendering, ordinary and unclipped custom
-layout, direct-child layout, lifecycle publication, focus, capture, and
-capture-cancellation ordering. The external `FlowPanel` also proves that setting
-`BorderThickness` insets owned leaves without third-party box-model plumbing;
-`Gauge.OnRender` calls `RenderChrome` before custom content drawn through
-`ContentBounds`. A reflection guard fails if the product friends either the
-consumer project or the production showcase.
+`FlowPanel`, `OverflowPanel`, `InteractiveProbe`, and `ExternalContentControl`
+prove protected property mutation, Unicode-aware measurement/rendering, ordinary
+and unclipped custom layout, direct-child layout, public single-content
+ownership, lifecycle publication, focus, capture, and capture-cancellation
+ordering. `ExternalContentControl` also proves inherited content layout,
+rendering, hit testing, and committed change observation without tree internals.
+The external `FlowPanel` proves that setting `BorderThickness` insets owned
+leaves without third-party box-model plumbing; `Gauge.OnRender` calls
+`RenderChrome` before custom content drawn through `ContentBounds`. A reflection
+guard fails if the product friends either the consumer project or the production
+showcase.
 
 `SharpVision.Tests` deliberately retains friend access for internal invariant
-tests and therefore cannot serve as third-party API proof. Content, composite,
-item, state, part, and semantic specimens arrive in later architecture phases.
-The foundation suite uses a project reference; a separate future
-pack-and-consume gate must prove NuGet package contents and XML documentation.
+tests and therefore cannot serve as third-party API proof. Composite, item,
+state, part, and semantic specimens arrive in later architecture phases. The
+foundation suite uses a project reference; a separate future pack-and-consume
+gate must prove NuGet package contents and XML documentation.
 
 ## End-to-end path
 

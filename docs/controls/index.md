@@ -8,6 +8,11 @@ All controls derive from the
 [styling](../concepts/styling.md#styling-contract), and
 [input](../concepts/input-routing.md#input-routing-contract) rules.
 
+### Authoring roles
+
+- [ContentControl](content-control.md#contentcontrol-contract) owns zero or one
+  publicly replaceable content control.
+
 ### Display
 
 - [Text](display/text.md#text-contract)

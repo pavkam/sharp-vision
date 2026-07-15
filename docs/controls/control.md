@@ -113,13 +113,15 @@ Registering two slots with the same role is valid; slot identity, not role,
 determines membership and capacity.
 
 The role vocabulary is container child, content, composition root, item visual,
-item host, or framework part. The foundation currently instantiates container
-children, the List item host, and private framework parts. Content, composition
-root, and item-visual slots become concrete during the role migration. A slot
-also selects normal or popup layer, hit-test and navigation participation, an
-optional stable part key, and the earliest invalidation impact. These are
-independent policies: excluding an edge from hit testing or navigation never
-excludes it from parentage, inherited context, lifecycle, or disposal.
+item host, or framework part. The foundation instantiates container children,
+the List item host, and private framework parts; the public
+[`ContentControl`](content-control.md#contentcontrol-contract) now instantiates
+the capacity-one content role. Composition-root and item-visual slots become
+concrete in later role-migration slices. A slot also selects normal or popup
+layer, hit-test and navigation participation, an optional stable part key, and
+the earliest invalidation impact. These are independent policies: excluding an
+edge from hit testing or navigation never excludes it from parentage, inherited
+context, lifecycle, or disposal.
 
 Cross-cutting traversal reads this registry directly instead of testing whether
 an owner is a `Container`. Stable tree order is slot registration order followed
@@ -151,12 +153,14 @@ focus, clears capture before its cancellation hook, and then calls
 but manager state is already clear. Root-manager disposal cleanup may follow
 `OnUnavailable` before the transaction commits slot membership, parent links,
 dispatcher, Unicode policy, theme, and manager context without callbacks. Parent
-changes, theme changes, detach hooks, attach hooks, and the slot notification
-publish in that order from the complete new tree. Callback failures are
-remembered while remaining publication and cleanup continue; invalidation still
-occurs and the first failure is rethrown from a coherent new tree. Tree mutation
-and disposal are rejected while any affected ownership transaction is
-publishing.
+changes, theme changes, detach hooks, and attach hooks publish from the complete
+new tree. The transaction then requests its slot impact exactly once before the
+slot notification, so notification callbacks can consume current layout without
+leaving a redundant pass. Callback failures are remembered while remaining
+publication and cleanup continue; a `finally` path still requests invalidation
+when an unexpected earlier failure bypasses normal publication, and the first
+failure is rethrown from a coherent new tree. Tree mutation and disposal are
+rejected while any affected ownership transaction is publishing.
 
 When a root owns focus or capture managers, that ownership propagates through
 every registered slot. Removal, inherited disable/hide, and disposal

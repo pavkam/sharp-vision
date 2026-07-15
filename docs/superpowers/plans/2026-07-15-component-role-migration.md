@@ -23,21 +23,77 @@ removes them instead of laundering them into the content hierarchy.
 **Tests:**
 
 - Create `tests/SharpVision.Tests/Controls/ContentControlTests.cs`.
+- Create `tests/SharpVision.Tests/Support/ProbeContentControl.cs`.
 - Add `ExternalContentControl.cs` and focused tests to
   `tests/SharpVision.Consumer.Tests/`.
 
-- [ ] Add failing tests for null content, first assignment, equivalent
-      assignment, valid replacement, invalid replacement preserving the old
-      edge/context/focus/capture, clear, attached assignment, direct child
-      disposal, owner disposal, layout with margin, stretch arrangement,
-      rendering, hit testing, navigation, and popup traversal.
-- [ ] Add a consumer-derived content control to prove the base is externally
-      usable without tree internals.
-- [ ] Implement zero-or-one public `Content` over a private owned slot.
-- [ ] Supply default measure/arrange through `MeasureChild`/`ArrangeChild` and
-      ordinary registry render/hit/navigation behavior.
-- [ ] Run `ContentControlTests`, `TreeTests`, consumer tests, and rendering
-      tests.
+**Documentation:**
+
+- Create `docs/controls/content-control.md`.
+- Update `docs/controls/index.md`, `docs/controls/control.md`, `docs/index.md`,
+  `docs/architecture/memory-ownership.md`,
+  `docs/architecture/project-structure.md`,
+  `docs/testing/controls-integration.md`, and the role design's `ContentControl`
+  section links.
+
+- [x] Add the abstract public surface exactly as
+      `public abstract ContentControl : Control`, with a non-virtual
+      `Control? Content` property and protected virtual
+      `OnContentChanged(Control? previous, Control? current)` callback.
+- [x] Register one capacity-one normal-layer owned slot with role `Content`, hit
+      testing and focus navigation enabled, and `ChangeImpact.Measure`. Register
+      it in the `ContentControl` constructor before a derived constructor can
+      register parts.
+- [x] Add failing ownership tests for null clear, first assignment, equivalent
+      assignment, replacement, duplicate/cycle/cross-parent rejection, and
+      invalid replacement preserving the old edge, context, focus, and capture.
+      Every rejected operation must be atomic; replacement detaches but never
+      disposes the previous content.
+- [x] Add failing dispatcher tests proving attached replacement, clear, and
+      equivalent assignment all verify dispatcher access before observing
+      equivalence or mutating ownership.
+- [x] Add failing notification-order tests proving structural publication is
+      complete before `OnContentChanged`; previous/current are cached before
+      callbacks; and `PropertyChanged(nameof(Content))` publishes exactly once
+      after every successful assignment, replacement, clear, or direct-child
+      disposal, but never after equivalent or rejected operations. If
+      `OnContentChanged` throws, publish `PropertyChanged` against the coherent
+      new structure before propagating failure; an earlier ownership-transaction
+      callback remains the authoritative first exception. Request the slot's
+      measure invalidation once after lifecycle publication and before these
+      notifications, so subscriber-driven layout consumes current work without
+      leaving a redundant pass.
+- [x] Prove `OnContentChanged` remains inside guarded publication: attempts to
+      mutate another owned slot, replace or clear `Content`, or dispose either
+      the owner or either affected content control are rejected as reentrant
+      without disturbing the committed edge.
+- [x] Add failing disposal tests proving direct child disposal clears and
+      notifies the property, while owner disposal disposes its current child
+      exactly once even when content-change or property callbacks throw.
+- [x] Add failing layout tests proving collapsed content contributes neither
+      size nor margin and enters neither child layout override, while base child
+      transactions clear stale desired size and bounds. Visible content is
+      measured through `MeasureChild`; its desired size includes margin with
+      saturating arithmetic; and arrangement uses
+      `ArrangeChild(content, slot, ResolvedAxes.Both)` so stretch behavior is
+      deterministic.
+- [x] Add failing render, hit-test, focus-navigation, and popup-traversal tests
+      that rely on the ordinary owned registry rather than role-specific
+      traversal overrides.
+- [x] Implement the smallest zero-or-one slot adapter. Rely on the registry for
+      validation, structural commit, context propagation, rendering, hit
+      testing, navigation, popup traversal, direct-child removal, and disposal;
+      do not duplicate those engines in `ContentControl`.
+- [x] Add `ProbeContentControl` in its own test-support file and an unfriended
+      consumer-derived `ExternalContentControl` specimen proving layout and
+      ownership through only public/protected APIs.
+- [x] Document purpose, inheritance, defaults, ownership, threading,
+      notification/callback order and failures, disposal, layout, rendering, hit
+      testing, navigation, popup traversal, examples, validation, and every
+      public/protected exception in XML and the control specification.
+- [x] Run `ContentControlTests`, `TreeTests`, the unfriended consumer tests,
+      relevant rendering/traversal tests, Markdown formatting/link/spec tests,
+      and `git diff --check`.
 
 ## Task 2: Migrate single-content window and popup controls
 
