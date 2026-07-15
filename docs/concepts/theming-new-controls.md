@@ -100,24 +100,34 @@ with the nearest scope winning and a descendant's own values winning over any
 scope. This is the same mechanism the built-in list uses; it is not restricted
 to a specific control type.
 
-## 6. Read semantic theme colors
+## 6. Use semantic theme colors
 
 To track a theme's accent/surface/border color across theme swaps instead of
-hardcoding palette values:
+hardcoding palette values, assign a `ThemeColors.*` value to any color-typed
+style property — a class default, a theme style, or a local value — exactly
+like any other `Color`:
 
 ```csharp
-if (TryGetThemeColor(ColorRole.Accent, out var accent))
+public sealed class Gauge : Control
 {
-    // ...use `accent`...
+    static Gauge() => _ = FillColorProperty.RegisterClassDefault<Gauge>(ThemeColors.Accent);
 }
+
+var gauge = new Gauge { FillColor = ThemeColors.Accent };
 ```
 
-`ColorRole` has twelve members — `Foreground`, `Background`, `Surface`,
-`Border`, `Accent`, `Muted`, `SelectionBackground`, `SelectionForeground`,
-`Error`, `Warning`, `Success`, and `Info` — every one of which every theme
-resolves, by explicit value or fallback. See
-[Themes](themes.md#semantic-roles-and-fallbacks) for the full role reference and
-fallback derivation.
+`ThemeColors.Accent` (and its eleven siblings) is a deferred color: it resolves
+to the active theme's concrete palette color during property resolution, so
+`gauge.FillColor` continues to track theme swaps with no query API and no
+custom control needed. `ColorRole` has twelve members — `Foreground`,
+`Background`, `Surface`, `Border`, `Accent`, `Muted`, `SelectionBackground`,
+`SelectionForeground`, `Error`, `Warning`, `Success`, and `Info` — every one of
+which every theme resolves, by explicit value or fallback, and every one of
+which has a matching `ThemeColors` property. See
+[Themes](themes.md#themecolors-semantic-colors-as-color-values) for the
+`ThemeColors` surface and late-resolution model, and
+[Themes](themes.md#semantic-roles-and-fallbacks) for the full role reference
+and fallback derivation.
 
 ## 7. Tooling / design time
 
