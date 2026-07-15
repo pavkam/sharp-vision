@@ -8,6 +8,67 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies semantic color roles are stored, cloned, and readable from built-in themes.</summary>
 public sealed class ColorRoleTests
 {
+    /// <summary>Verifies changing a concrete role publishes one render-impact theme version.</summary>
+    [Fact]
+    public void SetColor_WhenConcreteValueChanges_IncrementsVersionAndRaisesChanged()
+    {
+        var theme = new Theme();
+        var changed = (ThemeChangedEventArgs?) null;
+        var changeCount = 0;
+        theme.Changed += (_, args) =>
+        {
+            changed = args;
+            changeCount++;
+        };
+        var previousVersion = theme.Version;
+
+        theme.SetColor(ColorRole.Accent, Color.Indexed(45));
+
+        theme.Version.ShouldBe(previousVersion + 1);
+        changeCount.ShouldBe(1);
+        var observed = changed.ShouldNotBeNull();
+        observed.TargetType.ShouldBe(typeof(Control));
+        observed.Impact.ShouldBe(Impact.Render);
+    }
+
+    /// <summary>Verifies assigning the current concrete role value publishes no redundant change.</summary>
+    [Fact]
+    public void SetColor_WhenValueIsEquivalent_IsNoOp()
+    {
+        var theme = new Theme();
+        theme.SetColor(ColorRole.Accent, Color.Indexed(45));
+        var previousVersion = theme.Version;
+        var changeCount = 0;
+        theme.Changed += (_, _) => changeCount++;
+
+        theme.SetColor(ColorRole.Accent, Color.Indexed(45));
+
+        theme.Version.ShouldBe(previousVersion);
+        changeCount.ShouldBe(0);
+        theme.TryGetColor(ColorRole.Accent, out var color).ShouldBeTrue();
+        color.ShouldBe(Color.Indexed(45));
+    }
+
+    /// <summary>Verifies a deferred semantic role cannot become another palette role's concrete value.</summary>
+    [Fact]
+    public void SetColor_WhenValueIsDeferredRole_ThrowsBeforeMutation()
+    {
+        var theme = new Theme();
+        theme.SetColor(ColorRole.Accent, Color.Indexed(45));
+        var previousVersion = theme.Version;
+        var changeCount = 0;
+        theme.Changed += (_, _) => changeCount++;
+
+        var exception = Should.Throw<ArgumentException>(
+            () => theme.SetColor(ColorRole.Accent, ThemeColors.Warning));
+
+        exception.ParamName.ShouldBe("color");
+        theme.Version.ShouldBe(previousVersion);
+        changeCount.ShouldBe(0);
+        theme.TryGetColor(ColorRole.Accent, out var color).ShouldBeTrue();
+        color.ShouldBe(Color.Indexed(45));
+    }
+
     /// <summary>Verifies a set color role is read back.</summary>
     [Fact]
     public void SetColor_ThenTryGetColor_ReturnsValue()

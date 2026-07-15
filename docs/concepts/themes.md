@@ -162,6 +162,17 @@ must never reach the encoder unresolved, `CellStyle` construction and the
 lower-level `Palette`/`Sgr` encode paths throw if given one, so a resolution gap
 fails fast in a test instead of rendering garbage.
 
+`Theme.SetColor` defines the concrete palette behind those deferred values. It
+accepts only `ColorKind.Default`, `ColorKind.Indexed`, or `ColorKind.Rgb`;
+assigning a deferred `ColorKind.Role` throws `ArgumentException` before the
+theme changes. Assigning a changed concrete value increments `Theme.Version` and
+raises one render-impact `Theme.Changed` event targeting `Control`, after the
+new palette value is committed. An equivalent assignment is a no-op: it does not
+publish a version or event on a mutable theme. An attached `Application`
+observes the event on its dispatcher, republishes the complete theme snapshot,
+and invalidates rendering so existing `ThemeColors.*` values resolve against the
+new palette.
+
 ## The base control-style recipe
 
 Once all twelve roles are resolved, the internal `ThemeBuilder` recipe sets

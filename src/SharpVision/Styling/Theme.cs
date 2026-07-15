@@ -121,6 +121,7 @@ public sealed class Theme
     /// <summary>Assigns one semantic color role.</summary>
     /// <param name="role">The semantic role.</param>
     /// <param name="color">The color for the role.</param>
+    /// <exception cref="ArgumentException"><paramref name="color"/> is a deferred role color.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="role"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The theme is frozen.</exception>
     public void SetColor(ColorRole role, Color color)
@@ -130,12 +131,27 @@ public sealed class Theme
             throw new ArgumentOutOfRangeException(nameof(role), role, "The color role is unknown.");
         }
 
-        EnsureMutable();
+        if (color.Kind == ColorKind.Role)
+        {
+            throw new ArgumentException(
+                "A theme palette role must be assigned a concrete color.",
+                nameof(color));
+        }
 
         lock (_gate)
         {
+            EnsureMutable();
+
+            if (_colors.TryGetValue(role, out var current) && current == color)
+            {
+                return;
+            }
+
             _colors[role] = color;
+            Version++;
         }
+
+        RaiseChanged(Impact.Render, typeof(Control));
     }
 
     /// <summary>Gets one semantic color role when defined.</summary>
