@@ -149,6 +149,7 @@ public sealed class TextTests
             Style = style,
             Foreground = Color.Indexed(7),
             Attributes = TerminalAttributes.Underline,
+            FillMode = FillMode.Opaque,
         };
         new Engine().Layout(text, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
@@ -221,6 +222,26 @@ public sealed class TextTests
         text.Render(frame.Canvas);
 
         frame.GetCell(default).Style.ShouldBe(new TerminalStyle(Color.Indexed(45), Color.Indexed(238)));
+    }
+
+    /// <summary>Verifies a themed passive label preserves an opaque surface painted by its parent.</summary>
+    [Fact]
+    public void Render_WhenThemeProvidesAmbientBackground_PreservesDestinationSurface()
+    {
+        var text = new ControlText("A");
+        ThemeTestSupport.ApplyTheme(text, Themes.Dark);
+        new Engine().Layout(text, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+        frame.Canvas.Fill(
+            new Rect(0, 0, 1, 1),
+            new Rune(' '),
+            new TerminalStyle(Color.Indexed(255), Color.Indexed(8)));
+
+        text.Render(frame.Canvas);
+
+        var background = frame.GetCell(default).Style.Background;
+        background.Kind.ShouldBe(ColorKind.Indexed);
+        background.Red.ShouldBe((byte) 8);
     }
 
     /// <summary>Verifies hidden and collapsed text do not draw stale cells.</summary>

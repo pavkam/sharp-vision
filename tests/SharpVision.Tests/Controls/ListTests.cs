@@ -99,8 +99,11 @@ public sealed class ListTests
             control.Render(frame.Canvas);
 
             control.SelectedIndex.ShouldBe(-1);
+            var hoveredLabel = frame.GetCell(new Point(0, 0)).Style.Background;
             var hovered = frame.GetCell(new Point(7, 0)).Style.Background;
             var normal = frame.GetCell(new Point(7, 1)).Style.Background;
+            hoveredLabel.Kind.ShouldBe(ColorKind.Indexed);
+            hoveredLabel.Red.ShouldBe((byte) 8);
             hovered.Kind.ShouldBe(ColorKind.Indexed);
             hovered.Red.ShouldBe((byte) 8);
             normal.Kind.ShouldBe(ColorKind.Indexed);

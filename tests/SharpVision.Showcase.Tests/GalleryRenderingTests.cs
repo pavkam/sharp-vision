@@ -20,9 +20,17 @@ public sealed class GalleryRenderingTests
         using Frame frame = new(size);
         gallery.Render(frame.Canvas);
         var screen = new Screen(frame);
-        var view = FindAll<Stack>(gallery.Content).Single(stack => stack.AutoScroll);
+        var pane = (View) gallery.Content;
+        var page = pane.Children.Single().ShouldBeOfType<Dock>();
+        var header = page.Children[0].ShouldBeOfType<Dock>();
+        var view = page.Children[1].ShouldBeOfType<Stack>();
 
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
+        gallery.Content.Bounds.ShouldBe(new Rect(gallery.Sidebar.Bounds.Right, 0, 52, 24));
+        header.Bounds.X.ShouldBe(gallery.Sidebar.Bounds.Right);
+        header.Bounds.Right.ShouldBe(size.Width);
+        view.Bounds.X.ShouldBe(gallery.Sidebar.Bounds.Right);
+        view.Bounds.Right.ShouldBe(size.Width);
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
@@ -30,6 +38,28 @@ public sealed class GalleryRenderingTests
         screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
         screen.ValidateContinuations();
+    }
+
+    /// <summary>Verifies a wide terminal gives the selected page every cell after the sidebar.</summary>
+    [Fact]
+    public void Layout_WhenViewportIsWide_SelectedPageFillsRemainingRegion()
+    {
+        using var gallery = CreateThemedGallery();
+        var size = new Size(140, 40);
+
+        new Engine().Layout(gallery, size);
+
+        var pane = (View) gallery.Content;
+        var page = pane.Children.Single().ShouldBeOfType<Dock>();
+        var header = page.Children[0].ShouldBeOfType<Dock>();
+        var body = page.Children[1].ShouldBeOfType<Stack>();
+        var expected = new Rect(gallery.Sidebar.Bounds.Right, 0, 112, 40);
+        gallery.Content.Bounds.ShouldBe(expected);
+        page.Bounds.ShouldBe(expected);
+        header.Bounds.X.ShouldBe(expected.X);
+        header.Bounds.Right.ShouldBe(expected.Right);
+        body.Bounds.X.ShouldBe(expected.X);
+        body.Bounds.Right.ShouldBe(expected.Right);
     }
 
     /// <summary>Verifies responsive Text receives the committed documentation-pane width instead of an unbounded horizontal measure.</summary>

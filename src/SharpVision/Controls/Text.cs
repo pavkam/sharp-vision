@@ -342,7 +342,7 @@ public sealed class Text: Control
     private Color ResolveMarkupColor(Color color) => SemanticColor.Resolve(color, ThemeContext);
 
     private BackgroundMode ResolveBackgroundMode(StyleSpan span) =>
-        span.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
+        span.Background.HasValue || FillMode == FillMode.Opaque
             ? BackgroundMode.Opaque
             : BackgroundMode.Transparent;
 

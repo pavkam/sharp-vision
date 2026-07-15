@@ -60,7 +60,7 @@ public sealed class Gallery: Screen
         return [.. ordered];
     }
 
-    private readonly Stack _main;
+    private readonly Dock _main;
     private readonly Stack _navigationScroll;
     private readonly NavigationItem[] _navigation;
     private readonly ComboBox _themePicker;
@@ -74,10 +74,7 @@ public sealed class Gallery: Screen
     public Gallery()
     {
         Pages = Array.ConvertAll(_catalog, static entry => entry.Name);
-        _main = new Stack
-        {
-            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
-        };
+        _main = new Dock();
         _navigation = new NavigationItem[Pages.Count];
         var entries = new Stack() { Padding = new Thickness(1, 0) };
         entries.Children.Add(new Text("Components")
