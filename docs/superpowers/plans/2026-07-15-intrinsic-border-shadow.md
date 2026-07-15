@@ -805,7 +805,10 @@ Run:
 ```bash
 rg -n "new Border\b|ShouldBeOfType<Border>|Find<Border>|\bBorder (border|chip|cover|frame|surface|sidebar)\b" src tests --glob '*.cs'
 dotnet build SharpVision.slnx --configuration Release --no-incremental
-dotnet test --project tests/SharpVision.Tests --filter-class "*IntrinsicBorderTests|*AmbiguousWidthControlTests|*PopupTests|*DisplayPanelTests" --timeout 300s
+dotnet test --project tests/SharpVision.Tests --configuration Release --no-build \
+  --filter-class "*IntrinsicBorderTests" "*AmbiguousWidthControlTests" \
+  "*PopupTests" "*DisplayPanelTests" "*ControlChromeTests" \
+  --minimum-expected-tests 36 --timeout 300s
 dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s
 ```
 
