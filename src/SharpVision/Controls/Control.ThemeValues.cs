@@ -6,7 +6,6 @@ namespace SharpVision.Controls;
 using System.ComponentModel;
 
 using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 
 public abstract partial class Control
 {
@@ -23,25 +22,6 @@ public abstract partial class Control
 
     /// <summary>Gets the per-instance style overlay applied only to this control.</summary>
     internal IControlStyle? InstanceStyle { get; private set; }
-
-    /// <summary>Reads one semantic theme color for theme-consistent custom rendering.</summary>
-    /// <param name="role">The semantic color role.</param>
-    /// <param name="color">The resolved color when the active theme defines the role.</param>
-    /// <returns>Whether the active theme defines the role.</returns>
-    /// <remarks>
-    /// The supported way for a control to track a theme's accent, surface, or border color across
-    /// theme swaps instead of hardcoding palette values.
-    /// </remarks>
-    protected bool TryGetThemeColor(ColorRole role, out Color color)
-    {
-        if (ThemeContext is { } context)
-        {
-            return context.TryGetColor(role, out color);
-        }
-
-        color = default;
-        return false;
-    }
 
     /// <summary>Removes one explicit local style-property override.</summary>
     /// <typeparam name="T">The property value type.</typeparam>

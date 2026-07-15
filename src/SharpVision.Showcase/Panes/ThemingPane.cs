@@ -3,7 +3,6 @@
 
 namespace SharpVision.Showcase.Panes;
 
-using SharpVision.Showcase.Controls;
 using SharpVision.Styling;
 using SharpVision.Terminal.Protocols;
 
@@ -97,9 +96,33 @@ internal sealed class ThemingPane: View
         for (int index = 0; index < roles.Length; index++)
         {
             ColorRole role = roles[index];
-            rows[index] = Doc.Row(new RoleSwatch(role), new Text(role.ToString()));
+            Border chip = new()
+            {
+                Width = Length.Cells(6),
+                Height = Length.Cells(1),
+                FillMode = FillMode.Opaque,
+                Background = RoleColor(role),
+            };
+            rows[index] = Doc.Row(chip, new Text(role.ToString()));
         }
 
         return Doc.Column(rows);
     }
+
+    private static Color RoleColor(ColorRole role) => role switch
+    {
+        ColorRole.Foreground => ThemeColors.Foreground,
+        ColorRole.Background => ThemeColors.Background,
+        ColorRole.Surface => ThemeColors.Surface,
+        ColorRole.Border => ThemeColors.Border,
+        ColorRole.Accent => ThemeColors.Accent,
+        ColorRole.Muted => ThemeColors.Muted,
+        ColorRole.SelectionBackground => ThemeColors.SelectionBackground,
+        ColorRole.SelectionForeground => ThemeColors.SelectionForeground,
+        ColorRole.Error => ThemeColors.Error,
+        ColorRole.Warning => ThemeColors.Warning,
+        ColorRole.Success => ThemeColors.Success,
+        ColorRole.Info => ThemeColors.Info,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, "The color role is unknown."),
+    };
 }
