@@ -1,4 +1,4 @@
-.PHONY: build clean format format-check help lint restore run test test-ci watch
+.PHONY: build clean format format-check help lint package-consumer restore run test test-ci watch
 
 .DEFAULT_GOAL := help
 
@@ -12,6 +12,7 @@ help:
 	@echo "  make build         Build all projects in Release mode"
 	@echo "  make test          Run all tests with timeout protection"
 	@echo "  make test-ci       Run tests with CI reports"
+	@echo "  make package-consumer  Pack and run an isolated third-party consumer"
 	@echo "  make run           Run the showcase"
 	@echo "  make watch         Run the showcase in watch mode"
 	@echo "  make lint          Check C#, Markdown, and documentation links"
@@ -36,10 +37,16 @@ run:
 test: build
 	@echo "🧪 Running tests..."
 	@dotnet test --solution $(SOLUTION) --configuration Release --no-build --minimum-expected-tests 3 --timeout 900s
+	@$(MAKE) package-consumer
 	@echo "✅ Tests complete."
 
 test-ci:
 	@dotnet test --solution $(SOLUTION) --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --report-xunit-trx
+
+package-consumer:
+	@echo "📦 Verifying isolated package consumption..."
+	@scripts/verify-package-consumer.sh
+	@echo "✅ Package consumer verified."
 
 lint: restore
 	@echo "🔍 Checking source and documentation..."
