@@ -59,10 +59,10 @@ otherwise automatic layout uses the measured desired size. Minimum and maximum
 constraints are applied before the result is capped to the margin-deflated slot,
 so tiny viewports always produce contained non-negative rectangles.
 
-Layout surfaces such as `Stack`, `Grid`, `Dock`, `Border`, `Overlay`, and
-`Container` opt into horizontal stretch because they own a viewport or shared
-slot. Their ordinary child controls remain content-sized unless the surface's
-layout contract explicitly resolves that child to its slot.
+Layout surfaces such as `Stack`, `Grid`, `Dock`, `Border`, and `Overlay` opt
+into horizontal stretch because they own a viewport or shared slot. Their
+ordinary child controls remain content-sized unless the surface's layout
+contract explicitly resolves that child to its slot.
 
 Fractional percentage/proportional boundaries use cumulative edge rounding so
 adjacent tracks share one boundary and the final track receives the remainder.

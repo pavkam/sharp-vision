@@ -42,8 +42,8 @@ cells.
 - `ActiveIndex` is independent navigation state and `VerticalOffset` exposes the
   composed viewport offset. `ScrollBars`, `ShowScrollBars`, `ScrollBarChrome`,
   and `ScrollBarFill` forward the common overflow policy to the owned viewport,
-  so a List uses the same canonical rail behavior as `ScrollView` rather than a
-  private scrolling dialect.
+  so a List uses the same canonical rail behavior as any scrollable `Container`
+  rather than a private scrolling dialect.
 - `SelectionChanging` receives owned sorted added/removed index memories and may
   cancel before commit. `SelectionChanged` reports the same committed delta
   after all selected views and visual states update. Reentrant changes advance a
