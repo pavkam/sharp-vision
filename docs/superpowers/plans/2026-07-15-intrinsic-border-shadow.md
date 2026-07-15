@@ -75,7 +75,8 @@ and arrange pipelines reserve the same border+padding inset.
 - Modify: `src/SharpVision/Controls/Control.cs` (`Control.Arrange` line ~591;
   `CreateContentConstraint` lines 1345-1347; `ResolveDesiredSize` lines
   1349-1365)
-- Modify: `src/SharpVision/Controls/Button.cs` (remove the padding class default)
+- Modify: `src/SharpVision/Controls/Button.cs` (remove the padding class
+  default)
 - Modify: `src/SharpVision/Controls/Border.cs` (temporary compatibility until
   Task 4 deletes the type)
 - Test: `tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs`
@@ -155,7 +156,12 @@ the scrolling work.
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*ControlBorderReservationTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*ControlBorderReservationTests" --timeout 120s
+```
+
 Expected: FAIL — `Arrange_WhenContainerHasBorder...` gives `Rect(0,0,20,10)` and
 `Measure...` gives `(4,2)` (border not reserved).
 
@@ -214,112 +220,152 @@ private Size ResolveDesiredSize(Constraint constraint, Size content) => new(
 the amount to reserve inside the border box; adding the border reserves both. No
 signature change.)
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **Step 5: Preserve Button's current one-cell content position**
 
-Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*ControlBorderReservationTests" --timeout 120s`
-Expected: PASS (3/3).
-
-- [ ] **Step 6: Regression — zero-border layout unchanged**
-
-Run:
-`dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s`
-Expected: PASS. (These suites use zero-border controls, so nothing shifts.)
-
-- [ ] **Step 7: Commit**
-
-```bash
-git commit -m "feat(layout): reserve BorderThickness in the base measure/arrange pipeline" -- src/SharpVision/Controls/Control.cs tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs
-```
-
----
-
-## Task 2: Reconcile `Button` (border reserved exactly once)
-
-**Files:**
-
-- Modify: `src/SharpVision/Controls/Button.cs` (only if the characterization
-  test shows a double-inset or an inconsistency; see steps)
-- Test: `tests/SharpVision.Tests/Controls/ButtonTests.cs` (add a content-inset
-  test; adjust an existing render test only if the corrected position differs)
-
-**Interfaces:**
-
-- Consumes: base border reservation (Task 1).
-- Produces: `Button` content sits inside its 1-cell border exactly once, in
-  normal and pressed-with-shadow states.
-
-`Button` has `BorderThickness = new Thickness(1)` as a class default
-(`Button.cs:15`) and is the only control with a non-zero default border. Its
-`ArrangeOverride` (`Button.cs:153-154`) arranges `Content` via
-`FaceContentBounds(bounds)`, where `FaceContentBounds` (`Button.cs:222`) only
-applies the pressed-shadow shift (it does NOT deflate border). Its
-`OnPressedChanged` (`Button.cs:186-192`) re-arranges content via
-`FaceContentBounds(ContentBounds)`. Before Task 1, `ArrangeOverride`'s `bounds`
-was padding-only-deflated (content overlapped the border) while `ContentBounds`
-was border+padding-deflated — the two disagreed. After Task 1,
-`ArrangeOverride`'s `bounds` is border+padding-deflated, matching
-`ContentBounds` — so `Button` becomes self-consistent and content sits inside
-the border.
-
-- [ ] **Step 1: Write the characterization test**
+Before changing `Button`, add the following characterization to `ButtonTests.cs`
+and run it once. It must pass on the old implementation:
 
 ```csharp
-// tests/SharpVision.Tests/Controls/ButtonTests.cs — add:
-/// <summary>Verifies button content is inset inside the 1-cell border exactly once.</summary>
+/// <summary>Verifies default Button chrome keeps content one cell inside its frame.</summary>
 [Fact]
-public void Arrange_WhenButtonHasDefaultBorder_InsetsContentByOneCell()
+public void Arrange_WhenDefaultChromeIsUsed_PreservesOneCellContentInset()
 {
-    Text label = new("Go");
+    ControlText label = new("Go");
     Button button = new() { Content = label };
 
     new Engine().Layout(button, new Size(10, 3));
 
     button.Bounds.ShouldBe(new Rect(0, 0, 10, 3));
-    // Content sits inside the 1-cell border: origin (1,1), size (8,1).
     label.Bounds.ShouldBe(new Rect(1, 1, 8, 1));
 }
 ```
 
-- [ ] **Step 2: Run test to verify current behavior**
+Then delete only this class-default registration from `Button`:
 
-Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*ButtonTests" --filter-method "*InsetsContentByOneCell*" --timeout 120s`
-Expected: With Task 1 in place, this likely PASSES already (the base reserves
-the border and `FaceContentBounds` no longer needs to). If it FAILS with content
-at `(2,2,6,-1)`-style double-inset, `Button` is deflating the border a second
-time — proceed to Step 3; otherwise skip to Step 4.
-
-- [ ] **Step 3: Remove any double border reservation in Button (only if Step 2
-      failed)**
-
-If Step 2 showed a double-inset, the cause is the redundant `OnPressedChanged`
-re-arrange or a stale deflate. Simplify so the border is reserved exactly once —
-`ArrangeOverride` already receives the border-deflated box from the base, so
-`FaceContentBounds(bounds)` must pass `bounds` straight through (only the
-pressed-shadow shift). Confirm `FaceContentBounds` (`Button.cs:222`) is
-`IsPressed && HasShadow ? ControlChrome.Shift(bounds, ShadowOffset) : bounds`
-(it is — no border deflate), and remove the now-redundant
-`content.Arrange(FaceContentBounds(ContentBounds), ...)` in `OnPressedChanged`
-(`Button.cs:190`) if it fights the committed arrange (replace with
-`Invalidate(Invalidation.Arrange)` alone, which re-runs `ArrangeOverride` with
-the correct box).
-
-- [ ] **Step 4: Run the full ButtonTests to catch render shifts**
-
-Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*ButtonTests" --timeout 180s`
-Expected: PASS. If a pre-existing render test asserted content one cell off (the
-old inconsistent position), update that test's expected coordinates to the
-corrected border-inset position and note it in the commit.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git commit -m "fix(controls): Button reserves its border exactly once via the base pipeline" -- src/SharpVision/Controls/Button.cs tests/SharpVision.Tests/Controls/ButtonTests.cs
+```csharp
+_ = PaddingProperty.RegisterClassDefault<Button>(new Thickness(1));
 ```
 
-(If no `Button.cs` change was needed, commit only the added test.)
+Change `Constructor_WhenCreated_UsesDocumentedDefaults` to expect
+`button.Padding.ShouldBe(default)` and update the `Button` constructor XML
+summary so it no longer claims a default internal padding value.
+
+Do not alter `FaceContentBounds` or the immediate content arrangement in
+`OnPressedChanged`. The new base border inset replaces the old padding inset, so
+released and pressed content remain in the same cells.
+
+- [ ] **Step 6: Keep the surviving Border wrapper reserved exactly once**
+
+After the base change, run
+`BorderTests.Layout_WhenChildHasMarginPaddingAndBorder_ComputesExactBounds` and
+observe the expected double-inset failure. Then make `Border` delegate box-model
+arithmetic to the base:
+
+```csharp
+protected override Size MeasureOverride(Constraint constraint)
+{
+    Control? child = Child;
+
+    if (child is null)
+    {
+        return default;
+    }
+
+    child.Measure(constraint);
+    return new Size(
+        Add(child.DesiredSize.Width, child.Margin.Horizontal),
+        Add(child.DesiredSize.Height, child.Margin.Vertical));
+}
+
+protected override void ArrangeOverride(Rect bounds) =>
+    Child?.Arrange(bounds, widthResolved: true, heightResolved: true);
+```
+
+Delete the now-unused `Subtract` helper. Keep `Add` and `OnRender` unchanged;
+Task 4 deletes the complete type.
+
+- [ ] **Step 7: Run focused tests for the atomic box-model change**
+
+```bash
+dotnet test --project tests/SharpVision.Tests --filter-class "*ControlBorderReservationTests|*ButtonTests|*BorderTests" --timeout 180s
+dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s
+dotnet build SharpVision.slnx --configuration Release --no-incremental
+```
+
+Expected: all selected tests pass and the Release build reports zero warnings
+and zero errors.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git commit -m "feat(layout): reserve BorderThickness in the base measure/arrange pipeline" -- \
+  src/SharpVision/Controls/Control.cs \
+  src/SharpVision/Controls/Button.cs \
+  src/SharpVision/Controls/Border.cs \
+  tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs \
+  tests/SharpVision.Tests/Controls/ButtonTests.cs
+```
+
+---
+
+## Task 2: Prove Button's pressed content still follows the translated face
+
+**Files:**
+
+- Test: `tests/SharpVision.Tests/Controls/ButtonTests.cs`
+
+Task 1 deliberately keeps `OnPressedChanged`'s immediate content arrangement.
+This task records that behavior so a later cleanup cannot reintroduce the old
+plan's incorrect “redundant” diagnosis.
+
+- [ ] **Step 1: Add the pressed-content characterization**
+
+```csharp
+/// <summary>Verifies a pressed shadowed Button immediately translates content with its face.</summary>
+[Fact]
+public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
+{
+    ControlText label = new("Go");
+    Button button = new()
+    {
+        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Top,
+        Width = Length.Cells(6),
+        Height = Length.Cells(3),
+        Content = label,
+    };
+    new Engine().Layout(button, new Size(10, 6));
+
+    Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+        Code.Character,
+        new Rune(' '),
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press)));
+
+    label.Bounds.ShouldBe(new Rect(2, 2, 4, 1));
+}
+```
+
+- [ ] **Step 2: Audit and verify**
+
+Run:
+
+```bash
+rg -n "BorderThickness(Property)?" src/SharpVision/Controls --glob '*.cs'
+dotnet test --project tests/SharpVision.Tests --filter-class "*ButtonTests" --timeout 180s
+```
+
+Expected: non-zero class-default border registration remains only on `Button`;
+the temporary `Border` compatibility type references its own property for
+rendering only; all Button tests pass.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git commit -m "test(controls): preserve pressed Button content geometry" -- \
+  tests/SharpVision.Tests/Controls/ButtonTests.cs
+```
 
 ---
 
@@ -332,8 +378,9 @@ git commit -m "fix(controls): Button reserves its border exactly once via the ba
   `tests/SharpVision.Tests/Controls/ShadowTests.cs`
 - Create: `tests/SharpVision.Tests/Controls/IntrinsicShadowTests.cs` (port the
   `Shadow` render contract onto a plain control)
-- Modify: every `Shadow` usage (find in Step 1), the showcase inventory
-  (`Gallery.cs` + `GalleryTests`/`GalleryRenderingTests`/`TmuxSmokeTests`)
+- Modify: `tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs` and
+  the showcase inventory (`Gallery.cs` +
+  `GalleryTests`/`GalleryRenderingTests`/`TmuxSmokeTests`)
 
 **Interfaces:**
 
@@ -348,9 +395,14 @@ migrations land in one commit).
 - [ ] **Step 1: Find every reference**
 
 Run:
-`grep -rln --include="*.cs" "\bShadow\b" src tests | grep -vE "ShadowMode|ShadowOffset|ShadowGlyph|ShadowAttributes|HasShadow|DrawShadow|ShadowExcludeBounds|ShadowAppearanceSource|ShadowBounds"`
-Expected: `Shadow.cs`, `ShadowPane.cs`, `ShadowTests.cs`, and any
-control/showcase/test that constructs a `Shadow`.
+
+```bash
+rg -n "new Shadow\b|ShouldBeOfType<Shadow>|Find<Shadow>|\bShadow shadow\b" src tests --glob '*.cs'
+```
+
+Expected on the execution base: `ShadowPane.cs`, `ShadowTests.cs`, and the
+ambiguous-width control test. Re-run immediately before deletion so a newly
+added call site cannot escape migration.
 
 - [ ] **Step 2: Port the Shadow render contract to `IntrinsicShadowTests.cs`**
 
@@ -361,19 +413,42 @@ port its render cases (`Render_WhenModeIsBlockGlyph_DrawsTurboVisionFootprint`,
 `Render_WhenOffsetIsNegative_DrawsVisualOverflowWithoutHitTarget`,
 `Render_WhenAncestorCanvasClipsShadow_DoesNotEscapeClip`, and
 `Layout_WhenChildIsPresent_DoesNotReserveShadowOffset`) to assertions on a plain
-control (e.g. a `Text` or `LayoutProbe` child) with `HasShadow = true` + the
-relevant `ShadowMode`/`ShadowOffset`/`ShadowGlyph` set directly, instead of
-wrapping in `Shadow`. Same `Frame`/`FrameOracle` glyph/style assertions. The
-`Constructor_...`/`Properties_...WhenValueIsInvalid` cases move to whichever
-control's property setters they now target (or drop if already covered by
-`Control` style-property tests).
+`LayoutProbe` with `HasShadow = true` and the relevant intrinsic properties. Use
+an ordinary container because its inherited `OnRender` exercises `RenderChrome`;
+do not use a leaf that overrides `OnRender` without calling it. Preserve the
+removed wrapper defaults explicitly in the shared fixture:
+
+```csharp
+private static LayoutProbe CreateArranged(ShadowMode mode, Point offset)
+{
+    LayoutProbe control = new()
+    {
+        HasShadow = true,
+        ShadowMode = mode,
+        ShadowOffset = offset,
+        ShadowAttributes = Attributes.Dim,
+    };
+    control.Children.Add(new ProbeControl(new Size(3, 2)));
+    new Engine().Layout(control, new Size(3, 2));
+    return control;
+}
+```
+
+Port the invalid-mode and invalid-glyph cases to the same `LayoutProbe` public
+properties. Keep the existing `Frame`/`FrameOracle`, clipping, wide-owner, and
+hit-testing assertions unchanged.
 
 - [ ] **Step 3: Migrate production/showcase `Shadow` usages**
 
-Replace each `new Shadow { Child = x, Mode = m, Offset = o, Glyph = g }` with
-setting the properties on `x` directly: `x.HasShadow = true;` (+
-`x.ShadowMode = m; x.ShadowOffset = o; x.ShadowGlyph = g;` when they differ from
-defaults), and use `x` where the `Shadow` was used.
+At this base there is no shipped production construction outside the page being
+deleted. In `AmbiguousWidthControlTests`, replace the wrapper with a
+`LayoutProbe` configured with `HasShadow = true`, block-glyph mode, offset
+`(1, 1)`, and a `ProbeControl` child. Preserve its `#` fallback assertion.
+
+If the Step 1 search finds a new construction, migrate it to a chrome-rendering
+container and explicitly preserve every non-base wrapper default it relied on:
+`HasShadow = true`, `ShadowOffset = new Point(2, 1)`, and
+`ShadowAttributes = Attributes.Dim`.
 
 - [ ] **Step 4: Delete `Shadow.cs`, `ShadowPane.cs`, `ShadowTests.cs`; drop the
       `Shadow` showcase page**
@@ -385,22 +460,35 @@ git rm src/SharpVision/Controls/Shadow.cs src/SharpVision.Showcase/Panes/ShadowP
 Remove the `ShadowPane` entry from `Gallery.cs`'s page list, and remove
 `"Shadow"` from the inventory arrays/assertions in
 `tests/SharpVision.Showcase.Tests/GalleryTests.cs`, `GalleryRenderingTests.cs`,
-and the `Down`-count in `TmuxSmokeTests.cs` (decrement by one, mirroring the
-`ScrollView` removal).
+and the `Down`-count in `TmuxSmokeTests.cs` (change 18 to 17 because Text moves
+one catalog position earlier).
 
 - [ ] **Step 5: Build + verify**
 
-Run: `dotnet build` then
-`dotnet test --project tests/SharpVision.Tests --filter-class "*IntrinsicShadowTests" --timeout 120s`
-and `dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s`
-Expected: build clean; intrinsic shadow tests pass; showcase inventory tests
-pass. `grep -rn --include="*.cs" "\bShadow\b" src tests` shows only the
-`ShadowMode`/`ShadowOffset`/… property names, no `Shadow` type.
+Run:
+
+```bash
+rg -n "new Shadow\b|ShouldBeOfType<Shadow>|Find<Shadow>|\bShadow shadow\b" src tests --glob '*.cs'
+dotnet build SharpVision.slnx --configuration Release --no-incremental
+dotnet test --project tests/SharpVision.Tests --filter-class "*IntrinsicShadowTests|*AmbiguousWidthControlTests" --timeout 180s
+dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s
+```
+
+Expected: the search is silent; build and both test commands pass.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShadow" -- <every file you changed/removed>
+git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShadow" -- \
+  src/SharpVision/Controls/Shadow.cs \
+  src/SharpVision.Showcase/Gallery.cs \
+  src/SharpVision.Showcase/Panes/ShadowPane.cs \
+  tests/SharpVision.Tests/Controls/ShadowTests.cs \
+  tests/SharpVision.Tests/Controls/IntrinsicShadowTests.cs \
+  tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs \
+  tests/SharpVision.Showcase.Tests/GalleryTests.cs \
+  tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs \
+  tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs
 ```
 
 ---
@@ -413,10 +501,13 @@ git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShado
   `src/SharpVision.Showcase/Panes/BorderPane.cs`,
   `tests/SharpVision.Tests/Controls/BorderTests.cs`
 - Create: `tests/SharpVision.Tests/Controls/IntrinsicBorderTests.cs`
-- Modify: every `Border`-control usage (find in Step 1) — notably the showcase
-  panes that frame content with `Border` (`GridPane`, `WindowPane`, `MenuPane`,
-  `CanvasPane`, `ButtonPane`, `DockPane`, `RichTextPane`, `OverlayPane`,
-  `StackPane`, `Doc.cs`, `Gallery.cs`) — plus the showcase inventory.
+- Modify: `Gallery.cs`, `CanvasPane.cs`, `Doc.cs`, `DockPane.cs`, `GridPane.cs`,
+  `MenuPane.cs`, `OverlayPane.cs`, `RadioButtonPane.cs`, `RichTextPane.cs`,
+  `StackPane.cs`, `ThemingPane.cs`, and `WindowPane.cs`.
+- Modify: `AmbiguousWidthControlTests.cs`, `PopupTests.cs`,
+  `DisplayPanelTests.cs`, `DisplayPanelPerformanceTests.cs`, `GalleryTests.cs`,
+  `GalleryRenderingTests.cs`, `ThemeSwatchLiveThemeTests.cs`, and
+  `TmuxSmokeTests.cs`.
 
 **Interfaces:**
 
@@ -426,17 +517,20 @@ git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShado
 - Produces: no `Border` type anywhere.
 
 Atomic (like Task 3). Requires Task 1 (base reserves border) already merged.
-NOTE: `grep "\bBorder\b"` also matches the `Border` color role /
+NOTE: a broad `Border` search also matches the `Border` color role /
 `ThemeColors.Border` / `ColorRole.Border` / `Glyphs` — those are NOT the
 control; migrate only `Border`-_control_ constructions.
 
 - [ ] **Step 1: Find every Border-control reference**
 
 Run:
-`grep -rln --include="*.cs" "new Border\b\|: Border\b\|\bBorder \|\bBorder(" src tests`
-and cross-check against the `Border`-role false positives in `Styling/*`.
-Expected: `Border.cs`, `BorderPane.cs`, `BorderTests.cs`, and the showcase
-panes/tests that construct a `Border`.
+
+```bash
+rg -n "new Border\b|ShouldBeOfType<Border>|Find<Border>|\bBorder (border|chip|cover|frame|surface|sidebar)\b" src tests --glob '*.cs'
+```
+
+Expected: the deleted files plus the production and test files enumerated in
+this task. Re-run immediately before deletion.
 
 - [ ] **Step 2: Port the Border render/layout contract to
       `IntrinsicBorderTests.cs`**
@@ -462,16 +556,42 @@ port its cases to an intrinsic-bordered control (a `LayoutProbe`/`Stack` with
 
 - [ ] **Step 3: Migrate `Border`-control usages**
 
-`new Border { Child = x, Glyphs = g }` becomes: set
-`x.BorderThickness = new Thickness(1); x.BorderGlyphs = g;` and use `x` where
-the `Border` was. When the bordered subject must remain wrapped in a distinct
-node (e.g. a showcase card framing arbitrary content), set the border on a
-single-child container:
-`new Dock { BorderThickness = new Thickness(1), BorderGlyphs = g, Children = { x } }`
-(or `Stack`/`Grid`). For the many showcase framing uses, prefer a small local
-helper in `Doc.cs` (e.g. a `Framed(Control, Glyphs)` returning a bordered
-`Dock`) to keep the panes terse — this replaces the `Border` framing idiom in
-one place.
+Use an ordinary `Dock` whenever the old wrapper supplied a distinct ownership or
+rendering node:
+
+```csharp
+Dock frame = new()
+{
+    BorderThickness = new Thickness(1),
+    BorderGlyphs = glyphs,
+    Padding = padding,
+    Children = { child },
+};
+```
+
+Do not put border properties directly on a leaf whose custom `OnRender` omits
+`RenderChrome`. Change `Doc.Card` to the exact shared idiom:
+
+```csharp
+internal static Dock Card(Control child)
+{
+    ArgumentNullException.ThrowIfNull(child);
+    return new Dock
+    {
+        BorderThickness = new Thickness(1),
+        BorderGlyphs = Glyphs.Rounded,
+        Padding = new Thickness(1, 0),
+        Children = { child },
+    };
+}
+```
+
+Apply the same conversion to every pane-local `Card`/`Frame`: return `Dock`,
+rename `Glyphs =` to `BorderGlyphs =`, and replace `Child = value` with
+`Children = { value }`. Use `Dock` for the opaque popup cover, integration
+display-panel frame, performance navigation cards, and theme swatch chip. In
+`ThemeSwatchLiveThemeTests`, change the helper parameter type and comments from
+`Border` to `Dock`/“intrinsic control surface.”
 
 - [ ] **Step 4: Delete `Border.cs`, `BorderPane.cs`, `BorderTests.cs`; drop the
       `Border` showcase page**
@@ -480,22 +600,61 @@ one place.
 git rm src/SharpVision/Controls/Border.cs src/SharpVision.Showcase/Panes/BorderPane.cs tests/SharpVision.Tests/Controls/BorderTests.cs
 ```
 
-Remove the `BorderPane` entry from `Gallery.cs`, and remove `"Border"` from the
-inventory arrays/assertions in `GalleryTests.cs`/`GalleryRenderingTests.cs` and
-the `TmuxSmokeTests.cs` count (decrement by one).
+In `Gallery`, remove `BorderPane`; change `Sidebar` and the unbordered `surface`
+wrapper to `Dock`; expose `public Dock Sidebar { get; }`; and preserve the
+sidebar width, rounded glyphs, border thickness, child, and key handler.
+
+In `GalleryTests`, remove `"Border"`, assert the sidebar is `Dock`, assert the
+initial page is `"Button"`, and change the index-1 selection expectation to
+`"Canvas"`. In `GalleryRenderingTests`, replace page-number selections with the
+existing `IndexOf` helper where the page is named, change `Find<Border>` to
+`Find<Dock>`, and replace
+`screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2)` with
+`screen.Text.ShouldContain("Button")`. Change the tmux Down count from 17 to 16
+because Text moves one additional catalog position earlier.
 
 - [ ] **Step 5: Build + verify**
 
-Run: `dotnet build`, then
-`dotnet test --project tests/SharpVision.Tests --filter-class "*IntrinsicBorderTests" --timeout 120s`
-and `dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s`.
-Expected: build clean; intrinsic border tests pass; showcase tests pass.
-`grep -rn --include="*.cs" "new Border\b" src tests` returns nothing.
+Run:
+
+```bash
+rg -n "new Border\b|ShouldBeOfType<Border>|Find<Border>|\bBorder (border|chip|cover|frame|surface|sidebar)\b" src tests --glob '*.cs'
+dotnet build SharpVision.slnx --configuration Release --no-incremental
+dotnet test --project tests/SharpVision.Tests --filter-class "*IntrinsicBorderTests|*AmbiguousWidthControlTests|*PopupTests|*DisplayPanelTests" --timeout 300s
+dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s
+```
+
+Expected: the wrapper-type search is silent; build and focused suites pass.
+`ColorRole.Border`, `ThemeColors.Border`, and `BorderGlyphs` remain valid.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git commit -m "refactor: remove Border control; border is intrinsic via BorderThickness" -- <every file you changed/removed>
+git commit -m "refactor: remove Border control; border is intrinsic via BorderThickness" -- \
+  src/SharpVision/Controls/Border.cs \
+  src/SharpVision.Showcase/Gallery.cs \
+  src/SharpVision.Showcase/Panes/BorderPane.cs \
+  src/SharpVision.Showcase/Panes/CanvasPane.cs \
+  src/SharpVision.Showcase/Panes/Doc.cs \
+  src/SharpVision.Showcase/Panes/DockPane.cs \
+  src/SharpVision.Showcase/Panes/GridPane.cs \
+  src/SharpVision.Showcase/Panes/MenuPane.cs \
+  src/SharpVision.Showcase/Panes/OverlayPane.cs \
+  src/SharpVision.Showcase/Panes/RadioButtonPane.cs \
+  src/SharpVision.Showcase/Panes/RichTextPane.cs \
+  src/SharpVision.Showcase/Panes/StackPane.cs \
+  src/SharpVision.Showcase/Panes/ThemingPane.cs \
+  src/SharpVision.Showcase/Panes/WindowPane.cs \
+  tests/SharpVision.Tests/Controls/BorderTests.cs \
+  tests/SharpVision.Tests/Controls/IntrinsicBorderTests.cs \
+  tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs \
+  tests/SharpVision.Tests/Controls/PopupTests.cs \
+  tests/SharpVision.Tests/Integration/DisplayPanelTests.cs \
+  tests/SharpVision.Tests/Performance/DisplayPanelPerformanceTests.cs \
+  tests/SharpVision.Showcase.Tests/GalleryTests.cs \
+  tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs \
+  tests/SharpVision.Showcase.Tests/ThemeSwatchLiveThemeTests.cs \
+  tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs
 ```
 
 ---
@@ -504,42 +663,83 @@ git commit -m "refactor: remove Border control; border is intrinsic via BorderTh
 
 **Files:**
 
-- Modify: `docs/concepts/layout.md`, `docs/concepts/styling.md`, `AGENTS.md`;
-  remove `docs/controls/*` `Border`/`Shadow` specs (grep first) + fix any links
-  they break (mirror the ScrollView doc removal).
+- Modify: `docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md`,
+  `docs/concepts/layout.md`, `docs/concepts/styling.md`,
+  `docs/controls/control.md`, `docs/controls/index.md`,
+  `docs/controls/input/button.md`, `docs/architecture/rendering-pipeline.md`,
+  `docs/architecture/memory-ownership.md`,
+  `docs/testing/controls-integration.md`, `docs/testing/showcase.md`, and
+  `AGENTS.md`.
+- Delete: `docs/controls/display/border.md` and
+  `docs/controls/display/shadow.md`.
 
 - [ ] **Step 1: Update docs**
 
-- `docs/concepts/layout.md`: note that `BorderThickness` reserves layout
-  (border, then padding) and insets children, alongside the existing
-  padding/margin description.
-- `docs/concepts/styling.md` (or the chrome doc): border and shadow are set on
-  any control via `BorderThickness`/`BorderGlyphs` and
-  `HasShadow`/`ShadowMode`/`ShadowOffset`/`ShadowGlyph`/`ShadowAttributes`;
-  there is no `Border`/`Shadow` control.
-- Remove any `docs/controls/**/border*.md` and `docs/controls/**/shadow*.md`
-  spec files (grep: `grep -rln "border\|shadow" docs/controls`); fix dangling
-  links in `docs/controls/index.md` and anywhere referencing them
-  (`grep -rn "border-\|shadow-" docs`).
-- `AGENTS.md`: add that border/shadow are intrinsic `Control` properties (no
-  dedicated control), mirroring the scrolling note.
+- Correct the sibling design spec: `Button` removes its padding class default;
+  `OnPressedChanged` remains intentional; wrapper-default shadow offset/dim
+  styling are preserved explicitly; ordinary containers provide distinct
+  intrinsic frame nodes for custom-rendering leaves.
+- `layout.md`: width/height describe the border box; measure/arrange remove
+  margin, then border, then padding; border edges reserve cells and saturation
+  prevents negative geometry.
+- `styling.md` and `control.md`: document the full intrinsic property surface,
+  defaults, validation, invalidation, layout, rendering, visual overflow,
+  clipping, and hit-testing. State that a custom `OnRender` calls `RenderChrome`
+  when it opts into chrome.
+- `button.md`: remove the inaccurate default-internal-padding claim and document
+  the preserved one-cell border inset.
+- Remove the retired control specs and catalog entries. Update rendering,
+  memory, integration-test, and showcase-test docs so they no longer name
+  `Border`/`Shadow` as concrete controls or require a dedicated Shadow page.
+- `AGENTS.md`: add that border and shadow are intrinsic `Control` properties and
+  there are no dedicated `Border`/`Shadow` controls.
 
-- [ ] **Step 2: Quality gate (my-scope green; concurrent noise noted)**
+- [ ] **Step 2: Validate documentation and retired names**
 
-Run: `dotnet build` (0/0), then
-`dotnet test --project tests/SharpVision.Tests --timeout 600s` (green for this
-scope), then
-`dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s`. Do NOT
-run `make format` (it mutates the shared tree). Run `make lint` and report which
-sub-checks pass on your files; any red confined to concurrent theme/showcase
-files is out of scope — do not fix. Expected: build clean; `SharpVision.Tests`
-green; showcase inventory green.
+```bash
+rg -n "display/border|display/shadow|new Border|new Shadow|Border control|Shadow control" docs AGENTS.md
+npm run lint:markdown
+npm run lint:links
+npm run test:docs
+```
+
+Expected: no retired API link/example remains and every documentation command
+passes. Remaining “border” and “shadow” text describes intrinsic chrome, colors,
+or historical migration context.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git commit -m "docs: intrinsic border/shadow; remove Border/Shadow control docs" -- <the docs/AGENTS files you changed>
+git commit -m "docs: intrinsic border/shadow; remove Border/Shadow control docs" -- \
+  AGENTS.md \
+  docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md \
+  docs/concepts/layout.md \
+  docs/concepts/styling.md \
+  docs/controls/control.md \
+  docs/controls/index.md \
+  docs/controls/input/button.md \
+  docs/controls/display/border.md \
+  docs/controls/display/shadow.md \
+  docs/architecture/rendering-pipeline.md \
+  docs/architecture/memory-ownership.md \
+  docs/testing/controls-integration.md \
+  docs/testing/showcase.md
 ```
+
+- [ ] **Step 4: Run the full isolated-worktree gate**
+
+```bash
+make format
+make lint
+make build
+make test
+git diff --check
+```
+
+Expected: every command exits zero, build reports zero warnings and zero errors,
+test discovery meets the configured minimum, Markdown/link checks pass, and
+`git diff --check` is silent. Inspect formatting changes before committing them;
+do not absorb unrelated paths.
 
 ---
 
@@ -547,20 +747,22 @@ git commit -m "docs: intrinsic border/shadow; remove Border/Shadow control docs"
 
 **Spec coverage:** Decision 1 (delete Shadow) → Task 3; Decision 2 (delete
 Border) → Task 4; Decision 3 (base reserves BorderThickness) → Task 1; Decision
-4 (reserve exactly once) → Task 1 (containers) + Task 2 (Button) + audit note;
-Decision 5 (idiom) → the migration shape in Tasks 3/4; Decision 6 (showcase
-pages removed) → Tasks 3/4 Step 4. §2 rendering-already-intrinsic → relied on in
-Tasks 3/4 (no render change). Testing/docs → Tasks 1–5. Risks (heavy showcase
-contention, double-inset, non-chrome OnRender containers, inventory change) →
-Global Constraints + Task 2 audit + Tasks 3/4/5.
+4 (reserve exactly once) → Task 1's atomic base/Button/temporary-Border change
+plus Task 2's pressed-content proof; Decision 5 (idiom) → the explicit `Dock`
+frame migration in Task 4; Decision 6 (showcase pages removed) → Tasks 3 and 4.
+Normative docs and full gates are Task 5.
 
-**Placeholder scan:** Task 2 is intentionally conditional ("only if the
-characterization test fails") because whether `Button` needs an edit depends on
-Task 1's effect — the test and the exact reconciliation (remove the redundant
-`OnPressedChanged` re-arrange) are concrete, not a placeholder. Task 3/4 Step 1
-(`grep`) and Step 3 (per-usage migration) can't enumerate every call site in
-advance because the concurrent showcase effort is still moving them — the grep +
-the exact mechanical substitution are the actionable instruction.
+**Defects corrected:** the plan removes Button's redundant padding class
+default, preserves the Shadow wrapper's offset and dim appearance explicitly,
+keeps `OnPressedChanged`'s intentional immediate arrangement, prevents a red
+double-reserving Border commit, enumerates the missed production/test call
+sites, updates both showcase index shifts, and runs all gates in an isolated
+worktree.
+
+**Placeholder scan:** No implementation step contains a conditional edit,
+inferred commit path list, or unspecified migration. The pre-deletion searches
+are drift guards, not substitutes for the enumerated call sites and exact
+mechanical conversions.
 
 **Type consistency:**
 `BorderThickness`/`BorderGlyphs`/`HasShadow`/`ShadowMode`/`ShadowOffset`/`ShadowGlyph`/`ShadowAttributes`,
@@ -578,6 +780,6 @@ Two execution options:
    tasks.
 2. **Inline Execution** — execute tasks in this session with checkpoints.
 
-Which approach? (Note: Tasks 3–5 collide with the live concurrent showcase
-effort — consider running Tasks 1–2, the pure-library core, now and holding 3–5
-until that effort is quiescent.)
+Use the subagent-driven option from an isolated `codex/intrinsic-border-shadow`
+worktree based on `codex/runtime-protocol-router`. Do not begin while any target
+path has uncommitted changes in that worktree.
