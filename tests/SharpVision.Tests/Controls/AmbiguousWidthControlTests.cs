@@ -13,7 +13,12 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Border_WhenAmbiguousWidthIsWide_RendersPortableOneCellGlyphs()
     {
-        var border = new Border() { BorderThickness = new Thickness(1) };
+        var border = new LayoutProbe()
+        {
+            BorderThickness = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
         border.SetCellPolicy(new Policy(Ambiguous.Wide));
         new Engine().Layout(border, new Size(3, 2));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);

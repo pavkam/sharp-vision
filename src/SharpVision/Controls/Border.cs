@@ -21,6 +21,7 @@ public sealed class Border: Container
     }
 
     /// <summary>Gets or sets the validated physical glyph family used by the border edges.</summary>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached border is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The border is disposed.</exception>
     public Glyphs Glyphs

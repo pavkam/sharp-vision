@@ -53,7 +53,11 @@ public abstract partial class Control
 
     /// <summary>Identifies the border glyph style property.</summary>
     public static StyleProperty<Glyphs> BorderGlyphsProperty { get; } =
-        StyleProperty<Glyphs>.Register<Control>("border-glyphs", Glyphs.Default, ChangeImpact.Render);
+        StyleProperty<Glyphs>.Register<Control>(
+            "border-glyphs",
+            Glyphs.Default,
+            ChangeImpact.Render,
+            ValidateThemeBorderGlyphs);
 
     /// <summary>Identifies the border color style property.</summary>
     public static StyleProperty<Color?> BorderColorProperty { get; } =
@@ -190,6 +194,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the validated physical glyph family used for border edges.</summary>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Glyphs BorderGlyphs
@@ -280,6 +285,21 @@ public abstract partial class Control
     }
 
     private static void ValidateThemeAttributes(TerminalAttributes? value) => Decoration.Validate(value, null, null);
+
+    private static void ValidateThemeBorderGlyphs(Glyphs value)
+    {
+        // The default value of a struct bypasses its validating constructor.
+        // Reconstructing closes that path and applies the same Rune contract to every assignment.
+        _ = new Glyphs(
+            value.TopLeft,
+            value.Top,
+            value.TopRight,
+            value.Right,
+            value.BottomRight,
+            value.Bottom,
+            value.BottomLeft,
+            value.Left);
+    }
 
     private static void ValidateThemeBorderThickness(Thickness value)
     {

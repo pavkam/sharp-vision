@@ -14,7 +14,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawPartialBorder_WhenOnlyTopEdgeIsEnabled_DrawsSingleRow()
     {
-        var border = new Border()
+        var border = new LayoutProbe()
         {
             Bounds = new Rect(0, 0, 3, 2),
             BorderThickness = new Thickness(0, 1, 0, 0),
@@ -71,11 +71,11 @@ public sealed class ControlChromeTests
     [Fact]
     public void Measure_WhenBorderThicknessIsSet_ReservesActiveEdges()
     {
-        var border = new Border()
+        var border = new LayoutProbe()
         {
             BorderThickness = new Thickness(1, 0, 0, 0),
-            Child = new ControlText("ab"),
         };
+        border.Children.Add(new ControlText("ab"));
 
         new Engine().Layout(border, new Size(10, 4));
 

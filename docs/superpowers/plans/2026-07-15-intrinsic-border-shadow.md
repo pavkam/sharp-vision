@@ -855,9 +855,11 @@ git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShado
 **Files:**
 
 - Create: `tests/SharpVision.Tests/Controls/IntrinsicBorderTests.cs`
-- Modify in the contract slice:
-  `tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs` and
-  `tests/SharpVision.Tests/Styling/ControlChromeTests.cs`
+- Modify in the contract slice: `src/SharpVision/Controls/Border.cs`,
+  `src/SharpVision/Controls/Control.StyleProperties.cs`,
+  `tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs`,
+  `tests/SharpVision.Tests/Styling/ControlChromeTests.cs`, and
+  `docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md`
 - Modify in the integration slice:
   `tests/SharpVision.Tests/Controls/PopupTests.cs`,
   `tests/SharpVision.Tests/Integration/DisplayPanelTests.cs`,
@@ -914,20 +916,30 @@ Read the deleted-target `tests/SharpVision.Tests/Controls/BorderTests.cs` and
 port its cases to an intrinsic-bordered control (a `LayoutProbe`/`Stack` with
 `BorderThickness`/`BorderGlyphs` set):
 
-- `Layout_WhenChildHasMarginPaddingAndBorder_ComputesExactBounds` → assert child
-  `Bounds` inset by margin+border+padding (this is Task 1's contract at full
-  generality).
+- `Layout_WhenChildHasMarginPaddingAndBorder_ComputesExactBounds` → assert the
+  exact `DesiredSize(8, 7)` and child `Bounds` inset by margin+border+padding
+  (this is Task 1's contract at full generality).
 - `Render_WhenBorderIsComplete_WritesCornersEdgesAndChild`,
   `Render_WhenEdgesArePartial_UsesOnlyActiveCustomGlyphsAndStyles`,
   `Render_WhenBoundsAreTiny_RemainsContained` → assert the per-side border
   glyphs/corners via `Frame`/`FrameOracle` on the intrinsic-bordered control
   (the default `OnRender` → `RenderChrome` → `ControlChrome.DrawPartialBorder`
-  draws them).
-- `Glyphs_WhenPresetIsSelected_UsesExactRunes`,
-  `BorderThickness_WhenAnEdgeExceedsOne_Throws`,
-  `Constructor_WhenGlyphIsNotPrintableNarrow_Throws` → move to
-  `BorderGlyphs`/`BorderThickness` property-setter tests on `Control` (these
-  validators already live on `Control`).
+  draws them). The partial-edge case must also prove inactive right and bottom
+  cells retain no glyph while preserving the configured body background.
+- `Glyphs_WhenPresetIsSelected_UsesExactRunes` and
+  `BorderThickness_WhenAnEdgeExceedsOne_Throws` → move to
+  `BorderGlyphs`/`BorderThickness` property-setter tests on `Control`.
+- `Constructor_WhenGlyphIsNotPrintableNarrow_Throws` → retain as an honest
+  `Glyphs` constructor-validation test; invalid constructor arguments fail
+  before any property setter can run.
+
+`BorderThickness` already validates before mutation. `default(Glyphs)` bypasses
+the value type's validating constructor, so register the smallest
+`BorderGlyphsProperty` validator that reconstructs the value through `Glyphs`,
+rejects that default before mutation, and preserves the previous property value.
+Document the public setter's `ArgumentException` contract in XML. The temporary
+`Border.Glyphs` forwarding property has the same rejection contract and must
+document the same exception until the wrapper is deleted.
 
 Migrate the two remaining `Border` constructions in `ControlChromeTests` and the
 border construction in `AmbiguousWidthControlTests` to `LayoutProbe` so their
@@ -943,9 +955,12 @@ dotnet test --project tests/SharpVision.Tests \
   --parallel none --timeout 180s
 dotnet build SharpVision.slnx --configuration Release --no-incremental
 git add -- \
+  src/SharpVision/Controls/Border.cs \
+  src/SharpVision/Controls/Control.StyleProperties.cs \
   tests/SharpVision.Tests/Controls/IntrinsicBorderTests.cs \
   tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs \
-  tests/SharpVision.Tests/Styling/ControlChromeTests.cs
+  tests/SharpVision.Tests/Styling/ControlChromeTests.cs \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 git commit -m "test(controls): port border contract to intrinsic chrome"
 ```
 
