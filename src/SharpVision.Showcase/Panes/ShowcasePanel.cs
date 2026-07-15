@@ -44,15 +44,7 @@ public sealed class ShowcasePanel: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            VerifyMutable();
-
-            if (field == value)
-            {
-                return;
-            }
-
-            field = value;
-            Invalidate(Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 

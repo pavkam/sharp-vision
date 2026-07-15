@@ -22,4 +22,19 @@ public sealed class AssemblyBoundaryTests
                 "SharpVision.Consumer.Tests",
                 StringComparison.Ordinal));
     }
+
+    /// <summary>Verifies the public showcase compiles without privileged product access.</summary>
+    [Fact]
+    public void ProductAssembly_WhenInspected_DoesNotFriendShowcase()
+    {
+        var friendship = typeof(Control).Assembly
+            .GetCustomAttributes(typeof(InternalsVisibleToAttribute), inherit: false)
+            .Cast<InternalsVisibleToAttribute>();
+
+        friendship.ShouldNotContain(
+            static attribute => string.Equals(
+                new AssemblyName(attribute.AssemblyName).Name,
+                "SharpVision.Showcase",
+                StringComparison.Ordinal));
+    }
 }

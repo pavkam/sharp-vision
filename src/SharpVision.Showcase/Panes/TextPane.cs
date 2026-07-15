@@ -67,11 +67,11 @@ internal sealed class TextPane: View
         ];
         append.Click += (_, eventArgs) =>
         {
-            var selected = mutationStyles[mutation % mutationStyles.Length];
+            var (selectedName, selectedMarkup) = mutationStyles[mutation % mutationStyles.Length];
             mutation++;
-            wrapped.Content += $"\nMutation {mutation}: {selected.Markup}";
+            wrapped.Content += $"\nMutation {mutation}: {selectedMarkup}";
             activity.Content =
-                $"Activity log: {eventArgs.Cause} appended {Text.Escape(selected.Name)} markup {mutation}.";
+                $"Activity log: {eventArgs.Cause} appended {Text.Escape(selectedName)} markup {mutation}.";
         };
 
         var centered = new Text("<b>Centered status</b>")

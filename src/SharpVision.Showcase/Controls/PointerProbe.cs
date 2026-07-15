@@ -27,7 +27,7 @@ internal sealed class PointerProbe: Control
         if (eventArgs is PointerEventArgs { Pointer.Action: PointerAction.Move or PointerAction.Press } routed)
         {
             Update(routed.Pointer);
-            Invalidate(Invalidation.Render);
+            Invalidate(ChangeImpact.Render);
         }
 
         base.OnEvent(eventArgs);

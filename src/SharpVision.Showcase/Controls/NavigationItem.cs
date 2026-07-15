@@ -10,6 +10,8 @@ internal sealed class NavigationItem: Pressable
 {
     #region Construction and state
 
+    private bool _isSelected;
+
     /// <summary>Initializes one page navigation entry with a stable non-negative index and label.</summary>
     /// <param name="index">The non-negative catalog position represented by the entry.</param>
     /// <param name="label">The non-empty exact page label.</param>
@@ -34,7 +36,7 @@ internal sealed class NavigationItem: Pressable
     internal string Label { get; }
 
     /// <summary>Gets whether the page is the gallery's selected page.</summary>
-    internal bool IsSelected { get; private set; }
+    internal bool IsSelected => _isSelected;
 
     /// <summary>Commits the visual selected state without changing the page selection itself.</summary>
     /// <param name="value">Whether the entry represents the selected page.</param>
@@ -42,13 +44,12 @@ internal sealed class NavigationItem: Pressable
     /// <exception cref="ObjectDisposedException">The entry is disposed.</exception>
     internal void SetSelected(bool value)
     {
-        if (IsSelected == value)
+        if (!SetProperty(ref _isSelected, value, ChangeImpact.None, nameof(IsSelected)))
         {
             return;
         }
 
-        IsSelected = value;
-        Invalidate(Invalidation.Render);
+        InvalidateVisualState();
     }
 
     #endregion
