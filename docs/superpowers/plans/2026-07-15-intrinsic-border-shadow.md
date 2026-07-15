@@ -6,16 +6,22 @@
 > checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Delete the `Border` and `Shadow` wrapper controls and make border and
-shadow intrinsic `Control` capabilities without changing existing Button,
-Window, showcase, or terminal-cell behavior.
+shadow intrinsic `Control` capabilities while preserving released Button
+geometry and existing Window, showcase, and unaffected terminal-cell behavior.
+Pressed Button child geometry is intentionally corrected to follow the
+translated face instead of retaining the old border-plus-padding double inset
+and tiny-height collapse.
 
 **Architecture:** `ControlChrome`, `VisualBounds`, `ContentBounds`, and the
 style-property registry already own border and shadow rendering. The base layout
 pipeline will reserve `BorderThickness` before `Padding`; `Button` will drop the
-padding class default that currently stands in for its border inset; the
-temporary `Border` compatibility implementation will delegate reservation to the
-base pipeline until the type is deleted. Shadow migrations explicitly preserve
-the removed wrapper's `(2, 1)` offset and dim appearance.
+padding class default that currently stands in for its border inset, preserving
+released content geometry. Its existing immediate pressed-content arrangement
+then starts from the correctly border-then-padding-deflated content box and
+moves the child with the translated face, correcting the old double inset and
+collapse. The temporary `Border` compatibility implementation will delegate
+reservation to the base pipeline until the type is deleted. Shadow migrations
+explicitly preserve the removed wrapper's `(2, 1)` offset and dim appearance.
 
 **Tech Stack:** .NET 10, C# 14, xUnit v3, Shouldly. Layout via
 `Engine().Layout(root, size)`; rendering asserted with `Frame` + `FrameOracle`;
@@ -69,13 +75,13 @@ and arrange pipelines reserve the same border+padding inset.
 
 ---
 
-## Task 1: Base layout reserves `BorderThickness` without moving existing chrome
+## Task 1: Base layout reserves `BorderThickness` while preserving released Button geometry
 
 **Files:**
 
 - Modify: `src/SharpVision/Controls/Control.cs` (`Control.Arrange` line ~591;
   `CreateContentConstraint` lines 1345-1347; `ResolveDesiredSize` lines
-  1349-1365)
+  1349-1365; `ContentBounds` XML documentation line ~1103)
 - Modify: `src/SharpVision/Controls/Button.cs` (remove the padding class
   default)
 - Modify: `src/SharpVision/Controls/Border.cs` (temporary compatibility until
@@ -251,7 +257,7 @@ the amount to reserve inside the border box; saturating the combined padding and
 border reserves both without wrapping at the integer boundary. No signature
 change.)
 
-- [x] **Step 5: Preserve Button's current one-cell content position**
+- [x] **Step 5: Preserve Button's released one-cell content position**
 
 Before changing `Button`, add the following characterization to `ButtonTests.cs`
 and run it once. It must pass on the old implementation:
@@ -287,7 +293,12 @@ summary so it no longer claims a default internal padding value.
 
 Do not alter `FaceContentBounds` or the immediate content arrangement in
 `OnPressedChanged`. The new base border inset replaces the old padding inset, so
-released and pressed content remain in the same cells.
+released content remains in the same cells. On the pressed transition, that
+existing immediate arrangement now starts from the correctly
+border-then-padding-deflated `ContentBounds` and intentionally corrects the old
+border-plus-padding double inset and tiny-height collapse so the child follows
+the translated face. Task 2 adds the explicit pressed-geometry regression and
+remains unchecked here.
 
 - [x] **Step 6: Keep the surviving Border wrapper reserved exactly once**
 
@@ -337,6 +348,11 @@ build after aligning `layout.md` and the `Control` extension-point XML
 documentation, then runs file-scoped Prettier and Markdown lint plus
 `git diff --check`.
 
+The final documentation-honesty follow-up distinguishes preserved released
+Button geometry from the intentionally corrected pressed-child geometry and
+aligns the `ContentBounds` XML summary. Task 2 remains unchecked until its
+explicit regression is implemented.
+
 - [x] **Step 8: Commit**
 
 ```bash
@@ -367,9 +383,10 @@ git commit -m "docs(layout): align intrinsic border box model contracts" -- \
 
 - Test: `tests/SharpVision.Tests/Controls/ButtonTests.cs`
 
-Task 1 deliberately keeps `OnPressedChanged`'s immediate content arrangement.
-This task records that behavior so a later cleanup cannot reintroduce the old
-plan's incorrect “redundant” diagnosis.
+Task 1 deliberately keeps `OnPressedChanged`'s immediate content arrangement,
+which now corrects the old double inset and collapse by moving the child with
+the translated face. This task records that corrected behavior so a later
+cleanup cannot reintroduce the old plan's incorrect “redundant” diagnosis.
 
 - [ ] **Step 1: Add the pressed-content characterization**
 
@@ -416,7 +433,7 @@ rendering only; all Button tests pass.
 - [ ] **Step 3: Commit**
 
 ```bash
-git commit -m "test(controls): preserve pressed Button content geometry" -- \
+git commit -m "test(controls): prove pressed Button follows translated face" -- \
   tests/SharpVision.Tests/Controls/ButtonTests.cs
 ```
 

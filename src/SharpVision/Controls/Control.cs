@@ -1100,7 +1100,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         return Invalidation.Render;
     }
 
-    /// <summary>Gets the committed content rectangle after padding deflation.</summary>
+    /// <summary>Gets the committed content rectangle after border-then-padding deflation.</summary>
     protected Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
 
     private static Invalidation Expand(Invalidation value) => value switch
