@@ -28,24 +28,38 @@ public static class ThemeResolver
         ArgumentNullException.ThrowIfNull(property);
         EnsureApplies(control, property);
 
+        T? value;
+
         if (control.TryGetLocalValue(property, out T? local))
         {
-            return local;
+            value = local;
+        }
+        else
+        {
+            value = property.DefaultValue;
+
+            if (property.TryGetClassDefault(control.GetType(), out object? classDefault))
+            {
+                value = (T) classDefault!;
+            }
+
+            ThemeContext? themeContext = control.ThemeContext;
+            List<Control> scopes = CollectStyleScopes(control);
+
+            foreach (State state in ResolutionOrder(visualState))
+            {
+                ApplyState(control, property, state, themeContext, scopes, ref value);
+            }
         }
 
-        T? value = property.DefaultValue;
-
-        if (property.TryGetClassDefault(control.GetType(), out object? classDefault))
+        // Single collapse point: a role color (from a local value OR the theme cascade) becomes concrete,
+        // so every consumer of this public overload sees a concrete color, never a deferred role.
+        if (value is Color { Kind: ColorKind.Role } role)
         {
-            value = (T) classDefault!;
-        }
-
-        ThemeContext? context = control.ThemeContext;
-        List<Control> scopes = CollectStyleScopes(control);
-
-        foreach (State state in ResolutionOrder(visualState))
-        {
-            ApplyState(control, property, state, context, scopes, ref value);
+            ThemeContext? context = control.ThemeContext;
+            value = (T) (object) SemanticColor.Resolve(
+                role,
+                r => context is not null && context.TryGetColor(r, out Color c) ? c : null);
         }
 
         return value;

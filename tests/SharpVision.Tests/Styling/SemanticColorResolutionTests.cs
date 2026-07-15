@@ -57,4 +57,16 @@ public sealed class SemanticColorResolutionTests
         ThemeTestSupport.ApplyTheme(control, ThemeWith(Color.Indexed(1), Color.Indexed(9)));
         control.GetValue(Control.BackgroundProperty).ShouldBe(Color.Indexed(9));
     }
+
+    /// <summary>Verifies the live control resolver overload collapses a local role color on its local-value path.</summary>
+    [Fact]
+    public void LiveResolve_WhenLocalRoleColor_ResolvesToPaletteColor()
+    {
+        ProbeControl control = new();
+        ThemeTestSupport.ApplyTheme(control, ThemeWith(Color.Indexed(1), Color.Indexed(2)));
+        control.SetValue(Control.BackgroundProperty, ThemeColors.Accent);
+
+        ThemeTestSupport.Resolve(control, Control.BackgroundProperty, State.Normal)
+            .ShouldBe(Color.Indexed(2));
+    }
 }
