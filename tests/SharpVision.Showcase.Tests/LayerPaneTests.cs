@@ -6,6 +6,20 @@ namespace SharpVision.Showcase.Tests;
 /// <summary>Verifies layered, popup, and window showcase recipes.</summary>
 public sealed class LayerPaneTests
 {
+    /// <summary>Verifies documentation never opens promoted popup surfaces before user activation.</summary>
+    [Fact]
+    public void Popup_WhenPageBuilds_AllSurfacesStartClosed()
+    {
+        using var page = new PopupPane();
+        new Engine().Layout(page, new Size(100, 180));
+
+        var popups = ControlTree.FindAll<Popup>(page);
+
+        popups.Count.ShouldBeGreaterThan(1);
+        popups.ShouldAllBe(popup => !popup.IsOpen);
+        popups.ShouldAllBe(popup => popup.SurfaceBounds == default);
+    }
+
     /// <summary>Verifies decorative Overlay content can render without intercepting pointer input.</summary>
     [Fact]
     public void Overlay_WhenPointerTransparencyBuilds_ContainsTransparentDecoration()
@@ -29,10 +43,11 @@ public sealed class LayerPaneTests
         // Arrange
         using var page = new PopupPane();
         new Engine().Layout(page, new Size(100, 140));
-        var close = FindButton(page, "Close lifecycle popup");
+        var trigger = FindButton(page, "Show lifecycle popup");
 
         // Act
-        close.PerformClick();
+        trigger.PerformClick();
+        trigger.PerformClick();
 
         // Assert
         ControlTree.Text(page).ShouldContain("Lifecycle: Closing → Closed");
@@ -119,6 +134,9 @@ public sealed class LayerPaneTests
         var windowBackdrop = ControlTree.FindAll<ControlText>(windowPage).Single(value =>
             value.Content.Contains("Workspace", StringComparison.Ordinal) &&
             value.Content.Contains("2 tasks", StringComparison.Ordinal));
+
+        FindButton(popupPage, "Below").PerformClick();
+        engine.Layout(popupPage, new Size(100, 180));
 
         popup.SurfaceBounds.Intersect(popupBackdrop.Parent.ShouldNotBeNull().Bounds).Width.ShouldBeGreaterThan(0);
         popup.SurfaceBounds.Intersect(popupBackdrop.Parent.Bounds).Height.ShouldBeGreaterThan(0);
