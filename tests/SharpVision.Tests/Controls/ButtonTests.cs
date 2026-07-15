@@ -51,6 +51,31 @@ public sealed class ButtonTests
         label.Bounds.ShouldBe(new Rect(1, 1, 8, 1));
     }
 
+    /// <summary>Verifies a pressed shadowed Button immediately translates content with its face.</summary>
+    [Fact]
+    public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
+    {
+        ControlText label = new("Go");
+        Button button = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Content = label,
+        };
+        new Engine().Layout(button, new Size(10, 6));
+
+        Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune(' '),
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press)));
+
+        label.Bounds.ShouldBe(new Rect(2, 2, 4, 1));
+    }
+
     /// <summary>Verifies the default Button draws its own border and shadow without showcase wrappers.</summary>
     [Fact]
     public void Render_WhenDefaultStyleIsUsed_DrawsBorderAndShadow()

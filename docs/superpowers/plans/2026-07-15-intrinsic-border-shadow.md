@@ -388,7 +388,7 @@ which now corrects the old double inset and collapse by moving the child with
 the translated face. This task records that corrected behavior so a later
 cleanup cannot reintroduce the old plan's incorrect “redundant” diagnosis.
 
-- [ ] **Step 1: Add the pressed-content characterization**
+- [x] **Step 1: Add the pressed-content characterization**
 
 ```csharp
 /// <summary>Verifies a pressed shadowed Button immediately translates content with its face.</summary>
@@ -417,24 +417,37 @@ public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
 }
 ```
 
-- [ ] **Step 2: Audit and verify**
+Evidence: the test routes a Space `Press` through `Router`/`Events.Key` and
+asserts the translated owned-content bounds are `Rect(2, 2, 4, 1)`.
+
+- [x] **Step 2: Audit and verify**
 
 Run:
 
 ```bash
 rg -n "BorderThickness(Property)?" src/SharpVision/Controls --glob '*.cs'
-dotnet test --project tests/SharpVision.Tests --filter-class "*ButtonTests" --timeout 180s
+dotnet test --project tests/SharpVision.Tests --configuration Release \
+  --filter-method "*Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset" \
+  --timeout 180s
+dotnet test --project tests/SharpVision.Tests --configuration Release \
+  --filter-class "*ButtonTests" --timeout 180s
+dotnet build SharpVision.slnx --configuration Release --no-incremental
 ```
 
-Expected: non-zero class-default border registration remains only on `Button`;
-the temporary `Border` compatibility type references its own property for
-rendering only; all Button tests pass.
+Evidence: the focused regression passed 1/1, failed 0/1 after temporarily
+restoring `PaddingProperty.RegisterClassDefault<Button>(new Thickness(1))` with
+the old collapsed `Rect(3, 3, 2, 0)`, then passed 1/1 after removing that
+temporary line. The audit found the only non-zero border class-default
+registration on `Button`; the full Release `ButtonTests` run passed 29/29; and
+the Release no-incremental solution build completed with zero warnings and zero
+errors.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git commit -m "test(controls): prove pressed Button follows translated face" -- \
-  tests/SharpVision.Tests/Controls/ButtonTests.cs
+  tests/SharpVision.Tests/Controls/ButtonTests.cs \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 ```
 
 ---
