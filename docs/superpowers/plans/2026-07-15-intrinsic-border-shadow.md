@@ -989,6 +989,32 @@ iteration made the test fail with 240,000 bytes, proving the sampling still
 detects steady-state allocations; after restoring the production path, the
 focused test and final 1,383-test `make test` both passed.
 
+### Final-audit corrections
+
+The final specification audit found one post-migration layout omission:
+`Container.OnMeasuredDesired` added `ContentExtent` and `Padding` for
+`AutoSize`, but omitted intrinsic `BorderThickness`. Two test-first regressions
+failed for that exact reason: the normal bordered/padded case reported `9x5`
+instead of `11x7`, and the overflow case reported `2147483646x1` instead of the
+saturated `2147483647x3`. Commit `77ad930` adds the border reservation through
+separate `long` terms while preserving GrowOnly and min/max clamping. The
+focused AutoSize suite passed 6/6 and the related layout, border, randomized,
+and scrolling suites passed 77/77.
+
+The same audit found retired `ScrollView` guidance in live showcase, control,
+integration, and performance documentation. Commit `bb62aa8` now describes the
+actual `AutoScroll`-enabled Stack/container surfaces. The current normative-doc
+scan is silent; the only remaining non-historical matches are the explicit
+`AGENTS.md` rule that no `ScrollView` type exists and a source provenance
+comment about the former implementation. `docs/superpowers` retains its dated
+migration and execution records intentionally.
+
+After these corrections, `make format`, `make lint`, `make build`, and
+`make test` exit zero. The build reports zero warnings and zero errors; the
+expanded full suite passes 1,385/1,385 with no skips; Markdown lint reports zero
+errors; links are valid; documentation tests pass 24/24; and `git diff --check`
+is silent.
+
 ---
 
 ## Self-Review
