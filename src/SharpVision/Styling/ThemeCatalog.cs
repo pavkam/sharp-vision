@@ -10,7 +10,7 @@ public sealed class ThemeCatalog
     private const string _prefix = "SharpVision.Styling.Themes.";
     private const string _suffix = ".theme.json";
     private readonly Lock _gate = new();
-    private readonly Dictionary<string, string> _json = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, byte[]> _documents = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _orders = new(StringComparer.Ordinal);
 
@@ -27,11 +27,11 @@ public sealed class ThemeCatalog
                 continue;
             }
 
-            var json = ReadResource(assembly, resource);
-            var definition = ThemeLoader.Deserialize(json, resource);
+            var document = ReadResource(assembly, resource);
+            var definition = ThemeLoader.Deserialize(document, resource);
             var entry = ToEntry(definition, resource);
 
-            if (!_json.TryAdd(entry.Slug, json))
+            if (!_documents.TryAdd(entry.Slug, document))
             {
                 throw new InvalidDataException($"Duplicate theme slug '{entry.Slug}'.");
             }
@@ -76,12 +76,12 @@ public sealed class ThemeCatalog
                 return cached;
             }
 
-            if (!_json.TryGetValue(slug, out var json))
+            if (!_documents.TryGetValue(slug, out var document))
             {
                 throw new KeyNotFoundException($"The theme catalog does not contain '{slug}'.");
             }
 
-            var theme = ThemeLoader.FromJson(json, slug);
+            var theme = ThemeLoader.FromUtf8(document, slug);
             _cache[slug] = theme;
             return theme;
         }
@@ -112,11 +112,10 @@ public sealed class ThemeCatalog
             ? throw new InvalidDataException($"Theme '{resource}' is missing required field '{field}'.")
             : value;
 
-    private static string ReadResource(Assembly assembly, string name)
+    private static byte[] ReadResource(Assembly assembly, string name)
     {
         using var stream = assembly.GetManifestResourceStream(name)
             ?? throw new InvalidDataException($"Embedded theme resource '{name}' is missing.");
-        using StreamReader reader = new(stream);
-        return reader.ReadToEnd();
+        return ThemeLoader.ReadBounded(stream, name);
     }
 }

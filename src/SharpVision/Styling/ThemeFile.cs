@@ -21,12 +21,12 @@ public static class ThemeFile
     /// <param name="stream">The readable JSON stream.</param>
     /// <returns>The frozen theme.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="stream"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="stream"/> is not readable.</exception>
     /// <exception cref="InvalidDataException">The content is malformed or invalid.</exception>
     public static Theme Load(Stream stream)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        using StreamReader reader = new(stream, leaveOpen: true);
-        return ThemeLoader.FromJson(reader.ReadToEnd(), "<stream>");
+        return ThemeLoader.FromDefinition(ThemeLoader.Deserialize(stream, "<stream>"), "<stream>");
     }
 
     /// <summary>Loads a theme from a JSON file path.</summary>
@@ -39,6 +39,7 @@ public static class ThemeFile
     public static Theme LoadFile(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        return ThemeLoader.FromJson(File.ReadAllText(path), path);
+        using var stream = File.OpenRead(path);
+        return ThemeLoader.FromDefinition(ThemeLoader.Deserialize(stream, path), path);
     }
 }

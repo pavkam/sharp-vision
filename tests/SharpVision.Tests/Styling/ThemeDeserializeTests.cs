@@ -10,7 +10,7 @@ public sealed class ThemeDeserializeTests
 {
     private const string _json = /*lang=json,strict*/ """
         {
-          "name": "Sample", "slug": "sample", "colorScheme": "dark", "order": 5,
+          "version": 1, "name": "Sample", "slug": "sample", "colorScheme": "dark", "order": 5,
           "author": "A", "license": "MIT", "source": "https://example.test",
           "palette": { "bg": "#000000", "fg": "#ffffff" },
           "roles": { "background": "bg", "foreground": "fg" }
@@ -23,6 +23,7 @@ public sealed class ThemeDeserializeTests
     {
         var definition = ThemeLoader.Deserialize(_json, "sample");
 
+        definition.Version.ShouldBe(1);
         definition.Slug.ShouldBe("sample");
         definition.Order.ShouldBe(5);
         definition.ColorScheme.ShouldBe("dark");

@@ -65,6 +65,7 @@ entry.
 
 ```json
 {
+  "version": 1,
   "name": "Tokyo Night",
   "slug": "tokyo-night",
   "colorScheme": "dark",
@@ -249,13 +250,22 @@ Theme fromStream = ThemeFile.Load(stream);      // caller owns the stream
 Theme fromDisk = ThemeFile.LoadFile("my-theme.theme.json");
 ```
 
-`ThemeFile` resolves the palette and roles and returns a frozen `Theme`,
-validating the color values and the required `background`/`foreground` roles; it
-does not require the descriptive metadata fields. The non-empty-metadata,
-`colorScheme`, and unique-slug checks apply only to embedded catalog themes. All
-three methods throw `ArgumentNullException` for a null argument and
-`InvalidDataException` for malformed or invalid content; `LoadFile` also
-propagates `FileNotFoundException`/`IOException` from the file read.
+Every document requires schema `version: 1`. `ThemeFile` uses the same strict
+UTF-8 parser for text, streams, files, and embedded resources. It rejects
+unknown or duplicate fields, malformed UTF-8, unsupported versions, more than
+64 KiB of encoded input, JSON deeper than four levels, more than 256 palette or
+12 role entries, keys longer than 64 characters, individual strings longer
+than 2,048 characters, and more than 32 KiB of aggregate decoded text. Stream
+loads begin at the current position and never close the caller-owned stream.
+
+The loader resolves the palette and roles and returns a frozen `Theme`,
+validating color values and the required `background`/`foreground` roles. User
+files may omit descriptive metadata; embedded catalog themes additionally
+require non-empty metadata, a valid `colorScheme`, and a unique slug. All three
+methods throw `ArgumentNullException` for a null argument and
+`InvalidDataException` for malformed, oversized, or invalid content;
+`LoadFile` also propagates file-system exceptions from opening and reading the
+path.
 
 ## Attribution and license policy
 
