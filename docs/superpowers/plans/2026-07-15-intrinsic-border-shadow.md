@@ -607,7 +607,7 @@ Markdown lint remains blocked by 88 pre-existing errors confined to older
 superpowers plan files; every Markdown file changed by Task 3 passes the scoped
 lint.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShadow" -- \
@@ -631,6 +631,10 @@ git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShado
   docs/testing/showcase.md \
   docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 ```
+
+Evidence: commit `54db46d` contains the atomic Shadow removal, intrinsic tests,
+showcase migration, shadow-background correction, and synchronized normative
+documentation.
 
 ---
 
