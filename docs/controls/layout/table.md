@@ -30,6 +30,21 @@ automatic widths use the largest cell/header request, and fill columns receive
 the remaining cells. Headers and rows remeasure wrapping controls once their
 finite column widths are known.
 
+Each resolved cell rectangle is an ordinary arrange slot, not a forced border
+box. The cell's `HorizontalAlignment`, `VerticalAlignment`, explicit lengths,
+margin, and desired size therefore retain their normal meaning. An intrinsic
+Button or CheckBox stays at its measured size and aligned position inside a
+larger track; a cell explicitly set to Stretch consumes the available slot.
+
+`Table` uses the intrinsic
+[`Container` scrolling contract](../../concepts/scrolling.md#scrolling-contract).
+The translated content rectangle is the single origin for headers, grid lines,
+cells, and hit testing. Table chrome renders through the same viewport-clipped
+content canvas before owned scrollbars render above it, so horizontal, vertical,
+and combined offsets cannot separate a header or divider from its row controls.
+Running origins are signed because scrolling may move content above or left of
+zero; only extents and gaps retain the non-negative accumulation invariant.
+
 A failed row/column count validation leaves the collection and every candidate
 cell detached. Removing a row releases its cells for another owner.
 
@@ -53,5 +68,7 @@ table.Rows.Add(new TableRow([
 ## Test obligations
 
 Cover column/row ownership and atomic rejection, fixed/percentage/fill/auto
-resolution, header and grid cells, cell padding, rich/wide cells, tiny bounds,
-headerless tables, resize, removal/reuse, and final continuation ownership.
+resolution, intrinsic and stretched cell alignment, header and grid cells, cell
+padding, rich/wide cells, tiny bounds, headerless tables, both-axis scrolling
+with aligned chrome and hit testing, resize, removal/reuse, and final
+continuation ownership.

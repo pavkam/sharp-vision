@@ -44,6 +44,20 @@ Overwriting or clearing either cell first repairs the complete previous owner.
 cluster at the right edge; none emits or stores half a glyph. Child canvases use
 the geometric intersection of their requested clip, parent clip, and frame.
 
+`Canvas.DrawLine` draws both endpoints with deterministic integer Bresenham
+traversal. `DrawEllipse` rasterizes an outline inside half-open bounds with
+integer midpoint geometry; empty bounds draw nothing and a one-cell axis
+degrades to a line or point. `DrawCircle` uses cell-coordinate radius, draws one
+center cell at radius zero, and rejects a negative radius before mutation. All
+three validate one printable narrow Rune before drawing, use signed wide
+intermediates, and skip points outside the effective Canvas/frame clip. Calls
+are repeatable and allocate no managed object per rasterized cell.
+
+Circle geometry intentionally uses terminal cells rather than guessed physical
+pixels. Because cells are commonly taller than they are wide, a caller that
+wants a physically round outline uses `DrawEllipse` with a wider cell rectangle
+or derives that rectangle from known pixel metrics.
+
 The encoder minimizes cursor moves and style transitions only after correctness
 is known. When synchronized output is available, one complete frame is wrapped
 according to the

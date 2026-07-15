@@ -9,8 +9,9 @@ control API. It contains no behavior unavailable to ordinary library users.
 flowchart LR
     Gallery["Gallery catalog"] --> Sidebar["Framed dashboard sidebar"]
     Gallery --> Page["Selected pane (View)"]
-    Page --> Overview["Overview heading"]
-    Page --> Section["Doc.Section groups"]
+    Page --> Header["Fixed page identity + Overview"]
+    Page --> Body["Vertical example viewport"]
+    Body --> Section["Doc.Section groups"]
     Section --> Example["Doc.Example blocks"]
     Example --> Specimen["Live control specimen"]
     Example --> Source["Optional compact C# excerpt"]
@@ -22,15 +23,21 @@ first layout, exactly like any other application-authored `View`. There is no
 shared showcase base class and no mandatory metadata: a pane composes public
 `Stack`, marked `Text`, intrinsic chrome properties, and layout APIs directly.
 `Doc` (in `src/SharpVision.Showcase/Doc.cs`) holds the small composition helpers
-every pane shares: `Doc.Page(name, overview, sections...)` builds the bold
-heading plus an "Overview" paragraph and stacks the given sections beneath it;
-`Doc.Section(heading, description, examples...)` groups related live examples
-into one progressive teaching area; and
+every pane shares: `Doc.Page(name, overview, sections...)` builds an opaque
+Surface header with a bottom separator and places a vertical scrolling body in
+the remaining slot; `Doc.Section(icon, heading, description, examples...)`
+groups related live examples into one progressive teaching area; and
 `Doc.Example(heading, description, specimen, source?)` pairs actionable prose
 with one live specimen and an optional escaped C# excerpt. `Doc.Card`,
 `Doc.Row`, and `Doc.Column` remain composition shorthands for framing and
 arranging specimens. Source excerpts illustrate the same public setup used by
 the specimen and never define behavior absent from production code.
+
+The page header remains fixed while its body scrolls. Page names use bold Accent
+text, section headings use exactly one intentional emoji plus bold Accent text,
+example headings are bold without emoji, descriptions are dim, and source labels
+use the Info role. These levels are semantic marked Text rather than hard-coded
+palette indexes.
 
 `Gallery` owns the stable catalog of pane titles and factories
 (`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
@@ -57,8 +64,9 @@ The Canvas page explicitly separates the
 cover fixed, percentage, trailing-edge, opposing-edge stretch, explicit-size
 precedence, intrinsic union, negative placement, clipping, layering, and pointer
 transparency. Drawing sections cover line and box topology, fill and clear,
-shade and quadrant blocks, Unicode grapheme ownership at clip edges, a
-deterministic chart, and routed pointer coordinates. Custom drawing follows the
+shade and quadrant blocks, arbitrary line/circle/ellipse geometry, Unicode
+grapheme ownership at clip edges, a deterministic chart, and routed pointer
+coordinates. Custom drawing follows the
 [semantic rendering pipeline](rendering-pipeline.md#rendering-pipeline-contract)
 and
 [Unicode cell geometry](../concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract);
@@ -68,20 +76,23 @@ ordinary Button and Window pages rather than a dedicated control page.
 ## Responsive behavior
 
 The root is a `Dock` with a fixed 28-cell intrinsically bordered `Dock` sidebar
-and the main `Stack` in the remaining space. The main stack enables intrinsic
-`AutoScroll` on the vertical axis and reserves its scrollbar only when needed.
-The sidebar owns product identity, component-only stateful navigation entries,
-and compact interaction hints; its selected, focused, hovered, and pressed
-states follow the active application theme. The sidebar footer hosts a theme
-picker `ComboBox` and a visible `Quit` button. The picker lists every theme in
-the embedded `SharpVision.Styling.ThemeCatalog.Default` catalog — the built-in
-Light and Dark themes plus the curated editor themes (Dracula, Nord, Gruvbox,
-Solarized, and others) — grouped dark-first then light, and republishes the
-chosen application theme when selected. The Theming page renders the 12 semantic
-`ColorRole` values as labeled color swatches of the active application theme,
-updating live as the sidebar picker changes themes. `Ctrl+C` also exits from
-anywhere: the gallery handles it as a key in the preview pass so it works even
-when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
+and a non-scrolling page host in the remaining space. Each fresh `Doc.Page` owns
+its own vertically scrolling body, reserves its scrollbar only when needed, and
+suppresses horizontal rails so documentation remains a readable column. The
+sidebar owns product identity, component-only stateful navigation entries, and
+compact interaction hints; its selected, focused, hovered, and pressed states
+follow the active application theme. The sidebar footer uses a top separator and
+a two-column Grid: Theme aligns with its picker, while Quit aligns with its
+`Ctrl+C` hint. The footer reserves space before the decorative sidebar header so
+its actions remain usable on constrained terminals. The picker lists every theme
+in the embedded `SharpVision.Styling.ThemeCatalog.Default` catalog — the
+built-in Light and Dark themes plus the curated editor themes (Dracula, Nord,
+Gruvbox, Solarized, and others) — grouped dark-first then light, and republishes
+the chosen application theme when selected. The Theming page renders the 12
+semantic `ColorRole` values as labeled color swatches of the active application
+theme, updating live as the sidebar picker changes themes. `Ctrl+C` also exits
+from anywhere: the gallery handles it as a key in the preview pass so it works
+even when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
 rather than raising a host cancellation signal. The executable app runs through
 `ConsoleApplication.RunAsync` with a `Gallery` screen and no further
 configuration, so it gets the default xterm any-event (`1003`) SGR cell mouse
@@ -89,16 +100,24 @@ reporting from `ConsoleRunOptions` while `ConsoleApplication` owns the Unix
 raw-input lease and console transport for the run. The terminal library's
 default environment-hint policy remains conservative.
 
-The main pane reserves a vertical scrollbar automatically and suppresses a
-horizontal scrollbar so documentation remains a readable column. At narrow
-widths geometry saturates and clips safely rather than throwing or creating
-negative extents. Selecting a different sidebar component retains sidebar state
-but resets the main viewport to that page's header. Selection survives resize,
-and keyboard, pointer, focus, editing, and scrolling continue through the public
-runtime path. The initial sidebar entry takes focus after the first frame; Up,
-Down, Left, Right, Tab, Shift+Tab, Home, End, Page Up, and Page Down move the
-selected page and keep its entry visible. Enter activates the focused entry
-using the same path as a primary pointer release.
+At narrow widths geometry saturates and clips safely rather than throwing or
+creating negative extents. Selecting a different sidebar component retains
+sidebar state but constructs a fresh page body at offset zero beneath its fixed
+header. Selection survives resize, and keyboard, pointer, focus, editing, and
+scrolling continue through the public runtime path. The initial sidebar entry
+takes focus after the first frame; Up, Down, Left, Right, Tab, Shift+Tab, Home,
+End, Page Up, and Page Down move the selected page and keep its entry visible.
+Enter activates the focused entry using the same path as a primary pointer
+release.
+
+Popup and Window examples use populated toolbar/content/status surfaces beneath
+their promoted chrome so z-order is visible rather than implied by an empty
+parent. The Popup placement lab keeps one open Popup and one central anchor;
+Above, Below, Left, and Right actions mutate its requested side and expose the
+result in a status label. Window remains a non-modal ordinary child in Canvas or
+Overlay while rendering above the application-like surface. The type-style theme
+specimen compares a flat baseline Button with a flat semantic Accent Button and
+reports only `Background: Accent · Border: Heavy · Shadow: Off`.
 
 The FigletText page is an editor, not a static ornament: a `TextInput` updates
 the preview as text changes, while a scrollable `ComboBox` exposes the 400

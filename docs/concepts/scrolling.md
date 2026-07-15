@@ -45,6 +45,22 @@ their change events instead of inferring intent from the resulting value.
 
 Exact fit does not overflow. Zero extents produce a full-size stationary thumb.
 
+## Scrollbar presentation
+
+`ScrollBar.Chrome`/`Fill` and the corresponding
+`Container.ScrollBarChrome`/`ScrollBarFill` values are style-backed properties.
+The standard theme resolves both standalone and container-owned rails to Thin
+chrome with Line fill. A container copies its currently resolved values to its
+owned horizontal and vertical rails during arrangement; composite controls such
+as `TextInput` forward and synchronize the same values to their internal editor
+rails. A popup list, page viewport, table, text editor, and standalone
+`ScrollBar` therefore share one themed presentation by default.
+
+Normal style precedence applies: a local property value wins over an instance
+style, theme style, class default, and registered default. An explicit local
+override is permitted for a specimen or product-specific surface, but no control
+invents a private scrollbar presentation merely because it owns the rail.
+
 ## Thumb geometry
 
 [`Thumb.Resolve`](../../src/SharpVision/Scrolling/Thumb.cs) maps a range to a

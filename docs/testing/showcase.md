@@ -58,8 +58,10 @@ take focus, and shutdown to complete without runtime failure.
 
 The same runtime suite targets an SGR wheel report at the overflowing multiline
 `TextInput` specimen. It proves decoded terminal input advances the editor's own
-`VerticalOffset` while the enclosing scrolling documentation `Stack` retains its
-previous offset, protecting leaf-first wheel routing from future regressions.
+`VerticalOffset` while the enclosing page-body documentation `Stack` retains its
+previous offset, protecting leaf-first wheel routing from future regressions. A
+separate shell test scrolls that body and requires the fixed page
+identity/Overview header to retain its exact bounds.
 
 Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
@@ -74,23 +76,36 @@ mask input buffering. It also opens and selects the Figlet font dropdown, then
 drags the ScrollBar thumb with SGR press, motion, and release reports, asserting
 each visible committed value.
 
-Current `Doc.Page` panes use an Overview paragraph followed by wrapped
-`Doc.Section` groups. Each `Doc.Example` contains actionable marked-`Text`
-guidance, one live specimen, and optionally a framed C# excerpt escaped through
-`Text.Escape`. Tests render special characters in an excerpt to prove generic
-syntax, backslashes, and comparison operators remain literal visible text.
+Current `Doc.Page` panes use a fixed Surface header followed by wrapped
+`Doc.Section` groups in an independently scrolling body. Tests require one
+explicit emoji prefix and bold Accent text on every section, bold plain example
+titles, dim descriptions, and Info source labels. Each `Doc.Example` contains
+actionable marked-`Text` guidance, one live specimen, and optionally a framed C#
+excerpt escaped through `Text.Escape`. Tests render special characters in an
+excerpt to prove generic syntax, backslashes, and comparison operators remain
+literal visible text. Footer geometry tests require Theme, picker, Quit, and the
+`Ctrl+C` hint to remain non-overlapping at typical and constrained heights.
 
 Canvas has dedicated layout assertions for fixed, percentage, trailing-edge,
 opposing-edge stretch, explicit-size precedence, intrinsic, negative-origin,
 layering, clipping, and pointer-transparent stages. Separate custom-control
 samples prove line/box topology, shade and quadrants, fill/clear, Unicode clip
-repair, deterministic charting, and routed pointer readout through semantic
-cells. Every sample validates wide-cell continuation ownership under the
-[rendering correctness oracle](rendering.md#correctness-oracle). Shadow is
+repair, exact line/circle/ellipse cells and clipping, deterministic charting,
+and routed pointer readout through semantic cells. Grid tests require visible
+two-to-one star interiors. Table tests require intrinsic interactive cells,
+fully visible headerless shortcut rows, and deliberate both-axis overflow with
+aligned chrome. Every sample validates wide-cell continuation ownership under
+the [rendering correctness oracle](rendering.md#correctness-oracle). Shadow is
 intrinsic control chrome rather than a catalog page: focused control-frame tests
 prove composite and block-glyph footprints, clipping, wide-cell styling, and
 hit-test exclusion, while Button and Window retain visible composite,
 block-glyph, and shadow-disabled variants.
+
+Layer tests drive Above, Below, Left, and Right controls and require the same
+open Popup surface to move around one anchor. Popup and Window surfaces must
+overlap populated backdrop bounds. Theme showcase tests require a shadowless
+baseline and semantic type-styled Button, a concise semantic readout, and no raw
+`Glyphs` record formatting in visible text.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The

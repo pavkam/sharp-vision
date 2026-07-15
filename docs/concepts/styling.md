@@ -55,6 +55,16 @@ input acceptance.
 Public theme resolution accepts any combination of defined state flags and
 rejects unknown bits before evaluating the cascade.
 
+The standard base `Control` focus state does not add underline. Focus is
+expressed by the control type at the semantic surface that represents its
+interaction: `Button` and `ComboBox` use an Accent border, `ScrollBar` uses an
+Accent rail, and choice controls use an Accent mark. Pressed and checked states
+likewise avoid a generic selection-background overlay. `CheckBox` and
+`RadioButton` therefore preserve the parent background while checked, and an
+indeterminate `CheckBox` uses the Warning role for its mark. A custom control
+that needs focus presentation defines its own type style rather than decorating
+every cell inherited from `Control`.
+
 ## Invalidation and tests
 
 Property metadata declares the earliest affected phase: measure, arrange, or

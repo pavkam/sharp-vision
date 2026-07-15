@@ -10,7 +10,11 @@ choices never show through content behind the drop-down. The list uses the same
 keyboard, pointer, selection, and scrolling semantics as a standalone list. When
 the active style supplies a `State.Checked` background, the selected choice
 fills the complete interior row, including trailing blank cells, under the
-[List row rendering contract](../collections/list.md#list-contract).
+[List row rendering contract](../collections/list.md#list-contract). The
+standard closed field owns an opaque Surface background so its selected value
+remains distinct from the parent even when `BorderThickness` is zero. A caller
+may add intrinsic border chrome normally; focused fields use the Accent
+foreground and border.
 
 ## API
 
@@ -38,6 +42,20 @@ test. A close that began in the list restores keyboard focus to the visible
 ComboBox field during [Popup closing](../windows/popup.md#api), before the list
 becomes unavailable.
 
+While open, a root preview registration observes input outside the ComboBox and
+its popup. A primary press elsewhere or any wheel action elsewhere closes the
+popup without committing the highlighted row; the outside target continues
+receiving the routed input. The same registration is removed on close,
+reparenting, unavailability, and disposal. Focus is restored to the field only
+when the closing list previously owned focus, so an outside click may keep the
+new target focused.
+
+Pointer motion over the list paints the complete hovered row with the theme's
+Surface color without changing `SelectedIndex`. The committed choice retains the
+Checked-state selection colors, keeping hover, keyboard navigation, and
+committed selection visually distinct. Long lists use the
+[theme-owned scrollbar presentation](../../concepts/scrolling.md#scrollbar-presentation).
+
 ## Example
 
 ```csharp
@@ -53,5 +71,5 @@ var density = new ComboBox
 
 Cover item copying, index validation, framed popup rendering/hit testing, popup
 arrangement, Escape, mouse selection through the Popup, keyboard
-focus/navigation/activation, scrollable long lists, resize, style states, and
-exact cells.
+focus/navigation/activation, outside click and wheel dismissal, hover without
+commit, scrollable long lists, resize, style states, and exact cells.
