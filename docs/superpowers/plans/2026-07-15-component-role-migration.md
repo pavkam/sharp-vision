@@ -141,49 +141,203 @@ removes them instead of laundering them into the content hierarchy.
       focused showcase suites plus documentation, build, format, link, and diff
       checks.
 
-## Task 3: Make `Pressable` a true one-content interaction base
+## Task 3: Atomically migrate the complete `Pressable` interaction wave
 
-**Production:**
+`Pressable` cannot become independently green. Every concrete subclass calls its
+capacity constructor, several compile against inherited `Children`, and
+`ComboBox` both stores its Popup in that collection and hides Container scroll
+members. Treat the kernel, all subclasses, ListItem, and ComboBox as one
+staged-red/atomic-green change. Do not commit, hand off, or run a claimed green
+checkpoint between individual production edits.
 
-- Modify `src/SharpVision/Controls/Pressable.cs`.
-- Modify `src/SharpVision/Input/CaptureManager.cs` if cancellation delivery is
-  finalized here.
+**Resolved role decisions:**
 
-**Tests:**
+1. `MenuItem : Pressable` uses inherited `Content` as its sole visible face;
+   remove `Header`. A separator is not pressable, so remove
+   `MenuItemKind.Separator` and add `MenuSeparator : Control`.
+2. `ComboBox : Control`, not `Pressable` or `ContentControl`. Its closed face is
+   the selected item text and it exposes neither `Content` nor `Children`.
+   `Pressable` and `ComboBox` delegate input mechanics to one internal composed
+   press interaction helper instead of using dishonest inheritance.
+3. `ComboBox` owns exactly one private Popup. `Popup.Content` owns the private
+   List; registering both parts directly on ComboBox would violate one-parent
+   ownership.
 
-- Modify `tests/SharpVision.Tests/Controls/PressableTests.cs`.
-- Add `ExternalToggleChip.cs` and tests to the consumer project.
+**Production files changed together:**
 
-- [ ] Add a reflection test asserting `Pressable : ContentControl` and no
-      capacity constructor/public `Children` exists.
-- [ ] Add consumer behavior tests for keyboard/pointer parity, content-target
-      hover, focus request, capture, cancellation, disabled/hidden cleanup, and
-      one activation.
-- [ ] Change the base and remove direct manager/event subscription plumbing in
-      favor of protected focus/capture/cancellation hooks.
-- [ ] Preserve Space hold/release, Enter, pointer-inside activation, capture
-      cancellation, and no activation after unavailable state.
-- [ ] Run Pressable, pointer, focus, routing, and integration tests.
+- `src/SharpVision/Controls/Control.cs`: add the protected
+  `SetVisualStateProperty<T>` mutation seam and make selected-state propagation
+  clear resolved-style caches before dynamic style-impact invalidation.
+- `src/SharpVision/Controls/PressInteraction.cs`: add the internal reusable
+  keyboard, pointer, focus, capture, cancellation, and pressed-state machine.
+- `src/SharpVision/Controls/Pressable.cs`: change the base to `ContentControl`,
+  replace the capacity constructor with a protected parameterless constructor,
+  and delegate interaction to `PressInteraction` through protected hooks.
+- `src/SharpVision/Controls/Button.cs`, `CheckBox.cs`, `RadioButton.cs`,
+  `RadioGroup.cs`, `MenuItem.cs`, `ListItem.cs`, and `ComboBox.cs`: migrate
+  every content/layout/state transaction in the same cut.
+- `src/SharpVision/Controls/MenuSeparator.cs`, `Menu.cs`, `MenuItems.cs`, and
+  `MenuItemKind.cs`: introduce the non-interactive separator, constrain the
+  mixed item collection through typed overloads, and coordinate atomic radio
+  publication.
+- `src/SharpVision.Showcase/Controls/NavigationItem.cs`: remove the capacity
+  constructor and give its label a coherent inherited-content layout.
+- `src/SharpVision.Showcase/Panes/ButtonPane.cs`, `CheckBoxPane.cs`,
+  `RadioButtonPane.cs`, `MenuPane.cs`, and `ComboBoxPane.cs`: migrate examples
+  and retain visible behavior.
 
-## Task 4: Migrate pressable concrete controls
+`CaptureManager` is not part of the planned edit: `Control` already exposes
+`RequestFocus`, `CapturePointer`, `HasPointerCapture`, `ReleasePointerCapture`,
+and `OnPointerCaptureCancelled`. Change the manager only if a focused red test
+proves those hooks cannot express the documented transaction.
 
-**Production:**
+**Tests and consumer proof changed together:**
 
-- Modify `Button.cs`, `CheckBox.cs`, `RadioButton.cs`, `MenuItem.cs`,
-  `ListItem.cs`, and their partial files.
+- Modify `PressableTests`, `ButtonTests`, `CheckBoxTests`, `RadioButtonTests`,
+  `MenuTests`, `ListTests`, `ComboBoxTests`, `PopupTests`, `StateModelTests`,
+  and `InteractiveControlTests`.
+- Modify `tests/SharpVision.Tests/Support/ProbePressable.cs` and create
+  `tests/SharpVision.Tests/Support/OwnedTree.cs` for test-only traversal across
+  every registered ownership slot; private ComboBox parts must not gain a
+  production accessor for tests.
+- Create `tests/SharpVision.Consumer.Tests/ExternalToggleChip.cs` and extend
+  `ExternalContractTests.cs`. The external control derives from `Pressable`,
+  uses inherited `Content`, toggles checked state through the protected visual
+  state seam, and records activation/capture-cancellation without internal or
+  friend access.
+- Update showcase rendering/interaction tests for NavigationItem, every migrated
+  content control, private ComboBox popup traversal, and final cells.
 
-- [ ] Remove duplicate `Content` implementations and child-capacity constructors
-      one control at a time.
-- [ ] Convert checked/selected/indeterminate setters to the protected visual
-      state invalidation contract so state-specific geometry cannot be
-      under-invalidated.
-- [ ] Preserve command/click order, tri-state transitions, radio-group
-      atomicity, menu kinds, selected row propagation, Unicode mark fallback,
-      exact cells, and style resolution.
-- [ ] Run each focused suite, `StateModelTests`, and `InteractiveControlTests`
-      before the next control.
+**Stage the red evidence before changing production:**
 
-## Task 5: Add deterministic `CompositeControl`
+- [ ] Run the existing Pressable, concrete-control, List, ComboBox, Popup,
+      pointer, focus, routing, state-model, integration, consumer, and showcase
+      suites as the green baseline.
+- [ ] Add `Type_WhenInspected_UsesSingleContentPressableRole` reflection
+      coverage for `Pressable`, Button, CheckBox, RadioButton, MenuItem,
+      ListItem, NavigationItem, ProbePressable, and ExternalToggleChip. Assert
+      `Pressable.BaseType == typeof(ContentControl)`, inherited `Content` is not
+      redeclared, no pressable type is assignable to `Container`, and
+      `Children`, capacity constructors, and capture-manager fields are absent.
+      Separately assert `ComboBox.BaseType == typeof(Control)`, that it exposes
+      no `Content`, `Children`, hidden `new` scroll members, Popup, or List, and
+      that `MenuItemKind` has no Separator value. Run it and record the expected
+      failures against the current hierarchy.
+- [ ] Add direct routed-pointer tests proving Pressable itself requests focus
+      and capture when content is the original hit target; do not rely on
+      `CaptureManager.Dispatch` pre-focusing the target. Cover inside release,
+      outside release, Space cancellation, disable, Hidden, Collapsed, detach,
+      terminal-focus loss, pointer-capture callback order, and release after
+      cancellation producing no activation. Record the focused red result for
+      the missing protected-hook implementation.
+- [ ] Warm normal-state style caches, clear pending work, then activate Checked,
+      Indeterminate, and Selected overlays containing measure-impact Padding.
+      Assert the new resolved value is visible immediately, `Pending` is
+      `Invalidation.All`, render-only overlays remain render-only, and
+      equivalent assignments publish/invalidate nothing. Run these tests and
+      record the stale-cache/under-invalidation failures.
+- [ ] Add a RadioButton observer test in which the old member's
+      `PropertyChanged(IsChecked)` handler already sees the new member selected.
+      Preserve final `Unchecked -> Checked -> SelectionChanged` event order and
+      the existing reentrant stale-selection suppression. Add the equivalent
+      Menu radio observer test if its current loop publishes a partial group.
+- [ ] Add content-role red tests through the common `ContentControl` surface:
+      replacement/disposal ownership for Button/CheckBox/RadioButton; prefix
+      measure/arrange and Unicode cells for CheckBox/RadioButton/MenuItem;
+      Button pressed-face translation; and ListItem width-only resolved
+      arrangement for variable-height content. Add separate ComboBox tests for
+      selected-text derivation and a private-ownership test proving
+      `ComboBox -> Popup -> List`, with no public route that can replace or
+      remove either private part. Add MenuSeparator tests proving it never
+      focuses, hits, selects, or invokes.
+
+**Perform one atomic production cut:**
+
+- [ ] Implement `SetVisualStateProperty<T>(ref field, value, propertyName)` with
+      dispatcher/lifetime validation before equivalence, field commit, resolved
+      style-cache invalidation, dynamic aggregate visual-state invalidation, and
+      one `PropertyChanged` notification. Fix `SetSelectedState` to invalidate
+      each propagated control's resolved cache before calculating its style
+      impact.
+- [ ] Add `PressInteraction` as an owner-bound internal behavior. It accepts
+      callbacks for bounds, availability, focus, capture, pressed state, and
+      activation; owns no control-tree state; and exposes event, focus,
+      unavailable, and capture-cancellation entry points. Change Pressable to
+      `ContentControl` and delegate its protected hooks to this helper using
+      only `RequestFocus`, `CapturePointer`, `HasPointerCapture`, and
+      `ReleasePointerCapture`. ComboBox composes the same helper directly.
+      Preserve exact Space press/repeat/release, Enter, primary-pointer
+      inside/outside, focus-loss, availability, and one-activation semantics.
+- [ ] Remove duplicate Content properties and capacity constructors from Button,
+      CheckBox, and RadioButton. Use `MeasureChild`/`ArrangeChild`; Button keeps
+      pressed shadow translation, while CheckBox and RadioButton reserve their
+      mark prefixes and exclude collapsed content margins. Route checked and
+      indeterminate commits through the new visual-state seam.
+- [ ] Stage both RadioButton group fields before publishing either property
+      notification. Continue notification and specific-event publication after
+      callback failures, retain the earliest failure, and suppress stale outer
+      Checked/SelectionChanged events after a reentrant selection. Resolve a
+      checked member's destination group before publishing GroupName so no
+      observer can see duplicate selection.
+- [ ] When disabling CheckBox three-state mode from an indeterminate value,
+      stage `IsThreeState = false` and `IsChecked = false` before either
+      property notification. Publish property changes before semantic check
+      events, and never expose the invalid false/null combination to callbacks.
+- [ ] Remove MenuItem.Header and use inherited Content with prefix-aware
+      `MeasureChild`/`ArrangeChild(..., ResolvedAxes.Both)`. Remove the
+      Separator enum value and implement MenuSeparator as a non-focusable,
+      non-hit-testable leaf. Change `MenuItems` to `IReadOnlyList<Control>`
+      while exposing only typed Add/Remove overloads for MenuItem and
+      MenuSeparator; arbitrary controls cannot enter. Stage all matching radio
+      values before publishing changed properties in item order, suppress stale
+      outer events after reentry, and retain the earliest callback failure.
+- [ ] Set inherited ListItem.Content in its constructor and remove the duplicate
+      member. Preserve semantic hit ownership and selected-state propagation.
+      Arrange with `ArrangeChild(content, bounds, ResolvedAxes.Width)`, not
+      Both, so variable-height List rows retain their current contract. This
+      migration does not move List's Stack; that remains the later ItemsControl
+      task. Commit and propagate selected state through the realized subtree
+      before publishing ListItem.IsSelected.
+- [ ] Make ComboBox a direct Control and compose `PressInteraction`. Register
+      one private popup slot; Popup.Content owns the private List, so there is
+      never a duplicate parent edge. Render and measure the selected item text
+      directly, use protected child transactions only for popup geometry, remove
+      `new` from delegated scrollbar properties, and restore focus with
+      `RequestFocus` rather than manager access. Preserve selection order,
+      open/close failure semantics, Escape, clipping, promotion, hit testing,
+      resize, scrollbars, and exact cells.
+- [ ] Remove capacity calls from ProbePressable and NavigationItem, complete the
+      NavigationItem content layout, add ExternalToggleChip, and migrate every
+      test/showcase call site that currently reaches a concrete Pressable's
+      `Children` or ComboBox's Popup by public collection index. Migrate all
+      `.Header` and `MenuItemKind.Separator` call sites to Text content and
+      MenuSeparator. Do not add compatibility constructors, aliases, or
+      private-part accessors.
+
+**Return the whole wave to green before committing:**
+
+- [ ] Build the complete solution once all production and call-site edits are
+      present. Expected result: zero capacity-constructor/Children/hiding
+      compiler errors and zero warnings. Do not claim an intermediate subclass
+      as independently green.
+- [ ] Run focused SharpVision tests for Pressable, Button, CheckBox,
+      RadioButton, Menu, List, ComboBox, Popup, Pointer, Focus, Routing,
+      StateModel, and InteractiveControl; run the unfriended consumer tests and
+      complete showcase rendering/interaction suites.
+- [ ] Search production/tests/docs for `: Container`, `base(capacity:`,
+      `.Children`, `public new`, direct FocusOwner/CaptureOwner access, and
+      duplicate Content declarations scoped to the migrated wave. Every match
+      must be either a true panel/owner call site or removed.
+- [ ] Create `docs/controls/pressable.md`; update Button, CheckBox, RadioButton,
+      MenuItem, Menu, List, ComboBox, control/index, custom-component, styling,
+      input/focus, testing, and showcase documentation plus XML examples.
+      Include ExternalToggleChip as the third-party extension proof and document
+      MenuItem content, MenuSeparator, ComboBox selected text, and reusable
+      internal interaction composition decisions.
+- [ ] Run `make format`, `make lint`, `make build`, and `make test`, then
+      `git diff --check`. Commit the atomic wave only after all four gates pass.
+
+## Task 4: Add deterministic `CompositeControl`
 
 **Production:**
 
@@ -208,7 +362,7 @@ removes them instead of laundering them into the content hierarchy.
 - [ ] Prove the consumer composite is not a `Container` and has no public
       `Children`.
 
-## Task 6: Migrate `Screen` and the showcase, then remove `View`
+## Task 5: Migrate `Screen` and the showcase, then remove `View`
 
 **Production:**
 
@@ -239,7 +393,7 @@ removes them instead of laundering them into the content hierarchy.
 - [ ] Assert first measure of each representative pane leaves ownership and
       pending measure state unchanged after completion.
 
-## Task 7: Add `ItemsControl` with a private presentation host
+## Task 6: Add `ItemsControl` with a private presentation host
 
 **Production:**
 
@@ -262,15 +416,19 @@ removes them instead of laundering them into the content hierarchy.
 - [ ] Prove a third-party `TagCloud` can expose its own typed item collection
       and realize controls without accessing ownership internals.
 
-## Task 8: Migrate `List`
+## Task 7: Migrate `List`
 
-**Production:** modify `src/SharpVision/Controls/List.cs` and `ListItem.cs`.
+**Production:** modify `src/SharpVision/Controls/List.cs`.
 
 **Tests/docs:** update `ListTests`, integration/performance tests, list docs,
 and showcase pane.
 
 - [ ] Add reflection tests that `List : ItemsControl`, exposes no `Children`,
       and declares no hidden members.
+- [ ] Keep the Task 3 `ListItem : Pressable` content contract intact: inherited
+      `Content`, semantic hit ownership, selected-state propagation, and
+      width-only resolved arrangement. Do not reintroduce a private Content
+      alias while moving List's presentation host.
 - [ ] Move the existing private scrolling `Stack` into the ItemsControl host.
 - [ ] Preserve atomic item/template replacement; improve it to validate and
       prepare every realized control before replacing the complete batch.
@@ -283,19 +441,22 @@ and showcase pane.
 - [ ] Run List, scrolling, interactive integration, performance, and showcase
       tests.
 
-## Task 9: Migrate `Menu`
+## Task 8: Migrate `Menu`
 
-**Production:** modify `Menu.cs`, `MenuItems.cs`, and `MenuItem.cs`.
+**Production:** modify `Menu.cs` and `MenuItems.cs`.
 
 - [ ] Add tests that only `MenuItems` can change semantic items and arbitrary
       controls cannot enter the realized host.
+- [ ] Preserve the single MenuItem content model resolved in Task 3. This task
+      moves Menu's presentation ownership only; it must not restore `Header`,
+      add a second content alias, or change separator suppression.
 - [ ] Migrate to an ItemsControl `Stack` host while preserving horizontal/
       vertical orientation, spacing, separators, radio grouping, selection, open
       popup routing, and invocation.
 - [ ] Remove every cast/late failure caused by public `Children`.
 - [ ] Run Menu, popup, window, routing, and showcase tests.
 
-## Task 10: Migrate `Table`
+## Task 9: Migrate `Table`
 
 **Production:**
 
@@ -316,7 +477,7 @@ and showcase pane.
       every callback.
 - [ ] Run Table, grid/track allocation, randomized layout, and showcase tests.
 
-## Task 11: Return `TextInput` to a primitive leaf
+## Task 10: Return `TextInput` to a primitive leaf
 
 **Production:** modify `src/SharpVision/Controls/TextInput.cs`.
 
@@ -331,21 +492,7 @@ and showcase pane.
 - [ ] Run TextInput, terminal input, Unicode integration, rendering, and
       performance tests.
 
-## Task 12: Migrate `ComboBox` last
-
-**Production:** modify `src/SharpVision/Controls/ComboBox.cs`.
-
-- [ ] Add reflection tests asserting one inherited `Content`, no `Children`, and
-      no hidden scroll members.
-- [ ] Register the popup and list as private parts. Keep the closed face content
-      semantic and the open popup on the popup layer.
-- [ ] Delegate dropdown scroll configuration without `new` because no inherited
-      Container API exists.
-- [ ] Preserve open/close focus restoration, selection event order, Escape,
-      placement, clipping, hit testing, and exact rendering.
-- [ ] Run ComboBox, List, Popup, interactive integration, and showcase tests.
-
-## Task 13: Extract internal Container responsibilities
+## Task 11: Extract internal Container responsibilities
 
 **Production:**
 
@@ -364,7 +511,7 @@ and showcase pane.
 - [ ] Run all Container auto-size/scroll, layout, randomized, integration,
       rendering, and performance suites.
 
-## Task 14: Role documentation, API guards, and full gate
+## Task 12: Role documentation, API guards, and full gate
 
 - [ ] Update every affected control specification and
       `docs/concepts/custom-components.md`, layout, scrolling, lifecycle,

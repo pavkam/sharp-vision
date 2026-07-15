@@ -217,8 +217,16 @@ testing, navigation, theme/context propagation, and disposal.
 `Content` property. Their former `Child` aliases are removed, and neither type
 inherits an arbitrary `Children` collection.
 
-The remaining interaction family migrates to the same role through `Pressable`:
-`Button`, `CheckBox`, `RadioButton`, `MenuItem`, and `ComboBox`.
+The one-face interaction family migrates to the same role through `Pressable`:
+`Button`, `CheckBox`, `RadioButton`, and `MenuItem`. `MenuItem` uses inherited
+`Content` as its only face; it does not retain a competing `Header` alias.
+
+`ComboBox` derives directly from `Control`. Its closed face is selected item
+text, not replaceable content, and its private Popup owns its private List as
+content. `Pressable` and `ComboBox` compose the same internal press-interaction
+state machine; sharing mechanics does not justify a false public inheritance
+relationship. Separators are independent non-interactive `MenuSeparator` leaves
+rather than a `MenuItemKind` that violates pressable substitutability.
 
 ### `CompositeControl`
 
@@ -433,18 +441,20 @@ attributes, or text.
 
 ## Concrete migration table
 
-| Control                                                     | Current base | Target base        |
-| ----------------------------------------------------------- | ------------ | ------------------ |
-| `Stack`, `Grid`, `Dock`, `Overlay`, `Canvas`                | `Container`  | `Container`        |
-| `Border`, `Shadow`                                          | `Container`  | removed            |
-| `Window`, `Popup`                                           | `Container`  | `ContentControl`   |
-| `Pressable`                                                 | `Container`  | `ContentControl`   |
-| `Button`, `CheckBox`, `RadioButton`, `MenuItem`, `ComboBox` | `Pressable`  | `Pressable`        |
-| `View`                                                      | `Container`  | removed            |
-| `Screen`                                                    | `View`       | `CompositeControl` |
-| `List`, `Menu`, `Table`                                     | `Container`  | `ItemsControl`     |
-| `TextInput`                                                 | `Container`  | `Control`          |
-| `Text`, `RichText`, `FigletText`, `ScrollBar`               | `Control`    | `Control`          |
+| Control                                         | Current base | Target base        |
+| ----------------------------------------------- | ------------ | ------------------ |
+| `Stack`, `Grid`, `Dock`, `Overlay`, `Canvas`    | `Container`  | `Container`        |
+| `Border`, `Shadow`                              | `Container`  | removed            |
+| `Window`, `Popup`                               | `Container`  | `ContentControl`   |
+| `Pressable`                                     | `Container`  | `ContentControl`   |
+| `Button`, `CheckBox`, `RadioButton`, `MenuItem` | `Pressable`  | `Pressable`        |
+| `ComboBox`                                      | `Pressable`  | `Control`          |
+| `MenuSeparator`                                 | n/a          | `Control`          |
+| `View`                                          | `Container`  | removed            |
+| `Screen`                                        | `View`       | `CompositeControl` |
+| `List`, `Menu`, `Table`                         | `Container`  | `ItemsControl`     |
+| `TextInput`                                     | `Container`  | `Control`          |
+| `Text`, `RichText`, `FigletText`, `ScrollBar`   | `Control`    | `Control`          |
 
 `Inline`, `Run`, `LineBreak`, and `Hyperlink` retain their separate rich-text
 model and are not part of the control inheritance tree.
