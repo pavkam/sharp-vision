@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-
-
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
 public sealed class ContainerScrollTests
 {
@@ -548,7 +546,7 @@ public sealed class ContainerScrollTests
     [Fact]
     public void Layout_WhenHorizontalBarIsHidden_ReflowsWordWrappedContentToViewportWidth()
     {
-        var text = new ControlText("one two three") { Wrapping = Wrapping.Word };
+        var text = new ControlText("one two three") { Overflow = Overflow.Wrap };
         var container = new LayoutProbe()
         {
             AutoScroll = true,

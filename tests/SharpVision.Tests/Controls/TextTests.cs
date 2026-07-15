@@ -22,8 +22,7 @@ public sealed class TextTests
 
         empty.Content.ShouldBe(string.Empty);
         value.Content.ShouldBe("hello");
-        value.Wrapping.ShouldBe(Wrapping.None);
-        value.Trimming.ShouldBe(Trimming.None);
+        value.Overflow.ShouldBe(Overflow.Visible);
         value.TextAlignment.ShouldBe(Alignment.Start);
         value.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
         value.Foreground.ShouldBeNull();
@@ -40,15 +39,14 @@ public sealed class TextTests
         var text = new ControlText("safe");
 
         _ = Should.Throw<ArgumentNullException>(() => text.Content = null!);
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => text.Wrapping = (Wrapping) 99);
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => text.Trimming = (Trimming) 99);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => text.Overflow = (Overflow) 99);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => text.TextAlignment = (Alignment) 99);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => text.AmbiguousWidth = (Ambiguous) 99);
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             text.Attributes = (TerminalAttributes) int.MaxValue);
 
         text.Content.ShouldBe("safe");
-        text.Wrapping.ShouldBe(Wrapping.None);
+        text.Overflow.ShouldBe(Overflow.Visible);
         text.Attributes.ShouldBeNull();
     }
 
@@ -56,7 +54,7 @@ public sealed class TextTests
     [Fact]
     public void Layout_WhenContentWraps_CommitsGraphemeSafeLines()
     {
-        var text = new ControlText("e\u0301界x") { Wrapping = Wrapping.Grapheme };
+        var text = new ControlText("e\u0301界x") { Overflow = Overflow.WrapAnywhere };
 
         new Engine().Layout(text, new Size(2, 4));
 
@@ -74,7 +72,7 @@ public sealed class TextTests
     {
         var text = new ControlText("abcd")
         {
-            Wrapping = Wrapping.Grapheme,
+            Overflow = Overflow.WrapAnywhere,
             TextAlignment = Alignment.End,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -92,7 +90,7 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenContentIsTrimmedAndMultiline_WritesExpectedCells()
     {
-        var text = new ControlText("ab界c\nZ") { Trimming = Trimming.GraphemeEllipsis };
+        var text = new ControlText("ab界c\nZ") { Overflow = Overflow.Ellipsis };
         new Engine().Layout(text, new Size(4, 2));
         using Frame frame = new(new Size(4, 2));
 
@@ -110,7 +108,7 @@ public sealed class TextTests
     {
         var text = new ControlText("abcde")
         {
-            Trimming = Trimming.GraphemeEllipsis,
+            Overflow = Overflow.Ellipsis,
             AmbiguousWidth = Ambiguous.Wide,
         };
         new Engine().Layout(text, new Size(4, 1));
@@ -231,7 +229,7 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenLayoutIsUnchanged_AllocatesNoManagedMemoryAfterWarmup()
     {
-        var text = new ControlText("e\u0301 · 界 · 👩‍💻") { Wrapping = Wrapping.Word };
+        var text = new ControlText("e\u0301 · 界 · 👩‍💻") { Overflow = Overflow.Wrap };
         var engine = new Engine();
         var size = new Size(80, 2);
         using Frame frame = new(size);
@@ -265,5 +263,130 @@ public sealed class TextTests
             text.Invalidate(Invalidation.Render);
             text.Render(frame.Canvas);
         }
+    }
+
+    /// <summary>Verifies valid tags are removed before measuring visible content.</summary>
+    [Fact]
+    public void Layout_WhenContentContainsMarkup_MeasuresVisibleTextOnly()
+    {
+        ControlText text = new("<b>hi</b>");
+
+        new Engine().Layout(text, new Size(80, 1));
+
+        text.DesiredSize.ShouldBe(new Size(2, 1));
+        text.Lines.ToArray().ShouldBe([new Line(0, 2, 2, 0, false)]);
+    }
+
+    /// <summary>Verifies malformed markup remains visible and never fails during rendering.</summary>
+    [Fact]
+    public void Render_WhenMarkupIsMalformed_PreservesLiteralContent()
+    {
+        ControlText text = new("<unknown <b>x");
+        new Engine().Layout(text, new Size(40, 1));
+        using Frame frame = new(new Size(40, 1));
+
+        Should.NotThrow(() => text.Render(frame.Canvas));
+
+        FrameOracle.Get(frame, default).ShouldBe("<");
+        text.DesiredSize.Width.ShouldBe(13);
+    }
+
+    /// <summary>Verifies dynamic text escapes into literal visible content.</summary>
+    [Fact]
+    public void Escape_WhenAssignedToContent_RendersLiteralText()
+    {
+        ControlText text = new(ControlText.Escape(@"a < b\c"));
+        new Engine().Layout(text, new Size(20, 1));
+        using Frame frame = new(new Size(20, 1));
+
+        text.Render(frame.Canvas);
+
+        text.DesiredSize.Width.ShouldBe(7);
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("<");
+        FrameOracle.Get(frame, new Point(5, 0)).ShouldBe("\\");
+    }
+
+    /// <summary>Verifies markup facets compose into exact semantic cell metadata.</summary>
+    [Fact]
+    public void Render_WhenContentIsMarked_AppliesCompleteSemanticStyle()
+    {
+        ControlText text = new(
+            "<fg=2><bg=#102030><u=curly><uc=214><link=https://example.test>x</link></uc></u></bg></fg>");
+        new Engine().Layout(text, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+
+        text.Render(frame.Canvas);
+
+        TerminalStyle style = frame.GetCell(default).Style;
+        style.Foreground.ShouldBe(Color.Indexed(2));
+        style.Background.ShouldBe(Color.Rgb(16, 32, 48));
+        style.Underline.ShouldBe(Underline.Curly);
+        style.UnderlineColor.ShouldBe(Color.Indexed(214));
+        style.Hyperlink.ShouldBe("https://example.test");
+    }
+
+    /// <summary>Verifies markup role colors resolve through the attached active theme.</summary>
+    [Fact]
+    public void Render_WhenMarkupUsesThemeRole_ResolvesConcretePaletteColor()
+    {
+        Theme theme = new();
+        theme.SetColor(ColorRole.Accent, Color.Rgb(10, 20, 30));
+        theme.Freeze();
+        ControlText text = new("<accent>x</accent>");
+        ThemeTestSupport.ApplyTheme(text, theme);
+        new Engine().Layout(text, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+
+        text.Render(frame.Canvas);
+
+        frame.GetCell(default).Style.Foreground.ShouldBe(Color.Rgb(10, 20, 30));
+    }
+
+    /// <summary>Verifies a markup boundary inside one grapheme never splits its cell ownership.</summary>
+    [Fact]
+    public void Render_WhenStyleBoundarySplitsGrapheme_UsesStyleAtClusterStart()
+    {
+        ControlText text = new("<red>e</red><blue>\u0301</blue>");
+        new Engine().Layout(text, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+
+        text.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, default).ShouldBe("e\u0301");
+        frame.GetCell(default).Style.Foreground.ShouldBe(Color.Indexed(1));
+    }
+
+    /// <summary>Verifies markup blink tags override an incompatible inherited blink kind.</summary>
+    [Fact]
+    public void Render_WhenMarkupOverridesBlink_ProducesValidLatestBlinkStyle()
+    {
+        ControlText text = new("<rapidblink>x</rapidblink>")
+        {
+            Attributes = TerminalAttributes.Blink,
+        };
+        new Engine().Layout(text, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+
+        Should.NotThrow(() => text.Render(frame.Canvas));
+
+        frame.GetCell(default).Style.Attributes.ShouldBe(TerminalAttributes.RapidBlink);
+    }
+
+    /// <summary>Verifies a typed markup underline overrides an inherited legacy underline.</summary>
+    [Fact]
+    public void Render_WhenMarkupOverridesUnderline_UsesMarkupShape()
+    {
+        ControlText text = new("<u=dashed>x</u>")
+        {
+            Attributes = TerminalAttributes.Underline,
+        };
+        new Engine().Layout(text, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+
+        text.Render(frame.Canvas);
+
+        TerminalStyle style = frame.GetCell(default).Style;
+        style.Attributes.ShouldBe(TerminalAttributes.None);
+        style.Underline.ShouldBe(Underline.Dashed);
     }
 }

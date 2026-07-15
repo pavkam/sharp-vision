@@ -3,20 +3,25 @@
 
 namespace SharpVision.Controls;
 
-
+using SharpVision.Styling;
+using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Text;
 
 using TextLayout = SharpVision.Text.Layout;
+using TerminalUnderline = SharpVision.Terminal.Protocols.Underline;
 
-/// <summary>Displays cached grapheme-safe text through semantic terminal cells.</summary>
+/// <summary>Displays grapheme-safe inline-markup text through semantic terminal cells.</summary>
 public sealed class Text: Control
 {
+    private const TerminalAttributes _blinkAttributes =
+        TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
     private const string _ellipsis = "…";
-    private string? _cachedContent;
+    private string _display = string.Empty;
+    private StyleSpan[] _spans = [];
+    private string? _parsedContent;
     private int _cachedWidth;
-    private Wrapping _cachedWrapping;
-    private Trimming _cachedTrimming;
+    private Overflow _cachedOverflow;
     private Alignment _cachedAlignment;
     private Ambiguous _cachedAmbiguous;
     private bool _hasAmbiguousWidth;
@@ -29,8 +34,8 @@ public sealed class Text: Control
     {
     }
 
-    /// <summary>Initializes text with non-null immutable-at-render content.</summary>
-    /// <param name="content">The non-null UTF-16 content.</param>
+    /// <summary>Initializes text with non-null inline-markup content.</summary>
+    /// <param name="content">The non-null markup string.</param>
     /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
     public Text(string content)
     {
@@ -38,7 +43,8 @@ public sealed class Text: Control
         Content = content;
     }
 
-    /// <summary>Gets or sets the non-null UTF-16 content.</summary>
+    /// <summary>Gets or sets non-null inline-markup content.</summary>
+    /// <remarks>Malformed markup renders literally and never changes the setter's exception surface.</remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -56,11 +62,11 @@ public sealed class Text: Control
         }
     } = string.Empty;
 
-    /// <summary>Gets or sets the logical-line wrapping policy.</summary>
+    /// <summary>Gets or sets how horizontal overflow is formatted.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Wrapping Wrapping
+    public Overflow Overflow
     {
         get;
         set
@@ -72,25 +78,7 @@ public sealed class Text: Control
                 _layoutValid = false;
             }
         }
-    }
-
-    /// <summary>Gets or sets the unwrapped overflow policy.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Trimming Trimming
-    {
-        get;
-        set
-        {
-            Validate(value);
-
-            if (Set(ref field, value, Invalidation.Measure))
-            {
-                _layoutValid = false;
-            }
-        }
-    }
+    } = Overflow.Visible;
 
     /// <summary>Gets or sets horizontal placement within each formatted line.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -132,8 +120,14 @@ public sealed class Text: Control
 
     private Ambiguous AmbiguousWidthValue { get; set; }
 
-    /// <summary>Gets the committed line metrics until the next successful layout.</summary>
+    /// <summary>Gets committed visible-text line metrics until the next successful layout.</summary>
     public ReadOnlyMemory<Line> Lines => _lines.AsMemory(0, _lineCount);
+
+    /// <summary>Escapes dynamic visible text for safe interpolation into markup content.</summary>
+    /// <param name="value">The non-null visible text.</param>
+    /// <returns>The text with opening-angle and backslash metacharacters escaped.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public static string Escape(string value) => Markup.Escape(value);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -157,35 +151,34 @@ public sealed class Text: Control
     {
         var bounds = ContentBounds;
         EnsureLayout(bounds.Width);
-        var style = ResolveStyle();
         var lines = Lines.Span;
 
         for (var index = 0; index < lines.Length && index < bounds.Height; index++)
         {
-            var line = lines[index];
-            var origin = new Point(bounds.X + line.Leading, bounds.Y + index);
-            var result = canvas.Draw(
-                Content.AsSpan(line.Offset, line.Length),
-                origin,
-                style,
-                background: ResolveBackgroundMode());
-
-            if (line.HasEllipsis)
-            {
-                _ = canvas.Draw(_ellipsis, result.Final, style, background: ResolveBackgroundMode());
-            }
+            RenderLine(canvas, bounds, lines[index], index);
         }
+    }
+
+    private void EnsureParsed()
+    {
+        if (ReferenceEquals(_parsedContent, Content))
+        {
+            return;
+        }
+
+        _spans = Markup.Parse(Content, out _display);
+        _parsedContent = Content;
+        _layoutValid = false;
     }
 
     private void EnsureLayout(int width)
     {
         Debug.Assert(width >= 0, "Control layout provides a non-negative content width.");
+        EnsureParsed();
 
         if (!_layoutValid ||
-            !ReferenceEquals(_cachedContent, Content) ||
             _cachedWidth != width ||
-            _cachedWrapping != Wrapping ||
-            _cachedTrimming != Trimming ||
+            _cachedOverflow != Overflow ||
             _cachedAmbiguous != AmbiguousWidth)
         {
             Format(width);
@@ -201,10 +194,9 @@ public sealed class Text: Control
     private void Format(int width)
     {
         var required = TextLayout.Format(
-            Content,
+            _display,
             width,
-            Wrapping,
-            Trimming,
+            Overflow,
             TextAlignment,
             AmbiguousWidth,
             _lines);
@@ -213,20 +205,17 @@ public sealed class Text: Control
         {
             Array.Resize(ref _lines, required);
             _ = TextLayout.Format(
-                Content,
+                _display,
                 width,
-                Wrapping,
-                Trimming,
+                Overflow,
                 TextAlignment,
                 AmbiguousWidth,
                 _lines);
         }
 
         _lineCount = required;
-        _cachedContent = Content;
         _cachedWidth = width;
-        _cachedWrapping = Wrapping;
-        _cachedTrimming = Trimming;
+        _cachedOverflow = Overflow;
         _cachedAlignment = TextAlignment;
         _cachedAmbiguous = AmbiguousWidth;
         _layoutValid = true;
@@ -256,9 +245,109 @@ public sealed class Text: Control
         _cachedAlignment = TextAlignment;
     }
 
-    private TerminalStyle ResolveStyle() => ResolvedStyle;
+    private void RenderLine(TerminalCanvas canvas, Rect bounds, Line line, int row)
+    {
+        var cells = 0;
+        var spanIndex = SpanIndexAt(line.Offset);
+        var lastSpan = default(StyleSpan);
 
-    private BackgroundMode ResolveBackgroundMode() => ControlAppearance.HasOpaqueFill(this, GetVisualState()) ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        foreach (var grapheme in Graphemes.Enumerate(_display.AsSpan(line.Offset, line.Length)))
+        {
+            var offset = line.Offset + grapheme.Offset;
+            spanIndex = AdvanceSpan(spanIndex, offset);
+            var span = spanIndex >= 0 ? _spans[spanIndex] : default;
+            var cluster = _display.AsSpan(offset, grapheme.Length);
+            _ = canvas.Draw(
+                cluster,
+                new Point(bounds.X + line.Leading + cells, bounds.Y + row),
+                ResolveSpanStyle(span),
+                background: ResolveBackgroundMode(span));
+            cells += Terminal.Unicode.Width.Measure(cluster, AmbiguousWidth).Cells;
+            lastSpan = span;
+        }
+
+        if (line.HasEllipsis)
+        {
+            _ = canvas.Draw(
+                _ellipsis,
+                new Point(bounds.X + line.Leading + cells, bounds.Y + row),
+                ResolveSpanStyle(lastSpan),
+                background: ResolveBackgroundMode(lastSpan));
+        }
+    }
+
+    private int SpanIndexAt(int offset)
+    {
+        for (var index = 0; index < _spans.Length; index++)
+        {
+            var span = _spans[index];
+
+            if (offset >= span.Offset && offset < span.Offset + span.Length)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private int AdvanceSpan(int index, int offset)
+    {
+        if (index < 0)
+        {
+            return SpanIndexAt(offset);
+        }
+
+        while (index + 1 < _spans.Length && offset >= _spans[index].Offset + _spans[index].Length)
+        {
+            index++;
+        }
+
+        return index;
+    }
+
+    private TerminalStyle ResolveSpanStyle(StyleSpan span)
+    {
+        var inherited = ResolvedStyle;
+        var attributes = inherited.Attributes;
+
+        if ((span.Attributes & _blinkAttributes) != 0)
+        {
+            attributes &= ~_blinkAttributes;
+        }
+
+        attributes |= span.Attributes;
+        TerminalUnderline? underline = null;
+
+        if (span.Underline != TerminalUnderline.None)
+        {
+            attributes &= ~TerminalAttributes.Underline;
+            underline = span.Underline;
+        }
+
+        Color? underlineColor = span.UnderlineColor is { } markedUnderlineColor
+            ? ResolveMarkupColor(markedUnderlineColor)
+            : null;
+        var (resolvedAttributes, resolvedUnderline, resolvedUnderlineColor) = Decoration.Resolve(
+            inherited,
+            attributes,
+            underline,
+            underlineColor);
+        return new TerminalStyle(
+            span.Foreground is { } foreground ? ResolveMarkupColor(foreground) : inherited.Foreground,
+            span.Background is { } background ? ResolveMarkupColor(background) : inherited.Background,
+            resolvedAttributes,
+            span.Link ?? inherited.Hyperlink,
+            resolvedUnderline,
+            resolvedUnderlineColor);
+    }
+
+    private Color ResolveMarkupColor(Color color) => SemanticColor.Resolve(color, ThemeContext);
+
+    private BackgroundMode ResolveBackgroundMode(StyleSpan span) =>
+        span.Background.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState())
+            ? BackgroundMode.Opaque
+            : BackgroundMode.Transparent;
 
     private static void Validate<T>(T value) where T : struct, Enum
     {

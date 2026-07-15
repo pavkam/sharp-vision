@@ -3,9 +3,6 @@
 
 namespace SharpVision.Tests.Controls;
 
-
-
-
 /// <summary>Verifies Grid track resolution, spacing, spans, resize, and semantic cells.</summary>
 public sealed class GridTests
 {
@@ -145,7 +142,7 @@ public sealed class GridTests
     {
         var grid = new Grid();
         grid.Columns.Add(Track.Star(1));
-        var text = new ControlText("One two three four five six") { Wrapping = Wrapping.Word };
+        var text = new ControlText("One two three four five six") { Overflow = Overflow.Wrap };
         grid.Children.Add(text);
 
         new Engine().Layout(grid, new Size(10, 10));
