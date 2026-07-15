@@ -138,6 +138,7 @@ internal sealed class GridPane: View
             Title,
             "Allocates fixed, automatic, percentage, and proportional tracks across rows and columns with exact integer rounding and spans.",
             Doc.Section(
+                "🧱",
                 "Track fundamentals",
                 "Combine fixed, automatic, and proportional tracks on both axes.",
                 Doc.Example(
@@ -150,6 +151,7 @@ internal sealed class GridPane: View
                     "Auto fits intrinsic content; 2* and 1* tracks split the finite remainder in a two-to-one ratio.",
                     proportionalTracks)),
             Doc.Section(
+                "🧱",
                 "Percentage and limits",
                 "Percentage and star tracks honor visible minimum and maximum cell constraints.",
                 Doc.Example(
@@ -157,6 +159,7 @@ internal sealed class GridPane: View
                     "Resize the page: the percentage track stays between ten and sixteen cells while star absorbs the safe remainder.",
                     percentage)),
             Doc.Section(
+                "🧱",
                 "Spans",
                 "A child may own the union of adjacent rows, columns, or both, including internal gaps.",
                 Doc.Example(
@@ -164,6 +167,7 @@ internal sealed class GridPane: View
                     "The three labeled cards occupy a vertical span, horizontal span, and combined area without inventing nested layout.",
                     spans)),
             Doc.Section(
+                "🧱",
                 "Implicit grid",
                 "Empty row and column definitions behave exactly like one automatic track on each axis.",
                 Doc.Example(
@@ -171,6 +175,7 @@ internal sealed class GridPane: View
                     "Use the implicit grid for one cell; add explicit tracks only when the layout needs them.",
                     implicitGrid)),
             Doc.Section(
+                "🧱",
                 "Responsive form",
                 "Finite column widths remeasure wrapped controls so text growth can influence automatic rows.",
                 Doc.Example(
@@ -178,6 +183,7 @@ internal sealed class GridPane: View
                     "Narrow the terminal and the validation message wraps beneath its field while the label column stays fixed.",
                     form)),
             Doc.Section(
+                "🧱",
                 "Constrained space",
                 "When tracks and gaps cannot fit, spacing saturates and tracks shrink deterministically without negative geometry.",
                 Doc.Example(

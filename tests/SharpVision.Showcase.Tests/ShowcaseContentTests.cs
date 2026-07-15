@@ -45,6 +45,7 @@ public sealed class ShowcaseContentTests
             "This example remains after the first.",
             new Button { Content = new ControlText("Stop") });
         using var section = Doc.Section(
+            "🧭",
             "Start here",
             "Begin with the smallest useful command.",
             first,
@@ -66,6 +67,11 @@ public sealed class ShowcaseContentTests
         screen.Text.ShouldContain("2 < 3");
         screen.Text.IndexOf("One command", StringComparison.Ordinal)
             .ShouldBeLessThan(screen.Text.IndexOf("Second command", StringComparison.Ordinal));
+        var content = ControlTree.Text(section);
+        content.ShouldContain("<accent><b>🧭 Start here</b></accent>");
+        content.ShouldContain("<d>Begin with the smallest useful command.</d>");
+        content.ShouldContain("<b>One command</b>");
+        content.ShouldContain("<info><b>C#</b></info>");
     }
 
     /// <summary>Verifies every catalog page exposes progressive guidance and reproducible source.</summary>
@@ -87,7 +93,7 @@ public sealed class ShowcaseContentTests
 
             foreach (var section in _sections[pageName])
             {
-                if (!content.Contains($"<b>{section}</b>", StringComparison.Ordinal))
+                if (!content.Contains($" {section}</b></accent>", StringComparison.Ordinal))
                 {
                     missing.Add($"{pageName}: {section}");
                 }

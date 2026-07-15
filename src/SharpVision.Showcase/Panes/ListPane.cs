@@ -102,6 +102,7 @@ internal sealed class ListPane: View
             Title,
             "Realizes selectable items with keyboard, pointer, activation, and automatic vertical scrolling behavior.",
             Doc.Section(
+                "📋",
                 "Single selection",
                 "Active navigation, committed selection, and invocation are related but distinct states.",
                 Doc.Example(
@@ -110,6 +111,7 @@ internal sealed class ListPane: View
                     Doc.Column(active, status),
                     "var results = new List\n{\n    Items = files,\n    SelectionMode = SelectionMode.Single,\n};")),
             Doc.Section(
+                "📋",
                 "Selection modes",
                 "None permits navigation only, Single retains at most one row, and Multiple owns a sorted selected set.",
                 Doc.Example(
@@ -118,6 +120,7 @@ internal sealed class ListPane: View
                     Doc.Column(multiple, selectMultiple, multipleStatus),
                     "list.SelectionMode = SelectionMode.Multiple;\nlist.SetSelected(0, true);")),
             Doc.Section(
+                "📋",
                 "Templates",
                 "ItemTemplate creates one unique detached ordinary control tree for each item.",
                 Doc.Example(
@@ -125,6 +128,7 @@ internal sealed class ListPane: View
                     "Each row contains bold identity and secondary status text while retaining List focus and selection behavior.",
                     templated)),
             Doc.Section(
+                "📋",
                 "Long data",
                 "The first milestone realizes its snapshot and scrolls it through the shared container policy.",
                 Doc.Example(
@@ -132,6 +136,7 @@ internal sealed class ListPane: View
                     "Use Home, End, Page Up, Page Down, arrows, or the thin rail; the active row remains visible.",
                     longList)),
             Doc.Section(
+                "📋",
                 "Snapshot replacement",
                 "Replacing Items copies a new snapshot and normalizes selection after the candidate tree validates.",
                 Doc.Example(
@@ -139,6 +144,7 @@ internal sealed class ListPane: View
                     "Activate the button to swap eight rows for three without reusing owned template controls.",
                     Doc.Column(replace, snapshotStatus))),
             Doc.Section(
+                "📋",
                 "Unavailable items",
                 "Unavailable context may remain visible while focus, selection, and invocation are suppressed.",
                 Doc.Example(

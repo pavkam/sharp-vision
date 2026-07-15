@@ -119,6 +119,7 @@ internal sealed class TextPane: View
             Title,
             "Formats Unicode text by grapheme cluster and applies compact inline markup for semantic terminal styling.",
             Doc.Section(
+                "✍️",
                 "Unicode",
                 "Segmentation and width apply to complete grapheme clusters before wrapping, clipping, pointer mapping, and drawing.",
                 Doc.Example(
@@ -130,6 +131,7 @@ internal sealed class TextPane: View
                     "Pixel coordinates stay exact and map to cells only when terminal metrics make the mapping reliable.",
                     new PointerProbe())),
             Doc.Section(
+                "✍️",
                 "Safe content",
                 "Escape dynamic visible text before interpolating it into marked content; malformed markup remains literal instead of throwing.",
                 Doc.Example(
@@ -138,6 +140,7 @@ internal sealed class TextPane: View
                     safe,
                     "var user = \"2 < 3\";\nvar text = new Text($\"Dynamic: {Text.Escape(user)}\");")),
             Doc.Section(
+                "✍️",
                 "Markup",
                 "Compact tags compose semantic colors, attributes, typed underlines, and OSC 8 link metadata.",
                 Doc.Example(
@@ -149,6 +152,7 @@ internal sealed class TextPane: View
                     "Every supported attribute and underline form is visible; unsupported terminal presentation degrades below the cell model.",
                     Doc.Card(attributes))),
             Doc.Section(
+                "✍️",
                 "Overflow",
                 "Choose whether a finite width preserves full lines, wraps at words or graphemes, clips, or reserves an ellipsis.",
                 Doc.Example(
@@ -161,6 +165,7 @@ internal sealed class TextPane: View
                         Doc.Row(new Text("Clip"), clip),
                         Doc.Row(new Text("Ellipsis"), ellipsis)))),
             Doc.Section(
+                "✍️",
                 "Alignment and lines",
                 "Alignment places each formatted line inside the arranged width; Lines exposes committed visible metrics until the next layout.",
                 Doc.Example(
@@ -172,6 +177,7 @@ internal sealed class TextPane: View
                     "Ellipsis preserves complete grapheme clusters when a label must remain one line.",
                     trimmed)),
             Doc.Section(
+                "✍️",
                 "Tabs and logical lines",
                 "Tabs advance to four-cell stops and CR, LF, and CRLF create stable logical lines.",
                 Doc.Example(
@@ -179,6 +185,7 @@ internal sealed class TextPane: View
                     "The same tab-stop and newline rules feed line metrics and semantic cell drawing.",
                     tabs)),
             Doc.Section(
+                "✍️",
                 "Live mutation",
                 "Changing Content reparses markup and remeasures only the affected Text control.",
                 Doc.Example(

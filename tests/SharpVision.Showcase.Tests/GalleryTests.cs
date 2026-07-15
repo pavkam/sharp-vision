@@ -62,12 +62,15 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
         new Engine().Layout(gallery, new Size(80, 24));
-        var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
-        main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
+        var previousBody = FindScrollableBody(gallery.Content).ShouldNotBeNull();
+        previousBody.ScrollBy(0, int.MaxValue).ShouldBeTrue();
 
         gallery.Select(1);
+        new Engine().Layout(gallery, new Size(80, 24));
+        var currentBody = FindScrollableBody(gallery.Content).ShouldNotBeNull();
 
-        main.VerticalOffset.ShouldBe(0);
+        currentBody.ShouldNotBeSameAs(previousBody);
+        currentBody.VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies every registered page includes responsive marked Text documentation.</summary>
@@ -94,6 +97,28 @@ public sealed class GalleryTests
         var document = FindText(page, "<b>Overview</b>").ShouldNotBeNull();
 
         document.Overflow.ShouldBe(Overflow.Wrap);
+    }
+
+    /// <summary>Verifies scrolling examples leaves the selected page identity pinned above the viewport.</summary>
+    [Fact]
+    public void CreatePage_WhenBodyScrolls_KeepsPageHeaderFixed()
+    {
+        using var page = Gallery.CreatePage(0);
+        var engine = new Engine();
+        var size = new Size(52, 12);
+        engine.Layout(page, size);
+        var header = FindText(page, "<b>Button</b>").ShouldNotBeNull();
+        var firstSection = FindText(page, "Start here").ShouldNotBeNull();
+        var body = FindScrollableBody(page).ShouldNotBeNull();
+        var headerBefore = header.Bounds;
+        var sectionBefore = firstSection.Bounds;
+
+        body.ScrollBy(0, int.MaxValue).ShouldBeTrue();
+        engine.Layout(page, size);
+
+        header.Bounds.ShouldBe(headerBefore);
+        firstSection.Bounds.Y.ShouldBeLessThan(sectionBefore.Y);
+        body.HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
     }
 
     /// <summary>Verifies pages that still supply a practical recipe wrap it, now that documentation prose is
@@ -212,5 +237,28 @@ public sealed class GalleryTests
         }
 
         return false;
+    }
+
+    private static Stack? FindScrollableBody(Control control)
+    {
+        if (control is Stack { AutoScroll: true } stack)
+        {
+            return stack;
+        }
+
+        if (control is not Container container)
+        {
+            return null;
+        }
+
+        foreach (var child in container.Children)
+        {
+            if (FindScrollableBody(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 }

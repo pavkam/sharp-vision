@@ -113,6 +113,7 @@ internal sealed class TablePane: View
             Title,
             "Owns typed rows and column definitions to render aligned rich terminal cells with optional headers and grid lines.",
             Doc.Section(
+                "📊",
                 "Column sizing",
                 "Fixed, automatic, percentage, and fill columns share the same finite track allocator.",
                 Doc.Example(
@@ -121,6 +122,7 @@ internal sealed class TablePane: View
                     primary,
                     "table.Columns.Add(TableColumn.Fixed(\"Name\", 12));\ntable.Columns.Add(TableColumn.Percent(\"Status\", 25));\ntable.Columns.Add(TableColumn.Fill(\"Details\"));")),
             Doc.Section(
+                "📊",
                 "Header and grid chrome",
                 "Headers and grid lines are optional; padding and spacing can carry simpler key/value structure.",
                 Doc.Example(
@@ -128,6 +130,7 @@ internal sealed class TablePane: View
                     "The key/value table omits headers and lines while retaining aligned ordinary Text cells.",
                     compact)),
             Doc.Section(
+                "📊",
                 "Interactive cells",
                 "Every cell is an ordinary control, so focus, keyboard, pointer, and routed events remain available.",
                 Doc.Example(
@@ -135,6 +138,7 @@ internal sealed class TablePane: View
                     "Tab into the Button and CheckBox; Table contributes layout only and does not intercept their semantics.",
                     interactive)),
             Doc.Section(
+                "📊",
                 "Dynamic rows",
                 "Rows transfer unique detached controls into table ownership and may be added or removed at runtime.",
                 Doc.Example(
@@ -142,6 +146,7 @@ internal sealed class TablePane: View
                     "Add a fresh row and observe the owned row count update without rebuilding the Table.",
                     Doc.Column(dynamic, addRow, rowStatus))),
             Doc.Section(
+                "📊",
                 "Responsive text",
                 "Marked links, CJK, emoji, and wrapping use the normal control and Unicode geometry pipeline inside cells.",
                 Doc.Example(
@@ -149,6 +154,7 @@ internal sealed class TablePane: View
                     "Narrow the page and the detail cell reflows while wide graphemes retain their continuation cells.",
                     unicode)),
             Doc.Section(
+                "📊",
                 "Boundary states",
                 "Header-only and tiny tables reserve only geometry they can safely contain.",
                 Doc.Example(

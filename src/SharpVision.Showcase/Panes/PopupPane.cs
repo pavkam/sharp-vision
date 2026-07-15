@@ -125,6 +125,7 @@ internal sealed class PopupPane: View
             Title,
             "Displays one owned child on an opaque bordered surface relative to an optional anchor.",
             Doc.Section(
+                "💬",
                 "Anchored menu",
                 "Compose an owned List below a trigger without adding modal behavior or bypassing normal input routing.",
                 Doc.Example(
@@ -133,6 +134,7 @@ internal sealed class PopupPane: View
                     overlay,
                     "var popup = new Popup\n{\n    Anchor = trigger,\n    Child = choices,\n    Placement = PopupPlacement.Below,\n};")),
             Doc.Section(
+                "💬",
                 "Placement",
                 "Above, Below, Left, and Right are preferred sides rather than promises to draw outside the host.",
                 Doc.Example(
@@ -140,6 +142,7 @@ internal sealed class PopupPane: View
                     "Open each trigger to compare the preferred anchored edge when enough space exists.",
                     variants)),
             Doc.Section(
+                "💬",
                 "Fallback and clamp",
                 "When the preferred side cannot fit, Popup tries the natural opposite side before clamping to its host.",
                 Doc.Example(
@@ -147,6 +150,7 @@ internal sealed class PopupPane: View
                     "This open popup prefers below but must flip above the trigger inside the short stage.",
                     edgeStage)),
             Doc.Section(
+                "💬",
                 "Lifecycle",
                 "Closing runs while child content is still available; Closed follows after it becomes unavailable.",
                 Doc.Example(
@@ -155,6 +159,7 @@ internal sealed class PopupPane: View
                     Doc.Column(lifecycleStage, lifecycleStatus),
                     "popup.Closing += RestoreFocus;\npopup.Closed += ReportClosed;\npopup.IsOpen = false;")),
             Doc.Section(
+                "💬",
                 "Surface style",
                 "Popup clears its complete framed surface using inherited or explicit background and border colors.",
                 Doc.Example(
@@ -162,6 +167,7 @@ internal sealed class PopupPane: View
                     "The content behind this open popup cannot bleed through its configured background.",
                     styledStage)),
             Doc.Section(
+                "💬",
                 "Resize",
                 "An open Popup participates in the next normal layout pass and recomputes placement before rendering.",
                 Doc.Example(

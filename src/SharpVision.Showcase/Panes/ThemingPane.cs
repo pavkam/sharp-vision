@@ -92,6 +92,7 @@ internal sealed class ThemingPane: View
             Title,
             "Demonstrates application themes, type-keyed styles, local overrides, and third-party style properties.",
             Doc.Section(
+                "🎭",
                 "Application theme",
                 "The sidebar picker publishes one frozen application theme snapshot to every attached control.",
                 Doc.Example(
@@ -100,6 +101,7 @@ internal sealed class ThemingPane: View
                     Doc.Column(panel, roleSwatches),
                     "application.Theme = ThemeCatalog.Default.Load(\"default-dark\");")),
             Doc.Section(
+                "🎭",
                 "Catalog",
                 "ThemeCatalog exposes stable metadata before an application chooses to load the immutable theme payload.",
                 Doc.Example(
@@ -107,6 +109,7 @@ internal sealed class ThemingPane: View
                     "Display name, slug, dark/light scheme, author, and license support discoverable theme pickers and attribution.",
                     catalog)),
             Doc.Section(
+                "🎭",
                 "Type and local styles",
                 "Type-keyed theme recipes apply broadly; a Control.Style override resolves later and affects only that instance.",
                 Doc.Example(
@@ -118,6 +121,7 @@ internal sealed class ThemingPane: View
                     "Only me owns the ASCII/yellow override; the sibling continues following the application theme.",
                     Doc.Row(overridden, plain))),
             Doc.Section(
+                "🎭",
                 "Visual states",
                 "Normal, hovered, focused, pressed, checked, indeterminate, and disabled values resolve through deterministic state precedence.",
                 Doc.Example(
@@ -125,6 +129,7 @@ internal sealed class ThemingPane: View
                     "Move focus and pointer across the controls; checked, indeterminate, and disabled states remain visible in combination.",
                     stateMatrix)),
             Doc.Section(
+                "🎭",
                 "Shared chrome",
                 "Border and shadow are intrinsic style properties on ordinary controls rather than wrapper control types.",
                 Doc.Example(
@@ -132,6 +137,7 @@ internal sealed class ThemingPane: View
                     "The Dock owns its border and block shadow directly while its child remains an ordinary content node.",
                     chrome)),
             Doc.Section(
+                "🎭",
                 "Third-party controls",
                 "Custom controls register StyleProperty metadata and resolve it through the same theme/local cascade as built-in chrome.",
                 Doc.Example(

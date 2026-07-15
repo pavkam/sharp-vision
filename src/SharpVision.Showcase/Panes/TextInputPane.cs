@@ -133,6 +133,7 @@ internal sealed class TextInputPane: View
             Title,
             "Edits grapheme-safe single-line or multiline text with selection, undo, masking, and scrolling.",
             Doc.Section(
+                "⌨️",
                 "Editing and submission",
                 "A single-line editor commits grapheme-safe changes and treats Enter as submission.",
                 Doc.Example(
@@ -141,6 +142,7 @@ internal sealed class TextInputPane: View
                     Doc.Column(editable, editStatus),
                     "var name = new TextInput { Width = Length.Cells(28) };\nname.Submitted += (_, e) => Save(e.Text);")),
             Doc.Section(
+                "⌨️",
                 "Selection",
                 "Caret and selection endpoints are validated Unicode grapheme boundaries.",
                 Doc.Example(
@@ -149,6 +151,7 @@ internal sealed class TextInputPane: View
                     Doc.Column(selectionEditor, selectAll, selectionStatus),
                     "editor.Select(0, editor.Text.Length);")),
             Doc.Section(
+                "⌨️",
                 "Clipboard and history",
                 "Copy/cut shortcuts and bounded undo/redo operate on immutable text-and-selection snapshots.",
                 Doc.Example(
@@ -161,6 +164,7 @@ internal sealed class TextInputPane: View
                     "Append a revision, then use Undo and Redo. Availability updates after every committed snapshot.",
                     Doc.Column(history, Doc.Row(revise, undo, redo), historyStatus))),
             Doc.Section(
+                "⌨️",
                 "Edit events",
                 "TextChanging can cancel a valid proposal before state mutates; committed edits then raise TextChanged before SelectionChanged.",
                 Doc.Example(
@@ -168,6 +172,7 @@ internal sealed class TextInputPane: View
                     "Reject the exclamation edit, then commit the accepted revision. The readout exposes the exact pre-commit and post-commit sequence.",
                     Doc.Column(eventEditor, Doc.Row(rejectEdit, acceptEdit), eventStatus))),
             Doc.Section(
+                "⌨️",
                 "Policies",
                 "Read-only, password, and maximum-length policies reject only the mutations they own.",
                 Doc.Example(
@@ -179,6 +184,7 @@ internal sealed class TextInputPane: View
                     "MaxLength counts user-visible graphemes rather than UTF-16 units while still allowing deletion.",
                     limited)),
             Doc.Section(
+                "⌨️",
                 "Multiline",
                 "Return, Tab, scrolling, selection, and caret geometry share one editor viewport.",
                 Doc.Example(
@@ -187,6 +193,7 @@ internal sealed class TextInputPane: View
                     Doc.Column(multiline, reportOffsets, offsetStatus),
                     "editor.AcceptsReturn = true;\neditor.ScrollBars = ScrollBars.Vertical;")),
             Doc.Section(
+                "⌨️",
                 "Unicode boundary",
                 "Movement, deletion, selection, and pointer placement never expose an interior UTF-16 or wide-cell position.",
                 Doc.Example(

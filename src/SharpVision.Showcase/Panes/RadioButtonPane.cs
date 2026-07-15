@@ -113,6 +113,7 @@ internal sealed class RadioButtonPane: View
             Title,
             "Selects one option from an ordinally named group scoped to the attached control root.",
             Doc.Section(
+                "📻",
                 "Named group",
                 "Use one ordinal GroupName when choices may live in different layout containers but still select exclusively.",
                 Doc.Example(
@@ -121,6 +122,7 @@ internal sealed class RadioButtonPane: View
                     Doc.Column(group, separate),
                     "var fast = new RadioButton { GroupName = \"quality\", IsChecked = true };")),
             Doc.Section(
+                "📻",
                 "Arrow traversal",
                 "Arrow keys move focus and selection through eligible members in stable tree order with wrapping.",
                 Doc.Example(
@@ -128,6 +130,7 @@ internal sealed class RadioButtonPane: View
                     "Use Up/Left and Down/Right. The disabled member is skipped, wrapping stays stable, and the readout follows the committed member.",
                     Doc.Column(traversalOne, traversalTwo, traversalUnavailable, traversalStatus))),
             Doc.Section(
+                "📻",
                 "Programmatic regrouping",
                 "Changing GroupName on a selected member immediately reconciles exclusivity in its new ordinal group.",
                 Doc.Example(
@@ -136,6 +139,7 @@ internal sealed class RadioButtonPane: View
                     Doc.Column(Doc.Row(movable, leftPeer), rightPeer, regroup, regroupStatus),
                     "selected.GroupName = \"right\";")),
             Doc.Section(
+                "📻",
                 "Unnamed scope",
                 "A null GroupName groups only siblings under their nearest parent, which is useful for self-contained option cards.",
                 Doc.Example(
@@ -145,6 +149,7 @@ internal sealed class RadioButtonPane: View
                         Doc.Card(Doc.Column(localA, localB)),
                         Doc.Card(Doc.Column(otherA, otherB))))),
             Doc.Section(
+                "📻",
                 "No initial selection",
                 "A group may begin empty and receive its first choice from user or programmatic input.",
                 Doc.Example(
@@ -152,6 +157,7 @@ internal sealed class RadioButtonPane: View
                     "Neither member starts checked. Use the button to select First through ordinary property mutation.",
                     Doc.Column(emptyFirst, emptySecond, selectFirst, emptyStatus))),
             Doc.Section(
+                "📻",
                 "Events",
                 "Selection commits both members before notifications expose the completed transaction.",
                 Doc.Example(

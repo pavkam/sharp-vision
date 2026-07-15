@@ -109,6 +109,7 @@ internal sealed class CanvasPane: View
             Title,
             "Canvas positions child controls. Custom controls receive TerminalCanvas in OnRender to draw semantic cells. Neither API emits terminal escape sequences.",
             Doc.Section(
+                "🎨",
                 "Canvas layout",
                 "Use attached offsets for diagrams, badges, overlays, and other deliberate positioning—not general responsive flow.",
                 Doc.Example(
@@ -129,6 +130,7 @@ internal sealed class CanvasPane: View
                     "Later children cover earlier ones, and the final child deliberately crosses the right edge where ClipToBounds removes it.",
                     Frame(layerStage))),
             Doc.Section(
+                "🎨",
                 "Constraints",
                 "Opposing offsets stretch an automatic child; an explicit size instead keeps its extent and gives left/top precedence.",
                 Doc.Example(
@@ -141,6 +143,7 @@ internal sealed class CanvasPane: View
                     "This twelve-cell child keeps its width even though both horizontal edges are supplied; Left chooses its origin.",
                     Frame(explicitStage))),
             Doc.Section(
+                "🎨",
                 "Intrinsic and constrained size",
                 "Fixed positioned children contribute to intrinsic union; oversized trailing placement may produce a negative origin that clips safely.",
                 Doc.Example(
@@ -152,6 +155,7 @@ internal sealed class CanvasPane: View
                     "The child is wider than its host and anchored from the right, so its origin falls left of the host without escaping the clip.",
                     Frame(negativeStage))),
             Doc.Section(
+                "🎨",
                 "Layering and input",
                 "Collection order controls painting and hit testing; pointer-transparent decoration can remain visually above an action.",
                 Doc.Example(
@@ -159,6 +163,7 @@ internal sealed class CanvasPane: View
                     "Click the visual overlap. The decoration renders later but IsHitTestVisible false lets the underlying Button receive input.",
                     Doc.Column(Frame(inputStage), pointerStatus))),
             Doc.Section(
+                "🎨",
                 "Drawing fundamentals",
                 "Inside a custom control, TerminalCanvas draws clipped semantic lines, boxes, fills, clears, text, and styles.",
                 Doc.Example(
@@ -167,6 +172,7 @@ internal sealed class CanvasPane: View
                     new CanvasSample(),
                     "protected override void OnRender(TerminalCanvas canvas)\n{\n    canvas.DrawBox(Bounds, LineStyle.Rounded);\n    canvas.DrawHorizontalLine(origin, length, LineStyle.Heavy);\n}")),
             Doc.Section(
+                "🎨",
                 "Shade and quadrants",
                 "Standard shade glyphs and quadrant masks provide dense cell-native topology without one child control per cell.",
                 Doc.Example(
@@ -175,6 +181,7 @@ internal sealed class CanvasPane: View
                     new CanvasShadeSample(),
                     "canvas.FillShade(region, Shade.Medium);\ncanvas.DrawQuadrants(point, Quadrants.UpperLeft | Quadrants.LowerRight);")),
             Doc.Section(
+                "🎨",
                 "Unicode drawing",
                 "TerminalCanvas segments complete grapheme clusters before measuring, clipping, and storing wide-cell ownership.",
                 Doc.Example(
@@ -183,6 +190,7 @@ internal sealed class CanvasPane: View
                     new CanvasUnicodeSample(),
                     "_ = canvas.Draw(\"é 你好 👩‍💻\".AsSpan(), origin, style, Edge.Clip);")),
             Doc.Section(
+                "🎨",
                 "Useful custom drawing",
                 "A focused control can turn deterministic application data into a responsive semantic chart with no ANSI knowledge.",
                 Doc.Example(
@@ -191,6 +199,7 @@ internal sealed class CanvasPane: View
                     new CanvasChartSample(),
                     "canvas.FillShade(barBounds, Shade.Solid, style);")),
             Doc.Section(
+                "🎨",
                 "Pointer-aware drawing",
                 "Custom rendering composes with the same routed pointer events, capture, cell coordinates, and optional pixel coordinates as controls.",
                 Doc.Example(

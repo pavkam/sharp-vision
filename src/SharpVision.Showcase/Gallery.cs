@@ -76,11 +76,6 @@ public sealed class Gallery: Screen
         Pages = Array.ConvertAll(_catalog, static entry => entry.Name);
         _main = new Stack
         {
-            AutoScroll = true,
-            ScrollBars = ScrollBars.Vertical,
-            ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarChrome = ScrollBarChrome.Thin,
-            ScrollBarFill = ScrollBarFill.Line,
             HorizontalBarVisibility = ScrollBarVisibility.Hidden,
         };
         _navigation = new NavigationItem[Pages.Count];
@@ -125,8 +120,9 @@ public sealed class Gallery: Screen
         var footer = CreateSidebarFooter(_themePicker, _quit);
         Dock.SetSide(header, Side.Top);
         Dock.SetSide(footer, Side.Bottom);
-        sidebarLayout.Children.Add(header);
+        // Reserve the actionable footer first so constrained terminals retain theme and exit controls.
         sidebarLayout.Children.Add(footer);
+        sidebarLayout.Children.Add(header);
         sidebarLayout.Children.Add(_navigationScroll);
         Sidebar = new Dock
         {
@@ -232,18 +228,7 @@ public sealed class Gallery: Screen
         var previous = _main.Children.Count > 0 ? _main.Children[0] : null;
         SelectedIndex = index;
 
-        // A catalog selection changes subject, not just content. Preserve the
-        // sidebar state but start the newly created documentation page at its header.
-        if (_main.HorizontalOffset != 0)
-        {
-            _main.HorizontalOffset = 0;
-        }
-
-        if (_main.VerticalOffset != 0)
-        {
-            _main.VerticalOffset = 0;
-        }
-
+        // A catalog selection creates a fresh page and therefore a fresh body viewport at offset zero.
         _main.Children.Clear();
         _main.Children.Add(_catalog[index].Create());
 
@@ -274,29 +259,42 @@ public sealed class Gallery: Screen
         return header;
     }
 
-    private static Stack CreateSidebarFooter(ComboBox themePicker, Button quit)
+    private static Dock CreateSidebarFooter(ComboBox themePicker, Button quit)
     {
-        var themeGroup = new Stack() { Spacing = 0 };
-        themeGroup.Children.Add(new Text("Theme")
+        var themeLabel = new Text("Theme")
         {
             Attributes = TerminalAttributes.Dim,
-        });
-        themeGroup.Children.Add(themePicker);
-
-        var exitGroup = new Stack() { Spacing = 0 };
-        exitGroup.Children.Add(quit);
-        exitGroup.Children.Add(new Text("Ctrl+C to quit")
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var exitHint = new Text("Ctrl+C to quit")
         {
             Attributes = TerminalAttributes.Dim,
-        });
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var grid = new Grid { ColumnSpacing = 1 };
+        grid.Columns.Add(Track.Auto());
+        grid.Columns.Add(Track.Star(1));
+        grid.Rows.Add(Track.Auto());
+        grid.Rows.Add(Track.Auto());
+        Grid.SetRow(themeLabel, 0);
+        Grid.SetColumn(themeLabel, 0);
+        Grid.SetRow(themePicker, 0);
+        Grid.SetColumn(themePicker, 1);
+        Grid.SetRow(quit, 1);
+        Grid.SetColumn(quit, 0);
+        Grid.SetRow(exitHint, 1);
+        Grid.SetColumn(exitHint, 1);
+        grid.Children.Add(themeLabel);
+        grid.Children.Add(themePicker);
+        grid.Children.Add(quit);
+        grid.Children.Add(exitHint);
 
-        // No fixed height: the footer sizes to its content so the bordered Quit
-        // button and the exit hint are never clipped on short terminals.
-        return new Stack
+        return new Dock
         {
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            BorderGlyphs = Glyphs.Light,
             Padding = new Thickness(1, 0),
-            Spacing = 1,
-            Children = { themeGroup, exitGroup },
+            Children = { grid },
         };
     }
 

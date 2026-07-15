@@ -86,6 +86,7 @@ internal sealed class ButtonPane: View
             Title,
             "Activates one semantic action through keyboard, pointer, programmatic, or command paths.",
             Doc.Section(
+                "🔘",
                 "Start here",
                 "Begin with one action and a visible activation result.",
                 Doc.Example(
@@ -94,6 +95,7 @@ internal sealed class ButtonPane: View
                     Doc.Column(primary, status),
                     "var save = new Button { Content = new Text(\"Save\") };\nsave.Click += (_, e) => status.Content = e.Cause.ToString();")),
             Doc.Section(
+                "🔘",
                 "Commands",
                 "Use Command and CommandParameter when an action owns reusable availability and execution policy.",
                 Doc.Example(
@@ -102,6 +104,7 @@ internal sealed class ButtonPane: View
                     Doc.Column(commandEnabled, commandButton, commandStatus),
                     "button.Command = deployCommand;\nbutton.CommandParameter = \"release\";")),
             Doc.Section(
+                "🔘",
                 "Window roles",
                 "Default and cancel buttons become Enter and Escape fallbacks only inside an owning Window.",
                 Doc.Example(
@@ -109,6 +112,7 @@ internal sealed class ButtonPane: View
                     "Focus the neutral target, then use Enter for Apply or Escape for Cancel. The owning Window invokes the matching role through its public activation path.",
                     dialog)),
             Doc.Section(
+                "🔘",
                 "Chrome and states",
                 "Choose depth and border treatment without changing the command contract.",
                 Doc.Example(
@@ -116,6 +120,7 @@ internal sealed class ButtonPane: View
                     "Compare composite lift, block-glyph depth, a stationary flat face, and the unavailable state.",
                     Doc.Column(Doc.Row(composite, blockShadow), Doc.Row(flat, disabled)))),
             Doc.Section(
+                "🔘",
                 "Programmatic use",
                 "PerformClick shares validation, event ordering, and command execution with user activation.",
                 Doc.Example(

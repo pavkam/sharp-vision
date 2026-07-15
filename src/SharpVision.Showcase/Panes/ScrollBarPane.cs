@@ -108,6 +108,7 @@ internal sealed class ScrollBarPane: View
             Title,
             "Edits an integer viewport range through buttons, track paging, keyboard commands, and thumb dragging.",
             Doc.Section(
+                "↕️",
                 "Range anatomy",
                 "Minimum, maximum, value, and viewport together determine the stable thumb length and position.",
                 Doc.Example(
@@ -116,6 +117,7 @@ internal sealed class ScrollBarPane: View
                     Doc.Card(full),
                     "var rail = new ScrollBar\n{\n    Maximum = 100,\n    Value = 35,\n    ViewportSize = 25,\n};")),
             Doc.Section(
+                "↕️",
                 "Input parity",
                 "Orientation changes geometry, not range semantics or keyboard, wheel, track, and drag behavior.",
                 Doc.Example(
@@ -123,6 +125,7 @@ internal sealed class ScrollBarPane: View
                     "Focus the vertical rail and compare arrow, Page, Home/End, wheel, track, and thumb input.",
                     Doc.Card(vertical))),
             Doc.Section(
+                "↕️",
                 "Chrome",
                 "Full, thin, and caller glyph variants share the same range mapping.",
                 Doc.Example(
@@ -130,6 +133,7 @@ internal sealed class ScrollBarPane: View
                     "Thin chrome removes buttons; custom printable one-cell glyphs change presentation without changing behavior.",
                     Doc.Column(Doc.Card(thin), Doc.Card(custom)))),
             Doc.Section(
+                "↕️",
                 "Live range",
                 "Mutating viewport or range updates thumb geometry in place and keeps the current value validated.",
                 Doc.Example(
@@ -137,6 +141,7 @@ internal sealed class ScrollBarPane: View
                     "Increase the viewport and watch the thumb grow while the same ScrollBar instance and value remain committed.",
                     Doc.Column(liveRange, increaseViewport, rangeStatus))),
             Doc.Section(
+                "↕️",
                 "Tiny rails",
                 "One-, two-, and three-cell rails use deterministic fallback roles and never draw outside their bounds.",
                 Doc.Example(
@@ -144,6 +149,7 @@ internal sealed class ScrollBarPane: View
                     "One cell shows only the thumb, two show buttons, and three admit the smallest complete rail.",
                     Doc.Column(one, two, three))),
             Doc.Section(
+                "↕️",
                 "Nested behavior",
                 "A wheel event is handled only when Value changes, leaving endpoint gestures available to an enclosing viewport.",
                 Doc.Example(

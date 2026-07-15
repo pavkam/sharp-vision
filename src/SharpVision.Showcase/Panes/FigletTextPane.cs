@@ -100,6 +100,7 @@ internal sealed class FigletTextPane: View
             Title,
             "Renders text through a bounded immutable FIGfont while preserving the ordinary control box model.",
             Doc.Section(
+                "🔤",
                 "Live editor",
                 "Start with source text and one audited embedded font, then update either property through ordinary control mutation.",
                 Doc.Example(
@@ -108,6 +109,7 @@ internal sealed class FigletTextPane: View
                     Doc.Column(text, picker, status, preview),
                     "var title = new FigletText(FigletCatalog.Default.Load(\"Standard\"))\n{\n    Content = \"SharpVision\",\n};")),
             Doc.Section(
+                "🔤",
                 "Font comparison",
                 "Compare a few intentional shapes before browsing the complete audited catalog.",
                 Doc.Example(
@@ -118,6 +120,7 @@ internal sealed class FigletTextPane: View
                         Doc.Column(new Text("Slant"), slant),
                         Doc.Column(new Text("Small"), small)))),
             Doc.Section(
+                "🔤",
                 "Layout options",
                 "FigletOptions can override full width, fitting, and smushing while preserving the immutable font.",
                 Doc.Example(
@@ -126,6 +129,7 @@ internal sealed class FigletTextPane: View
                     Doc.Column(fullWidth, fitted, smushed),
                     "preview.Options = new FigletOptions(layout: FigletLayout.HorizontalFitting);")),
             Doc.Section(
+                "🔤",
                 "Style",
                 "FIGlet output follows the active control style unless a local semantic override is intentional.",
                 Doc.Example(
@@ -133,6 +137,7 @@ internal sealed class FigletTextPane: View
                     "Theme follows the application; Accent owns a local semantic foreground and bold attribute.",
                     Doc.Column(inherited, explicitStyle))),
             Doc.Section(
+                "🔤",
                 "Large output",
                 "FigletText does not scale or wrap generated art; place it in an AutoScroll container when bounded presentation matters.",
                 Doc.Example(
@@ -140,6 +145,7 @@ internal sealed class FigletTextPane: View
                     "Use the thin rails to inspect output larger than the forty-by-eight viewport.",
                     viewport)),
             Doc.Section(
+                "🔤",
                 "Fallback",
                 "Fonts may omit source scalars; rendering applies each audited font's deterministic fallback without claiming universal glyph coverage.",
                 Doc.Example(

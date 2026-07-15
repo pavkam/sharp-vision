@@ -120,6 +120,7 @@ internal sealed class WindowPane: View
             Title,
             "Frames one owned child as a titled terminal application surface with optional Turbo Vision-style shadowing.",
             Doc.Section(
+                "🪟",
                 "Frame and title",
                 "Choose glyph family and title placement while retaining one capacity-one child contract.",
                 Doc.Example(
@@ -128,6 +129,7 @@ internal sealed class WindowPane: View
                     chromeOptions,
                     "var window = new Window\n{\n    Title = \"Project settings\",\n    Child = form,\n};")),
             Doc.Section(
+                "🪟",
                 "Shadows",
                 "Composite, block-glyph, and flat windows share the same owned body and input behavior.",
                 Doc.Example(
@@ -135,6 +137,7 @@ internal sealed class WindowPane: View
                     "Compare quiet composite darkening, visible block glyphs, and a surface with shadow disabled.",
                     Doc.Row(composite, block, flat))),
             Doc.Section(
+                "🪟",
                 "Default and cancel",
                 "Unhandled Enter and Escape route to the first available IsDefault or IsCancel Button in the Window.",
                 Doc.Example(
@@ -147,6 +150,7 @@ internal sealed class WindowPane: View
                         Children = { stage },
                     })),
             Doc.Section(
+                "🪟",
                 "Surface style",
                 "Border, background, and attributes may explicitly override theme defaults on the complete Window surface.",
                 Doc.Example(
@@ -154,6 +158,7 @@ internal sealed class WindowPane: View
                     "Only this Window owns the local color and attribute overrides; sibling windows continue following the theme.",
                     styled)),
             Doc.Section(
+                "🪟",
                 "Composition",
                 "Window introduces no private modality, movement, or resize model; compose it inside Canvas or Overlay as ordinary content.",
                 Doc.Example(
@@ -161,6 +166,7 @@ internal sealed class WindowPane: View
                     "The focusable child remains in the surrounding routed-input tree while z-order controls presentation.",
                     overlayComposition)),
             Doc.Section(
+                "🪟",
                 "Boundaries",
                 "Long titles clip before corners and tiny boxes saturate safely without drawing outside their committed bounds.",
                 Doc.Example(

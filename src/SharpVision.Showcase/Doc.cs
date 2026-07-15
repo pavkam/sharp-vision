@@ -11,14 +11,20 @@ using TextControl = SharpVision.Controls.Text;
 internal static class Doc
 {
     /// <summary>Builds one progressive documentation section with ordered examples.</summary>
+    /// <param name="icon">The intentional emoji prefix that identifies the section.</param>
     /// <param name="heading">The section heading.</param>
     /// <param name="description">The orientation paragraph shown beneath the heading.</param>
     /// <param name="examples">The live examples in reading order.</param>
     /// <returns>A vertically stacked section.</returns>
-    /// <exception cref="ArgumentException"><paramref name="heading"/> or <paramref name="description"/> is blank.</exception>
+    /// <exception cref="ArgumentException"><paramref name="icon"/>, <paramref name="heading"/>, or <paramref name="description"/> is blank.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="examples"/> or one of its entries is null.</exception>
-    internal static Control Section(string heading, string description, params Control[] examples)
+    internal static Control Section(
+        string icon,
+        string heading,
+        string description,
+        params Control[] examples)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(icon);
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(examples);
@@ -29,7 +35,8 @@ internal static class Doc
         }
 
         var introduction = new TextControl(
-            $"<b>{TextControl.Escape(heading)}</b>\n<d>{TextControl.Escape(description)}</d>")
+            $"<accent><b>{TextControl.Escape(icon)} {TextControl.Escape(heading)}</b></accent>\n" +
+            $"<d>{TextControl.Escape(description)}</d>")
         {
             Overflow = Overflow.Wrap,
         };
@@ -48,30 +55,48 @@ internal static class Doc
     /// <param name="name">The exact control/page name shown as the heading.</param>
     /// <param name="overview">The one- or two-sentence overview shown under the heading.</param>
     /// <param name="sections">The example/section controls, in display order.</param>
-    /// <returns>A vertically stacked page root.</returns>
+    /// <returns>A page with a fixed identity header and an independently scrolling example body.</returns>
     /// <exception cref="ArgumentException"><paramref name="name"/> or <paramref name="overview"/> is blank.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="sections"/> is null.</exception>
-    internal static Stack Page(string name, string overview, params Control[] sections)
+    internal static Dock Page(string name, string overview, params Control[] sections)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(overview);
         ArgumentNullException.ThrowIfNull(sections);
 
         var heading = new TextControl(
-            $"<b>{TextControl.Escape(name)}</b>\n<b>Overview</b>\n{TextControl.Escape(overview)}")
+            $"<accent><b>{TextControl.Escape(name)}</b></accent>\n" +
+            $"<b>Overview</b>\n<d>{TextControl.Escape(overview)}</d>")
         {
             Overflow = Overflow.Wrap,
         };
-
-        var page = new Stack() { Padding = new Thickness(1), Spacing = 1 };
-        page.Children.Add(heading);
+        var header = new Dock
+        {
+            Background = ThemeColors.Surface,
+            FillMode = FillMode.Opaque,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderGlyphs = Glyphs.Light,
+            Padding = new Thickness(1, 0),
+            Children = { heading },
+        };
+        var body = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.WhenNeeded,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            Padding = new Thickness(1),
+            Spacing = 1,
+        };
 
         foreach (var section in sections)
         {
-            page.Children.Add(section);
+            ArgumentNullException.ThrowIfNull(section);
+            body.Children.Add(section);
         }
 
-        return page;
+        Dock.SetSide(header, Side.Top);
+        return new Dock { Children = { header, body } };
     }
 
     /// <summary>Builds one example block: a bold heading and dim description above a live specimen.</summary>
@@ -109,7 +134,7 @@ internal static class Doc
 
         if (source is not null)
         {
-            var code = new TextControl($"<b>C#</b>\n{TextControl.Escape(source)}")
+            var code = new TextControl($"<info><b>C#</b></info>\n{TextControl.Escape(source)}")
             {
                 Overflow = Overflow.WrapAnywhere,
             };

@@ -70,7 +70,7 @@ public sealed class GalleryInteractionTests
             application,
             "Button keyboard activation");
 
-        var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
+        var main = Find<Stack>(gallery.Content, static stack => stack.AutoScroll).ShouldNotBeNull();
         var wheel = string.Concat(Enumerable.Repeat("\u001b[<65;30;10M", 8));
         terminal.QueueInput(Encoding.ASCII.GetBytes(wheel));
         await WaitUntilAsync(
@@ -134,7 +134,7 @@ public sealed class GalleryInteractionTests
         var target = await application.Dispatcher.InvokeAsync(
             () => new Point(activeEditor.Bounds.X + 1, activeEditor.Bounds.Y + 1),
             TestContext.Current.CancellationToken);
-        var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
+        var main = Find<Stack>(gallery.Content, static stack => stack.AutoScroll).ShouldNotBeNull();
         var previousPageOffset = await application.Dispatcher.InvokeAsync(
             () => main.VerticalOffset,
             TestContext.Current.CancellationToken);
@@ -430,8 +430,12 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(() =>
         {
             active.IsFocused.ShouldBeTrue();
-            active.Attributes.ShouldBe(Attributes.Underline);
+            (active.Attributes.GetValueOrDefault() & Attributes.Underline).ShouldBe(Attributes.None);
             active.Background.ShouldBe(Color.Indexed(0));
+            using Frame frame = new(application.Size);
+            root.Render(frame.Canvas);
+            frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y)).Style.Foreground
+                .ShouldBe(Color.Indexed(14));
 
             if (active.IsHovered)
             {
@@ -859,7 +863,7 @@ public sealed class GalleryInteractionTests
         application.FrameRendered += Complete;
         var moved = await application.Dispatcher.InvokeAsync(() =>
         {
-            var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
+            var main = Find<Stack>(gallery.Content, static stack => stack.AutoScroll).ShouldNotBeNull();
             return main.BringIntoView(control);
         }, TestContext.Current.CancellationToken);
 

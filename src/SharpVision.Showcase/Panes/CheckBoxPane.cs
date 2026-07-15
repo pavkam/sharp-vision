@@ -86,6 +86,7 @@ internal sealed class CheckBoxPane: View
             Title,
             "Toggles an optional label through two-state or three-state selection with explicit events.",
             Doc.Section(
+                "☑️",
                 "Two-state choice",
                 "Use the default false/true cycle for independent Boolean options.",
                 Doc.Example(
@@ -94,6 +95,7 @@ internal sealed class CheckBoxPane: View
                     Doc.Column(live, status),
                     "var option = new CheckBox { Content = new Text(\"Include metadata\") };")),
             Doc.Section(
+                "☑️",
                 "Three-state policy",
                 "Use null only when the option genuinely represents an inherited or mixed value.",
                 Doc.Example(
@@ -102,6 +104,7 @@ internal sealed class CheckBoxPane: View
                     Doc.Column(unchecked_, checked_, indeterminate, policy, twoState, policyStatus),
                     "option.IsThreeState = true;\noption.IsChecked = null;")),
             Doc.Section(
+                "☑️",
                 "Marks",
                 "Built-in families and validated caller glyphs retain stable label placement.",
                 Doc.Example(
@@ -109,6 +112,7 @@ internal sealed class CheckBoxPane: View
                     "Square, bracket, tick, and custom marks all use printable one-cell state glyphs.",
                     Doc.Column(square, brackets, tick, custom))),
             Doc.Section(
+                "☑️",
                 "Events",
                 "State-specific notifications precede the general StateChanged notification.",
                 Doc.Example(
@@ -121,6 +125,7 @@ internal sealed class CheckBoxPane: View
                     Doc.Column(programmaticTrigger, programmaticTarget, programmaticStatus),
                     "target.PerformToggle();")),
             Doc.Section(
+                "☑️",
                 "Form recipe",
                 "Group related options and keep unavailable retained values visible as context.",
                 Doc.Example(

@@ -136,6 +136,7 @@ internal sealed class OverlayPane: View
             Title,
             "Arranges children into one shared content box with stable attached z-order for rendering and hit testing.",
             Doc.Section(
+                "🧩",
                 "Layering",
                 "All children share one content box while attached z-order controls paint and pointer priority.",
                 Doc.Example(
@@ -144,6 +145,7 @@ internal sealed class OverlayPane: View
                     zOrder,
                     "var overlay = new Overlay();\nOverlay.SetZIndex(status, 10);\noverlay.Children.Add(status);")),
             Doc.Section(
+                "🧩",
                 "Stable ties",
                 "Equal z-index values preserve collection order so rendering remains deterministic.",
                 Doc.Example(
@@ -151,6 +153,7 @@ internal sealed class OverlayPane: View
                     "First remains before Second until their collection order or z-index changes.",
                     equalTies)),
             Doc.Section(
+                "🧩",
                 "Pointer transparency",
                 "Decorative layers may render above interactive content without becoming pointer targets.",
                 Doc.Example(
@@ -159,6 +162,7 @@ internal sealed class OverlayPane: View
                     Doc.Column(transparent, pointerStatus),
                     "decoration.IsHitTestVisible = false;")),
             Doc.Section(
+                "🧩",
                 "Alignment and sizing",
                 "Each child independently resolves length and alignment against the shared box.",
                 Doc.Example(
@@ -170,6 +174,7 @@ internal sealed class OverlayPane: View
                     "The centered card resolves sixty percent width and half height whenever the host resizes.",
                     percent)),
             Doc.Section(
+                "🧩",
                 "Clipping",
                 "ClipToBounds controls descendant drawing and hit testing while the Overlay itself remains safely clipped.",
                 Doc.Example(
@@ -179,6 +184,7 @@ internal sealed class OverlayPane: View
                         Doc.Column(new Text("Clipped"), clipped),
                         Doc.Column(new Text("Unclipped"), unclipped)))),
             Doc.Section(
+                "🧩",
                 "Notification composition",
                 "High visual priority does not rewrite collection-based focus traversal.",
                 Doc.Example(

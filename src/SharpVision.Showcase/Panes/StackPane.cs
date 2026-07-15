@@ -77,6 +77,7 @@ internal sealed class StackPane: View
             Title,
             "Arranges children sequentially with fixed, automatic, percentage, or proportional lengths and stable spacing.",
             Doc.Section(
+                "📚",
                 "Orientation",
                 "Choose the sequential axis; the child collection remains the stable ownership and navigation source.",
                 Doc.Example(
@@ -85,6 +86,7 @@ internal sealed class StackPane: View
                     Doc.Column(vertical, horizontalOrientation),
                     "var actions = new Stack\n{\n    Orientation = Orientation.Horizontal,\n    Spacing = 1,\n};")),
             Doc.Section(
+                "📚",
                 "Mixed sizing",
                 "Fixed, percentage, automatic, and proportional lengths share one deterministic axis allocation.",
                 Doc.Example(
@@ -92,6 +94,7 @@ internal sealed class StackPane: View
                     "The fixed card reserves ten cells, percentage resolves once against the inner width, and star receives the remainder.",
                     horizontal)),
             Doc.Section(
+                "📚",
                 "Spacing and margins",
                 "Stack spacing belongs between participating tracks; margins belong outside individual children.",
                 Doc.Example(
@@ -99,6 +102,7 @@ internal sealed class StackPane: View
                     "Compare the two-cell external margin around the first card with the one-cell inter-child spacing.",
                     margins)),
             Doc.Section(
+                "📚",
                 "Reverse",
                 "Reverse changes geometry, rendering, and default focus traversal without reparenting children.",
                 Doc.Example(
@@ -106,6 +110,7 @@ internal sealed class StackPane: View
                     "The source order remains First, Second, Third while the visible and keyboard order runs in reverse.",
                     reversed)),
             Doc.Section(
+                "📚",
                 "Visibility",
                 "Hidden children retain a track while Collapsed children consume neither a track nor adjacent spacing.",
                 Doc.Example(
@@ -113,6 +118,7 @@ internal sealed class StackPane: View
                     "Only the surrounding cards render, but their gap reveals that Hidden still participates while Collapsed does not.",
                     visibility)),
             Doc.Section(
+                "📚",
                 "Constrained space",
                 "Containment wins when requests and spacing cannot fit; later flexible tracks may shrink safely to zero.",
                 Doc.Example(
@@ -120,6 +126,7 @@ internal sealed class StackPane: View
                     "A twelve-cell fixed card and spacing leave only the safe remainder for the proportional card.",
                     constrained)),
             Doc.Section(
+                "📚",
                 "Action-bar recipe",
                 "A proportional spacer pushes the primary command to the trailing edge without absolute positioning.",
                 Doc.Example(

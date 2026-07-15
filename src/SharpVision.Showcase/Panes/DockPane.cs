@@ -115,6 +115,7 @@ internal sealed class DockPane: View
             Title,
             "Consumes remaining physical edges in child order and optionally gives the final child all remaining space.",
             Doc.Section(
+                "⚓",
                 "Application shell",
                 "Compose familiar application regions by consuming physical edges and leaving the center to the final child.",
                 Doc.Example(
@@ -123,6 +124,7 @@ internal sealed class DockPane: View
                     allSides,
                     "var shell = new Dock { LastChildFills = true };\nDock.SetSide(sidebar, Side.Left);\nshell.Children.Add(sidebar);\nshell.Children.Add(main);")),
             Doc.Section(
+                "⚓",
                 "Order and spacing",
                 "Children consume the current remainder in insertion order, with spacing after each non-final participant.",
                 Doc.Example(
@@ -130,6 +132,7 @@ internal sealed class DockPane: View
                     "The first left child takes the outer strip; the second starts after it and its gap.",
                     order)),
             Doc.Section(
+                "⚓",
                 "Sizing from the remainder",
                 "Percentage edge sizes resolve against the rectangle available at that iteration, not the original panel.",
                 Doc.Example(
@@ -137,6 +140,7 @@ internal sealed class DockPane: View
                     "The first receives half of forty cells; the second receives half of what remains; Fill receives the rest.",
                     remaining)),
             Doc.Section(
+                "⚓",
                 "Collapse and fill",
                 "Collapsed edge regions consume neither geometry nor spacing, so the fill child reclaims their cells.",
                 Doc.Example(
@@ -144,6 +148,7 @@ internal sealed class DockPane: View
                     "Toggle the sidebar and watch Main content reclaim or release the exact left strip.",
                     Doc.Column(toggleSidebar, shellStatus, shell))),
             Doc.Section(
+                "⚓",
                 "Constrained space",
                 "Over-consumption saturates the remaining rectangle at zero instead of producing negative child bounds.",
                 Doc.Example(
@@ -151,6 +156,7 @@ internal sealed class DockPane: View
                     "Both edge requests exceed the available width; every committed rectangle remains contained and non-negative.",
                     constrained)),
             Doc.Section(
+                "⚓",
                 "Fill policy",
                 "Disable LastChildFills when the final child should honor its own side and leave unused remainder visible.",
                 Doc.Example(

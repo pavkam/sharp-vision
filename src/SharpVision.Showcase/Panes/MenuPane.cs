@@ -106,6 +106,7 @@ internal sealed class MenuPane: View
             Title,
             "Arranges typed command, check, radio, and separator items with semantic selected state and keyboard navigation.",
             Doc.Section(
+                "📑",
                 "Command menu",
                 "Combine command, separator, check, and radio items in one typed ownership collection.",
                 Doc.Example(
@@ -114,6 +115,7 @@ internal sealed class MenuPane: View
                     Doc.Column(framed, status),
                     "var menu = new Menu();\nmenu.Items.Add(new MenuItem { Header = \"Open\" });\nmenu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });")),
             Doc.Section(
+                "📑",
                 "Menu bar",
                 "Horizontal orientation switches traversal to Left and Right while preserving the same item semantics.",
                 Doc.Example(
@@ -121,6 +123,7 @@ internal sealed class MenuPane: View
                     "Move across File, Edit, View, and Help, then activate the selected item through the same invocation event.",
                     Doc.Column(framedBar, barStatus))),
             Doc.Section(
+                "📑",
                 "Popup composition",
                 "Menu remains an ordinary control; place it in Popup when an anchored flyout is required.",
                 Doc.Example(
@@ -129,6 +132,7 @@ internal sealed class MenuPane: View
                     flyoutStage,
                     "var popup = new Popup { Anchor = trigger, Child = menu, IsOpen = true };")),
             Doc.Section(
+                "📑",
                 "Selection and invocation",
                 "Keyboard navigation changes SelectedIndex; activation separately raises ItemInvoked after item state commits.",
                 Doc.Example(
@@ -136,6 +140,7 @@ internal sealed class MenuPane: View
                     "Move without activating, then press Enter and compare the selected index with the invoked header.",
                     Doc.Column(selectionMenu, selectionStatus))),
             Doc.Section(
+                "📑",
                 "Spacing and unavailable items",
                 "Spacing changes geometry only; unavailable entries remain visible and are skipped by focus and activation.",
                 Doc.Example(

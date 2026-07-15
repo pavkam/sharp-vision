@@ -117,6 +117,7 @@ internal sealed class ComboBoxPane: View
             Title,
             "Displays one selected value and opens an owned popup-style List for keyboard or pointer choice.",
             Doc.Section(
+                "🔽",
                 "Start here",
                 "Choose one compact value while keeping the full choice list available on demand.",
                 Doc.Example(
@@ -125,6 +126,7 @@ internal sealed class ComboBoxPane: View
                     Doc.Column(stage, density),
                     "var density = new ComboBox\n{\n    Items = [\"Compact\", \"Comfortable\", \"Spacious\"],\n    SelectedIndex = 1,\n};")),
             Doc.Section(
+                "🔽",
                 "Commit versus dismiss",
                 "The popup keeps highlighted navigation separate from the field's committed selection.",
                 Doc.Example(
@@ -132,6 +134,7 @@ internal sealed class ComboBoxPane: View
                     "Open the first field, move with arrows, then compare Enter with Escape. Escape closes without replacing the previous value.",
                     Doc.Column(commitCombo, commitStatus))),
             Doc.Section(
+                "🔽",
                 "Long choices",
                 "Cap popup height and let the owned List provide ordinary scrolling for the remaining choices.",
                 Doc.Example(
@@ -140,6 +143,7 @@ internal sealed class ComboBoxPane: View
                     Doc.Column(tallStage, tallStatus),
                     "combo.DropDownHeight = 6;\ncombo.ShowScrollBars = ShowScrollBars.WhenNeeded;")),
             Doc.Section(
+                "🔽",
                 "No selection",
                 "SelectedIndex -1 is a valid explicit empty state.",
                 Doc.Example(
@@ -147,6 +151,7 @@ internal sealed class ComboBoxPane: View
                     "Activate Clear selection. The field and status update through the same SelectionChanged contract.",
                     Doc.Column(clearSelection, emptyCombo, emptyStatus))),
             Doc.Section(
+                "🔽",
                 "Constrained placement",
                 "The owned Popup prefers below, flips when the lower edge cannot fit, and clamps to its host.",
                 Doc.Example(
@@ -154,6 +159,7 @@ internal sealed class ComboBoxPane: View
                     "Open this field near the stage bottom and resize the terminal to watch placement recompute.",
                     Doc.Column(edgeStage, edgeStatus))),
             Doc.Section(
+                "🔽",
                 "Unavailable state",
                 "Keep a locked choice visible without allowing focus or popup activation.",
                 Doc.Example(

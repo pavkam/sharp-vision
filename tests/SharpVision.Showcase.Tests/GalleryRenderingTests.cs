@@ -20,7 +20,7 @@ public sealed class GalleryRenderingTests
         using Frame frame = new(size);
         gallery.Render(frame.Canvas);
         var screen = new Screen(frame);
-        var view = gallery.Content.Parent.ShouldBeOfType<Stack>();
+        var view = FindAll<Stack>(gallery.Content).Single(stack => stack.AutoScroll);
 
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
         screen.Text.ShouldContain("SHARP VISION");
@@ -46,8 +46,36 @@ public sealed class GalleryRenderingTests
 
         var screen = new Screen(frame);
         screen.Text.ShouldContain("command paths.");
-        gallery.Content.Parent.ShouldBeOfType<Stack>()
+        FindAll<Stack>(gallery.Content).Single(stack => stack.AutoScroll)
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
+    }
+
+    /// <summary>Verifies the compact sidebar footer keeps its labels and controls in distinct grid cells.</summary>
+    [Theory]
+    [InlineData(80, 24)]
+    [InlineData(30, 8)]
+    public void Render_WhenSidebarHeightVaries_KeepsFooterControlsSeparated(int width, int height)
+    {
+        using var gallery = CreateThemedGallery();
+        new Engine().Layout(gallery, new Size(width, height));
+        var theme = FindAll<ControlText>(gallery.Sidebar).Single(text => text.Content == "Theme");
+        var picker = FindAll<ComboBox>(gallery.Sidebar).Single();
+        var quit = FindAll<Button>(gallery.Sidebar).Single();
+        var hint = FindAll<ControlText>(gallery.Sidebar).Single(text => text.Content == "Ctrl+C to quit");
+        Control[] footerControls = [theme, picker, quit, hint];
+        var footerGrid = FindAll<Grid>(gallery.Sidebar).Single();
+
+        footerGrid.Parent.ShouldBeOfType<Dock>().BorderThickness.Top.ShouldBe(1);
+        footerControls.ShouldAllBe(control => control.Bounds.Width > 0 && control.Bounds.Height > 0);
+
+        for (var first = 0; first < footerControls.Length; first++)
+        {
+            for (var second = first + 1; second < footerControls.Length; second++)
+            {
+                var overlap = footerControls[first].Bounds.Intersect(footerControls[second].Bounds);
+                (overlap.Width * overlap.Height).ShouldBe(0);
+            }
+        }
     }
 
     /// <summary>Verifies the Button page demonstrates both shadow modes and a stationary flat variant.</summary>
