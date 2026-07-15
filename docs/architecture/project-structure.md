@@ -50,9 +50,10 @@ The current UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and
 editing, selection and item controls, menus, popups, windows, intrinsic
 container scrolling, styling, focus, and routed input all remain on these
-boundaries. `Border` and `Shadow` are still current wrapper controls until the
-next mandatory intrinsic-chrome plan removes them; that prerequisite does not
-move terminal protocol or renderer behavior into the UI layer.
+boundaries. Shadow is intrinsic `Control` chrome configured on the decorated
+control. `Border` remains a current wrapper until its mandatory retirement
+slice; neither decision moves terminal protocol or renderer behavior into the UI
+layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.

@@ -658,13 +658,17 @@ git commit -m "feat(layout): reserve BorderThickness in the base measure/arrange
 - Delete in the retirement slice: `src/SharpVision/Controls/Shadow.cs`,
   `src/SharpVision.Showcase/Panes/ShadowPane.cs`, and
   `tests/SharpVision.Tests/Controls/ShadowTests.cs`
-- Modify in the retirement slice: `src/SharpVision.Showcase/Gallery.cs`,
+- Modify in the retirement slice: `src/SharpVision/Controls/ShadowMode.cs`,
+  `src/SharpVision.Showcase/Gallery.cs`,
   `tests/SharpVision.Showcase.Tests/GalleryTests.cs`,
   `tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs`, and
   `tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs`
 - Delete in the retirement slice: `docs/controls/display/shadow.md`
 - Modify in the retirement slice: `docs/controls/index.md`,
-  `docs/architecture/showcase.md`, and `docs/testing/showcase.md`
+  `docs/controls/input/button.md`, `docs/concepts/styling.md`,
+  `docs/architecture/project-structure.md`, `docs/architecture/showcase.md`,
+  `docs/testing/showcase.md`, and
+  `docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md`
 
 **Interfaces:**
 
@@ -774,11 +778,16 @@ Delete `Shadow.cs`, `ShadowPane.cs`, and `ShadowTests.cs` with `apply_patch`.
 Remove the `ShadowPane` catalog entry and the dedicated Shadow rendering test.
 The current catalog has 21 pages, Text at zero-based index 17, and tmux sends 17
 Down keys. After removing Shadow it has 20 pages, Text is index 16, and tmux
-must send 16 Down keys. Derive the value from Text's resulting catalog index
-rather than decrementing an older hard-coded assumption.
+must derive its Down-key count from Text's resulting catalog index rather than
+encode that descriptive number. `GalleryTests` already pins the complete ordered
+inventory through `_controls`; do not duplicate numeric count or index guards.
+In `TmuxSmokeTests`, instantiate `Gallery`, scan `Pages` for Text with a helper
+that fails when the page is absent, and use the returned index for navigation.
 
-Delete the Shadow control spec and update the control index, showcase
-architecture, and showcase-testing docs in this same retirement slice.
+Delete the Shadow control spec and update the control index, Button's shared
+chrome link, styling and project-structure wrapper claims, showcase
+architecture, showcase-testing docs, and the `ShadowMode` API summary in this
+same retirement slice.
 
 - [ ] **Step 6: Build and verify retirement**
 
@@ -792,17 +801,36 @@ dotnet test --project tests/SharpVision.Tests \
   --filter-class "*IntrinsicShadowTests" "*AmbiguousWidthControlTests" \
   "*ControlChromeTests" --parallel none --timeout 180s
 dotnet test --project tests/SharpVision.Showcase.Tests --parallel none --timeout 300s
-npx prettier --write docs/controls/index.md docs/architecture/showcase.md docs/testing/showcase.md
-npx prettier --check docs/controls/index.md docs/architecture/showcase.md docs/testing/showcase.md
+npx prettier --write \
+  docs/controls/index.md \
+  docs/controls/input/button.md \
+  docs/concepts/styling.md \
+  docs/architecture/project-structure.md \
+  docs/architecture/showcase.md \
+  docs/testing/showcase.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
+npx prettier --check \
+  docs/controls/index.md \
+  docs/controls/input/button.md \
+  docs/concepts/styling.md \
+  docs/architecture/project-structure.md \
+  docs/architecture/showcase.md \
+  docs/testing/showcase.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
+npm run lint:markdown
+npm run lint:links
+npm run test:docs
 ```
 
-Expected: the search is silent; build and both test commands pass.
+Expected: the search is silent; build, both test commands, Markdown lint, link
+validation, and documentation tests pass.
 
 - [ ] **Step 7: Commit the atomic retirement**
 
 ```bash
 git add -- \
   src/SharpVision/Controls/Shadow.cs \
+  src/SharpVision/Controls/ShadowMode.cs \
   src/SharpVision.Showcase/Gallery.cs \
   src/SharpVision.Showcase/Panes/ShadowPane.cs \
   tests/SharpVision.Tests/Controls/ShadowTests.cs \
@@ -811,8 +839,12 @@ git add -- \
   tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs \
   docs/controls/display/shadow.md \
   docs/controls/index.md \
+  docs/controls/input/button.md \
+  docs/concepts/styling.md \
+  docs/architecture/project-structure.md \
   docs/architecture/showcase.md \
-  docs/testing/showcase.md
+  docs/testing/showcase.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShadow"
 ```
 
@@ -845,7 +877,6 @@ git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShado
 - Modify in the retirement slice: `src/SharpVision.Showcase/Gallery.cs`,
   `tests/SharpVision.Showcase.Tests/GalleryTests.cs`,
   `tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs`,
-  `tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs`,
   `docs/controls/index.md`, `docs/architecture/showcase.md`, and
   `docs/testing/showcase.md`
 
@@ -1028,8 +1059,9 @@ git commit -m "refactor(showcase): compose frames with intrinsic border surfaces
 Delete `Border.cs`, `BorderPane.cs`, `BorderTests.cs`, and the Border control
 spec with `apply_patch`. Remove the Border catalog entry. After Task 2 the
 catalog has 20 pages and Text at index 16; after removing Border it has 19
-pages, starts on Button, and Text is index 15. Set tmux to 15 Down keys by
-deriving it from that final index.
+pages, starts on Button, and Text is index 15. The smoke test's catalog-derived
+helper automatically navigates to that final index; do not edit `TmuxSmokeTests`
+in this slice.
 
 In `GalleryTests`, remove `"Border"`, assert the initial page is `"Button"`, and
 change the index-1 selection expectation to `"Canvas"`. In
@@ -1073,7 +1105,6 @@ git add -- \
   tests/SharpVision.Tests/Controls/BorderTests.cs \
   tests/SharpVision.Showcase.Tests/GalleryTests.cs \
   tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs \
-  tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs \
   docs/controls/display/border.md \
   docs/controls/index.md \
   docs/architecture/showcase.md \

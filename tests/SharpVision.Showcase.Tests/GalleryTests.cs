@@ -23,7 +23,6 @@ public sealed class GalleryTests
         "Popup",
         "RadioButton",
         "ScrollBar",
-        "Shadow",
         "Stack",
         "Table",
         "Text",

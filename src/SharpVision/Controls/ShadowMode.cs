@@ -3,7 +3,7 @@
 
 namespace SharpVision.Controls;
 
-/// <summary>Defines how a Shadow changes cells in its visual overflow footprint.</summary>
+/// <summary>Defines how intrinsic control shadow chrome changes cells in its visual overflow footprint.</summary>
 public enum ShadowMode
 {
     /// <summary>Preserves underlying graphemes and replaces their semantic style.</summary>

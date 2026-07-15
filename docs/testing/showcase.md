@@ -47,10 +47,10 @@ section is a standalone Table with Input, Behavior, and Result columns rather
 than another prose card. The page test protects the narrative's borderless
 structure alongside its responsive wrapping.
 
-Canvas and Shadow have dedicated virtual-screen assertions: Canvas must retain
-its labeled fixed, percentage, edge-constraint, and clipping stages within the
-viewport, while Shadow must render separate composite and block-glyph stages
-with a readable light-shade footprint.
+Canvas has dedicated virtual-screen assertions and must retain its labeled
+fixed, percentage, edge-constraint, and clipping stages within the viewport.
+Button and Window assertions continue to cover intrinsic composite and
+block-glyph shadow properties through their live specimens.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The

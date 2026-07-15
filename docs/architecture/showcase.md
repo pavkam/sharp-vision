@@ -29,9 +29,9 @@ composition shorthands for framing and arranging specimens.
 `Gallery` owns the stable catalog of pane titles and factories
 (`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
 concrete shipped control: Border, Button, Canvas, CheckBox, ComboBox, Dock,
-FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, ScrollBar, Shadow,
-Stack, Table, Text, TextInput, Window, and Theming. Foundation types and
-unimplemented specifications are not navigation entries.
+FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, ScrollBar, Stack,
+Table, Text, TextInput, Window, and Theming. Foundation types and unimplemented
+specifications are not navigation entries.
 
 Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
 blocks: an Overview paragraph stating the control's purpose, followed by
@@ -43,11 +43,11 @@ narrative section; documentation prose lives inline next to the specimen it
 describes. Marked `Text` headings and example descriptions use `Overflow.Wrap`,
 so they reflow as the page narrows along with the live specimens.
 
-Canvas and Shadow demonstrate visual behavior as several labeled, framed live
-specimens rather than a single crowded sample. Each stage keeps the control's
-real layout and rendering path visible beside concise guidance: fixed,
-percentage, edge-constrained, layered, and clipped Canvas children; and separate
-composite and light-shade block-glyph shadows.
+Canvas demonstrates visual behavior as several labeled, framed live specimens
+rather than a single crowded sample. Each stage keeps the control's real layout
+and rendering path visible beside concise guidance for fixed, percentage,
+edge-constrained, layered, and clipped children. Intrinsic composite and
+block-glyph shadow variants remain visible on the Button and Window pages.
 
 ![Live colored dashboard captured from tmux](../images/showcase-dashboard.png)
 

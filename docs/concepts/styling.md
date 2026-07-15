@@ -87,8 +87,7 @@ showcase theme toggling, and exact terminal cell output.
 ## Shared chrome
 
 Border, shadow, and opaque body fill rasterize through one internal geometry so
-`Button`, `Window`, `Border`, and `Shadow` share a single draw path. A derived
-control draws the same chrome through the protected `RenderChrome` method (base
-`OnRender` calls it); the base control deflates `ContentBounds` by border
-thickness before padding. See [Theming a new control](theming-new-controls.md)
-for the full extender surface.
+`Button`, `Window`, `Border`, and any derived control that uses `RenderChrome`
+share a single draw path. Base `OnRender` calls that protected method; the base
+control deflates `ContentBounds` by border thickness before padding. See
+[Theming a new control](theming-new-controls.md) for the full extender surface.
