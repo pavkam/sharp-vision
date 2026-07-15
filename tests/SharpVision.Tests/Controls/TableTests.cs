@@ -197,7 +197,7 @@ public sealed class TableTests
         _ = Should.Throw<ArgumentException>(() => table.Rows.Add(row));
 
         table.Rows.Count.ShouldBe(0);
-        table.Children.Count.ShouldBe(0);
+        table.GetType().GetProperty("Children").ShouldBeNull();
         cell.Parent.ShouldBeNull();
     }
 }

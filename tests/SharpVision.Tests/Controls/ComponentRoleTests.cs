@@ -57,6 +57,19 @@ public sealed class ComponentRoleTests
             .ShouldBeFalse();
     }
 
+    /// <summary>Verifies the typed table API does not leak its private cell presenter as a panel contract.</summary>
+    [Fact]
+    public void Table_WhenInspected_UsesPrivateItemsPresentationRole()
+    {
+        var type = typeof(Table);
+
+        type.BaseType.ShouldBe(typeof(ItemsControl));
+        typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
+        type.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
+        _ = type.GetProperty(nameof(Table.Rows)).ShouldNotBeNull();
+        _ = type.GetProperty(nameof(Table.Columns)).ShouldNotBeNull();
+    }
+
     /// <summary>Verifies menu separators are a distinct non-pressable control role.</summary>
     [Fact]
     public void MenuSeparator_WhenInspected_IsNotAMenuItemKind()

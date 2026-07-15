@@ -2,11 +2,11 @@
 
 ## Table contract
 
-`Table` owns typed rows of ordinary controls and aligns them against titled
-fixed, automatic, percentage, or proportional columns. It measures, arranges,
-and renders cells through the normal control pipeline, so marked text, links,
-buttons, and input controls can appear in a table without a separate rendering
-model.
+`Table : ItemsControl` owns typed rows of ordinary controls and aligns them
+against titled fixed, automatic, percentage, or proportional columns. It
+measures, arranges, and renders cells through the normal control pipeline, so
+marked text, links, buttons, and input controls can appear in a table without a
+separate rendering model.
 
 ## API
 
@@ -31,7 +31,10 @@ the remaining cells. Headers and rows remeasure wrapping controls once their
 finite column widths are known.
 
 A failed row/column count validation leaves the collection and every candidate
-cell detached. Removing a row releases its cells for another owner.
+cell detached. Removing a row releases its cells for another owner. `Rows` and
+`Columns` are the only semantic mutation surfaces: the private scrolling table
+presenter owns realized cell controls, so `Table` intentionally exposes no
+general `Children` collection.
 
 A header-only table measures and renders only its padded header. It reserves no
 phantom data-row spacing or grid divider until the first row is present.

@@ -3,13 +3,10 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Terminal.Rendering;
-
 /// <summary>Arranges typed rows and columns into a terminal-safe table with optional headers and grid lines.</summary>
-public sealed class Table: Container
+public sealed class Table: ItemsControl
 {
-    private int[] _columnWidths = [];
-    private int[] _rowHeights = [];
+    private readonly TablePresenter _presenter;
 
     #region Construction and properties
 
@@ -17,10 +14,10 @@ public sealed class Table: Container
     public Table()
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
-        AutoScroll = true;
-        ScrollBars = ScrollBars.Both;
         Columns = new TableColumns(this);
         Rows = new TableRows(this);
+        _presenter = new TablePresenter(this);
+        InitializeItemsHost(_presenter);
     }
 
     /// <summary>Gets the mutable titled column definitions.</summary>
@@ -123,140 +120,136 @@ public sealed class Table: Container
         set => SetValue(GridLineColorProperty, value);
     }
 
+    /// <summary>Gets the committed non-negative scrolling content extent.</summary>
+    public Size Extent => _presenter.Extent;
+
+    /// <summary>Gets the committed non-negative scrolling viewport extent.</summary>
+    public Size Viewport => _presenter.Viewport;
+
+    /// <summary>Raised after the private table viewport commits one or both offsets.</summary>
+    public event EventHandler<ScrollChangedEventArgs> ScrollChanged
+    {
+        add => _presenter.ScrollChanged += value;
+        remove => _presenter.ScrollChanged -= value;
+    }
+
+    /// <summary>Gets or sets the scrollable axes of the private cell presenter.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public ScrollBars ScrollBars
+    {
+        get => _presenter.ScrollBars;
+        set => _presenter.ScrollBars = value;
+    }
+
+    /// <summary>Gets or sets the common scrollbar reservation policy for the private cell presenter.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public ShowScrollBars ShowScrollBars
+    {
+        get => _presenter.ShowScrollBars;
+        set => _presenter.ShowScrollBars = value;
+    }
+
+    /// <summary>Gets or sets the generated chrome form for both private scrollbars.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public ScrollBarChrome ScrollBarChrome
+    {
+        get => _presenter.ScrollBarChrome;
+        set => _presenter.ScrollBarChrome = value;
+    }
+
+    /// <summary>Gets or sets the generated fill treatment for both private scrollbars.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public ScrollBarFill ScrollBarFill
+    {
+        get => _presenter.ScrollBarFill;
+        set => _presenter.ScrollBarFill = value;
+    }
+
+    /// <summary>Gets or sets the non-negative keyboard and wheel scrolling increment in cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public int LineSize
+    {
+        get => _presenter.LineSize;
+        set => _presenter.LineSize = value;
+    }
+
+    /// <summary>Gets or sets non-negative cells retained between page commands.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public int PageOverlap
+    {
+        get => _presenter.PageOverlap;
+        set => _presenter.PageOverlap = value;
+    }
+
+    /// <summary>Gets or sets the valid horizontal content offset.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public int HorizontalOffset
+    {
+        get => _presenter.HorizontalOffset;
+        set => _presenter.HorizontalOffset = value;
+    }
+
+    /// <summary>Gets or sets the valid vertical content offset.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public int VerticalOffset
+    {
+        get => _presenter.VerticalOffset;
+        set => _presenter.VerticalOffset = value;
+    }
+
+    /// <summary>Adds signed scrolling deltas with endpoint clamping.</summary>
+    /// <param name="x">The requested horizontal delta.</param>
+    /// <param name="y">The requested vertical delta.</param>
+    /// <param name="cause">The defined input path.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public bool ScrollBy(int x, int y, Scrolling.Cause cause = Scrolling.Cause.Programmatic) =>
+        _presenter.ScrollBy(x, y, cause);
+
+    /// <summary>Scrolls minimally to expose one row-cell descendant.</summary>
+    /// <param name="descendant">The non-null descendant control.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
+    /// <exception cref="ArgumentException">The control is not a realized table descendant.</exception>
+    /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public bool BringIntoView(Control descendant) => _presenter.BringIntoView(descendant);
+
     #endregion
 
     #region Layout and rendering
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
-    {
-        MeasureCells(constraint.Width);
-        var width = Add(Sum(_columnWidths), GapWidth(Columns.Count));
-        var height = Add(Sum(_rowHeights), GapHeight(Rows.Count));
-
-        if (ShowHeader && Columns.Count > 0)
-        {
-            height = Add(height, Add(CellPadding.Vertical, 1));
-
-            if (Rows.Count > 0)
-            {
-                height = Add(height, RowGap);
-            }
-        }
-
-        return new Size(width, height);
-    }
+        => MeasureChild(_presenter, constraint);
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        MeasureCells(bounds.Width);
-        var y = bounds.Y;
-
-        if (ShowHeader && Columns.Count > 0)
-        {
-            y = Add(y, Add(CellPadding.Vertical, 1));
-
-            if (Rows.Count > 0)
-            {
-                y = Add(y, RowGap);
-            }
-        }
-
-        for (var rowIndex = 0; rowIndex < Rows.Count; rowIndex++)
-        {
-            var row = Rows[rowIndex];
-            var x = bounds.X;
-
-            for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
-            {
-                var slot = new Rect(x, y, _columnWidths[columnIndex], _rowHeights[rowIndex]);
-                row.Cells[columnIndex].Arrange(CellPadding.Deflate(slot), widthResolved: true, heightResolved: true);
-                x = Add(x, Add(_columnWidths[columnIndex], ColumnGap));
-            }
-
-            y = Add(y, Add(_rowHeights[rowIndex], RowGap));
-        }
-    }
+    protected override void ArrangeOverride(Rect bounds) =>
+        ArrangeChild(_presenter, bounds, ResolvedAxes.Both);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
-    {
-        if (Columns.Count == 0 || Bounds.Width == 0 || Bounds.Height == 0)
-        {
-            return;
-        }
+    protected override void OnRender(TerminalCanvas canvas) => _presenter.RenderTableChrome(canvas);
 
-        var inherited = ResolvedStyle;
-        (var attributes, var underline, var underlineColor) = Decoration.Resolve(inherited);
-        var header = new TerminalStyle(
-            HeaderForeground ?? inherited.Foreground,
-            HeaderBackground ?? inherited.Background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-        var grid = new TerminalStyle(
-            GridLineColor ?? inherited.Foreground,
-            inherited.Background,
-            attributes,
-            inherited.Hyperlink,
-            underline,
-            underlineColor);
-        var headerHeight = ShowHeader ? Add(CellPadding.Vertical, 1) : 0;
-
-        if (ShowHeader)
-        {
-            if (HeaderBackground.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState()))
-            {
-                canvas.Clear(new Rect(Bounds.X, Bounds.Y, Bounds.Width, headerHeight), header);
-            }
-
-            var x = Bounds.X;
-
-            for (var index = 0; index < Columns.Count; index++)
-            {
-                var area = new Rect(x, Bounds.Y + CellPadding.Top, _columnWidths[index], 1);
-                var text = canvas.Clip(CellPadding.Deflate(area));
-                _ = text.Draw(Columns[index].Header.AsSpan(), new Point(area.X + CellPadding.Left, area.Y), header, background: BackgroundMode.Transparent);
-                x = Add(x, Add(_columnWidths[index], ColumnGap));
-            }
-        }
-
-        if (!ShowGridLines)
-        {
-            return;
-        }
-
-        var xLine = Bounds.X;
-
-        for (var index = 0; index < Columns.Count - 1; index++)
-        {
-            xLine = Add(xLine, _columnWidths[index]);
-            canvas.DrawVerticalLine(new Point(xLine, Bounds.Y), Bounds.Height, LineStyle.Light, grid);
-            xLine = Add(xLine, ColumnGap);
-        }
-
-        if (ShowHeader && Rows.Count > 0 && RowGap > 0)
-        {
-            // Canvas coordinates are absolute. A table may be arranged inside
-            // any offset parent, so the divider must include the table origin.
-            canvas.DrawHorizontalLine(
-                new Point(Bounds.X, Add(Bounds.Y, headerHeight)),
-                Bounds.Width,
-                LineStyle.Light,
-                grid);
-        }
-
-        var y = Add(Bounds.Y, headerHeight + (ShowHeader ? RowGap : 0));
-
-        for (var index = 0; index < Rows.Count - 1; index++)
-        {
-            y = Add(y, _rowHeights[index]);
-            canvas.DrawHorizontalLine(new Point(Bounds.X, y), Bounds.Width, LineStyle.Light, grid);
-            y = Add(y, RowGap);
-        }
-    }
+    /// <summary>Gets the current state snapshot for private table chrome resolution.</summary>
+    internal State CurrentVisualState => GetVisualState();
 
     #endregion
 
@@ -290,7 +283,7 @@ public sealed class Table: Container
 
         foreach (var cell in row.Cells)
         {
-            Children.Add(cell);
+            _presenter.Children.Add(cell);
         }
 
         owner.InsertAttached(index, row);
@@ -307,7 +300,7 @@ public sealed class Table: Container
 
         foreach (var cell in row.Cells)
         {
-            _ = Children.Remove(cell);
+            _ = _presenter.Children.Remove(cell);
         }
 
         owner.RemoveAttached(index);
@@ -339,12 +332,12 @@ public sealed class Table: Container
 
         foreach (var cell in previous.Cells)
         {
-            _ = Children.Remove(cell);
+            _ = _presenter.Children.Remove(cell);
         }
 
         foreach (var cell in row.Cells)
         {
-            Children.Add(cell);
+            _presenter.Children.Add(cell);
         }
 
         owner.ReplaceAttached(index, row);
@@ -353,64 +346,7 @@ public sealed class Table: Container
 
     #endregion
 
-    #region Track resolution and validation
-
-    private int ColumnGap => Math.Max(ColumnSpacing, ShowGridLines ? 1 : 0);
-
-    private int RowGap => Math.Max(RowSpacing, ShowGridLines ? 1 : 0);
-
-    private void MeasureCells(int? availableWidth)
-    {
-        if (Columns.Count == 0)
-        {
-            _columnWidths = [];
-            _rowHeights = [];
-            return;
-        }
-
-        var automatic = new int[Columns.Count];
-        var lengths = new Length[Columns.Count];
-
-        for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
-        {
-            lengths[columnIndex] = Columns[columnIndex].Width;
-            automatic[columnIndex] = Add(Terminal.Unicode.Width.Measure(Columns[columnIndex].Header).Cells, CellPadding.Horizontal);
-        }
-
-        foreach (var row in Rows)
-        {
-            for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
-            {
-                var cell = row.Cells[columnIndex];
-                cell.Measure(new Constraint(width: null, height: null));
-                automatic[columnIndex] = Math.Max(automatic[columnIndex], Add(cell.DesiredSize.Width, Add(cell.Margin.Horizontal, CellPadding.Horizontal)));
-            }
-        }
-
-        int? available = availableWidth.HasValue
-            ? Math.Max(0, availableWidth.Value - GapWidth(Columns.Count))
-            : null;
-        _columnWidths = Tracks.Resolve(available, lengths, automatic);
-        _rowHeights = new int[Rows.Count];
-
-        for (var rowIndex = 0; rowIndex < Rows.Count; rowIndex++)
-        {
-            var height = 0;
-
-            for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
-            {
-                var cell = Rows[rowIndex].Cells[columnIndex];
-                var width = Math.Max(0, _columnWidths[columnIndex] - CellPadding.Horizontal);
-                cell.Measure(new Constraint(width, height: null));
-                height = Math.Max(height, Add(cell.DesiredSize.Height, Add(cell.Margin.Vertical, CellPadding.Vertical)));
-            }
-
-            _rowHeights[rowIndex] = height;
-        }
-
-        Debug.Assert(_columnWidths.Length == Columns.Count, "Every column must resolve to one width.");
-        Debug.Assert(_rowHeights.Length == Rows.Count, "Every row must resolve to one height.");
-    }
+    #region Validation
 
     private void ValidateRow(TableRow row)
     {
@@ -439,50 +375,6 @@ public sealed class Table: Container
         {
             throw new ArgumentException("The row collection does not belong to this table.", nameof(owner));
         }
-    }
-
-    private int GapWidth(int count)
-    {
-        Debug.Assert(count >= 0, "Table column gap count is non-negative.");
-
-        return count < 2 ? 0 : Multiply(ColumnGap, count - 1);
-    }
-
-    private int GapHeight(int count)
-    {
-        Debug.Assert(count >= 0, "Table row gap count is non-negative.");
-
-        return count < 2 ? 0 : Multiply(RowGap, count - 1);
-    }
-
-    private static int Sum(IEnumerable<int> values)
-    {
-        Debug.Assert(values is not null, "Table sum requires a non-null sequence.");
-
-        var total = 0;
-
-        foreach (var value in values)
-        {
-            total = Add(total, value);
-        }
-
-        return total;
-    }
-
-    private static int Add(int left, int right)
-    {
-        Debug.Assert(left >= 0, "Table accumulation uses non-negative extents.");
-        Debug.Assert(right >= 0, "Table accumulation uses non-negative extents.");
-
-        return (int) Math.Min(int.MaxValue, (long) left + right);
-    }
-
-    private static int Multiply(int value, int count)
-    {
-        Debug.Assert(value >= 0, "Table multiplication value is non-negative.");
-        Debug.Assert(count >= 0, "Table multiplication count is non-negative.");
-
-        return (int) Math.Min(int.MaxValue, (long) value * count);
     }
 
     #endregion
