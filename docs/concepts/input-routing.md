@@ -99,9 +99,9 @@ committed transforms at each route element.
 `CaptureManager` synthesizes `PointerEventArgs.ClickCount` because terminal
 mouse reports do not carry desktop gesture counts. Presses accumulate only for
 the same routed target, button set, and cell within 500 milliseconds on the
-manager's monotonic `TimeProvider`; any mismatch or expired interval restarts
-at one. Non-press events report zero. This gesture metadata belongs to routed
-UI input and does not alter the immutable terminal `Pointer` value.
+manager's monotonic `TimeProvider`; any mismatch or expired interval restarts at
+one. Non-press events report zero. This gesture metadata belongs to routed UI
+input and does not alter the immutable terminal `Pointer` value.
 
 `Control.HitTest(Point)` requires effective visibility and enabled state, clips
 at each parent, and searches `Container.Children` from last to first so the

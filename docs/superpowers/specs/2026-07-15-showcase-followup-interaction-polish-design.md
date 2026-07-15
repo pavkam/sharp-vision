@@ -23,8 +23,8 @@ This pass covers seven related outcomes:
 7. the sidebar footer becomes a legible utility group with a full-width theme
    picker and a full-width Quit action.
 
-Table scrolling and the earlier control-state remediation are outside this
-pass because they are already covered by the preceding verified changes.
+Table scrolling and the earlier control-state remediation are outside this pass
+because they are already covered by the preceding verified changes.
 
 ## Chosen design
 
@@ -43,15 +43,15 @@ host, not each document, owns allocation of the main application region.
 
 `Text` treats its resolved `FillMode` as the authority for unmarked glyph
 background replacement. With the default `FillMode.Transparent`, glyphs apply
-foreground and decorations while preserving destination backgrounds. An
-explicit markup background remains opaque, and callers that want a control-wide
-text background set `FillMode.Opaque` together with `Background`.
+foreground and decorations while preserving destination backgrounds. An explicit
+markup background remains opaque, and callers that want a control-wide text
+background set `FillMode.Opaque` together with `Background`.
 
 This makes the opaque parent surface the single owner of the page-header and
 list-row background. `ListItem` continues to paint the complete hovered or
-selected row before its template renders; transparent `Text` can no longer
-punch normal-theme holes into that row. Custom text backgrounds remain
-available through the explicit opaque-fill contract.
+selected row before its template renders; transparent `Text` can no longer punch
+normal-theme holes into that row. Custom text backgrounds remain available
+through the explicit opaque-fill contract.
 
 ### Popup and Window teaching stages
 
@@ -63,11 +63,11 @@ instead of rendering permanent promoted surfaces through the documentation.
 
 Window examples render over populated, opaque application surfaces. The main
 project-settings specimen removes the redundant outer frame, keeps its shadow
-inside a clipped stage, and shows the workspace around every side of the
-window. Styled and composition specimens receive sufficient width, wrapping,
-centering, and backdrop ownership. The unreadable two-cell Window is replaced
-in the showcase by a minimum readable boundary specimen; exact two-cell
-saturation remains a library test rather than a visual lesson.
+inside a clipped stage, and shows the workspace around every side of the window.
+Styled and composition specimens receive sufficient width, wrapping, centering,
+and backdrop ownership. The unreadable two-cell Window is replaced in the
+showcase by a minimum readable boundary specimen; exact two-cell saturation
+remains a library test rather than a visual lesson.
 
 ### Multi-click gesture and word selection
 
@@ -87,9 +87,9 @@ that would collapse the selection on release.
 
 ### Clipboard shortcuts and exit ownership
 
-The running `Application` owns a small in-process text clipboard used by
-focused `TextInput` controls. A root preview handler recognizes exact
-Control-modified `C`, `X`, and `V` presses:
+The running `Application` owns a small in-process text clipboard used by focused
+`TextInput` controls. A root preview handler recognizes exact Control-modified
+`C`, `X`, and `V` presses:
 
 - Copy stores `CopySelection()` and mirrors non-empty text through
   `Application.Terminal.Clipboard.Write` when supported.
@@ -104,8 +104,8 @@ the bracketed `Paste` event path; this pass does not claim synchronous host
 clipboard reads that the terminal has not supplied.
 
 The showcase runs with `TreatControlCAsInput` enabled and moves its global exit
-binding from `Ctrl+C` to `Ctrl+Q`. Thus copy reaches the focused input while Quit
-remains available from the footer and a non-conflicting keyboard chord.
+binding from `Ctrl+C` to `Ctrl+Q`. Thus copy reaches the focused input while
+Quit remains available from the footer and a non-conflicting keyboard chord.
 
 ### Sidebar utility group
 
