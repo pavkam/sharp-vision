@@ -9,17 +9,26 @@ using SharpVision.Terminal.Input;
 /// <summary>Owns hit targeting, hover, press, and exclusive pointer capture.</summary>
 public sealed class CaptureManager: IDisposable
 {
+    private static readonly TimeSpan _multiClickInterval = TimeSpan.FromMilliseconds(500);
+    private readonly TimeProvider _timeProvider;
+    private long _lastClickTimestamp;
+    private Point? _lastClickCells;
+    private Buttons _lastClickButtons;
+    private Control? _lastClickTarget;
+    private int _clickCount;
+
     #region Construction and state
 
     /// <summary>Initializes pointer ownership for one attached root.</summary>
     /// <param name="root">The non-null attached tree root.</param>
+    /// <param name="timeProvider">The optional monotonic gesture clock.</param>
     /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// The root is detached or already belongs to a capture manager.
     /// </exception>
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The root is disposed.</exception>
-    public CaptureManager(Control root)
+    public CaptureManager(Control root, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         root.VerifyMutable();
@@ -34,6 +43,7 @@ public sealed class CaptureManager: IDisposable
             throw new ArgumentException("The root already belongs to a capture manager.", nameof(root));
         }
 
+        _timeProvider = timeProvider ?? TimeProvider.System;
         Root = root;
         root.SetCaptureOwner(this);
     }
@@ -127,7 +137,10 @@ public sealed class CaptureManager: IDisposable
 
         if (target is not null)
         {
-            Router.Route(target, Events.Pointer, new PointerEventArgs(pointer));
+            Router.Route(
+                target,
+                Events.Pointer,
+                new PointerEventArgs(pointer, ResolveClickCount(pointer, target)));
         }
 
         if (pointer.Action is PointerAction.Release or PointerAction.Leave)
@@ -136,6 +149,29 @@ public sealed class CaptureManager: IDisposable
         }
 
         return target;
+    }
+
+    private int ResolveClickCount(Pointer pointer, Control target)
+    {
+        Debug.Assert(target is not null, "Gesture metadata requires a routed target.");
+
+        if (pointer.Action != PointerAction.Press)
+        {
+            return 0;
+        }
+
+        var now = _timeProvider.GetTimestamp();
+        var continues = _clickCount > 0 &&
+            ReferenceEquals(_lastClickTarget, target) &&
+            _lastClickCells == pointer.Cells &&
+            _lastClickButtons == pointer.Buttons &&
+            _timeProvider.GetElapsedTime(_lastClickTimestamp, now) <= _multiClickInterval;
+        _clickCount = continues && _clickCount < int.MaxValue ? _clickCount + 1 : 1;
+        _lastClickTimestamp = now;
+        _lastClickCells = pointer.Cells;
+        _lastClickButtons = pointer.Buttons;
+        _lastClickTarget = target;
+        return _clickCount;
     }
 
     /// <summary>Cancels capture, hover, and press because terminal focus was lost.</summary>

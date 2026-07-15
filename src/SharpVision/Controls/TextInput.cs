@@ -727,6 +727,15 @@ public sealed class TextInput: Container
             pointer.Cells is { } pressedCells &&
             Bounds.Contains(pressedCells))
         {
+            _ = FocusOwner?.Focus(this);
+
+            if (eventArgs.ClickCount == 2)
+            {
+                SetSelection(Edit.SelectWord(Text, ClusterIndexAt(pressedCells)));
+                eventArgs.Handled = true;
+                return;
+            }
+
             var capture = CaptureOwner;
 
             if (capture is null || !capture.Capture(this))
@@ -734,7 +743,6 @@ public sealed class TextInput: Container
                 return;
             }
 
-            _ = FocusOwner?.Focus(this);
             _pointerAnchor = IndexAt(pressedCells);
             _pointerSelecting = true;
             SubscribeCapture(capture);
@@ -804,6 +812,47 @@ public sealed class TextInput: Container
                 return targetX <= x + (width / 2)
                     ? grapheme.Offset
                     : grapheme.Offset + grapheme.Length;
+            }
+
+            x += width;
+        }
+
+        return Text.Length;
+    }
+
+    private int ClusterIndexAt(Point point)
+    {
+        var targetX = Math.Max(0, point.X - _editorBounds.X + HorizontalOffset);
+        var targetY = Math.Max(0, point.Y - _editorBounds.Y + VerticalOffset);
+        var x = 0;
+        var y = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(Text))
+        {
+            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+
+            if (IsLineBreak(cluster))
+            {
+                if (y == targetY)
+                {
+                    return grapheme.Offset;
+                }
+
+                x = 0;
+                y++;
+                continue;
+            }
+
+            if (y > targetY)
+            {
+                return grapheme.Offset;
+            }
+
+            var width = ClusterWidth(cluster, x);
+
+            if (y == targetY && targetX < x + width)
+            {
+                return grapheme.Offset;
             }
 
             x += width;

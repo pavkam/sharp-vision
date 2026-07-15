@@ -191,6 +191,50 @@ public static class Edit
         return Move(text, selection, position, extend);
     }
 
+    /// <summary>Selects the complete Unicode-safe word or non-word grapheme at one boundary.</summary>
+    /// <param name="text">The non-null source.</param>
+    /// <param name="index">The contained grapheme start, or the source end.</param>
+    /// <returns>
+    /// A forward word range for letters, digits, and underscore; one complete non-word grapheme;
+    /// or an empty range at the source end.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the source.</exception>
+    /// <exception cref="ArgumentException"><paramref name="index"/> splits a grapheme cluster.</exception>
+    public static Selection SelectWord(string text, int index)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        if (index < 0 || index > text.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The word index must be contained by the source.");
+        }
+
+        if (!IsBoundary(text, index))
+        {
+            throw new ArgumentException("The word index must be a complete grapheme boundary.", nameof(index));
+        }
+
+        if (index == text.Length)
+        {
+            return new Selection(index, index);
+        }
+
+        if (Kind(text, index) != 2)
+        {
+            return new Selection(index, NextBoundary(text, index));
+        }
+
+        var start = index;
+
+        while (start > 0 && Kind(text, PreviousBoundary(text, start)) == 2)
+        {
+            start = PreviousBoundary(text, start);
+        }
+
+        return new Selection(start, SkipForward(text, index, kind: 2));
+    }
+
     /// <summary>Deletes the selection or complete cluster before the caret.</summary>
     /// <param name="text">The non-null source.</param>
     /// <param name="selection">The valid current selection.</param>

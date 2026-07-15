@@ -389,6 +389,45 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies routed click counts accumulate only for one target, button, cell, and deadline.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPressesRepeatAndDiverge_ReportsDeterministicClickCountsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var first = new ProbeControl() { Bounds = new Rect(0, 0, 8, 8), CanFocus = true };
+            var second = new ProbeControl() { Bounds = new Rect(10, 0, 8, 8), CanFocus = true };
+            root.Children.Add(first);
+            root.Children.Add(second);
+            root.Attach(dispatcher);
+            var clock = new ManualTimeProvider();
+            using CaptureManager manager = new(root, clock);
+            List<int> observed = [];
+            _ = root.AddHandler(Events.Pointer, (_, eventArgs) =>
+            {
+                if (eventArgs.Phase == Phase.Bubble)
+                {
+                    observed.Add(eventArgs.ClickCount);
+                }
+            });
+
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Release));
+            clock.Advance(TimeSpan.FromMilliseconds(200));
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Release));
+            clock.Advance(TimeSpan.FromMilliseconds(501));
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+            _ = manager.Dispatch(CreatePointer(new Point(3, 2), PointerAction.Press));
+            _ = manager.Dispatch(CreatePointer(new Point(12, 2), PointerAction.Press));
+
+            observed.ShouldBe([1, 0, 2, 0, 1, 1, 1]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static Pointer CreatePointer(Point cells, PointerAction action) => new(
         cells,
         pixels: null,

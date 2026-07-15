@@ -93,8 +93,15 @@ terminal-focus loss where configured, or explicit release ends capture and
 raises cancellation when required.
 
 Pointer events preserve screen cells, optional pixels, inferred cell position,
-buttons, wheel delta, modifiers, action, and timestamp. Local coordinates are
-derived from committed transforms at each route element.
+buttons, wheel delta, modifiers, and action. Local coordinates are derived from
+committed transforms at each route element.
+
+`CaptureManager` synthesizes `PointerEventArgs.ClickCount` because terminal
+mouse reports do not carry desktop gesture counts. Presses accumulate only for
+the same routed target, button set, and cell within 500 milliseconds on the
+manager's monotonic `TimeProvider`; any mismatch or expired interval restarts
+at one. Non-press events report zero. This gesture metadata belongs to routed
+UI input and does not alter the immutable terminal `Pointer` value.
 
 `Control.HitTest(Point)` requires effective visibility and enabled state, clips
 at each parent, and searches `Container.Children` from last to first so the

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls;
 
+using SharpVision.Tests.Input;
+
 
 
 
@@ -252,6 +254,39 @@ public sealed class TextInputTests
             control.SelectionStart.ShouldBe(0);
             control.SelectionLength.ShouldBe(4);
             Edit.IsBoundary(control.Text, control.CaretIndex).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a primary double-click selects the complete Unicode word beneath the pointer.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerDoubleClicksWord_SelectsCompleteWordAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var control = new TextInput
+            {
+                Bounds = new Rect(0, 0, 20, 1),
+                Text = "alpha cafe\u0301 beta",
+            };
+            control.Attach(dispatcher);
+            using FocusManager focus = new(control);
+            var clock = new ManualTimeProvider();
+            using CaptureManager capture = new(control, clock);
+            var point = new Point(8, 0);
+
+            _ = capture.Dispatch(Pointer(point, PointerAction.Press, new Point(85, 5)));
+            _ = capture.Dispatch(Pointer(point, PointerAction.Release, new Point(85, 5)));
+            clock.Advance(TimeSpan.FromMilliseconds(200));
+            _ = capture.Dispatch(Pointer(point, PointerAction.Press, new Point(85, 5)));
+            _ = capture.Dispatch(Pointer(point, PointerAction.Release, new Point(85, 5)));
+
+            focus.Focused.ShouldBeSameAs(control);
+            control.SelectedText.ShouldBe("cafe\u0301");
+            control.SelectionStart.ShouldBe(6);
+            control.SelectionLength.ShouldBe(5);
+            capture.Captured.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
     }
 

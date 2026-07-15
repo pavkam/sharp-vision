@@ -24,6 +24,9 @@ direction.
 - `MoveHome` and `MoveEnd` target logical line boundaries, treating CRLF as one
   grapheme-safe separator. `MovePreviousWord` and `MoveNextWord` classify the
   first `Rune` of each cluster and keep marks attached to their base.
+- `SelectWord` returns the complete letter/digit/underscore run containing one
+  grapheme boundary. A non-word position returns its one complete grapheme and
+  the source end returns an empty selection.
 - `Backspace` and `Delete` remove the selected range or exactly one neighboring
   cluster. `Replace` validates the complete proposal before allocation, enforces
   return/tab policy, and truncates maximum-length input only at a grapheme
@@ -106,6 +109,11 @@ inferred from pixel protocols—map through the same grapheme widths used for
 rendering, so wide and combining clusters cannot yield interior indices. Drag
 release, focus/capture cancellation, disable, hide, detach, and disposal release
 transient ownership without changing text.
+
+A primary double-click selects the complete Unicode-safe word or non-word
+grapheme beneath the pointer. The routed input manager owns the deterministic
+500-millisecond same-target/cell/button gesture count, while the editor owns
+only the resulting grapheme-aligned selection.
 
 Wheel deltas scroll the editor's existing horizontal and vertical content
 offsets in cell and logical-line units. The editor handles a wheel event only

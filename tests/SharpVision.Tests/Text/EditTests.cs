@@ -155,6 +155,20 @@ public sealed class EditTests
             .Selection.Caret.ShouldBe(6);
     }
 
+    /// <summary>Verifies word selection returns complete Unicode clusters and one non-word grapheme.</summary>
+    [Fact]
+    public void SelectWord_WhenIndexTouchesMixedText_ReturnsGraphemeAlignedToken()
+    {
+        const string value = "one cafe\u0301!";
+
+        Edit.SelectWord(value, 1).ShouldBe(new Selection(0, 3));
+        Edit.SelectWord(value, 6).ShouldBe(new Selection(4, 9));
+        Edit.SelectWord(value, 9).ShouldBe(new Selection(9, 10));
+        Edit.SelectWord(value, value.Length).ShouldBe(new Selection(value.Length, value.Length));
+        _ = Should.Throw<ArgumentException>(() => Edit.SelectWord(value, 8));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Edit.SelectWord(value, value.Length + 1));
+    }
+
     /// <summary>Verifies password projection emits one caller-selected Rune per grapheme.</summary>
     [Fact]
     public void ProjectPassword_WhenTextIsComplex_MasksWithoutSourceText()
