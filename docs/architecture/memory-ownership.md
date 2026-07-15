@@ -63,21 +63,22 @@ retains no caller memory. The session owns disposal of its transport and resize
 source; `StreamTransport` in turn owns its streams unless `leaveOpen` is true.
 
 Every `SharpVision.Controls.Control` owns one central registry of ordered visual
-slots. `Container.Children` exposes only its public container-child slot; the
-current foundation also registers the List presentation host and private
-container/editor scrollbar rails in distinct item-host or framework-part slots.
+slots. `Container.Children` exposes only its public container-child slot;
+`List`, `Menu`, and `Table` register private item-presentation hosts, while
+container and editor scrollbar rails use distinct framework-part slots.
 `ContentControl` registers the capacity-one public content role, and `Pressable`
 inherits that same edge rather than exposing `Children`. `ComboBox` registers
 exactly one private popup-layer framework-part slot; `Popup.Content` owns its
-private List, so no control receives two parents. Composition-root and
-item-visual roles remain reserved for later migration slices. Normal and popup
-are independent render layers, not ownership roles. A `Popup` still promotes an
-ordinary legacy ownership edge when necessary. Removal transfers the
-now-detached control back to the caller, while owner disposal recursively
-disposes every remaining slot member. Attachment borrows one dispatcher
-reference for the lifetime of the attachment. A control subscribes only to its
-direct `Style`; replacement, detachment where applicable, and disposal remove
-owned registrations deterministically.
+private List, so no control receives two parents. `CompositeControl` owns a
+permanent composition root, while `ItemsControl` owns one private presentation
+host whose children are realized item visuals. Normal and popup are independent
+render layers, not ownership roles. A `Popup` still promotes an ordinary legacy
+ownership edge when necessary. Removal transfers the now-detached control back
+to the caller, while owner disposal recursively disposes every remaining slot
+member. Attachment borrows one dispatcher reference for the lifetime of the
+attachment. A control subscribes only to its direct `Style`; replacement,
+detachment where applicable, and disposal remove owned registrations
+deterministically.
 
 Intrinsic border and shadow chrome are style state on the decorated `Control`;
 they allocate no child, add no registry edge, and do not change parentage,

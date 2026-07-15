@@ -49,10 +49,11 @@ drawn through `ContentBounds`. A reflection guard fails if the product friends
 either the consumer project or the production showcase.
 
 `SharpVision.Tests` deliberately retains friend access for internal invariant
-tests and therefore cannot serve as third-party API proof. Composite, item,
-state, part, and semantic specimens arrive in later architecture phases. The
-foundation suite uses a project reference; a separate future pack-and-consume
-gate must prove NuGet package contents and XML documentation.
+tests and therefore cannot serve as third-party API proof. The unfriended
+consumer project also contains retained `StatusCard` and typed `TagCloud`
+specimens. `make test` packs both production projects into a temporary local
+feed, verifies their XML documentation and assets, then restores, builds, and
+runs those specimens against the packages rather than project references.
 
 ## End-to-end path
 

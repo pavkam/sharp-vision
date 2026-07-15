@@ -36,6 +36,10 @@ asynchrony. Layout never guesses final space during intrinsic measurement.
   deflation saturates at zero.
 - Automatic scrollbar visibility is solved before final arrange. Adding one bar
   must re-evaluate the other; offsets clamp after every extent/viewport change.
+- Layout helpers may measure or arrange only a direct owned child. Private
+  composition and item hosts participate through the same ownership registry as
+  panel children; never reintroduce a public `Children` escape hatch merely to
+  reach private presentation controls.
 - One dispatcher owns tree mutation, focus, capture, layout, render, and user
   callbacks. No callback runs under an internal lock.
 - Routed input snapshots ancestry, previews root-to-target, then bubbles

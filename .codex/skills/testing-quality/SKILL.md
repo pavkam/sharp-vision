@@ -45,6 +45,9 @@ cross-layer paths. A mock-heavy green suite is not evidence of correctness.
 - Use Moq only for genuine interaction boundaries. Prefer fakes for transports,
   clocks, dispatchers, terminals, and frame sinks.
 - Never add production shortcuts solely for tests or assert private call graphs.
+- Third-party extensibility requires an unfriended consumer proof. When a new
+  protected role or public composition surface ships, compile and run a specimen
+  from the packed NuGet packages instead of relying only on a project reference.
 - Cover invalid arguments, malformed input, zero/tiny sizes, cancellation,
   resize, disabled state, and cleanup.
 - Test discovery is part of the gate; use `--minimum-expected-tests` so zero
