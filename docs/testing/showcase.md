@@ -83,8 +83,9 @@ titles, dim descriptions, and Info source labels. Each `Doc.Example` contains
 actionable marked-`Text` guidance, one live specimen, and optionally a framed C#
 excerpt escaped through `Text.Escape`. Tests render special characters in an
 excerpt to prove generic syntax, backslashes, and comparison operators remain
-literal visible text. Footer geometry tests require Theme, picker, Quit, and the
-`Ctrl+C` hint to remain non-overlapping at typical and constrained heights.
+literal visible text. Footer geometry tests require the Appearance heading,
+full-width picker, full-width Quit action, and trailing `Ctrl+Q` hint to remain
+ordered and non-overlapping at typical and constrained heights.
 
 Canvas has dedicated layout assertions for fixed, percentage, trailing-edge,
 opposing-edge stretch, explicit-size precedence, intrinsic, negative-origin,
@@ -101,16 +102,24 @@ prove composite and block-glyph footprints, clipping, wide-cell styling, and
 hit-test exclusion, while Button and Window retain visible composite,
 block-glyph, and shadow-disabled variants.
 
-Layer tests drive Above, Below, Left, and Right controls and require the same
-open Popup surface to move around one anchor. Popup and Window surfaces must
-overlap populated backdrop bounds. Theme showcase tests require a shadowless
-baseline and semantic type-styled Button, a concise semantic readout, and no raw
-`Glyphs` record formatting in visible text.
+Layer tests require every fresh Popup page to begin with closed promoted
+surfaces. They drive Above, Below, Left, and Right controls and require the same
+Popup surface to open and move around one anchor. Popup and Window surfaces must
+overlap populated backdrop bounds; Window children and shadows remain inside
+readable stages, and no two-cell Window is used as a visual lesson. Theme
+showcase tests require a shadowless baseline and semantic type-styled Button, a
+concise semantic readout, and no raw `Glyphs` record formatting in visible text.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The
 showcase applies that full-surface editor style to every editable, read-only,
 password, limited, multiline, and Figlet text input.
+
+Application input tests require deterministic double-click word selection and an
+application-owned clipboard path across focused TextInputs. `Ctrl+C` and
+`Ctrl+X` must honor selection, read-only, and password rules; `Ctrl+V` must use
+the normal edit-policy, event, Unicode, and undo path. The gallery reserves
+`Ctrl+Q`, not `Ctrl+C`, for global exit.
 
 Showcase examples compile as production code and use no internal APIs,
 reflection shortcuts, fake controls, or rendering behavior unavailable to

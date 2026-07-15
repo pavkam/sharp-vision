@@ -82,23 +82,25 @@ suppresses horizontal rails so documentation remains a readable column. The
 sidebar owns product identity, component-only stateful navigation entries, and
 compact interaction hints; its selected, focused, hovered, and pressed states
 follow the active application theme. The sidebar footer uses a top separator and
-a two-column Grid: Theme aligns with its picker, while Quit aligns with its
-`Ctrl+C` hint. The footer reserves space before the decorative sidebar header so
-its actions remain usable on constrained terminals. The picker lists every theme
-in the embedded `SharpVision.Styling.ThemeCatalog.Default` catalog — the
-built-in Light and Dark themes plus the curated editor themes (Dracula, Nord,
-Gruvbox, Solarized, and others) — grouped dark-first then light, and republishes
-the chosen application theme when selected. The Theming page renders the 12
-semantic `ColorRole` values as labeled color swatches of the active application
-theme, updating live as the sidebar picker changes themes. `Ctrl+C` also exits
-from anywhere: the gallery handles it as a key in the preview pass so it works
-even when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
-rather than raising a host cancellation signal. The executable app runs through
-`ConsoleApplication.RunAsync` with a `Gallery` screen and no further
-configuration, so it gets the default xterm any-event (`1003`) SGR cell mouse
-reporting from `ConsoleRunOptions` while `ConsoleApplication` owns the Unix
-raw-input lease and console transport for the run. The terminal library's
-default environment-hint policy remains conservative.
+a vertical utility Stack: a palette-marked Appearance heading precedes a
+full-width theme picker, then a full-width Quit action aligns its muted `Ctrl+Q`
+hint at the trailing edge. The footer reserves space before the decorative
+sidebar header so its actions remain usable on constrained terminals. The picker
+lists every theme in the embedded `SharpVision.Styling.ThemeCatalog.Default`
+catalog — the built-in Light and Dark themes plus the curated editor themes
+(Dracula, Nord, Gruvbox, Solarized, and others) — grouped dark-first then light,
+and republishes the chosen application theme when selected. The Theming page
+renders the 12 semantic `ColorRole` values as labeled color swatches of the
+active application theme, updating live as the sidebar picker changes themes.
+`Ctrl+Q` also exits from anywhere: the gallery handles it as a key in the
+preview pass so it works even when the terminal's Kitty keyboard protocol
+reports it as an enhanced key event. The executable app runs through
+`ConsoleApplication.RunAsync` with a `Gallery` screen and `TreatControlCAsInput`
+enabled, leaving `Ctrl+C` available to TextInput copy. It gets the default xterm
+any-event (`1003`) SGR cell mouse reporting from `ConsoleRunOptions` while
+`ConsoleApplication` owns the Unix raw-input lease and console transport for the
+run. The terminal library's default environment-hint policy remains
+conservative.
 
 At narrow widths geometry saturates and clips safely rather than throwing or
 creating negative extents. Selecting a different sidebar component retains
@@ -112,12 +114,17 @@ release.
 
 Popup and Window examples use populated toolbar/content/status surfaces beneath
 their promoted chrome so z-order is visible rather than implied by an empty
-parent. The Popup placement lab keeps one open Popup and one central anchor;
-Above, Below, Left, and Right actions mutate its requested side and expose the
+parent. Every Popup begins closed; its visible action opens the promoted
+surface, while selection, Escape, outside input, or a repeated trigger closes
+it. The placement lab keeps one Popup and one central anchor; Above, Below,
+Left, and Right actions select its requested side, open it, and expose the
 result in a status label. Window remains a non-modal ordinary child in Canvas or
-Overlay while rendering above the application-like surface. The type-style theme
-specimen compares a flat baseline Button with a flat semantic Accent Button and
-reports only `Background: Accent · Border: Heavy · Shadow: Off`.
+Overlay while rendering above the application-like surface. Window stages keep
+shadows contained, provide readable content widths, and leave exact two-cell
+saturation to control tests instead of presenting it as documentation. The
+type-style theme specimen compares a flat baseline Button with a flat semantic
+Accent Button and reports only
+`Background: Accent · Border: Heavy · Shadow: Off`.
 
 The FigletText page is an editor, not a static ornament: a `TextInput` updates
 the preview as text changes, while a scrollable `ComboBox` exposes the 400
@@ -128,6 +135,9 @@ draggable horizontal thumb so capture, drag geometry, and commit are directly
 observable. Every showcase `TextInput` inherits the active theme, and the
 control paints its resolved background across its entire committed box. Empty
 space is therefore visibly part of the input rather than blending into its card.
+Double-click word selection and the application-owned `Ctrl+C`, `Ctrl+X`, and
+`Ctrl+V` buffer run through the same public routed-input and edit-policy paths
+as other editor interactions.
 
 On Unix, `ConsoleApplication.RunAsync` reads directly from `/dev/tty` through a
 one-byte asynchronous stream after acquiring its raw-input lease. This avoids
@@ -151,8 +161,9 @@ continuation structure, and prove automatic scrolling. A full Application test
 drives SGR pointer selection, keyboard sidebar navigation and button activation,
 wheel scrolling, text editing, and pixel-aware resize through terminal bytes.
 Dedicated tests prove cooperative exit through both the sidebar `Quit` button
-and a decoded `Ctrl+C` key. Startup coverage requires the exact SGR mouse-mode
-lease before the first frame. The live tmux smoke test then proves a normal Down
-key, separate complete SGR clicks for Canvas and Button, Figlet dropdown opening
-and font selection, and a captured ScrollBar thumb drag. Each completes without
-a trailing flushing key.
+and a decoded `Ctrl+Q` key, while clipboard tests retain `Ctrl+C` for focused
+inputs. Startup coverage requires the exact SGR mouse-mode lease before the
+first frame. The live tmux smoke test then proves a normal Down key, separate
+complete SGR clicks for Canvas and Button, Figlet dropdown opening and font
+selection, and a captured ScrollBar thumb drag. Each completes without a
+trailing flushing key.
