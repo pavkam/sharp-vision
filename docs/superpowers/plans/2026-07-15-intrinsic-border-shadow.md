@@ -23,9 +23,10 @@ layout test helpers `LayoutProbe`/`ProbeControl`.
 
 **Spec:** `docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md`.
 
-**Execution base:** `codex/runtime-protocol-router` at `fb75af6`. Create an
-isolated `codex/intrinsic-border-shadow` worktree before implementation. Do not
-execute this plan on `text-markup-merge`; that branch contains separate work.
+**Execution base:** `779208c` plus corrected-plan commit `43f19cd`, in the
+isolated `codex/intrinsic-border-shadow-impl` worktree. This preserves the
+quality-rule baseline while excluding the separately developed text-markup
+implementation.
 
 ## Global Constraints
 
@@ -79,6 +80,8 @@ and arrange pipelines reserve the same border+padding inset.
   default)
 - Modify: `src/SharpVision/Controls/Border.cs` (temporary compatibility until
   Task 4 deletes the type)
+- Modify: `docs/controls/input/button.md` (replace the obsolete default-padding
+  claim with the intrinsic border inset)
 - Test: `tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs`
   (create)
 - Test: `tests/SharpVision.Tests/Controls/ButtonTests.cs` (add committed-bounds
@@ -90,9 +93,9 @@ and arrange pipelines reserve the same border+padding inset.
   `BorderThickness`/`Padding` (on `Control`).
 - Produces: after this task, any control with `BorderThickness != default`
   insets its content (measure + arrange) by border+padding; zero-border controls
-  are unchanged.
+  are unchanged. Combined edge totals saturate at `int.MaxValue`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```csharp
 // Copyright (c) SharpVision contributors. All rights reserved.
@@ -100,26 +103,30 @@ and arrange pipelines reserve the same border+padding inset.
 
 namespace SharpVision.Tests.Controls;
 
-using SharpVision.Tests.Support;
-
-/// <summary>Verifies the base layout pipeline reserves BorderThickness (with Padding).</summary>
+/// <summary>Verifies the base layout pipeline reserves border thickness with padding.</summary>
 public sealed class ControlBorderReservationTests
 {
     /// <summary>Verifies a bordered container insets its child by the border on every edge.</summary>
     [Fact]
     public void Arrange_WhenContainerHasBorder_InsetsChildByBorder()
     {
-        ProbeControl child = new(new Size(4, 2));
-        LayoutProbe container = new() { BorderThickness = new Thickness(1) };
+        ProbeControl child = new(new Size(4, 2))
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        LayoutProbe container = new()
+        {
+            BorderThickness = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
         container.Children.Add(child);
 
         new Engine().Layout(container, new Size(20, 10));
 
-        // Child arranged inside the 1-cell border on all edges.
         child.Bounds.ShouldBe(new Rect(1, 1, 18, 8));
     }
 
-    /// <summary>Verifies a bordered container's measured desired size includes the border.</summary>
+    /// <summary>Verifies a bordered container's desired size includes the border.</summary>
     [Fact]
     public void Measure_WhenContainerHasBorder_DesiredSizeIncludesBorder()
     {
@@ -129,16 +136,21 @@ public sealed class ControlBorderReservationTests
 
         container.Measure(new Constraint(width: null, height: null));
 
-        // content (4,2) + 1-cell border on each edge.
         container.DesiredSize.ShouldBe(new Size(6, 4));
     }
 
-    /// <summary>Verifies a zero-border container's layout is unchanged (regression).</summary>
+    /// <summary>Verifies a zero-border container leaves its child in the full slot.</summary>
     [Fact]
     public void Arrange_WhenNoBorder_LeavesChildAtFullSlot()
     {
-        ProbeControl child = new(new Size(4, 2));
-        LayoutProbe container = new();
+        ProbeControl child = new(new Size(4, 2))
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        LayoutProbe container = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
         container.Children.Add(child);
 
         new Engine().Layout(container, new Size(20, 10));
@@ -153,7 +165,12 @@ children-union and arranges each child to the slot it receives;
 `ProbeControl(new Size(w,h))` reports an intrinsic size. Both already exist from
 the scrolling work.
 
-- [ ] **Step 2: Run test to verify it fails**
+The completed file also covers asymmetric border-plus-padding composition in
+arrange (`Rect(3,3,13,6)`) and unbounded measure (`Size(11,11)`), plus an
+overflow regression proving a maximum padding edge combined with a border
+saturates the desired width at `int.MaxValue`.
+
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -165,7 +182,10 @@ dotnet test --project tests/SharpVision.Tests \
 Expected: FAIL — `Arrange_WhenContainerHasBorder...` gives `Rect(0,0,20,10)` and
 `Measure...` gives `(4,2)` (border not reserved).
 
-- [ ] **Step 3: Reserve border in the arrange content box**
+The later overflow regression must also be observed RED before replacing the
+unchecked edge sums: it gives width `0` instead of `int.MaxValue`.
+
+- [x] **Step 3: Reserve border in the arrange content box**
 
 In `src/SharpVision/Controls/Control.cs`, `Arrange` (line ~591), change the
 `padded` computation:
@@ -181,7 +201,7 @@ Leave the following two lines (`ArrangeOverride(ResolveContentSlot(padded));`
 and `ArrangeOverlays(padded);`) unchanged — the scroll layer and bar chrome now
 operate inside the border, which is correct.
 
-- [ ] **Step 4: Reserve border in the measure content constraint and desired
+- [x] **Step 4: Reserve border in the measure content constraint and desired
       size**
 
 In `CreateContentConstraint` (lines 1345-1347), add the border to the padding
@@ -189,8 +209,16 @@ argument on each axis:
 
 ```csharp
 private Constraint CreateContentConstraint(Constraint constraint) => new(
-    ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, Padding.Horizontal + BorderThickness.Horizontal),
-    ResolveContentAxis(Height, constraint.Height, Margin.Vertical, Padding.Vertical + BorderThickness.Vertical));
+    ResolveContentAxis(
+        Width,
+        constraint.Width,
+        Margin.Horizontal,
+        SaturatingAdd(Padding.Horizontal, BorderThickness.Horizontal)),
+    ResolveContentAxis(
+        Height,
+        constraint.Height,
+        Margin.Vertical,
+        SaturatingAdd(Padding.Vertical, BorderThickness.Vertical)));
 ```
 
 In `ResolveDesiredSize` (lines 1349-1365), add the border to the padding
@@ -202,7 +230,7 @@ private Size ResolveDesiredSize(Constraint constraint, Size content) => new(
         Width,
         constraint.Width,
         Margin.Horizontal,
-        Padding.Horizontal + BorderThickness.Horizontal,
+        SaturatingAdd(Padding.Horizontal, BorderThickness.Horizontal),
         content.Width,
         MinWidth,
         MaxWidth),
@@ -210,17 +238,18 @@ private Size ResolveDesiredSize(Constraint constraint, Size content) => new(
         Height,
         constraint.Height,
         Margin.Vertical,
-        Padding.Vertical + BorderThickness.Vertical,
+        SaturatingAdd(Padding.Vertical, BorderThickness.Vertical),
         content.Height,
         MinHeight,
         MaxHeight));
 ```
 
 (`ResolveContentAxis`/`ResolveMeasureAxis` treat their `padding` parameter as
-the amount to reserve inside the border box; adding the border reserves both. No
-signature change.)
+the amount to reserve inside the border box; saturating the combined padding and
+border reserves both without wrapping at the integer boundary. No signature
+change.)
 
-- [ ] **Step 5: Preserve Button's current one-cell content position**
+- [x] **Step 5: Preserve Button's current one-cell content position**
 
 Before changing `Button`, add the following characterization to `ButtonTests.cs`
 and run it once. It must pass on the old implementation:
@@ -231,7 +260,11 @@ and run it once. It must pass on the old implementation:
 public void Arrange_WhenDefaultChromeIsUsed_PreservesOneCellContentInset()
 {
     ControlText label = new("Go");
-    Button button = new() { Content = label };
+    Button button = new()
+    {
+        Content = label,
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+    };
 
     new Engine().Layout(button, new Size(10, 3));
 
@@ -254,7 +287,7 @@ Do not alter `FaceContentBounds` or the immediate content arrangement in
 `OnPressedChanged`. The new base border inset replaces the old padding inset, so
 released and pressed content remain in the same cells.
 
-- [ ] **Step 6: Keep the surviving Border wrapper reserved exactly once**
+- [x] **Step 6: Keep the surviving Border wrapper reserved exactly once**
 
 After the base change, run
 `BorderTests.Layout_WhenChildHasMarginPaddingAndBorder_ComputesExactBounds` and
@@ -284,26 +317,30 @@ protected override void ArrangeOverride(Rect bounds) =>
 Delete the now-unused `Subtract` helper. Keep `Add` and `OnRender` unchanged;
 Task 4 deletes the complete type.
 
-- [ ] **Step 7: Run focused tests for the atomic box-model change**
+- [x] **Step 7: Run focused tests for the atomic box-model change**
 
 ```bash
-dotnet test --project tests/SharpVision.Tests --filter-class "*ControlBorderReservationTests|*ButtonTests|*BorderTests" --timeout 180s
+dotnet test --project tests/SharpVision.Tests --filter-class "*ControlBorderReservationTests" --timeout 180s
+dotnet test --project tests/SharpVision.Tests --filter-class "*ButtonTests" --timeout 180s
+dotnet test --project tests/SharpVision.Tests --filter-class "*BorderTests" --timeout 180s
 dotnet test --project tests/SharpVision.Tests --filter-namespace "SharpVision.Tests.Layout" --timeout 180s
 dotnet build SharpVision.slnx --configuration Release --no-incremental
 ```
 
-Expected: all selected tests pass and the Release build reports zero warnings
-and zero errors.
+Expected: all six reservation tests and every selected existing test pass; the
+Release build reports zero warnings and zero errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git commit -m "feat(layout): reserve BorderThickness in the base measure/arrange pipeline" -- \
   src/SharpVision/Controls/Control.cs \
   src/SharpVision/Controls/Button.cs \
   src/SharpVision/Controls/Border.cs \
+  docs/controls/input/button.md \
   tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs \
-  tests/SharpVision.Tests/Controls/ButtonTests.cs
+  tests/SharpVision.Tests/Controls/ButtonTests.cs \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 ```
 
 ---

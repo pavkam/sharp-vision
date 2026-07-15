@@ -36,28 +36,18 @@ public sealed class Border: Container
 
         if (child is null)
         {
-            return new Size(BorderThickness.Horizontal, BorderThickness.Vertical);
+            return default;
         }
 
-        child.Measure(new Constraint(
-            Subtract(constraint.Width, BorderThickness.Horizontal),
-            Subtract(constraint.Height, BorderThickness.Vertical)));
+        child.Measure(constraint);
         return new Size(
-            Add(Add(child.DesiredSize.Width, child.Margin.Horizontal), BorderThickness.Horizontal),
-            Add(Add(child.DesiredSize.Height, child.Margin.Vertical), BorderThickness.Vertical));
+            Add(child.DesiredSize.Width, child.Margin.Horizontal),
+            Add(child.DesiredSize.Height, child.Margin.Vertical));
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        if (Child is { } child)
-        {
-            child.Arrange(
-                BorderThickness.Deflate(bounds),
-                widthResolved: true,
-                heightResolved: true);
-        }
-    }
+    protected override void ArrangeOverride(Rect bounds) =>
+        Child?.Arrange(bounds, widthResolved: true, heightResolved: true);
 
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
@@ -93,14 +83,5 @@ public sealed class Border: Container
 
         long result = (long) left + right;
         return result >= int.MaxValue ? int.MaxValue : (int) result;
-    }
-
-    private static int? Subtract(int? value, int extent)
-    {
-        Debug.Assert(extent >= 0, "Subtracted border thickness cannot be negative.");
-
-        return value.HasValue
-            ? Math.Max(0, value.Value - extent)
-            : null;
     }
 }

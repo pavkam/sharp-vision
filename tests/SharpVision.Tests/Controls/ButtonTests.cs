@@ -25,13 +25,30 @@ public sealed class ButtonTests
         button.IsDefault.ShouldBeFalse();
         button.IsCancel.ShouldBeFalse();
         button.CanFocus.ShouldBeTrue();
-        button.Padding.ShouldBe(new Thickness(1));
+        button.Padding.ShouldBe(default);
         button.Glyphs.ShouldBe(Glyphs.Rounded);
         button.HasShadow.ShouldBeTrue();
         button.ShadowOffset.ShouldBe(new Point(1, 1));
         button.Children.Add(new ProbeControl());
         _ = Should.Throw<InvalidOperationException>(() =>
             button.Children.Add(new ProbeControl()));
+    }
+
+    /// <summary>Verifies default Button chrome keeps content one cell inside its frame.</summary>
+    [Fact]
+    public void Arrange_WhenDefaultChromeIsUsed_PreservesOneCellContentInset()
+    {
+        ControlText label = new("Go");
+        Button button = new()
+        {
+            Content = label,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+
+        new Engine().Layout(button, new Size(10, 3));
+
+        button.Bounds.ShouldBe(new Rect(0, 0, 10, 3));
+        label.Bounds.ShouldBe(new Rect(1, 1, 8, 1));
     }
 
     /// <summary>Verifies the default Button draws its own border and shadow without showcase wrappers.</summary>
@@ -314,12 +331,12 @@ public sealed class ButtonTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies padding, margin, Unicode content, and semantic rendering.</summary>
+    /// <summary>Verifies intrinsic border spacing, margin, Unicode content, and semantic rendering.</summary>
     [Fact]
     public void Render_WhenButtonHasUnicodeContent_ComputesExactBoundsAndCells()
     {
         ControlText content = new("界") { Margin = new Thickness(1, 0) };
-        Button button = new() { Content = content, Padding = new Thickness(1) };
+        Button button = new() { Content = content };
         new Engine().Layout(button, new Size(6, 3));
         using Frame frame = new(new Size(6, 3));
 
@@ -340,7 +357,6 @@ public sealed class ButtonTests
         Button button = new()
         {
             Content = new ControlText("Run"),
-            Padding = new Thickness(1),
             Style = style,
             Width = Length.Cells(8),
             Height = Length.Cells(3),

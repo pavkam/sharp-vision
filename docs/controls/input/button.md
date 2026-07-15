@@ -17,12 +17,14 @@ completed activation raises `Click` and invokes its command once.
 - `Click` is a control event raised after pressed state is released and before
   command execution; command failure follows runtime exception policy.
 
-Buttons render a rounded one-cell border, internal padding, and a compact
-composite shadow by default. `Glyphs`, `HasShadow`, `ShadowOffset`,
-`ShadowMode`, and `ShadowGlyph` expose the chrome choices when an application
-needs a different surface. A composite shadow preserves the graphemes beneath
-its translated footprint and dims their style; block-glyph mode replaces that
-footprint outside the button body with the configured shade Rune. The shared
+Buttons render a rounded one-cell border and a compact composite shadow by
+default. The border supplies the preserved one-cell content inset; `Padding`
+defaults to zero and adds further internal spacing when set. `Glyphs`,
+`HasShadow`, `ShadowOffset`, `ShadowMode`, and `ShadowGlyph` expose the chrome
+choices when an application needs a different surface. A composite shadow
+preserves the graphemes beneath its translated footprint and dims their style;
+block-glyph mode replaces that footprint outside the button body with the
+configured shade Rune. The shared
 [Shadow contract](../display/shadow.md#shadow-contract) defines the same two
 footprint semantics for controls that need to decorate an arbitrary child.
 
@@ -48,11 +50,12 @@ replacement observes `CanExecuteChanged` and raises standard property change
 notification without retaining disposed Buttons.
 
 `Content` is the atomic capacity-one child. Measure and arrange include its
-margin inside the Button's shared padding, and rendering remains semantic
-through the child's inherited active style. When the resolved appearance defines
-a background, Button fills its entire arranged surface before rendering content,
-so padding remains part of the visible interactive target. `IsDefault` and
-`IsCancel` are stored for Window fallback routing in Phase 5C.
+margin inside the Button's border and any explicit padding, and rendering
+remains semantic through the child's inherited active style. When the resolved
+appearance defines a background, Button fills its entire arranged surface before
+rendering content, so border and padding remain part of the visible interactive
+target. `IsDefault` and `IsCancel` are stored for Window fallback routing in
+Phase 5C.
 
 ## Interaction
 

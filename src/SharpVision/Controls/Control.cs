@@ -588,7 +588,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
-            Rect padded = Padding.Deflate(bounds);
+            Rect padded = Padding.Deflate(BorderThickness.Deflate(bounds));
             ArrangeOverride(ResolveContentSlot(padded));
             ArrangeOverlays(padded);
         }
@@ -1343,15 +1343,23 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     private Constraint CreateContentConstraint(Constraint constraint) => new(
-        ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, Padding.Horizontal),
-        ResolveContentAxis(Height, constraint.Height, Margin.Vertical, Padding.Vertical));
+        ResolveContentAxis(
+            Width,
+            constraint.Width,
+            Margin.Horizontal,
+            SaturatingAdd(Padding.Horizontal, BorderThickness.Horizontal)),
+        ResolveContentAxis(
+            Height,
+            constraint.Height,
+            Margin.Vertical,
+            SaturatingAdd(Padding.Vertical, BorderThickness.Vertical)));
 
     private Size ResolveDesiredSize(Constraint constraint, Size content) => new(
         ResolveMeasureAxis(
             Width,
             constraint.Width,
             Margin.Horizontal,
-            Padding.Horizontal,
+            SaturatingAdd(Padding.Horizontal, BorderThickness.Horizontal),
             content.Width,
             MinWidth,
             MaxWidth),
@@ -1359,7 +1367,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             Height,
             constraint.Height,
             Margin.Vertical,
-            Padding.Vertical,
+            SaturatingAdd(Padding.Vertical, BorderThickness.Vertical),
             content.Height,
             MinHeight,
             MaxHeight));
