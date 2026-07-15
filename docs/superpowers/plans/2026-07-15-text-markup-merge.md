@@ -17,9 +17,9 @@ plus non-overlapping `StyleSpan`s that index into it. The existing grapheme-safe
 `SharpVision.Text.Layout.Format` lays the display string out (refactored to take
 `Overflow`), and the new `Text.OnRender` walks each `Line`, finds the covering
 `StyleSpan` by source offset, overlays its facets on the control's
-`ResolvedStyle` via the existing `Decoration.Resolve`, and draws. This recombines
-machinery that already exists: `Text`'s caching/layout and `RichText`'s
-offset-based span rendering.
+`ResolvedStyle` via the existing `Decoration.Resolve`, and draws. This
+recombines machinery that already exists: `Text`'s caching/layout and
+`RichText`'s offset-based span rendering.
 
 **Tech Stack:** .NET 10, C# 14, xUnit v3, Shouldly. Test harness:
 `Dispatcher.Start()` + `Control.Attach(dispatcher)` for control tests; direct
@@ -28,9 +28,14 @@ static calls for `Markup`/`Layout`; showcase gallery screen tests for the pane.
 **Full design:**
 `docs/superpowers/specs/2026-07-15-text-markup-merge-design.md`.
 
-**Two defaults chosen (vetoable):** `Overflow.Wrap` is the default (changes
-today's non-wrapping `Text` default; matches `RichText`); the void `<br>` tag is
-included as sugar for a hard line break.
+**Gloss corrections:** `Overflow.Visible` is the default so existing `Text`
+controls retain their measurement behavior; migrated prose sets `Wrap`
+explicitly. Newlines are the only hard-break syntax (`<br>` is deliberately
+omitted). `Markup`, `StyleSpan`, and parser helpers are internal implementation
+types. Invalid tags preserve their complete raw fragment, invalid hyperlink
+targets never reach rendering, theme roles resolve before constructing cell
+styles, and the latest underline/blink tag wins within each mutually exclusive
+facet.
 
 ## Global Constraints
 
@@ -54,8 +59,9 @@ included as sugar for a hard line break.
 - Deterministic, culture-independent parsing (`CultureInfo.InvariantCulture`,
   `StringComparison.OrdinalIgnoreCase`).
 - Tests: xUnit v3 + Shouldly, Arrange/Act/Assert, named
-  `MethodName_WhenThis_ThatIsExpected`. Watch each new test fail for the expected
-  reason first. Add randomized/property tests for the parser and layout.
+  `MethodName_WhenThis_ThatIsExpected`. Watch each new test fail for the
+  expected reason first. Add randomized/property tests for the parser and
+  layout.
 - Quality gate before every commit: `make format && make lint && make build`
   plus the task's focused tests. Zero warnings, zero errors.
 - Focused test command form:
@@ -69,6 +75,8 @@ included as sugar for a hard line break.
 - `src/SharpVision/Text/StyleSpan.cs` — resolved non-overlapping styled slice of
   the display string (`readonly record struct`).
 - `src/SharpVision/Text/Markup.cs` — static markup parser + `Escape`.
+- `src/SharpVision/Text/OpenTag.cs` — one open parser facet.
+- `src/SharpVision/Text/Style.cs` — one flattened active parser style.
 - `tests/SharpVision.Tests/Text/MarkupTests.cs` — parser unit tests.
 - `tests/SharpVision.Tests/Text/RandomizedMarkupTests.cs` — property tests.
 
@@ -137,20 +145,23 @@ Purely additive — no existing type changes, so the build stays green. Produces
 the parser the `Text` control will consume in Task 3.
 
 **Files:**
+
 - Create: `src/SharpVision/Text/StyleSpan.cs`
 - Create: `src/SharpVision/Text/Markup.cs`
 - Test: `tests/SharpVision.Tests/Text/MarkupTests.cs`
 
 **Interfaces:**
+
 - Consumes: `SharpVision.Terminal.Protocols.Color`,
   `SharpVision.Terminal.Protocols.Underline`,
-  `SharpVision.Terminal.Rendering.Attributes`,
-  `SharpVision.Styling.ColorRole`.
+  `SharpVision.Terminal.Rendering.Attributes`, `SharpVision.Styling.ColorRole`.
 - Produces:
-  - `StyleSpan` (`readonly record struct`) with `int Offset`, `int Length`,
-    `Color? Foreground`, `Color? Background`, `Attributes Attributes`,
-    `Underline Underline`, `Color? UnderlineColor`, `string? Link`.
-  - `Markup.Parse(ReadOnlySpan<char> source, out string display) → StyleSpan[]`
+  - internal `StyleSpan` (`readonly record struct`) with `int Offset`,
+    `int Length`, `Color? Foreground`, `Color? Background`,
+    `Attributes Attributes`, `Underline Underline`, `Color? UnderlineColor`,
+    `string? Link`.
+  - internal
+    `Markup.Parse(ReadOnlySpan<char> source, out string display) → StyleSpan[]`
     — never throws; returns spans covering `display` with no gaps or overlap,
     ordered by `Offset`.
   - `Markup.Escape(string value) → string` — backslash-escapes `<` and `\`.
@@ -169,7 +180,7 @@ using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 
 /// <summary>Describes one resolved, non-overlapping styled slice of a parsed markup display string.</summary>
-public readonly record struct StyleSpan
+internal readonly record struct StyleSpan
 {
     /// <summary>Initializes a validated styled slice.</summary>
     /// <param name="offset">The non-negative UTF-16 offset into the display string.</param>
@@ -301,7 +312,7 @@ using SharpVision.Terminal.Rendering;
 /// degrade to literal text, stray closes are ignored, and open tags auto-close at end.
 /// This is a small inline markup, not Markdown.
 /// </remarks>
-public static class Markup
+internal static class Markup
 {
     /// <summary>Parses markup into a display string plus gap-free, non-overlapping style spans.</summary>
     /// <param name="source">The markup borrowed for this call.</param>
@@ -335,13 +346,19 @@ public static class Markup
                 continue;
             }
 
-            // A '<' begins a tag. Read to the next unescaped '>'.
+            // A '<' begins a tag. Read to the next '>'.
             int close = IndexOfTagEnd(source, i + 1);
             if (close < 0 || !TryApplyTag(source[(i + 1)..close], open))
             {
-                // Malformed or unknown: degrade to literal text so nothing is lost.
-                text.Append('<');
-                i++;
+                // Malformed or unknown: preserve the complete raw fragment.
+                if (close < 0)
+                {
+                    _ = text.Append(source[i..]);
+                    break;
+                }
+
+                _ = text.Append(source[i..(close + 1)]);
+                i = close + 1;
                 continue;
             }
 
@@ -476,7 +493,7 @@ public static class Markup
             case "u" or "underline":
                 if (value.IsEmpty)
                 {
-                    tag = OpenTag.Attribute(name, Attributes.Underline);
+                    tag = OpenTag.UnderlineShape(name, Underline.Straight);
                     return true;
                 }
 
@@ -536,7 +553,7 @@ public static class Markup
         underline = value.ToString().ToLowerInvariant() switch
         {
             "straight" => Underline.Straight,
-            "double" => Underline.Double,
+            "double" => Underline.Paired,
             "curly" => Underline.Curly,
             "dotted" => Underline.Dotted,
             "dashed" => Underline.Dashed,
@@ -925,9 +942,11 @@ git commit -m "feat(text): add inline markup parser producing display string and
 ### Task 2: Randomized parser invariants (additive)
 
 **Files:**
+
 - Test: `tests/SharpVision.Tests/Text/RandomizedMarkupTests.cs`
 
 **Interfaces:**
+
 - Consumes: `Markup.Parse`, `Markup.Escape` from Task 1.
 
 - [ ] **Step 1: Write the property tests**
@@ -981,9 +1000,11 @@ public sealed class RandomizedMarkupTests
 
 Run:
 `dotnet test --project tests/SharpVision.Tests --filter-class "*RandomizedMarkupTests" --timeout 120s`
-Expected: PASS (the invariant should already hold from Task 1). If it fails,
-the parser has a gap/overlap bug — fix `Parse`'s span emission so every branch
-advances `spanStart` to the current `text.Length`.
+Expected: PASS (the invariant should already hold from Task 1). This task still
+starts red by adding an independent escape round-trip property that includes
+random `<` and `\\` input before the implementation is generalized. If tiling
+fails, the parser has a gap/overlap bug — fix `Parse`'s span emission so every
+branch advances `spanStart` to the current `text.Length`.
 
 - [ ] **Step 3: Commit**
 
@@ -1001,11 +1022,13 @@ existing `(Wrapping, Trimming)` overload so `Text`/`RichText` still compile. The
 old overload and enums are deleted in Task 6.
 
 **Files:**
+
 - Create: `src/SharpVision/Text/Overflow.cs`
 - Modify: `src/SharpVision/Text/Layout.cs`
 - Test: `tests/SharpVision.Tests/Text/LayoutTests.cs` (append)
 
 **Interfaces:**
+
 - Produces:
   - `enum Overflow { Wrap, WrapAnywhere, Clip, Ellipsis, Visible }`.
   - `Layout.Format(ReadOnlySpan<char> value, int width, Overflow overflow, Alignment alignment, Ambiguous ambiguous, Span<Line> destination) → int`.
@@ -1093,8 +1116,8 @@ Expected: FAIL — no `Format(Overflow …)` overload.
 - [ ] **Step 4: Add the overload to `Layout`**
 
 In `src/SharpVision/Text/Layout.cs`, add a public overload that maps `Overflow`
-onto the existing private `FormatWrapped`/`FormatUnwrapped` by translating to the
-current `(Wrapping, Trimming)` internal parameters:
+onto the existing private `FormatWrapped`/`FormatUnwrapped` by translating to
+the current `(Wrapping, Trimming)` internal parameters:
 
 ```csharp
     /// <summary>Formats text with a single overflow policy into caller-owned line storage.</summary>
@@ -1148,19 +1171,21 @@ git commit -m "feat(text): add Overflow enum and Layout.Format(Overflow) overloa
 
 ### Task 4: Rebuild the `Text` control on markup + `Overflow`
 
-Transform `Text`: parse `Content` as markup into a cached display string + spans,
-render spans over the wrapped lines, replace `Wrapping`/`Trimming` with
+Transform `Text`: parse `Content` as markup into a cached display string +
+spans, render spans over the wrapped lines, replace `Wrapping`/`Trimming` with
 `Overflow`, and add the static `Escape`. Migrate `TextPane` and rewrite
 `TextTests` in the same task (the public API changes). `RichText` is untouched
 here (still uses the old `Layout` overload and `Wrapping`); it is removed in
 Task 5.
 
 **Files:**
+
 - Modify: `src/SharpVision/Controls/Text.cs`
 - Modify: `src/SharpVision.Showcase/Panes/TextPane.cs`
 - Test: `tests/SharpVision.Tests/Controls/TextTests.cs` (rewrite)
 
 **Interfaces:**
+
 - Consumes: `Markup.Parse`, `Markup.Escape`, `StyleSpan`, `Overflow`,
   `Layout.Format(Overflow)`, `Decoration.Resolve`.
 - Produces: `Text.Content` (markup), `Text.Overflow`, `Text.TextAlignment`,
@@ -1184,7 +1209,7 @@ new tests (keep the existing Unicode-geometry / measurement tests, changing only
 
         empty.Content.ShouldBe(string.Empty);
         value.Content.ShouldBe("hello");
-        value.Overflow.ShouldBe(Overflow.Wrap);
+        value.Overflow.ShouldBe(Overflow.Visible);
         value.TextAlignment.ShouldBe(Alignment.Start);
         value.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
         value.CanFocus.ShouldBeFalse();
@@ -1228,9 +1253,9 @@ new tests (keep the existing Unicode-geometry / measurement tests, changing only
 ```
 
 Add a rendered-bytes test that a styled span applies its color, mirroring the
-existing render tests in `RichTextTests` (drive through `FakeTerminal` and assert
-the emitted SGR for the colored cluster). Reuse the harness already imported in
-this test file.
+existing render tests in `RichTextTests` (drive through `FakeTerminal` and
+assert the emitted SGR for the colored cluster). Reuse the harness already
+imported in this test file.
 
 - [ ] **Step 2: Run to verify failure**
 
@@ -1300,7 +1325,7 @@ public sealed class Text : Control
                 _layoutValid = false;
             }
         }
-    } = Overflow.Wrap;
+    } = Overflow.Visible;
 
     // TextAlignment and AmbiguousWidth: unchanged from today.
 
@@ -1446,9 +1471,9 @@ Notes for the implementer:
 - `Decoration.Resolve`'s second parameter is the complete attribute set; pass
   `inherited.Attributes | span.Attributes` so control-level attributes and
   markup attributes both apply.
-- `EnsureLayout`/`Format`/`Align` keep today's structure — only the source string
-  (`_display`), the cache keys (`Overflow` replacing `Wrapping`/`Trimming`), and
-  the `Format` overload change.
+- `EnsureLayout`/`Format`/`Align` keep today's structure — only the source
+  string (`_display`), the cache keys (`Overflow` replacing
+  `Wrapping`/`Trimming`), and the `Format` overload change.
 - `ContentBounds`, `ResolvedStyle`, `GetVisualState`, `Set`, `Invalidation`,
   `Constraint`, `Rect`, `Point`, `Size`, `DrawResult`, `TerminalCanvas`,
   `TerminalStyle` (= `CellStyle`), `TerminalAttributes` (= `Attributes`) are all
@@ -1465,8 +1490,8 @@ In `src/SharpVision.Showcase/Panes/TextPane.cs`, replace the removed properties:
   style) **or** switch its content to markup `"<b>Centered status</b>"` — prefer
   the markup form to exercise the new path.
 
-Remove the now-unused `using SharpVision.Text;` alias only if nothing else in the
-file needs it (it still provides `Overflow`, so keep it).
+Remove the now-unused `using SharpVision.Text;` alias only if nothing else in
+the file needs it (it still provides `Overflow`, so keep it).
 
 - [ ] **Step 5: Run the Text tests and the showcase build**
 
@@ -1497,14 +1522,18 @@ and its inline model and tests. After this task no code references `RichText`,
 `Inline`, `Inlines`, `Run`, `LineBreak`, or the `Hyperlink` inline.
 
 **Files:**
+
 - Modify: `src/SharpVision.Showcase/Panes/RichTextPane.cs`,
   `src/SharpVision.Showcase/Panes/TablePane.cs`,
   `src/SharpVision.Showcase/Panes/Doc.cs`
 - Delete: `src/SharpVision/Controls/RichText.cs`, `Inline.cs`, `Inlines.cs`,
   `Run.cs`, `LineBreak.cs`, `Hyperlink.cs`,
   `tests/SharpVision.Tests/Controls/RichTextTests.cs`
+- Modify every remaining source/test consumer found by
+  `rg "RichText|Inlines|new Run|new Hyperlink|LineBreak|Wrapping|Trimming" src tests`.
 
 **Interfaces:**
+
 - Consumes: `Text` markup from Task 4.
 
 - [ ] **Step 1: Rewrite `Doc.cs` heading/description helpers to markup**
@@ -1522,8 +1551,9 @@ var heading = new Text($"<b>{Text.Escape(name)}</b>\n<b>Overview</b>\n{Text.Esca
 };
 ```
 
-Apply the same pattern to the `description` builder (`<b>{heading}</b>\n<d>{description}</d>`
-— `Dim` maps to `<d>`). Always wrap interpolated arguments in `Text.Escape`.
+Apply the same pattern to the `description` builder
+(`<b>{heading}</b>\n<d>{description}</d>` — `Dim` maps to `<d>`). Always wrap
+interpolated arguments in `Text.Escape`.
 
 - [ ] **Step 2: Rewrite `TablePane.cs` linked cell**
 
@@ -1545,11 +1575,12 @@ var linked = new Text("Open <link=https://invisible-island.net/xterm/ctlseqs/ctl
 Rebuild each specimen as a markup string on `Text`. Mapping reference:
 
 - `Run("x"){Attributes = Bold}` → `<b>x</b>`; `Italic` → `<i>`; `Dim` → `<d>`;
-  `Underline` → `<u>`; `Strike` → `<s>`; `Reverse` → `<reverse>`;
-  `Blink` → `<blink>`; `RapidBlink` → `<rapidblink>`; `Hidden` → `<hidden>`;
-  `Overline` → `<overline>`.
+  `Underline` → `<u>`; `Strike` → `<s>`; `Reverse` → `<reverse>`; `Blink` →
+  `<blink>`; `RapidBlink` → `<rapidblink>`; `Hidden` → `<hidden>`; `Overline` →
+  `<overline>`.
 - `Foreground = Color.Indexed(n)` → `<fg=n>` (or a named/role tag).
-- `Underline = Underline.Curly, UnderlineColor = c` → `<u=curly><uc=…>…</uc></u>`.
+- `Underline = Underline.Curly, UnderlineColor = c` →
+  `<u=curly><uc=…>…</uc></u>`.
 - `Hyperlink(text, target){Underline}` → `<u><link=target>text</link></u>`.
 - `LineBreak` → `\n`.
 
@@ -1590,8 +1621,8 @@ make test
 ```
 
 Expected: green. If `GalleryTests` fails on a missing "RichText" entry, update
-the gallery registration/screen test to the renamed page (or keep the name).
-Fix any remaining `Inlines`/`Run` references the compiler flags.
+the gallery registration/screen test to the renamed page (or keep the name). Fix
+any remaining `Inlines`/`Run` references the compiler flags.
 
 - [ ] **Step 6: Commit**
 
@@ -1609,6 +1640,7 @@ Now that nothing consumes `Wrapping`/`Trimming`, remove them and the old
 finish documentation.
 
 **Files:**
+
 - Modify: `src/SharpVision/Text/Layout.cs`
 - Delete: `src/SharpVision/Text/Wrapping.cs`, `src/SharpVision/Text/Trimming.cs`
 - Modify: `tests/SharpVision.Tests/Text/LayoutTests.cs`,
@@ -1617,6 +1649,7 @@ finish documentation.
   `docs/controls/display/rich-text.md`
 
 **Interfaces:**
+
 - Produces: `Layout.Format(Overflow …)` as the only formatting entry point.
 
 - [ ] **Step 1: Rewrite the layout tests to the `Overflow` API**
@@ -1660,8 +1693,8 @@ would fail otherwise).
 - [ ] **Step 5: Merge the control docs**
 
 Rewrite `docs/controls/display/text.md` to document the merged control: the
-markup grammar (tags, value forms, escaping, lenient rules, `<br>`), the
-`Overflow` enum, `TextAlignment`, `AmbiguousWidth`, and OSC 8 links. Fold in the
+markup grammar (tags, value forms, escaping, lenient rules), the `Overflow`
+enum, `TextAlignment`, `AmbiguousWidth`, and OSC 8 links. Fold in the
 still-relevant test-obligations from `rich-text.md`. Then:
 
 ```bash
@@ -1706,7 +1739,8 @@ git commit -m "refactor(text): make Overflow the only layout policy and merge Te
   named-tags-plus-value (Task 1 `TryResolveFacet`); lenient/overlap/never-throw
   (Task 1 tests + Task 4 `Content` setter test); single `Overflow` enum (Tasks
   3, 4); hard delete (Tasks 5, 6); parser + randomized + overflow + render +
-  showcase tests (Tasks 1–6). All design sections map to a task.
+  showcase tests (Tasks 1–6). All design sections map to a task after the gloss
+  corrections above.
 - **Type consistency:** `Markup.Parse(source, out display) → StyleSpan[]`,
   `StyleSpan`'s eight-field shape, `Overflow`'s five members, and
   `Layout.Format(…, Overflow, …)` are used identically wherever referenced.
@@ -1714,14 +1748,6 @@ git commit -m "refactor(text): make Overflow the only layout policy and merge Te
   one showcase pane + tests together; Task 5 migrates the remaining consumers
   before deleting the model; Task 6 removes the enums only after the last
   consumer is gone.
-- **Open defaults to confirm at review:** `Overflow.Wrap` as the default, and
-  including the `<br>` tag. If `<br>` is dropped, remove it from the Task 6 docs;
-  no code path depends on it (the parser treats an unknown `<br>` as literal, so
-  it must be added to `TryResolveFacet` as a break-producing tag when kept — see
-  note below).
-
-> **`<br>` implementation note (only if kept):** a break tag must inject a
-> newline into the display string rather than push an open tag. In
-> `Markup.Parse`, special-case a `br`/`br/` tag body by appending `'\n'` to
-> `text` and continuing, before the open/close handling. Add a test
-> `Parse_WhenBrTag_InsertsNewline`. If `<br>` is dropped at review, omit this.
+- **Gloss resolved:** `Visible` is the default and `<br>` is not part of the
+  grammar. The implementation must also migrate non-showcase consumers and
+  resolve role colors before constructing `TerminalStyle`.

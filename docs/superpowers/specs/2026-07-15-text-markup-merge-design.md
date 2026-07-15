@@ -1,8 +1,6 @@
 # Unified Text with inline markup — design
 
-**Date:** 2026-07-15
-**Status:** Approved (brainstorming); two defaults noted below are vetoable at
-plan review.
+**Date:** 2026-07-15 **Status:** Approved after implementation gloss.
 
 ## Problem
 
@@ -12,12 +10,12 @@ The library ships two overlapping display controls:
   and `AmbiguousWidth`, laid out through `SharpVision.Text.Layout.Format`.
 - `RichText` — a mutable `Inlines` collection of `Run` / `Hyperlink` /
   `LineBreak` objects, each carrying `Foreground` / `Background` / `Attributes`
-  / `Underline` / `UnderlineColor`, reusing the same layout engine for word
-  wrap and rendering each inline by source offset.
+  / `Underline` / `UnderlineColor`, reusing the same layout engine for word wrap
+  and rendering each inline by source offset.
 
-Two controls, two mental models, and a verbose object model (`new Run("x") {
-Attributes = ... }`) for what is usually a short styled string. Callers who want
-"a red bold word inside a sentence" must assemble a collection.
+Two controls, two mental models, and a verbose object model
+(`new Run("x") { Attributes = ... }`) for what is usually a short styled string.
+Callers who want "a red bold word inside a sentence" must assemble a collection.
 
 ## Goal
 
@@ -31,8 +29,8 @@ policy, and OSC 8 hyperlink metadata.
 
 1. **One control; content is always markup.** A literal `<` is escaped. No
    second "plain" property and no mode flag.
-2. **Grammar shape:** HTML-style named tags with an optional `=value`
-   (`<red>`, `<b>`, `<fg=#ff8800>`, `<link=…>`). One tag = one style facet.
+2. **Grammar shape:** HTML-style named tags with an optional `=value` (`<red>`,
+   `<b>`, `<fg=#ff8800>`, `<link=…>`). One tag = one style facet.
 3. **Lenient and overlapping; never throws.** `</name>` closes the nearest
    still-open `<name>`, so overlapping ranges (`<u><b>x</u></b>`) work as
    written; unknown/malformed tags and stray closes degrade to literal text;
@@ -66,18 +64,18 @@ namespace SharpVision.Text;
 
 public enum Overflow
 {
-    Wrap,          // word wrap onto multiple lines (default)
+    Wrap,          // word wrap onto multiple lines
     WrapAnywhere,  // break between graphemes, mid-word allowed
     Clip,          // single line, cut at the last fitting grapheme
     Ellipsis,      // single line, trailing … (word-aware, grapheme fallback)
-    Visible,       // single line, report full width, let a scroll container clip
+    Visible,       // single line, report full width, let a container clip (default)
 }
 ```
 
-- **Default `Overflow.Wrap`.** This changes today's plain-`Text` default (which
-  does not wrap) but matches `RichText`'s current default and is the safest
-  behavior for arbitrary content inside a bounded box. *Vetoable:* default to
-  `Visible` if we want to preserve today's label behavior.
+- **Default `Overflow.Visible`.** This preserves today's `Text` measurement and
+  label behavior. Call sites migrated from `RichText` set `Overflow.Wrap`
+  explicitly, so prose still reflows without silently changing every existing
+  `Text` control's desired height.
 - **Deleted types:** `RichText`, `Inline`, `Inlines`, `Run`, `LineBreak`, the
   `Hyperlink` inline, and the `Wrapping` / `Trimming` enums.
 - `SharpVision.Text.Layout.Format` is refactored to accept `Overflow` in place
@@ -90,22 +88,25 @@ close `</name>` / generic `</>`. Names and named values are case-insensitive.
 
 ### Tags
 
-| Facet | Tags |
-| --- | --- |
+| Facet             | Tags                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Attributes (bare) | `b`/`bold`, `d`/`dim`, `i`/`italic`, `u`/`underline`, `s`/`strike`, `reverse`, `blink`, `rapidblink`, `hidden`/`conceal`, `overline` |
-| Foreground | bare color/role name (`<red>`, `<brightblue>`, `<accent>`, `<error>`) or `<fg=value>` |
-| Background | `<bg=value>` |
-| Underline color | `<uc=value>` |
-| Underline shape | `<u=straight\|double\|curly\|dotted\|dashed>` |
-| Hyperlink | `<link=target>text</link>` → OSC 8 metadata; never auto-opens |
-| Line break | literal `\n` / `\r\n` in the string, or the void tag `<br>` |
+| Foreground        | bare color/role name (`<red>`, `<brightblue>`, `<accent>`, `<error>`) or `<fg=value>`                                                |
+| Background        | `<bg=value>`                                                                                                                         |
+| Underline color   | `<uc=value>`                                                                                                                         |
+| Underline shape   | `<u=straight\|double\|curly\|dotted\|dashed>`                                                                                        |
+| Hyperlink         | `<link=target>text</link>` → OSC 8 metadata; never auto-opens                                                                        |
+| Line break        | literal `\n` / `\r\n` in the string                                                                                                  |
 
 - One tag carries at most one value, so the parser is `name` + optional single
   `value`; combine facets by stacking tags. `<u>` (bare) is the straight-line
   attribute; `<u=curly>` selects a typed shape.
-- **Close semantics:** `</name>` closes the nearest still-open tag of that
-  name; `</>` closes the most-recently-opened tag. Overlap is allowed and
-  meaningful because facets are independent.
+- **Close semantics:** `</name>` closes the nearest still-open tag of that name;
+  `</>` closes the most-recently-opened tag. Overlap is allowed and meaningful
+  because facets are independent.
+- Bare `<u>` and `<u=...>` are one underline facet. When nested, the most
+  recently opened underline wins until it closes. Slow and rapid blink are
+  likewise mutually exclusive; the most recently opened blink tag wins.
 
 ### Value forms (colors)
 
@@ -120,23 +121,17 @@ close `</name>` / generic `</>`. Names and named values are case-insensitive.
 ### Escaping
 
 - Literal `<` → `\<`; literal `\` → `\\`. `>` is literal outside a tag.
-- `Text.Escape(value)` backslash-escapes `<` and `\` so dynamic or
-  user-supplied strings interpolate safely.
+- `Text.Escape(value)` backslash-escapes `<` and `\` so dynamic or user-supplied
+  strings interpolate safely.
 
 ### Lenient recovery (never throws)
 
-- `<` always begins a tag (per decision 1). If the run to the next unescaped `>`
-  is not a known, well-formed tag — unknown name, missing `>`, bad value — the
-  raw characters are emitted as **literal text**, so no content is silently
-  lost.
+- `<` always begins a tag (per decision 1). If the run to the next `>` is not a
+  known, well-formed tag — unknown name, nested `<`, missing `>`, bad value, or
+  invalid hyperlink target — that complete raw fragment is emitted as **literal
+  text**, so no content is silently lost or reinterpreted as nested markup.
 - Stray `</name>` with no matching open tag is ignored.
 - Tags still open at end of content auto-close there.
-
-### `<br>` convenience
-
-Included as documented sugar for a hard line break, equivalent to a literal
-newline. *Vetoable:* drop it and rely on newlines only if we prefer a smaller
-tag surface.
 
 ## Internal architecture
 
@@ -151,29 +146,35 @@ flowchart LR
     Spans --> Render
 ```
 
-- **Parser** (`SharpVision.Text.Markup`, a static class) walks the markup once,
-  maintaining a stack of open facet tags. It emits a **display string** (the
-  visible text with tags removed and escapes resolved) plus a sequence of
-  **non-overlapping** `StyleSpan`s covering the display string, each a fully
-  resolved delta over the inherited style (nullable `Foreground` / `Background`
-  / `UnderlineColor`, `Attributes`, `Underline`, and an optional link target).
-  Overlapping tags flatten into adjacent spans at every facet boundary.
-- **`StyleSpan`** is a `readonly struct` in its own file (`Offset`, `Length`,
-  and the resolved facet fields).
+- **Parser** (`SharpVision.Text.Markup`, an internal static class) walks the
+  markup once, maintaining a stack of open facet tags. It emits a **display
+  string** (the visible text with tags removed and escapes resolved) plus a
+  sequence of **non-overlapping** `StyleSpan`s covering the display string, each
+  a fully resolved delta over the inherited style (nullable `Foreground` /
+  `Background` / `UnderlineColor`, `Attributes`, `Underline`, and an optional
+  link target). Overlapping tags flatten into adjacent spans at every facet
+  boundary.
+- **`StyleSpan`** is an internal `readonly struct` in its own file (`Offset`,
+  `Length`, and the resolved facet fields).
 - **Layout** reuses `Text.Layout.Format` over the display string. Because spans
   index into that single string, word wrap crosses style boundaries for free —
   the mechanism `RichText` already relies on.
 - **Render** mirrors `RichText`'s offset-based path: for each `Line`, walk
   graphemes, find the covering `StyleSpan` by source offset, overlay its facets
   on `ResolvedStyle` (reusing `Decoration.Resolve`), and draw runs with the
-  correct `BackgroundMode`.
+  correct `BackgroundMode`. A markup boundary inside an extended grapheme does
+  not split the cluster; the style active at the cluster's first UTF-16 code
+  unit applies to the complete cluster. Semantic color roles resolve through the
+  active theme before a terminal cell style is constructed.
 - **Caching** keeps `Text`'s current invalidation model: re-parse only when
   `Content` changes; re-layout on width/overflow/ambiguous change; re-align on
   alignment change.
 
 ## Migration
 
-- Rewrite `RichTextPane`, `TablePane`, and `Doc.cs` to build markup strings.
+- Rewrite `RichTextPane`, `TablePane`, and `Doc.cs` to build markup strings, and
+  migrate every production, test, showcase, and documentation reference to the
+  deleted model and overflow enums.
 - Merge `docs/controls/display/rich-text.md` into
   `docs/controls/display/text.md`; update the `Text` contract, the coverage
   matrix, and any inline links.
@@ -185,12 +186,15 @@ flowchart LR
 - **Parser** (unit + randomized/property, per AGENTS parser guidance): every tag
   and value form; fg via bare name and `<fg=>`; `<bg=>`, `<uc=>`, underline
   shapes; links; overlap; `</>` generic close; auto-close at end; unknown /
-  malformed → literal; escaping `\<` and `\\`; `Text.Escape` round-trips.
+  malformed → complete literal fragment; invalid link targets; escaping `\<` and
+  `\\`; `Text.Escape` round-trips; gap-free spans; deterministic fixed-seed
+  hostile input.
 - **Overflow:** all five modes, mapping to layout, exact cells, resize reflow,
   `Visible` reports full width.
 - **Render:** styled runs across word wrap, combining marks, variation
   selectors, ZWJ and wide clusters never split, alignment, OSC 8 metadata on
-  cells, exact emitted bytes across frames.
+  cells, theme-role resolution, incompatible blink precedence, markup boundaries
+  inside graphemes, and exact emitted bytes across frames.
 - **Showcase:** the merged `Text` page plus a representative screen test.
 
 ## Non-goals
