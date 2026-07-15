@@ -19,6 +19,22 @@ state styles, default cursor preservation, render-time invalidation, and
 exception recovery. Private draw-call recordings supplement these semantic
 oracles; they never replace them.
 
+## External extension proof
+
+`SharpVision.Consumer.Tests` references only the production `SharpVision`
+project and receives no friend access. Its independently compiled `Gauge`,
+`FlowPanel`, `OverflowPanel`, and `InteractiveProbe` prove protected property
+mutation, Unicode-aware measurement/rendering, ordinary and unclipped custom
+layout, direct-child layout, lifecycle publication, focus, capture, and
+capture-cancellation ordering. A reflection guard fails if the product friends
+either the consumer project or the production showcase.
+
+`SharpVision.Tests` deliberately retains friend access for internal invariant
+tests and therefore cannot serve as third-party API proof. Content, composite,
+item, state, part, and semantic specimens arrive in later architecture phases.
+The foundation suite uses a project reference; a separate future
+pack-and-consume gate must prove NuGet package contents and XML documentation.
+
 ## End-to-end path
 
 Representative tests start with raw terminal key/mouse/paste/resize bytes and
@@ -42,24 +58,25 @@ tree. Fresh semantic frames confirm removed content does not survive, while
 later transport writes prove incremental output followed each mutation.
 
 `InteractiveControlTests` composes Button, CheckBox, RadioButton, TextInput,
-ScrollBar, ScrollView, and List under one real application. Raw SGR cell clicks,
-Kitty Enter, wheel input, UTF-8 CJK, item removal, terminal focus loss, and
-resize prove ordered activation/selection events, focus and capture cleanup,
-exact semantic cells, wide-cell ownership, incremental bytes, and cleared stale
-item rows. A separate editor path adds owned bracketed paste containing a
-combining sequence, legacy Left, and Backspace checkpoints.
+ScrollBar, an intrinsically scrollable Stack, and List under one real
+application. Raw SGR cell clicks, Kitty Enter, wheel input, UTF-8 CJK, item
+removal, terminal focus loss, and resize prove ordered activation/selection
+events, focus and capture cleanup, exact semantic cells, wide-cell ownership,
+incremental bytes, and cleared stale item rows. A separate editor path adds
+owned bracketed paste containing a combining sequence, legacy Left, and
+Backspace checkpoints.
 
 `ScrollingTests` first sends 20 raw SGR wheel reports into nested hidden-bar
-ScrollViews and proves exact inner consumption, outward remainder, and resize
-clamping. A second application uses automatic bars on both nested axes, inferred
-pixel coordinates, and wide Unicode content. It proves pixel thumb dragging,
-horizontal and vertical remainder, focus reveal through both viewports, exact
-outer thumb cells, capture release, and removal of outer bars after a larger
-pixel-dimensioned resize.
+Stacks with intrinsic `AutoScroll` and proves exact inner consumption, outward
+remainder, and resize clamping. A second application uses automatic bars on both
+nested axes, inferred pixel coordinates, and wide Unicode content. It proves
+pixel thumb dragging, horizontal and vertical remainder, focus reveal through
+both viewports, exact outer thumb cells, capture release, and removal of outer
+bars after a larger pixel-dimensioned resize.
 
 ## Controls with state machines
 
 Phase 5 buttons, toggles, radio groups, text editing, selection, menus, popups,
-windows, scrollbars, and scroll views must enumerate valid/invalid transitions
-and event order. Fake clocks drive hover/open delays, timers, idle, and repeated
-input without wall-clock sleeps.
+windows, scrollbars, and intrinsic container scrolling must enumerate
+valid/invalid transitions and event order. Fake clocks drive hover/open delays,
+timers, idle, and repeated input without wall-clock sleeps.

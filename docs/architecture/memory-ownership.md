@@ -16,7 +16,7 @@ after return, frame completion, or disposal.
 | Grapheme arena          | Frame/screen owner           | While referenced by owned cells  |
 | Image source bytes      | Immutable graphics image     | Image value lifetime             |
 | Encoded write batch     | Renderer                     | Until write and flush complete   |
-| Child control           | Parent `Container`           | Until removal/parent disposal    |
+| Child control           | Parent `Control` slot        | Until removal/owner disposal     |
 | Routed event snapshot   | Router                       | Until synchronous dispatch ends  |
 | UI input record         | `Application`                | Until dispatcher delivery        |
 | UI back frame           | `Application`                | Until render completion/disposal |
@@ -63,11 +63,16 @@ retains no caller memory. The session owns disposal of its transport and resize
 source; `StreamTransport` in turn owns its streams unless `leaveOpen` is true.
 
 Every `SharpVision.Controls.Control` owns one central registry of ordered visual
-slots. `Container.Children` exposes only its public container-child slot;
-content, item hosts, popup layers, and private framework parts use distinct
-slots over the same ownership engine. Removal transfers the now-detached control
-back to the caller, while owner disposal recursively disposes every remaining
-slot member. Attachment borrows one dispatcher reference for the lifetime of the
+slots. `Container.Children` exposes only its public container-child slot; the
+current foundation also registers the List presentation host and private
+container/editor scrollbar rails in distinct item-host or framework-part slots.
+Content, composition-root, and item-visual roles are reserved by the same
+registry for the role migration. Normal and popup are independent render layers,
+not ownership roles. Until popup owners register dedicated popup-layer slots, a
+`Popup` promotes its ordinary ownership edge for rendering and hit testing
+without changing parentage. Removal transfers the now-detached control back to
+the caller, while owner disposal recursively disposes every remaining slot
+member. Attachment borrows one dispatcher reference for the lifetime of the
 attachment. A control subscribes only to its direct `Style`; replacement,
 detachment where applicable, and disposal remove owned registrations
 deterministically.
@@ -90,9 +95,9 @@ only then may it be disposed or replaced.
 Text layout borrows `ReadOnlySpan<char>` only for one synchronous format call
 and writes immutable `Line` values into caller-owned storage. `Text` owns and
 reuses its line array; its public `ReadOnlyMemory<Line>` view remains valid only
-until the next successful layout. Panel collections own attached controls
-exclusively, and Border replacement validates the complete candidate subtree
-before detaching its previous child.
+until the next successful layout. Every registered slot owns its attached
+controls exclusively. Complete-slot and capacity-one replacement validate the
+whole candidate snapshot before detaching any previous control.
 
 Protocol encoders write synchronously to caller spans or `IBufferWriter<byte>`.
 Any data crossing an `await`, queue, callback, or dispatcher boundary must be an

@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use
 > `superpowers:subagent-driven-development` or `superpowers:executing-plans`.
-> Begin only after the component-foundation plan is committed and all repository
-> gates pass.
+> Begin only after the component-foundation and intrinsic-border-shadow plans
+> are committed and all repository gates pass.
 
 **Goal:** Make public inheritance describe actual authoring roles and migrate
 every built-in control without rendering, layout, input, or lifecycle drift.
@@ -11,6 +11,8 @@ every built-in control without rendering, layout, input, or lifecycle drift.
 **Architecture:** Add single-content, explicit-composite, and private-item-host
 bases over the central registry. Only true panels retain `Container`. Migrate
 the showcase and remove `View`, bypassable `Children`, and hidden scroll APIs.
+`Border` and `Shadow` are already absent because the prerequisite intrinsic plan
+removes them instead of laundering them into the content hierarchy.
 
 ## Task 1: Add `ContentControl`
 
@@ -37,26 +39,24 @@ the showcase and remove `View`, bypassable `Children`, and hidden scroll APIs.
 - [ ] Run `ContentControlTests`, `TreeTests`, consumer tests, and rendering
       tests.
 
-## Task 2: Migrate single-content decoration/window controls
+## Task 2: Migrate single-content window and popup controls
 
 **Production:**
 
-- Modify `src/SharpVision/Controls/Border.cs`.
-- Modify `src/SharpVision/Controls/Shadow.cs`.
 - Modify `src/SharpVision/Controls/Window.cs` and its partial files.
 - Modify `src/SharpVision/Controls/Popup.cs`.
 
 **Tests/docs:**
 
-- Update the corresponding control tests and public control specifications.
-- Add reflection tests asserting none derives from `Container` and none exposes
+- Update the Window and Popup tests and public control specifications.
+- Add reflection tests asserting neither derives from `Container` or exposes
   `Children`.
 
-- [ ] For each control, write/adjust the reflection and semantic-ownership test
-      before changing its base.
-- [ ] Rename `Child` to inherited `Content` across source, tests, showcase, and
-      docs in the same task. The repository is pre-1.0; do not retain a second
-      alias that recreates ambiguity.
+- [ ] For each remaining control, write/adjust the reflection and
+      semantic-ownership test before changing its base.
+- [ ] Rename Window and Popup `Child` to inherited `Content` across source,
+      tests, showcase, and docs in the same task. The repository is pre-1.0; do
+      not retain a second alias that recreates ambiguity.
 - [ ] Replace direct internal child transactions with protected helpers.
 - [ ] Preserve exact measurement, frame geometry, popup focus restoration,
       window default/cancel button search, and disposal event order.
@@ -293,7 +293,8 @@ and showcase pane.
       styling, input, focus, project structure, showcase, and testing docs.
 - [ ] Update `docs/index.md`, concept/control indexes, and all section links.
 - [ ] Add reflection tests for the complete target inheritance table and absence
-      of hidden `new` members.
+      of hidden `new` members, plus absence of the removed `Border` and `Shadow`
+      types.
 - [ ] Search for and eliminate `View`, `Build()`, `public new`, stale `Child`
       APIs, non-panel `: Container`, and stale `ScrollView` references.
 - [ ] Run all four repository gates from a clean worktree.

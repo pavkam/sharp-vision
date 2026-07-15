@@ -4,13 +4,14 @@
 namespace SharpVision.Controls;
 
 
-/// <summary>A composable control whose single content child is produced once by <see cref="Build"/>.</summary>
+/// <summary>A composable control whose single content child is installed after one successful <see cref="Build"/>.</summary>
 /// <remarks>
 /// Derive from <see cref="View"/> to build a reusable component from existing controls. Implement
 /// <see cref="Build"/> to return the content root; the runtime installs it as the view's only child
-/// on the view's first measure, whether or not the view is attached at that point. This is one-shot
-/// construction, not reactive rendering: after <see cref="Build"/> runs, mutate the returned subtree
-/// like any other control tree.
+/// on the first successful measure attempt, whether or not the view is attached at that point. A
+/// failed, null, or un-installable result leaves the view unbuilt and the next measure retries. After
+/// successful installation, mutate the returned subtree like any other control tree; construction
+/// is not reactive rendering.
 /// </remarks>
 public abstract class View: Container
 {
@@ -21,10 +22,10 @@ public abstract class View: Container
     {
     }
 
-    /// <summary>Gets the built content child, or null before <see cref="Build"/> has run.</summary>
+    /// <summary>Gets the built content child, or null before one <see cref="Build"/> result installs successfully.</summary>
     protected Control? Content => Children.Count == 0 ? null : Children[0];
 
-    /// <summary>Produces this view's content root. Called once, on the first layout pass, whether or
+    /// <summary>Produces this view's content root until one result installs successfully, whether or
     /// not the view is attached. Must return a non-null control; return a layout container for
     /// multiple children.</summary>
     /// <returns>The non-null content root installed as this view's only child.</returns>

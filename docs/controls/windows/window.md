@@ -26,7 +26,9 @@ keyboard, pointer, resize, and clipping behavior. This makes `Window` useful as
 a composable visual surface inside an `Overlay` or `Canvas`. If an unhandled
 Enter or Escape bubbles through the window, its first available `Button` with
 `IsDefault` or `IsCancel` respectively receives the conventional fallback
-activation.
+activation. Discovery follows deterministic ownership order through every slot,
+including private non-container branches; it never assumes descendants appear in
+`Container.Children`.
 
 The showcase includes rounded, paired-line, and portable ASCII frames with left,
 centered, and right titles so the chrome choices are visible side by side.
@@ -47,4 +49,5 @@ var window = new Window
 
 Cover title clipping, child measurement and arrangement, each glyph family,
 surface color, composite and block shadow placement, tiny bounds, ownership,
-terminal resize, and final semantic frame cells.
+default/cancel discovery across private slots, terminal resize, and final
+semantic frame cells.

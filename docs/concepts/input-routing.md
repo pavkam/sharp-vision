@@ -48,6 +48,9 @@ Keyboard targets the focused control. Pointer input targets capture when active,
 otherwise hit testing over committed layout and clipping. The dispatcher
 snapshots ancestry, previews root to target, then bubbles target to root.
 `OriginalSource` never changes; controlled retargeting may change `Source`.
+Ancestry follows `Control.Parent` across every ownership role; route
+construction never requires the parent to be a `Container` or the edge to appear
+in public `Children`.
 
 `Handled` suppresses remaining ordinary handlers and default control behavior.
 Handlers explicitly registered for handled events still run. Tree mutation

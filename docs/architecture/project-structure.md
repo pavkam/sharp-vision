@@ -46,18 +46,26 @@ infrastructure namespaces:
 | `SharpVision.Styling`   | Mutable style resources and visual-state resolution.                           |
 | `SharpVision.Runtime`   | Terminal session ownership, application lifecycle, and console host bootstrap. |
 
-Phase 5A adds public Stack, Grid, Dock, Overlay, Canvas, Text, and Border types
-on these boundaries. Remaining controls, scrolling, menus, popups, and windows
-stay assigned to later Phase 5 slices; none may move terminal protocol or
-rendering behavior into the UI layer.
+The current UI project ships the complete
+[control catalog](../controls/index.md#control-catalog): layout panels, text and
+editing, selection and item controls, menus, popups, windows, intrinsic
+container scrolling, styling, focus, and routed input all remain on these
+boundaries. `Border` and `Shadow` are still current wrapper controls until the
+next mandatory intrinsic-chrome plan removes them; that prerequisite does not
+move terminal protocol or renderer behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.
 
-`SharpVision.Consumer.Tests` compiles representative third-party leaf,
-container, and interactive controls against only `SharpVision.csproj`. The
-product assembly must not grant it `InternalsVisibleTo`; its build is the
-executable guard for the documented public and protected extension contract.
+`SharpVision.Consumer.Tests` compiles the third-party `Gauge`, `FlowPanel`,
+`OverflowPanel`, and `InteractiveProbe` specimens against only
+`SharpVision.csproj`. The product assembly must not grant it
+`InternalsVisibleTo`; its build is the executable foundation guard for leaf,
+layout, focus/capture, and lifecycle extension contracts. Internal
+`SharpVision.Tests` friendship proves framework invariants, not third-party
+usability. Role-specific specimens are added during the role migration, and a
+later pack-and-consume gate proves package shape rather than project-reference
+shape.
 
 ## Namespace and file boundaries
 

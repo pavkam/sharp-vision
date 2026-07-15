@@ -10,22 +10,22 @@ dispatcher.
 
 ## Core properties
 
-| Property                                   | Default        | Contract                                                                                                                                     |
-| ------------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Width`, `Height`                          | `Length.Auto`  | Fixed, percentage, automatic, or proportional `Length`.                                                                                      |
-| `MinWidth`, `MinHeight`                    | `0`            | Non-negative cell minimums.                                                                                                                  |
-| `MaxWidth`, `MaxHeight`                    | `int.MaxValue` | Cell maximums not below the corresponding minimum.                                                                                           |
-| `Margin`                                   | Zero edges     | External non-negative `Thickness`.                                                                                                           |
-| `Padding`                                  | Zero edges     | Internal non-negative `Thickness`.                                                                                                           |
-| `HorizontalAlignment`, `VerticalAlignment` | `Stretch`      | Placement within the arranged slot.                                                                                                          |
-| `Visibility`                               | `Visible`      | Visible, hidden, or collapsed.                                                                                                               |
-| `IsEnabled`                                | `true`         | Inherited effective input state.                                                                                                             |
-| `IsHitTestVisible`                         | `true`         | Whether pointer hit testing may target the control.                                                                                          |
-| `CanFocus`, `TabIndex`                     | `false`, `0`   | Focus participation and deterministic order.                                                                                                 |
-| `IsFocused`, `IsHovered`, `IsPressed`      | `false`        | Read-only committed interaction state; only interactive (focusable) controls are hovered, and composite hover belongs to its semantic owner. |
-| `Style`                                    | `null`         | Optional per-instance `IControlStyle` overlay; null uses only the theme chain.                                                               |
-| `DesiredSize`                              | Empty          | Read-only result of the last successful measure.                                                                                             |
-| `Bounds`                                   | Empty          | Read-only committed arranged rectangle.                                                                                                      |
+| Property                                   | Default           | Contract                                                                                                                                     |
+| ------------------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Width`, `Height`                          | `Length.Auto`     | Fixed, percentage, automatic, or proportional `Length`.                                                                                      |
+| `MinWidth`, `MinHeight`                    | `0`               | Non-negative cell minimums.                                                                                                                  |
+| `MaxWidth`, `MaxHeight`                    | `int.MaxValue`    | Cell maximums not below the corresponding minimum.                                                                                           |
+| `Margin`                                   | Zero edges        | External non-negative `Thickness`.                                                                                                           |
+| `Padding`                                  | Zero edges        | Internal non-negative `Thickness`.                                                                                                           |
+| `HorizontalAlignment`, `VerticalAlignment` | `Left`, `Stretch` | Placement within the arranged slot.                                                                                                          |
+| `Visibility`                               | `Visible`         | Visible, hidden, or collapsed.                                                                                                               |
+| `IsEnabled`                                | `true`            | Inherited effective input state.                                                                                                             |
+| `IsHitTestVisible`                         | `true`            | Whether pointer hit testing may target the control.                                                                                          |
+| `CanFocus`, `TabIndex`                     | `false`, `0`      | Focus participation and deterministic order.                                                                                                 |
+| `IsFocused`, `IsHovered`, `IsPressed`      | `false`           | Read-only committed interaction state; only interactive (focusable) controls are hovered, and composite hover belongs to its semantic owner. |
+| `Style`                                    | `null`            | Optional per-instance `IControlStyle` overlay; null uses only the theme chain.                                                               |
+| `DesiredSize`                              | Empty             | Read-only result of the last successful measure.                                                                                             |
+| `Bounds`                                   | Empty             | Read-only committed arranged rectangle.                                                                                                      |
 
 Setters validate before mutation, verify dispatcher access while attached, and
 raise `PropertyChanged` once after the changed value is committed. Invalid
@@ -51,6 +51,15 @@ separate slots over the same registry and never leak into `Children`.
 Registering two slots with the same role is valid; slot identity, not role,
 determines membership and capacity.
 
+The role vocabulary is container child, content, composition root, item visual,
+item host, or framework part. The foundation currently instantiates container
+children, the List item host, and private framework parts. Content, composition
+root, and item-visual slots become concrete during the role migration. A slot
+also selects normal or popup layer, hit-test and navigation participation, an
+optional stable part key, and the earliest invalidation impact. These are
+independent policies: excluding an edge from hit testing or navigation never
+excludes it from parentage, inherited context, lifecycle, or disposal.
+
 Cross-cutting traversal reads this registry directly instead of testing whether
 an owner is a `Container`. Stable tree order is slot registration order followed
 by item order. Focus navigation visits only navigation-participating edges in
@@ -74,13 +83,19 @@ Adding below an attached owner recursively attaches the subtree. Removing
 recursively detaches it and clears its parent. Disposing an owner disposes all
 owned descendants; repeated disposal is safe.
 
-Structural transactions release focus and capture while the old tree remains
-coherent, then commit slot membership, parent links, dispatcher, Unicode policy,
-theme, and manager context without callbacks. Parent, theme, detach, attach, and
-slot notifications run only after that complete commit. Callback failures are
-remembered while remaining publication and cleanup continue; the first failure
-is rethrown from a coherent new tree. Tree mutation and disposal are rejected
-while any affected ownership transaction is publishing.
+Structural removal has one deliberate exception to publication-after-commit.
+While the old tree is still coherent, guarded availability cleanup releases
+focus, clears capture before its cancellation hook, and then calls
+`OnUnavailable`; those callbacks observe the old parent and inherited context,
+but manager state is already clear. Root-manager disposal cleanup may follow
+`OnUnavailable` before the transaction commits slot membership, parent links,
+dispatcher, Unicode policy, theme, and manager context without callbacks. Parent
+changes, theme changes, detach hooks, attach hooks, and the slot notification
+publish in that order from the complete new tree. Callback failures are
+remembered while remaining publication and cleanup continue; invalidation still
+occurs and the first failure is rethrown from a coherent new tree. Tree mutation
+and disposal are rejected while any affected ownership transaction is
+publishing.
 
 When a root owns focus or capture managers, that ownership propagates through
 every registered slot. Removal, inherited disable/hide, and disposal
@@ -120,15 +135,17 @@ no-op. Replacing either `Control.Style` or a type style in `Theme` uses the
 maximum aggregate impact of the removed and new styles, so removing geometric
 values still invalidates their previous layout.
 
-Third-party controls use the same phase vocabulary for ordinary CLR state.
-`SetProperty(ref field, value, impact)` verifies dispatcher affinity, rejects an
-unknown `ChangeImpact`, suppresses equivalent assignments, commits the field,
-invalidates, and then raises `PropertyChanged` once. A coordinated mutation that
-has already committed its fields uses `NotifyPropertyChanged(name, impact)`.
-`Invalidate(impact)` requests work without a property notification, while
-`InvalidateVisualState()` clears resolved appearance caches and requests the
-strongest phase required by active styles. None of these seams exposes the
-framework's pending phase flags.
+Third-party controls use the same phase vocabulary for ordinary CLR state. The
+public setter validates its domain value before calling
+`SetProperty(ref field, value, impact)`. The helper validates impact, property
+name, dispatcher access, and lifetime before checking equivalence; a changed
+value commits, invalidates, and then raises `PropertyChanged` once. A
+coordinated mutation that has already committed all of its fields uses
+`NotifyPropertyChanged(name, impact)`, which applies the same name, impact,
+access, and lifetime validation. `Invalidate(impact)` validates the impact and
+requests work without a property notification, while `InvalidateVisualState()`
+clears resolved appearance caches and requests the strongest phase required by
+active styles. None of these seams exposes the framework's pending phase flags.
 
 ## Lifecycle and events
 
@@ -144,6 +161,9 @@ never attach or detach independently from its parent. `OnDisposing()` runs at
 most once before owned state is released; if that hook throws, base cleanup
 completes before the original exception is rethrown. These hooks and
 `OnParentChanged(Control?, Control?)` always observe committed ownership state.
+`OnUnavailable` is the guarded pre-commit exception described under
+[children and ownership](#children-and-ownership): manager state is clear, while
+parent and inherited context still describe the coherent old tree.
 
 Focus and pointer capture are synchronously released when a control becomes
 unavailable or leaves the owned tree. Derived controls request those behaviors

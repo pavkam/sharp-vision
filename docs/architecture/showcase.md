@@ -57,8 +57,8 @@ when the captured pane is converted to PNG.
 
 ## Responsive behavior
 
-The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
-`ScrollView` in the remaining space. The sidebar owns product identity,
+The root is a `Dock` with a fixed 28-cell `Border` sidebar and an intrinsically
+scrollable `Stack` in the remaining space. The sidebar owns product identity,
 component-only stateful navigation entries, and compact interaction hints; its
 selected, focused, hovered, and pressed states follow the active application
 theme. The sidebar footer hosts a theme picker `ComboBox` and a visible `Quit`

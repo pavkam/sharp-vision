@@ -38,14 +38,19 @@ The baseline proof run completed before any change:
    - protected extension kernel;
    - central owned-control registry and `Parent : Control?`;
    - cross-cutting traversal migration.
-2. [Role hierarchy and built-in migration](2026-07-15-component-role-migration.md)
+2. [Intrinsic border and shadow](2026-07-15-intrinsic-border-shadow.md)
+   - reserve `BorderThickness` in base layout exactly once;
+   - preserve intrinsic border and shadow rendering;
+   - remove the redundant `Border` and `Shadow` wrapper controls;
+   - migrate source, tests, showcase, and normative control documentation.
+3. [Role hierarchy and built-in migration](2026-07-15-component-role-migration.md)
    - `ContentControl`;
    - `CompositeControl` and `Screen`;
    - `ItemsControl`;
    - concrete control migrations;
    - removal of `View`, meaningless `Children`, and hidden scroll APIs;
    - internal extraction of container scrolling/chrome responsibilities.
-3. [Orthogonal contracts](2026-07-15-component-orthogonal-contracts.md)
+4. [Orthogonal contracts](2026-07-15-component-orthogonal-contracts.md)
    - open visual-state keys;
    - typed named parts and part styling;
    - independent tab/pointer semantics;
@@ -54,8 +59,9 @@ The baseline proof run completed before any change:
    - package-consumer proof.
 
 The order is mandatory. Role bases cannot be correct until ownership is central,
-and named parts/semantic traversal must use the same registry rather than
-inventing a second tree.
+and they must not migrate wrapper types that the approved intrinsic-chrome plan
+removes. Named parts and semantic traversal must then use the same registry
+rather than inventing a second tree.
 
 ## Global constraints
 
@@ -71,6 +77,8 @@ inventing a second tree.
   rendering.
 - Keep `AutoSize` and `AutoScroll` intrinsic to true `Container` panels; there
   is no `ScrollView` type.
+- Keep border and shadow intrinsic to `Control`; the completed architecture has
+  no `Border` or `Shadow` wrapper type.
 - Keep every existing exact-cell, Unicode, scrolling, focus, capture, and
   application-order guarantee unless the normative design explicitly replaces
   the API shape.
@@ -108,6 +116,8 @@ failure, stale link, public undocumented member, friend-access shortcut, hidden
   interactive, themed-part, and semantic controls using only public/protected
   APIs.
 - Only true panels derive from `Container`.
+- Border and shadow are intrinsic properties; no `Border` or `Shadow` wrapper
+  control remains.
 - No semantic control exposes a bypassable arbitrary `Children` collection.
 - No public control hides an inherited member with `new`.
 - First layout of a composite performs no construction or ownership mutation.

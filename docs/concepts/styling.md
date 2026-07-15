@@ -59,6 +59,11 @@ scopes, and the descendant's own style wins over every scope. Replacing
 `Control.Style` invalidates the maximum aggregate impact of the old and new
 styles.
 
+Scope ancestry follows `Control.Parent` through every registered ownership slot.
+Private content, presentation hosts, popup edges, and framework parts do not
+disappear from the cascade merely because their owner exposes no public
+`Children` collection.
+
 ## Visual states
 
 Standard states are normal, hovered, focused, selected, checked, indeterminate,

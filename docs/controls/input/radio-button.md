@@ -2,23 +2,25 @@
 
 ## RadioButton contract
 
-`RadioButton` is a focusable selection control. At most one attached enabled or
-disabled member in the same effective group is checked; a group may initially
-have none.
+`RadioButton` is a focusable selection control. At most one owned member in the
+same effective group is checked; a group may initially have none.
 
 ## API
 
 - `IsChecked` is Boolean. User activation sets true and never toggles false.
-- `GroupName` is nullable; null groups by nearest radio-group container scope.
+- `GroupName` is nullable. A null name groups only radio buttons in the exact
+  same ownership slot. A non-null name uses ordinal matching across every slot
+  beneath the current ownership root.
 - `Content` uses managed parent ownership.
 - `Checked`, `Unchecked`, and `SelectionChanged` report old/new group members.
 
 The shipped control events carry immutable `SelectionChangedEventArgs` with
 previous/current members and activation cause. Group coordination stores no
-global membership: it scans the current owned tree using ordinal explicit names
-scoped to the root, or null-name siblings scoped to their nearest parent.
-Attaching, reparenting, or regrouping a checked member resolves the candidate
-group after ownership commits, so detached trees cannot be retained.
+global membership. Named discovery scans every role and layer, regardless of
+hit-test or navigation participation; unnamed discovery inspects only the exact
+owning slot rather than every child of the same parent. Attaching, reparenting,
+or regrouping a checked member resolves the candidate group after ownership
+commits, so detached trees cannot be retained.
 
 Changing group, parent, or checked state updates both affected groups
 atomically. Reentrant handlers observe the committed selection.
@@ -53,4 +55,5 @@ var compact = new RadioButton
 
 Cover group exclusivity, no-initial selection, programmatic changes, regrouping,
 detach/reparent, event order/reentrancy, arrow navigation, disabled skipping,
-Space/pointer parity, focus/styles, Unicode content, and final cells.
+exact-slot unnamed scope, named groups across non-container roles and popup
+layers, Space/pointer parity, focus/styles, Unicode content, and final cells.

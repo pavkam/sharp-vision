@@ -21,8 +21,9 @@ take focus, and shutdown to complete without runtime failure.
 
 The same runtime suite targets an SGR wheel report at the overflowing multiline
 `TextInput` specimen. It proves decoded terminal input advances the editor's own
-`VerticalOffset` while the enclosing documentation `ScrollView` retains its
-previous offset, protecting leaf-first wheel routing from future regressions.
+`VerticalOffset` while the enclosing documentation Stack's intrinsic scroll
+offset remains unchanged, protecting leaf-first wheel routing from future
+regressions.
 
 Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
 cells. They verify selected identity, the `SHARP VISION` sidebar identity,

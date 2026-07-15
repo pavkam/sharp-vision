@@ -209,11 +209,11 @@ public abstract class Container: Control
                 return;
             }
 
-            // Bars are created eagerly here (mirroring the former ScrollView
-            // constructor) rather than lazily in ResolveContentSlot. Lazy
-            // creation there added children mid-arrange, which invalidates
-            // this container's own measure and can prevent nested armed
-            // containers from ever converging to a settled layout.
+            // Bars are created when scrolling is armed rather than lazily in
+            // ResolveContentSlot. Lazy creation there added children
+            // mid-arrange, which invalidates this container's own measure and
+            // can prevent nested armed containers from ever converging to a
+            // settled layout.
             if (value)
             {
                 EnsureBars();

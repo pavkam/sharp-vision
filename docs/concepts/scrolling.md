@@ -69,12 +69,14 @@ below, and `Always` reserves space even when the range is stationary.
 
 Line/page/home/end commands, wheel and pixel deltas, buttons, track clicks,
 thumb dragging, and programmatic bring-into-view all use typed scroll commands.
-Unused delta propagates to the nearest scrollable ancestor container. Pointer
-capture owns thumb dragging and is released on disable, detach, close, or
-cancellation.
+Unused delta walks `Control.Parent` through any owner role and propagates to the
+nearest ancestor whose runtime type is `Container` and whose `AutoScroll` is
+true. A non-container composition or presentation owner never breaks that
+search. Pointer capture owns thumb dragging and is released on disable, detach,
+close, or cancellation.
 
 An armed [`Container`](../../src/SharpVision/Controls/Container.cs) implements
-the automatic algorithm with two ordinary owned
+the automatic algorithm with two privately owned framework-part
 [`ScrollBar`](../../src/SharpVision/Controls/ScrollBar.cs) controls configured
 through their public orientation, chrome, and fill APIs. The reservation probe
 runs against `ScrollBars` and the per-axis `HorizontalBarVisibility`/
@@ -86,13 +88,14 @@ by the committed offsets and rendered through a canvas clipped to the viewport.
 Wheel input first offers the leaf control its normal default behavior; a child
 that moves handles the event. Once that child reaches an endpoint, it leaves the
 next unchanged wheel event unhandled and the enclosing container consumes the
-clamped delta, so wheel scrolling propagates outward through nested armed
-containers. Keyboard arrows, PageUp/PageDown, and Home/End drive the same typed
-commands. `BringIntoView(Control)` accepts only an owned content descendant and
-makes the smallest two-axis offset change that exposes its arranged bounds.
-Content and resize changes clamp offsets before the typed `ScrollChanged` event
-(carrying the previous/committed offset, `Extent`, `Viewport`, and typed
-`Cause`) and before translated arrangement.
+clamped delta, so wheel scrolling propagates outward through arbitrary ownership
+between nested armed containers. Keyboard arrows, PageUp/PageDown, and Home/End
+drive the same typed commands. `BringIntoView(Control)` accepts any descendant
+reached through owned `Control.Parent` edges and makes the smallest two-axis
+offset change that exposes its arranged bounds. Content and resize changes clamp
+offsets before the typed `ScrollChanged` event (carrying the previous/committed
+offset, `Extent`, `Viewport`, and typed `Cause`) and before translated
+arrangement.
 
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after offset and never targets clipped content.

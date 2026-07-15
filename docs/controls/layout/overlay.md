@@ -21,6 +21,12 @@ stable z-order governs elevated popup descendants: higher-z branches render
 later and hit-test first, including when a generated scrollbar occupies the same
 cells.
 
+When `AutoScroll` is armed, ordinary z-ordered content renders and hit-tests
+only inside the committed viewport. Generated scrollbar parts render above
+ordinary content and receive pointer input before it. Elevated popup branches
+remain the highest layer; among them the same stable `ZIndex` order still
+applies.
+
 Attached values use weak ownership and validate dispatcher affinity before
 mutation. Changing a child z-order invalidates only its owning Overlay's render
 phase. Ordering uses cleared pooled child storage and retains no controls after
@@ -39,4 +45,5 @@ Overlay.SetZIndex(statusPopup, 10);
 
 Cover z-order ties/changes, hit testing, pointer-transparent children, clipping,
 alignment/percent sizing, collapsed children, zero/tiny bounds, resize,
-ownership, focus order independence, damage after removal, and exact cells.
+ownership, focus order independence, popup z-order, viewport clipping, scrollbar
+render/hit precedence, damage after removal, and exact cells.

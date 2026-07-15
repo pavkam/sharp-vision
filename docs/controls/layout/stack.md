@@ -41,4 +41,5 @@ actions.Children.Add(cancelAction);
 
 Cover every orientation, spacing, reverse, fixed/percent/auto/proportional mix,
 collapsed children, alignment, zero/tiny sizes, overflow, resize, ownership,
-navigation order, Unicode measurement, and exact bounds/cells.
+navigation order, reversed popup drawing/hit priority, Unicode measurement, and
+exact bounds/cells.

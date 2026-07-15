@@ -3,11 +3,12 @@
 ## Status
 
 Approved direction from the 2026-07-15 architecture review. Implementation is
-split across three executable plans:
+split across four executable plans:
 
 1. component foundation and external extension contract;
-2. role-correct hierarchy and built-in control migration;
-3. open styling, named parts, focus semantics, accessibility, and theme-file
+2. intrinsic border/shadow migration and wrapper removal;
+3. role-correct hierarchy and built-in control migration;
+4. open styling, named parts, focus semantics, accessibility, and theme-file
    hardening.
 
 This is a deliberate pre-1.0 source and binary break. The target API is kept
@@ -95,13 +96,17 @@ There is one ownership engine in `Control`. A visual edge cannot opt out of
 dispatcher affinity, theme context, Unicode policy, inherited enabled/visible
 state, focus/capture cleanup, lifecycle, or disposal.
 
-### Validation precedes mutation; publication follows commit
+### Validation precedes mutation; structural publication follows commit
 
-Structural operations validate every candidate and complete internal state
-before invoking overridable hooks or public notifications. A notification
-exception may propagate, but observers always see either the complete old tree
-or the complete new tree. Removal caused by disposal publishes one disposal
-reason, never a second detached reason.
+Structural operations validate every candidate before changing state. Guarded
+availability cleanup is the one pre-commit exception: focus releases, capture
+state clears before cancellation callbacks, and `OnUnavailable` observes the
+complete old tree. Membership, parent, inherited context, and slot metadata then
+commit before parent, theme, detach, attach, or slot notifications. A callback
+exception may propagate after remaining cleanup, but observers always see either
+the complete old tree during guarded availability cleanup or the complete new
+tree during structural publication. Removal caused by disposal publishes one
+disposal reason, never a second detached reason.
 
 ## Target hierarchy
 
@@ -122,6 +127,10 @@ Screen : CompositeControl
 `Control` owns the box model, styleable values, routed events, lifecycle,
 layout/render template methods, protected extension kernel, and central visual
 ownership registry. `Parent` is `Control?`, not `Container?`.
+
+Border and shadow are intrinsic `Control` capabilities. The prerequisite
+intrinsic-chrome plan makes `BorderThickness` reserve layout and removes the
+redundant `Border` and `Shadow` wrapper types before role migration begins.
 
 The public/protected kernel is:
 
@@ -165,6 +174,8 @@ protected virtual void OnAttached();
 protected virtual void OnDetached();
 protected virtual void OnDisposing();
 protected virtual void OnPointerCaptureCancelled(ReleaseReason reason);
+protected virtual void OnUnavailable(ReleaseReason reason);
+protected virtual void OnParentChanged(Control? previous, Control? current);
 ```
 
 `MeasureChild` and `ArrangeChild` accept only a direct owned child. They do not
@@ -203,15 +214,13 @@ navigation, theme/context propagation, and disposal.
 
 The following types migrate to it:
 
-- `Border`;
-- `Shadow`;
 - `Window`;
 - `Popup`;
 - `Pressable`, and therefore `Button`, `CheckBox`, `RadioButton`, `MenuItem`,
   and `ComboBox`.
 
-`Border.Child`, `Shadow.Child`, `Window.Child`, and `Popup.Child` become
-`Content`. No inherited arbitrary `Children` collection remains.
+`Window.Child` and `Popup.Child` become `Content`. No inherited arbitrary
+`Children` collection remains.
 
 ### `CompositeControl`
 
@@ -302,12 +311,16 @@ and table-row batches:
    subtree, duplicates, cycles, current ownership, disposal, and batch-wide
    conflicts without changing observable state.
 2. Prepare the complete old/new edge set and inherited context.
-3. Release invalid focus/capture while the old tree is still structurally
-   coherent.
+3. Release invalid focus and capture while the old tree is still structurally
+   coherent. Capture state clears before cancellation callbacks; guarded
+   `OnUnavailable` runs afterward against that old tree. Capture the first
+   callback failure without abandoning the transaction.
 4. Commit collection membership, parents, inherited managers, theme, cell
    policy, dispatcher, and slot metadata without user callbacks.
-5. Publish parent/lifecycle/property notifications from the committed tree.
-6. Request the earliest invalidation once.
+5. Publish parent, theme, detach, attach, and slot notifications in that order
+   from the committed tree, continuing after callback failures.
+6. Request the earliest invalidation once, then rethrow the first captured
+   callback failure.
 
 Removed controls detach but are not disposed. Owner disposal disposes every
 remaining descendant exactly once. A child disposed directly asks its owning
@@ -423,7 +436,8 @@ attributes, or text.
 | Control                                                     | Current base | Target base        |
 | ----------------------------------------------------------- | ------------ | ------------------ |
 | `Stack`, `Grid`, `Dock`, `Overlay`, `Canvas`                | `Container`  | `Container`        |
-| `Border`, `Shadow`, `Window`, `Popup`                       | `Container`  | `ContentControl`   |
+| `Border`, `Shadow`                                          | `Container`  | removed            |
+| `Window`, `Popup`                                           | `Container`  | `ContentControl`   |
 | `Pressable`                                                 | `Container`  | `ContentControl`   |
 | `Button`, `CheckBox`, `RadioButton`, `MenuItem`, `ComboBox` | `Pressable`  | `Pressable`        |
 | `View`                                                      | `Container`  | removed            |
@@ -438,23 +452,18 @@ model and are not part of the control inheritance tree.
 ## Third-party proof boundary
 
 `tests/SharpVision.Consumer.Tests` references only the production project and is
-never listed in `InternalsVisibleTo`. It contains independently compiled
-specimens for:
+never listed in `InternalsVisibleTo`. Foundation currently compiles the
+Unicode-aware `Gauge` leaf, multi-child `FlowPanel`, capacity-one unclipped
+`OverflowPanel`, and interactive lifecycle/focus/capture `InteractiveProbe`.
 
-- a Unicode-aware leaf control with ordinary mutable properties;
-- a custom multi-child layout `Container`;
-- a one-content control;
-- an encapsulated composite;
-- an item control with a private presentation host;
-- a custom pressable/stateful control;
-- named part styling;
-- focus and pointer capture;
-- semantics and semantic actions.
+The role plan adds one-content, encapsulated-composite, item-host, and pressable
+specimens only after those public bases exist. The orthogonal plan then adds
+open-state, named-part, semantics, and semantic-action specimens. A reflection
+test fails if the product assembly ever friends the consumer test assembly.
 
-A reflection test fails if the product assembly ever friends the consumer test
-assembly. A later packaging gate packs `SharpVision`, creates a temporary
-project from the package, and builds the same specimens to catch package-shape
-errors that a project reference cannot.
+A later packaging gate packs `SharpVision`, creates a temporary project from the
+package, and builds the completed specimens to catch package-shape errors that
+the current project-reference proof cannot.
 
 ## Verification
 

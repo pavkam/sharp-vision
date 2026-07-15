@@ -51,6 +51,14 @@ content rectangle after the border box is aligned and padding is removed. Both
 extension points run only for hidden or visible controls; collapsed controls
 desire zero, commit empty bounds, and skip both callbacks.
 
+An externally derived owner enters child layout only through
+`MeasureChild(Control, Constraint)` and
+`ArrangeChild(Control, Rect, ResolvedAxes)`. Both reject null or any control
+that is not directly owned by the caller before entering the child's
+transaction; arrange also rejects undefined axis flags. `Width`, `Height`, and
+`Both` state which border-box dimensions the owner already resolved. Raw
+measure, arrange, render, and pending-phase operations remain internal.
+
 Fixed and percentage dimensions override alignment. Horizontal controls default
 to `Left`, so an automatic width uses the measured desired size; applications
 must opt into `HorizontalAlignment.Stretch` when a control should consume the

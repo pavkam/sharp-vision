@@ -4,14 +4,18 @@
 
 `Popup` displays one owned child on an opaque, one-cell rounded frame relative
 to an optional anchor. It is intentionally non-modal: callers compose it with an
-`Overlay`, give it a higher z-order, and decide what reopening or dismissal
-means to their owner. Its surface always clears before its child renders, so a
-drop-down cannot visually blend with the content behind it.
+owner and decide what reopening or dismissal means. Elevation is automatic; a
+caller does not need to assign a higher ordinary z-order. Its surface always
+clears before its child renders, so a drop-down cannot visually blend with the
+content behind it.
 
 An open popup is promoted into the shared popup layer after ordinary sibling
 rendering and before final pointer targeting. It stays visually and
 interactively above later layout siblings such as FIGlet output or document text
-while retaining normal ownership and routed events.
+without reparenting or changing routed ancestry. Promotion omits the surface
+from the ordinary pass and renders it exactly once in the popup pass. Dedicated
+popup slots remain preferred metadata, while current ordinary owners receive the
+same behavior through the Popup's intrinsic promotion.
 
 ## API
 
@@ -25,7 +29,7 @@ while retaining normal ownership and routed events.
   otherwise the resolved inherited background fills it.
 - `SurfaceBounds` reports the committed rectangle including its one-cell frame.
 - `IsOpen` controls surface and child arranging, rendering, hit testing, and
-  focus transfer to the first focusable descendant.
+  focus transfer to the first focusable descendant across every ownership slot.
 - `CloseOnEscape` defaults to true and closes an open popup when Escape bubbles
   from its child.
 - `Closing` occurs before the child is collapsed, allowing a composite owner to
@@ -58,5 +62,7 @@ var popup = new Popup
 ## Test obligations
 
 Cover closed rendering/hit testing, opaque framed cells, promotion above later
-siblings, preferred and fallback placement, Escape from child content,
-closing-focus restoration, ownership, resize repositioning, and final cells.
+siblings, exactly-once promotion from ordinary and popup slots, suppression by
+an ineligible intermediate owner, preferred and fallback placement, Escape from
+child content, focus discovery across private slots, closing-focus restoration,
+ownership, resize repositioning, and final cells.

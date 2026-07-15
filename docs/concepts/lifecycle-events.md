@@ -23,6 +23,20 @@ pointer-capture managers across the tree, and only then invokes control
 helpers immediately and observes every sibling with the same complete inherited
 context. A supplied application root must be both detached and unowned.
 
+Runtime insertion, removal, replacement, and disposal use the
+[owned-control transaction](../controls/control.md#children-and-ownership).
+Removal first performs guarded availability cleanup against the coherent old
+tree: focus releases, capture state clears before cancellation callbacks, and
+`OnUnavailable` runs after those availability callbacks. Disposal of a control
+that owns a focus or capture manager may perform that manager's root cleanup
+after `OnUnavailable`. Membership, parent, dispatcher, Unicode, theme, and
+manager context then commit as one new tree. Parent, theme, detached, attached,
+and slot notifications publish in that order from committed state. A callback
+failure cannot roll the tree back or suppress later cleanup; the first failure
+is rethrown after invalidation. Direct child disposal uses only
+`ReleaseReason.Disposed`, even though clearing attached context still publishes
+the normal `OnDetached` lifecycle hook.
+
 Resize follows the ordering in the
 [runtime event loop](../architecture/runtime-event-loop.md#resize-ordering).
 Frame rendered reports only a completed transport write and its damage/byte

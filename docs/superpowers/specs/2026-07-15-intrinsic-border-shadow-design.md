@@ -3,9 +3,11 @@
 ## Status
 
 Design approved 2026-07-14 (during the intrinsic-capabilities brainstorming; the
-locked endpoint was "delete both, fully intrinsic"). Ready for an implementation
-plan. This is the second of two sibling specs in the _WinForms/Delphi-aligned
-intrinsic capabilities_ initiative. The first
+locked endpoint was "delete both, fully intrinsic"). The executable
+[implementation plan](../plans/2026-07-15-intrinsic-border-shadow.md) is defined
+and begins after the component Foundation gate. Implementation is pending. This
+is the second of two sibling specs in the _WinForms/Delphi-aligned intrinsic
+capabilities_ initiative. The first
 ([intrinsic container scrolling](2026-07-14-intrinsic-container-scrolling-design.md))
 is implemented; this spec folds the `Border` and `Shadow` wrapper controls into
 intrinsic `Control` behavior and removes both.
@@ -27,21 +29,24 @@ already owns their entire surface:
 - **Content inset.** `Control.ContentBounds` is already
   `Padding.Deflate(BorderThickness.Deflate(Bounds))`.
 
-So **`Shadow` is pure redundancy** — `new Shadow { Child = x }` is exactly
-`x.HasShadow = true`. And **`Border` fills a single real gap: layout
-reservation.** The base layout pipeline reserves `Padding` but **not**
-`BorderThickness`:
+So **`Shadow` duplicates intrinsic drawing and overflow behavior**, while its
+wrapper node can still carry distinct bounds, margins, styling, ownership, and
+routed ancestry. Moving `HasShadow` directly onto a child is equivalent only
+when that child renders standard chrome and those node distinctions were not in
+use; otherwise an ordinary chrome-rendering container preserves the node.
+**`Border` fills one additional gap: layout reservation.** The base layout
+pipeline reserves `Padding` but **not** `BorderThickness`:
 
 - `Control.Arrange` calls `ArrangeOverride(Padding.Deflate(bounds))` — padding
   only.
 - `CreateContentConstraint` deflates `Padding` only.
 
-Today each control compensates individually: `Button` insets via
-`FaceContentBounds`/`ContentBounds`, leaf controls (`Text`, `RichText`,
-`FigletText`, `ScrollBar`, `TextInput`) render into `ContentBounds`, `Window`
-deflates a hardcoded `Thickness(1)`, and `Border` deflates `BorderThickness` for
-its child. A general-purpose container (`Stack`, `Grid`, `Dock`) reserves
-nothing — which is the only reason a `Border` wrapper is needed around one.
+Today each control compensates individually: `Button` has a one-cell padding
+class default, leaf controls (`Text`, `FigletText`, `ScrollBar`, `TextInput`)
+render into `ContentBounds`, `Window` deflates a hardcoded `Thickness(1)`, and
+`Border` deflates `BorderThickness` for its child. A general-purpose container
+(`Stack`, `Grid`, `Dock`) reserves nothing — which is the only reason a `Border`
+wrapper is needed around one.
 
 This is the opposite of the desktop-UI idiom, where a border is a _property_
 (`BorderStyle` in WinForms, `BorderStyle`/`BevelKind` in Delphi VCL), never a
@@ -54,7 +59,12 @@ wrapper control.
 - Delete `Border` and `Shadow`; migrate every usage to the intrinsic properties.
 - Reserve the border **exactly once** — reconcile the controls that reserve it
   themselves today so nothing double-insets.
-- Preserve every existing chrome-rendering behavior, invariant, and test.
+- Preserve established border/shadow geometry, clipping, overflow, and terminal
+  cells for the intrinsic property contract and migrated product/showcase
+  surfaces; retire wrapper-only aliases and ownership semantics explicitly.
+- Preserve distinct styling/layout nodes with ordinary containers rather than
+  pretending every wrapper can collapse into an arbitrary custom-rendering
+  child.
 
 ## Non-goals
 
@@ -68,7 +78,7 @@ wrapper control.
 
 | #   | Decision                | Choice                                                                                                                                                                                                          |
 | --- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `Shadow`                | Deleted — `HasShadow` + the shadow style properties already do everything                                                                                                                                       |
+| 1   | `Shadow`                | Deleted — intrinsic properties own shadow drawing/overflow; an ordinary chrome-rendering container preserves a distinct node when required                                                                      |
 | 2   | `Border`                | Deleted — border becomes a layout-reserved intrinsic property                                                                                                                                                   |
 | 3   | Where the gap is closed | The base layout pipeline reserves `BorderThickness` (with `Padding`) in the content constraint and before `ArrangeOverride`                                                                                     |
 | 4   | Reserve exactly once    | Reconcile controls that reserve border themselves today (`Button` primarily); leaf/`Window` paths verified unchanged                                                                                            |
@@ -90,6 +100,12 @@ ArrangeOverride(Padding.Deflate(BorderThickness.Deflate(bounds)));
 // CreateContentConstraint — subtract BorderThickness alongside Padding on each axis
 // (i.e. the content constraint reserves margin + border + padding, not just margin + padding).
 ```
+
+Measure combines border and padding with saturating arithmetic before passing
+the inset to its axis helpers. Arrange deflates border and padding sequentially.
+`Container.OnMeasuredDesired` must include the same inset when `AutoSize`
+replaces the base desired size; otherwise auto-sized containers would still omit
+their border.
 
 Effect:
 
@@ -116,26 +132,31 @@ documented, not a silent gap.
 
 ### 3. `Shadow` → `HasShadow`
 
-Delete `Shadow`. Migrate
+Delete `Shadow`. When its child uses standard chrome, shares the wrapper bounds,
+and does not rely on wrapper margins/style/ancestry, migrate
 `new Shadow { Child = x, Mode = m, Offset = o, Glyph = g }` to setting
-`x.HasShadow = true` (plus `x.ShadowMode`/`x.ShadowOffset`/
-`x.ShadowGlyph`/`x.ShadowAttributes` when customized). The target control
-already draws the shadow and expands its `VisualBounds`; the extra wrapper node
-is removed with no visual change.
+`x.HasShadow = true` plus the corresponding intrinsic properties. Preserve the
+wrapper's non-base defaults explicitly: `ShadowOffset = new Point(2, 1)` and
+`ShadowAttributes = Attributes.Dim`.
+
+When any of those equivalence conditions is false, replace the wrapper with an
+ordinary chrome-rendering container such as `Dock` and set the intrinsic shadow
+properties there. A custom `OnRender` that does not call `RenderChrome` neither
+draws a border nor a shadow automatically.
 
 ### 4. Reserve border exactly once (reconciliation)
 
 The base change reserves border for **every** control, so any control that
 already reserves it itself must stop doing so. The audit:
 
-- **`Button`** — has a `BorderThickness = Thickness(1)` class default and
-  arranges its content via `FaceContentBounds` in `ArrangeOverride`, then
-  re-arranges it during `OnRender` using `ContentBounds`. With the base
-  reserving border, the `ArrangeOverride` bounds already exclude the border, so
-  `FaceContentBounds` must only apply the pressed-shadow shift (not re-deflate
-  border), and the redundant `OnRender`-time re-arrange should be simplified.
-  Net content position is unchanged; the double-arrange smell is removed. This
-  is the primary reconciliation.
+- **`Button`** — has both `BorderThickness = Thickness(1)` and
+  `Padding = Thickness(1)` class defaults. The padding currently supplies the
+  one-cell content inset because the base does not reserve the border. Remove
+  only the padding class default when base reservation lands.
+  `FaceContentBounds` already applies only the pressed-shadow translation, and
+  `OnPressedChanged` intentionally re-arranges content immediately so pressed
+  rendering is correct before a later layout drain; both remain unchanged. Net
+  released and pressed content positions are unchanged.
 - **Leaf controls** (`Text`, `RichText`, `FigletText`, `ScrollBar`, `TextInput`)
   — draw into `ContentBounds` derived from `Bounds`; unaffected.
 - **`Window`** — draws a bespoke title+frame and reserves it by deflating a
@@ -167,25 +188,34 @@ focused test on committed content position/`Bounds`.
 
 - All border/shadow property setters already validate (theme-value validators in
   `Control.StyleProperties.cs`); unchanged.
-- The layout change adds no new exceptions; deflating a `Thickness` that exceeds
-  the slot already saturates to a non-negative rect (existing
-  `Thickness.Deflate` behavior), matching how `Padding` is handled today.
+- The layout change adds no new exceptions. Sequential arrange deflation and
+  saturated measure inset addition handle a valid near-`int.MaxValue` padding
+  plus border without overflow, and oversized insets produce non-negative
+  geometry.
 
 ## Testing
 
 - **Reserve-once:** for a container with `BorderThickness` set, children arrange
   inside the border (content `Bounds` inset by border+padding); with zero
   border, layout is byte-for-byte unchanged (regression).
+- **Specialized base paths:** AutoSize desired size and AutoScroll viewport/bar
+  geometry reserve the border inside the committed border box.
+- **Styling and extension:** theme-resolved border changes remeasure content,
+  and an unfriended external `Container` receives the same inset through the
+  protected extension kernel.
 - **Border draws + reserves together:** a `Stack`/`Grid` with `BorderThickness`
   set renders the per-side border (via `Frame`/`FrameOracle`) and insets content
   — the case that previously required a `Border` wrapper.
 - **Leaf unaffected:** `Text`/`Button`/`TextInput` content position and rendered
   frames are unchanged by the base reservation (they already used
   `ContentBounds`).
-- **Button reserve-once:** content position unchanged after the
-  `FaceContentBounds` reconciliation, in normal and pressed-with-shadow states.
+- **Button reserve-once:** content position is unchanged after replacing its
+  padding default with base border reservation, in normal and
+  pressed-with-shadow states.
 - **Shadow intrinsic:** setting `HasShadow` on any control produces the shadow
-  cells and expanded `VisualBounds` that `Shadow` produced (port `ShadowTests`).
+  cells and expanded `VisualBounds` that `Shadow` produced when that control
+  renders standard chrome; distinct-node cases use an ordinary container (port
+  `ShadowTests` without copying wrapper-only body-fill behavior).
 - **Border contract:** port `BorderTests`' per-side/glyph/partial-border cases
   to assertions on an intrinsic-bordered control.
 - **Migration:** representative screens that used `Border`/`Shadow` render
@@ -212,11 +242,12 @@ committed geometry).
 ## Risks
 
 - **Heavy showcase usage.** `Border` is used across many showcase panes as a
-  framing helper (`GridPane`, `WindowPane`, `MenuPane`, `CanvasPane`,
-  `ButtonPane`, `DockPane`, `RichTextPane`, `OverlayPane`, `StackPane`,
-  `Doc.cs`, plus `BorderPane`/`ShadowPane`). This is a large migration and —
-  like the ScrollView removal — collides with the concurrent showcase-rewrite
-  effort; sequence it when the showcase is quiescent or coordinate closely.
+  framing helper (`CanvasPane`, `DockPane`, `GridPane`, `MenuPane`,
+  `OverlayPane`, `RadioButtonPane`, `StackPane`, `ThemingPane`, `WindowPane`,
+  `Doc.cs`, `Gallery.cs`, plus `BorderPane`/`ShadowPane`). This is a large
+  migration and — like the ScrollView removal — collides with the concurrent
+  showcase-rewrite effort; sequence it when the showcase is quiescent or
+  coordinate closely.
 - **Inventory change.** Removing the `Border`/`Shadow` pages changes the
   showcase control inventory that several showcase tests assert (`GalleryTests`,
   `GalleryRenderingTests`, `TmuxSmokeTests`, …) — the same edits the
@@ -224,21 +255,24 @@ committed geometry).
   change.
 - **Double-inset regressions.** The base reservation affects any control with a
   non-zero `BorderThickness`; `Button` is the known case, but the plan must
-  audit every control (all 17 `OnRender` overriders and any container that sets
-  a border) to confirm the border is reserved exactly once.
+  audit every current `OnRender` override and every control that sets a border
+  to confirm the border is reserved exactly once.
 - **Non-chrome `OnRender` containers.** A container that overrides `OnRender`
   without calling `RenderChrome` will reserve a border but not draw one if
   `BorderThickness` is set on it. Document that setting a border on such a
-  control requires it to render chrome (or is unsupported).
+  control requires it to render chrome. `ShowcasePanel` is the current concrete
+  audit case.
 
 ## Proposed phasing (for the implementation plan)
 
-1. Reserve `BorderThickness` in `Control.Arrange` and `CreateContentConstraint`
-   (with a regression proving zero-border layout is unchanged).
-2. Reconcile `Button` (and any other control that reserves border itself) so it
-   is reserved exactly once; verify content position across states.
-3. Delete `Shadow`; migrate `Shadow` usages to `HasShadow`; port `ShadowTests`.
-4. Delete `Border`; migrate `Border` usages to intrinsic `BorderThickness`/
-   `BorderGlyphs`; port `BorderTests`.
-5. Showcase migration + inventory (coordinate with the concurrent showcase
-   effort); docs + `AGENTS.md`; full quality gate.
+1. Atomically reserve `BorderThickness` in the base measure/arrange pipeline,
+   include `Container.AutoSize`, remove Button's padding class default, and make
+   the temporary Border wrapper delegate reservation to the base. The slice must
+   never commit with Button or Border double-inset; verify zero-border,
+   released, pressed, AutoSize, and AutoScroll geometry before commit.
+2. Port intrinsic Shadow tests and non-page usages while `Shadow` still
+   compiles; then delete the wrapper/page/spec atomically.
+3. Port intrinsic Border tests and migrate integration/showcase call sites in
+   compile-green slices while `Border` still compiles; then delete the
+   wrapper/page/spec atomically.
+4. Reconcile remaining docs and run the full quality gate.

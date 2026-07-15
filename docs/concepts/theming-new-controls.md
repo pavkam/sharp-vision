@@ -1,9 +1,11 @@
 # Theming a new control
 
 This guide is for authors building a control **outside** the SharpVision
-assembly (a NuGet consumer) who want it to participate in theming exactly like
-the built-in controls. Every API named here is part of the public surface — no
-`internal` helpers are required.
+assembly who want it to participate in theming exactly like the built-in
+controls. Every API named here is part of the public surface — no `internal`
+helpers are required. The foundation proves that surface from an unfriended
+project reference; a later package gate separately proves the packed NuGet
+shape.
 
 ## 1. Declare style properties
 
@@ -195,6 +197,18 @@ public sealed class Gauge : Control
 ```
 
 Equivalent assignments are quiet. Unknown impacts and invalid public values are
-rejected before field mutation. A multi-child owner derives from `Container`,
+rejected before field mutation. The public setter must validate its own domain
+before calling `SetProperty`; the helper validates its property name, impact,
+dispatcher access, and lifetime. A multi-child owner derives from `Container`,
 iterates only its `Children`, and uses `MeasureChild`/`ArrangeChild`; it never
 calls raw layout transactions.
+
+`tests/SharpVision.Consumer.Tests` is the executable foundation proof. It
+references only the production UI project and receives no `InternalsVisibleTo`.
+Its `Gauge`, `FlowPanel`, `OverflowPanel`, and `InteractiveProbe` specimens
+prove Unicode-aware leaf rendering, ordinary and unclipped custom layout,
+protected focus/capture, lifecycle observation, and cancellation ordering.
+Content, composite, item, open-state, named-part, and semantic specimens are
+added by the later role and orthogonal phases. Packing and consuming the
+produced package is also a later gate; the project-reference suite does not
+claim to prove package contents.
