@@ -116,6 +116,54 @@ public sealed class PopupTests
         FrameOracle.Get(frame, point).ShouldBe("m");
     }
 
+    /// <summary>Verifies a real popup in a non-Container popup slot renders once and owns elevated hit testing.</summary>
+    [Fact]
+    public void Render_WhenNonContainerOwnsPopupLayer_PromotesOpenSurfaceOnly()
+    {
+        var size = new Size(12, 6);
+        var root = new TraversalOwner { Bounds = new Rect(0, 0, size.Width, size.Height) };
+        var anchor = new ProbeControl { Bounds = new Rect(2, 0, 2, 1) };
+        var child = new ProbeControl(new Size(4, 1)) { Content = "pick".AsMemory() };
+        var popup = new Popup { Anchor = anchor, Child = child, IsOpen = true };
+        root.AddNormal(anchor);
+        root.AddPopup(popup);
+        popup.Measure(new Constraint(size.Width, size.Height));
+        popup.Arrange(root.Bounds, widthResolved: true, heightResolved: true);
+        using Frame frame = new(size);
+
+        root.Render(frame.Canvas);
+
+        child.RenderCalls.ShouldBe(1);
+        root.HitTest(new Point(child.Bounds.X, child.Bounds.Y)).ShouldBeSameAs(child);
+        popup.IsOpen = false;
+        using Frame closedFrame = new(size);
+        root.Render(closedFrame.Canvas);
+        child.RenderCalls.ShouldBe(1);
+        root.HitTest(new Point(child.Bounds.X, child.Bounds.Y)).ShouldNotBeSameAs(child);
+    }
+
+    /// <summary>Verifies the shipped ComboBox normal slot promotes its Popup without painting the content twice.</summary>
+    [Fact]
+    public void Render_WhenComboBoxPopupUsesOrdinaryChildSlot_RendersContentExactlyOnce()
+    {
+        var box = new ComboBox
+        {
+            IsOpen = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        var popup = box.Children[0].ShouldBeOfType<Popup>();
+        var content = new ProbeControl(new Size(4, 1)) { Content = "pick".AsMemory() };
+        popup.Child = content;
+        var size = new Size(12, 6);
+        new Engine().Layout(box, size);
+        using Frame frame = new(size);
+
+        box.Render(frame.Canvas);
+
+        content.RenderCalls.ShouldBe(1);
+    }
+
     /// <summary>Verifies Escape bubbles through popup content and closes the owner.</summary>
     [Fact]
     public void Dispatch_WhenEscapeArrives_ClosesOpenPopup()
@@ -149,6 +197,29 @@ public sealed class PopupTests
             root.Children.Add(popup);
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
+
+            popup.IsOpen = true;
+
+            focus.Focused.ShouldBeSameAs(child);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies focus discovery descends a non-Container popup content owner.</summary>
+    [Fact]
+    public async Task IsOpen_WhenNonContainerContentOwnsFocusablePart_MovesFocusToPartAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var content = new TraversalOwner();
+            var child = new ProbeControl { CanFocus = true };
+            content.AddExcluded(child);
+            var popup = new Popup { Child = content };
+            var root = new Overlay();
+            root.Children.Add(popup);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
 
             popup.IsOpen = true;
 

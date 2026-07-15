@@ -57,11 +57,16 @@ committed `Bounds`, calls `OnRender`, then renders owned children. An
 invalidation raised during either callback therefore remains pending for the
 next frame. An exception restores render dirtiness before propagating.
 
-Hidden, collapsed, and effectively hidden subtrees draw nothing. Containers
-render their own content before children in collection order, so later children
-have higher z-order. Every descendant canvas intersects all ancestor clips;
-coordinates remain absolute terminal cells, avoiding accumulated transform
-rounding.
+Hidden, collapsed, and effectively hidden subtrees draw nothing. Every control
+renders normal-layer ownership slots in slot-registration then item order, so a
+later eligible target has higher default z-order. After the root's ordinary
+pass, popup-layer controls and promoted popup descendants render in the same
+stable global order above every ordinary sibling. A promoted surface is omitted
+from the ordinary pass, so elevation never invokes its content twice.
+Specialized Canvas, Overlay, Stack, and scrolling-container passes retain their
+documented ordering and viewport semantics. Every descendant canvas intersects
+all applicable ancestor clips; coordinates remain absolute terminal cells,
+avoiding accumulated transform rounding.
 
 Derived controls draw only through semantic `Canvas` operations and use their
 padding-deflated content bounds. They never write ANSI, split graphemes, or

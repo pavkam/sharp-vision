@@ -459,11 +459,15 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Returns the highest eligible control containing a screen-cell point.</summary>
     /// <param name="point">The screen-cell point.</param>
     /// <returns>This control when eligible and contained; otherwise null.</returns>
-    public virtual Control? HitTest(Point point) =>
-        !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
-        Bounds.Contains(point)
-            ? this
+    public virtual Control? HitTest(Point point)
+    {
+        var contains = Bounds.Contains(point);
+        return CanHitTestSelf(point, requireContainment: false)
+            ? HitTestPopup(point) ??
+                (!ClipsChildren || contains ? OwnedControls.HitTestNormal(point) : null) ??
+                (contains ? this : null)
             : null;
+    }
 
     /// <summary>Attaches a root and its descendants to one dispatcher atomically.</summary>
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
@@ -823,6 +827,11 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             var clipped = canvas.Clip(Bounds);
             OnRender(visual);
             RenderChildren(ClipsChildren ? clipped : canvas);
+
+            if (Parent is null)
+            {
+                RenderOwnedPopupDescendants(canvas);
+            }
         }
         catch
         {
@@ -1014,18 +1023,79 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="visitor">The non-null synchronous visitor.</param>
     internal void VisitChildren(Action<Control> visitor) => OwnedControls.Visit(visitor);
 
+    /// <summary>Gets the total number of direct controls across every ownership slot.</summary>
+    internal int OwnedControlCount => OwnedControls.Count;
+
+    /// <summary>Gets one direct control in slot-registration and item order.</summary>
+    /// <param name="index">The valid zero-based global position.</param>
+    /// <returns>The owned control at the requested position.</returns>
+    internal Control OwnedControlAt(int index) => OwnedControls.At(index);
+
+    /// <summary>Gets the number of direct controls eligible for default focus navigation.</summary>
+    internal virtual int NavigationCount => OwnedControls.NavigationCount;
+
+    /// <summary>Gets one direct control in default focus-navigation order.</summary>
+    /// <param name="index">The valid zero-based navigation position.</param>
+    /// <returns>The navigation-eligible child at the requested position.</returns>
+    internal virtual Control NavigationAt(int index) => OwnedControls.NavigationAt(index);
+
     /// <summary>Returns the topmost open popup descendant containing one screen-cell point.</summary>
     /// <param name="point">The absolute terminal-cell point.</param>
     /// <returns>An open popup target, or null when this subtree has none.</returns>
-    internal virtual Control? HitTestPopup(Point point)
-    {
-        _ = point;
-        return null;
-    }
+    internal Control? HitTestPopup(Point point) =>
+        CanHitTestSelf(point, requireContainment: false) ? HitTestPopupCore(point) : null;
+
+    /// <summary>Searches elevated descendants after owner eligibility has been validated.</summary>
+    /// <param name="point">The absolute terminal-cell point.</param>
+    /// <returns>An open popup target, or null when this subtree has none.</returns>
+    internal virtual Control? HitTestPopupCore(Point point) => OwnedControls.HitTestPopup(point);
 
     /// <summary>Renders open popup descendants after ordinary sibling content.</summary>
     /// <param name="canvas">The non-null root-relative canvas used by the current frame.</param>
-    internal virtual void RenderPopupLayer(TerminalCanvas canvas) => _ = canvas.Bounds;
+    internal virtual void RenderPopupLayer(TerminalCanvas canvas) => RenderOwnedPopupDescendants(canvas);
+
+    /// <summary>Renders elevated descendants without redispatching through this control's popup hook.</summary>
+    /// <param name="canvas">The root-relative frame canvas.</param>
+    internal virtual void RenderOwnedPopupDescendants(TerminalCanvas canvas) => OwnedControls.RenderPopup(canvas);
+
+    /// <summary>Gets the minimum visual layer required by this control independent of its owning slot.</summary>
+    /// <remarks>Ordinary controls use their slot layer; popup surfaces promote themselves until every owner has a dedicated popup slot.</remarks>
+    internal virtual OwnedControlLayer IntrinsicLayer => OwnedControlLayer.Normal;
+
+    /// <summary>Gets whether a specialized ordinary-content loop may render this control inline.</summary>
+    internal bool RendersInNormalLayer => IntrinsicLayer == OwnedControlLayer.Normal;
+
+    /// <summary>Resolves slot metadata and intrinsic promotion into one effective visual layer.</summary>
+    /// <param name="slotLayer">The defined layer declared by the owning slot.</param>
+    /// <returns>The effective normal or popup layer.</returns>
+    internal OwnedControlLayer ResolveOwnedLayer(OwnedControlLayer slotLayer) =>
+        slotLayer == OwnedControlLayer.Popup || IntrinsicLayer == OwnedControlLayer.Popup
+            ? OwnedControlLayer.Popup
+            : OwnedControlLayer.Normal;
+
+    /// <summary>Finds one elevated target within this branch using its effective owned layer.</summary>
+    /// <param name="point">The absolute terminal-cell point.</param>
+    /// <param name="slotLayer">The defined layer declared by the owning slot.</param>
+    /// <returns>The topmost elevated target, or null.</returns>
+    internal Control? HitTestPopupBranch(Point point, OwnedControlLayer slotLayer) =>
+        HitTestPopup(point) ??
+        (ResolveOwnedLayer(slotLayer) == OwnedControlLayer.Popup ? HitTest(point) : null);
+
+    /// <summary>Renders one branch during the elevated pass using its effective owned layer.</summary>
+    /// <param name="canvas">The root-relative frame canvas.</param>
+    /// <param name="slotLayer">The defined layer declared by the owning slot.</param>
+    internal void RenderPopupBranch(TerminalCanvas canvas, OwnedControlLayer slotLayer)
+    {
+        if (ResolveOwnedLayer(slotLayer) == OwnedControlLayer.Popup)
+        {
+            Render(canvas);
+            RenderOwnedPopupDescendants(canvas);
+        }
+        else
+        {
+            RenderPopupLayer(canvas);
+        }
+    }
 
     /// <summary>Registers one distinct ordered visual ownership slot.</summary>
     /// <param name="options">The validated structural and traversal metadata.</param>
@@ -1354,14 +1424,22 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="canvas">The canvas clipped to this control.</param>
     internal virtual void RenderChildren(TerminalCanvas canvas)
     {
-        _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render children.");
+        OwnedControls.RenderNormal(canvas);
     }
 
     /// <summary>Renders owned child content into the (already clipped) canvas.</summary>
     /// <param name="canvas">The child canvas.</param>
     /// <remarks>The default delegates to <see cref="RenderChildren"/> so leaf controls are unaffected.</remarks>
     internal virtual void RenderContent(TerminalCanvas canvas) => RenderChildren(canvas);
+
+    /// <summary>Gets whether this control is interaction-eligible, optionally requiring point containment.</summary>
+    /// <param name="point">The absolute terminal-cell point.</param>
+    /// <param name="requireContainment">Whether the arranged bounds must contain the point.</param>
+    /// <returns>True when this control may participate in hit testing.</returns>
+    internal bool CanHitTestSelf(Point point, bool requireContainment = true) =>
+        !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
+        (!requireContainment || Bounds.Contains(point));
 
     /// <summary>Gets behavior-derived flags for appearance resolution.</summary>
     /// <returns>The current defined visual-state flags.</returns>

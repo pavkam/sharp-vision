@@ -22,6 +22,47 @@ internal sealed class OwnedControlRegistry
     /// <summary>Gets the control whose visual edges are registered here.</summary>
     internal Control Owner { get; }
 
+    /// <summary>Gets the total number of direct controls across every registered slot.</summary>
+    internal int Count
+    {
+        get
+        {
+            var count = 0;
+
+            foreach (var slot in _slots)
+            {
+                count += slot.Count;
+            }
+
+            return count;
+        }
+    }
+
+    /// <summary>Gets one direct control in slot-registration and item order.</summary>
+    /// <param name="index">The valid zero-based global position.</param>
+    /// <returns>The control at the requested position.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the owned controls.</exception>
+    internal Control At(int index)
+    {
+        var requested = index;
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        foreach (var slot in _slots)
+        {
+            if (index < slot.Count)
+            {
+                return slot[index];
+            }
+
+            index -= slot.Count;
+        }
+
+        throw new ArgumentOutOfRangeException(
+            nameof(index),
+            requested,
+            "The position is outside the owned controls.");
+    }
+
     /// <summary>Marks the current ownership root and changing subtree roots structurally busy.</summary>
     /// <param name="owner">The control whose tree contains the active transaction.</param>
     /// <param name="candidates">Detached candidate subtree roots, or null.</param>
@@ -121,6 +162,151 @@ internal sealed class OwnedControlRegistry
             foreach (var control in slot.Items)
             {
                 visitor(control);
+            }
+        }
+    }
+
+    /// <summary>Gets the number of direct controls eligible for sequential focus navigation.</summary>
+    internal int NavigationCount
+    {
+        get
+        {
+            var count = 0;
+
+            foreach (var slot in _slots)
+            {
+                if (slot.Options.ParticipatesInNavigation)
+                {
+                    count += slot.Count;
+                }
+            }
+
+            return count;
+        }
+    }
+
+    /// <summary>Gets one navigation-eligible control in slot-registration and item order.</summary>
+    /// <param name="index">The valid zero-based navigation position.</param>
+    /// <returns>The control at the requested position.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the eligible controls.</exception>
+    internal Control NavigationAt(int index)
+    {
+        var requested = index;
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        foreach (var slot in _slots)
+        {
+            if (!slot.Options.ParticipatesInNavigation)
+            {
+                continue;
+            }
+
+            if (index < slot.Count)
+            {
+                return slot[index];
+            }
+
+            index -= slot.Count;
+        }
+
+        throw new ArgumentOutOfRangeException(
+            nameof(index),
+            requested,
+            "The navigation position is outside the eligible controls.");
+    }
+
+    /// <summary>Finds the topmost ordinary-layer target in reverse global ownership order.</summary>
+    /// <param name="point">The absolute terminal-cell point.</param>
+    /// <returns>The deepest eligible target, or null.</returns>
+    internal Control? HitTestNormal(Point point)
+    {
+        for (var slotIndex = _slots.Count - 1; slotIndex >= 0; slotIndex--)
+        {
+            var slot = _slots[slotIndex];
+
+            if (slot.Options.Layer != OwnedControlLayer.Normal ||
+                !slot.Options.ParticipatesInHitTesting)
+            {
+                continue;
+            }
+
+            for (var itemIndex = slot.Count - 1; itemIndex >= 0; itemIndex--)
+            {
+                var child = slot[itemIndex];
+
+                if (child.ResolveOwnedLayer(slot.Options.Layer) == OwnedControlLayer.Normal &&
+                    child.HitTest(point) is { } hit)
+                {
+                    return hit;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Finds the topmost elevated target before every ordinary-layer target.</summary>
+    /// <param name="point">The absolute terminal-cell point.</param>
+    /// <returns>The deepest eligible elevated target, or null.</returns>
+    internal Control? HitTestPopup(Point point)
+    {
+        for (var slotIndex = _slots.Count - 1; slotIndex >= 0; slotIndex--)
+        {
+            var slot = _slots[slotIndex];
+
+            if (!slot.Options.ParticipatesInHitTesting)
+            {
+                continue;
+            }
+
+            for (var itemIndex = slot.Count - 1; itemIndex >= 0; itemIndex--)
+            {
+                var child = slot[itemIndex];
+
+                if (child.HitTestPopupBranch(point, slot.Options.Layer) is { } popup)
+                {
+                    return popup;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Renders ordinary-layer controls in slot-registration and item order.</summary>
+    /// <param name="canvas">The already clipped owner canvas.</param>
+    internal void RenderNormal(TerminalCanvas canvas)
+    {
+        _ = canvas.Bounds;
+
+        foreach (var slot in _slots)
+        {
+            if (slot.Options.Layer != OwnedControlLayer.Normal)
+            {
+                continue;
+            }
+
+            foreach (var child in slot.Items)
+            {
+                if (child.ResolveOwnedLayer(slot.Options.Layer) == OwnedControlLayer.Normal)
+                {
+                    child.Render(canvas);
+                }
+            }
+        }
+    }
+
+    /// <summary>Renders elevated controls after every ordinary sibling in global ownership order.</summary>
+    /// <param name="canvas">The root-relative frame canvas.</param>
+    internal void RenderPopup(TerminalCanvas canvas)
+    {
+        _ = canvas.Bounds;
+
+        foreach (var slot in _slots)
+        {
+            foreach (var child in slot.Items)
+            {
+                child.RenderPopupBranch(canvas, slot.Options.Layer);
             }
         }
     }

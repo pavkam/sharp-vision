@@ -52,6 +52,39 @@ public sealed class ExternalContractTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an external unclipped Container renders and hit-tests a child outside its own bounds.</summary>
+    [Fact]
+    public async Task HitTest_WhenExternalContainerDoesNotClip_ReachesOutsideChildAsync()
+    {
+        await using var terminal = new ConsumerTerminal();
+        terminal.QueueResize(new Dimensions(new Size(6, 2)));
+        var child = new Gauge { Value = 7 };
+        var panel = new OverflowPanel
+        {
+            Width = Length.Cells(2),
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        panel.Children.Add(child);
+        await using var application = new Application(
+            panel,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var outside = new Point(panel.Bounds.Right, panel.Bounds.Y);
+        panel.Bounds.Contains(outside).ShouldBeFalse();
+        child.Bounds.Contains(outside).ShouldBeTrue();
+        child.RenderCount.ShouldBeGreaterThan(0);
+        panel.HitTest(outside).ShouldBeSameAs(child);
+        panel.HitTest(new Point(outside.X + 1, outside.Y)).ShouldBeNull();
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies focus, capture, visual invalidation, and implicit cancellation stay behind protected helpers.</summary>
     [Fact]
     public async Task Capture_WhenControlBecomesDisabled_ClearsOwnershipBeforeCancellationHookAsync()

@@ -147,7 +147,10 @@ public sealed class Popup: Container
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopup(Point point) => IsOpen ? HitTest(point) : null;
+    internal override Control? HitTestPopupCore(Point point) => IsOpen ? HitTest(point) : null;
+
+    /// <inheritdoc/>
+    internal override OwnedControlLayer IntrinsicLayer => OwnedControlLayer.Popup;
 
     #endregion
 
@@ -345,9 +348,17 @@ public sealed class Popup: Container
             return control;
         }
 
-        Control? result = null;
-        control.VisitChildren(child => result ??= FindFocusable(child));
-        return result;
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            if (FindFocusable(control.OwnedControlAt(index)) is { } result)
+            {
+                return result;
+            }
+        }
+
+        return null;
     }
 
     #endregion

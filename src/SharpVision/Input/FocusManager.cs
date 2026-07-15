@@ -308,12 +308,11 @@ public sealed class FocusManager: IDisposable
 
         order++;
 
-        if (control is Container container)
+        var count = control.NavigationCount;
+
+        for (var index = 0; index < count; index++)
         {
-            for (var index = 0; index < container.NavigationCount; index++)
-            {
-                Collect(container.NavigationAt(index), candidates, ref order);
-            }
+            Collect(control.NavigationAt(index), candidates, ref order);
         }
     }
 

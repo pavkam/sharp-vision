@@ -56,6 +56,19 @@ public sealed class StyleScopeTests
         child.Foreground.ShouldBe(Color.Indexed(7));
     }
 
+    /// <summary>Verifies style scope ancestry follows private ownership even when the edge is not interactive.</summary>
+    [Fact]
+    public void Resolve_WhenNonContainerScopeOwnsPrivatePart_CascadesThroughOwnedEdge()
+    {
+        var scope = new TraversalOwner { Style = Foreground(7) };
+        var branch = new TraversalOwner();
+        var child = new ProbeControl();
+        scope.AddExcluded(branch);
+        branch.AddExcluded(child);
+
+        child.Foreground.ShouldBe(Color.Indexed(7));
+    }
+
     /// <summary>Verifies the nearest scope wins over a farther scope for the same property.</summary>
     [Fact]
     public void Resolve_WhenNestedScopes_NearestScopeWins()

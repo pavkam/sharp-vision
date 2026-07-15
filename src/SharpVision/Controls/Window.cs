@@ -202,9 +202,17 @@ public sealed partial class Window: Container
             return button;
         }
 
-        Button? result = null;
-        control.VisitChildren(child => result ??= FindButton(child, predicate));
-        return result;
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            if (FindButton(control.OwnedControlAt(index), predicate) is { } result)
+            {
+                return result;
+            }
+        }
+
+        return null;
     }
 
     #endregion

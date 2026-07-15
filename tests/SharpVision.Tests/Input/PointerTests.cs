@@ -216,6 +216,38 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies non-Container owned ancestry resolves hover and releases scoped pointer state on removal.</summary>
+    [Fact]
+    public async Task Dispatch_WhenNonContainerOwnedSubtreeIsRemoved_ClearsHoverAndCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new TraversalOwner { Bounds = new Rect(0, 0, 20, 10) };
+            var middle = new TraversalOwner
+            {
+                Bounds = new Rect(0, 0, 12, 8),
+                CanFocus = true,
+            };
+            var leaf = new ProbeControl { Bounds = new Rect(2, 2, 6, 4) };
+            middle.AddNormal(leaf);
+            root.AddNormal(middle);
+            root.Attach(dispatcher);
+            using var capture = new CaptureManager(root);
+
+            capture.Dispatch(CreatePointer(new Point(4, 3), PointerAction.Move)).ShouldBeSameAs(leaf);
+            capture.Hovered.ShouldBeSameAs(middle);
+            capture.Capture(leaf).ShouldBeTrue();
+
+            root.RemoveNormal(middle).ShouldBeTrue();
+
+            capture.Hovered.ShouldBeNull();
+            capture.Captured.ShouldBeNull();
+            middle.IsHovered.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a primary click focuses any eligible focusable hit target.</summary>
     [Fact]
     public async Task Dispatch_WhenPrimaryPointerPressesFocusableControl_FocusesItAsync()

@@ -149,12 +149,11 @@ internal static class RadioGroup
             result.Add(member);
         }
 
-        if (control is Container container)
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
         {
-            foreach (var child in container.Children)
-            {
-                Collect(child, groupName, result);
-            }
+            Collect(control.OwnedControlAt(index), groupName, result);
         }
     }
 }

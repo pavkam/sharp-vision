@@ -93,6 +93,25 @@ public sealed class ListTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBars = (ScrollBars) 99);
     }
 
+    /// <summary>Verifies List preserves a popup result already found by base registry traversal without searching twice.</summary>
+    [Fact]
+    public void HitTest_WhenRegistryFindsPopup_PreservesResultWithoutSecondTraversal()
+    {
+        PopupHitProbe? probe = null;
+        var control = new UiList
+        {
+            ItemTemplate = _ => probe = new PopupHitProbe(),
+            Items = ["item"],
+        };
+        new Engine().Layout(control, new Size(4, 1));
+
+        var hit = control.HitTest(default);
+
+        _ = probe.ShouldNotBeNull();
+        hit.ShouldBeSameAs(probe);
+        probe.PopupHitTestCalls.ShouldBe(1);
+    }
+
     /// <summary>Verifies unchanged overflow policy assignments do not raise duplicate public notifications.</summary>
     [Fact]
     public void ShowScrollBars_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()

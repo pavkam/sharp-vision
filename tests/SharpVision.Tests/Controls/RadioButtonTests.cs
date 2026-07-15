@@ -74,6 +74,43 @@ public sealed class RadioButtonTests
         unrelated.IsChecked.ShouldBeTrue();
     }
 
+    /// <summary>Verifies named groups span every owned slot even when no owner is a Container.</summary>
+    [Fact]
+    public void IsChecked_WhenNamedMembersUseNonContainerSlots_UsesCompleteOwnedRoot()
+    {
+        var root = new TraversalOwner();
+        var branch = new TraversalOwner();
+        var first = new RadioButton { GroupName = "density", IsChecked = true };
+        var second = new RadioButton { GroupName = "density" };
+        root.AddNormal(branch);
+        branch.AddExcluded(first);
+        root.AddPopup(second);
+
+        second.IsChecked = true;
+
+        first.IsChecked.ShouldBeFalse();
+        second.IsChecked.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies unnamed groups remain local to their exact ownership slot.</summary>
+    [Fact]
+    public void IsChecked_WhenUnnamedMembersUseDifferentSlots_OnlyExactSlotIsExclusive()
+    {
+        var root = new TraversalOwner();
+        var first = new RadioButton { IsChecked = true };
+        var second = new RadioButton();
+        var otherSlot = new RadioButton { IsChecked = true };
+        root.AddNormal(first);
+        root.AddNormal(second);
+        root.AddExcluded(otherSlot);
+
+        second.IsChecked = true;
+
+        first.IsChecked.ShouldBeFalse();
+        second.IsChecked.ShouldBeTrue();
+        otherSlot.IsChecked.ShouldBeTrue();
+    }
+
     /// <summary>Verifies attaching a prechecked member resolves duplicate selection atomically.</summary>
     [Fact]
     public void Add_WhenCheckedMemberJoinsGroup_UnchecksExistingMember()

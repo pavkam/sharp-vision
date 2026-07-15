@@ -61,6 +61,25 @@ public sealed class Stack: Container
         Reverse && index < Children.Count ? Children[Children.Count - index - 1] : base.NavigationAt(index);
 
     /// <inheritdoc/>
+    internal override Control? HitTestPopupCore(Point point)
+    {
+        if (!Reverse)
+        {
+            return base.HitTestPopupCore(point);
+        }
+
+        for (var index = 0; index < Children.Count; index++)
+        {
+            if (Children[index].HitTestPopupBranch(point, OwnedControlLayer.Normal) is { } popup)
+            {
+                return popup;
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         var axis = 0;
@@ -168,7 +187,25 @@ public sealed class Stack: Container
 
         for (var index = Children.Count - 1; index >= 0; index--)
         {
-            Children[index].Render(canvas);
+            if (Children[index].RendersInNormalLayer)
+            {
+                Children[index].Render(canvas);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
+    {
+        if (!Reverse)
+        {
+            base.RenderOwnedPopupDescendants(canvas);
+            return;
+        }
+
+        for (var index = Children.Count - 1; index >= 0; index--)
+        {
+            Children[index].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
         }
     }
 

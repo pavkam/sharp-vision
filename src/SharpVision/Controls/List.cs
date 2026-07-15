@@ -17,7 +17,6 @@ using Label = Text;
     Justification = "List is the approved concise terminal control name, not a collection implementation.")]
 public sealed class List: Container, IStyleScope
 {
-    private readonly Children _chrome;
     private readonly Stack _stack;
     private readonly GenericList _items = [];
     private readonly ReadOnlyCollection<object?> _itemsView;
@@ -38,7 +37,7 @@ public sealed class List: Container, IStyleScope
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
         };
-        _chrome = new Children(
+        _ = new Children(
             this,
             capacity: 1,
             new OwnedControlOptions(
@@ -319,25 +318,18 @@ public sealed class List: Container, IStyleScope
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
     {
-        var self = base.HitTest(point);
+        var hit = base.HitTest(point);
 
-        return self is null ? null : _stack.HitTestPopup(point) ?? _stack.HitTest(point) ?? this;
+        return hit switch
+        {
+            null => null,
+            _ when !ReferenceEquals(hit, this) => hit,
+            _ => _stack.HitTest(point) ?? this,
+        };
     }
 
     /// <inheritdoc/>
-    internal override int NavigationCount => _chrome.Count;
-
-    /// <inheritdoc/>
-    internal override Control NavigationAt(int index) => _chrome[index];
-
-    /// <inheritdoc/>
     internal override void RenderChildren(TerminalCanvas canvas) => _stack.Render(canvas);
-
-    /// <inheritdoc/>
-    internal override Control? HitTestPopup(Point point) => _stack.HitTestPopup(point);
-
-    /// <inheritdoc/>
-    internal override void RenderPopupLayer(TerminalCanvas canvas) => _stack.RenderPopupLayer(canvas);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)

@@ -16,7 +16,10 @@ Desired size is the maximum margin-inclusive child size. Arrange applies each
 child's length/alignment independently. Hit testing visits highest visible
 z-order first and respects clipping and `IsHitTestVisible` pointer transparency.
 Rendering visits low to high z-order. Equal values are stable in collection
-order, while default focus traversal always remains collection order.
+order, while default focus traversal always remains collection order. The same
+stable z-order governs elevated popup descendants: higher-z branches render
+later and hit-test first, including when a generated scrollbar occupies the same
+cells.
 
 Attached values use weak ownership and validate dispatcher affinity before
 mutation. Changing a child z-order invalidates only its owning Overlay's render

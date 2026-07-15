@@ -23,27 +23,22 @@ public abstract class Container: Control
     /// <summary>Gets the owned ordered children.</summary>
     public Children Children { get; }
 
-    /// <summary>Gets the number of children participating in default navigation.</summary>
-    internal virtual int NavigationCount => Children.Count + (_bars?.Count ?? 0);
-
-    /// <summary>Gets one child in default navigation order.</summary>
-    /// <param name="index">The zero-based navigation index.</param>
-    /// <returns>The child at the requested navigation position.</returns>
-    internal virtual Control NavigationAt(int index) => index < Children.Count
-        ? Children[index]
-        : _bars![index - Children.Count];
-
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
     {
+        if (!CanHitTestSelf(point, requireContainment: false))
+        {
+            return null;
+        }
+
         if (HitTestPopup(point) is { } popup)
         {
             return popup;
         }
 
-        var hit = base.HitTest(point);
+        var contains = Bounds.Contains(point);
 
-        if (hit is null)
+        if (!contains && (AutoScroll || ClipsChildren))
         {
             return null;
         }
@@ -57,7 +52,7 @@ public abstract class Container: Control
             return bar ?? (_viewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? this;
         }
 
-        return HitTestChildren(point) ?? this;
+        return HitTestChildren(point) ?? (contains ? this : null);
     }
 
     private Control? HitTestChildren(Point point)
@@ -74,42 +69,17 @@ public abstract class Container: Control
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopup(Point point)
-    {
-        for (var index = Children.Count - 1; index >= 0; index--)
-        {
-            if (Children[index].HitTestPopup(point) is { } popup)
-            {
-                return popup;
-            }
-        }
-
-        return null;
-    }
-
-    /// <inheritdoc/>
     internal override void RenderChildren(TerminalCanvas canvas)
     {
         if (!AutoScroll)
         {
             RenderContent(canvas);
-
-            if (Parent is null)
-            {
-                RenderOwnedPopupLayer(canvas);
-            }
-
             return;
         }
 
         RenderContent(canvas.Clip(_viewportBounds));
         _horizontal?.Render(canvas);
         _vertical?.Render(canvas);
-
-        if (Parent is null)
-        {
-            RenderOwnedPopupLayer(canvas);
-        }
     }
 
     /// <inheritdoc/>
@@ -117,21 +87,15 @@ public abstract class Container: Control
     {
         foreach (var child in Children)
         {
-            child.Render(canvas);
+            if (child.RendersInNormalLayer)
+            {
+                child.Render(canvas);
+            }
         }
     }
 
     /// <inheritdoc/>
-    internal override void RenderPopupLayer(TerminalCanvas canvas)
-        => RenderOwnedPopupLayer(canvas);
-
-    private void RenderOwnedPopupLayer(TerminalCanvas canvas)
-    {
-        foreach (var child in Children)
-        {
-            child.RenderPopupLayer(canvas);
-        }
-    }
+    internal override void RenderPopupLayer(TerminalCanvas canvas) => base.RenderPopupLayer(canvas);
 
     #region Grow and shrink
 

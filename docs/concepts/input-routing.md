@@ -96,10 +96,19 @@ Pointer events preserve screen cells, optional pixels, inferred cell position,
 buttons, wheel delta, modifiers, action, and timestamp. Local coordinates are
 derived from committed transforms at each route element.
 
-`Control.HitTest(Point)` requires effective visibility and enabled state, clips
-at each parent, and searches `Container.Children` from last to first so the
-highest z-order wins. A pointer handler receives `LocalCells` relative to its
-current sender's committed bounds.
+`Control.HitTest(Point)` requires effective visibility and enabled state and
+searches the central owned-control registry. Popup-layer targets are considered
+before ordinary targets. Ordinary hit-participating slots are searched in
+reverse slot-registration and item order so the last rendered eligible control
+wins; slots that opt out suppress their complete subtree from pointer targeting.
+Each owner's `ClipsChildren` policy gates ordinary descendants, while popup
+discovery may extend outside the owner's arranged box under the remaining
+ancestor clip. Every intermediate owner must still be effectively visible,
+enabled, and hit-test visible; an ineligible private composition node suppresses
+its complete popup subtree without imposing its bounds on that subtree. Canvas,
+Overlay, and scrolling containers preserve their documented viewport and z-order
+rules on top of this shared traversal. A pointer handler receives `LocalCells`
+relative to its current sender's committed bounds.
 
 On a primary press, `CaptureManager` resolves the nearest eligible focusable
 member from the routed target toward the root and commits focus before routing

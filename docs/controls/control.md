@@ -51,15 +51,28 @@ separate slots over the same registry and never leak into `Children`.
 Registering two slots with the same role is valid; slot identity, not role,
 determines membership and capacity.
 
+Cross-cutting traversal reads this registry directly instead of testing whether
+an owner is a `Container`. Stable tree order is slot registration order followed
+by item order. Focus navigation visits only navigation-participating edges in
+that order; ordinary rendering visits normal-layer edges in that order; hit
+testing visits hit-participating edges in reverse order. Popup-layer edges and
+popup descendants are promoted above every ordinary sibling for both rendering
+and hit testing and never paint once in the ordinary pass and again in the popup
+pass. A `Popup` surface promotes itself while legacy owners still keep it in an
+ordinary slot; dedicated popup slots remain the preferred ownership metadata.
+Routed ancestry, inherited state, style scopes, lifecycle, focus/capture
+cleanup, radio-group discovery, and disposal follow every edge regardless of its
+interaction metadata.
+
 `Add`, indexed insert and replacement, `Remove`, `Clear`, and complete-slot
 replacement validate the whole proposed snapshot before changing ownership. A
 control cannot have two parents, appear twice, be attached independently, or be
 inserted beneath one of its own descendants. Batch failure preserves the old
 order, parent links, inherited context, focus, and pointer capture.
 
-Adding below an attached container recursively attaches the subtree. Removing
-recursively detaches it and clears its parent. Disposing a container disposes
-all owned descendants; repeated disposal is safe.
+Adding below an attached owner recursively attaches the subtree. Removing
+recursively detaches it and clears its parent. Disposing an owner disposes all
+owned descendants; repeated disposal is safe.
 
 Structural transactions release focus and capture while the old tree remains
 coherent, then commit slot membership, parent links, dispatcher, Unicode policy,
@@ -173,7 +186,11 @@ implement `Build()` instead.
 Control content always draws through a canvas clipped to its own `Bounds`. The
 protected `ClipsChildren` override defaults to true. Containers may return false
 to retain only the ancestor clip for descendants; this is the shared mechanism
-behind documented Overlay and Canvas unclipped-child modes.
+behind documented Overlay and Canvas unclipped-child modes. An unclipped owner
+also hit-tests eligible ordinary children outside its own `Bounds`, while the
+owner itself remains a target only inside that box. Enabling intrinsic
+`AutoScroll` restores viewport and owner-bounds clipping regardless of the
+override.
 
 ## Styling extension point
 

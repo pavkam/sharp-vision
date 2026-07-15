@@ -142,6 +142,30 @@ public sealed class WindowTests
         cancels.ShouldBe(1);
     }
 
+    /// <summary>Verifies default and cancel discovery traverses private slots on non-Container content.</summary>
+    [Fact]
+    public void Dispatch_WhenButtonsUseNonContainerSlots_InvokesDefaultAndCancel()
+    {
+        var defaults = 0;
+        var cancels = 0;
+        var content = new TraversalOwner();
+        var branch = new TraversalOwner();
+        var accept = new Button { IsDefault = true };
+        var cancel = new Button { IsCancel = true };
+        accept.Click += (_, _) => defaults++;
+        cancel.Click += (_, _) => cancels++;
+        content.AddExcluded(branch);
+        branch.AddExcluded(accept);
+        content.AddPopup(cancel);
+        var window = new Window { Child = content };
+
+        Router.Route(window, Events.Key, Key(Code.Enter));
+        Router.Route(window, Events.Key, Key(Code.Escape));
+
+        defaults.ShouldBe(1);
+        cancels.ShouldBe(1);
+    }
+
     private static KeyEventArgs Key(Code code) => new(new Stroke(
         code,
         default,

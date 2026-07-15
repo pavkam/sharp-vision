@@ -62,12 +62,15 @@ before pool return. `IResizeSource` returns immutable `Dimensions` values and
 retains no caller memory. The session owns disposal of its transport and resize
 source; `StreamTransport` in turn owns its streams unless `leaveOpen` is true.
 
-`SharpVision.Controls.Container` owns every child in its ordered `Children`
-collection. Removal transfers the now-detached control back to the caller;
-container disposal recursively disposes children. Attachment borrows one
-dispatcher reference for the lifetime of the attachment. A control subscribes
-only to its direct `Style`; replacement, detachment where applicable, and
-disposal remove owned registrations deterministically.
+Every `SharpVision.Controls.Control` owns one central registry of ordered visual
+slots. `Container.Children` exposes only its public container-child slot;
+content, item hosts, popup layers, and private framework parts use distinct
+slots over the same ownership engine. Removal transfers the now-detached control
+back to the caller, while owner disposal recursively disposes every remaining
+slot member. Attachment borrows one dispatcher reference for the lifetime of the
+attachment. A control subscribes only to its direct `Style`; replacement,
+detachment where applicable, and disposal remove owned registrations
+deterministically.
 
 Routed input snapshots both ancestry and matching handler registrations before
 invocation. The router owns its rented arrays only through synchronous preview,
