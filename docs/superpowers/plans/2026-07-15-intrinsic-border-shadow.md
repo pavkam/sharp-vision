@@ -598,7 +598,7 @@ Expected: the search is silent; build and all test commands pass.
 
 Evidence: the concrete-type search is silent; the no-incremental Release build
 completed with zero warnings and zero errors; the expanded focused suite passed
-17/17; full `SharpVision.Tests` passed 674/674; and full Showcase tests passed
+17/17; full `SharpVision.Tests` passed 675/675; and full Showcase tests passed
 47/47. `make format`, `dotnet format --verify-no-changes`, the named-type and
 external-resource checks, `npm run test:docs` (24/24), scoped Prettier and
 Markdown lint, and `git diff --check` all passed. The repository-wide link
