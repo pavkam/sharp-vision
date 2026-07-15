@@ -14,12 +14,17 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Border_WhenAmbiguousWidthIsWide_RendersPortableOneCellGlyphs()
     {
-        Border border = new() { BorderThickness = new Thickness(1) };
-        border.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(border, new Size(3, 2));
+        Dock surface = new()
+        {
+            Width = Length.Cells(3),
+            Height = Length.Cells(2),
+            BorderThickness = new Thickness(1),
+        };
+        surface.SetCellPolicy(new Policy(Ambiguous.Wide));
+        new Engine().Layout(surface, new Size(3, 2));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
-        border.Render(frame.Canvas);
+        surface.Render(frame.Canvas);
 
         FrameOracle.Get(frame, default).ShouldBe("+");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("-");

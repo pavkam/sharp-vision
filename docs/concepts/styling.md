@@ -62,11 +62,11 @@ showcase theme toggling, and exact terminal cell output.
 ## Shared chrome
 
 Border, shadow, and opaque body fill rasterize through one internal geometry.
-Every `Control` owns this chrome directly; there is no `Shadow` control or
-shadow wrapper. A derived control draws the shared chrome through the protected
-`RenderChrome` method (base `OnRender` calls it), while the base control expands
-its visual bounds for shadow overflow without changing desired size, arranged
-bounds, child slots, or pointer hit testing.
+Every `Control` owns this chrome directly; there are no `Border` or `Shadow`
+wrapper controls. A derived control draws the shared chrome through the
+protected `RenderChrome` method (base `OnRender` calls it), while the base
+control expands its visual bounds for shadow overflow without changing desired
+size, arranged bounds, child slots, or pointer hit testing.
 
 `HasShadow` enables the overflow and defaults to `false` on `Control`.
 `ShadowMode` selects composite styling or block-glyph replacement,

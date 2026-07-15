@@ -21,19 +21,19 @@ internal sealed class DockPane: View
             LastChildFills = true,
             Spacing = 1,
         };
-        Border left = Card("Left", Glyphs.Light);
+        Dock left = Card("Left", Glyphs.Light);
         left.Width = Length.Cells(7);
         Dock.SetSide(left, Side.Left);
         allSides.Children.Add(left);
-        Border top = Card("Top", Glyphs.Heavy);
+        Dock top = Card("Top", Glyphs.Heavy);
         top.Height = Length.Cells(2);
         Dock.SetSide(top, Side.Top);
         allSides.Children.Add(top);
-        Border right = Card("Right", Glyphs.Paired);
+        Dock right = Card("Right", Glyphs.Paired);
         right.Width = Length.Cells(8);
         Dock.SetSide(right, Side.Right);
         allSides.Children.Add(right);
-        Border bottom = Card("Bottom", Glyphs.Ascii);
+        Dock bottom = Card("Bottom", Glyphs.Ascii);
         bottom.Height = Length.Cells(2);
         Dock.SetSide(bottom, Side.Bottom);
         allSides.Children.Add(bottom);
@@ -45,11 +45,11 @@ internal sealed class DockPane: View
             Height = Length.Cells(7),
             LastChildFills = true,
         };
-        Border first = Card("1: Left", Glyphs.Light);
+        Dock first = Card("1: Left", Glyphs.Light);
         first.Width = Length.Cells(9);
         Dock.SetSide(first, Side.Left);
         order.Children.Add(first);
-        Border second = Card("2: Left", Glyphs.Light);
+        Dock second = Card("2: Left", Glyphs.Light);
         second.Width = Length.Cells(9);
         Dock.SetSide(second, Side.Left);
         order.Children.Add(second);
@@ -61,7 +61,7 @@ internal sealed class DockPane: View
             Height = Length.Cells(4),
             LastChildFills = false,
         };
-        Border onlyChild = Card("No remainder claimed", Glyphs.Heavy);
+        Dock onlyChild = Card("No remainder claimed", Glyphs.Heavy);
         onlyChild.Width = Length.Cells(20);
         Dock.SetSide(onlyChild, Side.Top);
         noFill.Children.Add(onlyChild);
@@ -83,11 +83,11 @@ internal sealed class DockPane: View
                 noFill));
     }
 
-    private static Border Card(string label, Glyphs glyphs) => new()
+    private static Dock Card(string label, Glyphs glyphs) => new()
     {
-        Child = new Text(label),
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
+        Children = { new Text(label) },
     };
 }

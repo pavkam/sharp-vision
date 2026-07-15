@@ -95,14 +95,14 @@ public sealed class DisplayPanelTests
         Dock dock = new();
         root.Children.Add(dock);
         label = new ControlText("界");
-        Border border = new()
+        Dock frame = new()
         {
             Width = Length.Cells(6),
             BorderThickness = new Thickness(1),
-            Child = label,
+            Children = { label },
         };
-        Dock.SetSide(border, Side.Left);
-        dock.Children.Add(border);
+        Dock.SetSide(frame, Side.Left);
+        dock.Children.Add(frame);
         Stack stack = new();
         dock.Children.Add(stack);
         Overlay overlay = new() { Height = Length.Cells(2) };

@@ -25,13 +25,13 @@ internal sealed class OverlayPane: View
         Overlay.SetZIndex(back, -1);
         zOrder.Children.Add(back);
 
-        Border middle = new()
+        Dock middle = new()
         {
-            Child = new Text("Middle layer"),
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Heavy,
+            BorderGlyphs = Glyphs.Heavy,
             Padding = new Thickness(1, 0),
             Margin = new Thickness(4, 2, 4, 2),
+            Children = { new Text("Middle layer") },
         };
         zOrder.Children.Add(middle);
 
@@ -56,14 +56,14 @@ internal sealed class OverlayPane: View
         alignment.Children.Add(new Text("Bottom-left") { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom });
         alignment.Children.Add(new Text("Bottom-right") { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom });
 
-        Border oversizedContent = new()
+        Dock oversizedContent = new()
         {
-            Child = new Text("Overflowing card"),
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
+            BorderGlyphs = Glyphs.Rounded,
             Width = Length.Cells(20),
             Height = Length.Cells(3),
             Margin = new Thickness(6, 1, 0, 0),
+            Children = { new Text("Overflowing card") },
         };
         Overlay clipped = new()
         {
@@ -73,14 +73,14 @@ internal sealed class OverlayPane: View
         };
         clipped.Children.Add(oversizedContent);
 
-        Border unclippedContent = new()
+        Dock unclippedContent = new()
         {
-            Child = new Text("Overflowing card"),
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
+            BorderGlyphs = Glyphs.Rounded,
             Width = Length.Cells(20),
             Height = Length.Cells(3),
             Margin = new Thickness(6, 1, 0, 0),
+            Children = { new Text("Overflowing card") },
         };
         Overlay unclipped = new()
         {

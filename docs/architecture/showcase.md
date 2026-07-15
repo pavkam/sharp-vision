@@ -18,20 +18,20 @@ Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
 `*Pane : View` that overrides `Build()` and returns its content root once, on
 first layout, exactly like any other application-authored `View`. There is no
 shared showcase base class and no mandatory metadata: a pane composes public
-`Stack`, `RichText`, `Border`, and layout APIs directly. `Doc` (in
-`src/SharpVision.Showcase/Panes/Doc.cs`) holds the small composition helpers
-every pane shares: `Doc.Page(name, overview, sections...)` builds the bold
-heading plus an "Overview" paragraph and stacks the given sections beneath it;
-`Doc.Example(heading, description, specimen)` builds one labeled block pairing
-prose with a live specimen; `Doc.Card`, `Doc.Row`, and `Doc.Column` are
+`Stack`, `RichText`, intrinsic chrome properties, and layout APIs directly.
+`Doc` (in `src/SharpVision.Showcase/Panes/Doc.cs`) holds the small composition
+helpers every pane shares: `Doc.Page(name, overview, sections...)` builds the
+bold heading plus an "Overview" paragraph and stacks the given sections beneath
+it; `Doc.Example(heading, description, specimen)` builds one labeled block
+pairing prose with a live specimen; `Doc.Card`, `Doc.Row`, and `Doc.Column` are
 composition shorthands for framing and arranging specimens.
 
 `Gallery` owns the stable catalog of pane titles and factories
 (`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
-concrete shipped control: Border, Button, Canvas, CheckBox, ComboBox, Dock,
-FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar,
-ScrollView, Stack, Table, Text, TextInput, Window, and Theming. Foundation types
-and unimplemented specifications are not navigation entries.
+concrete shipped control: Button, Canvas, CheckBox, ComboBox, Dock, FigletText,
+Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar, ScrollView,
+Stack, Table, Text, TextInput, Window, and Theming. Foundation types and
+unimplemented specifications are not navigation entries.
 
 Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
 blocks: an Overview paragraph stating the control's purpose, followed by
@@ -57,12 +57,12 @@ when the captured pane is converted to PNG.
 
 ## Responsive behavior
 
-The root is a `Dock` with a fixed 28-cell `Border` sidebar and the main
-`ScrollView` in the remaining space. The sidebar owns product identity,
-component-only stateful navigation entries, and compact interaction hints; its
-selected, focused, hovered, and pressed states follow the active application
-theme. The sidebar footer hosts a theme picker `ComboBox` and a visible `Quit`
-button. The picker lists every theme in the embedded
+The root is a `Dock` with a fixed 28-cell intrinsically bordered `Dock` sidebar
+and the main `ScrollView` in the remaining space. The sidebar owns product
+identity, component-only stateful navigation entries, and compact interaction
+hints; its selected, focused, hovered, and pressed states follow the active
+application theme. The sidebar footer hosts a theme picker `ComboBox` and a
+visible `Quit` button. The picker lists every theme in the embedded
 `SharpVision.Styling.ThemeCatalog.Default` catalog — the built-in Light and Dark
 themes plus the curated editor themes (Dracula, Nord, Gruvbox, Solarized, and
 others) — grouped dark-first then light, and republishes the chosen application

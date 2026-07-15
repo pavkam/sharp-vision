@@ -42,7 +42,7 @@ internal sealed class GridPane: View
         proportionalTracks.Columns.Add(Track.Star(1));
         proportionalTracks.Columns.Add(Track.Star(2));
         AddCell(proportionalTracks, "Auto", 0, 0);
-        Border autoWide = Card("Auto sizes to this content");
+        Dock autoWide = Card("Auto sizes to this content");
         Grid.SetRow(autoWide, 0);
         Grid.SetColumn(autoWide, 1);
         proportionalTracks.Children.Add(autoWide);
@@ -64,17 +64,17 @@ internal sealed class GridPane: View
         spans.Columns.Add(Track.Star(1));
         spans.Columns.Add(Track.Star(1));
         spans.Columns.Add(Track.Star(1));
-        Border rowSpan = Card("RowSpan = 2");
+        Dock rowSpan = Card("RowSpan = 2");
         Grid.SetRow(rowSpan, 0);
         Grid.SetColumn(rowSpan, 0);
         Grid.SetRowSpan(rowSpan, 2);
         spans.Children.Add(rowSpan);
-        Border columnSpan = Card("ColumnSpan = 2");
+        Dock columnSpan = Card("ColumnSpan = 2");
         Grid.SetRow(columnSpan, 0);
         Grid.SetColumn(columnSpan, 1);
         Grid.SetColumnSpan(columnSpan, 2);
         spans.Children.Add(columnSpan);
-        Border both = Card("Row + Column span");
+        Dock both = Card("Row + Column span");
         Grid.SetRow(both, 1);
         Grid.SetColumn(both, 1);
         Grid.SetRowSpan(both, 2);
@@ -101,17 +101,17 @@ internal sealed class GridPane: View
 
     private static void AddCell(Grid grid, string text, int row, int column)
     {
-        Border cell = Card(text);
+        Dock cell = Card(text);
         Grid.SetRow(cell, row);
         Grid.SetColumn(cell, column);
         grid.Children.Add(cell);
     }
 
-    private static Border Card(string text) => new()
+    private static Dock Card(string text) => new()
     {
-        Child = new Text(text),
         BorderThickness = new Thickness(1),
-        Glyphs = Glyphs.Light,
+        BorderGlyphs = Glyphs.Light,
         Padding = new Thickness(1, 0),
+        Children = { new Text(text) },
     };
 }

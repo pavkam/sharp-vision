@@ -19,7 +19,7 @@ using TerminalOptions = Terminal.Runtime.Options;
 public sealed class ThemeSwatchLiveThemeTests
 {
     /// <summary>
-    /// Verifies a Border chip with <c>Background = ThemeColors.Accent</c> paints the active theme's
+    /// Verifies an intrinsic surface with <c>Background = ThemeColors.Accent</c> paints the active theme's
     /// accent color and repaints the same instance with the new color after <c>Application.Theme</c>
     /// changes, proving resolution alone (no <c>OnRender</c> theme lookup) keeps it live.
     /// </summary>
@@ -30,9 +30,9 @@ public sealed class ThemeSwatchLiveThemeTests
         Size size = new(20, 4);
         terminal.QueueResize(new Dimensions(size));
 
-        // The same kind of chip ThemingPane.BuildRoleSwatches builds: a plain Border whose Background
+        // The same kind of intrinsic surface ThemingPane.BuildRoleSwatches builds: a Dock whose Background
         // is a deferred role color. It never reads ThemeContext itself; resolution paints it live.
-        Border chip = new()
+        Dock chip = new()
         {
             Width = Length.Cells(6),
             Height = Length.Cells(1),
@@ -70,7 +70,7 @@ public sealed class ThemeSwatchLiveThemeTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    private static async Task<Color> RenderAndReadChipCellAsync(Application application, Size size, Border chip)
+    private static async Task<Color> RenderAndReadChipCellAsync(Application application, Size size, Dock chip)
     {
         return await application.Dispatcher.InvokeAsync(
             () =>

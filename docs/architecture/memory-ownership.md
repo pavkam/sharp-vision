@@ -88,8 +88,8 @@ Text layout borrows `ReadOnlySpan<char>` only for one synchronous format call
 and writes immutable `Line` values into caller-owned storage. `Text` owns and
 reuses its line array; its public `ReadOnlyMemory<Line>` view remains valid only
 until the next successful layout. Panel collections own attached controls
-exclusively, and Border replacement validates the complete candidate subtree
-before detaching its previous child.
+exclusively, and capacity-one owners validate the complete candidate subtree
+before detaching their previous child.
 
 Protocol encoders write synchronously to caller spans or `IBufferWriter<byte>`.
 Any data crossing an `await`, queue, callback, or dispatcher boundary must be an

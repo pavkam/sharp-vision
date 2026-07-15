@@ -30,7 +30,7 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
-        screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2);
+        screen.Text.ShouldContain("Button");
         screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
         screen.ValidateContinuations();
@@ -41,7 +41,7 @@ public sealed class GalleryRenderingTests
     public void Render_WhenDocumentationPaneIsNarrow_WrapsCompleteRichTextGuidance()
     {
         using Gallery gallery = CreateThemedGallery();
-        gallery.Select(1);
+        gallery.Select(IndexOf(gallery, "Button"));
         Size size = new(80, 40);
         new Engine().Layout(gallery, size);
         using Frame frame = new(size);
@@ -76,7 +76,7 @@ public sealed class GalleryRenderingTests
     public void Render_WhenCanvasPageIsSelected_ShowsGuidedPlacementExamples()
     {
         using Gallery gallery = CreateThemedGallery();
-        gallery.Select(2);
+        gallery.Select(IndexOf(gallery, "Canvas"));
         Size size = new(120, 80);
         new Engine().Layout(gallery, size);
         using Frame frame = new(size);
@@ -84,9 +84,10 @@ public sealed class GalleryRenderingTests
         gallery.Render(frame.Canvas);
 
         Screen screen = new(frame);
-        Border? edge = Find<Border>(
+        Dock? edge = Find<Dock>(
             gallery.Content,
-            static value => value.Child is ControlText { Content: "Right 2 / Bottom 1" });
+            static value => value.Children.Count == 1 &&
+                value.Children[0] is ControlText { Content: "Right 2 / Bottom 1" });
         edge.ShouldNotBeNull().Bounds.Right.ShouldBeLessThanOrEqualTo(size.Width);
         screen.Text.ShouldContain("Fixed placement");
         screen.Text.ShouldContain("Percentage placement");

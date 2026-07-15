@@ -53,9 +53,12 @@ public sealed class GalleryInteractionTests
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "Canvas")),
+            TestContext.Current.CancellationToken);
 
         terminal.QueueInput(Encoding.ASCII.GetBytes(
-            "\u001b[<0;3;8M\u001b[<0;3;8m"));
+            "\u001b[<0;3;7M\u001b[<0;3;7m"));
         await WaitUntilAsync(
             () => gallery.SelectedPage == "Button",
             application,
@@ -261,7 +264,10 @@ public sealed class GalleryInteractionTests
             terminal,
             ShowcaseStartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
-        NavigationItem button = gallery.Navigation[1];
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "Canvas")),
+            TestContext.Current.CancellationToken);
+        NavigationItem button = gallery.Navigation[IndexOf(gallery, "Button")];
         Rect point = await application.Dispatcher.InvokeAsync(
             () => button.Bounds,
             TestContext.Current.CancellationToken);
@@ -430,7 +436,7 @@ public sealed class GalleryInteractionTests
 
         terminal.QueueInput("\u001b[B"u8);
         await WaitUntilAsync(
-            () => gallery.SelectedPage == "Button",
+            () => gallery.SelectedPage == "Canvas",
             application,
             "sidebar arrow navigation");
 
@@ -468,7 +474,7 @@ public sealed class GalleryInteractionTests
 
         terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
-            () => gallery.SelectedPage == "Button",
+            () => gallery.SelectedPage == "Canvas",
             application,
             "sidebar Enter activation");
 

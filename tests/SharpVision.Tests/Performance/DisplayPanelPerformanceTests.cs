@@ -109,10 +109,10 @@ public sealed class DisplayPanelPerformanceTests
 
         for (int index = 0; index < 12; index++)
         {
-            navigation.Children.Add(new Border
+            navigation.Children.Add(new Dock
             {
                 BorderThickness = new Thickness(1),
-                Child = new ControlText($"Item {index}"),
+                Children = { new ControlText($"Item {index}") },
             });
         }
 

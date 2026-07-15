@@ -15,13 +15,13 @@ internal sealed class StackPane: View
     protected override Control Build()
     {
         Stack horizontal = new() { Orientation = Orientation.Horizontal, Spacing = 2, Width = Length.Cells(40) };
-        Border fixedCard = Card("Fixed 10", Glyphs.Light);
+        Dock fixedCard = Card("Fixed 10", Glyphs.Light);
         fixedCard.Width = Length.Cells(10);
         horizontal.Children.Add(fixedCard);
-        Border percentCard = Card("35%", Glyphs.Heavy);
+        Dock percentCard = Card("35%", Glyphs.Heavy);
         percentCard.Width = Length.Percent(35);
         horizontal.Children.Add(percentCard);
-        Border starCard = Card("1*", Glyphs.Paired);
+        Dock starCard = Card("1*", Glyphs.Paired);
         starCard.Width = Length.Star(1);
         horizontal.Children.Add(starCard);
 
@@ -52,11 +52,11 @@ internal sealed class StackPane: View
                 vertical));
     }
 
-    private static Border Card(string text, Glyphs glyphs) => new()
+    private static Dock Card(string text, Glyphs glyphs) => new()
     {
-        Child = new Text(text),
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
+        Children = { new Text(text) },
     };
 }

@@ -15,38 +15,38 @@ internal sealed class CanvasPane: View
     protected override Control Build()
     {
         Canvas fixedStage = Stage();
-        Border fixedCard = Card("fixed 2,1", Glyphs.Light);
+        Dock fixedCard = Card("fixed 2,1", Glyphs.Light);
         Canvas.SetLeft(fixedCard, Length.Cells(2));
         Canvas.SetTop(fixedCard, Length.Cells(1));
         fixedStage.Children.Add(fixedCard);
 
         Canvas percentStage = Stage();
-        Border percentCard = Card("50%,50%", Glyphs.Heavy);
+        Dock percentCard = Card("50%,50%", Glyphs.Heavy);
         Canvas.SetLeft(percentCard, Length.Percent(50));
         Canvas.SetTop(percentCard, Length.Percent(50));
         percentStage.Children.Add(percentCard);
 
         Canvas edgeStage = Stage();
-        Border edgeCard = Card("Right 2 / Bottom 1", Glyphs.Paired);
+        Dock edgeCard = Card("Right 2 / Bottom 1", Glyphs.Paired);
         Canvas.SetRight(edgeCard, Length.Cells(2));
         Canvas.SetBottom(edgeCard, Length.Cells(1));
         edgeStage.Children.Add(edgeCard);
-        Border widthCard = Card("40% wide", Glyphs.Rounded);
+        Dock widthCard = Card("40% wide", Glyphs.Rounded);
         widthCard.Width = Length.Percent(40);
         Canvas.SetLeft(widthCard, Length.Cells(1));
         Canvas.SetTop(widthCard, Length.Cells(1));
         edgeStage.Children.Add(widthCard);
 
         Canvas layerStage = Stage();
-        Border back = Card("Back", Glyphs.Light);
+        Dock back = Card("Back", Glyphs.Light);
         Canvas.SetLeft(back, Length.Cells(2));
         Canvas.SetTop(back, Length.Cells(1));
         layerStage.Children.Add(back);
-        Border front = Card("Front", Glyphs.Heavy);
+        Dock front = Card("Front", Glyphs.Heavy);
         Canvas.SetLeft(front, Length.Cells(6));
         Canvas.SetTop(front, Length.Cells(2));
         layerStage.Children.Add(front);
-        Border clipped = Card("clipped", Glyphs.Ascii);
+        Dock clipped = Card("clipped", Glyphs.Ascii);
         Canvas.SetLeft(clipped, Length.Cells(29));
         Canvas.SetTop(clipped, Length.Cells(5));
         layerStage.Children.Add(clipped);
@@ -83,18 +83,18 @@ internal sealed class CanvasPane: View
         ClipToBounds = true,
     };
 
-    private static Border Frame(Control child) => new()
+    private static Dock Frame(Control child) => new()
     {
-        Child = child,
         BorderThickness = new Thickness(1),
-        Glyphs = Glyphs.Light,
+        BorderGlyphs = Glyphs.Light,
+        Children = { child },
     };
 
-    private static Border Card(string content, Glyphs glyphs) => new()
+    private static Dock Card(string content, Glyphs glyphs) => new()
     {
-        Child = new Text(content),
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
+        Children = { new Text(content) },
     };
 }

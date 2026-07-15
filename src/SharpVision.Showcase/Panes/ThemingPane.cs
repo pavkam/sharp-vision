@@ -96,7 +96,7 @@ internal sealed class ThemingPane: View
         for (int index = 0; index < roles.Length; index++)
         {
             ColorRole role = roles[index];
-            Border chip = new()
+            Dock chip = new()
             {
                 Width = Length.Cells(6),
                 Height = Length.Cells(1),

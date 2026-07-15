@@ -11,7 +11,6 @@ All controls derive from the
 ### Display
 
 - [Text](display/text.md#text-contract)
-- [Border](display/border.md#border-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
 - [RichText](display/rich-text.md#richtext-contract)
 

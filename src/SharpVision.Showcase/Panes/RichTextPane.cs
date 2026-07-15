@@ -131,11 +131,11 @@ internal sealed class RichTextPane: View
         });
     }
 
-    private static Border Card(Control child, Glyphs glyphs) => new()
+    private static Dock Card(Control child, Glyphs glyphs) => new()
     {
-        Child = child,
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
+        Children = { child },
     };
 }

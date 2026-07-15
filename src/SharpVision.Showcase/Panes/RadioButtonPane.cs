@@ -22,12 +22,12 @@ internal sealed class RadioButtonPane: View
             GroupName = "quality",
             IsEnabled = false,
         };
-        Border group = new()
+        Dock group = new()
         {
-            Child = Doc.Column(fast, balanced, unavailable),
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
+            BorderGlyphs = Glyphs.Rounded,
             Padding = new Thickness(1, 0),
+            Children = { Doc.Column(fast, balanced, unavailable) },
         };
 
         RadioButton independent = new()
@@ -36,12 +36,12 @@ internal sealed class RadioButtonPane: View
             GroupName = "delivery",
             IsChecked = true,
         };
-        Border separate = new()
+        Dock separate = new()
         {
-            Child = independent,
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Light,
+            BorderGlyphs = Glyphs.Light,
             Padding = new Thickness(1, 0),
+            Children = { independent },
         };
 
         return Doc.Page(

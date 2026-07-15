@@ -15,7 +15,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawPartialBorder_WhenOnlyTopEdgeIsEnabled_DrawsSingleRow()
     {
-        Border border = new()
+        LayoutProbe control = new()
         {
             Bounds = new Rect(0, 0, 3, 2),
             BorderThickness = new Thickness(0, 1, 0, 0),
@@ -23,7 +23,7 @@ public sealed class ControlChromeTests
         };
         using Frame frame = new(new Size(3, 2));
 
-        border.Render(frame.Canvas);
+        control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("-");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("-");
@@ -98,14 +98,14 @@ public sealed class ControlChromeTests
     [Fact]
     public void Measure_WhenBorderThicknessIsSet_ReservesActiveEdges()
     {
-        Border border = new()
+        Dock control = new()
         {
             BorderThickness = new Thickness(1, 0, 0, 0),
-            Child = new ControlText("ab"),
+            Children = { new ControlText("ab") },
         };
 
-        new Engine().Layout(border, new Size(10, 4));
+        new Engine().Layout(control, new Size(10, 4));
 
-        border.DesiredSize.ShouldBe(new Size(3, 1));
+        control.DesiredSize.ShouldBe(new Size(3, 1));
     }
 }

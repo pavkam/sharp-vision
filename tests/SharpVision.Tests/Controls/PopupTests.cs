@@ -102,7 +102,7 @@ public sealed class PopupTests
             DropDownHeight = 2,
             IsOpen = true,
         };
-        Border cover = new() { Background = Color.Indexed(7) };
+        Dock cover = new() { Background = Color.Indexed(7) };
         Overlay root = new() { ClipToBounds = false };
         root.Children.Add(comboBox);
         root.Children.Add(cover);
