@@ -67,6 +67,43 @@ public sealed class StandardThemeTests
         borderColor.Red.ShouldBe((byte) 14);
     }
 
+    /// <summary>Verifies a focused Button uses accent foreground without underline attributes.</summary>
+    [Fact]
+    public void Dark_WhenButtonIsFocused_UsesAccentForegroundWithoutUnderline()
+    {
+        var control = new Button();
+        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+
+        var foreground = ThemeTestSupport.Resolve(
+            control,
+            Control.ForegroundProperty,
+            State.Focused);
+        var foregroundColor = foreground.ShouldNotBeNull();
+        foregroundColor.Kind.ShouldBe(ColorKind.Indexed);
+        foregroundColor.Red.ShouldBe((byte) 14);
+        var attributes = ThemeTestSupport.Resolve(
+            control,
+            Control.AttributesProperty,
+            State.Focused);
+        (attributes.GetValueOrDefault() & Attributes.Underline).ShouldBe(Attributes.None);
+    }
+
+    /// <summary>Verifies a focused TextInput uses the semantic accent foreground.</summary>
+    [Fact]
+    public void Dark_WhenTextInputIsFocused_UsesAccentForeground()
+    {
+        var control = new TextInput();
+        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+
+        var foreground = ThemeTestSupport.Resolve(
+            control,
+            Control.ForegroundProperty,
+            State.Focused);
+        var foregroundColor = foreground.ShouldNotBeNull();
+        foregroundColor.Kind.ShouldBe(ColorKind.Indexed);
+        foregroundColor.Red.ShouldBe((byte) 14);
+    }
+
     /// <summary>Verifies a focused ScrollBar colors its repeated rail glyphs without decorating them.</summary>
     [Fact]
     public void Dark_WhenScrollBarIsFocused_UsesAccentWithoutUnderline()
