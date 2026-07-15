@@ -34,9 +34,23 @@ public sealed class ThemeBuilderTests
         accent.ShouldBe(Color.Indexed((int) ColorRole.Accent + 1));
     }
 
-    /// <summary>Verifies the base control style maps roles to the expected property/state pairs.</summary>
+    /// <summary>Verifies the base control style carries the semantic role color, not a resolved concrete.</summary>
     [Fact]
-    public void Build_SetsBaseControlStyleForRepresentativeStates()
+    public void Build_BaseStyleStoresRoleColors()
+    {
+        Dictionary<ColorRole, Color> roles = Roles();
+        Theme theme = ThemeBuilder.Build(roles);
+
+        // The base style now carries the semantic (role) value, not a pre-resolved concrete.
+        ControlStyle<Control> style = theme.GetStyle<Control>()!;
+        style.TryGet(Control.ForegroundProperty, State.Normal, out Color? fg).ShouldBeTrue();
+        fg!.Value.Kind.ShouldBe(ColorKind.Role);
+        fg.Value.RoleId.ShouldBe((int) ColorRole.Foreground);
+    }
+
+    /// <summary>Verifies the base control style's role colors resolve to the seeded palette through the theme.</summary>
+    [Fact]
+    public void Build_ResolvesRoleColorsToSeededPalette()
     {
         Dictionary<ColorRole, Color> roles = Roles();
         Theme theme = ThemeBuilder.Build(roles);

@@ -23,33 +23,32 @@ internal static class ThemeBuilder
             theme.SetColor(role, roles[role]);
         }
 
-        theme.SetStyle(BuildBaseStyle(roles));
+        theme.SetStyle(BuildBaseStyle());
         theme.Freeze();
         return theme;
     }
 
-    private static ControlStyle<Control> BuildBaseStyle(IReadOnlyDictionary<ColorRole, Color> roles)
+    /// <summary>Builds the base control style using semantic role colors.</summary>
+    /// <returns>
+    /// A theme-independent style: every color is a deferred <see cref="ColorKind.Role"/> value from
+    /// <see cref="ThemeColors"/> that <see cref="ThemeResolver"/> collapses to the active theme's
+    /// palette concrete during resolution, so the same style instance can back any theme.
+    /// </returns>
+    private static ControlStyle<Control> BuildBaseStyle()
     {
         ControlStyle<Control> style = new();
-        Color foreground = roles[ColorRole.Foreground];
-        Color background = roles[ColorRole.Background];
-        Color border = roles[ColorRole.Border];
-        Color accent = roles[ColorRole.Accent];
-        Color selectionBackground = roles[ColorRole.SelectionBackground];
-        Color selectionForeground = roles[ColorRole.SelectionForeground];
-        Color muted = roles[ColorRole.Muted];
 
-        style.Set(Control.ForegroundProperty, State.Normal, foreground);
-        style.Set(Control.BackgroundProperty, State.Normal, background);
-        style.Set(Control.BorderColorProperty, State.Normal, border);
-        style.Set(Control.ForegroundProperty, State.Hovered, accent);
+        style.Set(Control.ForegroundProperty, State.Normal, ThemeColors.Foreground);
+        style.Set(Control.BackgroundProperty, State.Normal, ThemeColors.Background);
+        style.Set(Control.BorderColorProperty, State.Normal, ThemeColors.Border);
+        style.Set(Control.ForegroundProperty, State.Hovered, ThemeColors.Accent);
         style.Set(Control.AttributesProperty, State.Focused, TerminalAttributes.Underline);
-        style.Set(Control.ForegroundProperty, State.Checked, selectionForeground);
-        style.Set(Control.BackgroundProperty, State.Checked, selectionBackground);
-        style.Set(Control.ForegroundProperty, State.Selected, selectionForeground);
-        style.Set(Control.BackgroundProperty, State.Selected, selectionBackground);
-        style.Set(Control.ForegroundProperty, State.Disabled, muted);
-        style.Set(Control.ShadowForegroundProperty, State.Normal, border);
+        style.Set(Control.ForegroundProperty, State.Checked, ThemeColors.SelectionForeground);
+        style.Set(Control.BackgroundProperty, State.Checked, ThemeColors.SelectionBackground);
+        style.Set(Control.ForegroundProperty, State.Selected, ThemeColors.SelectionForeground);
+        style.Set(Control.BackgroundProperty, State.Selected, ThemeColors.SelectionBackground);
+        style.Set(Control.ForegroundProperty, State.Disabled, ThemeColors.Muted);
+        style.Set(Control.ShadowForegroundProperty, State.Normal, ThemeColors.Border);
 
         return style;
     }
