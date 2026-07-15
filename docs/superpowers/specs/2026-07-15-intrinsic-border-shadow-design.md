@@ -73,6 +73,7 @@ wrapper control.
 | 3   | Where the gap is closed      | The base layout pipeline reserves `BorderThickness` (with `Padding`) in the content constraint and before `ArrangeOverride` |
 | 4   | Reserve exactly once         | Reconcile controls that reserve border themselves today (`Button` primarily); leaf/`Window` paths verified unchanged        |
 | 5   | Idiom                        | Border/shadow as `Control` properties, matching WinForms `BorderStyle` / VCL `BorderStyle`/`BevelKind`    |
+| 6   | Showcase pages               | The `Border` and `Shadow` pages are **removed** (they document controls that no longer exist); border/shadow are demonstrated incidentally as properties on other panes, matching the removed `ScrollView` page |
 
 ## Design
 
@@ -200,8 +201,10 @@ committed geometry).
 - `docs/concepts/styling.md` / chrome docs — border/shadow are set on any control.
 - `AGENTS.md` — note there is no `Border`/`Shadow` control; border/shadow are
   intrinsic `Control` properties (mirroring the scrolling note).
-- Showcase inventory — the `Border` and `Shadow` pages are removed or repurposed
-  to demonstrate the intrinsic properties on other controls (see Risks).
+- Showcase inventory — the `Border` and `Shadow` pages are removed (border and
+  shadow are properties every control has, not controls in their own right, so
+  they get no dedicated page — the same treatment the `ScrollView` page got).
+  Border/shadow remain visible incidentally on other panes that set them.
 
 ## Risks
 
@@ -212,8 +215,9 @@ committed geometry).
   removal — collides with the concurrent showcase-rewrite effort; sequence it when
   the showcase is quiescent or coordinate closely.
 - **Inventory change.** Removing the `Border`/`Shadow` pages changes the showcase
-  control inventory that several showcase tests assert (as with `ScrollView`);
-  decide whether to drop or repurpose those pages before touching the inventory.
+  control inventory that several showcase tests assert (`GalleryTests`,
+  `GalleryRenderingTests`, `TmuxSmokeTests`, …) — the same edits the `ScrollView`
+  removal made. Update those inventory assertions in the same change.
 - **Double-inset regressions.** The base reservation affects any control with a
   non-zero `BorderThickness`; `Button` is the known case, but the plan must audit
   every control (all 17 `OnRender` overriders and any container that sets a border)
