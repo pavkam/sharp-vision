@@ -69,6 +69,11 @@ dispatcher reference for the lifetime of the attachment. A control subscribes
 only to its direct `Style`; replacement, detachment where applicable, and
 disposal remove owned registrations deterministically.
 
+Intrinsic border and shadow properties add no child or buffer ownership. When
+chrome needs a distinct node, an ordinary container owns the framed child under
+the same collection contract; no border or shadow wrapper has a separate
+lifetime.
+
 Routed input snapshots both ancestry and matching handler registrations before
 invocation. The router owns its rented arrays only through synchronous preview,
 target, and bubble delivery and clears them before pool return. Handlers must
@@ -88,8 +93,8 @@ Text layout borrows `ReadOnlySpan<char>` only for one synchronous format call
 and writes immutable `Line` values into caller-owned storage. `Text` owns and
 reuses its line array; its public `ReadOnlyMemory<Line>` view remains valid only
 until the next successful layout. Panel collections own attached controls
-exclusively, and Border replacement validates the complete candidate subtree
-before detaching its previous child.
+exclusively, and capacity-one owners validate the complete candidate subtree
+before detaching their previous child.
 
 Protocol encoders write synchronously to caller spans or `IBufferWriter<byte>`.
 Any data crossing an `await`, queue, callback, or dispatcher boundary must be an

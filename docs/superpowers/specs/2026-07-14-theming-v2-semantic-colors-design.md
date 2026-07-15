@@ -103,7 +103,11 @@ Usage anywhere a `Color` is expected:
 
 ```csharp
 style.Set(Control.BackgroundProperty, State.Normal, ThemeColors.Background);
-var swatch = new Border { Background = ThemeColors.Accent };   // custom control
+var swatch = new Dock
+{
+    Background = ThemeColors.Accent,
+    FillMode = FillMode.Opaque,
+};
 ```
 
 (Naming: `ThemeColors` — "colors the active theme supplies." Alternatives
@@ -189,9 +193,8 @@ they are applied moved from build-time to render-time).
   style properties). `ThemeContext.TryGetColor` stays (internal; the resolver
   uses it).
 - Delete `RoleSwatch`. The Theming pane's role-swatch section becomes a column
-  of plain controls (a small `Border`/fill control per role) with
-  `Background = ThemeColors.<role>`, which resolve live through §3 — same
-  visible behavior, no bespoke control.
+  of plain `Dock` fill controls with `Background = ThemeColors.<role>`, which
+  resolve live through §3 — same visible behavior, no bespoke control.
 
 ### 6. Public API surface after v2
 

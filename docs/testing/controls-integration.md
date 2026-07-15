@@ -19,6 +19,13 @@ state styles, default cursor preservation, render-time invalidation, and
 exception recovery. Private draw-call recordings supplement these semantic
 oracles; they never replace them.
 
+Intrinsic chrome tests set border and shadow properties on ordinary controls.
+They prove border reservation and partial-edge glyphs, shadow visual overflow,
+composite and block footprints, signed-offset clipping, wide-cell ownership,
+validation-before-mutation, and hit-test exclusion. A chrome-rendering `Dock`
+supplies a distinct frame node when the subject overrides `OnRender` without
+calling `RenderChrome`.
+
 ## End-to-end path
 
 Representative tests start with raw terminal key/mouse/paste/resize bytes and
@@ -34,32 +41,33 @@ mutation, completed frame callbacks, and the final UTF-8 bytes written by the
 renderer transport. `ResizeRenderTests` proves zero-cell suspension resumes with
 committed layout before its first positive frame.
 
-`DisplayPanelTests` composes Grid, Dock, Stack, Overlay, Canvas, Border, and
-Text under a real `Application` backed by `FakeTerminal`. It proves startup
-bytes, committed bounds, exact semantic cells, wide-cell continuation ownership,
-removal damage, text mutation, and resize reflow on the same dispatcher-owned
-tree. Fresh semantic frames confirm removed content does not survive, while
-later transport writes prove incremental output followed each mutation.
+`DisplayPanelTests` composes Grid, intrinsically bordered Dock surfaces, Stack,
+Overlay, Canvas, and Text under a real `Application` backed by `FakeTerminal`.
+It proves startup bytes, committed bounds, exact semantic cells, wide-cell
+continuation ownership, removal damage, text mutation, and resize reflow on the
+same dispatcher-owned tree. Fresh semantic frames confirm removed content does
+not survive, while later transport writes prove incremental output followed each
+mutation.
 
 `InteractiveControlTests` composes Button, CheckBox, RadioButton, TextInput,
-ScrollBar, ScrollView, and List under one real application. Raw SGR cell clicks,
-Kitty Enter, wheel input, UTF-8 CJK, item removal, terminal focus loss, and
-resize prove ordered activation/selection events, focus and capture cleanup,
-exact semantic cells, wide-cell ownership, incremental bytes, and cleared stale
-item rows. A separate editor path adds owned bracketed paste containing a
-combining sequence, legacy Left, and Backspace checkpoints.
+ScrollBar, an `AutoScroll`-enabled Stack, and List under one real application.
+Raw SGR cell clicks, Kitty Enter, wheel input, UTF-8 CJK, item removal, terminal
+focus loss, and resize prove ordered activation/selection events, focus and
+capture cleanup, exact semantic cells, wide-cell ownership, incremental bytes,
+and cleared stale item rows. A separate editor path adds owned bracketed paste
+containing a combining sequence, legacy Left, and Backspace checkpoints.
 
 `ScrollingTests` first sends 20 raw SGR wheel reports into nested hidden-bar
-ScrollViews and proves exact inner consumption, outward remainder, and resize
-clamping. A second application uses automatic bars on both nested axes, inferred
-pixel coordinates, and wide Unicode content. It proves pixel thumb dragging,
-horizontal and vertical remainder, focus reveal through both viewports, exact
-outer thumb cells, capture release, and removal of outer bars after a larger
-pixel-dimensioned resize.
+Stacks with intrinsic `AutoScroll` and proves exact inner consumption, outward
+remainder, and resize clamping. A second application uses automatic bars on both
+nested axes, inferred pixel coordinates, and wide Unicode content. It proves
+pixel thumb dragging, horizontal and vertical remainder, focus reveal through
+both viewports, exact outer thumb cells, capture release, and removal of outer
+bars after a larger pixel-dimensioned resize.
 
 ## Controls with state machines
 
 Phase 5 buttons, toggles, radio groups, text editing, selection, menus, popups,
-windows, scrollbars, and scroll views must enumerate valid/invalid transitions
-and event order. Fake clocks drive hover/open delays, timers, idle, and repeated
-input without wall-clock sleeps.
+windows, scrollbars, and intrinsically scrolling containers must enumerate
+valid/invalid transitions and event order. Fake clocks drive hover/open delays,
+timers, idle, and repeated input without wall-clock sleeps.

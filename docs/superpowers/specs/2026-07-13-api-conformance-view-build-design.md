@@ -2,7 +2,16 @@
 
 ## Status
 
-Design approved 2026-07-13. Ready for an implementation plan.
+Design approved 2026-07-13 and implemented. Its `View`/`Build()` and showcase
+composition decisions remain current. The original inventory snapshots are
+superseded by the later
+[intrinsic scrolling](2026-07-14-intrinsic-container-scrolling-design.md) and
+[intrinsic border/shadow](2026-07-15-intrinsic-border-shadow-design.md) designs;
+the live catalog is normative in the
+[showcase contract](../../architecture/showcase.md#showcase-contract). The
+problem statements, code sketches, and implementation precondition below record
+their execution-base state; live normative docs win if later designs supersede
+another detail.
 
 ## Problem
 
@@ -192,10 +201,12 @@ Rebuild `SharpVision.Showcase` as the exemplar of the new model:
   dictates page structure via a constructor-time virtual call.
 - Collapse the near-duplicate helpers (`SampleSection`/`CanvasSection`,
   `Card`/`DemoCard`) into a minimal shared set.
-- Preserve the sidebar inventory (Border, Button, Canvas, CheckBox, ComboBox,
-  Dock, FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, RichText,
-  ScrollBar, ScrollView, Shadow, Stack, Table, Text, TextInput, Window) and the
-  existing capability/mouse-mode setup.
+- Preserve the sidebar inventory and existing capability/mouse-mode setup. The
+  implemented inventory is Button, Canvas, CheckBox, ComboBox, Dock, FigletText,
+  Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar, Stack,
+  Table, Text, TextInput, Window, and Theming. Later intrinsic capability
+  designs removed wrapper-only pages; this list records the resolved current
+  catalog rather than the superseded execution-base snapshot.
 
 Example target shape for a pane's examples:
 
@@ -255,16 +266,15 @@ public sealed class ButtonPane : View
 - `AGENTS.md` — note `View`/`Build()` as the composition pattern and the
   `*Override`/`OnRender` seam names.
 
-## Precondition (must hold before implementation starts)
+## Historical implementation precondition
 
-The working tree is mid-`stash pop`: the git index records unmerged paths
-(`Border/Button/Popup/Shadow/Text/Window.cs`, three `Styling/*` files, the
-deleted `Catalog.cs`/`Examples.cs`), and `SharpVision.Showcase.Tests` fails on
-style-rules-as-errors from the in-progress showcase refactor. The production
-libraries and the showcase **do** compile. Before implementing this design, the
-current work must be finalized to a green `make build && make test` baseline.
-This is pre-existing user work and is out of scope for this design; the
-implementation plan assumes a clean, green starting point.
+The execution-base working tree was mid-`stash pop`: the git index recorded
+unmerged paths (`Border/Button/Popup/Shadow/Text/Window.cs`, three `Styling/*`
+files, the deleted `Catalog.cs`/`Examples.cs`), and `SharpVision.Showcase.Tests`
+failed on style-rules-as-errors from the in-progress showcase refactor. The
+production libraries and showcase compiled. Before implementation, that work had
+to be finalized to a green `make build && make test` baseline. This paragraph is
+retained as historical execution context, not current API or inventory guidance.
 
 ## Proposed phasing (for the implementation plan)
 

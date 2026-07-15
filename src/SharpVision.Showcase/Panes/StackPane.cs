@@ -5,7 +5,6 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-
 /// <summary>Documents the Stack control with orientation, spacing, and reverse-order specimens.</summary>
 internal sealed class StackPane: View
 {
@@ -15,7 +14,7 @@ internal sealed class StackPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        var horizontal = new Stack() { Orientation = Orientation.Horizontal, Spacing = 2, Width = Length.Cells(40) };
+        Stack horizontal = new() { Orientation = Orientation.Horizontal, Spacing = 2, Width = Length.Cells(40) };
         var fixedCard = Card("Fixed 10", Glyphs.Light);
         fixedCard.Width = Length.Cells(10);
         horizontal.Children.Add(fixedCard);
@@ -26,12 +25,12 @@ internal sealed class StackPane: View
         starCard.Width = Length.Star(1);
         horizontal.Children.Add(starCard);
 
-        var reversed = new Stack() { Orientation = Orientation.Horizontal, Spacing = 2, Reverse = true };
+        Stack reversed = new() { Orientation = Orientation.Horizontal, Spacing = 2, Reverse = true };
         reversed.Children.Add(Card("First", Glyphs.Light));
         reversed.Children.Add(Card("Second", Glyphs.Heavy));
         reversed.Children.Add(Card("Third", Glyphs.Paired));
 
-        var vertical = new Stack() { Spacing = 1 };
+        Stack vertical = new() { Spacing = 1 };
         vertical.Children.Add(Card("Top", Glyphs.Rounded));
         vertical.Children.Add(Card("Spacing = 1", Glyphs.Light));
         vertical.Children.Add(Card("Bottom", Glyphs.Heavy));
@@ -53,11 +52,11 @@ internal sealed class StackPane: View
                 vertical));
     }
 
-    private static Border Card(string text, Glyphs glyphs) => new()
+    private static Dock Card(string text, Glyphs glyphs) => new()
     {
-        Child = new Text(text),
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
+        Children = { new Text(text) },
     };
 }

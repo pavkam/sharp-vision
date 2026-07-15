@@ -169,6 +169,9 @@ internal static class ControlChrome
 
         var target = Shift(sourceBounds, control.ShadowOffset).Intersect(canvas.Bounds);
         var shadowBackground = control.ShadowBackground ?? control.Background ?? appearanceSource.Background;
+        var shadowBackgroundMode = control.ShadowBackground.HasValue
+            ? BackgroundMode.Opaque
+            : background;
         var style = ResolveShadowStyle(control, appearanceSource, shadowBackground);
 
         for (var y = target.Y; y < target.Bottom; y++)
@@ -191,7 +194,7 @@ internal static class ControlChrome
 
                 if (control.ShadowMode == ShadowMode.Composite)
                 {
-                    canvas.ApplyStyle(new Rect(x, y, 1, 1), style, background);
+                    canvas.ApplyStyle(new Rect(x, y, 1, 1), style, shadowBackgroundMode);
                 }
                 else
                 {
@@ -202,7 +205,7 @@ internal static class ControlChrome
                         control.ShadowGlyph,
                         new Rune('#'),
                         control.CellPolicy.AmbiguousWidth);
-                    canvas.DrawRune(glyph, point, style, background);
+                    canvas.DrawRune(glyph, point, style, shadowBackgroundMode);
                 }
             }
         }
@@ -321,4 +324,3 @@ internal static class ControlChrome
     private static int SaturatingAdd(int left, int right) =>
         (int) Math.Clamp((long) left + right, int.MinValue, int.MaxValue);
 }
-

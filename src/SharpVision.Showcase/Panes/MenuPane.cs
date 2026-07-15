@@ -5,7 +5,6 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-
 /// <summary>Documents the Menu control with command, check, radio, separator, orientation, and disabled-item specimens.</summary>
 internal sealed class MenuPane: View
 {
@@ -15,8 +14,8 @@ internal sealed class MenuPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        var status = new Text("Choose an action.");
-        var menu = new Menu()
+        Text status = new("Choose an action.");
+        Menu menu = new()
         {
             Orientation = Orientation.Vertical,
             Spacing = 0,
@@ -29,15 +28,15 @@ internal sealed class MenuPane: View
         menu.Items.Add(new MenuItem { Header = "Comfortable mode", Kind = MenuItemKind.Radio, GroupName = "density" });
         menu.ItemInvoked += (_, eventArgs) => status.Content = $"Invoked {eventArgs.Item.Header}.";
 
-        var framed = new Border()
+        Dock framed = new()
         {
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            Child = menu,
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { menu },
         };
 
-        var barStatus = new Text("Choose a top-level action.");
-        var bar = new Menu()
+        Text barStatus = new("Choose a top-level action.");
+        Menu bar = new()
         {
             Orientation = Orientation.Horizontal,
             Spacing = 2,
@@ -48,14 +47,14 @@ internal sealed class MenuPane: View
         bar.Items.Add(new MenuItem { Header = "Help" });
         bar.ItemInvoked += (_, eventArgs) => barStatus.Content = $"Invoked {eventArgs.Item.Header}.";
 
-        var framedBar = new Border()
+        Dock framedBar = new()
         {
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            Child = bar,
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { bar },
         };
 
-        var withDisabled = new Menu()
+        Menu withDisabled = new()
         {
             Orientation = Orientation.Vertical,
             Spacing = 0,
@@ -64,11 +63,11 @@ internal sealed class MenuPane: View
         withDisabled.Items.Add(new MenuItem { Header = "Unavailable action", IsEnabled = false });
         withDisabled.Items.Add(new MenuItem { Header = "Another available action" });
 
-        var framedDisabled = new Border()
+        Dock framedDisabled = new()
         {
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            Child = withDisabled,
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { withDisabled },
         };
 
         return Doc.Page(

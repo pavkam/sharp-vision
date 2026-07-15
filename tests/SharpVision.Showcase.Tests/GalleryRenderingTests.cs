@@ -26,7 +26,7 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
-        screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2);
+        screen.Text.ShouldContain("Button");
         screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
         screen.ValidateContinuations();
@@ -37,7 +37,7 @@ public sealed class GalleryRenderingTests
     public void Render_WhenDocumentationPaneIsNarrow_WrapsCompleteTextGuidance()
     {
         using var gallery = CreateThemedGallery();
-        gallery.Select(1);
+        gallery.Select(IndexOf(gallery, "Button"));
         var size = new Size(80, 40);
         new Engine().Layout(gallery, size);
         using Frame frame = new(size);
@@ -48,25 +48,6 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("command paths.");
         gallery.Content.Parent.ShouldBeOfType<Stack>()
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
-    }
-
-    /// <summary>Verifies the Shadow page stages both modes separately with a readable block-glyph footprint.</summary>
-    [Fact]
-    public void Render_WhenShadowPageIsSelected_ShowsSeparatedCompositeAndBlockGlyphStages()
-    {
-        using var gallery = CreateThemedGallery();
-        gallery.Select(IndexOf(gallery, "Shadow"));
-        var size = new Size(100, 60);
-        new Engine().Layout(gallery, size);
-        using Frame frame = new(size);
-
-        gallery.Render(frame.Canvas);
-
-        var screen = new Screen(frame);
-        screen.Text.ShouldContain("Composite stage");
-        screen.Text.ShouldContain("Block glyph stage");
-        screen.Text.ShouldContain("░");
-        screen.ValidateContinuations();
     }
 
     /// <summary>Verifies the Button page demonstrates both shadow modes and a stationary flat variant.</summary>
@@ -91,7 +72,7 @@ public sealed class GalleryRenderingTests
     public void Render_WhenCanvasPageIsSelected_ShowsGuidedPlacementExamples()
     {
         using var gallery = CreateThemedGallery();
-        gallery.Select(2);
+        gallery.Select(IndexOf(gallery, "Canvas"));
         var size = new Size(120, 80);
         new Engine().Layout(gallery, size);
         using Frame frame = new(size);
@@ -99,9 +80,10 @@ public sealed class GalleryRenderingTests
         gallery.Render(frame.Canvas);
 
         var screen = new Screen(frame);
-        var edge = Find<Border>(
+        var edge = Find<Dock>(
             gallery.Content,
-            static value => value.Child is ControlText { Content: "Right 2 / Bottom 1" });
+            static value => value.Children.Count == 1 &&
+                value.Children[0] is ControlText { Content: "Right 2 / Bottom 1" });
         edge.ShouldNotBeNull().Bounds.Right.ShouldBeLessThanOrEqualTo(size.Width);
         screen.Text.ShouldContain("Fixed placement");
         screen.Text.ShouldContain("Percentage placement");

@@ -27,6 +27,38 @@ dispatcher.
 | `DesiredSize`                              | Empty          | Read-only result of the last successful measure.                                                                                             |
 | `Bounds`                                   | Empty          | Read-only committed arranged rectangle.                                                                                                      |
 
+## Intrinsic chrome
+
+Every control owns border, shadow, and body-fill properties; there are no
+dedicated border or shadow wrapper controls. Use an ordinary container such as
+`Dock` when chrome needs a distinct ownership, layout, and rendering node around
+another control.
+
+| Property                                                   | `Control` default | Contract                                                                                     |
+| ---------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------- |
+| `FillMode`                                                 | `Transparent`     | Chooses whether body fill preserves or replaces destination cells.                           |
+| `BorderThickness`                                          | Zero edges        | Reserves and draws independently enabled zero-or-one-cell edges.                             |
+| `BorderGlyphs`                                             | `Glyphs.Default`  | Supplies the validated physical glyph family for the enabled edges.                          |
+| `BorderColor`, `BorderAttributes`                          | `null`            | Optionally override border color and attributes.                                             |
+| `HasShadow`                                                | `false`           | Enables translated visual overflow without reserving layout or changing hit testing.         |
+| `ShadowMode`                                               | `Composite`       | Preserves destination graphemes or replaces the footprint with `ShadowGlyph`.                |
+| `ShadowOffset`                                             | `(0, 0)`          | Supplies the signed cell translation used to compute the shadow footprint and visual bounds. |
+| `ShadowGlyph`                                              | `▓`               | Supplies the printable, exactly one-cell-wide block-mode Rune.                               |
+| `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `null`            | Optionally override only the shadow footprint's resolved style.                              |
+
+`BorderThickness` rejects an edge greater than one cell and invalidates measure,
+arrange, and render. The remaining border and shadow properties invalidate
+render only. `ShadowMode` rejects undefined enum values; `ShadowGlyph` rejects
+control or non-one-cell Runes. Validation occurs before observable state
+changes. Derived controls may publish different class defaults; for example,
+`Button` owns a one-cell rounded border and compact dim shadow.
+
+The border box includes border cells. Base measure and arrange remove margin,
+resolve that box, then reserve `BorderThickness` before `Padding`, so extension
+points receive only the content box. Shadow overflow expands `VisualBounds`, is
+clipped by ancestor policy and the frame, and remains outside `Bounds`; it does
+not affect desired size, arranged child slots, or pointer targeting.
+
 Setters validate before mutation, verify dispatcher access while attached, and
 raise `PropertyChanged` once after the changed value is committed. Invalid
 lengths, negative constraints, inconsistent min/max, invalid enum values, and
@@ -75,6 +107,8 @@ root.
 | Horizontal or vertical alignment                  | Arrange and render           |
 | Enabled state or visible/hidden transition        | Render                       |
 | Hit-test visibility                               | No layout or render phase    |
+| Border thickness                                  | Measure, arrange, and render |
+| Other border or shadow chrome                     | Render                       |
 
 ## Lifecycle and events
 
@@ -123,6 +157,12 @@ state. Only interactive (focusable) controls are ever marked hovered, so the
 hovered flag never appears on static content such as text or tables.
 `GetResolvedStyle` converts the active theme cascade into the complete terminal
 cell style used by rendering.
+
+The base `OnRender` calls `RenderChrome`, which rasterizes body fill, intrinsic
+border, and shadow. A derived control that fully overrides `OnRender` opts out
+of that base call and must call protected `RenderChrome` when it wants intrinsic
+chrome. The complete geometry and shadow composition rules live in
+[Shared chrome](../concepts/styling.md#shared-chrome).
 
 ## Example
 

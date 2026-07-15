@@ -10,7 +10,6 @@ public sealed class Gallery: Screen
 {
     private static readonly (string Name, Func<View> Create)[] _catalog =
     [
-        (BorderPane.Title, static () => new BorderPane()),
         (ButtonPane.Title, static () => new ButtonPane()),
         (CanvasPane.Title, static () => new CanvasPane()),
         (CheckBoxPane.Title, static () => new CheckBoxPane()),
@@ -24,7 +23,6 @@ public sealed class Gallery: Screen
         (PopupPane.Title, static () => new PopupPane()),
         (RadioButtonPane.Title, static () => new RadioButtonPane()),
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
-        (ShadowPane.Title, static () => new ShadowPane()),
         (StackPane.Title, static () => new StackPane()),
         (TablePane.Title, static () => new TablePane()),
         (TextPane.Title, static () => new TextPane()),
@@ -130,12 +128,12 @@ public sealed class Gallery: Screen
         sidebarLayout.Children.Add(header);
         sidebarLayout.Children.Add(footer);
         sidebarLayout.Children.Add(_navigationScroll);
-        Sidebar = new Border
+        Sidebar = new Dock
         {
             Width = Length.Cells(28),
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            Child = sidebarLayout,
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { sidebarLayout },
         };
         _ = Sidebar.AddHandler(Events.Key, OnNavigationKey);
 
@@ -143,9 +141,9 @@ public sealed class Gallery: Screen
         // anywhere, including terminals whose Kitty keyboard protocol delivers it as a key event
         // rather than a host cancellation signal.
         _ = AddHandler(Events.Key, OnGlobalKey);
-        var surface = new Border()
+        var surface = new Dock()
         {
-            Child = _main,
+            Children = { _main },
         };
         var layout = new Dock()
         {
@@ -160,7 +158,7 @@ public sealed class Gallery: Screen
     }
 
     /// <summary>Gets the framed keyboard- and pointer-enabled component navigation sidebar.</summary>
-    public Border Sidebar { get; }
+    public Dock Sidebar { get; }
 
     /// <summary>Gets the current documentation page content.</summary>
     /// <remarks>Deliberately hides <see cref="View.Content"/>: this is the selected showcase page,

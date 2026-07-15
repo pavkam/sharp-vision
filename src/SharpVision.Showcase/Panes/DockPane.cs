@@ -5,7 +5,6 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-
 /// <summary>Documents the Dock control with side-attached and fill layout specimens.</summary>
 internal sealed class DockPane: View
 {
@@ -15,7 +14,7 @@ internal sealed class DockPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        var allSides = new Dock()
+        Dock allSides = new()
         {
             Width = Length.Cells(38),
             Height = Length.Cells(9),
@@ -40,7 +39,7 @@ internal sealed class DockPane: View
         allSides.Children.Add(bottom);
         allSides.Children.Add(Card("Fill", Glyphs.Rounded));
 
-        var order = new Dock()
+        Dock order = new()
         {
             Width = Length.Cells(30),
             Height = Length.Cells(7),
@@ -56,7 +55,7 @@ internal sealed class DockPane: View
         order.Children.Add(second);
         order.Children.Add(Card("3: Fill", Glyphs.Rounded));
 
-        var noFill = new Dock()
+        Dock noFill = new()
         {
             Width = Length.Cells(30),
             Height = Length.Cells(4),
@@ -84,11 +83,11 @@ internal sealed class DockPane: View
                 noFill));
     }
 
-    private static Border Card(string label, Glyphs glyphs) => new()
+    private static Dock Card(string label, Glyphs glyphs) => new()
     {
-        Child = new Text(label),
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
+        Children = { new Text(label) },
     };
 }

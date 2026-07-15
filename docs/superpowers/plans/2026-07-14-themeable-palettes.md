@@ -1,5 +1,8 @@
 # Themeable Palettes Implementation Plan
 
+<!-- markdownlint-disable MD013 MD034 -->
+<!-- Historical snapshot: MD013 preserves exact commands; MD034 preserves captured source URLs. -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use

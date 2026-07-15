@@ -9,7 +9,6 @@ public sealed class GalleryTests
 {
     private static readonly string[] _controls =
     [
-        "Border",
         "Button",
         "Canvas",
         "CheckBox",
@@ -23,7 +22,6 @@ public sealed class GalleryTests
         "Popup",
         "RadioButton",
         "ScrollBar",
-        "Shadow",
         "Stack",
         "Table",
         "Text",
@@ -39,9 +37,9 @@ public sealed class GalleryTests
         using Gallery gallery = new();
 
         _ = gallery.ShouldBeOfType<Gallery>();
-        _ = gallery.Sidebar.ShouldBeOfType<Border>();
+        _ = gallery.Sidebar.ShouldBeOfType<Dock>();
         gallery.Pages.ShouldBe(_controls);
-        gallery.SelectedPage.ShouldBe("Border");
+        gallery.SelectedPage.ShouldBe("Button");
         _ = gallery.Content.ShouldNotBeNull();
     }
 
@@ -54,7 +52,7 @@ public sealed class GalleryTests
 
         gallery.Select(1);
 
-        gallery.SelectedPage.ShouldBe("Button");
+        gallery.SelectedPage.ShouldBe("Canvas");
         gallery.Content.ShouldNotBeSameAs(previous);
     }
 

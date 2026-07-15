@@ -5,8 +5,6 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-
-
 /// <summary>Documents application theming, type-keyed styles, local overrides, and third-party style properties.</summary>
 internal sealed class ThemingPane: View
 {
@@ -16,12 +14,12 @@ internal sealed class ThemingPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        var panel = new ShowcasePanel();
+        ShowcasePanel panel = new();
 
-        var left = new Button() { Content = new Text("Left") };
-        var right = new Button() { Content = new Text("Right") };
-        var above = new Button() { Content = new Text("Above") };
-        var below = new Button() { Content = new Text("Below") };
+        Button left = new() { Content = new Text("Left") };
+        Button right = new() { Content = new Text("Right") };
+        Button above = new() { Content = new Text("Above") };
+        Button below = new() { Content = new Text("Below") };
         left.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Left;
         right.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Right;
         above.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Above;
@@ -34,10 +32,10 @@ internal sealed class ThemingPane: View
         // A scratch theme, never installed as the application theme, holds one style keyed to the
         // Button type. ThemeResolver's design-time overload reads it back by type alone, with no live
         // control involved, proving the association Theme.SetStyle<Button> stored.
-        var typedStyle = new ControlStyle<Button>();
+        ControlStyle<Button> typedStyle = new();
         typedStyle.Set(BackgroundProperty, State.Normal, Color.Indexed(4));
         typedStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Heavy);
-        var spotlight = new Theme();
+        Theme spotlight = new();
         spotlight.SetStyle(typedStyle);
 
         var resolvedBackground = ThemeResolver.Resolve(
@@ -45,20 +43,20 @@ internal sealed class ThemingPane: View
         var resolvedGlyphs = ThemeResolver.Resolve(
             spotlight, typeof(Button), BorderGlyphsProperty, State.Normal);
 
-        var typedPreview = new Button()
+        Button typedPreview = new()
         {
             Content = new Text("Every Button"),
             Style = spotlight.GetStyle<Button>(),
         };
-        var typedReadout = new Text(
+        Text typedReadout = new(
             $"ThemeResolver.Resolve(theme, typeof(Button), ...) reports background set: {resolvedBackground.HasValue}, border glyphs: {resolvedGlyphs}. The preview button borrows the same style object as a local override so the values are visible here.");
 
         // A local override attaches a ControlStyle directly to one instance, skipping any theme.
-        var localStyle = new ControlStyle<Button>();
+        ControlStyle<Button> localStyle = new();
         localStyle.Set(ForegroundProperty, State.Normal, Color.Indexed(3));
         localStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Ascii);
-        var overridden = new Button() { Content = new Text("Only me"), Style = localStyle };
-        var plain = new Button() { Content = new Text("Themed sibling") };
+        Button overridden = new() { Content = new Text("Only me"), Style = localStyle };
+        Button plain = new() { Content = new Text("Themed sibling") };
 
         var roleSwatches = BuildRoleSwatches();
 
@@ -95,7 +93,7 @@ internal sealed class ThemingPane: View
         for (var index = 0; index < roles.Length; index++)
         {
             var role = roles[index];
-            var chip = new Border()
+            var chip = new Dock()
             {
                 Width = Length.Cells(6),
                 Height = Length.Cells(1),

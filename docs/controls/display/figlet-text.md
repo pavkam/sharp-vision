@@ -12,8 +12,8 @@ overrides over normal resolved appearance.
 
 Measure reports the maximum generated terminal-cell width and generated row
 count under the inherited application cell policy. The control does not scale or
-wrap FIGlet glyphs. Parent clipping and a `ScrollView` provide bounded
-presentation for large fonts.
+wrap FIGlet glyphs. Parent clipping and an `AutoScroll`-enabled container
+provide bounded presentation for large fonts.
 
 ## Example
 

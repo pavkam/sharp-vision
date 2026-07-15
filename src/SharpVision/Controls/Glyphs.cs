@@ -5,7 +5,7 @@ namespace SharpVision.Controls;
 
 
 
-/// <summary>Defines immutable printable narrow Runes for every Border segment.</summary>
+/// <summary>Defines immutable printable narrow Runes for every border segment.</summary>
 public readonly record struct Glyphs
 {
     /// <summary>Initializes and validates all physical border glyphs.</summary>

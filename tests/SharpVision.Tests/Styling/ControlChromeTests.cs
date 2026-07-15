@@ -14,7 +14,7 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawPartialBorder_WhenOnlyTopEdgeIsEnabled_DrawsSingleRow()
     {
-        var border = new Border()
+        var control = new LayoutProbe()
         {
             Bounds = new Rect(0, 0, 3, 2),
             BorderThickness = new Thickness(0, 1, 0, 0),
@@ -22,7 +22,7 @@ public sealed class ControlChromeTests
         };
         using Frame frame = new(new Size(3, 2));
 
-        border.Render(frame.Canvas);
+        control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("-");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("-");
@@ -34,19 +34,48 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawShadow_WhenCompositeModeIsUsed_LeavesBodyCellsUntouched()
     {
-        var shadow = new Shadow()
+        var control = new LayoutProbe()
         {
             Bounds = new Rect(0, 0, 2, 2),
-            Mode = ShadowMode.Composite,
-            Offset = new Point(1, 1),
+            HasShadow = true,
+            ShadowMode = ShadowMode.Composite,
+            ShadowOffset = new Point(1, 1),
+            ShadowAttributes = Attributes.Dim,
         };
         using Frame frame = new(new Size(4, 4));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
 
-        shadow.Render(frame.Canvas);
+        control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("x");
         frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldNotBe(Attributes.Dim);
+        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+    }
+
+    /// <summary>Verifies an unset shadow background preserves the destination surface.</summary>
+    [Fact]
+    public void DrawShadow_WhenShadowBackgroundIsUnset_PreservesDestinationBackground()
+    {
+        LayoutProbe control = new()
+        {
+            Bounds = new Rect(0, 0, 2, 2),
+            HasShadow = true,
+            ShadowMode = ShadowMode.Composite,
+            ShadowOffset = new Point(1, 1),
+            ShadowAttributes = Attributes.Dim,
+        };
+        var background = Color.Indexed(238);
+        using Frame frame = new(new Size(4, 4));
+        frame.Canvas.Fill(
+            frame.Canvas.Bounds,
+            new Rune('x'),
+            new TerminalStyle(Color.Default, background));
+
+        control.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("x");
+        frame.GetCell(new Point(2, 1)).Style.Background.Kind.ShouldBe(ColorKind.Indexed);
+        frame.GetCell(new Point(2, 1)).Style.Background.Red.ShouldBe((byte) 238);
         frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
@@ -68,14 +97,14 @@ public sealed class ControlChromeTests
     [Fact]
     public void Measure_WhenBorderThicknessIsSet_ReservesActiveEdges()
     {
-        var border = new Border()
+        var control = new Dock()
         {
             BorderThickness = new Thickness(1, 0, 0, 0),
-            Child = new ControlText("ab"),
+            Children = { new ControlText("ab") },
         };
 
-        new Engine().Layout(border, new Size(10, 4));
+        new Engine().Layout(control, new Size(10, 4));
 
-        border.DesiredSize.ShouldBe(new Size(3, 1));
+        control.DesiredSize.ShouldBe(new Size(3, 1));
     }
 }

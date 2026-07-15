@@ -74,11 +74,11 @@ internal sealed class WindowPane: View
             Doc.Example(
                 "Titled application surface",
                 "A Window owns its interior while title chrome, frame, and shadow render as one terminal-safe surface. Try Enter for Apply or Escape for Cancel.",
-                new Border
+                new Dock
                 {
                     BorderThickness = new Thickness(1),
-                    Glyphs = Glyphs.Light,
-                    Child = stage,
+                    BorderGlyphs = Glyphs.Light,
+                    Children = { stage },
                 }));
     }
 

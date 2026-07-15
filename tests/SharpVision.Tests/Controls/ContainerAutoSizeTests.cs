@@ -7,6 +7,43 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies AutoSize grow/shrink on a container.</summary>
 public sealed class ContainerAutoSizeTests
 {
+    /// <summary>Verifies AutoSize includes border and padding in the border box while preserving the content inset.</summary>
+    [Fact]
+    public void AutoSize_WhenContentHasPaddingAndBorder_SizesBorderBoxAndInsetsContent()
+    {
+        ProbeControl child = new(new Size(4, 2));
+        LayoutProbe container = new()
+        {
+            AutoSize = true,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(2, 1, 3, 2),
+        };
+        container.Children.Add(child);
+
+        new Engine().Layout(container, new Size(40, 40));
+
+        container.DesiredSize.ShouldBe(new Size(11, 7));
+        container.Bounds.ShouldBe(new Rect(0, 0, 11, 7));
+        child.Bounds.ShouldBe(new Rect(3, 2, 4, 2));
+    }
+
+    /// <summary>Verifies AutoSize saturates a content, padding, and border sum beyond the integer range.</summary>
+    [Fact]
+    public void AutoSize_WhenPaddingAndBorderExceedIntegerRange_SaturatesBorderBox()
+    {
+        LayoutProbe container = new()
+        {
+            AutoSize = true,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(int.MaxValue - 2, 0, 0, 0),
+        };
+        container.Children.Add(new ProbeControl(new Size(1, 1)));
+
+        container.Measure(new Constraint(width: null, height: null));
+
+        container.DesiredSize.ShouldBe(new Size(int.MaxValue, 3));
+    }
+
     /// <summary>Verifies AutoSize shrink-wraps a stretched container to its content.</summary>
     [Fact]
     public void AutoSize_WhenStretchedSlot_SizesToContent()

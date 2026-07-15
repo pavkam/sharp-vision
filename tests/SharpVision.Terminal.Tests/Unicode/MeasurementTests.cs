@@ -28,21 +28,30 @@ public sealed class MeasurementTests
     [Fact]
     public void Measure_WhenEmptyAndWarm_AllocatesNoManagedBytes()
     {
-        for (var index = 0; index < 100; index++)
-        {
-            _ = Width.Measure([], Ambiguous.Narrow);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
         for (var index = 0; index < 10_000; index++)
         {
             _ = Width.Measure([], Ambiguous.Narrow);
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var minimum = long.MaxValue;
 
-        allocated.ShouldBe(0);
+        // Sample multiple windows so one-time tiered-PGO bookkeeping cannot
+        // become product allocation data.
+        for (var sample = 0; sample < 5; sample++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+
+            for (var index = 0; index < 10_000; index++)
+            {
+                _ = Width.Measure([], Ambiguous.Narrow);
+            }
+
+            minimum = Math.Min(
+                minimum,
+                GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+
+        minimum.ShouldBe(0);
     }
 
     /// <summary>

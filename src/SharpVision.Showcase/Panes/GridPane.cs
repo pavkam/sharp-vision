@@ -5,7 +5,6 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-
 /// <summary>Documents the Grid control with fixed, star, auto, and spanning track specimens.</summary>
 internal sealed class GridPane: View
 {
@@ -15,7 +14,7 @@ internal sealed class GridPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
-        var fixedTracks = new Grid()
+        Grid fixedTracks = new()
         {
             Width = Length.Cells(33),
             Height = Length.Cells(4),
@@ -30,7 +29,7 @@ internal sealed class GridPane: View
         AddCell(fixedTracks, "9 cells", 0, 1);
         AddCell(fixedTracks, "9 cells", 0, 2);
 
-        var proportionalTracks = new Grid()
+        Grid proportionalTracks = new()
         {
             Width = Length.Cells(40),
             Height = Length.Cells(7),
@@ -52,7 +51,7 @@ internal sealed class GridPane: View
         AddCell(proportionalTracks, "Star 1", 2, 0);
         AddCell(proportionalTracks, "Star 2", 2, 1);
 
-        var spans = new Grid()
+        Grid spans = new()
         {
             Width = Length.Cells(36),
             Height = Length.Cells(9),
@@ -108,11 +107,11 @@ internal sealed class GridPane: View
         grid.Children.Add(cell);
     }
 
-    private static Border Card(string text) => new()
+    private static Dock Card(string text) => new()
     {
-        Child = new Text(text),
         BorderThickness = new Thickness(1),
-        Glyphs = Glyphs.Light,
+        BorderGlyphs = Glyphs.Light,
         Padding = new Thickness(1, 0),
+        Children = { new Text(text) },
     };
 }

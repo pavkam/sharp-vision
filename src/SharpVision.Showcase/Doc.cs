@@ -69,15 +69,15 @@ internal static class Doc
     /// <param name="child">The specimen to frame.</param>
     /// <returns>A bordered card.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
-    internal static Border Card(Control child)
+    internal static Dock Card(Control child)
     {
         ArgumentNullException.ThrowIfNull(child);
-        return new Border
+        return new Dock
         {
-            Child = child,
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
+            BorderGlyphs = Glyphs.Rounded,
             Padding = new Thickness(1, 0),
+            Children = { child },
         };
     }
 

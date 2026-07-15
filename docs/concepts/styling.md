@@ -64,9 +64,42 @@ showcase theme toggling, and exact terminal cell output.
 
 ## Shared chrome
 
-Border, shadow, and opaque body fill rasterize through one internal geometry so
-`Button`, `Window`, `Border`, and `Shadow` share a single draw path. A derived
-control draws the same chrome through the protected `RenderChrome` method (base
-`OnRender` calls it); the base control deflates `ContentBounds` by border
-thickness before padding. See [Theming a new control](theming-new-controls.md)
-for the full extender surface.
+Border, shadow, and opaque body fill rasterize through one internal geometry.
+Every `Control` owns this chrome directly; there are no `Border` or `Shadow`
+wrapper controls. A derived control draws the shared chrome through the
+protected `RenderChrome` method (base `OnRender` calls it), while the base
+control expands its visual bounds for shadow overflow without changing desired
+size, arranged bounds, child slots, or pointer hit testing.
+
+`BorderThickness` defaults to zero and reserves the enabled edges during measure
+and arrange before padding. Each edge is either zero or one cell; larger values
+are rejected before mutation. `BorderGlyphs` defaults to `Glyphs.Default`, while
+`BorderColor` and `BorderAttributes` default to null and inherit the resolved
+body style. Border thickness invalidates measure; the remaining border
+properties invalidate render. A custom-rendering leaf that needs a separate
+visible frame is wrapped in an ordinary chrome-rendering container such as
+`Dock`, with the intrinsic border properties set on that container.
+
+`HasShadow` enables the overflow and defaults to `false` on `Control`.
+`ShadowMode` selects composite styling or block-glyph replacement,
+`ShadowOffset` supplies the signed cell translation, and `ShadowGlyph` supplies
+the printable one-cell block Rune. The base defaults are composite mode, zero
+offset, and dark shade `▓`; derived controls such as `Button` and `Window` may
+publish different class defaults. `ShadowForeground`, `ShadowBackground`, and
+`ShadowAttributes` style only the shadow. An explicit `ShadowBackground`
+replaces the background of shadow cells while composite mode preserves their
+graphemes and complete wide-cell ownership. When `ShadowBackground` is null, a
+generic `Background` supplies the same opaque shadow fallback; when both are
+null, composite shadowing preserves the destination background. Unsupported wide
+block glyphs use the documented fixed-cell fallback under the inherited
+ambiguous-width policy.
+
+All shadow properties invalidate render only. `ShadowMode` rejects undefined
+values, and `ShadowGlyph` rejects control or non-one-cell Runes before mutation.
+Signed offsets can overflow on any side: the shadow is clipped by the inherited
+ancestor clip and frame bounds, never participates in layout, and never expands
+pointer hit testing.
+
+The base control also deflates `ContentBounds` by border thickness before
+padding. See [Theming a new control](theming-new-controls.md) for the full
+extender surface.
