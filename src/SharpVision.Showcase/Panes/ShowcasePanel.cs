@@ -54,13 +54,14 @@ public sealed class ShowcasePanel: Control
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
+        RenderChrome(canvas);
+
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
             return;
         }
 
         var style = ResolvedStyle;
-        canvas.Clear(Bounds, style);
         _ = canvas.Draw(Caption.AsSpan(), ResolveCaptionPoint(Caption), style);
         _ = canvas.Draw("Themed body".AsSpan(), ResolveBodyPoint(Caption), style);
     }

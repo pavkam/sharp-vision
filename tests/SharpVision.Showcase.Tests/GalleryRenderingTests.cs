@@ -37,7 +37,7 @@ public sealed class GalleryRenderingTests
     public void Render_WhenDocumentationPaneIsNarrow_WrapsCompleteTextGuidance()
     {
         using var gallery = CreateThemedGallery();
-        gallery.Select(1);
+        gallery.Select(IndexOf(gallery, "Button"));
         var size = new Size(80, 40);
         new Engine().Layout(gallery, size);
         using Frame frame = new(size);
@@ -72,7 +72,7 @@ public sealed class GalleryRenderingTests
     public void Render_WhenCanvasPageIsSelected_ShowsGuidedPlacementExamples()
     {
         using var gallery = CreateThemedGallery();
-        gallery.Select(2);
+        gallery.Select(IndexOf(gallery, "Canvas"));
         var size = new Size(120, 80);
         new Engine().Layout(gallery, size);
         using Frame frame = new(size);
@@ -80,9 +80,13 @@ public sealed class GalleryRenderingTests
         gallery.Render(frame.Canvas);
 
         var screen = new Screen(frame);
-        var edge = Find<Border>(
+        var edge = Find<Dock>(
             gallery.Content,
-            static value => value.Child is ControlText { Content: "Right 2 / Bottom 1" });
+            static value =>
+                value.BorderThickness == new Thickness(1) &&
+                value.BorderGlyphs == Glyphs.Paired &&
+                value.Children.Count == 1 &&
+                value.Children[0] is ControlText { Content: "Right 2 / Bottom 1" });
         edge.ShouldNotBeNull().Bounds.Right.ShouldBeLessThanOrEqualTo(size.Width);
         screen.Text.ShouldContain("Fixed placement");
         screen.Text.ShouldContain("Percentage placement");
@@ -92,6 +96,29 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("50%,50%");
         screen.Text.ShouldContain("Right 2 / Bottom 1");
         screen.ValidateContinuations();
+    }
+
+    /// <summary>Verifies the third-party ShowcasePanel paints intrinsic chrome before its custom content.</summary>
+    [Fact]
+    public void Render_WhenThemingPageIsSelected_DrawsShowcasePanelIntrinsicFrame()
+    {
+        using var gallery = CreateThemedGallery();
+        gallery.Select(IndexOf(gallery, "Theming"));
+        var size = new Size(120, 80);
+        new Engine().Layout(gallery, size);
+        using Frame frame = new(size);
+
+        gallery.Render(frame.Canvas);
+
+        var panel = FindAll<ShowcasePanel>(gallery.Content).ShouldHaveSingleItem();
+        Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Y)).ShouldBe("╭");
+        Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Y)).ShouldBe("╮");
+        Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Bottom - 1)).ShouldBe("╰");
+        Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Bottom - 1)).ShouldBe("╯");
+        Grapheme(frame, new Point(panel.Bounds.X + 1, panel.Bounds.Y + 1)).ShouldBe("S");
+        Grapheme(
+            frame,
+            new Point(panel.Bounds.X + panel.Caption.Length + 2, panel.Bounds.Y + 1)).ShouldBe("T");
     }
 
     /// <summary>Verifies the Window page exposes chrome variants and centers its dialog actions.</summary>
@@ -219,6 +246,21 @@ public sealed class GalleryRenderingTests
         List<T> matches = [];
         Visit(control, matches);
         return matches;
+    }
+
+    private static string Grapheme(Frame frame, Point point)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        var length = frame.GetGraphemeByteCount(point);
+
+        if (length == 0)
+        {
+            return string.Empty;
+        }
+
+        var bytes = new byte[length];
+        _ = frame.CopyGrapheme(point, bytes);
+        return Encoding.UTF8.GetString(bytes);
     }
 
     private static void Visit<T>(Control control, List<T> matches) where T : Control

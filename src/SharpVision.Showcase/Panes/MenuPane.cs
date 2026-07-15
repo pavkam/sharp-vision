@@ -29,11 +29,11 @@ internal sealed class MenuPane: View
         menu.Items.Add(new MenuItem { Header = "Comfortable mode", Kind = MenuItemKind.Radio, GroupName = "density" });
         menu.ItemInvoked += (_, eventArgs) => status.Content = $"Invoked {eventArgs.Item.Header}.";
 
-        var framed = new Border()
+        var framed = new Dock()
         {
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            Child = menu,
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { menu },
         };
 
         var barStatus = new Text("Choose a top-level action.");
@@ -48,11 +48,11 @@ internal sealed class MenuPane: View
         bar.Items.Add(new MenuItem { Header = "Help" });
         bar.ItemInvoked += (_, eventArgs) => barStatus.Content = $"Invoked {eventArgs.Item.Header}.";
 
-        var framedBar = new Border()
+        var framedBar = new Dock()
         {
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            Child = bar,
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { bar },
         };
 
         var withDisabled = new Menu()
@@ -64,11 +64,11 @@ internal sealed class MenuPane: View
         withDisabled.Items.Add(new MenuItem { Header = "Unavailable action", IsEnabled = false });
         withDisabled.Items.Add(new MenuItem { Header = "Another available action" });
 
-        var framedDisabled = new Border()
+        var framedDisabled = new Dock()
         {
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
-            Child = withDisabled,
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { withDisabled },
         };
 
         return Doc.Page(

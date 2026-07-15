@@ -84,18 +84,18 @@ internal sealed class CanvasPane: View
         ClipToBounds = true,
     };
 
-    private static Border Frame(Control child) => new()
+    private static Dock Frame(Control child) => new()
     {
-        Child = child,
+        Children = { child },
         BorderThickness = new Thickness(1),
-        Glyphs = Glyphs.Light,
+        BorderGlyphs = Glyphs.Light,
     };
 
-    private static Border Card(string content, Glyphs glyphs) => new()
+    private static Dock Card(string content, Glyphs glyphs) => new()
     {
-        Child = new Text(content),
+        Children = { new Text(content) },
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
     };
 }

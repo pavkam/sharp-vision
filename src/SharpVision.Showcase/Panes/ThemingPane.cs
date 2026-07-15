@@ -95,7 +95,7 @@ internal sealed class ThemingPane: View
         for (var index = 0; index < roles.Length; index++)
         {
             var role = roles[index];
-            var chip = new Border()
+            var chip = new Dock()
             {
                 Width = Length.Cells(6),
                 Height = Length.Cells(1),

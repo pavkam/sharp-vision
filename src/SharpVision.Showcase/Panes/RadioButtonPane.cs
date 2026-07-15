@@ -23,11 +23,11 @@ internal sealed class RadioButtonPane: View
             GroupName = "quality",
             IsEnabled = false,
         };
-        var group = new Border()
+        var group = new Dock()
         {
-            Child = Doc.Column(fast, balanced, unavailable),
+            Children = { Doc.Column(fast, balanced, unavailable) },
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
+            BorderGlyphs = Glyphs.Rounded,
             Padding = new Thickness(1, 0),
         };
 
@@ -37,11 +37,11 @@ internal sealed class RadioButtonPane: View
             GroupName = "delivery",
             IsChecked = true,
         };
-        var separate = new Border()
+        var separate = new Dock()
         {
-            Child = independent,
+            Children = { independent },
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Light,
+            BorderGlyphs = Glyphs.Light,
             Padding = new Thickness(1, 0),
         };
 

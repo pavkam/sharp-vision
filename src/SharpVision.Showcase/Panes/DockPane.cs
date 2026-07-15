@@ -84,11 +84,11 @@ internal sealed class DockPane: View
                 noFill));
     }
 
-    private static Border Card(string label, Glyphs glyphs) => new()
+    private static Dock Card(string label, Glyphs glyphs) => new()
     {
-        Child = new Text(label),
+        Children = { new Text(label) },
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
     };
 }

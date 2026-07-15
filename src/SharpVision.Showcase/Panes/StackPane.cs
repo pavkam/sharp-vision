@@ -53,11 +53,11 @@ internal sealed class StackPane: View
                 vertical));
     }
 
-    private static Border Card(string text, Glyphs glyphs) => new()
+    private static Dock Card(string text, Glyphs glyphs) => new()
     {
-        Child = new Text(text),
+        Children = { new Text(text) },
         BorderThickness = new Thickness(1),
-        Glyphs = glyphs,
+        BorderGlyphs = glyphs,
         Padding = new Thickness(1, 0),
     };
 }

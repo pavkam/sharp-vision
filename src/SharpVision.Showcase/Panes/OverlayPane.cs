@@ -24,11 +24,11 @@ internal sealed class OverlayPane: View
         Overlay.SetZIndex(back, -1);
         zOrder.Children.Add(back);
 
-        var middle = new Border()
+        var middle = new Dock()
         {
-            Child = new Text("Middle layer"),
+            Children = { new Text("Middle layer") },
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Heavy,
+            BorderGlyphs = Glyphs.Heavy,
             Padding = new Thickness(1, 0),
             Margin = new Thickness(4, 2, 4, 2),
         };
@@ -55,11 +55,11 @@ internal sealed class OverlayPane: View
         alignment.Children.Add(new Text("Bottom-left") { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom });
         alignment.Children.Add(new Text("Bottom-right") { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom });
 
-        var oversizedContent = new Border()
+        var oversizedContent = new Dock()
         {
-            Child = new Text("Overflowing card"),
+            Children = { new Text("Overflowing card") },
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
+            BorderGlyphs = Glyphs.Rounded,
             Width = Length.Cells(20),
             Height = Length.Cells(3),
             Margin = new Thickness(6, 1, 0, 0),
@@ -72,11 +72,11 @@ internal sealed class OverlayPane: View
         };
         clipped.Children.Add(oversizedContent);
 
-        var unclippedContent = new Border()
+        var unclippedContent = new Dock()
         {
-            Child = new Text("Overflowing card"),
+            Children = { new Text("Overflowing card") },
             BorderThickness = new Thickness(1),
-            Glyphs = Glyphs.Rounded,
+            BorderGlyphs = Glyphs.Rounded,
             Width = Length.Cells(20),
             Height = Length.Cells(3),
             Margin = new Thickness(6, 1, 0, 0),

@@ -108,11 +108,11 @@ internal sealed class GridPane: View
         grid.Children.Add(cell);
     }
 
-    private static Border Card(string text) => new()
+    private static Dock Card(string text) => new()
     {
-        Child = new Text(text),
+        Children = { new Text(text) },
         BorderThickness = new Thickness(1),
-        Glyphs = Glyphs.Light,
+        BorderGlyphs = Glyphs.Light,
         Padding = new Thickness(1, 0),
     };
 }
