@@ -22,11 +22,14 @@ the content's ordinary box-model or input routing.
   chrome and its body surface.
 - `HasShadow`, `ShadowMode`, `ShadowOffset`, and `ShadowGlyph` select composite
   darkening or a block-glyph shadow outside the window body.
+- `CanMove` (default `true`) enables title-bar drag-to-reposition when the
+  window is a child of a `Canvas`. A primary pointer press on the top edge
+  captures the pointer; move events update `Canvas.SetLeft` and `Canvas.SetTop`
+  in real time; release ends the drag.
 
 ## Lifecycle and interaction
 
-Windows do not introduce a special activation, modality, move, or resize model:
-their content remains in the surrounding control tree and receives normal focus,
+Content remains in the surrounding control tree and receives normal focus,
 keyboard, pointer, resize, and clipping behavior. This makes `Window` useful as
 a composable visual surface inside an `Overlay` or `Canvas`. If an unhandled
 Enter or Escape bubbles through the window, its first available `Button` with
