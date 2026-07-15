@@ -2,84 +2,153 @@
 
 ## Text contract
 
-`Text` displays immutable-at-render string content using shared grapheme and
-cell geometry. It is not focusable by default and emits no terminal protocols.
+`Text` is a non-focusable display control that formats Unicode text and applies
+semantic terminal style through compact inline markup. It derives from
+`Control`, draws only to the semantic cell canvas, and never emits terminal
+protocol bytes. Markup is the only styled-text authoring surface; there is no
+mutable run or inline object model.
 
-## API
+## API and defaults
 
-- `Content` is a non-null string; setting null throws `ArgumentNullException`.
-- `Wrapping` is none, word, or grapheme.
-- `Trimming` is none, clip, character ellipsis, or word ellipsis.
-- `TextAlignment` is start, center, or end within the arranged line width.
-- `AmbiguousWidth` inherits the application cell policy until explicitly set; an
-  explicit value remains a control-local measurement and rendering override.
-- `Foreground`, `Background`, and `Attributes` optionally override style values.
-- `Lines` exposes read-only committed line metrics after layout.
+- `Content` is a non-null markup string and defaults to empty. Assigning null
+  throws `ArgumentNullException` before mutation. Unknown or malformed markup
+  renders literally rather than throwing.
+- `Overflow` defaults to `Visible`. `Wrap` prefers whitespace and falls back to
+  grapheme boundaries; `WrapAnywhere` breaks only between graphemes; `Clip`
+  keeps the complete clusters that fit; `Ellipsis` reserves the ellipsis width,
+  prefers a word boundary, and falls back to a grapheme boundary; `Visible`
+  preserves each complete logical line and reports its full cell width.
+- `TextAlignment` defaults to `Start` and places each formatted line at start,
+  center, or end within its arranged content width.
+- `AmbiguousWidth` inherits the application cell policy until explicitly set. An
+  explicit narrow or wide value remains local to the control.
+- `Lines` exposes the committed visible-text line metrics as
+  `ReadOnlyMemory<Line>` until the next successful layout.
+- `Text.Escape(string)` escapes dynamic visible text for interpolation into
+  markup. A null argument throws `ArgumentNullException`.
 
-Content and wrapping changes invalidate measure. Pure color/attribute changes
-invalidate render. Alignment invalidates arrange/render without re-segmenting
-content when the width constraint is unchanged.
+Unknown enum values throw `ArgumentOutOfRangeException` before observable state
+changes. Attached-control mutation remains dispatcher-affine and may throw the
+base control's documented `InvalidOperationException` or
+`ObjectDisposedException`.
 
-`Text` caches layout by content identity, final width, wrapping, trimming, and
-ambiguous-width policy. Its reusable `Line[]` grows only when required capacity
-increases. Alignment-only changes rewrite leading-cell metrics without
-re-enumerating graphemes. `Lines` is a `ReadOnlyMemory<Line>` view of the
-current commit and remains valid until the next successful layout.
+Content, overflow, and ambiguous-width changes invalidate measure. Alignment
+changes invalidate arrange. Resolved control style, theme, or visual-state
+changes invalidate render through the base styling contract.
 
-## Rendering
+## Markup grammar
 
-Segmentation follows the
-[Unicode geometry contract](../../concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract).
-Wrapping and ellipsis never split a grapheme or wide-cell ownership range.
-Newlines create logical lines; tab behavior follows an explicit tab policy.
+A tag is `<name>`, `<name=value>`, `</name>`, or the generic close `</>`. Names,
+named colors, theme roles, and named values are case-insensitive. One tag
+controls one facet; stacking tags composes facets. `</name>` removes the nearest
+still-open tag with that exact name, so independent facets may overlap. `</>`
+removes the most recently opened tag.
 
-## Layout engine
+| Facet            | Accepted tags                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------ |
+| Bold             | `<b>`, `<bold>`                                                                                  |
+| Dim              | `<d>`, `<dim>`                                                                                   |
+| Italic           | `<i>`, `<italic>`                                                                                |
+| Underline        | `<u>`, `<underline>`                                                                             |
+| Strike           | `<s>`, `<strike>`                                                                                |
+| Other attributes | `<reverse>`, `<blink>`, `<rapidblink>`, `<hidden>`, `<conceal>`, `<overline>`                    |
+| Foreground       | `<color>`, `<fg=value>`, `<color=value>`, or a bare color/role tag such as `<red>` or `<accent>` |
+| Background       | `<bg=value>`                                                                                     |
+| Underline color  | `<uc=value>`                                                                                     |
+| Underline shape  | `<u=straight>`, `<u=double>`, `<u=curly>`, `<u=dotted>`, `<u=dashed>`                            |
+| Hyperlink        | `<link=target>`, `<a=target>`                                                                    |
 
-`SharpVision.Text.Layout.Format` is the shared allocation-conscious formatting
-boundary. It accepts borrowed `ReadOnlySpan<char>` content, a non-negative cell
-width, `Wrapping`, `Trimming`, `Alignment`, the explicit terminal `Ambiguous`
-width policy, and caller-owned `Span<Line>` storage. Its return value is the
-complete required line count even when the destination stores only a prefix, so
-controls can size a reusable buffer without borrowing pooled memory.
+Bare `<u>` and valued `<u=...>` tags are one underline facet. The most recently
+opened underline wins until it closes; `double` maps to the semantic paired
+underline. Slow and rapid blink are likewise mutually exclusive, with the most
+recently opened blink tag winning. Other attribute flags combine.
 
-Each immutable `Line` records a UTF-16 `Offset` and `Length`, rendered `Cells`,
-alignment `Leading` cells, and `HasEllipsis`. Numeric values are non-negative;
-constructing invalid metrics throws `ArgumentOutOfRangeException`. Source slices
-exclude CR, LF, and CRLF delimiters and always start and end on extended
-grapheme boundaries. Empty content and trailing logical newlines produce stable
-empty lines.
+Logical line breaks are literal LF, CR, or CRLF content. There is deliberately
+no `<br>` tag.
 
-`Wrapping.None` preserves the logical line. `Wrapping.Word` prefers the last
-complete Unicode whitespace boundary and falls back to a grapheme break;
-`Wrapping.Grapheme` breaks only between clusters. `Trimming.Clip` removes only
-complete overflowing clusters. Grapheme and word ellipsis modes reserve the
-ellipsis glyph's width under the selected ambiguous-width policy and never split
-a wide cluster. A cluster that cannot fit an empty positive-width line is
-consumed as a clipped empty line rather than emitting a half-wide glyph. Tabs
-advance to explicit four-cell stops.
+### Color values
 
-## Example
+Color-valued tags accept:
+
+- ANSI palette names `black` through `white` and `brightblack` through
+  `brightwhite`; `gray` and `grey` alias `brightblack`;
+- semantic roles `foreground`, `background`, `surface`, `border`, `accent`,
+  `muted`, `selectionbackground`, `selectionforeground`, `error`, `warning`,
+  `success`, and `info`;
+- decimal palette indices from 0 through 255; or
+- RGB values `#rgb` and `#rrggbb`.
+
+Semantic roles resolve through the active theme at render time. Unresolved role
+values never reach terminal cells.
+
+### Escaping and recovery
+
+The markup metacharacters in visible text are `<` and `\`. Write `\<` for a
+literal opening angle and `\\` for a literal backslash. `>` is literal outside a
+tag. `Text.Escape` performs the required escaping for dynamic visible text:
 
 ```csharp
-var title = new Text("SharpVision")
+var user = "2 < 3";
+var message = new Text($"<b>Value:</b> {Text.Escape(user)}")
 {
-    Wrapping = TextWrapping.None,
-    TextAlignment = TextAlignment.Center,
+    Overflow = Overflow.Wrap,
 };
 ```
 
+Parsing is lenient and deterministic:
+
+- an unknown name, bad value, nested `<`, invalid hyperlink target, or missing
+  `>` preserves the complete raw fragment as visible text;
+- a stray named close is ignored;
+- open tags automatically end at the end of `Content`; and
+- a hyperlink target must be non-empty and contain no control code unit.
+
+Hyperlinks become OSC 8 metadata on cells but never open a URL automatically.
+
+## Unicode, layout, and rendering
+
+The parser produces one visible string plus internal non-overlapping semantic
+style spans. `SharpVision.Text.Layout.Format` accepts that visible string, a
+non-negative cell width, one `Overflow`, `Alignment`, explicit `Ambiguous`, and
+caller-owned `Span<Line>` storage. It returns the complete required line count
+even when the destination stores only a prefix.
+
+Each immutable `Line` records a visible-string UTF-16 `Offset` and `Length`,
+rendered `Cells`, alignment `Leading`, and `HasEllipsis`. Delimiters are
+excluded from slices. Empty content and trailing logical newlines produce stable
+empty lines. Tabs advance to four-cell stops.
+
+Segmentation follows the
+[Unicode geometry contract](../../concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract).
+Wrapping, clipping, ellipsis, and drawing never split a surrogate pair, extended
+grapheme cluster, or wide-cell owner. If a markup boundary occurs inside one
+grapheme, the style active at the cluster's first UTF-16 code unit applies to
+the complete cluster.
+
+Markup foreground, background, attributes, underline, underline color, and
+hyperlink overlay the control's resolved visual-state style. An explicit markup
+background draws opaquely; otherwise text preserves an already painted surface
+unless the control's resolved fill is opaque.
+
+`Text` reparses only after content changes, reuses its owned line array, and
+reformats only after visible text, width, overflow, or ambiguous-width changes.
+Alignment-only changes rewrite leading-cell metrics without re-enumerating
+graphemes. No pooled or borrowed parser memory crosses layout or frame
+boundaries.
+
 ## Test obligations
 
-Cover empty/multiline text, every wrapping/trimming mode, resize reflow,
-combining/emoji/wide clusters, alignment, inherited/direct style, clipping,
-invalid null assignment, allocation reuse, and exact cell output.
+Cover every tag and color form, named and generic closes, overlap, auto-close,
+complete-fragment malformed recovery, invalid links, escaping round trips, and
+fixed-seed span tiling. Cover all overflow modes, invalid values, empty and
+multiline text, resize reflow, alignment, tabs, combining marks, variation
+selectors, ZWJ emoji, wide cells, invalid UTF-16, and both ambiguous-width
+policies.
 
-Pure formatting additionally runs seed `0x007E875A` over 5,000 mixed valid and
-invalid UTF-16 inputs. It proves deterministic results, monotonic source
-consumption, grapheme-aligned slices, independently measured cell counts, and
-finite-width containment for wrapping and trimming modes.
-
-The control tests assert exact semantic graphemes and styles for multiline,
-wrapped, clipped, hidden, collapsed, narrow-ellipsis, and wide-ellipsis cases. A
-warmed unchanged 80-column Unicode measure/render loop samples five windows of
-1,000 iterations and requires zero managed allocation.
+Rendering proof includes exact semantic foreground/background/attributes, typed
+underline and underline color, theme-role resolution, OSC 8 metadata, mutually
+exclusive blink precedence, markup boundaries inside graphemes, transparent
+background preservation, ellipsis ownership, and multi-frame terminal output.
+The showcase owns one merged `Text` page with live markup, Unicode, overflow,
+hyperlink, and mutation specimens. A warmed unchanged 80-column Unicode
+measure/render loop must include a zero-allocation measured window.

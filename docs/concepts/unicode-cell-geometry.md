@@ -117,9 +117,9 @@ a placeholder.
 ## Shared consumers
 
 Measurement, wrapping, horizontal scrolling, clipping, cursor movement, hit
-testing, selection, `RichText`, canvas operations, damage tracking, and terminal
-encoding use this single geometry service. Password-mask measurement and
-rendering use the same inherited ambiguous-width policy.
+testing, selection, marked `Text`, canvas operations, damage tracking, and
+terminal encoding use this single geometry service. Password-mask measurement
+and rendering use the same inherited ambiguous-width policy.
 
 ## Test contract
 

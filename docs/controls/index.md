@@ -14,7 +14,6 @@ All controls derive from the
 - [Border](display/border.md#border-contract)
 - [Shadow](display/shadow.md#shadow-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
-- [RichText](display/rich-text.md#richtext-contract)
 
 ### Input
 

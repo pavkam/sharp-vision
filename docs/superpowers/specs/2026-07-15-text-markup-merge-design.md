@@ -172,9 +172,10 @@ flowchart LR
 
 ## Migration
 
-- Rewrite `RichTextPane`, `TablePane`, and `Doc.cs` to build markup strings, and
-  migrate every production, test, showcase, and documentation reference to the
-  deleted model and overflow enums.
+- Fold the useful `RichTextPane` specimens into `TextPane`, delete the obsolete
+  page and gallery entry, rewrite `TablePane` and `Doc.cs` with markup strings,
+  and migrate every production, test, showcase, and documentation reference to
+  the deleted model and overflow enums.
 - Merge `docs/controls/display/rich-text.md` into
   `docs/controls/display/text.md`; update the `Text` contract, the coverage
   matrix, and any inline links.

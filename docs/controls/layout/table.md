@@ -4,7 +4,7 @@
 
 `Table` owns typed rows of ordinary controls and aligns them against titled
 fixed, automatic, percentage, or proportional columns. It measures, arranges,
-and renders cells through the normal control pipeline, so rich text, links,
+and renders cells through the normal control pipeline, so marked text, links,
 buttons, and input controls can appear in a table without a separate rendering
 model.
 
@@ -46,7 +46,7 @@ table.Columns.Add(TableColumn.Fill("Details"));
 table.Rows.Add(new TableRow([
     new Text("Renderer"),
     new Text("Stable"),
-    new RichText(),
+    new Text("<link=https://example.test>Open documentation</link>"),
 ]));
 ```
 

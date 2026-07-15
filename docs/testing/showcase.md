@@ -3,7 +3,7 @@
 ## Showcase testing
 
 The showcase catalog test contains the exact concrete shipped-control inventory
-and fails when a control lacks its own page, typed RichText documentation,
+and fails when a control lacks its own page, wrapped marked-Text documentation,
 meaningful property descriptions, structured interaction rows, or fresh live
 example. Each example tree must contain the control named by its sidebar entry
 and must be detached and independently owned.
@@ -39,12 +39,12 @@ selects the Figlet font dropdown, then drags the ScrollBar thumb with SGR press,
 motion, and release reports, asserting each visible committed value.
 
 Every page must also contain a Practical recipe: one borderless, full-width,
-word-wrapped RichText narrative that explains when to use the control, describes
-each supported interaction path, and explains how resizing affects the page.
-Examples remain the place for bordered live specimens. The Interaction section
-is a standalone Table with Input, Behavior, and Result columns rather than
-another prose card. The page test protects the narrative's borderless structure
-alongside its responsive wrapping.
+word-wrapped marked `Text` narrative that explains when to use the control,
+describes each supported interaction path, and explains how resizing affects the
+page. Examples remain the place for bordered live specimens. The Interaction
+section is a standalone Table with Input, Behavior, and Result columns rather
+than another prose card. The page test protects the narrative's borderless
+structure alongside its responsive wrapping.
 
 Canvas and Shadow have dedicated virtual-screen assertions: Canvas must retain
 its labeled fixed, percentage, edge-constraint, and clipping stages within the

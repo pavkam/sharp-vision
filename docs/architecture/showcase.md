@@ -18,7 +18,7 @@ Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
 `*Pane : View` that overrides `Build()` and returns its content root once, on
 first layout, exactly like any other application-authored `View`. There is no
 shared showcase base class and no mandatory metadata: a pane composes public
-`Stack`, `RichText`, `Border`, and layout APIs directly. `Doc` (in
+`Stack`, marked `Text`, `Border`, and layout APIs directly. `Doc` (in
 `src/SharpVision.Showcase/Panes/Doc.cs`) holds the small composition helpers
 every pane shares: `Doc.Page(name, overview, sections...)` builds the bold
 heading plus an "Overview" paragraph and stacks the given sections beneath it;
@@ -29,9 +29,9 @@ composition shorthands for framing and arranging specimens.
 `Gallery` owns the stable catalog of pane titles and factories
 (`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
 concrete shipped control: Border, Button, Canvas, CheckBox, ComboBox, Dock,
-FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar,
-ScrollView, Shadow, Stack, Table, Text, TextInput, Window, and Theming.
-Foundation types and unimplemented specifications are not navigation entries.
+FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, ScrollBar, Shadow,
+Stack, Table, Text, TextInput, Window, and Theming. Foundation types and
+unimplemented specifications are not navigation entries.
 
 Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
 blocks: an Overview paragraph stating the control's purpose, followed by
@@ -40,8 +40,8 @@ shadow styles, disabled state, and so on) using only behavior available to
 ordinary application code — reflection and private render paths are forbidden.
 There are no Property or Interaction tables and no separate "Practical recipe"
 narrative section; documentation prose lives inline next to the specimen it
-describes. `RichText` headings and example descriptions use word wrapping, so
-they reflow as the page narrows along with the live specimens.
+describes. Marked `Text` headings and example descriptions use `Overflow.Wrap`,
+so they reflow as the page narrows along with the live specimens.
 
 Canvas and Shadow demonstrate visual behavior as several labeled, framed live
 specimens rather than a single crowded sample. Each stage keeps the control's
@@ -111,7 +111,7 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 ## Test contract
 
-Showcase tests assert the exact inventory, RichText documentation coverage,
+Showcase tests assert the exact inventory, marked `Text` documentation coverage,
 fresh detached page ownership, and matching runtime control type. They render
 every page at 30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell
 continuation structure, and prove automatic scrolling. A full Application test

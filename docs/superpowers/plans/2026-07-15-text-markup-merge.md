@@ -65,7 +65,11 @@ facet.
 - Quality gate before every commit: `make format && make lint && make build`
   plus the task's focused tests. Zero warnings, zero errors.
 - Focused test command form:
-  `dotnet test --project tests/SharpVision.Tests --filter-class "*ClassName" --timeout 120s`.
+
+  ```bash
+  dotnet test --project tests/SharpVision.Tests \
+    --filter-class "*ClassName" --timeout 120s
+  ```
 
 ## File structure
 
@@ -87,7 +91,6 @@ facet.
 - `src/SharpVision/Controls/Text.cs` — parse markup, render spans, expose
   `Overflow`, add `Escape`.
 - `src/SharpVision.Showcase/Panes/TextPane.cs`,
-  `src/SharpVision.Showcase/Panes/RichTextPane.cs`,
   `src/SharpVision.Showcase/Panes/TablePane.cs`,
   `src/SharpVision.Showcase/Panes/Doc.cs` — build markup strings.
 - `docs/controls/display/text.md` — merged contract; delete
@@ -101,6 +104,7 @@ facet.
 
 - `src/SharpVision/Controls/RichText.cs`, `Inline.cs`, `Inlines.cs`, `Run.cs`,
   `LineBreak.cs`, `Hyperlink.cs`.
+- `src/SharpVision.Showcase/Panes/RichTextPane.cs`.
 - `src/SharpVision/Text/Wrapping.cs`, `src/SharpVision/Text/Trimming.cs`.
 - `tests/SharpVision.Tests/Controls/RichTextTests.cs`.
 - `docs/controls/display/rich-text.md`.
@@ -284,7 +288,12 @@ public sealed class MarkupTests
 - [ ] **Step 3: Run it to verify it fails**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*MarkupTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*MarkupTests" --timeout 120s
+```
+
 Expected: FAIL — `Markup` does not exist.
 
 - [ ] **Step 4: Implement `Markup`**
@@ -798,7 +807,12 @@ internal readonly record struct Style
 - [ ] **Step 7: Run the passthrough test to verify it passes**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*MarkupTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*MarkupTests" --timeout 120s
+```
+
 Expected: PASS.
 
 - [ ] **Step 8: Add the behavior tests (one facet family per test)**
@@ -923,7 +937,12 @@ Append to `MarkupTests.cs`:
 - [ ] **Step 9: Run all parser tests**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*MarkupTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*MarkupTests" --timeout 120s
+```
+
 Expected: PASS. If a span-boundary test fails, verify `Parse` emits a boundary
 whenever `Style.From` changes and never emits a zero-length span except for
 empty input.
@@ -999,7 +1018,12 @@ public sealed class RandomizedMarkupTests
 - [ ] **Step 2: Run to verify it fails, then passes**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*RandomizedMarkupTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*RandomizedMarkupTests" --timeout 120s
+```
+
 Expected: PASS (the invariant should already hold from Task 1). This task still
 starts red by adding an independent escape round-trip property that includes
 random `<` and `\\` input before the implementation is generalized. If tiling
@@ -1031,7 +1055,16 @@ old overload and enums are deleted in Task 6.
 
 - Produces:
   - `enum Overflow { Wrap, WrapAnywhere, Clip, Ellipsis, Visible }`.
-  - `Layout.Format(ReadOnlySpan<char> value, int width, Overflow overflow, Alignment alignment, Ambiguous ambiguous, Span<Line> destination) → int`.
+
+    ```csharp
+    int Layout.Format(
+        ReadOnlySpan<char> value,
+        int width,
+        Overflow overflow,
+        Alignment alignment,
+        Ambiguous ambiguous,
+        Span<Line> destination);
+    ```
 
 - [ ] **Step 1: Write `Overflow`**
 
@@ -1110,7 +1143,12 @@ Append to `tests/SharpVision.Tests/Text/LayoutTests.cs`:
 - [ ] **Step 3: Run to verify failure**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*LayoutTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*LayoutTests" --timeout 120s
+```
+
 Expected: FAIL — no `Format(Overflow …)` overload.
 
 - [ ] **Step 4: Add the overload to `Layout`**
@@ -1156,7 +1194,12 @@ the current `(Wrapping, Trimming)` internal parameters:
 - [ ] **Step 5: Run to verify the tests pass**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*LayoutTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*LayoutTests" --timeout 120s
+```
+
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -1260,7 +1303,12 @@ imported in this test file.
 - [ ] **Step 2: Run to verify failure**
 
 Run:
-`dotnet test --project tests/SharpVision.Tests --filter-class "*TextTests" --timeout 120s`
+
+```bash
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*TextTests" --timeout 120s
+```
+
 Expected: FAIL — `Overflow`/`Escape` not on `Text`; markup not parsed.
 
 - [ ] **Step 3: Rewrite `Text.cs`**
@@ -1523,9 +1571,11 @@ and its inline model and tests. After this task no code references `RichText`,
 
 **Files:**
 
-- Modify: `src/SharpVision.Showcase/Panes/RichTextPane.cs`,
+- Modify: `src/SharpVision.Showcase/Panes/TextPane.cs`,
   `src/SharpVision.Showcase/Panes/TablePane.cs`,
   `src/SharpVision.Showcase/Panes/Doc.cs`
+- Delete: `src/SharpVision.Showcase/Panes/RichTextPane.cs` and remove its
+  gallery entry.
 - Delete: `src/SharpVision/Controls/RichText.cs`, `Inline.cs`, `Inlines.cs`,
   `Run.cs`, `LineBreak.cs`, `Hyperlink.cs`,
   `tests/SharpVision.Tests/Controls/RichTextTests.cs`
@@ -1570,7 +1620,7 @@ with:
 var linked = new Text("Open <link=https://invisible-island.net/xterm/ctlseqs/ctlseqs.html>protocol guide</link>");
 ```
 
-- [ ] **Step 3: Rewrite `RichTextPane.cs` as a `Text` markup showcase**
+- [ ] **Step 3: Merge the styled-text specimens into `TextPane.cs`**
 
 Rebuild each specimen as a markup string on `Text`. Mapping reference:
 
@@ -1596,11 +1646,11 @@ var introductory = new Text(
 };
 ```
 
-Rename the page title/text as desired, or keep "RichText" if the gallery entry
-name must stay stable (check `GalleryTests`). The pane no longer needs the
-`append`/mutation button that mutated `Inlines`; replace it with a button that
-reassigns `wrapped.Content` to a new markup string to preserve the "responsive
-reading column" interactive example.
+Delete the obsolete `RichTextPane` and gallery entry after folding its useful
+styled, linked, wrapped, and interactive specimens into the single `Text` page.
+Replace the inline-mutation button with one that reassigns `wrapped.Content` to
+a new markup string, and update gallery inventory, rendering, interaction, and
+tmux navigation tests for the removed page.
 
 - [ ] **Step 4: Delete the object model and its tests**
 
