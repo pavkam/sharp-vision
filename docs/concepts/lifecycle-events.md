@@ -16,6 +16,13 @@ after initial capabilities, root layout, and first committed frame. A
 cancellable stopping request occurs once; stopped occurs after cleanup attempts
 and pending invocation completion.
 
+Initial root attachment is one staged ownership publication. The application
+first commits dispatcher, Unicode policy, and theme context, installs focus and
+pointer-capture managers across the tree, and only then invokes control
+`OnAttached` callbacks. A callback can therefore use protected focus or capture
+helpers immediately and observes every sibling with the same complete inherited
+context. A supplied application root must be both detached and unowned.
+
 Resize follows the ordering in the
 [runtime event loop](../architecture/runtime-event-loop.md#resize-ordering).
 Frame rendered reports only a completed transport write and its damage/byte

@@ -37,7 +37,7 @@ public sealed class RandomizedLayoutTests
 
         for (var sample = 0; sample < _caseCount; sample++)
         {
-            var operation = random.Next(0, 10);
+            var operation = random.Next(0, 13);
             Apply(operation, random, root, controls, focus, capture, ref size);
             engine.Layout(root, size);
 
@@ -130,6 +130,32 @@ public sealed class RandomizedLayoutTests
                     Modifiers.None,
                     isMotion: true,
                     isCellPositionInferred: false));
+                break;
+            case 10 when control is not null:
+                control.Dispose();
+                _ = controls.Remove(control);
+                break;
+            case 11 when control is not null:
+                var replacement = new ProbeControl(new Size(random.Next(0, 20), random.Next(0, 8)))
+                {
+                    CanFocus = random.Next(0, 2) == 0,
+                    Content = random.Next(0, 2) == 0 ? "界".AsMemory() : "r".AsMemory(),
+                };
+                var index = controls.IndexOf(control);
+                root.Children[index] = replacement;
+                controls[index] = replacement;
+                control.Dispose();
+                break;
+            case 12 when controls.Count > 0:
+                var removed = controls.ToArray();
+                root.Children.Clear();
+                controls.Clear();
+
+                foreach (var item in removed)
+                {
+                    item.Dispose();
+                }
+
                 break;
             default:
                 break;

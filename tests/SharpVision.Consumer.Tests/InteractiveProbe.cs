@@ -6,6 +6,8 @@ namespace SharpVision.Consumer.Tests;
 /// <summary>Provides an externally authored interactive leaf that observes lifecycle and capture cleanup.</summary>
 public sealed class InteractiveProbe: Control
 {
+    private readonly List<(Control? Previous, Control? Current, Control? ObservedParent)> _parentChanges = [];
+
     /// <summary>Initializes a focusable one-cell interaction target.</summary>
     public InteractiveProbe()
     {
@@ -16,6 +18,28 @@ public sealed class InteractiveProbe: Control
 
     /// <summary>Gets the number of completed attachment hooks.</summary>
     public int AttachedCount { get; private set; }
+
+    /// <summary>Gets committed parent transitions and the parent visible during each callback.</summary>
+    public IReadOnlyList<(Control? Previous, Control? Current, Control? ObservedParent)> ParentChanges =>
+        _parentChanges;
+
+    /// <summary>Gets or sets whether attachment requests focus and pointer capture immediately.</summary>
+    public bool RequestOwnershipOnAttach { get; set; }
+
+    /// <summary>Gets the dispatcher observed inside the latest attachment hook.</summary>
+    public Dispatcher? AttachedDispatcher { get; private set; }
+
+    /// <summary>Gets the Unicode cell policy observed inside the latest attachment hook.</summary>
+    public Policy? AttachedCellPolicy { get; private set; }
+
+    /// <summary>Gets the resolved foreground observed inside the latest attachment hook.</summary>
+    public Color? AttachedForeground { get; private set; }
+
+    /// <summary>Gets the result of the focus request made inside the latest attachment hook.</summary>
+    public bool? AttachmentFocusResult { get; private set; }
+
+    /// <summary>Gets the result of the pointer-capture request made inside the latest attachment hook.</summary>
+    public bool? AttachmentCaptureResult { get; private set; }
 
     /// <summary>Gets the number of completed detachment hooks.</summary>
     public int DetachedCount { get; private set; }
@@ -63,6 +87,15 @@ public sealed class InteractiveProbe: Control
     {
         base.OnAttached();
         AttachedCount++;
+        AttachedDispatcher = Dispatcher;
+        AttachedCellPolicy = CellPolicy;
+        AttachedForeground = ResolvedStyle.Foreground;
+
+        if (RequestOwnershipOnAttach)
+        {
+            AttachmentFocusResult = RequestFocus();
+            AttachmentCaptureResult = CapturePointer();
+        }
     }
 
     /// <inheritdoc/>
@@ -93,5 +126,12 @@ public sealed class InteractiveProbe: Control
         }
 
         NotifyPropertyChanged(nameof(CaptureCancellationCount), ChangeImpact.Render);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnParentChanged(Control? previous, Control? current)
+    {
+        base.OnParentChanged(previous, current);
+        _parentChanges.Add((previous, current, Parent));
     }
 }

@@ -9,11 +9,14 @@ global using SharpVision.Controls;
 global using SharpVision.Input;
 global using SharpVision.Layout;
 global using SharpVision.Runtime;
+global using SharpVision.Styling;
 global using SharpVision.Terminal.Geometry;
+global using SharpVision.Terminal.Protocols;
 global using SharpVision.Terminal.Rendering;
 global using SharpVision.Terminal.Runtime;
 global using SharpVision.Terminal.Transport;
 global using SharpVision.Terminal.Unicode;
+global using SharpVision.Threading;
 
 global using Shouldly;
 

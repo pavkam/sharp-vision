@@ -38,7 +38,16 @@ public sealed class List: Container, IStyleScope
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
         };
-        _chrome = new Children(this, capacity: 1)
+        _chrome = new Children(
+            this,
+            capacity: 1,
+            new OwnedControlOptions(
+                OwnedControlRole.ItemHost,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: "items-host",
+                ChangeImpact.Measure))
         {
             _stack
         };
@@ -320,30 +329,6 @@ public sealed class List: Container, IStyleScope
 
     /// <inheritdoc/>
     internal override Control NavigationAt(int index) => _chrome[index];
-
-    /// <inheritdoc/>
-    internal override void VisitChildren(Action<Control> visitor)
-    {
-        ArgumentNullException.ThrowIfNull(visitor);
-
-        foreach (var child in _chrome)
-        {
-            visitor(child);
-        }
-    }
-
-    /// <inheritdoc/>
-    internal override void DisposeChildren()
-    {
-        while (_chrome.Count > 0)
-        {
-            var child = _chrome[^1];
-            _chrome.RemoveAt(_chrome.Count - 1);
-            child.Dispose();
-        }
-
-        base.DisposeChildren();
-    }
 
     /// <inheritdoc/>
     internal override void RenderChildren(TerminalCanvas canvas) => _stack.Render(canvas);

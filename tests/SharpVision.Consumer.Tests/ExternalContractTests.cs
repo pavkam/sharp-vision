@@ -126,4 +126,116 @@ public sealed class ExternalContractTests
 
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies the root attachment hook observes every application-owned runtime context.</summary>
+    [Fact]
+    public async Task OnAttached_WhenApplicationStarts_ObservesCompleteRuntimeContextAsync()
+    {
+        await using var terminal = new ConsumerTerminal();
+        terminal.QueueResize(new Dimensions(new Size(8, 3)));
+        var root = new InteractiveProbe()
+        {
+            Foreground = ThemeColors.Accent,
+        };
+        await using var application = new Application(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        application.Theme.TryGetColor(ColorRole.Accent, out var expectedAccent).ShouldBeTrue();
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        root.AttachedDispatcher.ShouldBeSameAs(application.Dispatcher);
+        root.AttachedCellPolicy.ShouldBeSameAs(application.CellPolicy);
+        (root.AttachedForeground == expectedAccent).ShouldBeTrue(
+            "The attachment hook must resolve the active application theme.");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies application-owned focus and capture managers exist before root attachment publishes.</summary>
+    [Fact]
+    public async Task OnAttached_WhenApplicationStarts_CanAcquireFocusAndCaptureAsync()
+    {
+        await using var terminal = new ConsumerTerminal();
+        terminal.QueueResize(new Dimensions(new Size(8, 3)));
+        var root = new InteractiveProbe() { RequestOwnershipOnAttach = true };
+        await using var application = new Application(
+            root,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        root.AttachmentFocusResult.ShouldBe(true);
+        root.AttachmentCaptureResult.ShouldBe(true);
+        application.Focus.Focused.ShouldBeSameAs(root);
+        application.Capture.Captured.ShouldBeSameAs(root);
+
+        await application.Dispatcher.InvokeAsync(
+            root.ReleaseCapture,
+            TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a detached control cannot become an application root while another control owns it.</summary>
+    [Fact]
+    public async Task Application_WhenDetachedRootIsAlreadyOwned_RejectsRootAsync()
+    {
+        await using var terminal = new ConsumerTerminal();
+        var owner = new FlowPanel();
+        var root = new InteractiveProbe();
+        owner.Children.Add(root);
+        Application? application = null;
+
+        try
+        {
+            root.Dispatcher.ShouldBeNull();
+            root.Parent.ShouldBeSameAs(owner);
+
+            var exception = Should.Throw<ArgumentException>(() =>
+                application = new Application(
+                    root,
+                    terminal,
+                    terminal,
+                    TerminalOptions.Minimal));
+
+            exception.ParamName.ShouldBe("root");
+            root.Parent.ShouldBeSameAs(owner);
+        }
+        finally
+        {
+            if (application is not null)
+            {
+                await application.DisposeAsync();
+            }
+
+            owner.Dispose();
+        }
+    }
+
+    /// <summary>Verifies an external override observes committed old and new ownership state.</summary>
+    [Fact]
+    public void OnParentChanged_WhenOwnershipCommits_ObservesPublishedParent()
+    {
+        var owner = new FlowPanel();
+        var child = new InteractiveProbe();
+
+        owner.Children.Add(child);
+        _ = owner.Children.Remove(child);
+
+        child.ParentChanges.Count.ShouldBe(2);
+        var (attachedPrevious, attachedCurrent, attachedObservedParent) = child.ParentChanges[0];
+        attachedPrevious.ShouldBeNull();
+        attachedCurrent.ShouldBeSameAs(owner);
+        attachedObservedParent.ShouldBeSameAs(owner);
+        var (detachedPrevious, detachedCurrent, detachedObservedParent) = child.ParentChanges[1];
+        detachedPrevious.ShouldBeSameAs(owner);
+        detachedCurrent.ShouldBeNull();
+        detachedObservedParent.ShouldBeNull();
+
+        child.Dispose();
+        owner.Dispose();
+    }
 }

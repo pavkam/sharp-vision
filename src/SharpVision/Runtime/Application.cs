@@ -70,7 +70,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     /// <param name="options">Validated terminal options, or null for defaults.</param>
     /// <param name="hostLease">An optional host resource disposed last after cleanup, or null.</param>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
-    /// <exception cref="ArgumentException"><paramref name="root"/> is already attached.</exception>
+    /// <exception cref="ArgumentException"><paramref name="root"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="root"/> is disposed.</exception>
     public Application(
         Control root,
@@ -84,9 +84,9 @@ public sealed partial class Application: ISink, IAsyncDisposable
         ArgumentNullException.ThrowIfNull(resize);
         ObjectDisposedException.ThrowIf(root.IsDisposed, root);
 
-        if (root.Dispatcher is not null)
+        if (root.Dispatcher is not null || root.Parent is not null || root.OwningSlot is not null)
         {
-            throw new ArgumentException("The application root must be detached.", nameof(root));
+            throw new ArgumentException("The application root must be detached and unowned.", nameof(root));
         }
 
         // The application owns the terminal viewport. Ordinary descendants
@@ -657,10 +657,16 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
         if (!_initialized)
         {
-            Root.Attach(Dispatcher, CellPolicy);
-            PublishThemeContext();
-            FocusValue = new FocusManager(Root);
-            CaptureValue = new CaptureManager(Root);
+            _themeContext = ThemeContext.Create(_theme);
+            Root.Attach(
+                Dispatcher,
+                CellPolicy,
+                _themeContext,
+                () =>
+                {
+                    FocusValue = new FocusManager(Root);
+                    CaptureValue = new CaptureManager(Root);
+                });
             _initialized = true;
             WakeInput();
         }

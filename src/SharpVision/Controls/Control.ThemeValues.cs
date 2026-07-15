@@ -116,24 +116,61 @@ public abstract partial class Control
         return false;
     }
 
-    internal void SetThemeContext(ThemeContext? context)
+    /// <summary>Commits one theme identity without publishing its property notification.</summary>
+    /// <param name="context">The inherited theme context, or null.</param>
+    /// <returns>True when the identity changed.</returns>
+    internal bool CommitThemeContext(ThemeContext? context)
     {
         if (ReferenceEquals(ThemeContext, context))
         {
-            return;
+            return false;
         }
 
         ThemeContext = context;
         InvalidateResolvedStyleCache();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+        return true;
+    }
+
+    /// <summary>Commits and publishes one local theme-context identity.</summary>
+    /// <param name="context">The inherited theme context, or null.</param>
+    internal void SetThemeContext(ThemeContext? context)
+    {
+        if (CommitThemeContext(context))
+        {
+            PublishThemeContextChanged();
+        }
     }
 
     /// <summary>Applies one theme context to this control and its complete subtree.</summary>
     /// <param name="context">The published theme context, or null to inherit none.</param>
     internal void PropagateThemeContext(ThemeContext? context)
     {
-        SetThemeContext(context);
-        VisitChildren(child => child.PropagateThemeContext(context));
+        OwnedControlRegistry.VerifyMutationAllowed(this);
+        var entered = OwnedControlRegistry.EnterPublication(this);
+        var themeChanged = new List<Control>();
+        var attached = new List<Control>();
+        var detached = new List<Control>();
+        var failure = (System.Runtime.ExceptionServices.ExceptionDispatchInfo?) null;
+
+        try
+        {
+            CommitSubtreeContext(
+                Dispatcher,
+                CellPolicy,
+                FocusOwner,
+                CaptureOwner,
+                context,
+                themeChanged,
+                attached,
+                detached);
+            PublishContextChanges(themeChanged, attached, detached, ref failure);
+        }
+        finally
+        {
+            OwnedControlRegistry.ExitPublication(entered);
+        }
+
+        failure?.Throw();
     }
 
     internal void SetInstanceStyle(IControlStyle? style) => InstanceStyle = style;

@@ -60,25 +60,6 @@ public abstract class Container: Control
         return HitTestChildren(point) ?? this;
     }
 
-    /// <inheritdoc/>
-    internal override void VisitChildren(Action<Control> visitor)
-    {
-        ArgumentNullException.ThrowIfNull(visitor);
-
-        foreach (var child in Children)
-        {
-            visitor(child);
-        }
-
-        if (_bars is not null)
-        {
-            foreach (var child in _bars)
-            {
-                visitor(child);
-            }
-        }
-    }
-
     private Control? HitTestChildren(Point point)
     {
         for (var index = Children.Count - 1; index >= 0; index--)
@@ -104,27 +85,6 @@ public abstract class Container: Control
         }
 
         return null;
-    }
-
-    /// <inheritdoc/>
-    internal override void DisposeChildren()
-    {
-        while (Children.Count > 0)
-        {
-            Children[^1].Dispose();
-        }
-
-        if (_bars is null)
-        {
-            return;
-        }
-
-        while (_bars.Count > 0)
-        {
-            var child = _bars[^1];
-            _bars.RemoveAt(_bars.Count - 1);
-            child.Dispose();
-        }
     }
 
     /// <inheritdoc/>
@@ -645,9 +605,9 @@ public abstract class Container: Control
 
         for (var current = control.Parent; current is not null; current = current.Parent)
         {
-            if (current.AutoScroll)
+            if (current is Container { AutoScroll: true } container)
             {
-                return current;
+                return container;
             }
         }
 
@@ -736,7 +696,20 @@ public abstract class Container: Control
         };
         _horizontal.ValueChanged += OnHorizontalChanged;
         _vertical.ValueChanged += OnVerticalChanged;
-        _bars = new Children(this, capacity: 2) { _horizontal, _vertical };
+        _bars = new Children(
+            this,
+            capacity: 2,
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: "scroll-bars",
+                ChangeImpact.Measure))
+        {
+            _horizontal,
+            _vertical,
+        };
 
         Debug.Assert(_bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
     }

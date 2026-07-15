@@ -102,13 +102,13 @@ internal static class RadioGroup
 
         if (value.GroupName is null)
         {
-            if (value.Parent is null)
+            if (value.OwningSlot is not { } slot)
             {
                 result.Add(value);
             }
             else
             {
-                foreach (var child in value.Parent.Children)
+                foreach (var child in slot.Items)
                 {
                     if (child is RadioButton { GroupName: null } member)
                     {

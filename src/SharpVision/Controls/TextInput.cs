@@ -29,7 +29,16 @@ public sealed class TextInput: Container
     /// <summary>Initializes an empty focusable single-line editor.</summary>
     public TextInput() : base(capacity: 0)
     {
-        _chrome = new Children(this, capacity: 2);
+        _chrome = new Children(
+            this,
+            capacity: 2,
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: false,
+                partKey: "editor-scroll-bars",
+                ChangeImpact.Arrange));
         _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
         _vertical = new ScrollBar { Orientation = Orientation.Vertical };
         _horizontal.ValueChanged += OnHorizontalChanged;
@@ -369,30 +378,6 @@ public sealed class TextInput: Container
         return IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled || !Bounds.Contains(point)
             ? null
             : _vertical.HitTest(point) ?? _horizontal.HitTest(point) ?? this;
-    }
-
-    /// <inheritdoc/>
-    internal override void VisitChildren(Action<Control> visitor)
-    {
-        ArgumentNullException.ThrowIfNull(visitor);
-
-        foreach (var child in _chrome)
-        {
-            visitor(child);
-        }
-    }
-
-    /// <inheritdoc/>
-    internal override void DisposeChildren()
-    {
-        while (_chrome.Count > 0)
-        {
-            var child = _chrome[^1];
-            _chrome.RemoveAt(_chrome.Count - 1);
-            child.Dispose();
-        }
-
-        base.DisposeChildren();
     }
 
     /// <inheritdoc/>

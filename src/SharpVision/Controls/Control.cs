@@ -17,11 +17,17 @@ using SharpVision.Terminal.Input;
 /// </remarks>
 public abstract partial class Control: INotifyPropertyChanged, IDisposable
 {
+    /// <summary>Initializes an empty control with one central visual-ownership registry.</summary>
+    protected Control() => OwnedControls = new OwnedControlRegistry(this);
+
     /// <summary>Raised after one public property has committed a changed value.</summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>Gets the owning parent, or null for a detached/root control.</summary>
-    public Container? Parent { get; private set; }
+    public Control? Parent { get; private set; }
+
+    /// <summary>Gets the exact slot owning this control, or null for an ownership root.</summary>
+    internal OwnedControlSlot? OwningSlot { get; private set; }
 
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
@@ -383,11 +389,16 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private bool IsDisposing { get; set; }
 
+    private bool OwnedDisposalRequested { get; set; }
+
     private bool CanFocusNotificationPending { get; set; }
 
     private bool HasSelectedState { get; set; }
 
     private List<IHandler>? Handlers { get; set; }
+
+    /// <summary>Gets this control's central direct-ownership registry.</summary>
+    internal OwnedControlRegistry OwnedControls { get; }
 
     /// <summary>Gets the inherited focus manager while one owns this subtree.</summary>
     internal FocusManager? FocusOwner { get; private set; }
@@ -458,7 +469,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
     /// <exception cref="ArgumentNullException"><paramref name="dispatcher"/> is null.</exception>
     /// <exception cref="ArgumentException">Any descendant is already attached.</exception>
-    /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher or this control is owned.</exception>
     /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
     internal void Attach(Dispatcher dispatcher)
         => Attach(dispatcher, Policy.Default);
@@ -468,21 +479,61 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ArgumentException">Any descendant is already attached.</exception>
-    /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher or this control is owned.</exception>
     /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
     internal void Attach(Dispatcher dispatcher, Policy cellPolicy)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(cellPolicy);
+        VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
         ValidateAttachment();
-        SetCellPolicy(cellPolicy);
-        SetDispatcher(dispatcher);
+        CommitAndPublishContext(
+            dispatcher,
+            cellPolicy,
+            FocusOwner,
+            CaptureOwner,
+            ThemeContext,
+            configure: null);
     }
 
-    /// <summary>Detaches this subtree from its dispatcher.</summary>
+    /// <summary>Stages application-root context and publishes lifecycle only after managers are configured.</summary>
+    /// <param name="dispatcher">The non-null owning dispatcher.</param>
+    /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>
+    /// <param name="themeContext">The non-null initial theme context.</param>
+    /// <param name="configure">Framework setup that installs focus and capture managers before publication.</param>
+    /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
+    /// <exception cref="ArgumentException">Any descendant is already attached.</exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher or this control is owned.</exception>
+    /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
+    internal void Attach(
+        Dispatcher dispatcher,
+        Policy cellPolicy,
+        ThemeContext themeContext,
+        System.Action configure)
+    {
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        ArgumentNullException.ThrowIfNull(cellPolicy);
+        ArgumentNullException.ThrowIfNull(themeContext);
+        ArgumentNullException.ThrowIfNull(configure);
+        VerifyLifecycleRoot();
+        dispatcher.VerifyAccess();
+        ValidateAttachment();
+        CommitAndPublishContext(
+            dispatcher,
+            cellPolicy,
+            FocusOwner,
+            CaptureOwner,
+            themeContext,
+            configure);
+    }
+
+    /// <summary>Detaches this ownership root and its subtree from its dispatcher.</summary>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher or this control is owned.</exception>
     internal void Detach()
     {
+        VerifyLifecycleRoot();
+        OwnedControlRegistry.VerifyMutationAllowed(this);
         var dispatcher = Dispatcher;
 
         if (dispatcher is null)
@@ -491,8 +542,32 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         dispatcher.VerifyAccess();
-        SetDispatcher(null);
-        SetCellPolicy(Policy.Default);
+        var entered = OwnedControlRegistry.EnterPublication(this);
+        var failure = (ExceptionDispatchInfo?) null;
+
+        try
+        {
+            CaptureFailure(() => NotifyUnavailable(ReleaseReason.Detached), ref failure);
+            var themeChanged = new List<Control>();
+            var attached = new List<Control>();
+            var detached = new List<Control>();
+            CommitSubtreeContext(
+                null,
+                Policy.Default,
+                null,
+                null,
+                null,
+                themeChanged,
+                attached,
+                detached);
+            PublishContextChanges(themeChanged, attached, detached, ref failure);
+        }
+        finally
+        {
+            OwnedControlRegistry.ExitPublication(entered);
+        }
+
+        failure?.Throw();
     }
 
     /// <summary>Assigns one immutable Unicode cell policy recursively.</summary>
@@ -833,14 +908,72 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Releases this control and every child it owns.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is disposed off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The attached control is disposed off-dispatcher or disposal reenters structural publication.
+    /// </exception>
     public void Dispose()
+    {
+        if (IsDisposed || IsDisposing)
+        {
+            GC.SuppressFinalize(this);
+            return;
+        }
+
+        if (!OwnedDisposalRequested)
+        {
+            OwnedControlRegistry.VerifyMutationAllowed(this);
+        }
+
+        try
+        {
+            DisposeWithPublication();
+        }
+        finally
+        {
+            if (IsDisposed)
+            {
+                GC.SuppressFinalize(this);
+            }
+        }
+    }
+
+    /// <summary>Disposes a child while its owner already holds structural publication.</summary>
+    internal void DisposeOwned()
     {
         if (IsDisposed || IsDisposing)
         {
             return;
         }
 
+        Debug.Assert(OwningSlot is not null, "Registry disposal targets one currently owned child.");
+        OwnedDisposalRequested = true;
+
+        try
+        {
+            Dispose();
+        }
+        finally
+        {
+            OwnedDisposalRequested = false;
+        }
+    }
+
+    private void DisposeWithPublication()
+    {
+        var entered = OwnedControlRegistry.EnterPublication(this, [this]);
+
+        try
+        {
+            DisposeCore();
+        }
+        finally
+        {
+            OwnedControlRegistry.ExitPublication(entered);
+        }
+    }
+
+    private void DisposeCore()
+    {
         VerifyAccess();
         IsDisposing = true;
         var failure = (ExceptionDispatchInfo?) null;
@@ -852,14 +985,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 () => NotifyUnavailable(ReleaseReason.Disposed),
                 ref failure);
 
-            if (Parent is { } parent)
+            if (OwningSlot is { } slot)
             {
                 CaptureFailure(
-                    () => _ = parent.Children.Remove(this),
+                    () => slot.RemoveForDisposalWithinPublication(this),
                     ref failure);
             }
 
-            CaptureFailure(DisposeChildren, ref failure);
+            CaptureFailure(OwnedControls.DisposeAll, ref failure);
             CaptureFailure(ClearHandlers, ref failure);
             CaptureFailure(
                 () => UnsubscribeInstanceStyle(InstanceStyle),
@@ -872,20 +1005,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             IsDisposed = true;
             IsDisposing = false;
             PropertyChanged = null;
-            GC.SuppressFinalize(this);
         }
 
         failure?.Throw();
     }
 
-    /// <summary>Disposes children owned by a derived container.</summary>
-    internal virtual void DisposeChildren() =>
-        Debug.Assert(!IsDisposed, "Children release occurs before disposal.");
-
     /// <summary>Visits direct owned children without allocating an intermediate list.</summary>
     /// <param name="visitor">The non-null synchronous visitor.</param>
-    internal virtual void VisitChildren(Action<Control> visitor) =>
-        ArgumentNullException.ThrowIfNull(visitor);
+    internal void VisitChildren(Action<Control> visitor) => OwnedControls.Visit(visitor);
 
     /// <summary>Returns the topmost open popup descendant containing one screen-cell point.</summary>
     /// <param name="point">The absolute terminal-cell point.</param>
@@ -900,15 +1027,30 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="canvas">The non-null root-relative canvas used by the current frame.</param>
     internal virtual void RenderPopupLayer(TerminalCanvas canvas) => _ = canvas.Bounds;
 
-    /// <summary>Assigns the parent after collection validation.</summary>
-    /// <param name="value">The new parent or null.</param>
-    internal void SetParent(Container? value)
+    /// <summary>Registers one distinct ordered visual ownership slot.</summary>
+    /// <param name="options">The validated structural and traversal metadata.</param>
+    /// <param name="capacity">The non-negative maximum control count.</param>
+    /// <returns>The newly registered empty slot.</returns>
+    internal OwnedControlSlot RegisterOwnedSlot(OwnedControlOptions options, int capacity) =>
+        OwnedControls.Register(options, capacity);
+
+    /// <summary>Commits an ownership edge without invoking user callbacks.</summary>
+    /// <param name="parent">The committed owner, or null.</param>
+    /// <param name="slot">The exact committed slot, or null.</param>
+    internal void CommitOwnership(Control? parent, OwnedControlSlot? slot)
     {
-        var previous = Parent;
-        Parent = value;
+        Debug.Assert((parent is null) == (slot is null), "Parent and owning-slot state change together.");
+        Debug.Assert(slot is null || ReferenceEquals(slot.Registry.Owner, parent), "The slot belongs to the committed parent.");
+        Parent = parent;
+        OwningSlot = slot;
         InvalidateSubtreeResolvedStyleCache();
-        OnParentChanged(previous, value);
     }
+
+    /// <summary>Publishes one already committed parent transition.</summary>
+    /// <param name="previous">The previous owner, or null.</param>
+    /// <param name="current">The committed owner, or null.</param>
+    internal void PublishParentChanged(Control? previous, Control? current) =>
+        OnParentChanged(previous, current);
 
     /// <summary>Throws when mutation is not valid for this owner.</summary>
     internal void VerifyMutable()
@@ -1170,7 +1312,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Responds after this control's direct ownership changes.</summary>
     /// <param name="previous">The previous owner, or null.</param>
     /// <param name="current">The committed owner, or null.</param>
-    protected virtual void OnParentChanged(Container? previous, Container? current)
+    protected virtual void OnParentChanged(Control? previous, Control? current)
     {
         _ = previous;
         _ = current;
@@ -1677,23 +1819,133 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             MinHeight,
             MaxHeight));
 
-    private void SetDispatcher(Dispatcher? value)
+    /// <summary>Commits inherited context across this complete subtree without invoking user callbacks.</summary>
+    /// <param name="dispatcher">The inherited dispatcher, or null.</param>
+    /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>
+    /// <param name="focusOwner">The inherited focus manager, or null.</param>
+    /// <param name="captureOwner">The inherited pointer manager, or null.</param>
+    /// <param name="themeContext">The inherited theme context, or null.</param>
+    /// <param name="themeChanged">Collects controls whose theme identity changed.</param>
+    /// <param name="attached">Collects controls that became attached.</param>
+    /// <param name="detached">Collects controls that became detached.</param>
+    internal void CommitSubtreeContext(
+        Dispatcher? dispatcher,
+        Policy cellPolicy,
+        FocusManager? focusOwner,
+        CaptureManager? captureOwner,
+        ThemeContext? themeContext,
+        List<Control> themeChanged,
+        List<Control> attached,
+        List<Control> detached)
     {
+        ArgumentNullException.ThrowIfNull(cellPolicy);
+        ArgumentNullException.ThrowIfNull(themeChanged);
+        ArgumentNullException.ThrowIfNull(attached);
+        ArgumentNullException.ThrowIfNull(detached);
         var previous = Dispatcher;
-        UnsubscribeInstanceStyle(InstanceStyle);
 
-        Dispatcher = value;
-
-        SubscribeInstanceStyle(InstanceStyle);
-        VisitChildren(child => child.SetDispatcher(value));
-
-        if (previous is null && value is not null)
+        if (!ReferenceEquals(previous, dispatcher))
         {
-            OnAttached();
+            UnsubscribeInstanceStyle(InstanceStyle);
+            Dispatcher = dispatcher;
+            SubscribeInstanceStyle(InstanceStyle);
         }
-        else if (previous is not null && value is null)
+
+        CellPolicy = cellPolicy;
+        FocusOwner = focusOwner;
+        CaptureOwner = captureOwner;
+
+        if (CommitThemeContext(themeContext))
         {
-            OnDetached();
+            themeChanged.Add(this);
+        }
+
+        if (previous is null && dispatcher is not null)
+        {
+            attached.Add(this);
+        }
+        else if (previous is not null && dispatcher is null)
+        {
+            detached.Add(this);
+        }
+
+        VisitChildren(child => child.CommitSubtreeContext(
+            dispatcher,
+            cellPolicy,
+            focusOwner,
+            captureOwner,
+            themeContext,
+            themeChanged,
+            attached,
+            detached));
+    }
+
+    /// <summary>Publishes this control's committed theme-context change.</summary>
+    internal void PublishThemeContextChanged() =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+
+    /// <summary>Publishes this control's already committed attachment.</summary>
+    internal void PublishAttached() => OnAttached();
+
+    /// <summary>Publishes this control's already committed detachment.</summary>
+    internal void PublishDetached() => OnDetached();
+
+    private void CommitAndPublishContext(
+        Dispatcher? dispatcher,
+        Policy cellPolicy,
+        FocusManager? focusOwner,
+        CaptureManager? captureOwner,
+        ThemeContext? themeContext,
+        System.Action? configure)
+    {
+        OwnedControlRegistry.VerifyMutationAllowed(this);
+        var entered = OwnedControlRegistry.EnterPublication(this);
+        var themeChanged = new List<Control>();
+        var attached = new List<Control>();
+        var detached = new List<Control>();
+        var failure = (ExceptionDispatchInfo?) null;
+
+        try
+        {
+            CommitSubtreeContext(
+                dispatcher,
+                cellPolicy,
+                focusOwner,
+                captureOwner,
+                themeContext,
+                themeChanged,
+                attached,
+                detached);
+            configure?.Invoke();
+            PublishContextChanges(themeChanged, attached, detached, ref failure);
+        }
+        finally
+        {
+            OwnedControlRegistry.ExitPublication(entered);
+        }
+
+        failure?.Throw();
+    }
+
+    private static void PublishContextChanges(
+        List<Control> themeChanged,
+        List<Control> attached,
+        List<Control> detached,
+        ref ExceptionDispatchInfo? failure)
+    {
+        foreach (var control in themeChanged)
+        {
+            CaptureFailure(control.PublishThemeContextChanged, ref failure);
+        }
+
+        foreach (var control in detached)
+        {
+            CaptureFailure(control.PublishDetached, ref failure);
+        }
+
+        foreach (var control in attached)
+        {
+            CaptureFailure(control.PublishAttached, ref failure);
         }
     }
 
@@ -1708,6 +1960,15 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     private void UnsubscribeInstanceStyle(IControlStyle? style) => style?.Changed -= OnInstanceStyleChanged;
 
     private void VerifyAccess() => Dispatcher?.VerifyAccess();
+
+    private void VerifyLifecycleRoot()
+    {
+        if (Parent is not null || OwningSlot is not null)
+        {
+            throw new InvalidOperationException(
+                "Only an unowned control root can be attached or detached directly.");
+        }
+    }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);
 }

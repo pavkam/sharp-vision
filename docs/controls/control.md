@@ -39,23 +39,46 @@ visibility, enabled state, or explicit focus.
 
 ## Children and ownership
 
-`Container.Children` is the mutable ordered collection for traditional component
-composition. `Add`, indexed insert and replacement, `Remove`, and `Clear`
-validate the complete operation before changing ownership. A control cannot have
-two parents, appear twice, or be inserted beneath one of its own descendants.
+Every `Control` owns one central registry of distinct ordered visual slots.
+`Control.Parent` is therefore `Control?`; ownership is not evidence that the
+parent exposes a public child collection. Slots record structural role, render
+layer, hit-test and navigation participation, an optional stable part key, and
+the invalidation impact of a committed mutation.
+
+`Container.Children` is the mutable public adapter over only its container-child
+slot. Private scrollbar rails, item hosts, and other framework parts use
+separate slots over the same registry and never leak into `Children`.
+Registering two slots with the same role is valid; slot identity, not role,
+determines membership and capacity.
+
+`Add`, indexed insert and replacement, `Remove`, `Clear`, and complete-slot
+replacement validate the whole proposed snapshot before changing ownership. A
+control cannot have two parents, appear twice, be attached independently, or be
+inserted beneath one of its own descendants. Batch failure preserves the old
+order, parent links, inherited context, focus, and pointer capture.
 
 Adding below an attached container recursively attaches the subtree. Removing
 recursively detaches it and clears its parent. Disposing a container disposes
 all owned descendants; repeated disposal is safe.
 
-Specialized single-child containers use the same collection with capacity one.
-Their child property validates a complete replacement before detaching the
-previous child, so a failed assignment preserves ownership, dispatcher, focus,
-and pointer capture.
+Structural transactions release focus and capture while the old tree remains
+coherent, then commit slot membership, parent links, dispatcher, Unicode policy,
+theme, and manager context without callbacks. Parent, theme, detach, attach, and
+slot notifications run only after that complete commit. Callback failures are
+remembered while remaining publication and cleanup continue; the first failure
+is rethrown from a coherent new tree. Tree mutation and disposal are rejected
+while any affected ownership transaction is publishing.
 
-When a root owns focus or capture managers, that ownership propagates with the
-tree. Removal, inherited disable/hide, and disposal synchronously release
-manager state before clearing parent or dispatcher references.
+When a root owns focus or capture managers, that ownership propagates through
+every registered slot. Removal, inherited disable/hide, and disposal
+synchronously release manager state before clearing parent or dispatcher
+references. Direct child disposal removes through its exact owning slot with
+`ReleaseReason.Disposed`, publishes the slot change, and never emits a second
+detached reason. Owner disposal continues across all slots after a descendant
+callback failure and disposes each remaining descendant once. The structural
+publication guard spans `OnDisposing`, unavailable notification, exact-slot
+unlink, and descendant cleanup; a disposal callback cannot switch to ordinary
+collection removal to publish `Detached` or bypass the exact slot.
 
 ```csharp
 container.Children.Add(control);
@@ -96,13 +119,18 @@ framework's pending phase flags.
 
 ## Lifecycle and events
 
-Attachment assigns the same dispatcher recursively. `OnAttached()` runs after
-the receiving control's `Dispatcher` is non-null. Detachment clears it
-recursively, then invokes `OnDetached()` with a null `Dispatcher`.
-`OnDisposing()` runs at most once before owned state is released; if that hook
-throws, base cleanup completes before the original exception is rethrown. These
-hooks cover the receiving control's committed state; collection-wide callback
-atomicity is defined by the ownership transaction.
+Attachment commits the same dispatcher, Unicode policy, theme, and manager
+context across the complete subtree before any lifecycle callback.
+`OnAttached()` therefore sees every sibling fully attached. During application
+startup it additionally sees the installed focus and capture managers and may
+request either service immediately. Detachment clears complete subtree context
+before any `OnDetached()` callback, so every sibling is already detached. Direct
+`Attach` and `Detach` operations accept only an unowned root; owned controls
+change lifecycle context exclusively through their registry edge, so a child can
+never attach or detach independently from its parent. `OnDisposing()` runs at
+most once before owned state is released; if that hook throws, base cleanup
+completes before the original exception is rethrown. These hooks and
+`OnParentChanged(Control?, Control?)` always observe committed ownership state.
 
 Focus and pointer capture are synchronously released when a control becomes
 unavailable or leaves the owned tree. Derived controls request those behaviors

@@ -160,7 +160,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnParentChanged(Container? previous, Container? current)
+    protected override void OnParentChanged(Control? previous, Control? current)
     {
         base.OnParentChanged(previous, current);
 
