@@ -54,7 +54,29 @@ public sealed class LayoutPaneTests
         ControlTree.Text(page).ShouldContain("Validation wraps beneath the finite field width.");
     }
 
+    /// <summary>Verifies the auto/star specimen gives visible interiors to a committed two-to-one remainder.</summary>
+    [Fact]
+    public void Grid_WhenAutoAndStarExampleBuilds_ShowsTwoToOneTrackAllocation()
+    {
+        using var page = new GridPane();
+        new Engine().Layout(page, new Size(100, 140));
+        var twoStar = FindCard(page, "2* = 6 rows");
+        var oneStar = FindCard(page, "1* = 3 rows");
+
+        twoStar.Bounds.Height.ShouldBe(oneStar.Bounds.Height * 2);
+        twoStar.Bounds.Height.ShouldBeGreaterThan(2);
+        oneStar.Bounds.Height.ShouldBeGreaterThan(2);
+        twoStar.FillMode.ShouldBe(FillMode.Opaque);
+        oneStar.FillMode.ShouldBe(FillMode.Opaque);
+    }
+
     private static Button FindButton(Control root, string content) =>
         ControlTree.FindAll<Button>(root).Single(value =>
             value.Content is ControlText text && text.Content == content);
+
+    private static Dock FindCard(Control root, string content) =>
+        ControlTree.FindAll<Dock>(root).Single(value =>
+            value.Children.Count == 1 &&
+            value.Children[0] is ControlText text &&
+            text.Content == content);
 }

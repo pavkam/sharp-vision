@@ -46,7 +46,7 @@ internal sealed class TablePane: View
 
         var compact = new Table()
         {
-            Width = Length.Cells(42),
+            Width = Length.Cells(46),
             ShowHeader = false,
             ShowGridLines = false,
             CellPadding = new Thickness(1, 0),
@@ -54,8 +54,10 @@ internal sealed class TablePane: View
         };
         compact.Columns.Add(TableColumn.Auto("Key"));
         compact.Columns.Add(TableColumn.Fill("Meaning"));
-        compact.Rows.Add(new TableRow([new Text("Enter"), new Text("Apply the default action")]));
-        compact.Rows.Add(new TableRow([new Text("Escape"), new Text("Dismiss a popup or cancel a window")]));
+        compact.Rows.Add(Shortcut("Ctrl+S", "Save current draft"));
+        compact.Rows.Add(Shortcut("Enter", "Apply primary action"));
+        compact.Rows.Add(Shortcut("Esc", "Close popup or window"));
+        compact.Rows.Add(Shortcut("?", "Open shortcut guide"));
 
         var interactive = new Table
         {
@@ -65,9 +67,16 @@ internal sealed class TablePane: View
         };
         interactive.Columns.Add(TableColumn.Fixed("Action", 16));
         interactive.Columns.Add(TableColumn.Fill("Configuration"));
+        var interactiveOption = new CheckBox
+        {
+            Content = new Text("Include integration tests"),
+            IsChecked = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
         interactive.Rows.Add(new TableRow([
             new Button { Content = new Text("Run checks") },
-            new CheckBox { Content = new Text("Include integration tests"), IsChecked = true },
+            interactiveOption,
         ]));
 
         var dynamic = new Table
@@ -109,6 +118,26 @@ internal sealed class TablePane: View
         tiny.Columns.Add(TableColumn.Fill("B"));
         tiny.Rows.Add(new TableRow([new Text("Alpha"), new Text("Beta")]));
 
+        var scrolling = new Table
+        {
+            Width = Length.Cells(36),
+            Height = Length.Cells(8),
+            CellPadding = new Thickness(1, 0),
+            ShowGridLines = true,
+        };
+        scrolling.Columns.Add(TableColumn.Fixed("Service", 12));
+        scrolling.Columns.Add(TableColumn.Fixed("State", 12));
+        scrolling.Columns.Add(TableColumn.Fixed("Latest deployment detail", 24));
+
+        for (var index = 1; index <= 10; index++)
+        {
+            scrolling.Rows.Add(new TableRow([
+                new Text($"worker-{index:00}"),
+                new Text(index % 3 == 0 ? "Queued" : "Healthy"),
+                new Text($"Region eu-{(index % 3) + 1} · revision {1200 + index}"),
+            ]));
+        }
+
         return Doc.Page(
             Title,
             "Owns typed rows and column definitions to render aligned rich terminal cells with optional headers and grid lines.",
@@ -127,7 +156,7 @@ internal sealed class TablePane: View
                 "Headers and grid lines are optional; padding and spacing can carry simpler key/value structure.",
                 Doc.Example(
                     "Compact headerless table",
-                    "The key/value table omits headers and lines while retaining aligned ordinary Text cells.",
+                    "Four fully visible shortcuts use emphasized keys and quieter action descriptions without needing a horizontal rail.",
                     compact)),
             Doc.Section(
                 "📊",
@@ -160,6 +189,15 @@ internal sealed class TablePane: View
                 Doc.Example(
                     "No phantom row and constrained columns",
                     "The first table has no data rows; the second saturates its narrow columns without drawing outside bounds.",
-                    Doc.Column(headerOnly, tiny))));
+                    Doc.Column(headerOnly, tiny)),
+                Doc.Example(
+                    "Deliberate two-axis overflow",
+                    "This operational dataset is intentionally wider and taller than its viewport. Header, grid, cells, hit testing, and both themed rails stay aligned while scrolling.",
+                    scrolling)));
     }
+
+    private static TableRow Shortcut(string key, string action) => new([
+        new Text($"<accent><b>{Text.Escape(key)}</b></accent>"),
+        new Text($"<d>{Text.Escape(action)}</d>"),
+    ]);
 }

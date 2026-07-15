@@ -34,24 +34,16 @@ internal sealed class GridPane: View
         Grid proportionalTracks = new()
         {
             Width = Length.Cells(40),
-            Height = Length.Cells(7),
+            Height = Length.Cells(14),
             RowSpacing = 1,
-            ColumnSpacing = 1,
         };
         proportionalTracks.Rows.Add(Track.Auto());
         proportionalTracks.Rows.Add(Track.Star(2));
         proportionalTracks.Rows.Add(Track.Star(1));
         proportionalTracks.Columns.Add(Track.Star(1));
-        proportionalTracks.Columns.Add(Track.Star(2));
-        AddCell(proportionalTracks, "Auto", 0, 0);
-        var autoWide = Card("Auto sizes to this content");
-        Grid.SetRow(autoWide, 0);
-        Grid.SetColumn(autoWide, 1);
-        proportionalTracks.Children.Add(autoWide);
-        AddCell(proportionalTracks, "Star 1", 1, 0);
-        AddCell(proportionalTracks, "Star 2", 1, 1);
-        AddCell(proportionalTracks, "Star 1", 2, 0);
-        AddCell(proportionalTracks, "Star 2", 2, 1);
+        AddTrackRegion(proportionalTracks, "Auto = intrinsic 3 rows", 0, ThemeColors.Surface);
+        AddTrackRegion(proportionalTracks, "2* = 6 rows", 1, ThemeColors.Accent);
+        AddTrackRegion(proportionalTracks, "1* = 3 rows", 2, ThemeColors.Info);
 
         Grid spans = new()
         {
@@ -148,7 +140,7 @@ internal sealed class GridPane: View
                     "grid.Columns.Add(Track.Cells(9));\ngrid.Columns.Add(Track.Star(1));"),
                 Doc.Example(
                     "Auto and star allocation",
-                    "Auto fits intrinsic content; 2* and 1* tracks split the finite remainder in a two-to-one ratio.",
+                    "The Surface-backed regions make the allocation visible: Auto keeps its three-row intrinsic card, then 2* receives six rows and 1* receives three.",
                     proportionalTracks)),
             Doc.Section(
                 "🧱",
@@ -205,6 +197,15 @@ internal sealed class GridPane: View
         Grid.SetRow(control, row);
         Grid.SetColumn(control, column);
         grid.Children.Add(control);
+    }
+
+    private static void AddTrackRegion(Grid grid, string text, int row, Color background)
+    {
+        var region = Card(text);
+        region.Background = background;
+        region.FillMode = FillMode.Opaque;
+        Grid.SetRow(region, row);
+        grid.Children.Add(region);
     }
 
     private static Dock Card(string text) => new()

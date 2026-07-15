@@ -170,7 +170,12 @@ internal sealed class CanvasPane: View
                     "Line and fill matrix",
                     "Light, heavy, paired, rounded, and ASCII topology merge deterministically; fill and clear remain clipped.",
                     new CanvasSample(),
-                    "protected override void OnRender(TerminalCanvas canvas)\n{\n    canvas.DrawBox(Bounds, LineStyle.Rounded);\n    canvas.DrawHorizontalLine(origin, length, LineStyle.Heavy);\n}")),
+                    "protected override void OnRender(TerminalCanvas canvas)\n{\n    canvas.DrawBox(Bounds, LineStyle.Rounded);\n    canvas.DrawHorizontalLine(origin, length, LineStyle.Heavy);\n}"),
+                Doc.Example(
+                    "Arbitrary cell geometry",
+                    "A deterministic diagonal, circle, and wide ellipse use public integer rasterization. The ellipse crosses the right edge so clipping is visible without corrupting a partial glyph.",
+                    new CanvasGeometrySample(),
+                    "canvas.DrawLine(start, end, new Rune('/'));\ncanvas.DrawCircle(center, 3, new Rune('o'));\ncanvas.DrawEllipse(bounds, new Rune('e'));")),
             Doc.Section(
                 "🎨",
                 "Shade and quadrants",
