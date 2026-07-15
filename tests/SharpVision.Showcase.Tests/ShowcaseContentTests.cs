@@ -97,6 +97,14 @@ public sealed class ShowcaseContentTests
                 {
                     missing.Add($"{pageName}: {section}");
                 }
+
+                var sectionText = ControlTree.FindAll<ControlText>(page).SingleOrDefault(text =>
+                    text.Content.Contains($" {section}</b></accent>", StringComparison.Ordinal));
+
+                if (sectionText is null || !HasSingleIconPrefix(sectionText.Content, section))
+                {
+                    missing.Add($"{pageName}: {section} icon");
+                }
             }
 
             if (!content.Contains("<b>C#</b>", StringComparison.Ordinal))
@@ -107,5 +115,26 @@ public sealed class ShowcaseContentTests
 
         // Assert
         missing.ShouldBeEmpty(string.Join(Environment.NewLine, missing));
+    }
+
+    private static bool HasSingleIconPrefix(string content, string heading)
+    {
+        const string opening = "<accent><b>";
+
+        if (!content.StartsWith(opening, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var suffix = $" {heading}</b></accent>";
+        var suffixIndex = content.IndexOf(suffix, StringComparison.Ordinal);
+
+        if (suffixIndex <= opening.Length)
+        {
+            return false;
+        }
+
+        var icon = content[opening.Length..suffixIndex];
+        return !string.IsNullOrWhiteSpace(icon) && !icon.Contains(' ');
     }
 }

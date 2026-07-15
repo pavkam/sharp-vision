@@ -30,6 +30,7 @@ internal sealed class PopupPane: View
             Placement = PopupPlacement.Below,
             Glyphs = Glyphs.Rounded,
             Child = choices,
+            IsOpen = true,
         };
         trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
         choices.ItemInvoked += (_, eventArgs) =>
@@ -40,15 +41,76 @@ internal sealed class PopupPane: View
             popup.IsOpen = false;
         };
 
-        var overlay = new Overlay() { ClipToBounds = false };
-        overlay.Children.Add(Doc.Column(trigger, status));
+        var menuControls = Doc.Column(trigger, status);
+        menuControls.Margin = new Thickness(2, 2, 0, 0);
+        var overlay = new Overlay
+        {
+            Width = Length.Cells(52),
+            Height = Length.Cells(13),
+            ClipToBounds = false,
+            Children =
+            {
+                ApplicationSurface(
+                    "Projects  Search  Settings\n\n" +
+                    "release-notes.md      edited now\n" +
+                    "roadmap.md            edited 2m ago\n\n" +
+                    "2 files · branch main"),
+                menuControls,
+            },
+        };
         Overlay.SetZIndex(popup, 10);
         overlay.Children.Add(popup);
 
-        var variants = new Stack() { Orientation = Orientation.Horizontal, Spacing = 6 };
-        variants.Children.Add(PlacementDemo("Above", PopupPlacement.Above));
-        variants.Children.Add(PlacementDemo("Left", PopupPlacement.Left));
-        variants.Children.Add(PlacementDemo("Right", PopupPlacement.Right));
+        var placementStatus = new Text("Requested side: Below");
+        var placementAnchor = new Button { Content = new Text("Preview anchor") };
+        var placementPopup = new Popup
+        {
+            Width = Length.Star(1),
+            Height = Length.Star(1),
+            Anchor = placementAnchor,
+            Placement = PopupPlacement.Below,
+            Glyphs = Glyphs.Rounded,
+            Child = new Text("Placement preview"),
+            IsOpen = true,
+        };
+        var above = PlacementButton("Above", PopupPlacement.Above, placementPopup, placementStatus);
+        var below = PlacementButton("Below", PopupPlacement.Below, placementPopup, placementStatus);
+        var left = PlacementButton("Left", PopupPlacement.Left, placementPopup, placementStatus);
+        var right = PlacementButton("Right", PopupPlacement.Right, placementPopup, placementStatus);
+        var placementCanvas = new Canvas
+        {
+            Width = Length.Cells(64),
+            Height = Length.Cells(22),
+            ClipToBounds = false,
+        };
+        Place(above, 24, 1);
+        Place(left, 2, 8);
+        Place(placementAnchor, 24, 8);
+        Place(right, 50, 8);
+        Place(below, 24, 15);
+        Place(placementStatus, 2, 19);
+        placementCanvas.Children.Add(above);
+        placementCanvas.Children.Add(left);
+        placementCanvas.Children.Add(placementAnchor);
+        placementCanvas.Children.Add(right);
+        placementCanvas.Children.Add(below);
+        placementCanvas.Children.Add(placementStatus);
+        placementCanvas.Children.Add(placementPopup);
+        var placementStage = new Overlay
+        {
+            Width = Length.Cells(64),
+            Height = Length.Cells(22),
+            ClipToBounds = false,
+            Children =
+            {
+                ApplicationSurface(
+                    "Files  Edit  View  Run  Help\n\n" +
+                    "src/Controls/Popup.cs\n" +
+                    "tests/PopupTests.cs\n\n" +
+                    "Ready · 2 changes · Ln 48, Col 12"),
+                placementCanvas,
+            },
+        };
 
         var edgeTrigger = new Button { Content = new Text("Edge anchor") };
         var edgePopup = new Popup
@@ -138,9 +200,9 @@ internal sealed class PopupPane: View
                 "Placement",
                 "Above, Below, Left, and Right are preferred sides rather than promises to draw outside the host.",
                 Doc.Example(
-                    "Three alternate sides",
-                    "Open each trigger to compare the preferred anchored edge when enough space exists.",
-                    variants)),
+                    "Four sides, one anchor",
+                    "Choose Above, Below, Left, or Right. One open Popup moves around the same central anchor and the status reports the requested side.",
+                    placementStage)),
             Doc.Section(
                 "💬",
                 "Fallback and clamp",
@@ -176,27 +238,38 @@ internal sealed class PopupPane: View
                     resizeStage)));
     }
 
-    private static Overlay PlacementDemo(string label, PopupPlacement placement)
+    private static Dock ApplicationSurface(string content) => new()
     {
-        var trigger = new Button() { Content = new Text(label) };
-        var popup = new Popup()
-        {
-            Anchor = trigger,
-            Placement = placement,
-            Glyphs = Glyphs.Rounded,
-            Child = new Text($"{label} content"),
-        };
-        trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
+        Background = ThemeColors.Surface,
+        FillMode = FillMode.Opaque,
+        BorderThickness = new Thickness(1),
+        BorderGlyphs = Glyphs.Light,
+        Padding = new Thickness(1, 0),
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        VerticalAlignment = VerticalAlignment.Stretch,
+        Children = { new Text(content) },
+    };
 
-        var overlay = new Overlay()
+    private static Button PlacementButton(
+        string label,
+        PopupPlacement placement,
+        Popup popup,
+        Text status)
+    {
+        var button = new Button { Content = new Text(label) };
+        button.Click += (_, _) =>
         {
-            Width = Length.Cells(14),
-            Height = Length.Cells(3),
-            ClipToBounds = false,
+            popup.Placement = placement;
+            popup.IsOpen = true;
+            status.Content = $"Requested side: {label}";
         };
-        overlay.Children.Add(trigger);
-        Overlay.SetZIndex(popup, 10);
-        overlay.Children.Add(popup);
-        return overlay;
+
+        return button;
+    }
+
+    private static void Place(Control control, int left, int top)
+    {
+        Canvas.SetLeft(control, Length.Cells(left));
+        Canvas.SetTop(control, Length.Cells(top));
     }
 }

@@ -8,6 +8,25 @@ namespace SharpVision.Showcase.Tests;
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
 public sealed class ThemeGalleryTests
 {
+    /// <summary>Verifies the type-style specimen compares a baseline with concise semantic styling.</summary>
+    [Fact]
+    public void ThemingPane_WhenTypeStyleBuilds_UsesSemanticPreviewWithoutRawRecords()
+    {
+        using var page = new ThemingPane();
+        new Engine().Layout(page, new Size(100, 140));
+        var baseline = Find<Button>(page, static value =>
+            value.Content is ControlText { Content: "Baseline theme" }).ShouldNotBeNull();
+        var semantic = Find<Button>(page, static value =>
+            value.Content is ControlText { Content: "Semantic accent" }).ShouldNotBeNull();
+        var content = ControlTree.Text(page);
+
+        baseline.HasShadow.ShouldBeFalse();
+        semantic.HasShadow.ShouldBeFalse();
+        content.ShouldContain("Background: Accent · Border: Heavy · Shadow: Off");
+        content.ShouldNotContain("Glyphs {");
+        content.ShouldNotContain("ThemeResolver.Resolve(theme");
+    }
+
     /// <summary>Verifies the gallery publishes a new theme snapshot when Light is activated.</summary>
     [Fact]
     public async Task Theme_WhenLightIsSelected_PublishesWhiteThemeAsync()

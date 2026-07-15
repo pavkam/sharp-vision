@@ -64,6 +64,15 @@ internal sealed class WindowPane: View
             Height = Length.Cells(13),
             ClipToBounds = true,
         };
+        var workspace = ApplicationSurface(
+            "Workspace  Build  Test  Help\n\n" +
+            "Recent projects\n" +
+            "  sharp-vision      modified now\n" +
+            "  terminal-lab      modified 8m ago\n\n" +
+            "Ready · 2 tasks running");
+        workspace.Width = Length.Cells(48);
+        workspace.Height = Length.Cells(13);
+        stage.Children.Add(workspace);
         Canvas.SetLeft(window, Length.Cells(1));
         Canvas.SetTop(window, Length.Cells(1));
         stage.Children.Add(window);
@@ -97,7 +106,13 @@ internal sealed class WindowPane: View
         {
             Width = Length.Cells(36),
             Height = Length.Cells(8),
-            Children = { new Text("Ordinary content behind the Window"), overlayWindow },
+            Children =
+            {
+                ApplicationSurface(
+                    "Dashboard  Activity\n\n" +
+                    "Build passing\nTests 89 / 89\n\nReady"),
+                overlayWindow,
+            },
         };
         Overlay.SetZIndex(overlayWindow, 5);
 
@@ -142,7 +157,7 @@ internal sealed class WindowPane: View
                 "Unhandled Enter and Escape route to the first available IsDefault or IsCancel Button in the Window.",
                 Doc.Example(
                     "Project settings surface",
-                    "Move focus through the form, then try Enter for Apply and Escape for Cancel; the action log reports the fallback.",
+                    "The Window visibly floats above a populated workspace while remaining an ordinary routed-input child. Move focus, then try Enter for Apply and Escape for Cancel.",
                     new Dock
                     {
                         BorderThickness = new Thickness(1),
@@ -195,5 +210,17 @@ internal sealed class WindowPane: View
         Content = content,
         HorizontalAlignment = HorizontalAlignment.Left,
         Margin = new Thickness(0, 0, 1, 1),
+    };
+
+    private static Dock ApplicationSurface(string content) => new()
+    {
+        Background = ThemeColors.Surface,
+        FillMode = FillMode.Opaque,
+        BorderThickness = new Thickness(1),
+        BorderGlyphs = Glyphs.Light,
+        Padding = new Thickness(1, 0),
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        VerticalAlignment = VerticalAlignment.Stretch,
+        Children = { new Text(content) },
     };
 }

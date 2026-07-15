@@ -31,27 +31,23 @@ internal sealed class ThemingPane: View
             new Text("Label placement"),
             Doc.Row(left, right, above, below));
 
-        // A scratch theme, never installed as the application theme, holds one style keyed to the
-        // Button type. ThemeResolver's design-time overload reads it back by type alone, with no live
-        // control involved, proving the association Theme.SetStyle<Button> stored.
+        // A scratch theme, never installed as the application theme, holds one semantic style keyed
+        // to Button. The preview borrows that style locally so it can be compared with a baseline.
         ControlStyle<Button> typedStyle = new();
-        typedStyle.Set(BackgroundProperty, State.Normal, Color.Indexed(4));
+        typedStyle.Set(BackgroundProperty, State.Normal, ThemeColors.Accent);
+        typedStyle.Set(ForegroundProperty, State.Normal, ThemeColors.Background);
         typedStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Heavy);
+        typedStyle.Set(HasShadowProperty, State.Normal, false);
         Theme spotlight = new();
         spotlight.SetStyle(typedStyle);
 
-        var resolvedBackground = ThemeResolver.Resolve(
-            spotlight, typeof(Button), BackgroundProperty, State.Normal);
-        var resolvedGlyphs = ThemeResolver.Resolve(
-            spotlight, typeof(Button), BorderGlyphsProperty, State.Normal);
-
+        Button baseline = new() { Content = new Text("Baseline theme"), HasShadow = false };
         Button typedPreview = new()
         {
-            Content = new Text("Every Button"),
+            Content = new Text("Semantic accent"),
             Style = spotlight.GetStyle<Button>(),
         };
-        Text typedReadout = new(
-            $"ThemeResolver.Resolve(theme, typeof(Button), ...) reports background set: {resolvedBackground.HasValue}, border glyphs: {resolvedGlyphs}. The preview button borrows the same style object as a local override so the values are visible here.");
+        Text typedReadout = new("Background: Accent · Border: Heavy · Shadow: Off");
 
         // A local override attaches a ControlStyle directly to one instance, skipping any theme.
         ControlStyle<Button> localStyle = new();
@@ -114,8 +110,9 @@ internal sealed class ThemingPane: View
                 "Type-keyed theme recipes apply broadly; a Control.Style override resolves later and affects only that instance.",
                 Doc.Example(
                     "Type-keyed Button style",
-                    "The scratch theme resolves one Button style by type and the preview borrows it locally for visibility.",
-                    Doc.Column(typedPreview, typedReadout)),
+                    "Compare the ordinary baseline with a semantic Accent surface, heavy border, and deliberately flat face. No indexed color or raw glyph record leaks into the UI.",
+                    Doc.Column(Doc.Row(baseline, typedPreview), typedReadout),
+                    "style.Set(Control.BackgroundProperty, State.Normal, ThemeColors.Accent);\nstyle.Set(Control.BorderGlyphsProperty, State.Normal, Glyphs.Heavy);"),
                 Doc.Example(
                     "Per-instance override",
                     "Only me owns the ASCII/yellow override; the sibling continues following the application theme.",
