@@ -6,8 +6,10 @@ Layout uses measure then arrange over integer terminal cells. Width and height
 describe the border box. Margin is external, `BorderThickness` reserves physical
 cells inside the border box, padding is internal to those edges, and none
 collapses. The box model removes margin, resolves the border box, then deflates
-`BorderThickness` and `Padding` in that order. Deflation saturates at zero, so
-zero and tiny boxes never produce negative content extents.
+`BorderThickness` and `Padding` in that order. During measure, the combined
+`BorderThickness` plus `Padding` reservation on each axis saturates at
+`int.MaxValue`. `Rect` and `Size` deflation instead saturate resulting extents
+at zero, so zero and tiny boxes never produce negative content extents.
 
 ## Lengths
 
