@@ -180,6 +180,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets independently enabled zero-or-one-cell border edges.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Any edge exceeds one cell.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Thickness BorderThickness

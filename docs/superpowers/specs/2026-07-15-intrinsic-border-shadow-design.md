@@ -42,11 +42,13 @@ pipeline reserves `Padding` but **not** `BorderThickness`:
 - `CreateContentConstraint` deflates `Padding` only.
 
 Today each control compensates individually: `Button` has a one-cell padding
-class default, leaf controls (`Text`, `FigletText`, `ScrollBar`, `TextInput`)
-render into `ContentBounds`, `Window` deflates a hardcoded `Thickness(1)`, and
-`Border` deflates `BorderThickness` for its child. A general-purpose container
-(`Stack`, `Grid`, `Dock`) reserves nothing — which is the only reason a `Border`
-wrapper is needed around one.
+class default; content-drawing controls (`Text`, `FigletText`, `ScrollBar`)
+render into `ContentBounds`; `TextInput` is a `Container` with private scrollbar
+parts whose editor geometry is also derived from `ContentBounds`; `Window`
+deflates a hardcoded `Thickness(1)`; and `Border` deflates `BorderThickness` for
+its child. A general-purpose container (`Stack`, `Grid`, `Dock`) reserves
+nothing — which is the only reason a `Border` wrapper is needed around one.
+There is no shipped `RichText` type.
 
 This is the opposite of the desktop-UI idiom, where a border is a _property_
 (`BorderStyle` in WinForms, `BorderStyle`/`BevelKind` in Delphi VCL), never a
@@ -114,9 +116,12 @@ Effect:
   `BorderThickness` set now insets its children under the border automatically —
   exactly what `Border` did. A container with the default zero border is
   unchanged (deflating zero is a no-op).
-- **Leaf controls** render into `ContentBounds`, which is computed from `Bounds`
-  (the full border box) and already deflates border+padding — so their drawing
-  is unaffected by the `ArrangeOverride`-bounds change.
+- **Content-drawing controls** render into `ContentBounds`, which is computed
+  from `Bounds` (the full border box) and already deflates border+padding — so
+  their drawing is unaffected by the `ArrangeOverride`-bounds change.
+- **`TextInput`** remains a container rather than a leaf. Its private editor and
+  scrollbar geometry must be tested directly so the common content rectangle is
+  neither skipped nor deflated twice.
 
 `ContentBounds` and `VisualBounds` are unchanged.
 
@@ -152,13 +157,19 @@ already reserves it itself must stop doing so. The audit:
 - **`Button`** — has both `BorderThickness = Thickness(1)` and
   `Padding = Thickness(1)` class defaults. The padding currently supplies the
   one-cell content inset because the base does not reserve the border. Remove
-  only the padding class default when base reservation lands.
-  `FaceContentBounds` already applies only the pressed-shadow translation, and
-  `OnPressedChanged` intentionally re-arranges content immediately so pressed
-  rendering is correct before a later layout drain; both remain unchanged. Net
-  released and pressed content positions are unchanged.
-- **Leaf controls** (`Text`, `RichText`, `FigletText`, `ScrollBar`, `TextInput`)
-  — draw into `ContentBounds` derived from `Bounds`; unaffected.
+  only the padding class default when base reservation lands. Before that base
+  change, the immediate `OnPressedChanged` path recomputes `ContentBounds` with
+  border plus padding after released arrangement used padding alone, then shifts
+  it. That latent double inset can collapse small content. Keeping
+  `FaceContentBounds` and the immediate arrangement while moving reservation to
+  the base corrects the path: released content is inset once, and immediate and
+  post-layout pressed content are the same one-offset translation.
+- **Content-drawing controls** (`Text`, `FigletText`, `ScrollBar`) — draw into
+  `ContentBounds` derived from `Bounds`; unaffected. `RichText` is not a shipped
+  type.
+- **`TextInput`** — is a `Container` with private rails, not a leaf. Verify its
+  rendered editor, caret, and scrollbar positions remain exactly once inside the
+  border.
 - **`Window`** — draws a bespoke title+frame and reserves it by deflating a
   hardcoded `Thickness(1)` in its own measure/arrange. It does **not** set the
   `BorderThickness` property (it stays zero), so the base deflates nothing for
@@ -206,12 +217,13 @@ focused test on committed content position/`Bounds`.
 - **Border draws + reserves together:** a `Stack`/`Grid` with `BorderThickness`
   set renders the per-side border (via `Frame`/`FrameOracle`) and insets content
   — the case that previously required a `Border` wrapper.
-- **Leaf unaffected:** `Text`/`Button`/`TextInput` content position and rendered
-  frames are unchanged by the base reservation (they already used
-  `ContentBounds`).
-- **Button reserve-once:** content position is unchanged after replacing its
-  padding default with base border reservation, in normal and
-  pressed-with-shadow states.
+- **Specialized controls:** content-drawing controls remain at their existing
+  `ContentBounds`; `TextInput` editor, caret, and private rails are verified by
+  position rather than an inaccurate leaf label.
+- **Button reserve-once:** released content keeps its one-cell inset after the
+  padding default is replaced by base border reservation. Pressed content is
+  corrected from the old double-inset immediate path and must have immediate and
+  post-layout parity at exactly one `ShadowOffset` translation.
 - **Shadow intrinsic:** setting `HasShadow` on any control produces the shadow
   cells and expanded `VisualBounds` that `Shadow` produced when that control
   renders standard chrome; distinct-node cases use an ordinary container (port

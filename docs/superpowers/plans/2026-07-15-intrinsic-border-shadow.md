@@ -6,8 +6,9 @@
 > checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Delete the `Border` and `Shadow` wrapper controls and make border and
-shadow intrinsic `Control` capabilities without changing existing Button,
-Window, showcase, or terminal-cell behavior.
+shadow intrinsic `Control` capabilities while preserving intended Button,
+Window, showcase, and terminal-cell behavior and correcting Button's latent
+pressed-content double inset.
 
 **Architecture:** `ControlChrome`, `VisualBounds`, `ContentBounds`, and the
 style-property registry already own border and shadow rendering. The base layout
@@ -67,7 +68,7 @@ base; no branch name or commit hash is part of this contract.
   existing and new tests. The final plan gate is `make format`, `make lint`,
   `make build`, and `make test`.
 
-## Canonical inset (used across Tasks 1–2)
+## Canonical inset
 
 The canonical content inset is border **then** padding, exactly as
 `Control.ContentBounds` already composes it:
@@ -78,10 +79,12 @@ overflowing while keeping measure and arrange equivalent.
 
 ---
 
-## Task 1: Base layout reserves `BorderThickness` without moving existing chrome
+## Task 1: Base layout reserves `BorderThickness` and corrects Button press geometry
 
 **Files:**
 
+- Modify: `src/SharpVision/Controls/Control.StyleProperties.cs` (document the
+  validated `BorderThickness` setter exception)
 - Modify: `src/SharpVision/Controls/Control.cs` (`Control.Arrange`,
   `CreateContentConstraint`, and `ResolveDesiredSize`)
 - Modify: `src/SharpVision/Controls/Container.cs` (`OnMeasuredDesired` and the
@@ -89,17 +92,23 @@ overflowing while keeping measure and arrange equivalent.
 - Modify: `src/SharpVision/Controls/Button.cs` (remove the padding class
   default)
 - Modify: `src/SharpVision/Controls/Border.cs` (temporary compatibility until
-  Task 4 deletes the type)
+  Task 3 deletes the type)
 - Test: `tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs`
   (create)
 - Test: `tests/SharpVision.Tests/Controls/ButtonTests.cs` (add committed-bounds
   characterization)
 - Test: `tests/SharpVision.Tests/Controls/ContainerAutoSizeTests.cs`
 - Test: `tests/SharpVision.Tests/Controls/ContainerScrollGeometryTests.cs`
+- Test: `tests/SharpVision.Tests/Controls/TextInputTests.cs` (editor, caret, and
+  private rail reserve-once regressions)
+- Test: `tests/SharpVision.Tests/Styling/StylePropertyTests.cs` (local change
+  impact and equivalent-assignment no-op)
 - Test: `tests/SharpVision.Tests/Styling/StyleTests.cs`
 - Test: `tests/SharpVision.Consumer.Tests/ExternalContractTests.cs`
 - Modify: `docs/concepts/layout.md`, `docs/controls/control.md`, and
   `docs/controls/input/button.md`
+- Modify: `docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md` and
+  `docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md`
 
 **Interfaces:**
 
@@ -237,7 +246,8 @@ dotnet test --project tests/SharpVision.Tests \
 Expected: FAIL — `Arrange_WhenContainerHasBorder...` gives `Rect(0,0,20,10)` and
 `Measure...` gives `(4,2)` (border not reserved).
 
-- [ ] **Step 3: Add focused AutoSize, scrolling, theme, and external proofs**
+- [ ] **Step 3: Add focused AutoSize, scrolling, specialized-control, style,
+      theme, and external proofs**
 
 Add these cases before implementation:
 
@@ -323,6 +333,13 @@ public async Task Theme_WhenBorderThicknessChanges_ReflowsContentAsync()
     }, TestContext.Current.CancellationToken);
 }
 ```
+
+In `TextInputTests`, add reserve-once regressions that position editor text and
+the focused caret one cell inside a configured border and keep its private
+vertical rail inside that same border. In `StylePropertyTests`, set a local
+`BorderThickness`, assert `ChangeImpact.Measure` requests all layout phases and
+publishes once, then assign the equivalent thickness and assert no invalidation
+or notification.
 
 In `ExternalContractTests`, add an application-level case using the existing
 unfriended `FlowPanel`:
@@ -421,7 +438,9 @@ private Size ResolveDesiredSize(Constraint constraint, Size content)
 Rename the private `padding` parameters to `inset` so their meaning stays true.
 Update the XML summaries for `OnMeasuringContent`, `ResolveContentSlot`,
 `ArrangeOverlays`, and `ContentBounds` to say border-and-padding-deflated rather
-than padding-only.
+than padding-only. Add the missing `ArgumentOutOfRangeException` documentation
+to the public `BorderThickness` setter because any edge above one cell is
+already rejected by its registered validator.
 
 - [ ] **Step 6: Preserve AutoSize border reservation**
 
@@ -449,7 +468,7 @@ internal override Size OnMeasuredDesired(Size desired) => !AutoSize
 Rename the helper's `padding` parameter to `inset`; its existing `long` addition
 and `Add` helper keep the calculation saturated.
 
-- [ ] **Step 7: Preserve Button's current one-cell content position**
+- [ ] **Step 7: Preserve Button's released inset and correct pressed geometry**
 
 Before changing `Button`, add the following characterization to `ButtonTests.cs`
 and run it once. It must pass on the old implementation:
@@ -486,7 +505,49 @@ summary so it no longer claims a default internal padding value.
 
 Do not alter `FaceContentBounds` or the immediate content arrangement in
 `OnPressedChanged`. The new base border inset replaces the old padding inset, so
-released and pressed content remain in the same cells.
+released content remains one cell inside the frame. This also corrects an
+existing inconsistency: before the base change, `OnPressedChanged` applies
+border plus padding to content that released arrangement inset by padding alone,
+then shifts it. Add the following regression before changing production code;
+the old immediate `(3,3,2,0)` result is the expected RED diagnosis, not behavior
+to preserve:
+
+```csharp
+/// <summary>Verifies pressed content has immediate and post-layout face parity.</summary>
+[Fact]
+public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
+{
+    var content = new ProbeControl
+    {
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        VerticalAlignment = VerticalAlignment.Stretch,
+    };
+    var button = new Button
+    {
+        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Top,
+        Width = Length.Cells(6),
+        Height = Length.Cells(3),
+        Content = content,
+    };
+    new Engine().Layout(button, new Size(10, 6));
+    var released = content.Bounds;
+
+    Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+        Code.Character,
+        new Rune(' '),
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press)));
+
+    released.ShouldBe(new Rect(1, 1, 4, 1));
+    content.Bounds.ShouldBe(new Rect(2, 2, 4, 1));
+
+    new Engine().Layout(button, new Size(10, 6));
+
+    content.Bounds.ShouldBe(new Rect(2, 2, 4, 1));
+}
+```
 
 - [ ] **Step 8: Keep the surviving Border wrapper reserved exactly once**
 
@@ -516,7 +577,7 @@ protected override void ArrangeOverride(Rect bounds) =>
 ```
 
 Delete the now-unused `Subtract` helper. Keep `Add` and `OnRender` unchanged;
-Task 4 deletes the complete type.
+Task 3 deletes the complete type.
 
 - [ ] **Step 9: Update the normative box-model documentation**
 
@@ -524,7 +585,9 @@ Update `layout.md` and `control.md` with margin → border → padding ordering,
 saturating inset arithmetic, AutoSize/AutoScroll behavior, theme-driven layout
 invalidation, and the `RenderChrome` obligation for custom renderers. Update
 `button.md` to remove the padding-default claim while preserving the one-cell
-frame inset and pressed-face translation.
+frame inset and corrected pressed-face translation. Reconcile the sibling design
+spec and this implementation plan with the same correction, actual control
+taxonomy, Task 1 file inventory, and verification commands.
 
 - [ ] **Step 10: Run focused tests for the atomic box-model change**
 
@@ -532,6 +595,7 @@ frame inset and pressed-face translation.
 dotnet test --project tests/SharpVision.Tests \
   --filter-class "*ControlBorderReservationTests" "*ButtonTests" "*BorderTests" \
   "*ContainerAutoSizeTests" "*ContainerScrollGeometryTests" "*ControlChromeTests" \
+  "*TextInputTests" "*StylePropertyTests" \
   --parallel none --timeout 180s
 dotnet test --project tests/SharpVision.Tests \
   --filter-class "*StyleTests" --parallel none --timeout 180s
@@ -539,8 +603,18 @@ dotnet test --project tests/SharpVision.Tests \
   --filter-namespace "SharpVision.Tests.Layout" --parallel none --timeout 180s
 dotnet test --project tests/SharpVision.Consumer.Tests \
   --filter-class "*ExternalContractTests" --parallel none --timeout 180s
-npx prettier --write docs/concepts/layout.md docs/controls/control.md docs/controls/input/button.md
-npx prettier --check docs/concepts/layout.md docs/controls/control.md docs/controls/input/button.md
+npx prettier --write \
+  docs/concepts/layout.md \
+  docs/controls/control.md \
+  docs/controls/input/button.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md \
+  docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md
+npx prettier --check \
+  docs/concepts/layout.md \
+  docs/controls/control.md \
+  docs/controls/input/button.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md \
+  docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md
 dotnet build SharpVision.slnx --configuration Release --no-incremental
 ```
 
@@ -551,6 +625,7 @@ and zero errors.
 
 ```bash
 git add -- \
+  src/SharpVision/Controls/Control.StyleProperties.cs \
   src/SharpVision/Controls/Control.cs \
   src/SharpVision/Controls/Container.cs \
   src/SharpVision/Controls/Button.cs \
@@ -559,79 +634,21 @@ git add -- \
   tests/SharpVision.Tests/Controls/ButtonTests.cs \
   tests/SharpVision.Tests/Controls/ContainerAutoSizeTests.cs \
   tests/SharpVision.Tests/Controls/ContainerScrollGeometryTests.cs \
+  tests/SharpVision.Tests/Controls/TextInputTests.cs \
+  tests/SharpVision.Tests/Styling/StylePropertyTests.cs \
   tests/SharpVision.Tests/Styling/StyleTests.cs \
   tests/SharpVision.Consumer.Tests/ExternalContractTests.cs \
   docs/concepts/layout.md \
   docs/controls/control.md \
-  docs/controls/input/button.md
+  docs/controls/input/button.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md \
+  docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md
 git commit -m "feat(layout): reserve BorderThickness in the base measure/arrange pipeline"
 ```
 
 ---
 
-## Task 2: Prove Button's pressed content still follows the translated face
-
-**Files:**
-
-- Test: `tests/SharpVision.Tests/Controls/ButtonTests.cs`
-
-Task 1 deliberately keeps `OnPressedChanged`'s immediate content arrangement.
-This task records that behavior so a later cleanup cannot reintroduce the old
-plan's incorrect “redundant” diagnosis.
-
-- [ ] **Step 1: Add the pressed-content characterization**
-
-```csharp
-/// <summary>Verifies a pressed shadowed Button immediately translates content with its face.</summary>
-[Fact]
-public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
-{
-    var label = new ControlText("Go");
-    var button = new Button
-    {
-        HorizontalAlignment = HorizontalAlignment.Left,
-        VerticalAlignment = VerticalAlignment.Top,
-        Width = Length.Cells(6),
-        Height = Length.Cells(3),
-        Content = label,
-    };
-    new Engine().Layout(button, new Size(10, 6));
-
-    Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
-        Code.Character,
-        new Rune(' '),
-        nativeCode: 0,
-        Modifiers.None,
-        KeyAction.Press)));
-
-    label.Bounds.ShouldBe(new Rect(2, 2, 4, 1));
-}
-```
-
-- [ ] **Step 2: Audit and verify**
-
-Run:
-
-```bash
-rg -n "BorderThickness(Property)?" src/SharpVision/Controls --glob '*.cs'
-dotnet test --project tests/SharpVision.Tests \
-  --filter-class "*ButtonTests" --parallel none --timeout 180s
-```
-
-Expected: non-zero class-default border registration remains only on `Button`;
-the temporary `Border` compatibility type references its own property for
-rendering only; all Button tests pass.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add -- tests/SharpVision.Tests/Controls/ButtonTests.cs
-git commit -m "test(controls): preserve pressed Button content geometry"
-```
-
----
-
-## Task 3: Port intrinsic shadow behavior, then retire `Shadow`
+## Task 2: Port intrinsic shadow behavior, then retire `Shadow`
 
 **Files:**
 
@@ -727,7 +744,7 @@ will be deleted. In `AmbiguousWidthControlTests`, replace the wrapper with a
 `(1, 1)`, dim shadow attributes, and a `ProbeControl` child. Preserve its `#`
 fallback assertion. In `ControlChromeTests`, replace only the `Shadow`
 construction with the same intrinsic surface; leave its `Border` constructions
-for Task 4.
+for Task 3.
 
 If the Step 1 search finds a new construction, first decide whether the wrapper
 was a distinct node. Move the properties onto the child only when the child
@@ -801,7 +818,7 @@ git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShado
 
 ---
 
-## Task 4: Migrate border call sites, then retire `Border`
+## Task 3: Migrate border call sites, then retire `Border`
 
 **Files:**
 
@@ -855,7 +872,7 @@ rg -n "new Border\b|ShouldBeOfType<Border>|Find<Border>|class Border\b|[,(][[:sp
   src tests --glob '*.cs'
 ```
 
-Expected on the current tree after Task 3: the `Border` implementation/tests/
+Expected on the current tree after Task 2: the `Border` implementation/tests/
 page plus every source and test path enumerated above. Re-run before every slice
 and immediately before deletion.
 
@@ -1009,7 +1026,7 @@ git commit -m "refactor(showcase): compose frames with intrinsic border surfaces
 - [ ] **Step 6: Delete `Border` and its dedicated page atomically**
 
 Delete `Border.cs`, `BorderPane.cs`, `BorderTests.cs`, and the Border control
-spec with `apply_patch`. Remove the Border catalog entry. After Task 3 the
+spec with `apply_patch`. Remove the Border catalog entry. After Task 2 the
 catalog has 20 pages and Text at index 16; after removing Border it has 19
 pages, starts on Button, and Text is index 15. Set tmux to 15 Down keys by
 deriving it from that final index.
@@ -1066,7 +1083,7 @@ git commit -m "refactor: remove Border control; border is intrinsic via BorderTh
 
 ---
 
-## Task 5: Reconcile remaining normative docs and run the quality gate
+## Task 4: Reconcile remaining normative docs and run the quality gate
 
 **Files:**
 
@@ -1163,12 +1180,12 @@ do not absorb unrelated paths.
 
 ## Self-Review
 
-**Spec coverage:** Decision 1 (delete Shadow) → Task 3; Decision 2 (delete
-Border) → Task 4; Decision 3 (base reserves BorderThickness) → Task 1; Decision
-4 (reserve exactly once) → Task 1's atomic base/Button/temporary-Border change
-plus Task 2's pressed-content proof; Decision 5 (idiom) → the explicit `Dock`
-frame migration in Task 4; Decision 6 (showcase pages removed) → Tasks 3 and 4.
-Normative docs and full gates are Task 5.
+**Spec coverage:** Decision 1 (delete Shadow) → Task 2; Decision 2 (delete
+Border) → Task 3; Decision 3 (base reserves BorderThickness) → Task 1; Decision
+4 (reserve exactly once) → Task 1's atomic base/Button/temporary-Border change,
+including immediate and post-layout pressed-content parity; Decision 5 (idiom) →
+the explicit `Dock` frame migration in Task 3; Decision 6 (showcase pages
+removed) → Tasks 2 and 3. Normative docs and full gates are Task 4.
 
 **Defects corrected:** the plan removes Button's redundant padding class
 default, includes AutoSize and saturating inset arithmetic, preserves the Shadow

@@ -16,6 +16,8 @@ dispatcher.
 | `MinWidth`, `MinHeight`                    | `0`               | Non-negative cell minimums.                                                                                                                  |
 | `MaxWidth`, `MaxHeight`                    | `int.MaxValue`    | Cell maximums not below the corresponding minimum.                                                                                           |
 | `Margin`                                   | Zero edges        | External non-negative `Thickness`.                                                                                                           |
+| `BorderThickness`                          | Zero edges        | Physical zero-or-one-cell edges reserved inside the border box before padding; a `Measure`-impact style property.                            |
+| `BorderGlyphs`                             | `Glyphs.Default`  | Validated printable one-cell glyph family used by standard chrome; render-only.                                                              |
 | `Padding`                                  | Zero edges        | Internal non-negative `Thickness`.                                                                                                           |
 | `HorizontalAlignment`, `VerticalAlignment` | `Left`, `Stretch` | Placement within the arranged slot.                                                                                                          |
 | `Visibility`                               | `Visible`         | Visible, hidden, or collapsed.                                                                                                               |
@@ -121,13 +123,13 @@ earliest affected phase and coalesce repeated requests while they bubble to the
 root. Public style-property metadata expresses that phase as ordered
 `ChangeImpact.None`, `Render`, `Arrange`, or `Measure` values.
 
-| Change                                            | Dirty phases                 |
-| ------------------------------------------------- | ---------------------------- |
-| Width, height, min/max, margin, padding, collapse | Measure, arrange, and render |
-| Horizontal or vertical alignment                  | Arrange and render           |
-| Enabled state or visible/hidden transition        | Render                       |
-| Hit-test visibility                               | No layout or render phase    |
-| Style replacement                                 | Maximum old/new style impact |
+| Change                                                              | Dirty phases                 |
+| ------------------------------------------------------------------- | ---------------------------- |
+| Width, height, min/max, margin, border thickness, padding, collapse | Measure, arrange, and render |
+| Horizontal or vertical alignment                                    | Arrange and render           |
+| Enabled state or visible/hidden transition                          | Render                       |
+| Hit-test visibility                                                 | No layout or render phase    |
+| Style replacement                                                   | Maximum old/new style impact |
 
 The `Arrange` impact always requests arrange plus render, while `Measure`
 requests all three phases. Assigning an equivalent value through `SetValue` is a
@@ -181,10 +183,12 @@ pointer, paste, and terminal focus payloads.
 
 Derived controls implement `MeasureOverride(Constraint)` to report intrinsic
 content size and `ArrangeOverride(Rect)` to receive their committed content box.
-The base class owns margin, padding, explicit/deferred length resolution,
-min/max clamping, alignment, caching, collapse behavior, dispatcher checks, and
-reentrancy guards. Extension points therefore deal only with content; they do
-not repeat box-model arithmetic.
+The base class owns margin, border, padding, explicit/deferred length
+resolution, min/max clamping, alignment, caching, collapse behavior, dispatcher
+checks, and reentrancy guards. The physical order is margin → border → padding →
+content; combined measure insets saturate, and arrange deflation saturates at
+zero. Extension points therefore deal only with content and must not repeat
+box-model arithmetic.
 
 A derived owner lays out only its direct children through
 `MeasureChild(child, constraint)` and `ArrangeChild(child, slot, resolvedAxes)`.
@@ -225,6 +229,13 @@ state. Only interactive (focusable) controls are ever marked hovered, so the
 hovered flag never appears on static content such as text or tables.
 `GetResolvedStyle` converts the active theme cascade into the complete terminal
 cell style used by rendering.
+
+The default `OnRender` calls `RenderChrome`, which draws configured body fill,
+per-side border, and shadow. A control that fully overrides `OnRender` and wants
+those intrinsic visuals must call `RenderChrome` itself before or around custom
+content. Layout still reserves a non-zero `BorderThickness` even when a custom
+renderer deliberately omits the visual, so rendering and reservation cannot
+silently invent different geometry.
 
 Primitive controls also read the protected inherited `CellPolicy` during
 measurement and drawing. This keeps grapheme width decisions identical to the

@@ -9,6 +9,46 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies theme integration with control invalidation and rendering.</summary>
 public sealed class StyleTests
 {
+    /// <summary>Verifies published theme border geometry reflows owned content.</summary>
+    [Fact]
+    public async Task Theme_WhenBorderThicknessChanges_ReflowsContentAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var theme = new Theme();
+            var style = new ControlStyle<LayoutProbe>();
+            style.Set(Control.BorderThicknessProperty, State.Normal, default);
+            theme.SetStyle(style);
+            var child = new ProbeControl()
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+            };
+            var root = new LayoutProbe()
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+            };
+            root.Children.Add(child);
+            ThemeTestSupport.ApplyTheme(root, theme);
+            theme.Changed += (_, args) =>
+            {
+                ThemeTestSupport.RefreshTheme(root, theme);
+                InvalidateThemeDependents(root, args.Impact);
+            };
+            root.Attach(dispatcher);
+            new Engine().Layout(root, new Size(10, 4));
+            child.Bounds.ShouldBe(new Rect(0, 0, 10, 4));
+
+            style.Set(Control.BorderThicknessProperty, State.Normal, new Thickness(1));
+            new Engine().Layout(root, new Size(10, 4));
+
+            child.Bounds.ShouldBe(new Rect(1, 1, 8, 2));
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies theme and instance-style dependencies invalidate only current dependents.</summary>
     [Fact]
     public async Task Style_WhenResourcesChange_InvalidatesOnlyCurrentDependentsAsync()

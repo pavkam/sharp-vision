@@ -56,6 +56,29 @@ public sealed class StylePropertyTests
         changes.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies local border geometry invalidates measure once and suppresses equivalent assignment.</summary>
+    [Fact]
+    public void BorderThickness_WhenLocalValueChanges_InvalidatesMeasureAndEquivalentIsNoOp()
+    {
+        var control = new ProbeControl();
+        var changes = new List<string?>();
+        control.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+        control.Clear(Invalidation.All);
+
+        control.BorderThickness = new Thickness(1);
+
+        Control.BorderThicknessProperty.Impact.ShouldBe(ChangeImpact.Measure);
+        control.Pending.ShouldBe(Invalidation.All);
+        changes.ShouldBe([nameof(Control.BorderThickness)]);
+        control.Clear(Invalidation.All);
+        changes.Clear();
+
+        control.BorderThickness = new Thickness(1);
+
+        control.Pending.ShouldBe(Invalidation.None);
+        changes.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies duplicate class-default registration fails before publication.</summary>
     [Fact]
     public void RegisterClassDefault_WhenTypeIsDuplicated_ThrowsBeforePublication()

@@ -11,7 +11,6 @@ public sealed partial class Button: Pressable
     static Button()
     {
         _ = BorderThicknessProperty.RegisterClassDefault<Button>(new Thickness(1));
-        _ = PaddingProperty.RegisterClassDefault<Button>(new Thickness(1));
         _ = HasShadowProperty.RegisterClassDefault<Button>(true);
         _ = ShadowOffsetProperty.RegisterClassDefault<Button>(new Point(1, 1));
         _ = BorderGlyphsProperty.RegisterClassDefault<Button>(Glyphs.Rounded);
@@ -22,7 +21,7 @@ public sealed partial class Button: Pressable
 
     #region Construction and command properties
 
-    /// <summary>Initializes an empty focusable Button with rounded border, internal padding, and compact shadow.</summary>
+    /// <summary>Initializes an empty focusable Button with a rounded border and compact shadow.</summary>
     public Button() : base(capacity: 1)
     {
     }

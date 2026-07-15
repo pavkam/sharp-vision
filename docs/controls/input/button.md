@@ -17,12 +17,14 @@ completed activation raises `Click` and invokes its command once.
 - `Click` is a control event raised after pressed state is released and before
   command execution; command failure follows runtime exception policy.
 
-Buttons render a rounded one-cell border, internal padding, and a compact
-composite shadow by default. `Glyphs`, `HasShadow`, `ShadowOffset`,
-`ShadowMode`, and `ShadowGlyph` expose the chrome choices when an application
-needs a different surface. A composite shadow preserves the graphemes beneath
-its translated footprint and dims their style; block-glyph mode replaces that
-footprint outside the button body with the configured shade Rune. The shared
+Buttons render a rounded one-cell border and a compact composite shadow by
+default. The border itself reserves the default one-cell content inset;
+inherited `Padding` defaults to zero and adds further spacing only when set.
+`Glyphs`, `HasShadow`, `ShadowOffset`, `ShadowMode`, and `ShadowGlyph` expose
+the chrome choices when an application needs a different surface. A composite
+shadow preserves the graphemes beneath its translated footprint and dims their
+style; block-glyph mode replaces that footprint outside the button body with the
+configured shade Rune. The shared
 [Shadow contract](../display/shadow.md#shadow-contract) defines the same two
 footprint semantics for controls that need to decorate an arbitrary child.
 
@@ -30,8 +32,10 @@ Hover and focus appearance apply to the complete Button face, including its
 physical border, while the detached shadow retains normal dim styling. During a
 held pointer or Space press, a shadowed Button translates its face and owned
 content by `ShadowOffset`; that face covers the shadow footprint and makes the
-control read as physically pressed. Releasing restores the original face before
-raising `Click`.
+control read as physically pressed. Immediate press handling and the next layout
+pass commit the same translated content rectangle; this corrects the former
+double border-and-padding inset on the immediate path. Releasing restores the
+original face before raising `Click`.
 
 When `HasShadow` is false, the Button remains in its arranged box throughout a
 press: there is no absent shadow to cover. It still resolves the full
@@ -48,11 +52,12 @@ replacement observes `CanExecuteChanged` and raises standard property change
 notification without retaining disposed Buttons.
 
 `Content` is the atomic capacity-one child. Measure and arrange include its
-margin inside the Button's shared padding, and rendering remains semantic
-through the child's inherited active style. When the resolved appearance defines
-a background, Button fills its entire arranged surface before rendering content,
-so padding remains part of the visible interactive target. `IsDefault` and
-`IsCancel` are stored for Window fallback routing in Phase 5C.
+margin inside the Button's border-and-padding content box, and rendering remains
+semantic through the child's inherited active style. When the resolved
+appearance defines a background, Button fills its entire arranged surface before
+rendering content, so optional padding remains part of the visible interactive
+target. `IsDefault` and `IsCancel` are stored for Window fallback routing in
+Phase 5C.
 
 ## Interaction
 

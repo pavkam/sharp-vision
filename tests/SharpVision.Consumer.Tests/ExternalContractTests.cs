@@ -52,6 +52,38 @@ public sealed class ExternalContractTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies intrinsic border geometry applies to an externally authored container without custom plumbing.</summary>
+    [Fact]
+    public async Task Layout_WhenExternalContainerHasBorder_InsetsOwnedLeavesAsync()
+    {
+        await using var terminal = new ConsumerTerminal();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var first = new Gauge() { Value = 7 };
+        var second = new Gauge() { Value = 100 };
+        var panel = new FlowPanel()
+        {
+            BorderThickness = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        panel.Children.Add(first);
+        panel.Children.Add(second);
+        await using var application = new Application(
+            panel,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        first.Bounds.X.ShouldBe(panel.Bounds.X + 1);
+        first.Bounds.Y.ShouldBe(panel.Bounds.Y + 1);
+        second.Bounds.Right.ShouldBeLessThanOrEqualTo(panel.Bounds.Right - 1);
+        second.Bounds.Bottom.ShouldBeLessThanOrEqualTo(panel.Bounds.Bottom - 1);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an external unclipped Container renders and hit-tests a child outside its own bounds.</summary>
     [Fact]
     public async Task HitTest_WhenExternalContainerDoesNotClip_ReachesOutsideChildAsync()

@@ -22,13 +22,70 @@ public sealed class ButtonTests
         button.IsDefault.ShouldBeFalse();
         button.IsCancel.ShouldBeFalse();
         button.CanFocus.ShouldBeTrue();
-        button.Padding.ShouldBe(new Thickness(1));
+        button.Padding.ShouldBe(default);
         button.Glyphs.ShouldBe(Glyphs.Rounded);
         button.HasShadow.ShouldBeTrue();
         button.ShadowOffset.ShouldBe(new Point(1, 1));
         button.Children.Add(new ProbeControl());
         _ = Should.Throw<InvalidOperationException>(() =>
             button.Children.Add(new ProbeControl()));
+    }
+
+    /// <summary>Verifies the default chrome preserves one content cell on every physical edge.</summary>
+    [Fact]
+    public void Arrange_WhenDefaultChromeIsUsed_PreservesOneCellContentInset()
+    {
+        var content = new ProbeControl()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        var button = new Button()
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            Content = content,
+        };
+
+        new Engine().Layout(button, new Size(10, 3));
+
+        button.Bounds.ShouldBe(new Rect(0, 0, 10, 3));
+        content.Bounds.ShouldBe(new Rect(1, 1, 8, 1));
+    }
+
+    /// <summary>Verifies pressed shadow translation commits content exactly one cell from its released bounds.</summary>
+    [Fact]
+    public void Arrange_WhenPressedWithShadow_TranslatesContentByShadowOffset()
+    {
+        var content = new ProbeControl()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        var button = new Button()
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Content = content,
+        };
+        new Engine().Layout(button, new Size(10, 6));
+        var released = content.Bounds;
+
+        Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune(' '),
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press)));
+
+        released.ShouldBe(new Rect(1, 1, 4, 1));
+        content.Bounds.ShouldBe(new Rect(2, 2, 4, 1));
+
+        new Engine().Layout(button, new Size(10, 6));
+
+        content.Bounds.ShouldBe(new Rect(2, 2, 4, 1));
     }
 
     /// <summary>Verifies the default Button draws its own border and shadow without showcase wrappers.</summary>
@@ -311,12 +368,12 @@ public sealed class ButtonTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies padding, margin, Unicode content, and semantic rendering.</summary>
+    /// <summary>Verifies intrinsic border inset, margin, Unicode content, and semantic rendering.</summary>
     [Fact]
     public void Render_WhenButtonHasUnicodeContent_ComputesExactBoundsAndCells()
     {
         var content = new ControlText("界") { Margin = new Thickness(1, 0) };
-        var button = new Button() { Content = content, Padding = new Thickness(1) };
+        var button = new Button() { Content = content };
         new Engine().Layout(button, new Size(6, 3));
         using Frame frame = new(new Size(6, 3));
 
@@ -337,7 +394,6 @@ public sealed class ButtonTests
         var button = new Button()
         {
             Content = new ControlText("Run"),
-            Padding = new Thickness(1),
             Style = style,
             Width = Length.Cells(8),
             Height = Length.Cells(3),

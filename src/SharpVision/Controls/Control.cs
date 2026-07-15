@@ -727,9 +727,9 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
-            var padded = Padding.Deflate(bounds);
-            ArrangeOverride(ResolveContentSlot(padded));
-            ArrangeOverlays(padded);
+            var content = Padding.Deflate(BorderThickness.Deflate(bounds));
+            ArrangeOverride(ResolveContentSlot(content));
+            ArrangeOverlays(content);
         }
         catch
         {
@@ -1312,7 +1312,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Adjusts the content constraint before content measurement. Default returns it unchanged.</summary>
-    /// <param name="content">The padding-deflated content constraint.</param>
+    /// <param name="content">The border-and-padding-deflated content constraint.</param>
     /// <returns>The constraint passed to <see cref="MeasureOverride"/>.</returns>
     internal virtual Constraint OnMeasuringContent(Constraint content) => content;
 
@@ -1321,13 +1321,13 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <returns>The committed desired size.</returns>
     internal virtual Size OnMeasuredDesired(Size desired) => desired;
 
-    /// <summary>Adjusts the padding-deflated border box before content arrangement. Default returns it unchanged.</summary>
-    /// <param name="padded">The padding-deflated border-box rectangle.</param>
+    /// <summary>Adjusts the border-and-padding-deflated content box before arrangement. Default returns it unchanged.</summary>
+    /// <param name="padded">The border-and-padding-deflated content-box rectangle.</param>
     /// <returns>The rectangle passed to <see cref="ArrangeOverride"/>.</returns>
     internal virtual Rect ResolveContentSlot(Rect padded) => padded;
 
-    /// <summary>Arranges overlay chrome anchored to the padding-deflated border box. Default is a no-op.</summary>
-    /// <param name="padded">The padding-deflated border-box rectangle.</param>
+    /// <summary>Arranges overlay chrome inside the border-and-padding-deflated content box. Default is a no-op.</summary>
+    /// <param name="padded">The border-and-padding-deflated content-box rectangle.</param>
     internal virtual void ArrangeOverlays(Rect padded) { }
 
     /// <summary>Gets whether this control sizes its width to content, overriding stretch. Default false.</summary>
@@ -1336,7 +1336,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether this control sizes its height to content, overriding stretch. Default false.</summary>
     internal virtual bool ShrinkWrapsHeight => false;
 
-    /// <summary>Arranges content inside the committed padded border box.</summary>
+    /// <summary>Arranges content inside the committed border-and-padding-deflated content box.</summary>
     /// <param name="bounds">The non-negative content-box rectangle.</param>
     protected virtual void ArrangeOverride(Rect bounds) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot arrange content.");
@@ -1549,7 +1549,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         return InvalidationFor(impact);
     }
 
-    /// <summary>Gets the committed content rectangle after padding deflation.</summary>
+    /// <summary>Gets the committed content rectangle after border and padding deflation.</summary>
     protected Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
 
     /// <summary>Returns the earlier and therefore stronger of two validated change impacts.</summary>
@@ -1631,21 +1631,21 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Length length,
         int? slot,
         int margin,
-        int padding,
+        int inset,
         int intrinsic,
         int minimum,
         int maximum)
     {
         var requested = length.Kind switch
         {
-            Kind.Auto => SaturatingAdd(intrinsic, padding),
+            Kind.Auto => SaturatingAdd(intrinsic, inset),
             Kind.Cells => (int) length.Value,
             Kind.Percent => slot.HasValue
                 ? ResolvePercent(slot.Value, length.Value)
-                : SaturatingAdd(intrinsic, padding),
+                : SaturatingAdd(intrinsic, inset),
             Kind.Star => slot.HasValue
                 ? Math.Max(0, slot.Value - margin)
-                : SaturatingAdd(intrinsic, padding),
+                : SaturatingAdd(intrinsic, inset),
             _ => throw new UnreachableException(),
         };
         var clamped = Math.Clamp(requested, minimum, maximum);
@@ -1659,7 +1659,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Length length,
         int? slot,
         int margin,
-        int padding)
+        int inset)
     {
         int? border = length.Kind switch
         {
@@ -1676,7 +1676,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         var available = slot.HasValue ? Math.Max(0, slot.Value - margin) : int.MaxValue;
-        return Math.Max(0, Math.Min(border.Value, available) - padding);
+        return Math.Max(0, Math.Min(border.Value, available) - inset);
     }
 
     private static int ResolvePercent(int value, double percent)
@@ -1875,27 +1875,37 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         OnPointerCaptureCancelled(reason);
     }
 
-    private Constraint CreateContentConstraint(Constraint constraint) => new(
-        ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, Padding.Horizontal),
-        ResolveContentAxis(Height, constraint.Height, Margin.Vertical, Padding.Vertical));
+    private Constraint CreateContentConstraint(Constraint constraint)
+    {
+        var horizontalInset = SaturatingAdd(Padding.Horizontal, BorderThickness.Horizontal);
+        var verticalInset = SaturatingAdd(Padding.Vertical, BorderThickness.Vertical);
+        return new Constraint(
+            ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, horizontalInset),
+            ResolveContentAxis(Height, constraint.Height, Margin.Vertical, verticalInset));
+    }
 
-    private Size ResolveDesiredSize(Constraint constraint, Size content) => new(
-        ResolveMeasureAxis(
-            Width,
-            constraint.Width,
-            Margin.Horizontal,
-            Padding.Horizontal,
-            content.Width,
-            MinWidth,
-            MaxWidth),
-        ResolveMeasureAxis(
-            Height,
-            constraint.Height,
-            Margin.Vertical,
-            Padding.Vertical,
-            content.Height,
-            MinHeight,
-            MaxHeight));
+    private Size ResolveDesiredSize(Constraint constraint, Size content)
+    {
+        var horizontalInset = SaturatingAdd(Padding.Horizontal, BorderThickness.Horizontal);
+        var verticalInset = SaturatingAdd(Padding.Vertical, BorderThickness.Vertical);
+        return new Size(
+            ResolveMeasureAxis(
+                Width,
+                constraint.Width,
+                Margin.Horizontal,
+                horizontalInset,
+                content.Width,
+                MinWidth,
+                MaxWidth),
+            ResolveMeasureAxis(
+                Height,
+                constraint.Height,
+                Margin.Vertical,
+                verticalInset,
+                content.Height,
+                MinHeight,
+                MaxHeight));
+    }
 
     /// <summary>Commits inherited context across this complete subtree without invoking user callbacks.</summary>
     /// <param name="dispatcher">The inherited dispatcher, or null.</param>
