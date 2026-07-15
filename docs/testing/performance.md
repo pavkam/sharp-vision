@@ -47,9 +47,10 @@ rules in the
 emoji segmentation; unchanged, sparse, and dense 80×24 encoding; and legacy
 text, SGR mouse, and Kitty keyboard decoding. Five 10,000-iteration allocation
 windows must include a zero-byte sample after tiered compilation has crossed its
-warm-up. Test output records elapsed time, .NET runtime, OS, and process
-architecture, but elapsed time is intentionally informational on local and
-ordinary CI machines.
+warm-up. The allocation class belongs to a non-parallel test collection so
+unrelated terminal tests cannot pollute its thread-local measurements. Test
+output records elapsed time, .NET runtime, OS, and process architecture, but
+elapsed time is intentionally informational on local and ordinary CI machines.
 
 ## Current Phase 4 gates
 
