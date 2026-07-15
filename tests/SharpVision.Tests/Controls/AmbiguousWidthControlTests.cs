@@ -35,6 +35,7 @@ public sealed class AmbiguousWidthControlTests
             HasShadow = true,
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowOffset = new Point(1, 1),
+            ShadowAttributes = Attributes.Dim,
         };
         control.Children.Add(new ProbeControl(new Size(2, 1)));
         control.SetCellPolicy(new Policy(Ambiguous.Wide));

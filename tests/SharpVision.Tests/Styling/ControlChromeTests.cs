@@ -53,6 +53,33 @@ public sealed class ControlChromeTests
         frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
+    /// <summary>Verifies an unset shadow background preserves the destination surface.</summary>
+    [Fact]
+    public void DrawShadow_WhenShadowBackgroundIsUnset_PreservesDestinationBackground()
+    {
+        LayoutProbe control = new()
+        {
+            Bounds = new Rect(0, 0, 2, 2),
+            HasShadow = true,
+            ShadowMode = ShadowMode.Composite,
+            ShadowOffset = new Point(1, 1),
+            ShadowAttributes = Attributes.Dim,
+        };
+        Color background = Color.Indexed(238);
+        using Frame frame = new(new Size(4, 4));
+        frame.Canvas.Fill(
+            frame.Canvas.Bounds,
+            new Rune('x'),
+            new CellStyle(Color.Default, background));
+
+        control.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("x");
+        frame.GetCell(new Point(2, 1)).Style.Background.Kind.ShouldBe(ColorKind.Indexed);
+        frame.GetCell(new Point(2, 1)).Style.Background.Red.ShouldBe((byte) 238);
+        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+    }
+
     /// <summary>Verifies border thickness reduces the arranged content box.</summary>
     [Fact]
     public void ContentBounds_WhenBorderAndPaddingAreSet_DeflatesBeforePadding()

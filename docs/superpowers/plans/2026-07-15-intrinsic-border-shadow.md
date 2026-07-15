@@ -557,8 +557,9 @@ container and explicitly preserve every non-base wrapper default it relied on:
 `ShadowAttributes = Attributes.Dim`.
 
 Evidence: the ambiguous-width test now uses an intrinsic `LayoutProbe` and
-retains the `#` fallback assertion; the additional styling test uses the same
-chrome-rendering host and explicitly preserves dim shadow styling.
+retains the `#` fallback assertion while explicitly preserving the wrapper's dim
+shadow styling; the additional styling test uses the same chrome-rendering host
+and explicitly preserves dim shadow styling.
 
 - [x] **Step 4: Delete `Shadow.cs`, `ShadowPane.cs`, `ShadowTests.cs`; drop the
       `Shadow` showcase page**
@@ -588,7 +589,7 @@ Run:
 ```bash
 rg -n "new Shadow\b|ShouldBeOfType<Shadow>|Find<Shadow>|\bShadow shadow\b" src tests --glob '*.cs'
 dotnet build SharpVision.slnx --configuration Release --no-incremental
-dotnet test --project tests/SharpVision.Tests --configuration Release --filter-class '*IntrinsicShadowTests' '*AmbiguousWidthControlTests' '*ControlChromeTests' --minimum-expected-tests 16 --timeout 180s
+dotnet test --project tests/SharpVision.Tests --configuration Release --filter-class '*IntrinsicShadowTests' '*AmbiguousWidthControlTests' '*ControlChromeTests' --minimum-expected-tests 17 --timeout 180s
 dotnet test --project tests/SharpVision.Tests --configuration Release --no-build --minimum-expected-tests 3 --timeout 300s
 dotnet test --project tests/SharpVision.Showcase.Tests --configuration Release --no-build --minimum-expected-tests 3 --timeout 300s
 ```
@@ -597,7 +598,7 @@ Expected: the search is silent; build and all test commands pass.
 
 Evidence: the concrete-type search is silent; the no-incremental Release build
 completed with zero warnings and zero errors; the expanded focused suite passed
-16/16; full `SharpVision.Tests` passed 674/674; and full Showcase tests passed
+17/17; full `SharpVision.Tests` passed 674/674; and full Showcase tests passed
 47/47. `make format`, `dotnet format --verify-no-changes`, the named-type and
 external-resource checks, `npm run test:docs` (24/24), scoped Prettier and
 Markdown lint, and `git diff --check` all passed. The repository-wide link
@@ -606,6 +607,12 @@ checker reports only the known missing showcase image at
 Markdown lint remains blocked by 88 pre-existing errors confined to older
 superpowers plan files; every Markdown file changed by Task 3 passes the scoped
 lint.
+
+Follow-up review evidence: a dedicated null-`ShadowBackground` composite test
+proves that the destination glyph and indexed background survive while dim
+shadow attributes apply. Temporarily coercing the transparent/null branch to
+opaque made that test fail with expected `ColorKind.Indexed`, actual
+`ColorKind.Default`; restoring the branch passed 1/1.
 
 - [x] **Step 6: Commit**
 
