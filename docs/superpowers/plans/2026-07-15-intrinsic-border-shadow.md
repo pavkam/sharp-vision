@@ -875,6 +875,9 @@ synchronized current normative documentation.
   `AGENTS.md`.
 - Delete: `docs/controls/display/border.md` and
   `docs/controls/display/shadow.md`.
+- Test: `tests/SharpVision.Terminal.Tests/Unicode/MeasurementTests.cs`
+  (stabilize the pre-existing tiered-PGO-sensitive allocation gate without
+  changing its zero-allocation assertion).
 
 - [x] **Step 1: Update docs**
 
@@ -960,6 +963,15 @@ Evidence: `make format`, `make lint`, `make build`, and `make test` each exited
 zero. The build reported zero warnings and zero errors; the full test run passed
 1,383/1,383 with no skips; Markdown lint reported zero errors; links and 24/24
 documentation tests passed; `git diff --check` was silent.
+
+The first post-commit repeat exposed the known tiered-PGO bookkeeping issue in
+the empty-width allocation sentinel: the default runtime reported 24 bytes in a
+focused run while `DOTNET_TieredPGO=0` reported zero. Commit `7fbd4ff` aligns
+that test with the adjacent established five-window/minimum sampling pattern,
+while retaining `minimum.ShouldBe(0)`. Injecting one allocation per measured
+iteration made the test fail with 240,000 bytes, proving the sampling still
+detects steady-state allocations; after restoring the production path, the
+focused test and final 1,383-test `make test` both passed.
 
 ---
 
