@@ -76,8 +76,11 @@ offset, and dark shade `▓`; derived controls such as `Button` and `Window` may
 publish different class defaults. `ShadowForeground`, `ShadowBackground`, and
 `ShadowAttributes` style only the shadow. An explicit `ShadowBackground`
 replaces the background of shadow cells while composite mode preserves their
-graphemes and complete wide-cell ownership. Unsupported wide block glyphs use
-the documented fixed-cell fallback under the inherited ambiguous-width policy.
+graphemes and complete wide-cell ownership. When `ShadowBackground` is null, a
+generic `Background` supplies the same opaque shadow fallback; when both are
+null, composite shadowing preserves the destination background. Unsupported wide
+block glyphs use the documented fixed-cell fallback under the inherited
+ambiguous-width policy.
 
 The base control also deflates `ContentBounds` by border thickness before
 padding. See [Theming a new control](theming-new-controls.md) for the full

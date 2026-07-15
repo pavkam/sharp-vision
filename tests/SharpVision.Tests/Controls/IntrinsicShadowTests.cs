@@ -83,6 +83,27 @@ public sealed class IntrinsicShadowTests
         frame.GetCell(new Point(2, 1)).Style.ShouldBe(CellStyle.Default);
     }
 
+    /// <summary>Verifies a generic background supplies an opaque composite shadow fallback.</summary>
+    [Fact]
+    public void Render_WhenShadowBackgroundIsNull_UsesGenericBackground()
+    {
+        LayoutProbe control = CreateArranged(ShadowMode.Composite, new Point(2, 1));
+        control.Background = Color.Indexed(4);
+        using Frame frame = new(new Size(5, 3));
+        frame.Canvas.Fill(
+            frame.Canvas.Bounds,
+            new Rune('x'),
+            new CellStyle(Color.Default, Color.Indexed(238)));
+
+        control.Render(frame.Canvas);
+
+        control.ShadowBackground.ShouldBeNull();
+        FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
+        frame.GetCell(new Point(3, 1)).Style.Background.Kind.ShouldBe(ColorKind.Indexed);
+        frame.GetCell(new Point(3, 1)).Style.Background.Red.ShouldBe((byte) 4);
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+    }
+
     /// <summary>Verifies composite mode restyles a complete wide owner.</summary>
     [Fact]
     public void Render_WhenShadowTouchesWideGlyph_StylesCompleteOwner()

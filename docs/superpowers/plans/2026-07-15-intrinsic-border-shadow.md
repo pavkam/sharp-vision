@@ -589,7 +589,7 @@ Run:
 ```bash
 rg -n "new Shadow\b|ShouldBeOfType<Shadow>|Find<Shadow>|\bShadow shadow\b" src tests --glob '*.cs'
 dotnet build SharpVision.slnx --configuration Release --no-incremental
-dotnet test --project tests/SharpVision.Tests --configuration Release --filter-class '*IntrinsicShadowTests' '*AmbiguousWidthControlTests' '*ControlChromeTests' --minimum-expected-tests 17 --timeout 180s
+dotnet test --project tests/SharpVision.Tests --configuration Release --filter-class '*IntrinsicShadowTests' '*AmbiguousWidthControlTests' '*ControlChromeTests' --minimum-expected-tests 18 --timeout 180s
 dotnet test --project tests/SharpVision.Tests --configuration Release --no-build --minimum-expected-tests 3 --timeout 300s
 dotnet test --project tests/SharpVision.Showcase.Tests --configuration Release --no-build --minimum-expected-tests 3 --timeout 300s
 ```
@@ -598,7 +598,7 @@ Expected: the search is silent; build and all test commands pass.
 
 Evidence: the concrete-type search is silent; the no-incremental Release build
 completed with zero warnings and zero errors; the expanded focused suite passed
-17/17; full `SharpVision.Tests` passed 675/675; and full Showcase tests passed
+18/18; full `SharpVision.Tests` passed 676/676; and full Showcase tests passed
 47/47. `make format`, `dotnet format --verify-no-changes`, the named-type and
 external-resource checks, `npm run test:docs` (24/24), scoped Prettier and
 Markdown lint, and `git diff --check` all passed. The repository-wide link
@@ -613,6 +613,12 @@ proves that the destination glyph and indexed background survive while dim
 shadow attributes apply. Temporarily coercing the transparent/null branch to
 opaque made that test fail with expected `ColorKind.Indexed`, actual
 `ColorKind.Default`; restoring the branch passed 1/1.
+
+A second fallback regression proves that null `ShadowBackground` uses a generic
+`Background` opaquely while preserving the destination glyph and dim shadow
+attributes. Temporarily replacing that fallback with `Color.Default` made the
+test fail with expected `ColorKind.Indexed`, actual `ColorKind.Default`;
+restoring the chain passed the focused 18/18 and full 676/676 suites.
 
 - [x] **Step 6: Commit**
 
