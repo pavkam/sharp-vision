@@ -191,4 +191,112 @@ public sealed class ApplicationTests
         root.IsDisposed.ShouldBeTrue();
         application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
     }
+
+    /// <summary>Verifies hosted clipboard shortcuts copy, cut, paste, and retain normal edit history.</summary>
+    [Fact]
+    public async Task Input_WhenClipboardShortcutsTargetTextInputs_SharesApplicationBufferAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var first = new TextInput { Text = "cafe\u0301" };
+        var second = new TextInput();
+        var root = new Stack { Children = { first, second } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(first).ShouldBeTrue();
+            first.Select(0, first.Text.Length);
+        }, TestContext.Current.CancellationToken);
+
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(second).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            second.Text.ShouldBe("cafe\u0301");
+            second.CanUndo.ShouldBeTrue();
+            second.Select(0, second.Text.Length);
+        }, TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'x');
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            second.Text.ShouldBeEmpty();
+            second.CaretIndex.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                application.Focus.Focus(first).ShouldBeTrue();
+                first.CaretIndex = first.Text.Length;
+            },
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        await application.Dispatcher.InvokeAsync(
+            () => first.Text.ShouldBe("cafe\u0301cafe\u0301"),
+            TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies password-suppressed copy and an empty initial buffer never disclose or mutate text.</summary>
+    [Fact]
+    public async Task Input_WhenClipboardHasNoPublishableText_PreservesBufferAndDocumentAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 4)));
+        var source = new TextInput { Text = "safe" };
+        var password = new TextInput { Text = "secret", PasswordCharacter = new Rune('*') };
+        var target = new TextInput();
+        var root = new Stack { Children = { source, password, target } };
+        await using Application application = new(root, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(target).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            target.Text.ShouldBeEmpty();
+            application.Focus.Focus(source).ShouldBeTrue();
+            source.Select(0, source.Text.Length);
+        }, TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            application.Focus.Focus(password).ShouldBeTrue();
+            password.Select(0, password.Text.Length);
+        }, TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'c');
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(target).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+        await ShortcutAsync(application, 'v');
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            target.Text.ShouldBe("safe");
+            password.Text.ShouldBe("secret");
+        }, TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static async Task ShortcutAsync(Application application, char character)
+    {
+        var stroke = new Stroke(
+            Code.Character,
+            new Rune(character),
+            nativeCode: 0,
+            Modifiers.Control,
+            KeyAction.Press);
+        application.Input(in stroke);
+        await application.Dispatcher.InvokeAsync(
+            static () => { },
+            TestContext.Current.CancellationToken);
+    }
 }

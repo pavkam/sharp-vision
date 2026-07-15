@@ -182,5 +182,6 @@ instead of being intercepted by the terminal driver. At the
 `ConsoleApplicationBuilder.RunAsync`/`ConsoleApplication.RunAsync` level, the
 same flag also suppresses the managed `Console.CancelKeyPress` wiring that would
 otherwise translate Ctrl+C into cooperative shutdown
-(`ConsoleRunStatus.Cancelled`). A host that sets this option is responsible for
-handling Ctrl+C itself as a decoded key event if it wants an exit path.
+(`ConsoleRunStatus.Cancelled`). This leaves Ctrl+C available to focused control
+commands, including TextInput copy. A host that sets this option owns a separate
+decoded exit chord when it still needs a global keyboard exit path.

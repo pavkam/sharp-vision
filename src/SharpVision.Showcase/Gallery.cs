@@ -130,9 +130,8 @@ public sealed class Gallery: Screen
         };
         _ = Sidebar.AddHandler(Events.Key, OnNavigationKey);
 
-        // Quit chords are handled at the screen root in the preview pass so Ctrl+C exits from
-        // anywhere, including terminals whose Kitty keyboard protocol delivers it as a key event
-        // rather than a host cancellation signal.
+        // Quit is handled at the screen root in the preview pass so Ctrl+Q exits from anywhere
+        // without stealing the standard TextInput copy chord.
         _ = AddHandler(Events.Key, OnGlobalKey);
         var surface = new Dock()
         {
@@ -324,7 +323,7 @@ public sealed class Gallery: Screen
         RequestQuit();
     }
 
-    /// <summary>Exits the showcase on a Ctrl+C key press regardless of the focused control.</summary>
+    /// <summary>Exits the showcase on a Ctrl+Q key press regardless of the focused control.</summary>
     private void OnGlobalKey(object? sender, KeyEventArgs eventArgs)
     {
         _ = sender;
@@ -335,7 +334,7 @@ public sealed class Gallery: Screen
             (eventArgs.Stroke.Modifiers & Modifiers.Control) == 0 ||
             eventArgs.Stroke.Code != Code.Character ||
             eventArgs.Stroke.Character is not { } character ||
-            Rune.ToLowerInvariant(character) != new Rune('c'))
+            Rune.ToLowerInvariant(character) != new Rune('q'))
         {
             return;
         }

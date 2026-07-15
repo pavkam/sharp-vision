@@ -38,6 +38,8 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private readonly TaskCompletionSource _completion =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ArrayBufferWriter<byte> _outOfBand = new();
+    private IDisposable? _clipboardShortcutRegistration;
+    private string _clipboardText = string.Empty;
     private Dimensions _latestResize;
     private TerminalCapabilities? _pendingProfile;
     private Task _sessionTask = Task.CompletedTask;
@@ -570,6 +572,56 @@ public sealed partial class Application: ISink, IAsyncDisposable
         }
     }
 
+    private void OnClipboardShortcut(object? sender, KeyEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != Phase.Preview ||
+            eventArgs.Handled ||
+            eventArgs.Stroke.Action != KeyAction.Press ||
+            eventArgs.Stroke.Code != Code.Character ||
+            eventArgs.Stroke.Character is not { } character ||
+            (eventArgs.Stroke.Modifiers & ~(Modifiers.CapsLock | Modifiers.NumLock)) != Modifiers.Control ||
+            Focus.Focused is not TextInput input)
+        {
+            return;
+        }
+
+        var command = Rune.ToLowerInvariant(character);
+
+        if (command == new Rune('c'))
+        {
+            PublishClipboard(input.CopySelection());
+        }
+        else if (command == new Rune('x'))
+        {
+            PublishClipboard(input.CutSelection());
+        }
+        else if (command == new Rune('v'))
+        {
+            input.PasteClipboard(_clipboardText);
+        }
+        else
+        {
+            return;
+        }
+
+        eventArgs.Handled = true;
+    }
+
+    private void PublishClipboard(string value)
+    {
+        Debug.Assert(value is not null, "TextInput clipboard operations return owned non-null text.");
+
+        if (value.Length == 0)
+        {
+            return;
+        }
+
+        _clipboardText = value;
+        Terminal.Clipboard.Write(value);
+    }
+
     private void DrainInput()
     {
         Dispatcher.VerifyAccess();
@@ -661,6 +713,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
             PublishThemeContext();
             FocusValue = new FocusManager(Root);
             CaptureValue = new CaptureManager(Root);
+            _clipboardShortcutRegistration = Root.AddHandler(Events.Key, OnClipboardShortcut);
             _initialized = true;
             WakeInput();
         }
@@ -803,6 +856,9 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
         if (_initialized)
         {
+            _clipboardShortcutRegistration?.Dispose();
+            _clipboardShortcutRegistration = null;
+            _clipboardText = string.Empty;
             CaptureValue?.Dispose();
             FocusValue?.Dispose();
         }

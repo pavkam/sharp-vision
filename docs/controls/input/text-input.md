@@ -104,6 +104,15 @@ nearest grapheme boundary on an adjacent line, and Control+A/Z/Y select all,
 undo, and redo. Enter inserts LF only when `AcceptsReturn`; otherwise it
 submits. Tab inserts only when `AcceptsTab`.
 
+Inside a running `Application`, Control+C and Control+X publish a non-empty,
+non-password selection to the application-owned text clipboard and mirror it to
+the capability-gated terminal clipboard writer. Control+V inserts that owned
+text through the same policy, events, Unicode validation, and undo history as a
+terminal paste. Empty or password-suppressed copy/cut preserves the existing
+application buffer. External terminal paste remains the bracketed `Paste` event
+path; the in-process shortcut never claims an unavailable synchronous host
+clipboard read.
+
 Primary pointer press focuses and captures. Cell coordinates—including those
 inferred from pixel protocols—map through the same grapheme widths used for
 rendering, so wide and combining clusters cannot yield interior indices. Drag

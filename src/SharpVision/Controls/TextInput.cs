@@ -319,6 +319,18 @@ public sealed class TextInput: Container
         return copied;
     }
 
+    /// <summary>Inserts application-owned clipboard text through the normal edit transaction.</summary>
+    /// <param name="value">The non-null clipboard text.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void PasteClipboard(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        VerifyMutable();
+        Insert(value);
+    }
+
     /// <summary>Restores the newest retained undo snapshot.</summary>
     /// <returns>True when a snapshot committed.</returns>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>

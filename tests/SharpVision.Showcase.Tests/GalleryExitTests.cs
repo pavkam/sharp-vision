@@ -6,7 +6,7 @@ namespace SharpVision.Showcase.Tests;
 
 
 
-/// <summary>Verifies the running gallery exits through its visible control and Ctrl+C.</summary>
+/// <summary>Verifies the running gallery exits through its visible control and Ctrl+Q.</summary>
 public sealed class GalleryExitTests
 {
     /// <summary>Verifies activating the sidebar Quit button stops the application cleanly.</summary>
@@ -39,10 +39,10 @@ public sealed class GalleryExitTests
         application.Failure.ShouldBeNull();
     }
 
-    /// <summary>Verifies a decoded Ctrl+C key stops the application even when the terminal reports it
+    /// <summary>Verifies a decoded Ctrl+Q key stops the application even when the terminal reports it
     /// as a key event instead of raising a host cancellation signal.</summary>
     [Fact]
-    public async Task Input_WhenCtrlCIsPressed_StopsApplicationAsync()
+    public async Task Input_WhenCtrlQIsPressed_StopsApplicationAsync()
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(100, 30)));
@@ -58,8 +58,8 @@ public sealed class GalleryExitTests
             () => application.Focus.Focus(gallery.Navigation[0]).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
 
-        // Kitty keyboard protocol reports Ctrl+C as CSI 99;5u, decoded to Character 'c' with Control.
-        terminal.QueueInput(Encoding.ASCII.GetBytes("\u001b[99;5u"));
+        // Kitty keyboard protocol reports Ctrl+Q as CSI 113;5u, decoded to Character 'q' with Control.
+        terminal.QueueInput(Encoding.ASCII.GetBytes("\u001b[113;5u"));
 
         await application.Completion.WaitAsync(
             TimeSpan.FromSeconds(10),
