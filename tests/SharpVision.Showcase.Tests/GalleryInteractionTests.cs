@@ -44,9 +44,17 @@ public sealed class GalleryInteractionTests
             terminal,
             TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "Canvas")),
+            TestContext.Current.CancellationToken);
+        var buttonEntry = gallery.Navigation[IndexOf(gallery, "Button")];
+        var buttonEntryBounds = await application.Dispatcher.InvokeAsync(
+            () => buttonEntry.Bounds,
+            TestContext.Current.CancellationToken);
 
         terminal.QueueInput(Encoding.ASCII.GetBytes(
-            "\u001b[<0;3;8M\u001b[<0;3;8m"));
+            $"\u001b[<0;{buttonEntryBounds.X + 1};{buttonEntryBounds.Y + 1}M" +
+            $"\u001b[<0;{buttonEntryBounds.X + 1};{buttonEntryBounds.Y + 1}m"));
         await WaitUntilAsync(
             () => gallery.SelectedPage == "Button",
             application,
@@ -252,7 +260,10 @@ public sealed class GalleryInteractionTests
             terminal,
             ShowcaseStartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var button = gallery.Navigation[1];
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "Canvas")),
+            TestContext.Current.CancellationToken);
+        var button = gallery.Navigation[IndexOf(gallery, "Button")];
         var point = await application.Dispatcher.InvokeAsync(
             () => button.Bounds,
             TestContext.Current.CancellationToken);
@@ -299,7 +310,7 @@ public sealed class GalleryInteractionTests
             terminal,
             ShowcaseStartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
-        var entry = gallery.Navigation[1];
+        var entry = gallery.Navigation[IndexOf(gallery, "Canvas")];
         var point = await application.Dispatcher.InvokeAsync(
             () => entry.Bounds,
             TestContext.Current.CancellationToken);
@@ -421,14 +432,15 @@ public sealed class GalleryInteractionTests
 
         terminal.QueueInput("\u001b[B"u8);
         await WaitUntilAsync(
-            () => gallery.SelectedPage == "Button",
+            () => gallery.SelectedPage == "Canvas",
             application,
             "sidebar arrow navigation");
 
         await application.Dispatcher.InvokeAsync(() =>
         {
-            gallery.Navigation[1].IsFocused.ShouldBeTrue();
-            gallery.Navigation[1].IsSelected.ShouldBeTrue();
+            var canvas = gallery.Navigation[IndexOf(gallery, "Canvas")];
+            canvas.IsFocused.ShouldBeTrue();
+            canvas.IsSelected.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
 
@@ -454,17 +466,17 @@ public sealed class GalleryInteractionTests
             ShowcaseStartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
-            () => application.Focus.Focus(gallery.Navigation[1]).ShouldBeTrue(),
+            () => application.Focus.Focus(gallery.Navigation[IndexOf(gallery, "Canvas")]).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
 
         terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
-            () => gallery.SelectedPage == "Button",
+            () => gallery.SelectedPage == "Canvas",
             application,
             "sidebar Enter activation");
 
         await application.Dispatcher.InvokeAsync(
-            () => gallery.Navigation[1].IsFocused.ShouldBeTrue(),
+            () => gallery.Navigation[IndexOf(gallery, "Canvas")].IsFocused.ShouldBeTrue(),
             TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }

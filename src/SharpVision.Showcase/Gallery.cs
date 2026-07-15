@@ -10,7 +10,6 @@ public sealed class Gallery: Screen
 {
     private static readonly (string Name, Func<View> Create)[] _catalog =
     [
-        (BorderPane.Title, static () => new BorderPane()),
         (ButtonPane.Title, static () => new ButtonPane()),
         (CanvasPane.Title, static () => new CanvasPane()),
         (CheckBoxPane.Title, static () => new CheckBoxPane()),

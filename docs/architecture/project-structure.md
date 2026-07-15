@@ -51,9 +51,10 @@ The current UI project ships the complete
 editing, selection and item controls, menus, popups, windows, intrinsic
 container scrolling, styling, focus, and routed input all remain on these
 boundaries. Shadow is intrinsic `Control` chrome configured on the decorated
-control. `Border` remains a current wrapper until its mandatory retirement
-slice; neither decision moves terminal protocol or renderer behavior into the UI
-layer.
+control. Border is likewise intrinsic chrome configured through
+`BorderThickness`, `BorderGlyphs`, and the related style properties; neither
+feature requires a wrapper control or moves terminal protocol or renderer
+behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.

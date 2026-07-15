@@ -26,7 +26,7 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
-        screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2);
+        screen.Text.ShouldContain("Activation log: waiting");
         screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
         screen.ValidateContinuations();

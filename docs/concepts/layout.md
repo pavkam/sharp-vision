@@ -73,13 +73,12 @@ otherwise automatic layout uses the measured desired size. Minimum and maximum
 constraints are applied before the result is capped to the margin-deflated slot,
 so tiny viewports always produce contained non-negative rectangles.
 
-Layout surfaces such as `Stack`, `Grid`, `Dock`, `Border`, and `Overlay` opt
+Layout surfaces such as `Stack`, `Grid`, `Dock`, `Canvas`, and `Overlay` opt
 into horizontal stretch because they own a viewport or shared slot. Their
 ordinary child controls remain content-sized unless the surface's layout
 contract explicitly resolves that child to its slot. `BorderThickness` uses the
-same base reservation on every control; the temporary `Border` compatibility
-surface delegates its reservation to that contract rather than deflating its
-child a second time.
+same base reservation on every control, so intrinsic chrome neither
+double-reserves space nor requires a wrapper surface.
 
 Fractional percentage/proportional boundaries use cumulative edge rounding so
 adjacent tracks share one boundary and the final track receives the remainder.
@@ -119,8 +118,9 @@ required for layout reservation.
 an implicit automatic track when definitions are empty. `Dock` consumes
 remaining physical edges in child order. `Overlay` shares the content box and
 uses stable attached z-order for render and hit testing. `Canvas` positions
-children through cells or deferred percentages and clips by policy. `Border`
-adds validated zero-or-one physical edges around one atomically owned child.
+children through cells or deferred percentages and clips by policy. Any panel
+can add validated zero-or-one physical border edges through `BorderThickness`
+and `BorderGlyphs` without changing its child ownership model.
 
 ## Grow and shrink
 

@@ -877,10 +877,14 @@ git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShado
   `tests/SharpVision.Tests/Controls/BorderTests.cs`, and
   `docs/controls/display/border.md`
 - Modify in the retirement slice: `src/SharpVision.Showcase/Gallery.cs`,
+  `scripts/capture-showcase.sh`,
   `tests/SharpVision.Showcase.Tests/GalleryTests.cs`,
   `tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs`,
-  `docs/controls/index.md`, `docs/architecture/showcase.md`, and
-  `docs/testing/showcase.md`
+  `tests/SharpVision.Showcase.Tests/GalleryInteractionTests.cs`,
+  `docs/controls/index.md`, `docs/concepts/layout.md`,
+  `docs/architecture/project-structure.md`, `docs/architecture/showcase.md`,
+  `docs/testing/showcase.md`, and
+  `docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md`
 
 **Interfaces:**
 
@@ -1081,9 +1085,22 @@ in this slice.
 In `GalleryTests`, remove `"Border"`, assert the initial page is `"Button"`, and
 change the index-1 selection expectation to `"Canvas"`. In
 `GalleryRenderingTests`, remove the Border-page assumptions and replace
-`screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2)` with
-`screen.Text.ShouldContain("Button")`. Update the control index, showcase
-architecture, and showcase-testing docs in this same retirement slice.
+`screen.Count("Border").ShouldBeGreaterThanOrEqualTo(2)` with an assertion for
+unique Button-page content such as
+`screen.Text.ShouldContain("Activation log: waiting")`. Update the control
+index, layout and project-structure contracts, showcase architecture and testing
+docs, and this execution plan in the same retirement slice.
+
+Update `GalleryInteractionTests` to remove stale Border-era sidebar positions:
+locate Button and Canvas entries by catalog name and live bounds, select Canvas
+before proving a pointer click returns to Button, and expect Down/Enter on the
+second entry to select Canvas.
+
+Make `scripts/capture-showcase.sh` follow the Button-first inventory without
+hardcoded sidebar rows: prove Down selects Canvas, return Up to Button before
+the hover proof, derive the visible Button and Canvas rows, and use `send_sgr`
+for both complete pointer clicks. Keep PNG regeneration deferred to Task 4 after
+the final architecture settles.
 
 - [ ] **Step 7: Build and verify retirement**
 
@@ -1093,20 +1110,35 @@ Run:
 rg -n "new Border\b|ShouldBeOfType<Border>|Find<Border>|class Border\b|[,(][[:space:]]*Border[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*[,)=]|(public|internal|private|protected)([[:space:]]+static)?[[:space:]]+Border[[:space:]]+[A-Za-z_]" \
   src tests --glob '*.cs'
 rg -n "\bBorder\b" src tests --glob '*.cs'
+rg -n 'display/border|new Border|Border control|Border page|`Border` sidebar|typeof\(Border\)|nameof\(Border\)' \
+  docs AGENTS.md src tests --glob '*.md' --glob '*.cs' --glob '!docs/superpowers/**'
+bash -n scripts/capture-showcase.sh
 dotnet build SharpVision.slnx --configuration Release --no-incremental
 dotnet test --project tests/SharpVision.Tests \
   --filter-class "*IntrinsicBorderTests" "*AmbiguousWidthControlTests" \
   "*ControlChromeTests" "*PopupTests" "*DisplayPanelTests" \
   "*DisplayPanelPerformanceTests" --parallel none --timeout 300s
 dotnet test --project tests/SharpVision.Showcase.Tests --parallel none --timeout 300s
-npx prettier --write docs/controls/index.md docs/architecture/showcase.md docs/testing/showcase.md
-npx prettier --check docs/controls/index.md docs/architecture/showcase.md docs/testing/showcase.md
+npx prettier --write \
+  docs/controls/index.md \
+  docs/concepts/layout.md \
+  docs/architecture/project-structure.md \
+  docs/architecture/showcase.md \
+  docs/testing/showcase.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
+npx prettier --check \
+  docs/controls/index.md \
+  docs/concepts/layout.md \
+  docs/architecture/project-structure.md \
+  docs/architecture/showcase.md \
+  docs/testing/showcase.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 ```
 
-Expected: the first wrapper-type search is silent; build and focused suites
-pass. The broad audit may contain only permanent semantic uses such as
-`ColorRole.Border`, `ThemeColors.Border`, theme-loader fallback prose, and
-border-glyph/property documentation. It must contain no type declaration,
+Expected: the wrapper-type and retired-name searches are silent; build and
+focused suites pass. The broad audit may contain only permanent semantic uses
+such as `ColorRole.Border`, `ThemeColors.Border`, theme-loader fallback prose,
+and border-glyph/property documentation. It must contain no type declaration,
 construction, generic type argument, parameter, return type, or local of the
 removed wrapper.
 
@@ -1117,13 +1149,18 @@ git add -- \
   src/SharpVision/Controls/Border.cs \
   src/SharpVision.Showcase/Gallery.cs \
   src/SharpVision.Showcase/Panes/BorderPane.cs \
+  scripts/capture-showcase.sh \
   tests/SharpVision.Tests/Controls/BorderTests.cs \
   tests/SharpVision.Showcase.Tests/GalleryTests.cs \
   tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs \
+  tests/SharpVision.Showcase.Tests/GalleryInteractionTests.cs \
   docs/controls/display/border.md \
   docs/controls/index.md \
+  docs/concepts/layout.md \
+  docs/architecture/project-structure.md \
   docs/architecture/showcase.md \
-  docs/testing/showcase.md
+  docs/testing/showcase.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 git commit -m "refactor: remove Border control; border is intrinsic via BorderThickness"
 ```
 
@@ -1139,6 +1176,7 @@ git commit -m "refactor: remove Border control; border is intrinsic via BorderTh
   `docs/architecture/memory-ownership.md`, and
   `docs/testing/controls-integration.md`
 - Modify: `AGENTS.md`
+- Regenerate: `docs/images/showcase-dashboard.png`
 - Verify the already-updated paths from earlier tasks:
   `docs/concepts/layout.md`, `docs/controls/control.md`,
   `docs/controls/input/button.md`, `docs/controls/index.md`,
@@ -1169,12 +1207,17 @@ git commit -m "refactor: remove Border control; border is intrinsic via BorderTh
   `Control` properties (`BorderThickness`, `BorderGlyphs`, `HasShadow`, and the
   related style properties), there are no `Border` or `Shadow` wrapper types,
   and an ordinary container supplies a distinct chrome node when needed.
+- After the final architecture and gallery behavior settle, run
+  `scripts/capture-showcase.sh docs/images/showcase-dashboard.png` to regenerate
+  the checked-in Release dashboard capture and visually verify the 19-page
+  Button-first sidebar.
 
 - [ ] **Step 2: Validate documentation and retired names**
 
 ```bash
 rg -n "display/border|display/shadow|new Border|new Shadow|Border control|Shadow control" \
   docs AGENTS.md --glob '*.md' --glob '!docs/superpowers/**'
+scripts/capture-showcase.sh docs/images/showcase-dashboard.png
 npx prettier --write \
   AGENTS.md \
   docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md \
@@ -1203,7 +1246,8 @@ git add -- \
   docs/concepts/custom-components.md \
   docs/architecture/rendering-pipeline.md \
   docs/architecture/memory-ownership.md \
-  docs/testing/controls-integration.md
+  docs/testing/controls-integration.md \
+  docs/images/showcase-dashboard.png
 git commit -m "docs: reconcile intrinsic border and shadow contracts"
 ```
 

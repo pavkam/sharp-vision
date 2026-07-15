@@ -94,7 +94,7 @@ keyboard=false
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q '› Button' "$plain"; then
+  if grep -q '› Canvas' "$plain" && grep -q 'Fixed placement' "$plain"; then
     keyboard=true
     break
   fi
@@ -103,13 +103,41 @@ for _ in {1..50}; do
 done
 
 if [[ "$keyboard" != true ]]; then
-  printf 'The showcase did not handle the injected Down key.\n' >&2
+  printf 'The showcase did not navigate from Button to Canvas with the injected Down key.\n' >&2
+  exit 1
+fi
+
+tmux send-keys -t "$session" Up
+
+returned=false
+
+for _ in {1..50}; do
+  tmux capture-pane -t "$session" -p -J >"$plain"
+
+  if grep -q '› Button' "$plain" && grep -q 'Activation log: waiting' "$plain"; then
+    returned=true
+    break
+  fi
+
+  sleep 0.1
+done
+
+if [[ "$returned" != true ]]; then
+  printf 'The showcase did not return from Canvas to Button with the injected Up key.\n' >&2
+  exit 1
+fi
+
+canvas_navigation_row="$(find_row '· Canvas')"
+button_navigation_row="$(find_row '› Button')"
+
+if [[ -z "$canvas_navigation_row" || -z "$button_navigation_row" ]]; then
+  printf 'The Button and Canvas sidebar entries are not both visible.\n' >&2
   exit 1
 fi
 
 # Any-event tracking must report passive pointer motion. Hover Canvas without a
 # button, prove its visible marker changes, then prove the terminal leave clears it.
-send_sgr 35 3 9 M
+send_sgr 35 3 "$canvas_navigation_row" M
 
 hovered=false
 
@@ -148,14 +176,15 @@ fi
 
 # A complete primary SGR press/release must activate navigation on its own.
 # Do not append a key here: that would hide host-side input buffering defects.
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 39 4d 1b 5b 3c 30 3b 33 3b 39 6d
+send_sgr 0 10 "$canvas_navigation_row" M
+send_sgr 0 10 "$canvas_navigation_row" m
 
 canvas=false
 
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q '› Canvas' "$plain"; then
+  if grep -q '› Canvas' "$plain" && grep -q 'Fixed placement' "$plain"; then
     canvas=true
     break
   fi
@@ -168,14 +197,15 @@ if [[ "$canvas" != true ]]; then
   exit 1
 fi
 
-tmux send-keys -t "$session" -H 1b 5b 3c 30 3b 33 3b 38 4d 1b 5b 3c 30 3b 33 3b 38 6d
+send_sgr 0 10 "$button_navigation_row" M
+send_sgr 0 10 "$button_navigation_row" m
 
 button=false
 
 for _ in {1..50}; do
   tmux capture-pane -t "$session" -p -J >"$plain"
 
-  if grep -q '› Button' "$plain"; then
+  if grep -q '› Button' "$plain" && grep -q 'Activation log: waiting' "$plain"; then
     button=true
     break
   fi

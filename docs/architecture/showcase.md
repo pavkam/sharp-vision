@@ -7,7 +7,7 @@ control API. It contains no behavior unavailable to ordinary library users.
 
 ```mermaid
 flowchart LR
-    Gallery["Gallery catalog"] --> Sidebar["Framed dashboard sidebar"]
+    Gallery["Gallery catalog"] --> Sidebar["Dock sidebar with intrinsic border"]
     Gallery --> Page["Selected pane (View)"]
     Page --> Overview["Overview heading"]
     Page --> Example["Doc.Example blocks"]
@@ -18,7 +18,7 @@ Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
 `*Pane : View` that overrides `Build()` and returns its content root once, on
 first layout, exactly like any other application-authored `View`. There is no
 shared showcase base class and no mandatory metadata: a pane composes public
-`Stack`, marked `Text`, `Border`, and layout APIs directly. `Doc` (in
+`Stack`, marked `Text`, `Dock`, and layout APIs directly. `Doc` (in
 `src/SharpVision.Showcase/Panes/Doc.cs`) holds the small composition helpers
 every pane shares: `Doc.Page(name, overview, sections...)` builds the bold
 heading plus an "Overview" paragraph and stacks the given sections beneath it;
@@ -27,10 +27,10 @@ prose with a live specimen; `Doc.Card`, `Doc.Row`, and `Doc.Column` are
 composition shorthands for framing and arranging specimens.
 
 `Gallery` owns the stable catalog of pane titles and factories
-(`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
-concrete shipped control: Border, Button, Canvas, CheckBox, ComboBox, Dock,
-FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, ScrollBar, Stack,
-Table, Text, TextInput, Window, and Theming. Foundation types and unimplemented
+(`(string Name, Func<View> Create)[]`). The sidebar contains 19 entries: Button,
+Canvas, CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu, Overlay, Popup,
+RadioButton, ScrollBar, Stack, Table, Text, TextInput, Window, and Theming.
+Foundation types, intrinsic chrome such as border and shadow, and unimplemented
 specifications are not navigation entries.
 
 Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
@@ -57,12 +57,13 @@ when the captured pane is converted to PNG.
 
 ## Responsive behavior
 
-The root is a `Dock` with a fixed 28-cell `Border` sidebar and an intrinsically
-scrollable `Stack` in the remaining space. The sidebar owns product identity,
-component-only stateful navigation entries, and compact interaction hints; its
-selected, focused, hovered, and pressed states follow the active application
-theme. The sidebar footer hosts a theme picker `ComboBox` and a visible `Quit`
-button. The picker lists every theme in the embedded
+The root is a `Dock`. Its fixed 28-cell sidebar is another `Dock` whose frame is
+configured with intrinsic `BorderThickness` and `BorderGlyphs`; an intrinsically
+scrollable `Stack` occupies the remaining space. The sidebar owns product
+identity, component-only stateful navigation entries, and compact interaction
+hints; its selected, focused, hovered, and pressed states follow the active
+application theme. The sidebar footer hosts a theme picker `ComboBox` and a
+visible `Quit` button. The picker lists every theme in the embedded
 `SharpVision.Styling.ThemeCatalog.Default` catalog — the built-in Light and Dark
 themes plus the curated editor themes (Dracula, Nord, Gruvbox, Solarized, and
 others) — grouped dark-first then light, and republishes the chosen application
@@ -111,16 +112,17 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 ## Test contract
 
-Showcase tests assert the exact inventory, marked `Text` documentation coverage,
-fresh detached page ownership, and matching runtime control type. They render
-every page at 30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell
-continuation structure, and prove automatic scrolling. A full Application test
-drives SGR pointer selection, keyboard sidebar navigation and button activation,
-wheel scrolling, text editing, and pixel-aware resize through terminal bytes.
-Dedicated tests prove cooperative exit through both the sidebar `Quit` button
-and a decoded `Ctrl+C` key. Startup coverage requires the exact SGR mouse-mode
-lease before the first frame. The live tmux smoke test then proves a normal Down
-key, separate complete SGR clicks for Canvas and Button, Figlet dropdown opening
-and font selection, and a captured ScrollBar thumb drag. Each completes without
-a trailing flushing key. The live image supplements these assertions; it cannot
-replace them.
+Showcase tests assert the exact 19-page inventory, Button as the initial page,
+marked `Text` documentation coverage, fresh detached page ownership, and
+matching runtime control type. They render every page at 30 by 8, 80 by 24, and
+140 by 40 cells, validate wide-cell continuation structure, and prove automatic
+scrolling. A full Application test drives SGR pointer selection, keyboard
+sidebar navigation and button activation, wheel scrolling, text editing, and
+pixel-aware resize through terminal bytes. Dedicated tests prove cooperative
+exit through both the sidebar `Quit` button and a decoded `Ctrl+C` key. Startup
+coverage requires the exact SGR mouse-mode lease before the first frame. The
+live tmux smoke test then proves a normal Down/Up keyboard round trip between
+Button and Canvas, passive Canvas hover and leave, separate complete SGR clicks
+for Canvas and Button, Figlet dropdown opening and font selection, and a
+captured ScrollBar thumb drag. Each completes without a trailing flushing key.
+The live image supplements these assertions; it cannot replace them.

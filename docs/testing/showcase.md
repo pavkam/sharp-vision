@@ -2,22 +2,23 @@
 
 ## Showcase testing
 
-The showcase catalog test contains the exact concrete shipped-control inventory
-and fails when a control lacks its own page, wrapped marked-Text documentation,
-meaningful property descriptions, structured interaction rows, or fresh live
-example. Each example tree must contain the control named by its sidebar entry
-and must be detached and independently owned.
+The showcase catalog test fixes the exact 19-page inventory and requires Button
+to be the initial page and Canvas to occupy index 1. Every page contains wrapped
+marked-Text Overview documentation and builds a fresh, detached, independently
+owned live tree. Each entry's tree contains the control named by that sidebar
+entry; the Theming page is the deliberate composition-page exception.
 
 Navigation tests require the executable showcase policy to emit xterm any-event
 tracking (`1003`) and SGR cell-mouse mode enables before its first frame. They
 then drive raw SGR primary-pointer input through the public Application to
-select a framed dashboard entry, move and focus sidebar selection through
-decoded arrow input, activate Button through keyboard input, scroll the main
-pane with wheel reports, edit TextInput through decoded text, and retain
-selection after pixel-aware resize. Its ScrollBar proof requires an intermediate
-SGR move to commit a value before the release reaches the endpoint. A separate
-startup test requires the first frame to commit, the initial sidebar entry to
-take focus, and shutdown to complete without runtime failure.
+select an entry in the intrinsically bordered `Dock` sidebar, move and focus
+sidebar selection through decoded arrow input, activate Button through keyboard
+input, scroll the main pane with wheel reports, edit TextInput through decoded
+text, and retain selection after pixel-aware resize. Its ScrollBar proof
+requires an intermediate SGR move to commit a value before the release reaches
+the endpoint. A separate startup test requires the first frame to commit, the
+initial sidebar entry to take focus, and shutdown to complete without runtime
+failure.
 
 The same runtime suite targets an SGR wheel report at the overflowing multiline
 `TextInput` specimen. It proves decoded terminal input advances the editor's own
@@ -25,32 +26,34 @@ The same runtime suite targets an SGR wheel report at the overflowing multiline
 offset remains unchanged, protecting leaf-first wheel routing from future
 regressions.
 
-Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
-cells. They verify selected identity, the `SHARP VISION` sidebar identity,
+Virtual-screen assertions render all 19 pages at 30 by 8, 80 by 24, and 140 by
+40 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
 component navigation, non-default cell colors, page headings, automatic
 overflow, semantic text, and every wide-cell continuation relationship. The
 checked-in [live tmux capture](../images/showcase-dashboard.png) is visually
 reviewed but does not replace cell, event, focus, resize, or scrolling
 assertions. It is also a required live interaction smoke test: it sends Down,
-then a no-button SGR motion report, proves Canvas receives the visible hover
-marker, and proves a terminal leave report clears it. It next sends independent
-complete SGR clicks for Canvas and Button, waiting for each visible page change
-without adding a trailing key that could mask input buffering. It also opens and
-selects the Figlet font dropdown, then drags the ScrollBar thumb with SGR press,
-motion, and release reports, asserting each visible committed value.
+proves the initial Button selection moves to Canvas, and sends Up to return to
+Button. A no-button SGR motion report then proves Canvas receives the visible
+hover marker, and a terminal leave report clears it. The smoke test next sends
+independent complete SGR clicks for Canvas and Button, waiting for each visible
+page change without adding a trailing key that could mask input buffering. It
+also opens and selects the Figlet font dropdown, then drags the ScrollBar thumb
+with SGR press, motion, and release reports, asserting each visible committed
+value.
 
-Every page must also contain a Practical recipe: one borderless, full-width,
-word-wrapped marked `Text` narrative that explains when to use the control,
-describes each supported interaction path, and explains how resizing affects the
-page. Examples remain the place for bordered live specimens. The Interaction
-section is a standalone Table with Input, Behavior, and Result columns rather
-than another prose card. The page test protects the narrative's borderless
-structure alongside its responsive wrapping.
+Every page must contain a wrapped marked `Text` Overview. Practical-recipe
+guidance is optional; when a page supplies it, the text must wrap. Pages compose
+`Doc.Example` blocks rather than mandatory property or interaction tables, and
+live specimens use intrinsic control chrome when they need a frame.
 
 Canvas has dedicated virtual-screen assertions and must retain its labeled
 fixed, percentage, edge-constraint, and clipping stages within the viewport.
 Button and Window assertions continue to cover intrinsic composite and
-block-glyph shadow properties through their live specimens.
+block-glyph shadow properties through their live specimens. The Theming page
+also proves that a third-party control with a custom render override calls
+`RenderChrome` before drawing its own caption and body, preserving its intrinsic
+rounded frame.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The

@@ -11,12 +11,12 @@ All controls derive from the
 ### Display
 
 - [Text](display/text.md#text-contract)
-- [Border](display/border.md#border-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
 
-Shadow is intrinsic `Control` chrome configured through `HasShadow`,
-`ShadowMode`, and the related style properties; it is not a standalone control.
-See the [shared chrome contract](../concepts/styling.md#shared-chrome).
+Border and shadow are intrinsic `Control` chrome configured through
+`BorderThickness`, `BorderGlyphs`, `HasShadow`, `ShadowMode`, and the related
+style properties; neither is a standalone control. See the
+[shared chrome contract](../concepts/styling.md#shared-chrome).
 
 ### Input
 

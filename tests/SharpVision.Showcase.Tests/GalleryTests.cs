@@ -9,7 +9,6 @@ public sealed class GalleryTests
 {
     private static readonly string[] _controls =
     [
-        "Border",
         "Button",
         "Canvas",
         "CheckBox",
@@ -31,16 +30,16 @@ public sealed class GalleryTests
         "Theming",
     ];
 
-    /// <summary>Verifies the gallery starts with one page per concrete shipped control.</summary>
+    /// <summary>Verifies the gallery starts with the exact documented page catalog.</summary>
     [Fact]
-    public void Constructor_WhenCreated_RegistersEveryConcreteControl()
+    public void Constructor_WhenCreated_RegistersDocumentedPageCatalog()
     {
         using Gallery gallery = new();
 
         _ = gallery.ShouldBeOfType<Gallery>();
         _ = gallery.Sidebar.ShouldBeOfType<Dock>();
         gallery.Pages.ShouldBe(_controls);
-        gallery.SelectedPage.ShouldBe("Border");
+        gallery.SelectedPage.ShouldBe("Button");
         _ = gallery.Content.ShouldNotBeNull();
     }
 
@@ -53,7 +52,7 @@ public sealed class GalleryTests
 
         gallery.Select(1);
 
-        gallery.SelectedPage.ShouldBe("Button");
+        gallery.SelectedPage.ShouldBe("Canvas");
         gallery.Content.ShouldNotBeSameAs(previous);
     }
 
