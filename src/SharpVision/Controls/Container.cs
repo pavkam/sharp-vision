@@ -258,10 +258,10 @@ public abstract class Container: Control
     private Size _viewport;
     private int _horizontalOffset;
     private int _verticalOffset;
-    private Rect _viewportBounds;
+    private protected Rect _viewportBounds;
     private bool _reserveHorizontal;
     private bool _reserveVertical;
-    private Children? _bars;
+    private protected Children? _bars;
     private ScrollBar? _horizontal;
     private ScrollBar? _vertical;
     private bool _syncing;
@@ -295,6 +295,12 @@ public abstract class Container: Control
             {
                 _horizontalOffset = 0;
                 _verticalOffset = 0;
+
+                if (_bars is not null)
+                {
+                    SetVisibility(_horizontal!, visible: false);
+                    SetVisibility(_vertical!, visible: false);
+                }
             }
         }
     }

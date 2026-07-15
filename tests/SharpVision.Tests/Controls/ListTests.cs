@@ -312,6 +312,30 @@ public sealed class ListTests
         frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeTrue();
     }
 
+    /// <summary>
+    /// Verifies List.DisposeChildren releases the base Container's own owned
+    /// bars, not only its private _chrome/_stack, so a caller externally
+    /// arming the outer List's inherited AutoScroll does not leak the
+    /// resulting ScrollBar chrome on dispose.
+    /// </summary>
+    [Fact]
+    public void Dispose_WhenBaseAutoScrollIsArmedExternally_DisposesTheOwnedBaseBars()
+    {
+        UiList list = new() { AutoScroll = true };
+        System.Reflection.FieldInfo field = typeof(Container).GetField(
+            "_bars",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Children bars = (Children) field.GetValue(list)!;
+        bars.Count.ShouldBe(2);
+        ScrollBar horizontal = bars[0].ShouldBeOfType<ScrollBar>();
+        ScrollBar vertical = bars[1].ShouldBeOfType<ScrollBar>();
+
+        list.Dispose();
+
+        horizontal.IsDisposed.ShouldBeTrue();
+        vertical.IsDisposed.ShouldBeTrue();
+    }
+
     private static UiList Create(params object?[] items) => new() { Items = items };
 
     private static Label Add(List<Label> controls, Label control)

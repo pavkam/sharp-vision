@@ -143,6 +143,23 @@ public sealed class Canvas: Container
             return popup;
         }
 
+        if (AutoScroll)
+        {
+            Control? bar = _bars is not null
+                ? _bars[1].HitTest(point) ?? _bars[0].HitTest(point)
+                : null;
+
+            if (bar is not null)
+            {
+                return bar;
+            }
+
+            if (!_viewportBounds.Contains(point))
+            {
+                return Bounds.Contains(point) ? this : null;
+            }
+        }
+
         for (int index = Children.Count - 1; index >= 0; index--)
         {
             if (Children[index].HitTest(point) is { } child)

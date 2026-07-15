@@ -392,6 +392,8 @@ public sealed class TextInput: Container
             _chrome.RemoveAt(_chrome.Count - 1);
             child.Dispose();
         }
+
+        base.DisposeChildren();
     }
 
     /// <inheritdoc/>

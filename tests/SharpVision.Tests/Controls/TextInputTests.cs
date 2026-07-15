@@ -494,6 +494,31 @@ public sealed class TextInputTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// Verifies TextInput.DisposeChildren releases the base Container's own
+    /// owned bars, not only its private _chrome (the self-managed
+    /// _horizontal/_vertical pair), so a caller externally arming the
+    /// inherited AutoScroll does not leak the resulting ScrollBar chrome on
+    /// dispose.
+    /// </summary>
+    [Fact]
+    public void Dispose_WhenBaseAutoScrollIsArmedExternally_DisposesTheOwnedBaseBars()
+    {
+        TextInput control = new() { AutoScroll = true };
+        System.Reflection.FieldInfo field = typeof(Container).GetField(
+            "_bars",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Children bars = (Children) field.GetValue(control)!;
+        bars.Count.ShouldBe(2);
+        ScrollBar horizontal = bars[0].ShouldBeOfType<ScrollBar>();
+        ScrollBar vertical = bars[1].ShouldBeOfType<ScrollBar>();
+
+        control.Dispose();
+
+        horizontal.IsDisposed.ShouldBeTrue();
+        vertical.IsDisposed.ShouldBeTrue();
+    }
+
     private static void Key(TextInput control, Code code, Modifiers modifiers) =>
         Route(
             control,

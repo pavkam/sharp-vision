@@ -59,7 +59,7 @@ public sealed class Stack: Container
 
     /// <inheritdoc/>
     internal override Control NavigationAt(int index) =>
-        Reverse ? Children[Children.Count - index - 1] : Children[index];
+        Reverse && index < Children.Count ? Children[Children.Count - index - 1] : base.NavigationAt(index);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)

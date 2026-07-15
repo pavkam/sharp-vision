@@ -76,6 +76,80 @@ public sealed class ContainerScrollTests
         container.ScrollBy(0, 5).ShouldBeFalse();
     }
 
+    /// <summary>
+    /// Verifies disarming AutoScroll collapses both previously visible owned
+    /// bars immediately from the property setter, rather than leaving a
+    /// stale bar visible (and tab-focusable) until the next arrange pass.
+    /// </summary>
+    [Fact]
+    public void AutoScroll_WhenDisarmedAfterBarsWereVisible_CollapsesBothBars()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(container, new Size(4, 10));
+        Control horizontal = container.NavigationAt(container.NavigationCount - 2);
+        Control vertical = container.NavigationAt(container.NavigationCount - 1);
+        horizontal.Visibility.ShouldBe(Visibility.Visible);
+        vertical.Visibility.ShouldBe(Visibility.Visible);
+
+        container.AutoScroll = false;
+
+        horizontal.Visibility.ShouldBe(Visibility.Collapsed);
+        vertical.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
+    /// <summary>
+    /// Verifies an armed Stack's owned scrollbar chrome participates in
+    /// default Tab navigation instead of crashing: Stack.NavigationAt used to
+    /// index Children directly for every position, even the two bar indices
+    /// folded into the widened Container.NavigationCount, throwing
+    /// ArgumentOutOfRangeException the moment FocusManager.Collect walked
+    /// past the last child.
+    /// </summary>
+    [Fact]
+    public async Task MoveNext_WhenStackIsArmed_ReachesChildThenBothBarsAsync()
+    {
+        await using Dispatcher dispatcher = Dispatcher.Start();
+        Stack panel = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Always,
+        };
+        ProbeControl child = new(new Size(4, 40)) { CanFocus = true };
+        panel.Children.Add(child);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            panel.Attach(dispatcher);
+            new Engine().Layout(panel, new Size(4, 10));
+            using FocusManager focus = new(panel);
+
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(child);
+
+            focus.MoveNext().ShouldBeTrue();
+            ScrollBar first = focus.Focused.ShouldBeOfType<ScrollBar>();
+
+            focus.MoveNext().ShouldBeTrue();
+            ScrollBar second = focus.Focused.ShouldBeOfType<ScrollBar>();
+
+            new[] { first.Orientation, second.Orientation }.ShouldBe(
+                [Orientation.Horizontal, Orientation.Vertical]);
+
+            // Cycles back to the child, proving exactly three eligible
+            // navigation stops: the child, then both bars at the tail.
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(child);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an armed container renders the automatic vertical bar chrome.</summary>
     [Fact]
     public void Render_WhenVerticalBarIsAutomatic_UsesScrollBarGlyphs()

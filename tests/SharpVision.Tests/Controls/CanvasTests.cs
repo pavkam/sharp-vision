@@ -193,6 +193,38 @@ public sealed class CanvasTests
         panel.HitTest(default).ShouldBeSameAs(first);
     }
 
+    /// <summary>
+    /// Verifies an armed Canvas routes hit-testing through its owned bars and
+    /// restricts content targeting to the viewport, mirroring the base
+    /// Container.HitTest armed contract. Canvas.HitTest is an independent
+    /// override (for conditional ClipToBounds) that used to never check
+    /// _bars/_viewportBounds at all, so its scrollbars could not be clicked
+    /// and clipped gutter content was spuriously hittable.
+    /// </summary>
+    [Fact]
+    public void HitTest_WhenCanvasIsArmed_TargetsBarAndExcludesClippedGutterContent()
+    {
+        Panel panel = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+        };
+        ProbeControl content = new() { Width = Length.Cells(4), Height = Length.Cells(4) };
+        panel.Children.Add(content);
+
+        new Engine().Layout(panel, new Size(4, 4));
+
+        // Column 3 row 1 is the reserved vertical bar's rendered track, even
+        // though unclipped content also spans that cell.
+        panel.HitTest(new Point(3, 1)).ShouldBeOfType<ScrollBar>()
+            .Orientation.ShouldBe(Orientation.Vertical);
+        // Row 3 column 3 is the dead corner covered by neither bar, and lies
+        // outside the viewport, so it must not spuriously hit clipped content.
+        panel.HitTest(new Point(3, 3)).ShouldBeSameAs(panel);
+    }
+
     /// <summary>Verifies attached offset mutation invalidates measure and requires affinity.</summary>
     [Fact]
     public async Task SetLeft_WhenChildIsOwned_InvalidatesMeasureAndRequiresDispatcherAsync()

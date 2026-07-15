@@ -343,6 +343,8 @@ public sealed class List: Container, IStyleScope
             _chrome.RemoveAt(_chrome.Count - 1);
             child.Dispose();
         }
+
+        base.DisposeChildren();
     }
 
     /// <inheritdoc/>
