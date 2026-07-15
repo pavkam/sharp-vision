@@ -235,14 +235,20 @@ public abstract class Container: Control
     internal override Size OnMeasuredDesired(Size desired) => !AutoSize
         ? desired
         : new Size(
-            AutoSizeAxis(ContentExtent.Width, Padding.Horizontal, Width, MinWidth, MaxWidth),
-            AutoSizeAxis(ContentExtent.Height, Padding.Vertical, Height, MinHeight, MaxHeight));
+            AutoSizeAxis(ContentExtent.Width, Padding.Horizontal, BorderThickness.Horizontal, Width, MinWidth, MaxWidth),
+            AutoSizeAxis(ContentExtent.Height, Padding.Vertical, BorderThickness.Vertical, Height, MinHeight, MaxHeight));
 
     // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit
     // fixed-cell size. Both honor Min/Max.
-    private int AutoSizeAxis(int contentExtent, int padding, Length length, int minimum, int maximum)
+    private int AutoSizeAxis(
+        int contentExtent,
+        int padding,
+        int border,
+        Length length,
+        int minimum,
+        int maximum)
     {
-        long content = (long) contentExtent + padding;
+        long content = (long) contentExtent + padding + border;
         int floor = AutoSizeMode == AutoSizeMode.GrowOnly && length.Kind == Kind.Cells
             ? (int) length.Value
             : 0;
