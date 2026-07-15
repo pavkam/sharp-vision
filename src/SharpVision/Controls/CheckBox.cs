@@ -45,7 +45,7 @@ public sealed class CheckBox: Pressable
         get;
         set
         {
-            if (!Set(ref field, value, Invalidation.None))
+            if (!SetProperty(ref field, value, ChangeImpact.None))
             {
                 return;
             }
@@ -73,7 +73,7 @@ public sealed class CheckBox: Pressable
     public Marks Marks
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = Marks.Default;
 
     /// <summary>Gets or sets the built-in mark family used before the optional label.</summary>
@@ -90,7 +90,7 @@ public sealed class CheckBox: Pressable
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The checkbox mark style is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -215,7 +215,7 @@ public sealed class CheckBox: Pressable
 
         var previous = _isChecked;
 
-        if (!Set(ref _isChecked, value, Invalidation.Render, nameof(IsChecked)))
+        if (!SetProperty(ref _isChecked, value, ChangeImpact.Render, nameof(IsChecked)))
         {
             return;
         }

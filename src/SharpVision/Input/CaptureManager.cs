@@ -3,6 +3,7 @@
 
 namespace SharpVision.Input;
 
+using System.Runtime.ExceptionServices;
 
 using SharpVision.Terminal.Input;
 
@@ -55,6 +56,8 @@ public sealed class CaptureManager: IDisposable
 
     private bool IsDisposed { get; set; }
 
+    private int CancellationDepth { get; set; }
+
     #endregion
 
     #region Capture and dispatch
@@ -76,7 +79,7 @@ public sealed class CaptureManager: IDisposable
             throw new ArgumentException("The capture target does not belong to this tree.", nameof(control));
         }
 
-        if (!IsEligible(control))
+        if (CancellationDepth > 0 || !IsEligible(control))
         {
             return false;
         }
@@ -92,6 +95,23 @@ public sealed class CaptureManager: IDisposable
     {
         VerifyAccess();
         Captured = null;
+    }
+
+    /// <summary>Releases capture only when the requested tree member owns it.</summary>
+    /// <param name="control">The non-null member requesting its own capture release.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
+    internal void Release(Control control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        VerifyAccess();
+        Debug.Assert(IsMember(control), "Protected capture release originates inside the owned tree.");
+
+        if (ReferenceEquals(Captured, control))
+        {
+            Captured = null;
+        }
     }
 
     /// <summary>Targets, updates state, and routes one decoded pointer value.</summary>
@@ -198,26 +218,63 @@ public sealed class CaptureManager: IDisposable
         Debug.Assert(Enum.IsDefined(reason), "Capture cancellation requires a defined release reason.");
         Debug.Assert(IsMember(subtree), "Capture cancellation is scoped to the owned tree.");
 
-        var cancelled = IsWithin(Captured, subtree) ? Captured : Pressed;
+        var captured = IsWithin(Captured, subtree) ? Captured : null;
+        var hovered = IsWithin(Hovered, subtree) ? Hovered : null;
+        var pressed = IsWithin(Pressed, subtree) ? Pressed : null;
+        var cancelled = captured ?? pressed;
 
-        if (IsWithin(Captured, subtree))
+        CancellationDepth++;
+
+        try
         {
-            Captured = null;
+            var failure = (ExceptionDispatchInfo?) null;
+
+            // Publish manager ownership first. Every callback below therefore
+            // observes a coherent cleared state, and cancellation depth rejects
+            // re-entrant capture until cancellation publication completes.
+            if (captured is not null)
+            {
+                Captured = null;
+            }
+
+            if (hovered is not null)
+            {
+                Hovered = null;
+            }
+
+            if (pressed is not null)
+            {
+                Pressed = null;
+            }
+
+            CaptureFailure(() => hovered?.SetHovered(false), ref failure);
+            CaptureFailure(() => pressed?.SetPressed(false), ref failure);
+            CaptureFailure(() => captured?.NotifyPointerCaptureCancelled(reason), ref failure);
+
+            if (cancelled is not null)
+            {
+                CaptureFailure(
+                    () => Cancelled?.Invoke(this, new CaptureCancelledEventArgs(cancelled, reason)),
+                    ref failure);
+            }
+
+            failure?.Throw();
         }
-
-        if (IsWithin(Hovered, subtree))
+        finally
         {
-            SetHovered(null);
+            CancellationDepth--;
         }
+    }
 
-        if (IsWithin(Pressed, subtree))
+    private static void CaptureFailure(System.Action action, ref ExceptionDispatchInfo? failure)
+    {
+        try
         {
-            SetPressed(null);
+            action();
         }
-
-        if (cancelled is not null)
+        catch (Exception exception)
         {
-            Cancelled?.Invoke(this, new CaptureCancelledEventArgs(cancelled, reason));
+            failure ??= ExceptionDispatchInfo.Capture(exception);
         }
     }
 

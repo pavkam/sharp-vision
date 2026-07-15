@@ -4,7 +4,7 @@
 namespace SharpVision.Controls;
 
 using System.ComponentModel;
-
+using System.Runtime.ExceptionServices;
 
 using SharpVision.Terminal.Input;
 
@@ -27,7 +27,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     public Dispatcher? Dispatcher { get; private set; }
 
     /// <summary>Gets the immutable Unicode cell policy inherited from the root.</summary>
-    internal Policy CellPolicy { get; private set; } = Policy.Default;
+    protected internal Policy CellPolicy { get; private set; } = Policy.Default;
 
     /// <summary>Gets or sets the requested border-box width.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -35,7 +35,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     public Length Width
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets the requested border-box height.</summary>
@@ -44,7 +44,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     public Length Height
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets the non-negative minimum border-box width.</summary>
@@ -64,7 +64,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 throw new ArgumentException("Minimum width cannot exceed maximum width.", nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -85,7 +85,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 throw new ArgumentException("Minimum height cannot exceed maximum height.", nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -106,7 +106,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 throw new ArgumentException("Maximum width cannot be below minimum width.", nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = int.MaxValue;
 
@@ -127,7 +127,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 throw new ArgumentException("Maximum height cannot be below minimum height.", nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = int.MaxValue;
 
@@ -141,7 +141,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Arrange);
+            _ = SetProperty(ref field, value, ChangeImpact.Arrange);
         }
     } = HorizontalAlignment.Left;
 
@@ -155,7 +155,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Arrange);
+            _ = SetProperty(ref field, value, ChangeImpact.Arrange);
         }
     } = VerticalAlignment.Stretch;
 
@@ -169,13 +169,13 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set
         {
             Validate(value);
-            var invalidation = value == Visibility.Collapsed || field == Visibility.Collapsed
-                ? Invalidation.Measure
-                : Invalidation.Render;
+            var impact = value == Visibility.Collapsed || field == Visibility.Collapsed
+                ? ChangeImpact.Measure
+                : ChangeImpact.Render;
 
-            if (Set(ref field, value, invalidation))
+            if (SetProperty(ref field, value, impact))
             {
-                InvalidateDescendants(invalidation);
+                InvalidateDescendants(InvalidationFor(impact));
 
                 if (value != Visibility.Visible)
                 {
@@ -193,7 +193,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         get;
         set
         {
-            if (Set(ref field, value, Invalidation.Render))
+            if (SetProperty(ref field, value, ChangeImpact.Render))
             {
                 InvalidateDescendants(Invalidation.Render);
 
@@ -222,7 +222,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     public bool IsHitTestVisible
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     } = true;
 
     /// <summary>Gets or sets whether the control may receive keyboard focus.</summary>
@@ -278,7 +278,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     public int TabIndex
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     }
 
     /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
@@ -381,6 +381,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private bool IsRendering { get; set; }
 
+    private bool IsDisposing { get; set; }
+
     private bool CanFocusNotificationPending { get; set; }
 
     private bool HasSelectedState { get; set; }
@@ -394,7 +396,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     internal CaptureManager? CaptureOwner { get; private set; }
 
     /// <summary>Gets whether this control clips owned descendants to its bounds.</summary>
-    internal virtual bool ClipsChildren => true;
+    /// <remarks>
+    /// The framework reads this value while rendering children. Derived controls
+    /// may return false only when their documented visual overflow requires the
+    /// ancestor clip instead of this control's bounds.
+    /// </remarks>
+    protected virtual bool ClipsChildren => true;
 
     /// <summary>Gets the complete terminal style for the resolved appearance.</summary>
     protected internal TerminalStyle ResolvedStyle => GetResolvedStyle(GetVisualState());
@@ -656,6 +663,57 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
+    /// <summary>Measures one direct owned child through the framework layout transaction.</summary>
+    /// <param name="child">The non-null direct child owned by this control.</param>
+    /// <param name="constraint">The non-negative content constraint supplied to the child.</param>
+    /// <returns>The child's committed desired border-box size.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The attached child is accessed off-dispatcher or measure is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
+    protected Size MeasureChild(Control child, Constraint constraint)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        EnsureDirectOwnedChild(child);
+        child.Measure(constraint);
+        return child.DesiredSize;
+    }
+
+    /// <summary>Arranges one direct owned child through the framework layout transaction.</summary>
+    /// <param name="child">The non-null direct child owned by this control.</param>
+    /// <param name="slot">The final non-negative outer slot assigned to the child.</param>
+    /// <param name="resolvedAxes">Axes whose border-box sizes were already resolved by this parent.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="resolvedAxes"/> contains an unknown flag.</exception>
+    /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The attached child is accessed off-dispatcher or arrange is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
+    protected void ArrangeChild(
+        Control child,
+        Rect slot,
+        ResolvedAxes resolvedAxes = ResolvedAxes.None)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+
+        if (!Enum.IsDefined(resolvedAxes))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(resolvedAxes),
+                resolvedAxes,
+                "The resolved axes contain an unknown flag.");
+        }
+
+        EnsureDirectOwnedChild(child);
+        child.Arrange(
+            slot,
+            widthResolved: (resolvedAxes & ResolvedAxes.Width) != 0,
+            heightResolved: (resolvedAxes & ResolvedAxes.Height) != 0);
+    }
+
     /// <summary>Renders this control and owned descendants into a clipped semantic canvas.</summary>
     /// <param name="canvas">The frame-owned parent canvas.</param>
     /// <exception cref="InvalidOperationException">
@@ -718,30 +776,106 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Parent?.Invalidate(value);
     }
 
+    /// <summary>Requests the earliest UI phase affected by derived control state.</summary>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected void Invalidate(ChangeImpact impact)
+    {
+        ValidateImpact(impact);
+        VerifyMutable();
+        Invalidate(InvalidationFor(impact));
+    }
+
+    /// <summary>Clears resolved appearance caches and requests the phase required by active styles.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected void InvalidateVisualState()
+    {
+        VerifyMutable();
+        InvalidateResolvedStyleCache();
+        Invalidate(VisualStateInvalidation());
+    }
+
+    /// <summary>Requests keyboard focus from the manager inherited by this control.</summary>
+    /// <returns>True when focus is acquired or already owned; false when detached or ineligible.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The attached control is accessed off-dispatcher or focus is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected bool RequestFocus()
+    {
+        VerifyMutable();
+        return FocusOwner?.Focus(this) ?? false;
+    }
+
+    /// <summary>Requests exclusive pointer capture from the manager inherited by this control.</summary>
+    /// <returns>True when capture is acquired or already owned; false when detached or ineligible.</returns>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected bool CapturePointer()
+    {
+        VerifyMutable();
+        return CaptureOwner?.Capture(this) ?? false;
+    }
+
+    /// <summary>Gets whether this control is the current exclusive pointer-capture target.</summary>
+    protected bool HasPointerCapture => ReferenceEquals(CaptureOwner?.Captured, this);
+
+    /// <summary>Releases pointer capture only when this control currently owns it.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected void ReleasePointerCapture()
+    {
+        VerifyMutable();
+        CaptureOwner?.Release(this);
+    }
+
     /// <summary>Releases this control and every child it owns.</summary>
     /// <exception cref="InvalidOperationException">The attached control is disposed off-dispatcher.</exception>
     public void Dispose()
     {
-        if (IsDisposed)
+        if (IsDisposed || IsDisposing)
         {
             return;
         }
 
         VerifyAccess();
-        NotifyUnavailable(ReleaseReason.Disposed);
-        if (Parent is { } parent)
+        IsDisposing = true;
+        var failure = (ExceptionDispatchInfo?) null;
+        CaptureFailure(OnDisposing, ref failure);
+
+        try
         {
-            _ = parent.Children.Remove(this);
+            CaptureFailure(
+                () => NotifyUnavailable(ReleaseReason.Disposed),
+                ref failure);
+
+            if (Parent is { } parent)
+            {
+                CaptureFailure(
+                    () => _ = parent.Children.Remove(this),
+                    ref failure);
+            }
+
+            CaptureFailure(DisposeChildren, ref failure);
+            CaptureFailure(ClearHandlers, ref failure);
+            CaptureFailure(
+                () => UnsubscribeInstanceStyle(InstanceStyle),
+                ref failure);
+        }
+        finally
+        {
+            Dispatcher = null;
+            Pending = Invalidation.None;
+            IsDisposed = true;
+            IsDisposing = false;
+            PropertyChanged = null;
+            GC.SuppressFinalize(this);
         }
 
-        DisposeChildren();
-        ClearHandlers();
-        UnsubscribeInstanceStyle(InstanceStyle);
-        Dispatcher = null;
-        Pending = Invalidation.None;
-        IsDisposed = true;
-        PropertyChanged = null;
-        GC.SuppressFinalize(this);
+        failure?.Throw();
     }
 
     /// <summary>Disposes children owned by a derived container.</summary>
@@ -1009,6 +1143,29 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="pressed">The newly committed pressed state.</param>
     protected virtual void OnPressedChanged(bool pressed) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot change pressed state.");
+
+    /// <summary>Responds after this control commits attachment to a dispatcher.</summary>
+    /// <remarks>The callback observes a non-null <see cref="Dispatcher"/>.</remarks>
+    protected virtual void OnAttached() =>
+        Debug.Assert(Dispatcher is not null, "Attachment state commits before its callback.");
+
+    /// <summary>Responds after this control commits detachment from its dispatcher.</summary>
+    /// <remarks>The callback observes a null <see cref="Dispatcher"/>.</remarks>
+    protected virtual void OnDetached() =>
+        Debug.Assert(Dispatcher is null, "Detachment state commits before its callback.");
+
+    /// <summary>Releases derived resources before this control's owned state is disposed.</summary>
+    /// <remarks>
+    /// The hook runs at most once. If it throws, base cleanup still completes
+    /// before the original exception is rethrown.
+    /// </remarks>
+    protected virtual void OnDisposing() =>
+        Debug.Assert(!IsDisposed, "The disposing hook runs before disposal commits.");
+
+    /// <summary>Responds after implicit pointer-capture cancellation clears all pointer state.</summary>
+    /// <param name="reason">The defined reason capture was cancelled.</param>
+    protected virtual void OnPointerCaptureCancelled(ReleaseReason reason) =>
+        Debug.Assert(Enum.IsDefined(reason), "Capture cancellation reasons are validated internally.");
 
     /// <summary>Responds after this control's direct ownership changes.</summary>
     /// <param name="previous">The previous owner, or null.</param>
@@ -1326,17 +1483,23 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
     /// <param name="value">The validated replacement value.</param>
-    /// <param name="invalidation">The earliest affected phase.</param>
-    /// <param name="propertyName">The property name supplied by the compiler.</param>
+    /// <param name="impact">The validated earliest affected phase.</param>
+    /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
     /// <returns>Whether a changed value was committed.</returns>
-    private protected bool Set<T>(
+    /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected bool SetProperty<T>(
         ref T field,
         T value,
-        Invalidation invalidation,
+        ChangeImpact impact,
         [CallerMemberName] string? propertyName = null)
     {
-        ThrowIfDisposed();
-        VerifyAccess();
+        ValidateImpact(impact);
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
 
         if (EqualityComparer<T>.Default.Equals(field, value))
         {
@@ -1344,23 +1507,49 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         field = value;
-        Invalidate(invalidation);
+        Invalidate(InvalidationFor(impact));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         return true;
     }
 
     /// <summary>Raises one derived committed-property notification after atomic field mutation.</summary>
     /// <param name="propertyName">The non-empty public property name.</param>
-    /// <param name="invalidation">The earliest phase affected by the committed transaction.</param>
+    /// <param name="impact">The validated earliest phase affected by the committed transaction.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    private protected void NotifyChanged(string propertyName, Invalidation invalidation)
+    protected void NotifyPropertyChanged(string propertyName, ChangeImpact impact)
     {
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        ValidateImpact(impact);
         VerifyMutable();
-        Invalidate(invalidation);
+        Invalidate(InvalidationFor(impact));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    private void EnsureDirectOwnedChild(Control child)
+    {
+        Debug.Assert(child is not null, "Direct-child validation requires an instance.");
+
+        if (!ReferenceEquals(child.Parent, this))
+        {
+            throw new ArgumentException(
+                "The control must be a direct child of this owner.",
+                nameof(child));
+        }
+    }
+
+    private static void ValidateImpact(ChangeImpact impact)
+    {
+        if (!Enum.IsDefined(impact))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(impact),
+                impact,
+                "The change impact is unknown.");
+        }
     }
 
     private void InvalidateDescendants(Invalidation value) =>
@@ -1415,22 +1604,55 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         var focus = FocusOwner;
         var capture = CaptureOwner;
-        focus?.Unavailable(this);
-        capture?.Unavailable(this, reason);
-        OnUnavailable(reason);
+        var failure = (ExceptionDispatchInfo?) null;
+        CaptureFailure(
+            () => focus?.Unavailable(this),
+            ref failure);
+        CaptureFailure(
+            () => capture?.Unavailable(this, reason),
+            ref failure);
+        CaptureFailure(
+            () => OnUnavailable(reason),
+            ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
             if (focus is not null && ReferenceEquals(focus.Root, this))
             {
-                focus.RootDisposed();
+                CaptureFailure(focus.RootDisposed, ref failure);
             }
 
             if (capture is not null && ReferenceEquals(capture.Root, this))
             {
-                capture.RootDisposed();
+                CaptureFailure(capture.RootDisposed, ref failure);
             }
         }
+
+        failure?.Throw();
+    }
+
+    private static void CaptureFailure(
+        System.Action action,
+        ref ExceptionDispatchInfo? failure)
+    {
+        Debug.Assert(action is not null, "Cleanup capture requires one action.");
+
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+    }
+
+    /// <summary>Invokes the derived capture-cancellation hook after manager state is clear.</summary>
+    /// <param name="reason">The defined implicit cancellation reason.</param>
+    internal void NotifyPointerCaptureCancelled(ReleaseReason reason)
+    {
+        Debug.Assert(Enum.IsDefined(reason), "Capture cancellation reasons are validated internally.");
+        OnPointerCaptureCancelled(reason);
     }
 
     private Constraint CreateContentConstraint(Constraint constraint) => new(
@@ -1457,12 +1679,22 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private void SetDispatcher(Dispatcher? value)
     {
+        var previous = Dispatcher;
         UnsubscribeInstanceStyle(InstanceStyle);
 
         Dispatcher = value;
 
         SubscribeInstanceStyle(InstanceStyle);
         VisitChildren(child => child.SetDispatcher(value));
+
+        if (previous is null && value is not null)
+        {
+            OnAttached();
+        }
+        else if (previous is not null && value is null)
+        {
+            OnDetached();
+        }
     }
 
     private void SubscribeInstanceStyle(IControlStyle? style)

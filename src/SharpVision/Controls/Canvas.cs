@@ -19,11 +19,11 @@ public sealed class Canvas: Container
     public bool ClipToBounds
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = true;
 
     /// <inheritdoc/>
-    internal override bool ClipsChildren => ClipToBounds;
+    protected override bool ClipsChildren => ClipToBounds;
 
     /// <summary>Gets the optional leading horizontal offset.</summary>
     /// <param name="control">The non-null control.</param>

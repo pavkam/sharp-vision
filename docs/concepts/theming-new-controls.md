@@ -149,3 +149,52 @@ fallback derivation.
 - `ThemeResolver.Resolve(theme, typeof(Gauge), FillColorProperty, State.Normal)`
   evaluates a value for a type under a theme **without** a live control
   instance.
+
+## 8. Complete external leaf
+
+Ordinary mutable state uses the same `ChangeImpact` values as style metadata.
+The control below needs no friend assembly or internal transaction API: it
+commits state through `SetProperty`, measures with the inherited Unicode
+`CellPolicy`, and draws through the protected canvas/style seams.
+
+```csharp
+public sealed class Gauge : Control
+{
+    public int Value
+    {
+        get;
+        set
+        {
+            if (value is < 0 or > 100)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value));
+            }
+
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
+
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        _ = constraint;
+        var markerWidth = CellPolicy.AmbiguousWidth == Ambiguous.Wide ? 2 : 1;
+        var percentageWidth = Value.ToString(CultureInfo.InvariantCulture).Length + 1;
+        return new Size(markerWidth + 1 + percentageWidth, 1);
+    }
+
+    protected override void OnRender(TerminalCanvas canvas)
+    {
+        RenderChrome(canvas);
+        var content = string.Create(CultureInfo.InvariantCulture, $"· {Value}%");
+        _ = canvas.Draw(
+            content.AsSpan(),
+            new Point(ContentBounds.X, ContentBounds.Y),
+            ResolvedStyle);
+    }
+}
+```
+
+Equivalent assignments are quiet. Unknown impacts and invalid public values are
+rejected before field mutation. A multi-child owner derives from `Container`,
+iterates only its `Children`, and uses `MeasureChild`/`ArrangeChild`; it never
+calls raw layout transactions.

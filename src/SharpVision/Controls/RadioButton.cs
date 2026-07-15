@@ -54,7 +54,7 @@ public sealed class RadioButton: Pressable
         get;
         set
         {
-            if (Set(ref field, value, Invalidation.None) && IsChecked)
+            if (SetProperty(ref field, value, ChangeImpact.None) && IsChecked)
             {
                 RadioGroup.Select(this, ActivationCause.Programmatic);
             }
@@ -188,7 +188,7 @@ public sealed class RadioButton: Pressable
 
     /// <summary>Commits a coordinated checked value without recursive selection.</summary>
     internal bool Commit(bool value) =>
-        Set(ref _isChecked, value, Invalidation.Render, nameof(IsChecked));
+        SetProperty(ref _isChecked, value, ChangeImpact.Render, nameof(IsChecked));
 
     /// <summary>Raises Checked after a complete group commit.</summary>
     internal void RaiseChecked(SelectionChangedEventArgs eventArgs) =>

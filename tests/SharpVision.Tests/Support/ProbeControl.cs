@@ -11,6 +11,7 @@ using TerminalCanvas = Terminal.Rendering.Canvas;
 internal sealed class ProbeControl: Control
 {
     private readonly Size _intrinsic;
+    private int _kernelValue;
 
     /// <summary>Initializes a probe with one validated intrinsic size.</summary>
     /// <param name="intrinsic">The non-negative intrinsic content size.</param>
@@ -40,6 +41,86 @@ internal sealed class ProbeControl: Control
     /// <summary>Gets or sets work invoked from inside the next render pass.</summary>
     internal Action<ProbeControl>? Rendering { get; set; }
 
+    /// <summary>Gets the number of completed attachment callbacks.</summary>
+    internal int AttachedCalls { get; private set; }
+
+    /// <summary>Gets whether attachment state was committed before the latest callback.</summary>
+    internal bool AttachedStateWasCommitted { get; private set; }
+
+    /// <summary>Gets the number of completed detachment callbacks.</summary>
+    internal int DetachedCalls { get; private set; }
+
+    /// <summary>Gets whether detachment state was committed before the latest callback.</summary>
+    internal bool DetachedStateWasCommitted { get; private set; }
+
+    /// <summary>Gets the number of disposal callbacks.</summary>
+    internal int DisposingCalls { get; private set; }
+
+    /// <summary>Gets or sets whether the disposal callback throws a deterministic failure.</summary>
+    internal bool ThrowOnDisposing { get; set; }
+
+    /// <summary>Gets the number of implicit pointer-capture cancellation callbacks.</summary>
+    internal int PointerCaptureCancellationCalls { get; private set; }
+
+    /// <summary>Gets the latest implicit pointer-capture cancellation reason.</summary>
+    internal ReleaseReason? PointerCaptureCancellationReason { get; private set; }
+
+    /// <summary>Gets whether pointer state was clear before the latest cancellation callback.</summary>
+    internal bool PointerStateWasClearDuringCancellation { get; private set; }
+
+    /// <summary>Gets or sets whether the capture-cancellation hook throws a deterministic failure.</summary>
+    internal bool ThrowOnPointerCaptureCancellation { get; set; }
+
+    /// <summary>Gets or sets whether the cancellation hook attempts to reacquire capture.</summary>
+    internal bool RecaptureDuringPointerCancellation { get; set; }
+
+    /// <summary>Gets the result of the latest capture request made by the cancellation hook.</summary>
+    internal bool? RecaptureResult { get; private set; }
+
+    /// <summary>Gets or sets whether clearing pressed state attempts to reacquire capture.</summary>
+    internal bool RecaptureWhenPressedClears { get; set; }
+
+    /// <summary>Gets the result of the latest capture request made while pressed state cleared.</summary>
+    internal bool? PressedClearRecaptureResult { get; private set; }
+
+    /// <summary>Requests keyboard focus through the protected consumer seam.</summary>
+    /// <returns>Whether focus was acquired or already owned.</returns>
+    internal bool RequestProbeFocus() => RequestFocus();
+
+    /// <summary>Requests pointer capture through the protected consumer seam.</summary>
+    /// <returns>Whether capture was acquired or already owned.</returns>
+    internal bool CaptureProbePointer() => CapturePointer();
+
+    /// <summary>Gets whether this probe owns pointer capture.</summary>
+    internal bool ProbeHasPointerCapture => HasPointerCapture;
+
+    /// <summary>Gets the value most recently committed through the protected property kernel.</summary>
+    internal int KernelValue => _kernelValue;
+
+    /// <summary>Releases pointer capture only when this probe owns it.</summary>
+    internal void ReleaseProbePointer() => ReleasePointerCapture();
+
+    /// <summary>Commits one value through the protected property kernel.</summary>
+    /// <param name="value">The replacement value.</param>
+    /// <param name="impact">The earliest affected UI phase.</param>
+    /// <param name="propertyName">The property name to publish.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    internal bool SetKernelValue(
+        int value,
+        ChangeImpact impact,
+        string? propertyName = nameof(KernelValue)) =>
+        SetProperty(ref _kernelValue, value, impact, propertyName);
+
+    /// <summary>Publishes one notification through the protected property kernel.</summary>
+    /// <param name="propertyName">The property name to publish.</param>
+    /// <param name="impact">The earliest affected UI phase.</param>
+    internal void NotifyKernelProperty(string propertyName, ChangeImpact impact) =>
+        NotifyPropertyChanged(propertyName, impact);
+
+    /// <summary>Requests one UI phase through the protected invalidation kernel.</summary>
+    /// <param name="impact">The earliest affected UI phase.</param>
+    internal void InvalidateKernel(ChangeImpact impact) => Invalidate(impact);
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
@@ -64,6 +145,61 @@ internal sealed class ProbeControl: Control
             Content.Span,
             new Point(ContentBounds.X, ContentBounds.Y),
             ResolvedStyle);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnAttached()
+    {
+        AttachedCalls++;
+        AttachedStateWasCommitted = Dispatcher is not null;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDetached()
+    {
+        DetachedCalls++;
+        DetachedStateWasCommitted = Dispatcher is null;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDisposing()
+    {
+        DisposingCalls++;
+
+        if (ThrowOnDisposing)
+        {
+            throw new InvalidOperationException("The probe disposal callback failed.");
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    {
+        PointerCaptureCancellationCalls++;
+        PointerCaptureCancellationReason = reason;
+        PointerStateWasClearDuringCancellation =
+            !HasPointerCapture && !IsHovered && !IsPressed;
+
+        if (RecaptureDuringPointerCancellation)
+        {
+            RecaptureResult = CapturePointer();
+        }
+
+        if (ThrowOnPointerCaptureCancellation)
+        {
+            throw new InvalidOperationException("The probe capture-cancellation callback failed.");
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPressedChanged(bool pressed)
+    {
+        base.OnPressedChanged(pressed);
+
+        if (!pressed && RecaptureWhenPressedClears)
+        {
+            PressedClearRecaptureResult = CapturePointer();
+        }
     }
 
     /// <summary>Draws one Rune using this control's resolved terminal style.</summary>

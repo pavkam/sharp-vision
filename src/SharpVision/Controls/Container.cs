@@ -182,7 +182,7 @@ public abstract class Container: Control
     public bool AutoSize
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets whether an auto-sizing axis may shrink below its explicit fixed-cell size.</summary>
@@ -199,7 +199,7 @@ public abstract class Container: Control
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The auto-size mode is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = AutoSizeMode.GrowAndShrink;
 
@@ -280,7 +280,7 @@ public abstract class Container: Control
         get;
         set
         {
-            if (!Set(ref field, value, Invalidation.Measure))
+            if (!SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 return;
             }
@@ -322,7 +322,7 @@ public abstract class Container: Control
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar axes contain unknown flags.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = ScrollBars.Vertical;
 
@@ -337,7 +337,7 @@ public abstract class Container: Control
         {
             Validate(value);
 
-            if (!Set(ref field, value, Invalidation.Measure))
+            if (!SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 return;
             }
@@ -364,7 +364,7 @@ public abstract class Container: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
 
@@ -378,7 +378,7 @@ public abstract class Container: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
 
@@ -393,7 +393,7 @@ public abstract class Container: Control
         {
             Validate(value);
 
-            if (!Set(ref field, value, Invalidation.Measure))
+            if (!SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 return;
             }
@@ -414,7 +414,7 @@ public abstract class Container: Control
         {
             Validate(value);
 
-            if (!Set(ref field, value, Invalidation.Render))
+            if (!SetProperty(ref field, value, ChangeImpact.Render))
             {
                 return;
             }
@@ -434,7 +434,7 @@ public abstract class Container: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     } = 1;
 
@@ -448,7 +448,7 @@ public abstract class Container: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     }
 
@@ -660,8 +660,8 @@ public abstract class Container: Control
         if (!AutoScroll)
         {
             var box = new Size(padded.Width, padded.Height);
-            _ = Set(ref _extent, box, Invalidation.None, nameof(Extent));
-            _ = Set(ref _viewport, box, Invalidation.None, nameof(Viewport));
+            _ = SetProperty(ref _extent, box, ChangeImpact.None, nameof(Extent));
+            _ = SetProperty(ref _viewport, box, ChangeImpact.None, nameof(Viewport));
             _viewportBounds = padded;
             _horizontalOffset = 0;
             _verticalOffset = 0;
@@ -676,8 +676,8 @@ public abstract class Container: Control
         Resolve(new Size(padded.Width, padded.Height), ContentExtent, out var horizontal, out var vertical, out var viewport);
         _viewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
         var extentChanged = _extent != ContentExtent;
-        _ = Set(ref _extent, ContentExtent, Invalidation.None, nameof(Extent));
-        _ = Set(ref _viewport, viewport, Invalidation.None, nameof(Viewport));
+        _ = SetProperty(ref _extent, ContentExtent, ChangeImpact.None, nameof(Extent));
+        _ = SetProperty(ref _viewport, viewport, ChangeImpact.None, nameof(Viewport));
         _reserveHorizontal = horizontal;
         _reserveVertical = vertical;
         _ = Apply(
@@ -810,8 +810,8 @@ public abstract class Container: Control
         x = Math.Clamp(x, 0, MaximumX());
         y = Math.Clamp(y, 0, MaximumY());
         var previous = new Point(HorizontalOffset, VerticalOffset);
-        var changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
-        var changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
+        var changedX = SetProperty(ref _horizontalOffset, x, ChangeImpact.Arrange, nameof(HorizontalOffset));
+        var changedY = SetProperty(ref _verticalOffset, y, ChangeImpact.Arrange, nameof(VerticalOffset));
 
         if (!changedX && !changedY)
         {

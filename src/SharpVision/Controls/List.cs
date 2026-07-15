@@ -92,7 +92,7 @@ public sealed class List: Container, IStyleScope
             }
 
             var realized = Build(_items, value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
             Replace(_items, realized, replaceItems: false);
         }
     } = DefaultTemplate;
@@ -131,7 +131,7 @@ public sealed class List: Container, IStyleScope
                 _ = normalized.Add(retained);
             }
 
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
             _ = ApplySelection(normalized, cancellable: false);
         }
     } = SelectionMode.Single;
@@ -196,7 +196,7 @@ public sealed class List: Container, IStyleScope
             }
 
             _stack.ScrollBars = value;
-            NotifyChanged(nameof(ScrollBars), Invalidation.None);
+            NotifyPropertyChanged(nameof(ScrollBars), ChangeImpact.None);
         }
     }
 
@@ -217,7 +217,7 @@ public sealed class List: Container, IStyleScope
             }
 
             _stack.ShowScrollBars = value;
-            NotifyChanged(nameof(ShowScrollBars), Invalidation.None);
+            NotifyPropertyChanged(nameof(ShowScrollBars), ChangeImpact.None);
         }
     }
 
@@ -238,7 +238,7 @@ public sealed class List: Container, IStyleScope
             }
 
             _stack.ScrollBarChrome = value;
-            NotifyChanged(nameof(ScrollBarChrome), Invalidation.None);
+            NotifyPropertyChanged(nameof(ScrollBarChrome), ChangeImpact.None);
         }
     }
 
@@ -259,7 +259,7 @@ public sealed class List: Container, IStyleScope
             }
 
             _stack.ScrollBarFill = value;
-            NotifyChanged(nameof(ScrollBarFill), Invalidation.None);
+            NotifyPropertyChanged(nameof(ScrollBarFill), ChangeImpact.None);
         }
     }
 
@@ -501,7 +501,7 @@ public sealed class List: Container, IStyleScope
         ActiveIndex = ActiveIndex >= Items.Count ? Items.Count - 1 : ActiveIndex;
         _selectionAnchor = _selectionAnchor >= Items.Count ? ActiveIndex : _selectionAnchor;
         RefreshSelectedItems();
-        NotifyChanged(nameof(Items), Invalidation.Measure);
+        NotifyPropertyChanged(nameof(Items), ChangeImpact.Measure);
     }
 
     private bool ApplySelection(HashSet<int> next, bool cancellable)
@@ -537,9 +537,9 @@ public sealed class List: Container, IStyleScope
         }
 
         RefreshSelectedItems();
-        NotifyChanged(nameof(SelectedIndex), Invalidation.Render);
-        NotifyChanged(nameof(SelectedItem), Invalidation.Render);
-        NotifyChanged(nameof(SelectedItems), Invalidation.Render);
+        NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(SelectedItem), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(SelectedItems), ChangeImpact.Render);
         SelectionChanged?.Invoke(this, new ListSelectionChangedEventArgs(added, removed));
         return true;
     }

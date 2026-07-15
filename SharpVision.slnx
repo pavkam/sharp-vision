@@ -5,6 +5,7 @@
     <Project Path="src/SharpVision/SharpVision.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/SharpVision.Consumer.Tests/SharpVision.Consumer.Tests.csproj" />
     <Project Path="tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj" />
     <Project Path="tests/SharpVision.Terminal.Tests/SharpVision.Terminal.Tests.csproj" />
     <Project Path="tests/SharpVision.Tests/SharpVision.Tests.csproj" />

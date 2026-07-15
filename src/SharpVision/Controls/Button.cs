@@ -56,7 +56,7 @@ public sealed partial class Button: Pressable
             }
 
             _command?.CanExecuteChanged -= OnCanExecuteChanged;
-            _ = Set(ref _command, value, Invalidation.Render);
+            _ = SetProperty(ref _command, value, ChangeImpact.Render);
             _command?.CanExecuteChanged += OnCanExecuteChanged;
         }
     }
@@ -67,7 +67,7 @@ public sealed partial class Button: Pressable
     public object? CommandParameter
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
     /// <summary>Gets or sets whether an owning Window treats Enter as a fallback activation.</summary>
@@ -76,7 +76,7 @@ public sealed partial class Button: Pressable
     public bool IsDefault
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     }
 
     /// <summary>Gets or sets whether an owning Window treats Escape as a fallback activation.</summary>
@@ -85,7 +85,7 @@ public sealed partial class Button: Pressable
     public bool IsCancel
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     }
 
     /// <summary>Gets or sets the validated physical glyph family used by the button border.</summary>

@@ -78,7 +78,7 @@ public sealed class ComboBox: Pressable
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = 8;
 
@@ -99,7 +99,7 @@ public sealed class ComboBox: Pressable
             }
 
             _list.ScrollBars = value;
-            NotifyChanged(nameof(ScrollBars), Invalidation.None);
+            NotifyPropertyChanged(nameof(ScrollBars), ChangeImpact.None);
         }
     }
 
@@ -120,7 +120,7 @@ public sealed class ComboBox: Pressable
             }
 
             _list.ShowScrollBars = value;
-            NotifyChanged(nameof(ShowScrollBars), Invalidation.None);
+            NotifyPropertyChanged(nameof(ShowScrollBars), ChangeImpact.None);
         }
     }
 
@@ -141,7 +141,7 @@ public sealed class ComboBox: Pressable
             }
 
             _list.ScrollBarChrome = value;
-            NotifyChanged(nameof(ScrollBarChrome), Invalidation.None);
+            NotifyPropertyChanged(nameof(ScrollBarChrome), ChangeImpact.None);
         }
     }
 
@@ -162,7 +162,7 @@ public sealed class ComboBox: Pressable
             }
 
             _list.ScrollBarFill = value;
-            NotifyChanged(nameof(ScrollBarFill), Invalidation.None);
+            NotifyPropertyChanged(nameof(ScrollBarFill), ChangeImpact.None);
         }
     }
 
@@ -190,7 +190,7 @@ public sealed class ComboBox: Pressable
     #region Input, layout, and rendering
 
     /// <inheritdoc/>
-    internal override bool ClipsChildren => false;
+    protected override bool ClipsChildren => false;
 
     /// <inheritdoc/>
     protected override Rect VisualBounds => IsOpen
@@ -314,7 +314,7 @@ public sealed class ComboBox: Pressable
     {
         _ = sender;
         _ = eventArgs;
-        NotifyChanged(nameof(IsOpen), Invalidation.None);
+        NotifyPropertyChanged(nameof(IsOpen), ChangeImpact.None);
     }
 
     #endregion

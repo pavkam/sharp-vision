@@ -33,7 +33,7 @@ public sealed class Menu: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The menu orientation is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = Orientation.Horizontal;
 
@@ -47,7 +47,7 @@ public sealed class Menu: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = 1;
 
@@ -271,7 +271,7 @@ public sealed class Menu: Container
             }
         }
 
-        NotifyChanged(nameof(SelectedIndex), Invalidation.Render);
+        NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Render);
     }
 
     private int FindAvailable(int start, int direction)

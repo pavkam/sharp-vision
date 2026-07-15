@@ -43,7 +43,7 @@ public sealed class Popup: Container
     public Control? Anchor
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Arrange);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Arrange);
     }
 
     /// <summary>Gets or sets the preferred anchor-relative placement.</summary>
@@ -60,7 +60,7 @@ public sealed class Popup: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The popup placement is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Arrange);
+            _ = SetProperty(ref field, value, ChangeImpact.Arrange);
         }
     } = PopupPlacement.Below;
 
@@ -74,7 +74,7 @@ public sealed class Popup: Container
     public Glyphs Glyphs
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = Glyphs.Rounded;
 
     /// <summary>Gets the committed visible surface rectangle, or an empty rectangle while closed.</summary>
@@ -99,7 +99,7 @@ public sealed class Popup: Container
         get;
         set
         {
-            if (!Set(ref field, value, Invalidation.Measure))
+            if (!SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 return;
             }
@@ -132,11 +132,11 @@ public sealed class Popup: Container
     public bool CloseOnEscape
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     } = true;
 
     /// <inheritdoc/>
-    internal override bool ClipsChildren => false;
+    protected override bool ClipsChildren => false;
 
     /// <inheritdoc/>
     public override Control? HitTest(Point point)

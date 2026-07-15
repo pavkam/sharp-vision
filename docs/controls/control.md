@@ -84,11 +84,30 @@ no-op. Replacing either `Control.Style` or a type style in `Theme` uses the
 maximum aggregate impact of the removed and new styles, so removing geometric
 values still invalidates their previous layout.
 
+Third-party controls use the same phase vocabulary for ordinary CLR state.
+`SetProperty(ref field, value, impact)` verifies dispatcher affinity, rejects an
+unknown `ChangeImpact`, suppresses equivalent assignments, commits the field,
+invalidates, and then raises `PropertyChanged` once. A coordinated mutation that
+has already committed its fields uses `NotifyPropertyChanged(name, impact)`.
+`Invalidate(impact)` requests work without a property notification, while
+`InvalidateVisualState()` clears resolved appearance caches and requests the
+strongest phase required by active styles. None of these seams exposes the
+framework's pending phase flags.
+
 ## Lifecycle and events
 
-Attachment assigns the same dispatcher recursively. Detachment clears it
-recursively. Focus and pointer capture are synchronously released when a control
-becomes unavailable or leaves the owned tree.
+Attachment assigns the same dispatcher recursively. `OnAttached()` runs after
+the receiving control's `Dispatcher` is non-null. Detachment clears it
+recursively, then invokes `OnDetached()` with a null `Dispatcher`.
+`OnDisposing()` runs at most once before owned state is released; if that hook
+throws, base cleanup completes before the original exception is rethrown. These
+hooks cover the receiving control's committed state; collection-wide callback
+atomicity is defined by the ownership transaction.
+
+Focus and pointer capture are synchronously released when a control becomes
+unavailable or leaves the owned tree. Derived controls request those behaviors
+through the target-safe helpers documented in
+[Input routing](../concepts/input-routing.md#pointer-capture-and-coordinates).
 
 `AddHandler<TArgs>` registers a typed synchronous handler and returns an
 idempotent removal token. Routed arguments expose `OriginalSource`, retargetable
@@ -106,6 +125,14 @@ min/max clamping, alignment, caching, collapse behavior, dispatcher checks, and
 reentrancy guards. Extension points therefore deal only with content; they do
 not repeat box-model arithmetic.
 
+A derived owner lays out only its direct children through
+`MeasureChild(child, constraint)` and `ArrangeChild(child, slot, resolvedAxes)`.
+Both reject null and non-direct children before entering the child's internal
+transaction. `ArrangeChild` also rejects undefined `ResolvedAxes` flags;
+`Width`, `Height`, or `Both` means the parent already resolved that border-box
+dimension. Raw `Measure`, `Arrange`, `Render`, phase flags, and layout managers
+remain internal.
+
 If an extension point changes a layout property, that invalidation remains
 pending for a later transaction. If it throws, the active phase is marked dirty
 again before the exception escapes.
@@ -115,9 +142,10 @@ primitive, does not use these seams directly; derive from
 [`View`](../concepts/custom-components.md#custom-components-contract) and
 implement `Build()` instead.
 
-Control content always draws through a canvas clipped to its own `Bounds`.
-Containers may opt to retain only the ancestor clip for descendants; this is the
-shared mechanism behind documented Overlay and Canvas unclipped-child modes.
+Control content always draws through a canvas clipped to its own `Bounds`. The
+protected `ClipsChildren` override defaults to true. Containers may return false
+to retain only the ancestor clip for descendants; this is the shared mechanism
+behind documented Overlay and Canvas unclipped-child modes.
 
 ## Styling extension point
 
@@ -132,6 +160,10 @@ state. Only interactive (focusable) controls are ever marked hovered, so the
 hovered flag never appears on static content such as text or tables.
 `GetResolvedStyle` converts the active theme cascade into the complete terminal
 cell style used by rendering.
+
+Primitive controls also read the protected inherited `CellPolicy` during
+measurement and drawing. This keeps grapheme width decisions identical to the
+application and frame without exposing policy mutation to derived code.
 
 ## Example
 

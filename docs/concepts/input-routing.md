@@ -115,8 +115,21 @@ descendants; for example, text inside a Button sets the Button's `IsHovered`,
 not the label's. It updates `IsHovered` and `IsPressed` before routing so
 handlers observe committed visual state. Release clears press after routing.
 Explicit `Release` is quiet; detach, disable, hide, disposal, and terminal-focus
-loss emit one `Cancelled` callback with a precise `ReleaseReason`, then clear
-capture, hover, and press references synchronously.
+loss first clear capture plus any hover and press state owned by the unavailable
+subtree. If a capture target existed, its protected cancellation hook runs next;
+the manager-level `Cancelled` event then publishes the precise `ReleaseReason`.
+Capture requests made from either cancellation callback return false until the
+complete callback sequence has unwound.
+
+An externally derived control uses `RequestFocus()` and `CapturePointer()`
+instead of retaining manager references. Both return false while detached or
+ineligible. `HasPointerCapture` reports identity ownership, and
+`ReleasePointerCapture()` releases only the calling control; it cannot disturb
+another target's capture. Explicit release remains quiet.
+
+Press-only cleanup does not invoke the protected capture hook because no former
+capture target exists. The manager-level `Cancelled` event still lets hosts
+observe that scoped cleanup across the whole tree.
 
 ## Pull-style pointer and focus snapshot
 

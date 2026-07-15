@@ -29,7 +29,7 @@ public sealed class Stack: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The orientation is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = Orientation.Vertical;
 
@@ -43,7 +43,7 @@ public sealed class Stack: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -53,7 +53,7 @@ public sealed class Stack: Container
     public bool Reverse
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Arrange);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Arrange);
     }
 
     /// <inheritdoc/>

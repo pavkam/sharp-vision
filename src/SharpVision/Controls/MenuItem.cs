@@ -27,7 +27,7 @@ public sealed class MenuItem: Pressable
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 
@@ -45,7 +45,7 @@ public sealed class MenuItem: Pressable
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The menu item kind is unknown.");
             }
 
-            if (Set(ref field, value, Invalidation.Measure) && value == MenuItemKind.Separator)
+            if (SetProperty(ref field, value, ChangeImpact.Measure) && value == MenuItemKind.Separator)
             {
                 _ = CommitChecked(false);
             }
@@ -69,7 +69,7 @@ public sealed class MenuItem: Pressable
                 ArgumentException.ThrowIfNullOrWhiteSpace(value);
             }
 
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     }
 
@@ -197,7 +197,7 @@ public sealed class MenuItem: Pressable
     }
 
     /// <summary>Commits the checked state for coordinated owner transactions.</summary>
-    internal bool CommitChecked(bool value) => Set(ref _isChecked, value, Invalidation.Render, nameof(IsChecked));
+    internal bool CommitChecked(bool value) => SetProperty(ref _isChecked, value, ChangeImpact.Render, nameof(IsChecked));
 
     /// <summary>Commits selected visual state from the containing menu.</summary>
     internal void CommitSelection(bool value) => SetSelectedState(value);

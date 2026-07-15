@@ -85,7 +85,7 @@ public sealed class TextInput: Container
     public bool IsReadOnly
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
     /// <summary>Gets or sets whether inserted CR or LF values are accepted.</summary>
@@ -94,7 +94,7 @@ public sealed class TextInput: Container
     public bool AcceptsReturn
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets whether inserted tab values are accepted.</summary>
@@ -103,7 +103,7 @@ public sealed class TextInput: Container
     public bool AcceptsTab
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets the optional printable narrow display mask.</summary>
@@ -120,7 +120,7 @@ public sealed class TextInput: Container
                 _ = Edit.ProjectPassword(string.Empty, mask);
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -141,7 +141,7 @@ public sealed class TextInput: Container
                 throw new ArgumentException("MaxLength cannot exclude current text.", nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     }
 
@@ -201,7 +201,7 @@ public sealed class TextInput: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar axes contain unknown flags.");
             }
 
-            if (Set(ref field, value, Invalidation.Arrange))
+            if (SetProperty(ref field, value, ChangeImpact.Arrange))
             {
                 ArrangeChrome();
             }
@@ -222,7 +222,7 @@ public sealed class TextInput: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar visibility policy is unknown.");
             }
 
-            if (Set(ref field, value, Invalidation.Arrange))
+            if (SetProperty(ref field, value, ChangeImpact.Arrange))
             {
                 ArrangeChrome();
             }
@@ -243,7 +243,7 @@ public sealed class TextInput: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar chrome is unknown.");
             }
 
-            if (Set(ref field, value, Invalidation.Arrange))
+            if (SetProperty(ref field, value, ChangeImpact.Arrange))
             {
                 _horizontal.Chrome = value;
                 _vertical.Chrome = value;
@@ -265,7 +265,7 @@ public sealed class TextInput: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar fill is unknown.");
             }
 
-            if (Set(ref field, value, Invalidation.Render))
+            if (SetProperty(ref field, value, ChangeImpact.Render))
             {
                 _horizontal.Fill = value;
                 _vertical.Fill = value;
@@ -283,7 +283,7 @@ public sealed class TextInput: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
             Trim(_undo);
         }
     } = 100;
@@ -563,14 +563,14 @@ public sealed class TextInput: Container
 
         if (textChanged)
         {
-            NotifyChanged(nameof(Text), Invalidation.Measure);
+            NotifyPropertyChanged(nameof(Text), ChangeImpact.Measure);
         }
 
         if (previousSelection != _selection)
         {
-            NotifyChanged(nameof(CaretIndex), Invalidation.Render);
-            NotifyChanged(nameof(SelectionStart), Invalidation.Render);
-            NotifyChanged(nameof(SelectionLength), Invalidation.Render);
+            NotifyPropertyChanged(nameof(CaretIndex), ChangeImpact.Render);
+            NotifyPropertyChanged(nameof(SelectionStart), ChangeImpact.Render);
+            NotifyPropertyChanged(nameof(SelectionLength), ChangeImpact.Render);
         }
 
         if (textChanged)

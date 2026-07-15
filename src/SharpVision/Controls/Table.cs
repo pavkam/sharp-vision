@@ -35,7 +35,7 @@ public sealed class Table: Container
     public bool ShowHeader
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     } = true;
 
     /// <summary>Gets or sets non-negative padding applied to every header and data cell.</summary>
@@ -44,7 +44,7 @@ public sealed class Table: Container
     public Thickness CellPadding
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets non-negative cells between adjacent data rows.</summary>
@@ -57,7 +57,7 @@ public sealed class Table: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -71,7 +71,7 @@ public sealed class Table: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -81,7 +81,7 @@ public sealed class Table: Container
     public bool ShowGridLines
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     } = true;
 
     /// <summary>Identifies the themeable header-text foreground style property.</summary>

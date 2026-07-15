@@ -126,7 +126,7 @@ internal sealed class ListItem: Pressable
 
     private void Commit(bool value)
     {
-        if (Set(ref _isSelected, value, Invalidation.Render, nameof(IsSelected)))
+        if (SetProperty(ref _isSelected, value, ChangeImpact.Render, nameof(IsSelected)))
         {
             SetSelectedState(value);
         }

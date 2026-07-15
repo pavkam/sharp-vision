@@ -55,7 +55,7 @@ public sealed class ScrollBar: Control
                     nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     }
 
@@ -78,7 +78,7 @@ public sealed class ScrollBar: Control
                     nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     } = 100;
 
@@ -92,7 +92,7 @@ public sealed class ScrollBar: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     }
 
@@ -127,7 +127,7 @@ public sealed class ScrollBar: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     } = 1;
 
@@ -141,7 +141,7 @@ public sealed class ScrollBar: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     } = 10;
 
@@ -155,7 +155,7 @@ public sealed class ScrollBar: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -169,7 +169,7 @@ public sealed class ScrollBar: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = ScrollBarChrome.Full;
 
@@ -183,7 +183,7 @@ public sealed class ScrollBar: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     } = ScrollBarFill.Block;
 
@@ -205,14 +205,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(DecrementGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(DecrementGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultDecrementGlyph = glyph;
-            NotifyChanged(nameof(DecrementGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(DecrementGlyph), ChangeImpact.Render);
         }
     }
 
@@ -234,14 +234,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(IncrementGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(IncrementGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultIncrementGlyph = glyph;
-            NotifyChanged(nameof(IncrementGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(IncrementGlyph), ChangeImpact.Render);
         }
     }
 
@@ -263,14 +263,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(TrackGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(TrackGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultTrackGlyph = glyph;
-            NotifyChanged(nameof(TrackGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(TrackGlyph), ChangeImpact.Render);
         }
     }
 
@@ -292,14 +292,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(ThumbGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(ThumbGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultThumbGlyph = glyph;
-            NotifyChanged(nameof(ThumbGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(ThumbGlyph), ChangeImpact.Render);
         }
     }
 
@@ -403,7 +403,7 @@ public sealed class ScrollBar: Control
         value = Math.Clamp(value, Minimum, Maximum);
         var previous = _value;
 
-        if (!Set(ref _value, value, Invalidation.Render, nameof(Value)))
+        if (!SetProperty(ref _value, value, ChangeImpact.Render, nameof(Value)))
         {
             return false;
         }

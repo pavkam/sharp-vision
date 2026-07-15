@@ -42,7 +42,7 @@ public sealed partial class Window: Container
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 
@@ -60,7 +60,7 @@ public sealed partial class Window: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The title placement is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     } = WindowTitlePlacement.Left;
 
@@ -70,7 +70,7 @@ public sealed partial class Window: Container
     public Glyphs Glyphs
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = Glyphs.Rounded;
 
     #endregion

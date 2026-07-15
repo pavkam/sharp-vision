@@ -19,7 +19,7 @@ public sealed class Dock: Container
     public bool LastChildFills
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     } = true;
 
     /// <summary>Gets or sets non-negative cells after each consumed child.</summary>
@@ -32,7 +32,7 @@ public sealed class Dock: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 

@@ -2,8 +2,8 @@
 
 ## Project structure contract
 
-The solution contains three production projects and one matching test project
-for each.
+The solution contains three production projects, one matching test project for
+each, and one deliberately unprivileged consumer-contract test project.
 
 ```mermaid
 flowchart LR
@@ -12,11 +12,13 @@ flowchart LR
     Showcase["SharpVision.Showcase"]
     TerminalTests["SharpVision.Terminal.Tests"]
     UITests["SharpVision.Tests"]
+    ConsumerTests["SharpVision.Consumer.Tests"]
     ShowcaseTests["SharpVision.Showcase.Tests"]
     UI --> Terminal
     Showcase --> UI
     TerminalTests -. tests .-> Terminal
     UITests -. tests .-> UI
+    ConsumerTests -. public contract .-> UI
     ShowcaseTests -. tests .-> Showcase
 ```
 
@@ -51,6 +53,11 @@ rendering behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.
+
+`SharpVision.Consumer.Tests` compiles representative third-party leaf,
+container, and interactive controls against only `SharpVision.csproj`. The
+product assembly must not grant it `InternalsVisibleTo`; its build is the
+executable guard for the documented public and protected extension contract.
 
 ## Namespace and file boundaries
 
