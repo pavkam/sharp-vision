@@ -56,9 +56,117 @@ public sealed class TableTests
         new Engine().Layout(table, new Size(20, 4));
 
         first.Bounds.ShouldBe(new Rect(0, 2, 5, 1));
-        second.Bounds.ShouldBe(new Rect(6, 2, 9, 1));
+        second.Bounds.ShouldBe(new Rect(6, 2, 5, 1));
         third.Bounds.ShouldBe(new Rect(16, 2, 4, 1));
         table.DesiredSize.ShouldBe(new Size(20, 3));
+    }
+
+    /// <summary>Verifies an ordinary interactive cell keeps its measured size inside a larger row slot.</summary>
+    [Fact]
+    public void Layout_WhenCellUsesIntrinsicAlignment_KeepsMeasuredBounds()
+    {
+        var option = new CheckBox
+        {
+            Content = new ControlText("Include integration tests"),
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        var table = new Table
+        {
+            Width = Length.Cells(48),
+            CellPadding = new Thickness(1, 0),
+        };
+        table.Columns.Add(TableColumn.Fixed("Action", 16));
+        table.Columns.Add(TableColumn.Fill("Configuration"));
+        table.Rows.Add(new TableRow([
+            new Button { Content = new ControlText("Run checks") },
+            option,
+        ]));
+
+        new Engine().Layout(table, new Size(48, 8));
+
+        option.Bounds.Width.ShouldBe(option.DesiredSize.Width);
+        option.Bounds.Height.ShouldBe(option.DesiredSize.Height);
+    }
+
+    /// <summary>Verifies an explicitly stretched cell continues to consume its complete resolved track slot.</summary>
+    [Fact]
+    public void Layout_WhenCellExplicitlyStretches_FillsResolvedTrackSlot()
+    {
+        var option = new CheckBox
+        {
+            Content = new ControlText("Option"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        var table = new Table
+        {
+            Width = Length.Cells(20),
+            ShowHeader = false,
+            ShowGridLines = false,
+        };
+        table.Columns.Add(TableColumn.Fixed("Action", 10));
+        table.Columns.Add(TableColumn.Fixed("Choice", 10));
+        table.Rows.Add(new TableRow([
+            new Button { Content = new ControlText("Run") },
+            option,
+        ]));
+
+        new Engine().Layout(table, new Size(20, 3));
+
+        option.Bounds.ShouldBe(new Rect(10, 0, 10, 3));
+    }
+
+    /// <summary>Verifies horizontally scrolled headers, grid lines, row cells, hit testing, and rail chrome stay aligned.</summary>
+    [Fact]
+    public void Render_WhenHorizontallyScrolled_TranslatesCompleteTableContent()
+    {
+        var first = new ControlText("12345678");
+        var table = new Table();
+        table.Columns.Add(TableColumn.Fixed("ABCDEFGH", 8));
+        table.Columns.Add(TableColumn.Fixed("IJKLMNOP", 8));
+        table.Rows.Add(new TableRow([first, new ControlText("abcdefgh")]));
+        var size = new Size(10, 4);
+        var engine = new Engine();
+        engine.Layout(table, size);
+        table.HorizontalOffset = 3;
+
+        engine.Layout(table, size);
+        using Frame frame = new(size);
+        table.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("D");
+        FrameOracle.Get(frame, new Point(5, 0)).ShouldNotBeEmpty();
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("4");
+        table.HitTest(new Point(0, 2)).ShouldBeSameAs(first);
+        _ = table.HitTest(new Point(0, 3)).ShouldBeOfType<ScrollBar>();
+    }
+
+    /// <summary>Verifies simultaneous offsets may move the content origin above and left of the viewport.</summary>
+    [Fact]
+    public void Layout_WhenBothAxesScroll_AllowsSignedContentOrigin()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+
+        for (var index = 0; index < 8; index++)
+        {
+            table.Rows.Add(new TableRow([
+                new ControlText($"A{index}"),
+                new ControlText($"B{index}"),
+            ]));
+        }
+
+        var engine = new Engine();
+        var size = new Size(10, 5);
+        engine.Layout(table, size);
+        table.HorizontalOffset = 3;
+        table.VerticalOffset = 3;
+
+        engine.Layout(table, size);
+
+        table.Children[0].Bounds.X.ShouldBeNegative();
+        table.Children[0].Bounds.Y.ShouldBeLessThan(table.Bounds.Y);
     }
 
     /// <summary>Verifies headers and light grid lines render around ordinary owned cell controls.</summary>

@@ -9,6 +9,7 @@ using SharpVision.Terminal.Rendering;
 public sealed class Table: Container
 {
     private int[] _columnWidths = [];
+    private Rect _contentBounds;
     private int[] _rowHeights = [];
 
     #region Construction and properties
@@ -131,16 +132,16 @@ public sealed class Table: Container
     protected override Size MeasureOverride(Constraint constraint)
     {
         MeasureCells(constraint.Width);
-        var width = Add(Sum(_columnWidths), GapWidth(Columns.Count));
-        var height = Add(Sum(_rowHeights), GapHeight(Rows.Count));
+        var width = AddExtent(Sum(_columnWidths), GapWidth(Columns.Count));
+        var height = AddExtent(Sum(_rowHeights), GapHeight(Rows.Count));
 
         if (ShowHeader && Columns.Count > 0)
         {
-            height = Add(height, Add(CellPadding.Vertical, 1));
+            height = AddExtent(height, AddExtent(CellPadding.Vertical, 1));
 
             if (Rows.Count > 0)
             {
-                height = Add(height, RowGap);
+                height = AddExtent(height, RowGap);
             }
         }
 
@@ -150,16 +151,17 @@ public sealed class Table: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
+        _contentBounds = bounds;
         MeasureCells(bounds.Width);
         var y = bounds.Y;
 
         if (ShowHeader && Columns.Count > 0)
         {
-            y = Add(y, Add(CellPadding.Vertical, 1));
+            y = Advance(y, AddExtent(CellPadding.Vertical, 1));
 
             if (Rows.Count > 0)
             {
-                y = Add(y, RowGap);
+                y = Advance(y, RowGap);
             }
         }
 
@@ -171,18 +173,24 @@ public sealed class Table: Container
             for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
             {
                 var slot = new Rect(x, y, _columnWidths[columnIndex], _rowHeights[rowIndex]);
-                row.Cells[columnIndex].Arrange(CellPadding.Deflate(slot), widthResolved: true, heightResolved: true);
-                x = Add(x, Add(_columnWidths[columnIndex], ColumnGap));
+                row.Cells[columnIndex].Arrange(CellPadding.Deflate(slot));
+                x = Advance(x, AddExtent(_columnWidths[columnIndex], ColumnGap));
             }
 
-            y = Add(y, Add(_rowHeights[rowIndex], RowGap));
+            y = Advance(y, AddExtent(_rowHeights[rowIndex], RowGap));
         }
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    internal override void RenderContent(TerminalCanvas canvas)
     {
-        if (Columns.Count == 0 || Bounds.Width == 0 || Bounds.Height == 0)
+        RenderTableChrome(canvas);
+        base.RenderContent(canvas);
+    }
+
+    private void RenderTableChrome(TerminalCanvas canvas)
+    {
+        if (Columns.Count == 0 || _contentBounds.Width == 0 || _contentBounds.Height == 0)
         {
             return;
         }
@@ -203,23 +211,23 @@ public sealed class Table: Container
             inherited.Hyperlink,
             underline,
             underlineColor);
-        var headerHeight = ShowHeader ? Add(CellPadding.Vertical, 1) : 0;
+        var headerHeight = ShowHeader ? AddExtent(CellPadding.Vertical, 1) : 0;
 
         if (ShowHeader)
         {
             if (HeaderBackground.HasValue || ControlAppearance.HasOpaqueFill(this, GetVisualState()))
             {
-                canvas.Clear(new Rect(Bounds.X, Bounds.Y, Bounds.Width, headerHeight), header);
+                canvas.Clear(new Rect(_contentBounds.X, _contentBounds.Y, _contentBounds.Width, headerHeight), header);
             }
 
-            var x = Bounds.X;
+            var x = _contentBounds.X;
 
             for (var index = 0; index < Columns.Count; index++)
             {
-                var area = new Rect(x, Bounds.Y + CellPadding.Top, _columnWidths[index], 1);
+                var area = new Rect(x, Advance(_contentBounds.Y, CellPadding.Top), _columnWidths[index], 1);
                 var text = canvas.Clip(CellPadding.Deflate(area));
                 _ = text.Draw(Columns[index].Header.AsSpan(), new Point(area.X + CellPadding.Left, area.Y), header, background: BackgroundMode.Transparent);
-                x = Add(x, Add(_columnWidths[index], ColumnGap));
+                x = Advance(x, AddExtent(_columnWidths[index], ColumnGap));
             }
         }
 
@@ -228,13 +236,13 @@ public sealed class Table: Container
             return;
         }
 
-        var xLine = Bounds.X;
+        var xLine = _contentBounds.X;
 
         for (var index = 0; index < Columns.Count - 1; index++)
         {
-            xLine = Add(xLine, _columnWidths[index]);
-            canvas.DrawVerticalLine(new Point(xLine, Bounds.Y), Bounds.Height, LineStyle.Light, grid);
-            xLine = Add(xLine, ColumnGap);
+            xLine = Advance(xLine, _columnWidths[index]);
+            canvas.DrawVerticalLine(new Point(xLine, _contentBounds.Y), _contentBounds.Height, LineStyle.Light, grid);
+            xLine = Advance(xLine, ColumnGap);
         }
 
         if (ShowHeader && Rows.Count > 0 && RowGap > 0)
@@ -242,19 +250,19 @@ public sealed class Table: Container
             // Canvas coordinates are absolute. A table may be arranged inside
             // any offset parent, so the divider must include the table origin.
             canvas.DrawHorizontalLine(
-                new Point(Bounds.X, Add(Bounds.Y, headerHeight)),
-                Bounds.Width,
+                new Point(_contentBounds.X, Advance(_contentBounds.Y, headerHeight)),
+                _contentBounds.Width,
                 LineStyle.Light,
                 grid);
         }
 
-        var y = Add(Bounds.Y, headerHeight + (ShowHeader ? RowGap : 0));
+        var y = Advance(_contentBounds.Y, AddExtent(headerHeight, ShowHeader ? RowGap : 0));
 
         for (var index = 0; index < Rows.Count - 1; index++)
         {
-            y = Add(y, _rowHeights[index]);
-            canvas.DrawHorizontalLine(new Point(Bounds.X, y), Bounds.Width, LineStyle.Light, grid);
-            y = Add(y, RowGap);
+            y = Advance(y, _rowHeights[index]);
+            canvas.DrawHorizontalLine(new Point(_contentBounds.X, y), _contentBounds.Width, LineStyle.Light, grid);
+            y = Advance(y, RowGap);
         }
     }
 
@@ -374,7 +382,7 @@ public sealed class Table: Container
         for (var columnIndex = 0; columnIndex < Columns.Count; columnIndex++)
         {
             lengths[columnIndex] = Columns[columnIndex].Width;
-            automatic[columnIndex] = Add(Terminal.Unicode.Width.Measure(Columns[columnIndex].Header).Cells, CellPadding.Horizontal);
+            automatic[columnIndex] = AddExtent(Terminal.Unicode.Width.Measure(Columns[columnIndex].Header).Cells, CellPadding.Horizontal);
         }
 
         foreach (var row in Rows)
@@ -383,7 +391,9 @@ public sealed class Table: Container
             {
                 var cell = row.Cells[columnIndex];
                 cell.Measure(new Constraint(width: null, height: null));
-                automatic[columnIndex] = Math.Max(automatic[columnIndex], Add(cell.DesiredSize.Width, Add(cell.Margin.Horizontal, CellPadding.Horizontal)));
+                automatic[columnIndex] = Math.Max(
+                    automatic[columnIndex],
+                    AddExtent(cell.DesiredSize.Width, AddExtent(cell.Margin.Horizontal, CellPadding.Horizontal)));
             }
         }
 
@@ -402,7 +412,9 @@ public sealed class Table: Container
                 var cell = Rows[rowIndex].Cells[columnIndex];
                 var width = Math.Max(0, _columnWidths[columnIndex] - CellPadding.Horizontal);
                 cell.Measure(new Constraint(width, height: null));
-                height = Math.Max(height, Add(cell.DesiredSize.Height, Add(cell.Margin.Vertical, CellPadding.Vertical)));
+                height = Math.Max(
+                    height,
+                    AddExtent(cell.DesiredSize.Height, AddExtent(cell.Margin.Vertical, CellPadding.Vertical)));
             }
 
             _rowHeights[rowIndex] = height;
@@ -463,18 +475,25 @@ public sealed class Table: Container
 
         foreach (var value in values)
         {
-            total = Add(total, value);
+            total = AddExtent(total, value);
         }
 
         return total;
     }
 
-    private static int Add(int left, int right)
+    private static int AddExtent(int left, int right)
     {
         Debug.Assert(left >= 0, "Table accumulation uses non-negative extents.");
         Debug.Assert(right >= 0, "Table accumulation uses non-negative extents.");
 
         return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
+
+    private static int Advance(int origin, int extent)
+    {
+        Debug.Assert(extent >= 0, "Table coordinate advances use non-negative extents.");
+
+        return (int) Math.Clamp((long) origin + extent, int.MinValue, int.MaxValue);
     }
 
     private static int Multiply(int value, int count)
