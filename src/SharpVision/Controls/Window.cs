@@ -8,6 +8,11 @@ using SharpVision.Terminal.Input;
 /// <summary>Frames one owned content control as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
 public sealed partial class Window: ContentControl
 {
+    private bool _dragging;
+    private Point _dragStart;
+    private int _dragLeftStart;
+    private int _dragTopStart;
+
     #region Construction and properties
 
     static Window()
@@ -21,6 +26,15 @@ public sealed partial class Window: ContentControl
     public Window()
     {
     }
+
+    /// <summary>Gets or sets whether the window can be dragged by its title bar.</summary>
+    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
+    public bool CanMove
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
+    } = true;
 
     /// <summary>Gets or sets the non-null title written into the top edge.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -155,23 +169,85 @@ public sealed partial class Window: ContentControl
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
-        if (eventArgs.Handled || eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        if (eventArgs.Handled)
         {
             return;
         }
 
-        var button = key.Stroke.Code == Code.Enter
-            ? FindButton(this, static candidate => candidate.IsDefault)
-            : key.Stroke.Code == Code.Escape
-                ? FindButton(this, static candidate => candidate.IsCancel)
-                : null;
-
-        if (button is not null)
+        if (eventArgs is KeyEventArgs { Stroke.Action: KeyAction.Press } key)
         {
-            button.PerformClick();
+            var button = key.Stroke.Code == Code.Enter
+                ? FindButton(this, static candidate => candidate.IsDefault)
+                : key.Stroke.Code == Code.Escape
+                    ? FindButton(this, static candidate => candidate.IsCancel)
+                    : null;
+
+            if (button is not null)
+            {
+                button.PerformClick();
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
+        if (eventArgs is PointerEventArgs pointer)
+        {
+            HandlePointerDrag(pointer);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    {
+        base.OnPointerCaptureCancelled(reason);
+        _dragging = false;
+    }
+
+    #endregion
+
+    #region Drag interaction
+
+    private void HandlePointerDrag(PointerEventArgs eventArgs)
+    {
+        Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
+
+        if (!CanMove || eventArgs.Pointer.Cells is not { } cells)
+        {
+            return;
+        }
+
+        var action = eventArgs.Pointer.Action;
+
+        if (action == PointerAction.Press &&
+            eventArgs.Pointer.Buttons == Buttons.Primary &&
+            IsTitleBar(cells) &&
+            CapturePointer())
+        {
+            _dragging = true;
+            _dragStart = cells;
+            _dragLeftStart = Bounds.X;
+            _dragTopStart = Bounds.Y;
+            eventArgs.Handled = true;
+        }
+        else if (action == PointerAction.Move && _dragging && HasPointerCapture)
+        {
+            var deltaX = cells.X - _dragStart.X;
+            var deltaY = cells.Y - _dragStart.Y;
+            Canvas.SetLeft(this, Length.Cells(_dragLeftStart + deltaX));
+            Canvas.SetTop(this, Length.Cells(_dragTopStart + deltaY));
+            eventArgs.Handled = true;
+        }
+        else if (action == PointerAction.Release && _dragging)
+        {
+            _dragging = false;
+            ReleasePointerCapture();
             eventArgs.Handled = true;
         }
     }
+
+    private bool IsTitleBar(Point cells) =>
+        cells.Y == Bounds.Y && cells.X >= Bounds.X && cells.X < Bounds.Right;
 
     #endregion
 

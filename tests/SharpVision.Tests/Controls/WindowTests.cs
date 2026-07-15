@@ -332,6 +332,17 @@ public sealed class WindowTests
         invocations.ShouldBe(0);
     }
 
+    /// <summary>Verifies CanMove defaults to true and can be disabled.</summary>
+    [Fact]
+    public void CanMove_WhenDefaulted_IsTrue()
+    {
+        var window = new Window();
+
+        window.CanMove.ShouldBeTrue();
+        window.CanMove = false;
+        window.CanMove.ShouldBeFalse();
+    }
+
     private static Button FallbackButton() => new()
     {
         IsDefault = true,

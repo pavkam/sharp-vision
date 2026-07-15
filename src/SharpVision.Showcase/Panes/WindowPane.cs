@@ -180,8 +180,16 @@ internal sealed class WindowPane: CompositeControl
                     WindowStage(styled, 44, 9))),
             Doc.Section(
                 "🪟",
+                "Movement",
+                "Drag the title bar to reposition a window inside a Canvas parent. Set CanMove to false to lock position.",
+                Doc.Example(
+                    "Draggable window",
+                    "Click and drag the title bar to move the window across the workspace surface.",
+                    DraggableStage())),
+            Doc.Section(
+                "🪟",
                 "Composition",
-                "Window introduces no private modality, movement, or resize model; compose it inside Canvas or Overlay as ordinary content.",
+                "Compose windows inside Canvas or Overlay as ordinary routed-input children.",
                 Doc.Example(
                     "Window above content",
                     "The focusable child remains in the surrounding routed-input tree while z-order controls presentation.",
@@ -231,6 +239,37 @@ internal sealed class WindowPane: CompositeControl
         VerticalAlignment = VerticalAlignment.Stretch,
         Children = { new Text(content) },
     };
+
+    private static Canvas DraggableStage()
+    {
+        var draggable = new Window
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(8),
+            Title = "Drag me",
+            Content = new Text("Click the title bar\nand drag to reposition\nthis window.") { Overflow = Overflow.Wrap },
+        };
+        Canvas.SetLeft(draggable, Length.Cells(4));
+        Canvas.SetTop(draggable, Length.Cells(2));
+
+        var stage = new Canvas
+        {
+            Width = Length.Cells(60),
+            Height = Length.Cells(14),
+            ClipToBounds = true,
+        };
+        var surface = ApplicationSurface(
+            "Desktop\n\n" +
+            "Drag the window by its title bar.\n" +
+            "Release to place it at the new\n" +
+            "position.\n\n" +
+            "Ready");
+        surface.Width = Length.Cells(60);
+        surface.Height = Length.Cells(14);
+        stage.Children.Add(surface);
+        stage.Children.Add(draggable);
+        return stage;
+    }
 
     private static Overlay WindowStage(Window window, int width, int height)
     {
