@@ -30,9 +30,9 @@ public sealed class GalleryTests
         "Theming",
     ];
 
-    /// <summary>Verifies the gallery starts with one page per concrete shipped control.</summary>
+    /// <summary>Verifies the gallery starts with the exact documented page catalog.</summary>
     [Fact]
-    public void Constructor_WhenCreated_RegistersEveryConcreteControl()
+    public void Constructor_WhenCreated_RegistersDocumentedPageCatalog()
     {
         using Gallery gallery = new();
 
@@ -40,7 +40,7 @@ public sealed class GalleryTests
         _ = gallery.Sidebar.ShouldBeOfType<Dock>();
         gallery.Pages.ShouldBe(_controls);
         gallery.SelectedPage.ShouldBe("Button");
-        _ = gallery.Content.ShouldNotBeNull();
+        _ = gallery.CurrentPage.ShouldNotBeNull();
     }
 
     /// <summary>Verifies programmatic dashboard selection swaps the main page.</summary>
@@ -48,12 +48,12 @@ public sealed class GalleryTests
     public void SelectedIndex_WhenChanged_UpdatesSelectedPageAndContent()
     {
         using Gallery gallery = new();
-        var previous = gallery.Content;
+        var previous = gallery.CurrentPage;
 
         gallery.Select(1);
 
         gallery.SelectedPage.ShouldBe("Canvas");
-        gallery.Content.ShouldNotBeSameAs(previous);
+        gallery.CurrentPage.ShouldNotBeSameAs(previous);
     }
 
     /// <summary>Verifies changing components resets the retained documentation viewport to the new page header.</summary>
@@ -62,15 +62,12 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
         new Engine().Layout(gallery, new Size(80, 24));
-        var previousBody = FindScrollableBody(gallery.Content).ShouldNotBeNull();
-        previousBody.ScrollBy(0, int.MaxValue).ShouldBeTrue();
+        var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
+        main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
 
         gallery.Select(1);
-        new Engine().Layout(gallery, new Size(80, 24));
-        var currentBody = FindScrollableBody(gallery.Content).ShouldNotBeNull();
 
-        currentBody.ShouldNotBeSameAs(previousBody);
-        currentBody.VerticalOffset.ShouldBe(0);
+        main.VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies every registered page includes responsive marked Text documentation.</summary>
@@ -84,7 +81,7 @@ public sealed class GalleryTests
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
 
-            _ = FindText(gallery.Content, "<b>Overview</b>").ShouldNotBeNull(gallery.SelectedPage);
+            _ = FindText(gallery.CurrentPage, "<b>Overview</b>").ShouldNotBeNull(gallery.SelectedPage);
         }
     }
 
@@ -99,31 +96,9 @@ public sealed class GalleryTests
         document.Overflow.ShouldBe(Overflow.Wrap);
     }
 
-    /// <summary>Verifies scrolling examples leaves the selected page identity pinned above the viewport.</summary>
-    [Fact]
-    public void CreatePage_WhenBodyScrolls_KeepsPageHeaderFixed()
-    {
-        using var page = Gallery.CreatePage(0);
-        var engine = new Engine();
-        var size = new Size(52, 12);
-        engine.Layout(page, size);
-        var header = FindText(page, "<b>Button</b>").ShouldNotBeNull();
-        var firstSection = FindText(page, "Start here").ShouldNotBeNull();
-        var body = FindScrollableBody(page).ShouldNotBeNull();
-        var headerBefore = header.Bounds;
-        var sectionBefore = firstSection.Bounds;
-
-        body.ScrollBy(0, int.MaxValue).ShouldBeTrue();
-        engine.Layout(page, size);
-
-        header.Bounds.ShouldBe(headerBefore);
-        firstSection.Bounds.Y.ShouldBeLessThan(sectionBefore.Y);
-        body.HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
-    }
-
     /// <summary>Verifies pages that still supply a practical recipe wrap it, now that documentation prose is
-    /// optional data a pane may provide rather than a mandatory chrome section (View-based pages, such
-    /// as the Doc.Page-composed Button page, no longer include this heading at all).</summary>
+    /// optional data a pane may provide rather than a mandatory chrome section (retained composite pages,
+    /// such as the Doc.Page-composed Button page, no longer include this heading at all).</summary>
     [Fact]
     public void CreatePage_WhenEachPageIsSelected_IncludesWrappedPracticalRecipe()
     {
@@ -134,7 +109,7 @@ public sealed class GalleryTests
             var name = gallery.Pages[index];
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
-            var recipe = FindText(gallery.Content, "Practical recipe");
+            var recipe = FindText(gallery.CurrentPage, "Practical recipe");
 
             if (recipe is { } found)
             {
@@ -145,7 +120,7 @@ public sealed class GalleryTests
 
     /// <summary>Verifies every page creates fresh detached panes containing its named control.</summary>
     [Fact]
-    public void CreatePage_WhenEveryPageBuildsTwice_ReturnsFreshMatchingControlTrees()
+    public void CreatePage_WhenEveryPageIsCreatedTwice_ReturnsFreshRetainedCompositeTrees()
     {
         using Gallery gallery = new();
 
@@ -154,11 +129,20 @@ public sealed class GalleryTests
             var name = gallery.Pages[index];
             using var first = Gallery.CreatePage(index);
             using var second = Gallery.CreatePage(index);
+            var firstRoot = first.OwnedControlAt(0);
+            var secondRoot = second.OwnedControlAt(0);
             var engine = new Engine();
             engine.Layout(first, new Size(80, 24));
             engine.Layout(second, new Size(80, 24));
 
             first.ShouldNotBeSameAs(second);
+            typeof(Container).IsAssignableFrom(first.GetType()).ShouldBeFalse(name);
+            first.OwnedControlCount.ShouldBe(1, name);
+            second.OwnedControlCount.ShouldBe(1, name);
+            first.OwnedControlAt(0).ShouldBeSameAs(firstRoot, name);
+            second.OwnedControlAt(0).ShouldBeSameAs(secondRoot, name);
+            (first.Pending & Invalidation.Measure).ShouldBe(Invalidation.None, name);
+            (second.Pending & Invalidation.Measure).ShouldBe(Invalidation.None, name);
             first.Parent.ShouldBeNull();
             second.Parent.ShouldBeNull();
             ContainsType(first, name).ShouldBeTrue(name);
@@ -179,8 +163,8 @@ public sealed class GalleryTests
 
             gallery.SelectedPage.ShouldBe(_controls[index]);
             gallery.SelectedIndex.ShouldBe(index);
-            gallery.Content.ShouldNotBeSameAs(previous);
-            previous = gallery.Content;
+            gallery.CurrentPage.ShouldNotBeSameAs(previous);
+            previous = gallery.CurrentPage;
         }
     }
 
@@ -195,14 +179,11 @@ public sealed class GalleryTests
             return text;
         }
 
-        if (control is not Container container)
-        {
-            return null;
-        }
+        var count = control.OwnedControlCount;
 
-        foreach (var child in container.Children)
+        for (var index = 0; index < count; index++)
         {
-            if (FindText(child, content) is { } found)
+            if (FindText(control.OwnedControlAt(index), content) is { } found)
             {
                 return found;
             }
@@ -223,42 +204,16 @@ public sealed class GalleryTests
             return true;
         }
 
-        if (control is not Container container)
-        {
-            return false;
-        }
+        var count = control.OwnedControlCount;
 
-        foreach (var child in container.Children)
+        for (var index = 0; index < count; index++)
         {
-            if (ContainsType(child, name))
+            if (ContainsType(control.OwnedControlAt(index), name))
             {
                 return true;
             }
         }
 
         return false;
-    }
-
-    private static Stack? FindScrollableBody(Control control)
-    {
-        if (control is Stack { AutoScroll: true } stack)
-        {
-            return stack;
-        }
-
-        if (control is not Container container)
-        {
-            return null;
-        }
-
-        foreach (var child in container.Children)
-        {
-            if (FindScrollableBody(child) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
     }
 }

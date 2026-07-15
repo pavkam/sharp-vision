@@ -130,11 +130,16 @@ in the protocol document.
   setting those properties directly.
 - Border and shadow are intrinsic `Control` properties (`BorderThickness`,
   `BorderGlyphs`, `HasShadow`, and the related style properties), not wrapper
-  controls. There are no `Border` or `Shadow` types; use an ordinary container
-  when chrome needs a distinct layout and rendering node.
-- Build a composite control by deriving from `View` and implementing
-  `protected override Control Build()`; the layout/render override seams are
-  `MeasureOverride`/`ArrangeOverride`/`OnRender`.
+  controls. There are no `Border` or `Shadow` types. Use an ordinary container
+  when chrome needs a distinct layout, styling, ownership, or routed-ancestry
+  node. A custom `OnRender` that opts into intrinsic chrome must call
+  `RenderChrome` before custom content.
+- Build a composite control by deriving from `CompositeControl`, creating its
+  retained root in the concrete constructor, and calling `InitializeContent`
+  exactly once. `View` and measure-time `Build()` do not exist. Use
+  `ContentControl` for caller-replaceable single content and `ItemsControl` for
+  typed semantic collections with private presentation hosts; the layout/render
+  override seams are `MeasureOverride`/`ArrangeOverride`/`OnRender`.
 
 ## Hosting
 

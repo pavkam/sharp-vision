@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the CheckBox control with live, themed toggle specimens.</summary>
-internal sealed class CheckBoxPane: View
+internal sealed class CheckBoxPane: CompositeControl
 {
+
+    internal CheckBoxPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "CheckBox";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var status = new Text("State log: waiting");
         var live = new CheckBox() { Content = new Text("Toggle with Space, Enter, or a pointer click") };

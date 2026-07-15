@@ -8,6 +8,23 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies theme resolver precedence through the public cascade.</summary>
 public sealed class ThemeResolverTests
 {
+    /// <summary>Verifies a higher instance layer's normal value wins over a lower theme layer's focused value.</summary>
+    [Fact]
+    public void Resolve_WhenThemeFocusedAndInstanceNormalExist_InstanceNormalWins()
+    {
+        var theme = new Theme();
+        var themed = new ControlStyle<ProbeControl>();
+        themed.Set(Control.ForegroundProperty, State.Focused, Color.Indexed(1));
+        theme.SetStyle(themed);
+        var instance = new ControlStyle<Control>();
+        instance.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
+        var control = new ProbeControl() { Style = instance };
+        ThemeTestSupport.ApplyTheme(control, theme);
+
+        ThemeTestSupport.Resolve(control, Control.ForegroundProperty, State.Focused)
+            .ShouldBe(Color.Indexed(2));
+    }
+
     /// <summary>Verifies both public resolver overloads reject undefined visual-state bits.</summary>
     [Fact]
     public void Resolve_WhenVisualStateContainsUnknownBits_Throws()

@@ -10,6 +10,35 @@ public sealed class ContainerScrollGeometryTests
     private const int _caseCount = 10_000;
     private const int _seed = 0x005C_701E;
 
+    /// <summary>Verifies viewport and both framework bars remain inside border and padding.</summary>
+    [Fact]
+    public void Layout_WhenBorderPaddingAndBothBarsArePresent_ContainsViewportAndBars()
+    {
+        var child = new ProbeControl(new Size(20, 10));
+        var container = new LayoutProbe()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        container.Children.Add(child);
+
+        new Engine().Layout(container, new Size(10, 6));
+
+        container.Viewport.ShouldBe(new Size(5, 1));
+        child.Bounds.X.ShouldBe(2);
+        child.Bounds.Y.ShouldBe(2);
+        container.HitTest(new Point(2, 3)).ShouldBeOfType<ScrollBar>()
+            .Orientation.ShouldBe(Orientation.Horizontal);
+        container.HitTest(new Point(7, 2)).ShouldBeOfType<ScrollBar>()
+            .Orientation.ShouldBe(Orientation.Vertical);
+    }
+
     /// <summary>Verifies randomized viewports and policies stabilize in one repeated layout.</summary>
     [Fact]
     public void Layout_WhenCasesAreRandomized_PreservesStableContainedGeometry()

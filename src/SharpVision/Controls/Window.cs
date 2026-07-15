@@ -5,8 +5,8 @@ namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Input;
 
-/// <summary>Frames one owned child as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
-public sealed partial class Window: Container
+/// <summary>Frames one owned content control as a titled terminal window with optional Turbo Vision-style shadowing.</summary>
+public sealed partial class Window: ContentControl
 {
     #region Construction and properties
 
@@ -18,18 +18,8 @@ public sealed partial class Window: Container
     }
 
     /// <summary>Initializes an empty window with a rounded border and composite shadow.</summary>
-    public Window() : base(capacity: 1)
+    public Window()
     {
-    }
-
-    /// <summary>Gets or atomically sets the single control arranged in the framed interior.</summary>
-    /// <exception cref="ArgumentException">The value cannot be owned by this window.</exception>
-    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The window or child is disposed.</exception>
-    public Control? Child
-    {
-        get => Children.Count == 0 ? null : Children[0];
-        set => Children.SetOnly(value);
     }
 
     /// <summary>Gets or sets the non-null title written into the top edge.</summary>
@@ -42,7 +32,7 @@ public sealed partial class Window: Container
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 
@@ -60,7 +50,7 @@ public sealed partial class Window: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The title placement is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     } = WindowTitlePlacement.Left;
 
@@ -70,7 +60,7 @@ public sealed partial class Window: Container
     public Glyphs Glyphs
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = Glyphs.Rounded;
 
     #endregion
@@ -84,7 +74,7 @@ public sealed partial class Window: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var child = Child;
+        var child = Content;
         var titleWidth = Title.Length == 0 ? 0 : Add(2, Terminal.Unicode.Width.Measure(Title).Cells);
 
         if (child is null)
@@ -92,15 +82,28 @@ public sealed partial class Window: Container
             return new Size(Math.Max(2, titleWidth + 2), 2);
         }
 
-        child.Measure(new Constraint(Subtract(constraint.Width, 2), Subtract(constraint.Height, 2)));
+        var desired = MeasureChild(
+            child,
+            new Constraint(Subtract(constraint.Width, 2), Subtract(constraint.Height, 2)));
+        var contentWidth = child.Visibility == Visibility.Collapsed
+            ? 2
+            : Add(Add(desired.Width, child.Margin.Horizontal), 2);
+        var contentHeight = child.Visibility == Visibility.Collapsed
+            ? 2
+            : Add(Add(desired.Height, child.Margin.Vertical), 2);
         return new Size(
-            Math.Max(Add(Add(child.DesiredSize.Width, child.Margin.Horizontal), 2), titleWidth + 2),
-            Add(Add(child.DesiredSize.Height, child.Margin.Vertical), 2));
+            Math.Max(contentWidth, titleWidth + 2),
+            contentHeight);
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        Child?.Arrange(new Thickness(1).Deflate(bounds), widthResolved: true, heightResolved: true);
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        if (Content is { } content)
+        {
+            ArrangeChild(content, new Thickness(1).Deflate(bounds), ResolvedAxes.Both);
+        }
+    }
 
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
@@ -202,9 +205,17 @@ public sealed partial class Window: Container
             return button;
         }
 
-        Button? result = null;
-        control.VisitChildren(child => result ??= FindButton(child, predicate));
-        return result;
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            if (FindButton(control.OwnedControlAt(index), predicate) is { } result)
+            {
+                return result;
+            }
+        }
+
+        return null;
     }
 
     #endregion

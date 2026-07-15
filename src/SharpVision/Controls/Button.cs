@@ -22,22 +22,12 @@ public sealed partial class Button: Pressable
     #region Construction and command properties
 
     /// <summary>Initializes an empty focusable Button with a rounded border and compact shadow.</summary>
-    public Button() : base(capacity: 1)
+    public Button()
     {
     }
 
     /// <summary>Raised after released state commits and before command execution.</summary>
     public event EventHandler<ActivationEventArgs>? Click;
-
-    /// <summary>Gets or atomically sets the optional owned content.</summary>
-    /// <exception cref="ArgumentException">The value cannot be owned by this Button.</exception>
-    /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Button or value is disposed.</exception>
-    public Control? Content
-    {
-        get => Children.Count == 0 ? null : Children[0];
-        set => Children.SetOnly(value);
-    }
 
     /// <summary>Gets or sets the optional command invoked after Click.</summary>
     /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
@@ -55,7 +45,7 @@ public sealed partial class Button: Pressable
             }
 
             _command?.CanExecuteChanged -= OnCanExecuteChanged;
-            _ = Set(ref _command, value, Invalidation.Render);
+            _ = SetProperty(ref _command, value, ChangeImpact.Render);
             _command?.CanExecuteChanged += OnCanExecuteChanged;
         }
     }
@@ -66,7 +56,7 @@ public sealed partial class Button: Pressable
     public object? CommandParameter
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
     /// <summary>Gets or sets whether an owning Window treats Enter as a fallback activation.</summary>
@@ -75,7 +65,7 @@ public sealed partial class Button: Pressable
     public bool IsDefault
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     }
 
     /// <summary>Gets or sets whether an owning Window treats Escape as a fallback activation.</summary>
@@ -84,10 +74,11 @@ public sealed partial class Button: Pressable
     public bool IsCancel
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     }
 
     /// <summary>Gets or sets the validated physical glyph family used by the button border.</summary>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached button is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
     public Glyphs Glyphs
@@ -140,15 +131,23 @@ public sealed partial class Button: Pressable
             return default;
         }
 
-        content.Measure(constraint);
-        return new Size(
-            Add(content.DesiredSize.Width, content.Margin.Horizontal),
-            Add(content.DesiredSize.Height, content.Margin.Vertical));
+        var desired = MeasureChild(content, constraint);
+
+        return content.Visibility == Visibility.Collapsed
+            ? default
+            : new Size(
+                Add(desired.Width, content.Margin.Horizontal),
+                Add(desired.Height, content.Margin.Vertical));
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        Content?.Arrange(FaceContentBounds(bounds), widthResolved: true, heightResolved: true);
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        if (Content is { } content)
+        {
+            ArrangeChild(content, FaceContentBounds(bounds), ResolvedAxes.Both);
+        }
+    }
 
     /// <inheritdoc/>
     protected override Rect VisualBounds =>
@@ -184,7 +183,7 @@ public sealed partial class Button: Pressable
 
         // Pointer and keyboard press state must be drawable before a later
         // layout drain, so keep owned content in the same translated face box.
-        content.Arrange(FaceContentBounds(ContentBounds), widthResolved: true, heightResolved: true);
+        ArrangeChild(content, FaceContentBounds(ContentBounds), ResolvedAxes.Both);
         Invalidate(Invalidation.Arrange);
     }
 

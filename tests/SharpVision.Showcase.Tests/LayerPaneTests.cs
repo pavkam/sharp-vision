@@ -69,7 +69,7 @@ public sealed class LayerPaneTests
         engine.Layout(page, size);
         var anchor = FindButton(page, "Preview anchor");
         var popup = ControlTree.FindAll<Popup>(page).Single(value =>
-            value.Child is ControlText { Content: "Placement preview" });
+            value.Content is ControlText { Content: "Placement preview" });
         var trigger = FindButton(page, action);
 
         trigger.PerformClick();
@@ -127,7 +127,7 @@ public sealed class LayerPaneTests
         engine.Layout(popupPage, new Size(100, 180));
         engine.Layout(windowPage, new Size(120, 180));
         var popup = ControlTree.FindAll<Popup>(popupPage).Single(value =>
-            value.Child is ControlText { Content: "Placement preview" });
+            value.Content is ControlText { Content: "Placement preview" });
         var popupBackdrop = ControlTree.FindAll<ControlText>(popupPage).Single(value =>
             value.Content.Contains("Files", StringComparison.Ordinal) &&
             value.Content.Contains("Ready", StringComparison.Ordinal));

@@ -12,6 +12,7 @@ using SharpVision.Terminal.Capabilities;
 /// <summary>
 /// Gates deterministic Phase 3 allocations and reports non-gating local timings.
 /// </summary>
+[Collection(PerformanceGroup.Name)]
 public sealed class PhaseThreePerformanceTests
 {
     private static TerminalCapabilities TrueColorCapabilities { get; } =

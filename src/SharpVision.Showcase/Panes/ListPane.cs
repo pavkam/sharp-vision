@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the List control with live, themed selection specimens.</summary>
-internal sealed class ListPane: View
+internal sealed class ListPane: CompositeControl
 {
+
+    internal ListPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "List";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var status = new Text("Selected item: Beta");
         var active = new List()

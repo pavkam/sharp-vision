@@ -23,27 +23,22 @@ public abstract class Container: Control
     /// <summary>Gets the owned ordered children.</summary>
     public Children Children { get; }
 
-    /// <summary>Gets the number of children participating in default navigation.</summary>
-    internal virtual int NavigationCount => Children.Count + (_bars?.Count ?? 0);
-
-    /// <summary>Gets one child in default navigation order.</summary>
-    /// <param name="index">The zero-based navigation index.</param>
-    /// <returns>The child at the requested navigation position.</returns>
-    internal virtual Control NavigationAt(int index) => index < Children.Count
-        ? Children[index]
-        : _bars![index - Children.Count];
-
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
     {
+        if (!CanHitTestSelf(point, requireContainment: false))
+        {
+            return null;
+        }
+
         if (HitTestPopup(point) is { } popup)
         {
             return popup;
         }
 
-        var hit = base.HitTest(point);
+        var contains = Bounds.Contains(point);
 
-        if (hit is null)
+        if (!contains && (AutoScroll || ClipsChildren))
         {
             return null;
         }
@@ -57,26 +52,7 @@ public abstract class Container: Control
             return bar ?? (_viewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? this;
         }
 
-        return HitTestChildren(point) ?? this;
-    }
-
-    /// <inheritdoc/>
-    internal override void VisitChildren(Action<Control> visitor)
-    {
-        ArgumentNullException.ThrowIfNull(visitor);
-
-        foreach (var child in Children)
-        {
-            visitor(child);
-        }
-
-        if (_bars is not null)
-        {
-            foreach (var child in _bars)
-            {
-                visitor(child);
-            }
-        }
+        return HitTestChildren(point) ?? (contains ? this : null);
     }
 
     private Control? HitTestChildren(Point point)
@@ -93,63 +69,17 @@ public abstract class Container: Control
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopup(Point point)
-    {
-        for (var index = Children.Count - 1; index >= 0; index--)
-        {
-            if (Children[index].HitTestPopup(point) is { } popup)
-            {
-                return popup;
-            }
-        }
-
-        return null;
-    }
-
-    /// <inheritdoc/>
-    internal override void DisposeChildren()
-    {
-        while (Children.Count > 0)
-        {
-            Children[^1].Dispose();
-        }
-
-        if (_bars is null)
-        {
-            return;
-        }
-
-        while (_bars.Count > 0)
-        {
-            var child = _bars[^1];
-            _bars.RemoveAt(_bars.Count - 1);
-            child.Dispose();
-        }
-    }
-
-    /// <inheritdoc/>
     internal override void RenderChildren(TerminalCanvas canvas)
     {
         if (!AutoScroll)
         {
             RenderContent(canvas);
-
-            if (Parent is null)
-            {
-                RenderOwnedPopupLayer(canvas);
-            }
-
             return;
         }
 
         RenderContent(canvas.Clip(_viewportBounds));
         _horizontal?.Render(canvas);
         _vertical?.Render(canvas);
-
-        if (Parent is null)
-        {
-            RenderOwnedPopupLayer(canvas);
-        }
     }
 
     /// <inheritdoc/>
@@ -157,21 +87,15 @@ public abstract class Container: Control
     {
         foreach (var child in Children)
         {
-            child.Render(canvas);
+            if (child.RendersInNormalLayer)
+            {
+                child.Render(canvas);
+            }
         }
     }
 
     /// <inheritdoc/>
-    internal override void RenderPopupLayer(TerminalCanvas canvas)
-        => RenderOwnedPopupLayer(canvas);
-
-    private void RenderOwnedPopupLayer(TerminalCanvas canvas)
-    {
-        foreach (var child in Children)
-        {
-            child.RenderPopupLayer(canvas);
-        }
-    }
+    internal override void RenderPopupLayer(TerminalCanvas canvas) => base.RenderPopupLayer(canvas);
 
     #region Grow and shrink
 
@@ -182,7 +106,7 @@ public abstract class Container: Control
     public bool AutoSize
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets whether an auto-sizing axis may shrink below its explicit fixed-cell size.</summary>
@@ -199,7 +123,7 @@ public abstract class Container: Control
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The auto-size mode is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = AutoSizeMode.GrowAndShrink;
 
@@ -235,25 +159,27 @@ public abstract class Container: Control
     internal override Size OnMeasuredDesired(Size desired) => !AutoSize
         ? desired
         : new Size(
-            AutoSizeAxis(ContentExtent.Width, Padding.Horizontal, BorderThickness.Horizontal, Width, MinWidth, MaxWidth),
-            AutoSizeAxis(ContentExtent.Height, Padding.Vertical, BorderThickness.Vertical, Height, MinHeight, MaxHeight));
+            AutoSizeAxis(
+                ContentExtent.Width,
+                Add(Padding.Horizontal, BorderThickness.Horizontal),
+                Width,
+                MinWidth,
+                MaxWidth),
+            AutoSizeAxis(
+                ContentExtent.Height,
+                Add(Padding.Vertical, BorderThickness.Vertical),
+                Height,
+                MinHeight,
+                MaxHeight));
 
     // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit
     // fixed-cell size. Both honor Min/Max.
-    private int AutoSizeAxis(
-        int contentExtent,
-        int padding,
-        int border,
-        Length length,
-        int minimum,
-        int maximum)
+    private int AutoSizeAxis(int contentExtent, int inset, Length length, int minimum, int maximum)
     {
-        Debug.Assert(
-            contentExtent >= 0 && padding >= 0 && border >= 0,
-            "Auto-size inputs are non-negative cell extents.");
+        Debug.Assert(contentExtent >= 0 && inset >= 0, "Auto-size inputs are non-negative cell extents.");
         Debug.Assert(minimum >= 0 && maximum >= minimum, "Auto-size limits are validated and ordered.");
 
-        var content = (long) contentExtent + padding + border;
+        var content = (long) contentExtent + inset;
         var floor = AutoSizeMode == AutoSizeMode.GrowOnly && length.Kind == Kind.Cells
             ? (int) length.Value
             : 0;
@@ -288,16 +214,16 @@ public abstract class Container: Control
         get;
         set
         {
-            if (!Set(ref field, value, Invalidation.Measure))
+            if (!SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 return;
             }
 
-            // Bars are created eagerly here (mirroring the former ScrollView
-            // constructor) rather than lazily in ResolveContentSlot. Lazy
-            // creation there added children mid-arrange, which invalidates
-            // this container's own measure and can prevent nested armed
-            // containers from ever converging to a settled layout.
+            // Bars are created when scrolling is armed rather than lazily in
+            // ResolveContentSlot. Lazy creation there added children
+            // mid-arrange, which invalidates this container's own measure and
+            // can prevent nested armed containers from ever converging to a
+            // settled layout.
             if (value)
             {
                 EnsureBars();
@@ -330,7 +256,7 @@ public abstract class Container: Control
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar axes contain unknown flags.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = ScrollBars.Vertical;
 
@@ -345,7 +271,7 @@ public abstract class Container: Control
         {
             Validate(value);
 
-            if (!Set(ref field, value, Invalidation.Measure))
+            if (!SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 return;
             }
@@ -372,7 +298,7 @@ public abstract class Container: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
 
@@ -386,7 +312,7 @@ public abstract class Container: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = ScrollBarVisibility.Auto;
 
@@ -395,8 +321,7 @@ public abstract class Container: Control
         StyleProperty<ScrollBarChrome>.Register<Container>(
             "scroll-bar-chrome",
             ScrollBarChrome.Full,
-            Impact.Measure,
-            Validate);
+            ChangeImpact.Measure);
 
     /// <summary>Gets or sets the shared chrome form used by both owned bars.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -407,8 +332,10 @@ public abstract class Container: Control
         get => GetValue(ScrollBarChromeProperty);
         set
         {
+            Validate(value);
             SetValue(ScrollBarChromeProperty, value);
-            SynchronizeBarAppearance();
+            _ = _horizontal?.Chrome = ScrollBarChrome;
+            _ = _vertical?.Chrome = ScrollBarChrome;
         }
     }
 
@@ -417,8 +344,7 @@ public abstract class Container: Control
         StyleProperty<ScrollBarFill>.Register<Container>(
             "scroll-bar-fill",
             ScrollBarFill.Block,
-            Impact.Render,
-            Validate);
+            ChangeImpact.Render);
 
     /// <summary>Gets or sets the shared generated glyph treatment used by both owned bars.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -429,8 +355,10 @@ public abstract class Container: Control
         get => GetValue(ScrollBarFillProperty);
         set
         {
+            Validate(value);
             SetValue(ScrollBarFillProperty, value);
-            SynchronizeBarAppearance();
+            _ = _horizontal?.Fill = ScrollBarFill;
+            _ = _vertical?.Fill = ScrollBarFill;
         }
     }
 
@@ -444,7 +372,7 @@ public abstract class Container: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     } = 1;
 
@@ -458,7 +386,7 @@ public abstract class Container: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     }
 
@@ -655,9 +583,9 @@ public abstract class Container: Control
 
         for (var current = control.Parent; current is not null; current = current.Parent)
         {
-            if (current.AutoScroll)
+            if (current is Container { AutoScroll: true } container)
             {
-                return current;
+                return container;
             }
         }
 
@@ -670,8 +598,8 @@ public abstract class Container: Control
         if (!AutoScroll)
         {
             var box = new Size(padded.Width, padded.Height);
-            _ = Set(ref _extent, box, Invalidation.None, nameof(Extent));
-            _ = Set(ref _viewport, box, Invalidation.None, nameof(Viewport));
+            _ = SetProperty(ref _extent, box, ChangeImpact.None, nameof(Extent));
+            _ = SetProperty(ref _viewport, box, ChangeImpact.None, nameof(Viewport));
             _viewportBounds = padded;
             _horizontalOffset = 0;
             _verticalOffset = 0;
@@ -686,8 +614,8 @@ public abstract class Container: Control
         Resolve(new Size(padded.Width, padded.Height), ContentExtent, out var horizontal, out var vertical, out var viewport);
         _viewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
         var extentChanged = _extent != ContentExtent;
-        _ = Set(ref _extent, ContentExtent, Invalidation.None, nameof(Extent));
-        _ = Set(ref _viewport, viewport, Invalidation.None, nameof(Viewport));
+        _ = SetProperty(ref _extent, ContentExtent, ChangeImpact.None, nameof(Extent));
+        _ = SetProperty(ref _viewport, viewport, ChangeImpact.None, nameof(Viewport));
         _reserveHorizontal = horizontal;
         _reserveVertical = vertical;
         _ = Apply(
@@ -733,12 +661,34 @@ public abstract class Container: Control
             return;
         }
 
-        _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
-        _vertical = new ScrollBar { Orientation = Orientation.Vertical };
+        _horizontal = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Chrome = ScrollBarChrome,
+            Fill = ScrollBarFill,
+        };
+        _vertical = new ScrollBar
+        {
+            Orientation = Orientation.Vertical,
+            Chrome = ScrollBarChrome,
+            Fill = ScrollBarFill,
+        };
         _horizontal.ValueChanged += OnHorizontalChanged;
         _vertical.ValueChanged += OnVerticalChanged;
-        _bars = new Children(this, capacity: 2) { _horizontal, _vertical };
-        SynchronizeBarAppearance();
+        _bars = new Children(
+            this,
+            capacity: 2,
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: "scroll-bars",
+                ChangeImpact.Measure))
+        {
+            _horizontal,
+            _vertical,
+        };
 
         Debug.Assert(_bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
     }
@@ -843,8 +793,8 @@ public abstract class Container: Control
         x = Math.Clamp(x, 0, MaximumX());
         y = Math.Clamp(y, 0, MaximumY());
         var previous = new Point(HorizontalOffset, VerticalOffset);
-        var changedX = Set(ref _horizontalOffset, x, Invalidation.Arrange, nameof(HorizontalOffset));
-        var changedY = Set(ref _verticalOffset, y, Invalidation.Arrange, nameof(VerticalOffset));
+        var changedX = SetProperty(ref _horizontalOffset, x, ChangeImpact.Arrange, nameof(HorizontalOffset));
+        var changedY = SetProperty(ref _verticalOffset, y, ChangeImpact.Arrange, nameof(VerticalOffset));
 
         if (!changedX && !changedY)
         {

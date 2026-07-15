@@ -8,6 +8,26 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies theme collection, style chains, freezing, and cloning.</summary>
 public sealed class ThemeTests
 {
+    /// <summary>Verifies replacing a geometric style publishes the maximum removed and added impact.</summary>
+    [Fact]
+    public void SetStyle_WhenReplacingMeasureWithRender_RaisesMeasureImpact()
+    {
+        var theme = new Theme();
+        var measured = new ControlStyle<Control>();
+        measured.Set(Control.PaddingProperty, State.Normal, new Thickness(1));
+        theme.SetStyle(measured);
+        var changed = (ThemeChangedEventArgs?) null;
+        theme.Changed += (_, args) => changed = args;
+        var rendered = new ControlStyle<Control>();
+        rendered.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(7));
+
+        theme.SetStyle(rendered);
+
+        var observed = changed.ShouldNotBeNull();
+        observed.TargetType.ShouldBe(typeof(Control));
+        observed.Impact.ShouldBe(ChangeImpact.Measure);
+    }
+
     /// <summary>Verifies a theme stores and returns one style per control type.</summary>
     [Fact]
     public void SetStyle_WhenControlStyleIsRegistered_GetStyleReturnsIt()

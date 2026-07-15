@@ -143,6 +143,58 @@ public sealed class PressableTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a content-originated route focuses and captures the semantic Pressable owner itself.</summary>
+    [Fact]
+    public async Task Route_WhenContentIsOriginalPointerTarget_PressableOwnsFocusCaptureAndActivationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var content = new ControlText("Go");
+            var control = new Button { Content = content };
+            new Engine().Layout(control, new Size(8, 3));
+            control.Attach(dispatcher);
+            using FocusManager focus = new(control);
+            using CaptureManager capture = new(control);
+            var point = new Point(content.Bounds.X, content.Bounds.Y);
+
+            Router.Route(content, Events.Pointer, new PointerEventArgs(Pointer(point, PointerAction.Press)));
+
+            focus.Focused.ShouldBeSameAs(control);
+            capture.Captured.ShouldBeSameAs(control);
+            control.IsPressed.ShouldBeTrue();
+
+            Router.Route(content, Events.Pointer, new PointerEventArgs(Pointer(point, PointerAction.Release)));
+
+            capture.Captured.ShouldBeNull();
+            control.IsPressed.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies terminal focus loss clears shared held state before the protected cancellation callback.</summary>
+    [Fact]
+    public async Task TerminalFocusLost_WhenPointerIsHeld_CancelsBeforeCallbackAndLaterReleaseDoesNotActivateAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var control = new ProbePressable() { Bounds = new Rect(0, 0, 8, 3) };
+            control.Attach(dispatcher);
+            using CaptureManager capture = new(control);
+            _ = capture.Dispatch(Pointer(new Point(1, 1), PointerAction.Press));
+
+            capture.TerminalFocusLost();
+            _ = capture.Dispatch(Pointer(new Point(1, 1), PointerAction.Release));
+
+            control.CaptureCancellations.ShouldBe([ReleaseReason.TerminalFocusLost]);
+            control.HadCaptureDuringCancellation.ShouldBeFalse();
+            control.WasPressedDuringCancellation.ShouldBeFalse();
+            control.Activations.ShouldBeEmpty();
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static void Key(
         ProbePressable control,
         Code code,

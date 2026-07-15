@@ -8,13 +8,15 @@ using SharpVision.Text;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents Text geometry, markup, overflow, links, and live content mutation.</summary>
-internal sealed class TextPane: View
+internal sealed class TextPane: CompositeControl
 {
+
+    internal TextPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Text";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var dynamicValue = "2 < 3";
         var safe = new Text(
@@ -74,11 +76,11 @@ internal sealed class TextPane: View
         ];
         append.Click += (_, eventArgs) =>
         {
-            var selected = mutationStyles[mutation % mutationStyles.Length];
+            var (Name, Markup) = mutationStyles[mutation % mutationStyles.Length];
             mutation++;
-            wrapped.Content += $"\nMutation {mutation}: {selected.Markup}";
+            wrapped.Content += $"\nMutation {mutation}: {Markup}";
             activity.Content =
-                $"Activity log: {eventArgs.Cause} appended {Text.Escape(selected.Name)} markup {mutation}.";
+                $"Activity log: {eventArgs.Cause} appended {Text.Escape(Name)} markup {mutation}.";
         };
 
         var centered = new Text("<b>Centered status</b>")

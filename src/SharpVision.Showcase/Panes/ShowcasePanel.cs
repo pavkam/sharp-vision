@@ -15,7 +15,7 @@ public sealed class ShowcasePanel: Control
         StyleProperty<LabelPlacement>.Register<ShowcasePanel>(
             "label-placement",
             LabelPlacement.Left,
-            Impact.Measure);
+            ChangeImpact.Measure);
 
     /// <summary>Initializes a compact themed panel specimen.</summary>
     public ShowcasePanel()
@@ -44,15 +44,7 @@ public sealed class ShowcasePanel: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            VerifyMutable();
-
-            if (field == value)
-            {
-                return;
-            }
-
-            field = value;
-            Invalidate(Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 
@@ -62,13 +54,14 @@ public sealed class ShowcasePanel: Control
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
+        RenderChrome(canvas);
+
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
             return;
         }
 
         var style = ResolvedStyle;
-        canvas.Clear(Bounds, style);
         _ = canvas.Draw(Caption.AsSpan(), ResolveCaptionPoint(Caption), style);
         _ = canvas.Draw("Themed body".AsSpan(), ResolveBodyPoint(Caption), style);
     }

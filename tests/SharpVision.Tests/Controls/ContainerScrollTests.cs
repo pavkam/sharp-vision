@@ -125,10 +125,8 @@ public sealed class ContainerScrollTests
     /// <summary>
     /// Verifies an armed Stack's owned scrollbar chrome participates in
     /// default Tab navigation instead of crashing: Stack.NavigationAt used to
-    /// index Children directly for every position, even the two bar indices
-    /// folded into the widened Container.NavigationCount, throwing
-    /// ArgumentOutOfRangeException the moment FocusManager.Collect walked
-    /// past the last child.
+    /// index Children directly for every position, even though the registry's
+    /// navigation view also contains the two generated bar indices.
     /// </summary>
     [Fact]
     public async Task MoveNext_WhenStackIsArmed_ReachesChildThenBothBarsAsync()
@@ -240,6 +238,27 @@ public sealed class ContainerScrollTests
         outer.VerticalOffset.ShouldBeGreaterThan(0);
     }
 
+    /// <summary>Verifies scroll ancestry crosses a non-Container owner but selects only armed Container ancestors.</summary>
+    [Fact]
+    public void Wheel_WhenNonContainerBridgesArmedContainers_PropagatesToActualContainer()
+    {
+        var outer = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var bridge = new TraversalOwner();
+        var inner = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var content = new ProbeControl(new Size(4, 4));
+        inner.Children.Add(content);
+        bridge.AddNormal(inner);
+        outer.Children.Add(bridge);
+        outer.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(outer, new Size(4, 10));
+
+        inner.RaiseWheel(0, -3);
+
+        inner.VerticalOffset.ShouldBe(0);
+        outer.VerticalOffset.ShouldBeGreaterThan(0);
+        outer.BringIntoView(content).ShouldBeTrue();
+    }
+
     /// <summary>Verifies a disabled container does not scroll on a key that would otherwise move the offset.</summary>
     [Fact]
     public void OnEvent_WhenDisabled_DoesNotScroll()
@@ -336,9 +355,9 @@ public sealed class ContainerScrollTests
 
         container.AutoScroll = true;
 
-        // NavigationCount folds in the owned scrollbar chrome once created
-        // (see Container.NavigationCount), so its growth proves the bars now
-        // exist before Layout ever ran once for this container.
+        // Registry-backed NavigationCount folds in the owned scrollbar chrome
+        // once created, so its growth proves the bars exist before Layout ever
+        // ran once for this container.
         container.NavigationCount.ShouldBe(navigationCountBeforeArming + 2);
     }
 

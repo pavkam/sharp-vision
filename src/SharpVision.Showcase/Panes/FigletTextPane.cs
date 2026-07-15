@@ -8,13 +8,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the FigletText control with a live editable FIGfont preview.</summary>
-internal sealed class FigletTextPane: View
+internal sealed class FigletTextPane: CompositeControl
 {
+
+    internal FigletTextPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "FigletText";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var catalog = FigletCatalog.Default;
         var text = new TextInput()

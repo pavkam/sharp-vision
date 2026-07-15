@@ -63,3 +63,6 @@ jobs:
 
       - name: Test
         run: dotnet test --solution SharpVision.slnx --configuration Release --no-build --minimum-expected-tests 3 --timeout 60s --report-xunit-trx
+
+      - name: Verify isolated package consumer
+        run: scripts/verify-package-consumer.sh

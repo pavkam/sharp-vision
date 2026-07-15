@@ -3,15 +3,27 @@
 
 namespace SharpVision.Controls;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Terminal.Input;
 
 /// <summary>Arranges typed menu items and coordinates their keyboard selection and radio groups.</summary>
-public sealed class Menu: Container
+public sealed class Menu: ItemsControl
 {
     private int _selectedIndex = -1;
+    private readonly Stack _stack;
 
     /// <summary>Initializes an empty horizontal menu with typed managed items.</summary>
-    public Menu() => Items = new MenuItems(this);
+    public Menu()
+    {
+        _stack = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 1,
+        };
+        InitializeItemsHost(_stack);
+        Items = new MenuItems(this);
+    }
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? ItemInvoked;
@@ -33,7 +45,10 @@ public sealed class Menu: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The menu orientation is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            if (SetProperty(ref field, value, ChangeImpact.Measure))
+            {
+                _stack.Orientation = value;
+            }
         }
     } = Orientation.Horizontal;
 
@@ -47,7 +62,10 @@ public sealed class Menu: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            if (SetProperty(ref field, value, ChangeImpact.Measure))
+            {
+                _stack.Spacing = value;
+            }
         }
     } = 1;
 
@@ -61,58 +79,17 @@ public sealed class Menu: Container
         get => _selectedIndex;
         set
         {
-            if (value is < -1 or >= 0 && value >= Children.Count)
+            if (value is < -1 or >= 0 && value >= ItemControlCount)
             {
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The selected index is outside the menu.");
             }
 
-            if (value >= 0 && ItemAt(value).Kind == MenuItemKind.Separator)
+            if (value >= 0 && ItemAt(value) is MenuSeparator)
             {
                 throw new ArgumentException("A separator cannot become selected.", nameof(value));
             }
 
             Select(value, focus: false);
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        var main = 0;
-        var cross = 0;
-        var count = 0;
-
-        foreach (var child in Children)
-        {
-            var item = RequireItem(child);
-            item.Measure(Orientation == Orientation.Horizontal
-                ? new Constraint(width: null, constraint.Height)
-                : new Constraint(constraint.Width, height: null));
-            var desiredMain = Orientation == Orientation.Horizontal ? item.DesiredSize.Width : item.DesiredSize.Height;
-            var desiredCross = Orientation == Orientation.Horizontal ? item.DesiredSize.Height : item.DesiredSize.Width;
-            main = Add(main, desiredMain);
-            cross = Math.Max(cross, desiredCross);
-            count++;
-        }
-
-        main = Add(main, SpacingExtent(count));
-        return Orientation == Orientation.Horizontal ? new Size(main, cross) : new Size(cross, main);
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        var position = Orientation == Orientation.Horizontal ? bounds.X : bounds.Y;
-
-        foreach (var child in Children)
-        {
-            var item = RequireItem(child);
-            var desired = Orientation == Orientation.Horizontal ? item.DesiredSize.Width : item.DesiredSize.Height;
-            var slot = Orientation == Orientation.Horizontal
-                ? new Rect(position, bounds.Y, Math.Min(desired, Math.Max(0, bounds.Right - position)), bounds.Height)
-                : new Rect(bounds.X, position, bounds.Width, Math.Min(desired, Math.Max(0, bounds.Bottom - position)));
-            item.Arrange(slot, widthResolved: true, heightResolved: true);
-            position = Add(position, Add(desired, Spacing));
         }
     }
 
@@ -146,41 +123,76 @@ public sealed class Menu: Container
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        if (!ReferenceEquals(item.Parent, this) || item.Kind != MenuItemKind.Radio)
+        if (IndexOfItemControl(item) < 0 || item.Kind != MenuItemKind.Radio)
         {
             throw new ArgumentException("The radio item must belong to this menu.", nameof(item));
         }
 
-        foreach (var candidate in Items)
+        var candidates = Items
+            .OfType<MenuItem>()
+            .Where(candidate => candidate.Kind == MenuItemKind.Radio &&
+                string.Equals(candidate.GroupName, item.GroupName, StringComparison.Ordinal))
+            .ToArray();
+        var versions = new int[candidates.Length];
+
+        for (var index = 0; index < candidates.Length; index++)
         {
-            if (candidate.Kind == MenuItemKind.Radio && candidate.GroupName == item.GroupName)
+            versions[index] = candidates[index].StageChecked(ReferenceEquals(candidates[index], item));
+        }
+
+        var failure = (ExceptionDispatchInfo?) null;
+
+        for (var index = 0; index < candidates.Length; index++)
+        {
+            var expected = ReferenceEquals(candidates[index], item);
+
+            if (candidates[index].IsCheckedCommitCurrent(versions[index], expected))
             {
-                _ = candidate.CommitChecked(ReferenceEquals(candidate, item));
+                CaptureFailure(candidates[index].PublishChecked, ref failure);
             }
         }
+
+        failure?.Throw();
     }
 
     /// <summary>Gets one checked typed child by index.</summary>
     /// <param name="index">The valid zero-based child index.</param>
     /// <returns>The exact owned item.</returns>
-    internal MenuItem ItemAt(int index) => RequireItem(Children[index]);
+    internal Control ItemAt(int index) => RequireEntry(GetItemControl(index));
+
+    /// <summary>Gets the current semantic item count.</summary>
+    internal int ItemCount => ItemControlCount;
 
     /// <summary>Adds one typed item and tracks its invocation.</summary>
     /// <param name="item">The non-null detached item.</param>
     internal void Add(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        Children.Add(item);
-        item.Invoked += OnItemInvoked;
+        AddEntry(item);
+    }
 
-        if (_selectedIndex < 0 && item.Kind != MenuItemKind.Separator)
+    /// <summary>Adds one typed separator.</summary>
+    /// <param name="separator">The non-null detached separator.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
+    internal void Add(MenuSeparator separator)
+    {
+        ArgumentNullException.ThrowIfNull(separator);
+        AddEntry(separator);
+    }
+
+    private void AddEntry(Control item)
+    {
+        Debug.Assert(item is MenuItem or MenuSeparator, "Menu entries are constrained by typed collection overloads.");
+        InsertItemControl(ItemControlCount, item);
+
+        if (_selectedIndex < 0 && item is MenuItem)
         {
-            Select(Children.Count - 1, focus: false);
+            Select(ItemControlCount - 1, focus: false);
         }
 
-        if (item.Kind == MenuItemKind.Radio && item.IsChecked)
+        if (item is MenuItem { Kind: MenuItemKind.Radio, IsChecked: true } radio)
         {
-            SelectRadio(item);
+            SelectRadio(radio);
         }
     }
 
@@ -190,28 +202,37 @@ public sealed class Menu: Container
     internal bool Remove(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        var index = Children.IndexOf(item);
+        return RemoveEntry(item);
+    }
+
+    /// <summary>Removes one typed separator.</summary>
+    /// <param name="separator">The non-null separator.</param>
+    /// <returns>True when ownership was removed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
+    internal bool Remove(MenuSeparator separator)
+    {
+        ArgumentNullException.ThrowIfNull(separator);
+        return RemoveEntry(separator);
+    }
+
+    private bool RemoveEntry(Control item)
+    {
+        var index = IndexOfItemControl(item);
 
         if (index < 0)
         {
             return false;
         }
 
-        item.Invoked -= OnItemInvoked;
-        _ = Children.Remove(item);
-        Select(FindAvailable(Math.Min(index, Children.Count - 1), 1), focus: false);
+        _ = RemoveItemControl(item);
+        Select(FindAvailable(Math.Min(index, ItemControlCount - 1), 1), focus: false);
         return true;
     }
 
     /// <summary>Clears items and subscriptions.</summary>
     internal void ClearItems()
     {
-        foreach (var item in Items.ToArray())
-        {
-            item.Invoked -= OnItemInvoked;
-        }
-
-        Children.Clear();
+        ClearItemControls();
         Select(-1, focus: false);
     }
 
@@ -222,19 +243,17 @@ public sealed class Menu: Container
 
         if (reason == ReleaseReason.Disposed)
         {
-            foreach (var item in Items)
-            {
-                item.Invoked -= OnItemInvoked;
-            }
-
             ItemInvoked = null;
         }
     }
 
-    private void OnItemInvoked(object? sender, MenuItemInvokedEventArgs eventArgs)
+    /// <summary>Forwards one item invocation after the item's own subscribers complete.</summary>
+    /// <param name="eventArgs">The non-null committed invocation payload.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    internal void NotifyItemInvoked(MenuItemInvokedEventArgs eventArgs)
     {
-        _ = sender;
-        var index = Children.IndexOf(eventArgs.Item);
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        var index = IndexOfItemControl(eventArgs.Item);
 
         if (index >= 0)
         {
@@ -253,40 +272,40 @@ public sealed class Menu: Container
             return;
         }
 
-        if (_selectedIndex >= 0 && _selectedIndex < Children.Count)
+        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
         {
-            ItemAt(_selectedIndex).CommitSelection(false);
+            ((MenuItem) ItemAt(_selectedIndex)).CommitSelection(false);
         }
 
         _selectedIndex = index;
 
         if (index >= 0)
         {
-            var item = ItemAt(index);
+            var item = (MenuItem) ItemAt(index);
             item.CommitSelection(true);
 
             if (focus)
             {
-                _ = FocusOwner?.Focus(item);
+                _ = item.RequestMenuFocus();
             }
         }
 
-        NotifyChanged(nameof(SelectedIndex), Invalidation.Render);
+        NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Render);
     }
 
     private int FindAvailable(int start, int direction)
     {
-        if (Children.Count == 0)
+        if (ItemControlCount == 0)
         {
             return -1;
         }
 
-        for (var offset = 1; offset <= Children.Count; offset++)
+        for (var offset = 1; offset <= ItemControlCount; offset++)
         {
-            var index = (start + (direction * offset) + Children.Count) % Children.Count;
+            var index = (start + (direction * offset) + ItemControlCount) % ItemControlCount;
             var item = ItemAt(index);
 
-            if (item.Kind != MenuItemKind.Separator && item.EffectiveIsEnabled && item.EffectiveIsVisible)
+            if (item is MenuItem menuItem && menuItem.EffectiveIsEnabled && menuItem.EffectiveIsVisible)
             {
                 return index;
             }
@@ -295,24 +314,22 @@ public sealed class Menu: Container
         return -1;
     }
 
-    private static MenuItem RequireItem(Control child)
+    private static Control RequireEntry(Control child)
     {
-        return child as MenuItem ??
-            throw new InvalidOperationException("Menus may own only MenuItem controls through Items.");
+        return child is MenuItem or MenuSeparator
+            ? child
+            : throw new InvalidOperationException("Menus may own only MenuItem and MenuSeparator controls through Items.");
     }
 
-    private int SpacingExtent(int count)
+    private static void CaptureFailure(System.Action action, ref ExceptionDispatchInfo? failure)
     {
-        Debug.Assert(count >= 0, "Menu participant count is non-negative.");
-
-        return count < 2 ? 0 : Add(0, Spacing * (count - 1));
-    }
-
-    private static int Add(int left, int right)
-    {
-        Debug.Assert(left >= 0, "Menu accumulation uses non-negative extents.");
-        Debug.Assert(right >= 0, "Menu accumulation uses non-negative extents.");
-
-        return (int) Math.Min(int.MaxValue, (long) left + right);
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
+        }
     }
 }

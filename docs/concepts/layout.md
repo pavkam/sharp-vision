@@ -3,13 +3,11 @@
 ## Layout contract
 
 Layout uses measure then arrange over integer terminal cells. Width and height
-describe the border box. Margin is external, `BorderThickness` reserves physical
-cells inside the border box, padding is internal to those edges, and none
-collapses. The box model removes margin, resolves the border box, then deflates
-`BorderThickness` and `Padding` in that order. During measure, the combined
-`BorderThickness` plus `Padding` reservation on each axis saturates at
-`int.MaxValue`. `Rect` and `Size` deflation instead saturate resulting extents
-at zero, so zero and tiny boxes never produce negative content extents.
+describe the border box. The physical order is margin → border → padding →
+content: margin is external, `BorderThickness` occupies cells inside the border
+box, and padding separates that border from content. None collapses. Combined
+measure insets use saturating addition, and sequential arrange deflation
+saturates each axis at zero.
 
 ## Lengths
 
@@ -51,14 +49,21 @@ rejects nested transactions. A changed viewport remeasures even when no property
 is dirty.
 
 `Control.MeasureOverride(Constraint)` receives the content-box constraint after
-margin is removed, the border-box request is resolved, and `BorderThickness`
-then `Padding` are reserved. It returns an intrinsic content size.
-`Control.ArrangeOverride(Rect)` receives the final content rectangle after
-margin is removed, the border box is resolved and aligned, and `BorderThickness`
-then `Padding` are deflated. Border edges therefore reserve layout cells before
-either extension point runs. Both extension points run only for hidden or
-visible controls; collapsed controls desire zero, commit empty bounds, and skip
-both callbacks.
+margin, the resolved border-box request, border thickness, and padding are
+removed. It returns an intrinsic content size. The desired border-box size adds
+border and padding back with saturated arithmetic.
+`Control.ArrangeOverride(Rect)` receives the final content rectangle after the
+border box is aligned and border then padding are deflated. Both extension
+points run only for hidden or visible controls; collapsed controls desire zero,
+commit empty bounds, and skip both callbacks.
+
+An externally derived owner enters child layout only through
+`MeasureChild(Control, Constraint)` and
+`ArrangeChild(Control, Rect, ResolvedAxes)`. Both reject null or any control
+that is not directly owned by the caller before entering the child's
+transaction; arrange also rejects undefined axis flags. `Width`, `Height`, and
+`Both` state which border-box dimensions the owner already resolved. Raw
+measure, arrange, render, and pending-phase operations remain internal.
 
 Fixed and percentage dimensions override alignment. Horizontal controls default
 to `Left`, so an automatic width uses the measured desired size; applications
@@ -68,10 +73,12 @@ otherwise automatic layout uses the measured desired size. Minimum and maximum
 constraints are applied before the result is capped to the margin-deflated slot,
 so tiny viewports always produce contained non-negative rectangles.
 
-Layout surfaces such as `Stack`, `Grid`, `Dock`, and `Overlay` opt into
-horizontal stretch because they own a viewport or shared slot. Their ordinary
-child controls remain content-sized unless the surface's layout contract
-explicitly resolves that child to its slot.
+Layout surfaces such as `Stack`, `Grid`, `Dock`, `Canvas`, and `Overlay` opt
+into horizontal stretch because they own a viewport or shared slot. Their
+ordinary child controls remain content-sized unless the surface's layout
+contract explicitly resolves that child to its slot. `BorderThickness` uses the
+same base reservation on every control, so intrinsic chrome neither
+double-reserves space nor requires a wrapper surface.
 
 Fractional percentage/proportional boundaries use cumulative edge rounding so
 adjacent tracks share one boundary and the final track receives the remainder.
@@ -103,29 +110,32 @@ so the final combined extent is exact.
 
 `Stack` uses the common track allocator along its sequential axis and the base
 box model across it. Reverse order affects geometry, rendering, and default
-focus traversal together.
+focus traversal together. Setting `BorderThickness` on any panel reserves the
+active physical edges before its panel-specific arrangement runs; no wrapper is
+required for layout reservation.
 
 `Grid` supports fixed, percent, auto, proportional tracks, spacing, spans, and
 an implicit automatic track when definitions are empty. `Dock` consumes
 remaining physical edges in child order. `Overlay` shares the content box and
 uses stable attached z-order for render and hit testing. `Canvas` positions
-children through cells or deferred percentages and clips by policy. Border
-properties are intrinsic to every control; applications set `BorderThickness`
-and `BorderGlyphs` on a layout surface when the frame needs a distinct ownership
-and rendering node.
+children through cells or deferred percentages and clips by policy. Any panel
+can add validated zero-or-one physical border edges through `BorderThickness`
+and `BorderGlyphs` without changing its child ownership model.
 
 ## Grow and shrink
 
 Every [`Container`](../../src/SharpVision/Controls/Container.cs) can size itself
 to its content instead of its explicit `Width`/`Height`. `AutoSize` (default
-`false`) sizes the border box to content on the enabled axis, overriding an
-explicit fixed or star length while still honoring `MinWidth`/
-`MaxWidth`/`MinHeight`/`MaxHeight`. `AutoSizeMode` chooses how the fixed request
-participates once `AutoSize` is on: `GrowAndShrink` (default) fits content
-exactly, growing or shrinking below an explicit fixed-cell size; `GrowOnly`
-treats an explicit fixed-cell length as a floor, so the container grows to fit
-larger content but never shrinks smaller than the requested size. Both modes
-clamp the final result to `Min`/`Max` before arrangement.
+`false`) sizes the border box to content plus its complete border-and-padding
+inset on the enabled axis, overriding an explicit fixed or star length while
+still honoring `MinWidth`/ `MaxWidth`/`MinHeight`/`MaxHeight`. `AutoSizeMode`
+chooses how the fixed request participates once `AutoSize` is on:
+`GrowAndShrink` (default) fits content exactly, growing or shrinking below an
+explicit fixed-cell size; `GrowOnly` treats an explicit fixed-cell length as a
+floor, so the container grows to fit larger content but never shrinks smaller
+than the requested size. Both modes clamp the final result to `Min`/`Max` before
+arrangement. Content extent and the combined inset use saturated arithmetic
+before that clamp.
 
 `AutoSize` and `AutoScroll` (see [Scrolling](scrolling.md)) compose along
 independent axes of the same container. A determinate axis — one sized by an
@@ -135,11 +145,18 @@ axis instead grows to fit its content up to `Max`; once content exceeds `Max`,
 the axis stops growing, caps at that bound, and — if `AutoScroll` is enabled for
 it — scrolls the remainder exactly like a determinate axis.
 
+An `AutoScroll` viewport and its framework scrollbar rails are resolved inside
+the border-and-padding-deflated content box. Bars never consume border or
+padding cells, including when one automatic bar induces the other. A
+theme-resolved `BorderThickness` change has `Measure` impact, so publishing a
+new geometric theme value remeasures and rearranges this complete box model.
+
 ## Test contract
 
 Cover every length combination, nested percentages, min/max, zero/tiny sizes,
-margins/padding, alignment, visibility, wrapping remeasure, rounding sums,
-spans, cache invalidation, resize, and overflow.
+margins/borders/padding, partial edges, saturated combined insets, alignment,
+visibility, wrapping remeasure, theme-driven geometry, rounding sums, spans,
+cache invalidation, resize, AutoSize, and AutoScroll overflow.
 
 The base box-model suite also runs 10,000 fixed-seed combinations twice and
 requires identical geometry, non-negative extents, and containment in the

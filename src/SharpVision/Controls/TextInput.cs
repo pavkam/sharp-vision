@@ -10,7 +10,7 @@ using SharpVision.Text;
 using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
-public sealed class TextInput: Container
+public sealed class TextInput: Control
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -21,15 +21,23 @@ public sealed class TextInput: Container
     private CaptureManager? _subscribedCapture;
     private int _contentWidth;
     private int _contentHeight = 1;
-    private readonly Children _chrome;
+    private readonly OwnedControlSlot _chrome;
     private readonly ScrollBar _horizontal;
     private readonly ScrollBar _vertical;
     private Rect _editorBounds;
 
     /// <summary>Initializes an empty focusable single-line editor.</summary>
-    public TextInput() : base(capacity: 0)
+    public TextInput()
     {
-        _chrome = new Children(this, capacity: 2);
+        _chrome = RegisterOwnedSlot(
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: false,
+                partKey: "editor-scroll-bars",
+                ChangeImpact.Arrange),
+            capacity: 2);
         _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
         _vertical = new ScrollBar { Orientation = Orientation.Vertical };
         _horizontal.ValueChanged += OnHorizontalChanged;
@@ -38,6 +46,9 @@ public sealed class TextInput: Container
         _chrome.Add(_vertical);
         CanFocus = true;
     }
+
+    /// <inheritdoc/>
+    protected override bool OwnsPointerState => true;
 
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>
     public event EventHandler<TextChangingEventArgs>? TextChanging;
@@ -85,7 +96,7 @@ public sealed class TextInput: Container
     public bool IsReadOnly
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
     /// <summary>Gets or sets whether inserted CR or LF values are accepted.</summary>
@@ -94,7 +105,7 @@ public sealed class TextInput: Container
     public bool AcceptsReturn
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets whether inserted tab values are accepted.</summary>
@@ -103,7 +114,7 @@ public sealed class TextInput: Container
     public bool AcceptsTab
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets the optional printable narrow display mask.</summary>
@@ -120,7 +131,7 @@ public sealed class TextInput: Container
                 _ = Edit.ProjectPassword(string.Empty, mask);
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -141,7 +152,7 @@ public sealed class TextInput: Container
                 throw new ArgumentException("MaxLength cannot exclude current text.", nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     }
 
@@ -182,16 +193,16 @@ public sealed class TextInput: Container
     public string SelectedText => Text.Substring(SelectionStart, SelectionLength);
 
     /// <summary>Gets the current horizontal cell offset.</summary>
-    public new int HorizontalOffset { get; private set; }
+    public int HorizontalOffset { get; private set; }
 
     /// <summary>Gets the current vertical line offset.</summary>
-    public new int VerticalOffset { get; private set; }
+    public int VerticalOffset { get; private set; }
 
     /// <summary>Gets or sets the axes eligible for editor overflow scrolling.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ScrollBars ScrollBars
+    public ScrollBars ScrollBars
     {
         get;
         set
@@ -201,7 +212,7 @@ public sealed class TextInput: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar axes contain unknown flags.");
             }
 
-            if (Set(ref field, value, Invalidation.Arrange))
+            if (SetProperty(ref field, value, ChangeImpact.Arrange))
             {
                 ArrangeChrome();
             }
@@ -212,7 +223,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ShowScrollBars ShowScrollBars
+    public ShowScrollBars ShowScrollBars
     {
         get;
         set
@@ -222,38 +233,64 @@ public sealed class TextInput: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar visibility policy is unknown.");
             }
 
-            if (Set(ref field, value, Invalidation.Arrange))
+            if (SetProperty(ref field, value, ChangeImpact.Arrange))
             {
                 ArrangeChrome();
             }
         }
     } = ShowScrollBars.WhenNeeded;
 
+    /// <summary>Identifies the themeable compact-or-full editor rail chrome.</summary>
+    public static StyleProperty<ScrollBarChrome> ScrollBarChromeProperty { get; } =
+        StyleProperty<ScrollBarChrome>.Register<TextInput>(
+            "scroll-bar-chrome",
+            ScrollBarChrome.Full,
+            ChangeImpact.Arrange);
+
     /// <summary>Gets or sets the compact or full form requested for editor rails.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ScrollBarChrome ScrollBarChrome
+    public ScrollBarChrome ScrollBarChrome
     {
-        get => base.ScrollBarChrome;
+        get => GetValue(ScrollBarChromeProperty);
         set
         {
-            base.ScrollBarChrome = value;
-            SynchronizeBarAppearance();
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar chrome is unknown.");
+            }
+
+            SetValue(ScrollBarChromeProperty, value);
+            _horizontal.Chrome = ScrollBarChrome;
+            _vertical.Chrome = ScrollBarChrome;
         }
     }
+
+    /// <summary>Identifies the themeable line-or-block editor rail fill.</summary>
+    public static StyleProperty<ScrollBarFill> ScrollBarFillProperty { get; } =
+        StyleProperty<ScrollBarFill>.Register<TextInput>(
+            "scroll-bar-fill",
+            ScrollBarFill.Block,
+            ChangeImpact.Render);
 
     /// <summary>Gets or sets the generated line or block glyph treatment requested for editor rails.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ScrollBarFill ScrollBarFill
+    public ScrollBarFill ScrollBarFill
     {
-        get => base.ScrollBarFill;
+        get => GetValue(ScrollBarFillProperty);
         set
         {
-            base.ScrollBarFill = value;
-            SynchronizeBarAppearance();
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar fill is unknown.");
+            }
+
+            SetValue(ScrollBarFillProperty, value);
+            _horizontal.Fill = ScrollBarFill;
+            _vertical.Fill = ScrollBarFill;
         }
     }
 
@@ -267,7 +304,7 @@ public sealed class TextInput: Container
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
             Trim(_undo);
         }
     } = 100;
@@ -365,30 +402,6 @@ public sealed class TextInput: Container
         return IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled || !Bounds.Contains(point)
             ? null
             : _vertical.HitTest(point) ?? _horizontal.HitTest(point) ?? this;
-    }
-
-    /// <inheritdoc/>
-    internal override void VisitChildren(Action<Control> visitor)
-    {
-        ArgumentNullException.ThrowIfNull(visitor);
-
-        foreach (var child in _chrome)
-        {
-            visitor(child);
-        }
-    }
-
-    /// <inheritdoc/>
-    internal override void DisposeChildren()
-    {
-        while (_chrome.Count > 0)
-        {
-            var child = _chrome[^1];
-            _chrome.RemoveAt(_chrome.Count - 1);
-            child.Dispose();
-        }
-
-        base.DisposeChildren();
     }
 
     /// <inheritdoc/>
@@ -503,6 +516,8 @@ public sealed class TextInput: Container
 
         if (reason == ReleaseReason.Disposed)
         {
+            _horizontal.ValueChanged -= OnHorizontalChanged;
+            _vertical.ValueChanged -= OnVerticalChanged;
             TextChanging = null;
             TextChanged = null;
             SelectionChanged = null;
@@ -559,14 +574,14 @@ public sealed class TextInput: Container
 
         if (textChanged)
         {
-            NotifyChanged(nameof(Text), Invalidation.Measure);
+            NotifyPropertyChanged(nameof(Text), ChangeImpact.Measure);
         }
 
         if (previousSelection != _selection)
         {
-            NotifyChanged(nameof(CaretIndex), Invalidation.Render);
-            NotifyChanged(nameof(SelectionStart), Invalidation.Render);
-            NotifyChanged(nameof(SelectionLength), Invalidation.Render);
+            NotifyPropertyChanged(nameof(CaretIndex), ChangeImpact.Render);
+            NotifyPropertyChanged(nameof(SelectionStart), ChangeImpact.Render);
+            NotifyPropertyChanged(nameof(SelectionLength), ChangeImpact.Render);
         }
 
         if (textChanged)
@@ -739,11 +754,11 @@ public sealed class TextInput: Container
             pointer.Cells is { } pressedCells &&
             Bounds.Contains(pressedCells))
         {
-            _ = FocusOwner?.Focus(this);
+            _ = RequestFocus();
 
             if (eventArgs.ClickCount == 2)
             {
-                SetSelection(Edit.SelectWord(Text, ClusterIndexAt(pressedCells)));
+                SetSelection(Edit.SelectWord(Text, IndexAt(pressedCells)));
                 eventArgs.Handled = true;
                 return;
             }
@@ -832,47 +847,6 @@ public sealed class TextInput: Container
         return Text.Length;
     }
 
-    private int ClusterIndexAt(Point point)
-    {
-        var targetX = Math.Max(0, point.X - _editorBounds.X + HorizontalOffset);
-        var targetY = Math.Max(0, point.Y - _editorBounds.Y + VerticalOffset);
-        var x = 0;
-        var y = 0;
-
-        foreach (var grapheme in Graphemes.Enumerate(Text))
-        {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
-
-            if (IsLineBreak(cluster))
-            {
-                if (y == targetY)
-                {
-                    return grapheme.Offset;
-                }
-
-                x = 0;
-                y++;
-                continue;
-            }
-
-            if (y > targetY)
-            {
-                return grapheme.Offset;
-            }
-
-            var width = ClusterWidth(cluster, x);
-
-            if (y == targetY && targetX < x + width)
-            {
-                return grapheme.Offset;
-            }
-
-            x += width;
-        }
-
-        return Text.Length;
-    }
-
     private EditResult MoveVertical(int delta, bool extend)
     {
         Position(_selection.Caret, out var x, out var y);
@@ -925,7 +899,10 @@ public sealed class TextInput: Container
 
     private void ArrangeChrome()
     {
-        SynchronizeBarAppearance();
+        _horizontal.Chrome = ScrollBarChrome;
+        _vertical.Chrome = ScrollBarChrome;
+        _horizontal.Fill = ScrollBarFill;
+        _vertical.Fill = ScrollBarFill;
         MeasureText(out _contentWidth, out _contentHeight);
         var bounds = ContentBounds;
         var horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
@@ -947,36 +924,16 @@ public sealed class TextInput: Container
         _editorBounds = viewport;
         _horizontal.Visibility = horizontal ? Visibility.Visible : Visibility.Collapsed;
         _vertical.Visibility = vertical ? Visibility.Visible : Visibility.Collapsed;
-        _horizontal.Arrange(new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, horizontal ? 1 : 0), true, true);
-        _vertical.Arrange(new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height), true, true);
+        ArrangeChild(
+            _horizontal,
+            new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, horizontal ? 1 : 0),
+            ResolvedAxes.Both);
+        ArrangeChild(
+            _vertical,
+            new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height),
+            ResolvedAxes.Both);
         Configure(_horizontal, Math.Max(0, _contentWidth - viewport.Width + 1), viewport.Width, HorizontalOffset);
         Configure(_vertical, Math.Max(0, _contentHeight - viewport.Height + 1), viewport.Height, VerticalOffset);
-    }
-
-    private void SynchronizeBarAppearance()
-    {
-        var chrome = base.ScrollBarChrome;
-        var fill = base.ScrollBarFill;
-
-        if (_horizontal.Chrome != chrome)
-        {
-            _horizontal.Chrome = chrome;
-        }
-
-        if (_vertical.Chrome != chrome)
-        {
-            _vertical.Chrome = chrome;
-        }
-
-        if (_horizontal.Fill != fill)
-        {
-            _horizontal.Fill = fill;
-        }
-
-        if (_vertical.Fill != fill)
-        {
-            _vertical.Fill = fill;
-        }
     }
 
     private void OnHorizontalChanged(object? sender, ScrollEventArgs eventArgs)

@@ -8,6 +8,38 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies hit testing, local coordinates, capture, and pointer state cleanup.</summary>
 public sealed class PointerTests
 {
+    /// <summary>Verifies removing focus eligibility releases focus without cancelling independent pointer capture.</summary>
+    [Fact]
+    public async Task CanFocus_WhenFocusedControlIsCaptured_ReleasesFocusAndPreservesCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 5),
+                CanFocus = true,
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var capture = new CaptureManager(root);
+            focus.Focus(child).ShouldBeTrue();
+            capture.Capture(child).ShouldBeTrue();
+            var cancellations = 0;
+            capture.Cancelled += (_, _) => cancellations++;
+
+            child.CanFocus = false;
+
+            focus.Focused.ShouldBeNull();
+            child.IsFocused.ShouldBeFalse();
+            capture.Captured.ShouldBeSameAs(child);
+            cancellations.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies pixel-only input cannot hit the top-left control.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerHasNoCells_DoesNotFabricateHitAsync()
@@ -184,6 +216,38 @@ public sealed class PointerTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies non-Container owned ancestry resolves hover and releases scoped pointer state on removal.</summary>
+    [Fact]
+    public async Task Dispatch_WhenNonContainerOwnedSubtreeIsRemoved_ClearsHoverAndCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new TraversalOwner { Bounds = new Rect(0, 0, 20, 10) };
+            var middle = new TraversalOwner
+            {
+                Bounds = new Rect(0, 0, 12, 8),
+                CanFocus = true,
+            };
+            var leaf = new ProbeControl { Bounds = new Rect(2, 2, 6, 4) };
+            middle.AddNormal(leaf);
+            root.AddNormal(middle);
+            root.Attach(dispatcher);
+            using var capture = new CaptureManager(root);
+
+            capture.Dispatch(CreatePointer(new Point(4, 3), PointerAction.Move)).ShouldBeSameAs(leaf);
+            capture.Hovered.ShouldBeSameAs(middle);
+            capture.Capture(leaf).ShouldBeTrue();
+
+            root.RemoveNormal(middle).ShouldBeTrue();
+
+            capture.Hovered.ShouldBeNull();
+            capture.Captured.ShouldBeNull();
+            middle.IsHovered.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a primary click focuses any eligible focusable hit target.</summary>
     [Fact]
     public async Task Dispatch_WhenPrimaryPointerPressesFocusableControl_FocusesItAsync()
@@ -300,6 +364,202 @@ public sealed class PointerTests
             manager.TerminalFocusLost();
             manager.TerminalFocusLost();
             reasons.ShouldBe([ReleaseReason.Detached, ReleaseReason.TerminalFocusLost]);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the protected release seam cannot release another control's capture.</summary>
+    [Fact]
+    public async Task ReleasePointerCapture_WhenAnotherControlOwnsCapture_PreservesOwnerAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var owner = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
+            var other = new ProbeControl() { Bounds = new Rect(10, 0, 10, 10) };
+            root.Children.Add(owner);
+            root.Children.Add(other);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            owner.CaptureProbePointer().ShouldBeTrue();
+
+            other.ReleaseProbePointer();
+
+            manager.Captured.ShouldBeSameAs(owner);
+            owner.ProbeHasPointerCapture.ShouldBeTrue();
+            other.ProbeHasPointerCapture.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies implicit cancellation clears all pointer state before the protected hook runs.</summary>
+    [Fact]
+    public async Task Capture_WhenImplicitlyCancelled_ClearsStateBeforeControlHookAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+                CanFocus = true,
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            child.CaptureProbePointer().ShouldBeTrue();
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+
+            _ = root.Children.Remove(child);
+
+            manager.Captured.ShouldBeNull();
+            manager.Hovered.ShouldBeNull();
+            manager.Pressed.ShouldBeNull();
+            child.PointerCaptureCancellationCalls.ShouldBe(1);
+            child.PointerCaptureCancellationReason.ShouldBe(ReleaseReason.Detached);
+            child.PointerStateWasClearDuringCancellation.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies cancellation callbacks cannot reacquire capture before detachment commits.</summary>
+    [Fact]
+    public async Task Capture_WhenCancellationHookRequestsRecapture_RejectsRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+                RecaptureDuringPointerCancellation = true,
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            child.CaptureProbePointer().ShouldBeTrue();
+
+            _ = root.Children.Remove(child);
+
+            child.RecaptureResult.ShouldBe(false);
+            child.Parent.ShouldBeNull();
+            manager.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies state-change callbacks cannot reacquire capture while cancellation is publishing.</summary>
+    [Fact]
+    public async Task Press_WhenClearingCallbackRequestsCapture_RejectsRequestAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+            child.RecaptureWhenPressedClears = true;
+
+            _ = root.Children.Remove(child);
+
+            child.PressedClearRecaptureResult.ShouldBe(false);
+            child.Parent.ShouldBeNull();
+            manager.Captured.ShouldBeNull();
+            manager.Pressed.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies press cleanup without capture does not publish a capture callback.</summary>
+    [Fact]
+    public async Task Press_WhenImplicitlyCancelledWithoutCapture_DoesNotCallCaptureHookAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+                CanFocus = true,
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
+
+            child.IsEnabled = false;
+
+            manager.Pressed.ShouldBeNull();
+            child.PointerCaptureCancellationCalls.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing capture hook cannot strand a disposed child in its owner.</summary>
+    [Fact]
+    public async Task Dispose_WhenCapturedChildHookThrows_CompletesTreeAndManagerCleanupAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+                ThrowOnPointerCaptureCancellation = true,
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            child.CaptureProbePointer().ShouldBeTrue();
+            var cancellations = 0;
+            manager.Cancelled += (_, _) => cancellations++;
+
+            _ = Should.Throw<InvalidOperationException>(child.Dispose);
+
+            child.IsDisposed.ShouldBeTrue();
+            child.Parent.ShouldBeNull();
+            root.Children.ShouldBeEmpty();
+            manager.Captured.ShouldBeNull();
+            cancellations.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a throwing capture hook cannot prevent root-manager and control cleanup.</summary>
+    [Fact]
+    public async Task Dispose_WhenCapturedRootHookThrows_CompletesManagerAndControlCleanupAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 10),
+                ThrowOnPointerCaptureCancellation = true,
+            };
+            root.Attach(dispatcher);
+            using var manager = new CaptureManager(root);
+            root.CaptureProbePointer().ShouldBeTrue();
+            var cancellations = 0;
+            manager.Cancelled += (_, _) => cancellations++;
+
+            _ = Should.Throw<InvalidOperationException>(root.Dispose);
+
+            root.IsDisposed.ShouldBeTrue();
+            root.CaptureOwner.ShouldBeNull();
+            manager.Captured.ShouldBeNull();
+            cancellations.ShouldBe(1);
         }, TestContext.Current.CancellationToken);
     }
 

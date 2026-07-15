@@ -15,6 +15,10 @@ defines ownership and runtime flow, while the
 behavior. The [control catalog](controls/index.md#control-catalog) defines
 public widgets, and the [test map](testing/index.md#test-map) defines acceptable
 correctness evidence. The
+[single-content authoring contract](controls/content-control.md#contentcontrol-contract)
+defines the public zero-or-one ownership role. The
+[retained-component authoring contract](controls/composite-control.md#compositecontrol-contract)
+defines constructor-time private composition without public child leakage. The
 [project structure contract](architecture/project-structure.md#project-structure-contract)
 defines the product boundary while the detailed specifications are built out.
 The

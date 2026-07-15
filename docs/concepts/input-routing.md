@@ -48,6 +48,9 @@ Keyboard targets the focused control. Pointer input targets capture when active,
 otherwise hit testing over committed layout and clipping. The dispatcher
 snapshots ancestry, previews root to target, then bubbles target to root.
 `OriginalSource` never changes; controlled retargeting may change `Source`.
+Ancestry follows `Control.Parent` across every ownership role; route
+construction never requires the parent to be a `Container` or the edge to appear
+in public `Children`.
 
 `Handled` suppresses remaining ordinary handlers and default control behavior.
 Handlers explicitly registered for handled events still run. Tree mutation
@@ -103,10 +106,19 @@ manager's monotonic `TimeProvider`; any mismatch or expired interval restarts at
 one. Non-press events report zero. This gesture metadata belongs to routed UI
 input and does not alter the immutable terminal `Pointer` value.
 
-`Control.HitTest(Point)` requires effective visibility and enabled state, clips
-at each parent, and searches `Container.Children` from last to first so the
-highest z-order wins. A pointer handler receives `LocalCells` relative to its
-current sender's committed bounds.
+`Control.HitTest(Point)` requires effective visibility and enabled state and
+searches the central owned-control registry. Popup-layer targets are considered
+before ordinary targets. Ordinary hit-participating slots are searched in
+reverse slot-registration and item order so the last rendered eligible control
+wins; slots that opt out suppress their complete subtree from pointer targeting.
+Each owner's `ClipsChildren` policy gates ordinary descendants, while popup
+discovery may extend outside the owner's arranged box under the remaining
+ancestor clip. Every intermediate owner must still be effectively visible,
+enabled, and hit-test visible; an ineligible private composition node suppresses
+its complete popup subtree without imposing its bounds on that subtree. Canvas,
+Overlay, and scrolling containers preserve their documented viewport and z-order
+rules on top of this shared traversal. A pointer handler receives `LocalCells`
+relative to its current sender's committed bounds.
 
 On a primary press, `CaptureManager` resolves the nearest eligible focusable
 member from the routed target toward the root and commits focus before routing
@@ -122,8 +134,27 @@ descendants; for example, text inside a Button sets the Button's `IsHovered`,
 not the label's. It updates `IsHovered` and `IsPressed` before routing so
 handlers observe committed visual state. Release clears press after routing.
 Explicit `Release` is quiet; detach, disable, hide, disposal, and terminal-focus
-loss emit one `Cancelled` callback with a precise `ReleaseReason`, then clear
-capture, hover, and press references synchronously.
+loss first clear capture plus any hover and press state owned by the unavailable
+subtree. If a capture target existed, its protected cancellation hook runs next;
+the manager-level `Cancelled` event then publishes the precise `ReleaseReason`.
+Capture requests made from either cancellation callback return false until the
+complete callback sequence has unwound.
+
+Disabling, hiding, or collapsing a control commits the availability property,
+clears focus and capture, and only then publishes its property notification. A
+throwing focus, capture, unavailability, or property callback cannot skip the
+remaining cleanup or notification; the earliest failure is rethrown after the
+full transition.
+
+An externally derived control uses `RequestFocus()` and `CapturePointer()`
+instead of retaining manager references. Both return false while detached or
+ineligible. `HasPointerCapture` reports identity ownership, and
+`ReleasePointerCapture()` releases only the calling control; it cannot disturb
+another target's capture. Explicit release remains quiet.
+
+Press-only cleanup does not invoke the protected capture hook because no former
+capture target exists. The manager-level `Cancelled` event still lets hosts
+observe that scoped cleanup across the whole tree.
 
 ## Pull-style pointer and focus snapshot
 
@@ -167,10 +198,12 @@ byte split, cover malformed recovery and completion, and require warmed ASCII
 and non-ASCII Rune decoding to allocate zero managed bytes per event. The
 fixed-seed hostile-byte suite caps paste/parser retention, injects an explicit
 recovery boundary, and requires a known trailing Rune to survive every case.
-`Pressable` is the shared traditional-control activation state machine. Space
-holds pressed state until a matching release; Enter activates directly. Primary
-pointer press focuses and captures, movement updates inside/outside pressed
-state, and release inside activates once. Focus loss, capture cancellation,
-disable, hide, detach, and disposal clear all held state without activation.
-Completed activations carry a validated `ActivationCause` of Keyboard, Pointer,
-or Programmatic.
+[`Pressable`](../controls/pressable.md#pressable-contract) is the public
+single-content activation role. Space holds pressed state until a matching
+release; Enter activates directly. Primary pointer press focuses and captures,
+movement updates inside/outside pressed state, and release inside activates
+once. Focus loss, capture cancellation, disable, hide, detach, and disposal
+clear all held state without activation. Completed activations carry a validated
+`ActivationCause` of Keyboard, Pointer, or Programmatic. The transient state
+machine is one internal composed behavior also used by direct-`Control`
+`ComboBox`; interaction reuse does not dictate public inheritance.

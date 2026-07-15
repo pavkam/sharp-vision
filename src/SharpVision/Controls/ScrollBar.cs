@@ -33,6 +33,9 @@ public sealed class ScrollBar: Control
     /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
     public ScrollBar() => CanFocus = true;
 
+    /// <inheritdoc/>
+    protected override bool OwnsPointerState => true;
+
     /// <summary>Raised after a changed value commits.</summary>
     public event EventHandler<ScrollEventArgs>? ValueChanged;
 
@@ -55,7 +58,7 @@ public sealed class ScrollBar: Control
                     nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     }
 
@@ -78,7 +81,7 @@ public sealed class ScrollBar: Control
                     nameof(value));
             }
 
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     } = 100;
 
@@ -92,7 +95,7 @@ public sealed class ScrollBar: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
     }
 
@@ -127,7 +130,7 @@ public sealed class ScrollBar: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     } = 1;
 
@@ -141,7 +144,7 @@ public sealed class ScrollBar: Control
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            _ = Set(ref field, value, Invalidation.None);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
         }
     } = 10;
 
@@ -155,7 +158,7 @@ public sealed class ScrollBar: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -164,8 +167,7 @@ public sealed class ScrollBar: Control
         StyleProperty<ScrollBarChrome>.Register<ScrollBar>(
             "chrome",
             ScrollBarChrome.Full,
-            Impact.Measure,
-            Validate);
+            ChangeImpact.Measure);
 
     /// <summary>Gets or sets compact or full scrollbar chrome.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -174,7 +176,11 @@ public sealed class ScrollBar: Control
     public ScrollBarChrome Chrome
     {
         get => GetValue(ChromeProperty);
-        set => SetValue(ChromeProperty, value);
+        set
+        {
+            Validate(value);
+            SetValue(ChromeProperty, value);
+        }
     }
 
     /// <summary>Identifies the themeable line-or-block fill style property.</summary>
@@ -182,8 +188,7 @@ public sealed class ScrollBar: Control
         StyleProperty<ScrollBarFill>.Register<ScrollBar>(
             "fill",
             ScrollBarFill.Block,
-            Impact.Render,
-            Validate);
+            ChangeImpact.Render);
 
     /// <summary>Gets or sets the generated line or block glyph treatment.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -192,7 +197,11 @@ public sealed class ScrollBar: Control
     public ScrollBarFill Fill
     {
         get => GetValue(FillProperty);
-        set => SetValue(FillProperty, value);
+        set
+        {
+            Validate(value);
+            SetValue(FillProperty, value);
+        }
     }
 
     /// <summary>Gets or sets the printable narrow decrement-button glyph.</summary>
@@ -213,14 +222,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(DecrementGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(DecrementGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultDecrementGlyph = glyph;
-            NotifyChanged(nameof(DecrementGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(DecrementGlyph), ChangeImpact.Render);
         }
     }
 
@@ -242,14 +251,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(IncrementGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(IncrementGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultIncrementGlyph = glyph;
-            NotifyChanged(nameof(IncrementGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(IncrementGlyph), ChangeImpact.Render);
         }
     }
 
@@ -271,14 +280,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(TrackGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(TrackGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultTrackGlyph = glyph;
-            NotifyChanged(nameof(TrackGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(TrackGlyph), ChangeImpact.Render);
         }
     }
 
@@ -300,14 +309,14 @@ public sealed class ScrollBar: Control
             {
                 if (!wasCustom)
                 {
-                    NotifyChanged(nameof(ThumbGlyph), Invalidation.Render);
+                    NotifyPropertyChanged(nameof(ThumbGlyph), ChangeImpact.Render);
                 }
 
                 return;
             }
 
             DefaultThumbGlyph = glyph;
-            NotifyChanged(nameof(ThumbGlyph), Invalidation.Render);
+            NotifyPropertyChanged(nameof(ThumbGlyph), ChangeImpact.Render);
         }
     }
 
@@ -411,7 +420,7 @@ public sealed class ScrollBar: Control
         value = Math.Clamp(value, Minimum, Maximum);
         var previous = _value;
 
-        if (!Set(ref _value, value, Invalidation.Render, nameof(Value)))
+        if (!SetProperty(ref _value, value, ChangeImpact.Render, nameof(Value)))
         {
             return false;
         }

@@ -165,8 +165,8 @@ public sealed class TableTests
 
         engine.Layout(table, size);
 
-        table.Children[0].Bounds.X.ShouldBeNegative();
-        table.Children[0].Bounds.Y.ShouldBeLessThan(table.Bounds.Y);
+        table.HorizontalOffset.ShouldBe(3);
+        table.VerticalOffset.ShouldBe(3);
     }
 
     /// <summary>Verifies headers and light grid lines render around ordinary owned cell controls.</summary>
@@ -305,7 +305,7 @@ public sealed class TableTests
         _ = Should.Throw<ArgumentException>(() => table.Rows.Add(row));
 
         table.Rows.Count.ShouldBe(0);
-        table.Children.Count.ShouldBe(0);
+        table.GetType().GetProperty("Children").ShouldBeNull();
         cell.Parent.ShouldBeNull();
     }
 }

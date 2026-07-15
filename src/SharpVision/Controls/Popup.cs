@@ -3,38 +3,25 @@
 
 namespace SharpVision.Controls;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Terminal.Input;
 
-/// <summary>Displays one owned child on an opaque, framed, anchor-relative surface.</summary>
-public sealed class Popup: Container
+/// <summary>Displays one owned content control on an opaque, framed, anchor-relative surface.</summary>
+public sealed class Popup: ContentControl
 {
 
     #region Construction and ownership
 
-    /// <summary>Initializes a closed capacity-one popup below its eventual anchor.</summary>
-    public Popup() : base(capacity: 1) => HorizontalAlignment = HorizontalAlignment.Stretch;
+    /// <summary>Initializes a closed popup below its eventual anchor.</summary>
+    public Popup() => HorizontalAlignment = HorizontalAlignment.Stretch;
 
-    /// <summary>Gets or atomically sets the content displayed within the popup frame.</summary>
-    /// <remarks>The popup owns child visibility while closed so that closed content cannot receive focus, render, or hit testing.</remarks>
-    /// <exception cref="ArgumentException">The child cannot be owned by this popup.</exception>
-    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The popup or child is disposed.</exception>
-    public Control? Child
+    /// <inheritdoc/>
+    protected override void OnContentChanged(Control? previous, Control? current)
     {
-        get => Children.Count == 0 ? null : Children[0];
-        set
-        {
-            VerifyMutable();
+        base.OnContentChanged(previous, current);
 
-            if (ReferenceEquals(Child, value))
-            {
-                return;
-            }
-
-            Children.SetOnly(value);
-
-            _ = value?.Visibility = IsOpen ? Visibility.Visible : Visibility.Collapsed;
-        }
+        _ = current?.Visibility = IsOpen ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Gets or sets the optional sibling anchor used to place the open surface.</summary>
@@ -43,7 +30,7 @@ public sealed class Popup: Container
     public Control? Anchor
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Arrange);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Arrange);
     }
 
     /// <summary>Gets or sets the preferred anchor-relative placement.</summary>
@@ -60,7 +47,7 @@ public sealed class Popup: Container
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The popup placement is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Arrange);
+            _ = SetProperty(ref field, value, ChangeImpact.Arrange);
         }
     } = PopupPlacement.Below;
 
@@ -74,7 +61,7 @@ public sealed class Popup: Container
     public Glyphs Glyphs
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = Glyphs.Rounded;
 
     /// <summary>Gets the committed visible surface rectangle, or an empty rectangle while closed.</summary>
@@ -84,45 +71,103 @@ public sealed class Popup: Container
 
     #region Visibility and interaction
 
-    /// <summary>Raised immediately before a closing popup hides its child.</summary>
-    /// <remarks>Owners use this event to restore focus while the child remains eligible.</remarks>
+    private bool IsOpenTransitioning { get; set; }
+
+    /// <summary>Raised immediately before a closing popup hides its content.</summary>
+    /// <remarks>Owners use this event to restore focus while the content remains eligible.</remarks>
     public event EventHandler? Closing;
 
-    /// <summary>Raised after a popup has hidden its child.</summary>
+    /// <summary>Raised after a popup has hidden its content and cleared its surface.</summary>
     public event EventHandler? Closed;
 
-    /// <summary>Gets or sets whether the popup surface and child are arranged, rendered, and hit-testable.</summary>
-    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
+    /// <summary>Gets or sets whether the popup surface and content are arranged, rendered, and hit-testable.</summary>
+    /// <remarks>
+    /// A changed value commits and publishes first. Opening then exposes the current content and
+    /// requests focus. Closing therefore raises <see cref="Closing"/> after this property is false:
+    /// current content retains its pre-close availability and the previous <see cref="SurfaceBounds"/>
+    /// remains readable, while the surface is already ineligible for rendering and hit testing. The
+    /// transition then collapses current content, clears the surface bounds, and raises
+    /// <see cref="Closed"/>. Every stage completes when a callback fails, after which the earliest
+    /// failure is rethrown. Reentrant open-state transitions are rejected.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The attached popup is mutated off-dispatcher or an open-state transition is reentered.
+    /// </exception>
     /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
     public bool IsOpen
     {
         get;
         set
         {
-            if (!Set(ref field, value, Invalidation.Measure))
+            VerifyMutable();
+
+            if (IsOpenTransitioning)
+            {
+                throw new InvalidOperationException("Popup open-state transitions cannot be reentered.");
+            }
+
+            if (field == value)
             {
                 return;
             }
 
-            if (!value)
+            IsOpenTransitioning = true;
+            var failure = (ExceptionDispatchInfo?) null;
+
+            try
             {
-                Closing?.Invoke(this, EventArgs.Empty);
+                field = value;
+                CaptureFailure(
+                    () => NotifyPropertyChanged(nameof(IsOpen), ChangeImpact.Measure),
+                    ref failure);
+
+                if (value)
+                {
+                    CaptureFailure(
+                        () =>
+                        {
+                            if (Content is { } child)
+                            {
+                                child.Visibility = Visibility.Visible;
+                            }
+                        },
+                        ref failure);
+                    CaptureFailure(
+                        () =>
+                        {
+                            if (Content is { } focusableChild && FindFocusable(focusableChild) is { } target)
+                            {
+                                _ = FocusOwner?.Focus(target);
+                            }
+                        },
+                        ref failure);
+                }
+                else
+                {
+                    CaptureFailure(
+                        () => Closing?.Invoke(this, EventArgs.Empty),
+                        ref failure);
+                    CaptureFailure(
+                        () =>
+                        {
+                            if (Content is { } child)
+                            {
+                                child.Visibility = Visibility.Collapsed;
+                            }
+                        },
+                        ref failure);
+                    SurfaceBounds = default;
+                    CaptureFailure(
+                        () => Closed?.Invoke(this, EventArgs.Empty),
+                        ref failure);
+                }
+            }
+            finally
+            {
+                IsOpenTransitioning = false;
             }
 
-            if (Child is { } child)
-            {
-                child.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
-            }
-
-            if (value && Child is { } focusableChild && FindFocusable(focusableChild) is { } target)
-            {
-                _ = FocusOwner?.Focus(target);
-            }
-            else if (!value)
-            {
-                SurfaceBounds = default;
-                Closed?.Invoke(this, EventArgs.Empty);
-            }
+            failure?.Throw();
         }
     }
 
@@ -132,22 +177,25 @@ public sealed class Popup: Container
     public bool CloseOnEscape
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.None);
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
     } = true;
 
     /// <inheritdoc/>
-    internal override bool ClipsChildren => false;
+    protected override bool ClipsChildren => false;
 
     /// <inheritdoc/>
     public override Control? HitTest(Point point)
     {
         return !IsOpen || IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled
             ? null
-            : Child?.HitTest(point) ?? (SurfaceBounds.Contains(point) ? this : null);
+            : Content?.HitTest(point) ?? (SurfaceBounds.Contains(point) ? this : null);
     }
 
     /// <inheritdoc/>
-    internal override Control? HitTestPopup(Point point) => IsOpen ? HitTest(point) : null;
+    internal override Control? HitTestPopupCore(Point point) => IsOpen ? HitTest(point) : null;
+
+    /// <inheritdoc/>
+    internal override OwnedControlLayer IntrinsicLayer => OwnedControlLayer.Popup;
 
     #endregion
 
@@ -159,20 +207,31 @@ public sealed class Popup: Container
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        if (!IsOpen || Child is not { } child)
+        if (Content is not { } child)
         {
             return default;
         }
 
-        child.Measure(new Constraint(Subtract(constraint.Width, 2), Subtract(constraint.Height, 2)));
-        return SurfaceSize(child, anchorWidth: 0, constraint.Width, constraint.Height);
+        _ = MeasureChild(
+            child,
+            new Constraint(Subtract(constraint.Width, 2), Subtract(constraint.Height, 2)));
+        return IsOpen
+            ? SurfaceSize(child, anchorWidth: 0, constraint.Width, constraint.Height)
+            : default;
     }
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        if (!IsOpen || Child is not { } child)
+        if (Content is not { } child)
         {
+            SurfaceBounds = default;
+            return;
+        }
+
+        if (!IsOpen)
+        {
+            ArrangeChild(child, bounds, ResolvedAxes.Both);
             SurfaceBounds = default;
             return;
         }
@@ -194,12 +253,12 @@ public sealed class Popup: Container
         y = Math.Clamp(y, bounds.Y, Math.Max(bounds.Y, bounds.Bottom - desired.Height));
         SurfaceBounds = new Rect(x, y, desired.Width, desired.Height);
 
-        // The child is constrained to the frame interior. This keeps lists and
+        // Content is constrained to the frame interior. This keeps lists and
         // scrollbars inside the popup even when an edge forces placement to flip.
-        child.Arrange(
+        ArrangeChild(
+            child,
             new Thickness(1).Deflate(SurfaceBounds),
-            widthResolved: true,
-            heightResolved: true);
+            ResolvedAxes.Both);
     }
 
     /// <inheritdoc/>
@@ -254,6 +313,20 @@ public sealed class Popup: Container
         {
             Closing = null;
             Closed = null;
+        }
+    }
+
+    private static void CaptureFailure(System.Action action, ref ExceptionDispatchInfo? failure)
+    {
+        Debug.Assert(action is not null, "Popup transition capture requires one action.");
+
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
         }
     }
 
@@ -345,9 +418,17 @@ public sealed class Popup: Container
             return control;
         }
 
-        Control? result = null;
-        control.VisitChildren(child => result ??= FindFocusable(child));
-        return result;
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            if (FindFocusable(control.OwnedControlAt(index)) is { } result)
+            {
+                return result;
+            }
+        }
+
+        return null;
     }
 
     #endregion

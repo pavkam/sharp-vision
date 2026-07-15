@@ -27,6 +27,7 @@ internal static class ThemeBuilder
         theme.SetStyle(BuildButtonStyle());
         theme.SetStyle(BuildComboBoxStyle());
         theme.SetStyle(BuildListStyle());
+        theme.SetStyle(BuildTextInputStyle());
         theme.SetStyle(BuildScrollBarStyle());
         theme.SetStyle(BuildCheckBoxStyle());
         theme.SetStyle(BuildRadioButtonStyle());
@@ -62,6 +63,7 @@ internal static class ThemeBuilder
 
         style.Set(Control.BorderColorProperty, State.Hovered, ThemeColors.Accent);
         style.Set(Control.BorderColorProperty, State.Focused, ThemeColors.Accent);
+        style.Set(Control.AttributesProperty, State.Focused, TerminalAttributes.Underline);
         style.Set(Control.BorderColorProperty, State.Pressed, ThemeColors.Accent);
         style.Set(Control.ForegroundProperty, State.Pressed, ThemeColors.Accent);
 
@@ -95,6 +97,16 @@ internal static class ThemeBuilder
         var style = new ControlStyle<List>();
 
         style.Set(Control.BackgroundProperty, State.Hovered, ThemeColors.Surface);
+
+        return style;
+    }
+
+    private static ControlStyle<TextInput> BuildTextInputStyle()
+    {
+        var style = new ControlStyle<TextInput>();
+
+        style.Set(TextInput.ScrollBarChromeProperty, State.Normal, ScrollBarChrome.Thin);
+        style.Set(TextInput.ScrollBarFillProperty, State.Normal, ScrollBarFill.Line);
 
         return style;
     }

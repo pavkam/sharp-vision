@@ -44,20 +44,6 @@ Overwriting or clearing either cell first repairs the complete previous owner.
 cluster at the right edge; none emits or stores half a glyph. Child canvases use
 the geometric intersection of their requested clip, parent clip, and frame.
 
-`Canvas.DrawLine` draws both endpoints with deterministic integer Bresenham
-traversal. `DrawEllipse` rasterizes an outline inside half-open bounds with
-integer midpoint geometry; empty bounds draw nothing and a one-cell axis
-degrades to a line or point. `DrawCircle` uses cell-coordinate radius, draws one
-center cell at radius zero, and rejects a negative radius before mutation. All
-three validate one printable narrow Rune before drawing, use signed wide
-intermediates, and skip points outside the effective Canvas/frame clip. Calls
-are repeatable and allocate no managed object per rasterized cell.
-
-Circle geometry intentionally uses terminal cells rather than guessed physical
-pixels. Because cells are commonly taller than they are wide, a caller that
-wants a physically round outline uses `DrawEllipse` with a wider cell rectangle
-or derives that rectangle from known pixel metrics.
-
 The encoder minimizes cursor moves and style transitions only after correctness
 is known. When synchronized output is available, one complete frame is wrapped
 according to the
@@ -66,30 +52,49 @@ according to the
 ## Control rendering
 
 `Control.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It clears
-render invalidation before extension code, intersects the supplied ancestor
-canvas with `VisualBounds`, and passes that visual canvas to `OnRender`. This
-allows the control's own shadow or other deliberate visual overflow to draw
-outside committed `Bounds` while remaining clipped by the frame and every
-retained ancestor clip. It separately prepares a `Bounds`-clipped canvas for
-children: `RenderChildren` receives that canvas when `ClipsChildren` is true, or
-the inherited ancestor canvas when the control deliberately permits unclipped
-descendants. An invalidation raised during either callback remains pending for
-the next frame; an exception restores render dirtiness before propagating.
+render invalidation before extension code, clips own drawing to `VisualBounds`,
+calls `OnRender`, then renders owned children through either the arranged
+`Bounds` clip or the documented unclipped-child path. An invalidation raised
+during either callback therefore remains pending for the next frame. An
+exception restores render dirtiness before propagating.
 
-Hidden, collapsed, and effectively hidden subtrees draw nothing. Containers
-render their own content before children in collection order, so later children
-have higher z-order. A descendant retains the inherited ancestor clip and adds
-each clipping parent's arranged `Bounds`; a parent with `ClipsChildren = false`
-omits only its own bounds intersection. Coordinates remain absolute terminal
-cells, avoiding accumulated transform rounding. Pointer hit testing continues to
-use arranged bounds and the separate documented overflow policy, never
-`VisualBounds`.
+Hidden, collapsed, and effectively hidden subtrees draw nothing. Every control
+renders normal-layer ownership slots in slot-registration then item order, so a
+later eligible target has higher default z-order. After the root's ordinary
+pass, popup-layer controls and promoted popup descendants render in the same
+stable global order above every ordinary sibling. A promoted surface is omitted
+from the ordinary pass, so elevation never invokes its content twice.
+Specialized Canvas, Overlay, Stack, and scrolling-container passes retain their
+documented ordering and viewport semantics. Every descendant canvas intersects
+all applicable ancestor clips; coordinates remain absolute terminal cells,
+avoiding accumulated transform rounding.
+
+The base `OnRender` implementation calls `RenderChrome`, which draws configured
+body fill, per-side border, and intrinsic shadow. A derived control that
+completely overrides `OnRender` must call `RenderChrome` before custom content
+when it opts into those visuals; the base layout pipeline still reserves
+`BorderThickness` even when custom drawing omits the border. Base chrome draws
+shadow, then an opaque body, then border. Body opacity is active when `FillMode`
+is opaque or a `Background` value resolves from any cascade layer. Partial
+borders draw only enabled edges and repair glyphs that are wide under the active
+ambiguous-width policy to portable ASCII. On the base path, shadow expands own
+`VisualBounds` by its signed offset without reserving layout, child space, or
+hit targets, and ancestor canvas clips still contain that overflow. Button
+intentionally translates its owned content while pressed.
+
+Button uses specialized `ControlChrome` options for pressed-face translation,
+normal-appearance shadow styling, and its shadow gap. Window instead draws its
+bespoke titled uniform frame and explicit shadow without calling base
+`RenderChrome`; its frame is not `BorderThickness` chrome.
+
+Sealed bespoke renderers such as `Text`, `FigletText`, and `TextInput` do not
+call base `RenderChrome`. Their `BorderThickness` still reserves layout, but a
+caller that needs a visible frame or shadow composes an ordinary
+chrome-rendering container such as `Dock` around them.
 
 Derived controls draw only through semantic `Canvas` operations and use their
-border-then-padding-deflated content bounds. The base `OnRender` draws shared
-body, border, and shadow chrome; a full `OnRender` override calls protected
-`RenderChrome` when it opts into that intrinsic chrome. Controls never write
-ANSI, split graphemes, or touch pooled frame storage.
+border-and-padding-deflated `ContentBounds`. They never write ANSI, split
+graphemes, repeat base box-model deflation, or touch pooled frame storage.
 
 ## Commit and invalidation
 
@@ -137,11 +142,13 @@ capability snapshot is always a full redraw.
 
 ## Correctness oracle
 
-Phase 5A panels commit geometry and child order. Every control may rasterize its
-intrinsic border, shadow, and opaque fill through shared chrome before
-descendants render; Text additionally draws committed grapheme-aligned slices
-and a typed ellipsis. No control emits escape bytes; frame differencing and
-terminal encoding remain below the canvas boundary.
+Phase 5A panels commit geometry and child order. Text draws committed
+grapheme-aligned slices and a typed ellipsis, while intrinsic control chrome
+fills the body and draws validated one-cell border glyphs through the same
+semantic canvas. Composite shadow preserves the destination grapheme and
+restyles its complete cell owner; block-glyph shadow replaces only the
+translated, non-body footprint. No control emits escape bytes; frame
+differencing and terminal encoding remain below the canvas boundary.
 
 Tests apply incremental bytes for frame B to a virtual terminal initialized by
 frame A and compare the final screen, cursor, style, hyperlink, and mode state

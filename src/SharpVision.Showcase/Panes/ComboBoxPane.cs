@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the ComboBox control with live popup-selection specimens.</summary>
-internal sealed class ComboBoxPane: View
+internal sealed class ComboBoxPane: CompositeControl
 {
+
+    internal ComboBoxPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "ComboBox";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var density = new Text("Selected: Comfortable");
         var comboBox = new ComboBox()

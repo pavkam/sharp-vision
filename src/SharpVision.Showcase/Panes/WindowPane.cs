@@ -10,13 +10,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Window control with framed chrome and titled application surface specimens.</summary>
-internal sealed class WindowPane: View
+internal sealed class WindowPane: CompositeControl
 {
+
+    internal WindowPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Window";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var chromeOptions = Doc.Row(
             WindowStage(WindowVariant("Left", Glyphs.Rounded, WindowTitlePlacement.Left), 18, 8),
@@ -57,7 +59,7 @@ internal sealed class WindowPane: View
             HasShadow = true,
             ShadowMode = ShadowMode.Composite,
             ShadowOffset = new Point(1, 1),
-            Child = form,
+            Content = form,
         };
 
         var stage = new Canvas()
@@ -99,7 +101,7 @@ internal sealed class WindowPane: View
             Background = Color.Indexed(0),
             Attributes = TerminalAttributes.Bold,
             Padding = new Thickness(1, 0),
-            Child = new Text("Explicit chrome over theme defaults") { Overflow = Overflow.Wrap },
+            Content = new Text("Explicit chrome over theme defaults") { Overflow = Overflow.Wrap },
         };
 
         var overlayWindow = new Window
@@ -109,7 +111,7 @@ internal sealed class WindowPane: View
             Title = "Overlay child",
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Child = new Button { Content = new Text("Focusable content") },
+            Content = new Button { Content = new Text("Focusable content") },
         };
         var overlayComposition = new Overlay
         {
@@ -130,14 +132,14 @@ internal sealed class WindowPane: View
             Width = Length.Cells(24),
             Height = Length.Cells(5),
             Title = "A deliberately long title that clips safely",
-            Child = new Text("Corners survive") { Overflow = Overflow.Wrap },
+            Content = new Text("Corners survive") { Overflow = Overflow.Wrap },
         };
         var minimum = new Window
         {
             Width = Length.Cells(14),
             Height = Length.Cells(4),
             Title = "Minimum",
-            Child = new Text("Readable"),
+            Content = new Text("Readable"),
         };
 
         return Doc.Page(
@@ -151,7 +153,7 @@ internal sealed class WindowPane: View
                     "Rounded, paired, and ASCII",
                     "The three windows place titles left, center, and right without allowing text to overwrite corners.",
                     chromeOptions,
-                    "var window = new Window\n{\n    Title = \"Project settings\",\n    Child = form,\n};")),
+                    "var window = new Window\n{\n    Title = \"Project settings\",\n    Content = form,\n};")),
             Doc.Section(
                 "🪟",
                 "Shadows",
@@ -204,7 +206,7 @@ internal sealed class WindowPane: View
         TitlePlacement = placement,
         Glyphs = glyphs,
         ShadowOffset = new Point(1, 1),
-        Child = new Text("Preview")
+        Content = new Text("Preview")
         {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,

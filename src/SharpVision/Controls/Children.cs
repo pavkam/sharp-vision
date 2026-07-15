@@ -3,255 +3,112 @@
 
 namespace SharpVision.Controls;
 
-
-
-/// <summary>Owns one container's validated ordered child controls.</summary>
+/// <summary>Adapts one registered container-child slot as a mutable ordered collection.</summary>
 public sealed class Children: IList<Control>, IReadOnlyList<Control>
 {
-    private readonly List<Control> _items = [];
-    private readonly Container _owner;
-    private readonly int _capacity;
+    private readonly OwnedControlSlot _slot;
 
-    /// <summary>Initializes an empty collection for one non-null owner and finite capacity.</summary>
+    /// <summary>Raised after one complete collection change, including child-initiated disposal.</summary>
+    /// <remarks>
+    /// This internal seam lets framework ownership roles observe the same committed slot used by
+    /// public containers without exposing either the slot or its notifications to callers.
+    /// </remarks>
+    internal event Action? Changed
+    {
+        add => _slot.Changed += value;
+        remove => _slot.Changed -= value;
+    }
+
+    /// <summary>Initializes an empty public container-child collection.</summary>
     /// <param name="owner">The owning container.</param>
     /// <param name="capacity">The non-negative maximum child count.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is negative.</exception>
     internal Children(Container owner, int capacity)
+        : this(
+            owner,
+            capacity,
+            new OwnedControlOptions(
+                OwnedControlRole.ContainerChild,
+                OwnedControlLayer.Normal,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: null,
+                ChangeImpact.Measure))
+    {
+    }
+
+    /// <summary>Initializes an adapter over one distinct private ownership slot.</summary>
+    /// <param name="owner">The non-null owning control.</param>
+    /// <param name="capacity">The non-negative maximum child count.</param>
+    /// <param name="options">The validated ownership metadata.</param>
+    internal Children(Control owner, int capacity, OwnedControlOptions options)
     {
         ArgumentNullException.ThrowIfNull(owner);
-        ArgumentOutOfRangeException.ThrowIfNegative(capacity);
-        _owner = owner;
-        _capacity = capacity;
+        _slot = owner.RegisterOwnedSlot(options, capacity);
     }
 
     /// <inheritdoc/>
     public Control this[int index]
     {
-        get => _items[index];
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            _owner.VerifyMutable();
-            var previous = _items[index];
-
-            if (ReferenceEquals(previous, value))
-            {
-                return;
-            }
-
-            Validate(value);
-            Detach(previous);
-            Attach(value);
-            _items[index] = value;
-            _owner.Invalidate(Invalidation.Measure);
-        }
+        get => _slot[index];
+        set => _slot[index] = value;
     }
 
     /// <inheritdoc/>
-    public int Count => _items.Count;
+    public int Count => _slot.Count;
 
     /// <inheritdoc/>
     public bool IsReadOnly => false;
 
     /// <inheritdoc/>
-    public void Add(Control item) => Insert(Count, item);
+    public void Add(Control item) => _slot.Add(item);
 
     /// <inheritdoc/>
-    public void Clear()
-    {
-        _owner.VerifyMutable();
-
-        if (_items.Count == 0)
-        {
-            return;
-        }
-
-        for (var index = _items.Count - 1; index >= 0; index--)
-        {
-            Detach(_items[index]);
-        }
-
-        _items.Clear();
-        _owner.Invalidate(Invalidation.Measure);
-    }
+    public void Clear() => _slot.Clear();
 
     /// <inheritdoc/>
-    public bool Contains(Control item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        return _items.Contains(item);
-    }
+    public bool Contains(Control item) => _slot.Contains(item);
 
     /// <inheritdoc/>
-    public void CopyTo(Control[] array, int arrayIndex)
-    {
-        ArgumentNullException.ThrowIfNull(array);
-        _items.CopyTo(array, arrayIndex);
-    }
+    public void CopyTo(Control[] array, int arrayIndex) => _slot.CopyTo(array, arrayIndex);
 
-    /// <inheritdoc/>
     /// <summary>Gets the allocation-free value enumerator used by direct iteration.</summary>
-    public List<Control>.Enumerator GetEnumerator() => _items.GetEnumerator();
+    /// <returns>The underlying slot enumerator.</returns>
+    public List<Control>.Enumerator GetEnumerator() => _slot.GetEnumerator();
 
     /// <inheritdoc/>
-    public int IndexOf(Control item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        return _items.IndexOf(item);
-    }
+    public int IndexOf(Control item) => _slot.IndexOf(item);
 
     /// <inheritdoc/>
-    public void Insert(int index, Control item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        _owner.VerifyMutable();
-        ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) _items.Count);
-
-        if (_items.Count >= _capacity)
-        {
-            throw new InvalidOperationException("The child collection is at capacity.");
-        }
-
-        Validate(item);
-        Attach(item);
-        _items.Insert(index, item);
-        _owner.Invalidate(Invalidation.Measure);
-    }
+    public void Insert(int index, Control item) => _slot.Insert(index, item);
 
     /// <summary>Atomically assigns or clears the only child of a capacity-one collection.</summary>
     /// <param name="item">The new detached child, or null to clear the collection.</param>
-    /// <exception cref="ArgumentException"><paramref name="item"/> cannot be owned by this container.</exception>
-    /// <exception cref="InvalidOperationException">
-    /// The owner is mutated off-dispatcher or the collection capacity is not one.
-    /// </exception>
+    /// <exception cref="ArgumentException"><paramref name="item"/> cannot be owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">The owner is off-dispatcher or capacity is not one.</exception>
     /// <exception cref="ObjectDisposedException">The owner or new child is disposed.</exception>
     internal void SetOnly(Control? item)
     {
-        _owner.VerifyMutable();
-
-        if (_capacity != 1)
+        if (_slot.Capacity != 1)
         {
             throw new InvalidOperationException("Only a capacity-one collection supports SetOnly.");
         }
 
-        var previous = _items.Count == 0 ? null : _items[0];
-
-        if (ReferenceEquals(previous, item))
-        {
-            return;
-        }
-
-        if (item is not null)
-        {
-            Validate(item);
-        }
-
-        if (previous is not null)
-        {
-            Detach(previous);
-        }
-
-        if (item is null)
-        {
-            _items.Clear();
-        }
-        else
-        {
-            Attach(item);
-
-            if (_items.Count == 0)
-            {
-                _items.Add(item);
-            }
-            else
-            {
-                _items[0] = item;
-            }
-        }
-
-        _owner.Invalidate(Invalidation.Measure);
+        _slot.ReplaceAll(item is null ? [] : [item]);
     }
+
+    /// <summary>Atomically replaces the complete child collection.</summary>
+    /// <param name="items">The non-null candidate sequence.</param>
+    internal void ReplaceAll(IEnumerable<Control> items) => _slot.ReplaceAll(items);
 
     /// <inheritdoc/>
-    public bool Remove(Control item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        _owner.VerifyMutable();
-        var index = _items.IndexOf(item);
-
-        if (index < 0)
-        {
-            return false;
-        }
-
-        RemoveAt(index);
-        return true;
-    }
+    public bool Remove(Control item) => _slot.Remove(item);
 
     /// <inheritdoc/>
-    public void RemoveAt(int index)
-    {
-        _owner.VerifyMutable();
-        var item = _items[index];
-        _items.RemoveAt(index);
-        Detach(item);
-        _owner.Invalidate(Invalidation.Measure);
-    }
+    public void RemoveAt(int index) => _slot.RemoveAt(index);
 
     /// <inheritdoc/>
-    IEnumerator<Control> IEnumerable<Control>.GetEnumerator() => _items.GetEnumerator();
+    IEnumerator<Control> IEnumerable<Control>.GetEnumerator() => _slot.Items.GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
-
-    private void Validate(Control item)
-    {
-        Debug.Assert(item is not null, "Children validation requires a non-null item.");
-
-        if (item.Parent is not null || item.Dispatcher is not null)
-        {
-            throw new ArgumentException("The child already belongs to a tree.", nameof(item));
-        }
-
-        for (Control? ancestor = _owner; ancestor is not null; ancestor = ancestor.Parent)
-        {
-            if (ReferenceEquals(ancestor, item))
-            {
-                throw new ArgumentException("Adding the child would create a cycle.", nameof(item));
-            }
-        }
-
-        item.ValidateAttachment();
-    }
-
-    private void Attach(Control item)
-    {
-        Debug.Assert(item is not null, "Children attachment requires a non-null item.");
-
-        item.SetParent(_owner);
-        item.SetFocusOwner(_owner.FocusOwner);
-        item.SetCaptureOwner(_owner.CaptureOwner);
-        item.PropagateThemeContext(_owner.ThemeContext);
-
-        if (_owner.Dispatcher is { } dispatcher)
-        {
-            item.Attach(dispatcher, _owner.CellPolicy);
-        }
-        else
-        {
-            item.SetCellPolicy(_owner.CellPolicy);
-        }
-    }
-
-    private static void Detach(Control item)
-    {
-        Debug.Assert(item is not null, "Children detachment requires a non-null item.");
-
-        item.NotifyUnavailable(ReleaseReason.Detached);
-        item.SetFocusOwner(null);
-        item.SetCaptureOwner(null);
-        item.PropagateThemeContext(null);
-        item.Detach();
-        item.SetParent(null);
-    }
+    /// <inheritdoc/>
+    IEnumerator IEnumerable.GetEnumerator() => _slot.Items.GetEnumerator();
 }

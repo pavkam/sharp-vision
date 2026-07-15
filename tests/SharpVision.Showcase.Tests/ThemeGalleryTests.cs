@@ -179,7 +179,7 @@ public sealed class ThemeGalleryTests
             TestContext.Current.CancellationToken);
 
         await WaitUntilAsync(
-            () => Find<ShowcasePanel>(gallery.Content, static _ => true) is not null,
+            () => Find<ShowcasePanel>(gallery.CurrentPage, static _ => true) is not null,
             application,
             "Theming page content");
 
@@ -207,16 +207,16 @@ public sealed class ThemeGalleryTests
 
     private static IEnumerable<Control> Visit(Control control)
     {
-        if (control is Container container)
-        {
-            foreach (var child in container.Children)
-            {
-                yield return child;
+        var count = control.OwnedControlCount;
 
-                foreach (var descendant in Visit(child))
-                {
-                    yield return descendant;
-                }
+        for (var index = 0; index < count; index++)
+        {
+            var child = control.OwnedControlAt(index);
+            yield return child;
+
+            foreach (var descendant in Visit(child))
+            {
+                yield return descendant;
             }
         }
     }

@@ -19,6 +19,8 @@ public sealed class TmuxSmokeTests
             FindExecutable("tmux") is not null,
             "tmux is not installed.");
 
+        using var gallery = new Gallery();
+        var textPageIndex = PageIndex(gallery.Pages, "Text");
         var session = $"sharpvision-geometry-{Environment.ProcessId}";
         var root = RepositoryRoot();
         var build = new ProcessStartInfo()
@@ -57,7 +59,9 @@ public sealed class TmuxSmokeTests
             var navigate = new ProcessStartInfo()
             {
                 FileName = "tmux",
-                Arguments = $"send-keys -t {session} " + string.Join(' ', Enumerable.Repeat("Down", 15)),
+                Arguments =
+                    $"send-keys -t {session} " +
+                    string.Join(' ', Enumerable.Repeat("Down", textPageIndex)),
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -164,6 +168,22 @@ public sealed class TmuxSmokeTests
         }
 
         return null;
+    }
+
+    private static int PageIndex(IReadOnlyList<string> pages, string page)
+    {
+        ArgumentNullException.ThrowIfNull(pages);
+        ArgumentException.ThrowIfNullOrWhiteSpace(page);
+
+        for (var index = 0; index < pages.Count; index++)
+        {
+            if (string.Equals(pages[index], page, StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        throw new InvalidOperationException($"The {page} page is not registered.");
     }
 
     private static string RepositoryRoot()

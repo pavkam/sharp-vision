@@ -140,6 +140,93 @@ public sealed class PropertyTests
         child.EffectiveIsEnabled.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a throwing visibility subscriber cannot strand manager ownership.</summary>
+    [Fact]
+    public async Task Visibility_WhenPropertySubscriberThrows_ReleasesFocusAndCaptureBeforeRethrowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var child = new ProbeControl { CanFocus = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var capture = new CaptureManager(root);
+            focus.Focus(child).ShouldBeTrue();
+            child.CaptureProbePointer().ShouldBeTrue();
+            var expected = new InvalidOperationException("The visibility subscriber failed.");
+            Control? observedFocus = null;
+            Control? observedCapture = null;
+            child.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName != nameof(Control.Visibility))
+                {
+                    return;
+                }
+
+                observedFocus = focus.Focused;
+                observedCapture = capture.Captured;
+                throw expected;
+            };
+
+            var exception = Should.Throw<InvalidOperationException>(
+                () => child.Visibility = Visibility.Collapsed);
+
+            exception.ShouldBeSameAs(expected);
+            child.Visibility.ShouldBe(Visibility.Collapsed);
+            observedFocus.ShouldBeNull();
+            observedCapture.ShouldBeNull();
+            focus.Focused.ShouldBeNull();
+            capture.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies cleanup failure remains authoritative while enabled-state publication completes.</summary>
+    [Fact]
+    public async Task IsEnabled_WhenCleanupAndPropertySubscriberThrow_CompletesCleanupAndPreservesFirstFailureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var child = new ProbeControl
+            {
+                CanFocus = true,
+                ThrowOnPointerCaptureCancellation = true,
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var capture = new CaptureManager(root);
+            focus.Focus(child).ShouldBeTrue();
+            child.CaptureProbePointer().ShouldBeTrue();
+            var propertySubscriberRan = false;
+            child.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName != nameof(Control.IsEnabled))
+                {
+                    return;
+                }
+
+                propertySubscriberRan = true;
+                focus.Focused.ShouldBeNull();
+                capture.Captured.ShouldBeNull();
+                throw new InvalidOperationException("The enabled subscriber failed.");
+            };
+
+            var exception = Should.Throw<InvalidOperationException>(() => child.IsEnabled = false);
+
+            exception.Message.ShouldBe("The probe capture-cancellation callback failed.");
+            child.IsEnabled.ShouldBeFalse();
+            propertySubscriberRan.ShouldBeTrue();
+            focus.Focused.ShouldBeNull();
+            capture.Captured.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies attached property mutation is dispatcher-affine.</summary>
     [Fact]
     public async Task Width_WhenAttachedAndSetOffThread_ThrowsBeforeMutationAsync()

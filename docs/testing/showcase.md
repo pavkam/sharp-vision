@@ -2,129 +2,70 @@
 
 ## Showcase testing
 
-The showcase catalog test contains the exact concrete shipped-control inventory
-and fails when a control lacks its own page, wrapped marked-`Text`
-documentation, a fresh live example, progressive teaching sections, or a compact
-escaped C# excerpt. Each example tree must contain the control named by its
-sidebar entry and must be detached and independently owned. Property tables and
-separate Practical recipe prose are not required; application-shaped recipes
-live beside their specimens.
-
-## Progressive content contract
-
-Every page has at least four subject-specific teaching areas, a live subject
-control, one reproducible source excerpt, an application-shaped composition, and
-a relevant state, interaction, layout, Unicode, or constrained-size proof. The
-content test requires these stable areas:
-
-| Page        | Required teaching areas                                                            |
-| ----------- | ---------------------------------------------------------------------------------- |
-| Button      | Start here; Commands; Window roles; Chrome and states                              |
-| Canvas      | Canvas layout; Constraints; Drawing fundamentals; Useful custom drawing            |
-| CheckBox    | Two-state choice; Three-state policy; Marks; Form recipe                           |
-| ComboBox    | Start here; Commit versus dismiss; Long choices; Constrained placement             |
-| Dock        | Application shell; Order and spacing; Sizing from the remainder; Constrained space |
-| FigletText  | Live editor; Font comparison; Layout options; Large output                         |
-| Grid        | Track fundamentals; Percentage and limits; Responsive form; Constrained space      |
-| List        | Single selection; Selection modes; Templates; Long data                            |
-| Menu        | Command menu; Menu bar; Popup composition; Selection and invocation                |
-| Overlay     | Layering; Stable ties; Pointer transparency; Clipping                              |
-| Popup       | Anchored menu; Placement; Fallback and clamp; Lifecycle                            |
-| RadioButton | Named group; Arrow traversal; Unnamed scope; Events                                |
-| ScrollBar   | Range anatomy; Input parity; Live range; Tiny rails                                |
-| Stack       | Orientation; Mixed sizing; Visibility; Constrained space                           |
-| Table       | Column sizing; Interactive cells; Dynamic rows; Boundary states                    |
-| Text        | Safe content; Markup; Overflow; Unicode                                            |
-| TextInput   | Editing and submission; Selection; Clipboard and history; Multiline                |
-| Window      | Frame and title; Shadows; Default and cancel; Boundaries                           |
-| Theming     | Application theme; Catalog; Visual states; Third-party controls                    |
-
-The table is a minimum navigation contract, not a maximum example count. Tests
-also exercise page-defining behavior: programmatic activation, custom marks,
-empty and multiple selection, responsive form layout, dynamic rows, popup
-lifecycle order, FIGfont comparison, theme catalog metadata, opposing Canvas
-constraints, and custom semantic drawing.
+The showcase catalog test fixes the exact 19-page inventory and requires Button
+to be the initial page and Canvas to occupy index 1. Every page contains wrapped
+marked-Text Overview documentation and builds a fresh, detached, independently
+owned live tree. Each entry's tree contains the control named by that sidebar
+entry; the Theming page is the deliberate composition-page exception.
 
 Navigation tests require the executable showcase policy to emit xterm any-event
 tracking (`1003`) and SGR cell-mouse mode enables before its first frame. They
 then drive raw SGR primary-pointer input through the public Application to
-select a framed dashboard entry, move and focus sidebar selection through
-decoded arrow input, activate Button through keyboard input, scroll the main
-pane with wheel reports, edit TextInput through decoded text, and retain
-selection after pixel-aware resize. Its ScrollBar proof requires an intermediate
-SGR move to commit a value before the release reaches the endpoint. A separate
-startup test requires the first frame to commit, the initial sidebar entry to
-take focus, and shutdown to complete without runtime failure.
+select an entry in the intrinsically bordered `Dock` sidebar, move and focus
+sidebar selection through decoded arrow input, activate Button through keyboard
+input, scroll the main pane with wheel reports, edit TextInput through decoded
+text, and retain selection after pixel-aware resize. Its ScrollBar proof
+requires an intermediate SGR move to commit a value before the release reaches
+the endpoint. A separate startup test requires the first frame to commit, the
+initial sidebar entry to take focus, and shutdown to complete without runtime
+failure.
 
 The same runtime suite targets an SGR wheel report at the overflowing multiline
 `TextInput` specimen. It proves decoded terminal input advances the editor's own
-`VerticalOffset` while the enclosing page-body documentation `Stack` retains its
-previous offset, protecting leaf-first wheel routing from future regressions. A
-separate shell test scrolls that body and requires the fixed page
-identity/Overview header to retain its exact bounds.
+`VerticalOffset` while the enclosing documentation Stack's intrinsic scroll
+offset remains unchanged, protecting leaf-first wheel routing from future
+regressions.
 
-Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
-cells. They verify selected identity, the `SHARP VISION` sidebar identity,
+Virtual-screen assertions render all 19 pages at 30 by 8, 80 by 24, and 140 by
+40 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
 component navigation, non-default cell colors, page headings, automatic
-overflow, semantic text, and every wide-cell continuation relationship. The live
-tmux smoke test supplements but does not replace cell, event, focus, resize, or
-scrolling assertions. It sends Down, then a no-button SGR motion report, proves
-Canvas receives the visible hover marker, and proves a terminal leave report
-clears it. It next sends independent complete SGR clicks for Canvas and Button,
-waiting for each visible page change without adding a trailing key that could
-mask input buffering. It also opens and selects the Figlet font dropdown, then
-drags the ScrollBar thumb with SGR press, motion, and release reports, asserting
-each visible committed value.
+overflow, semantic text, and every wide-cell continuation relationship. The
+discovery helpers traverse every registered owned-control slot and never assume
+descendants are limited to `Container.Children`. The checked-in
+[live tmux capture](../images/showcase-dashboard.png) is visually reviewed but
+does not replace cell, event, focus, resize, or scrolling assertions. It is also
+a required live interaction smoke test: it sends Down, proves the initial Button
+selection moves to Canvas, and sends Up to return to Button. A no-button SGR
+motion report then proves Canvas receives the visible hover marker, and a
+terminal leave report clears it. The smoke test next sends independent complete
+SGR clicks for Canvas and Button, waiting for each visible page change without
+adding a trailing key that could mask input buffering. It also opens and selects
+the Figlet font dropdown, then drags the ScrollBar thumb with SGR press, motion,
+and release reports, asserting each visible committed value.
 
-Current `Doc.Page` panes use a fixed Surface header followed by wrapped
-`Doc.Section` groups in an independently scrolling body. Tests require one
-explicit emoji prefix and bold Accent text on every section, bold plain example
-titles, dim descriptions, and Info source labels. Each `Doc.Example` contains
-actionable marked-`Text` guidance, one live specimen, and optionally a framed C#
-excerpt escaped through `Text.Escape`. Tests render special characters in an
-excerpt to prove generic syntax, backslashes, and comparison operators remain
-literal visible text. Footer geometry tests require the Appearance heading,
-full-width picker, full-width Quit action, and trailing `Ctrl+Q` hint to remain
-ordered and non-overlapping at typical and constrained heights.
+Every page must contain a wrapped marked `Text` Overview. Practical-recipe
+guidance is optional; when a page supplies it, the text must wrap. Pages compose
+`Doc.Example` blocks rather than mandatory property or interaction tables, and
+live specimens use intrinsic control chrome when they need a frame.
 
-Canvas has dedicated layout assertions for fixed, percentage, trailing-edge,
-opposing-edge stretch, explicit-size precedence, intrinsic, negative-origin,
-layering, clipping, and pointer-transparent stages. Separate custom-control
-samples prove line/box topology, shade and quadrants, fill/clear, Unicode clip
-repair, exact line/circle/ellipse cells and clipping, deterministic charting,
-and routed pointer readout through semantic cells. Grid tests require visible
-two-to-one star interiors. Table tests require intrinsic interactive cells,
-fully visible headerless shortcut rows, and deliberate both-axis overflow with
-aligned chrome. Every sample validates wide-cell continuation ownership under
-the [rendering correctness oracle](rendering.md#correctness-oracle). Shadow is
-intrinsic control chrome rather than a catalog page: focused control-frame tests
-prove composite and block-glyph footprints, clipping, wide-cell styling, and
-hit-test exclusion, while Button and Window retain visible composite,
-block-glyph, and shadow-disabled variants.
-
-Layer tests require every fresh Popup page to begin with closed promoted
-surfaces. They drive Above, Below, Left, and Right controls and require the same
-Popup surface to open and move around one anchor. Popup and Window surfaces must
-overlap populated backdrop bounds; Window children and shadows remain inside
-readable stages, and no two-cell Window is used as a visual lesson. Theme
-showcase tests require a shadowless baseline and semantic type-styled Button, a
-concise semantic readout, and no raw `Glyphs` record formatting in visible text.
+Canvas has dedicated virtual-screen assertions and must retain its labeled
+fixed, percentage, edge-constraint, and clipping stages within the viewport.
+Button and Window assertions continue to cover intrinsic composite and
+block-glyph shadow properties through their live specimens. The Theming page
+also proves that an unprivileged showcase-authored derivative with a custom
+render override calls `RenderChrome` before custom content (its caption and
+body), preserving its intrinsic rounded frame.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The
 showcase applies that full-surface editor style to every editable, read-only,
 password, limited, multiline, and Figlet text input.
 
-Application input tests require deterministic double-click word selection and an
-application-owned clipboard path across focused TextInputs. `Ctrl+C` and
-`Ctrl+X` must honor selection, read-only, and password rules; `Ctrl+V` must use
-the normal edit-policy, event, Unicode, and undo path. The gallery reserves
-`Ctrl+Q`, not `Ctrl+C`, for global exit.
-
 Showcase examples compile as production code and use no internal APIs,
 reflection shortcuts, fake controls, or rendering behavior unavailable to
 library consumers.
 
-The ANSI-to-HTML capture renderer has its own conversion test. Live interaction
-correctness remains owned by the application and tmux smoke tests above rather
-than a checked-in image artifact.
+The capture renderer has its own ANSI-to-HTML test, while
+`scripts/capture-showcase.sh` fails if the Release app exits early, never
+renders `SHARP VISION`, `Overview`, and the final Button specimen, or does not
+produce a valid PNG.

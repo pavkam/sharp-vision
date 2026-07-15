@@ -1,27 +1,56 @@
-# MenuItem
+# MenuItem and MenuSeparator
 
 ## MenuItem contract
 
-`MenuItem` represents a command, check/radio choice, or separator inside a
-[Menu](menu.md#menu-contract).
+`MenuItem` is a sealed [`Pressable`](../pressable.md#pressable-contract)
+command, check, or radio entry inside a [Menu](menu.md#menu-contract). It uses
+inherited `Content` as its sole visible face; there is no competing text-only
+`Header` property.
 
 ## API
 
-- `Header` is non-null UTF-16 text measured and drawn by grapheme-safe terminal
-  cells.
-- `Kind` is command, check, radio, or separator.
+- `Content` is the atomic zero-or-one owned face and may contain any Control.
+- `Kind` is command, check, or radio.
 - `IsChecked` is valid only for check/radio kinds; `GroupName` scopes radio
   selection within its containing menu.
 - `Invoked` reports the committed activation after check/radio state updates.
 
-## Interaction and rendering
+Check entries reserve `[ ]` or `[x]` plus one separator cell before content.
+Radio entries reserve `○` or `◉` plus one separator cell. Content is measured
+through the remaining constraint and arranged through the common inherited
+content slot, so state changes do not move it and collapsed content contributes
+no margin. Matching radio fields are all staged before any
+`PropertyChanged(IsChecked)` callback; reentrant selection suppresses stale
+outer notifications.
 
-Separators cannot focus, hit test, or invoke. Check toggles once; radio selects
-one matching group member. Check entries reserve `[ ]`/`[x]` marker cells; radio
-entries reserve `○`/`◉`, so state changes do not move the header.
+The item's own `Invoked` subscribers complete before `Menu.ItemInvoked` is
+forwarded. Both callbacks observe committed check/radio state.
+
+## MenuSeparator contract
+
+`MenuSeparator : Control` is the distinct non-interactive entry role. It is
+never a `Pressable` or a `MenuItemKind`: it cannot focus, hit test, select, or
+invoke. It measures three cells by one cell and draws a clipped horizontal rule
+across its arranged width.
+
+`MenuItems` exposes typed `Add` and `Remove` overloads for `MenuItem` and
+`MenuSeparator`; it has no arbitrary `Add(Control)` entry point.
+
+## Example
+
+```csharp
+menu.Items.Add(new MenuItem { Content = new Text("Open") });
+menu.Items.Add(new MenuSeparator());
+menu.Items.Add(new MenuItem
+{
+    Content = new Text("Auto save"),
+    Kind = MenuItemKind.Check,
+});
+```
 
 ## Test obligations
 
-Cover every kind, invalid checked-state assignment, check/radio event order,
-separator behavior, keyboard and pointer activation, Unicode headers, narrow
-clipping, styles, and cells.
+Cover each item kind, invalid checked-state assignment, atomic radio observers,
+item-before-menu invocation, inherited content ownership and Unicode layout,
+keyboard and pointer activation, separator focus/hit/invoke suppression, narrow
+clipping, styles, and exact cells.

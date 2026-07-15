@@ -6,13 +6,15 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the TextInput control with single-line, constrained, and multiline editor specimens.</summary>
-internal sealed class TextInputPane: View
+internal sealed class TextInputPane: CompositeControl
 {
+
+    internal TextInputPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "TextInput";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var editable = new TextInput()
         {

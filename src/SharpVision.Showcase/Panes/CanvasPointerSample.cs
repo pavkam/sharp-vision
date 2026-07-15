@@ -40,7 +40,7 @@ internal sealed class CanvasPointerSample: Control
                 ? FormattableString.Invariant($"{pixel.X},{pixel.Y}")
                 : "unavailable";
             _status = $"Cells: {cells} · Pixels: {pixels}";
-            Invalidate(Invalidation.Render);
+            Invalidate(ChangeImpact.Render);
         }
 
         base.OnEvent(eventArgs);

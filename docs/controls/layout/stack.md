@@ -13,7 +13,9 @@ Child order is render, navigation, and default z-order.
   children. Hidden children participate; collapsed children do not consume a
   track or adjacent spacing.
 - `Reverse` defaults false and changes geometry, rendering, and default focus
-  navigation consistently without reparenting children.
+  navigation consistently without reparenting children. Elevated popup
+  descendants follow that same order, so reversing the stack also reverses popup
+  drawing and hit priority.
 
 Along the stack axis, automatic children receive intrinsic space and
 proportional children divide remaining arranged space. Percentages resolve once
@@ -39,4 +41,5 @@ actions.Children.Add(cancelAction);
 
 Cover every orientation, spacing, reverse, fixed/percent/auto/proportional mix,
 collapsed children, alignment, zero/tiny sizes, overflow, resize, ownership,
-navigation order, Unicode measurement, and exact bounds/cells.
+navigation order, reversed popup drawing/hit priority, Unicode measurement, and
+exact bounds/cells.

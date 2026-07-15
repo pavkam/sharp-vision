@@ -42,22 +42,7 @@ public sealed class Theme
                 nameof(style));
         }
 
-        EnsureMutable();
-        Impact impact;
-
-        lock (_gate)
-        {
-            if (_styles.TryGetValue(typeof(TControl), out var existing))
-            {
-                Unsubscribe(existing);
-            }
-
-            _styles[typeof(TControl)] = style;
-            Subscribe(style);
-            InvalidateCaches();
-            impact = style.AggregateImpact;
-            Version++;
-        }
+        var impact = SetStyleCore(style);
 
         RaiseChanged(impact, typeof(TControl));
     }
@@ -69,21 +54,14 @@ public sealed class Theme
     public bool RemoveStyle<TControl>()
         where TControl : Control
     {
-        EnsureMutable();
+        var (removed, impact) = RemoveStyleCore(typeof(TControl));
 
-        lock (_gate)
+        if (!removed)
         {
-            if (!_styles.Remove(typeof(TControl), out var existing))
-            {
-                return false;
-            }
-
-            Unsubscribe(existing);
-            InvalidateCaches();
-            Version++;
+            return false;
         }
 
-        RaiseChanged(Impact.Measure, typeof(TControl));
+        RaiseChanged(impact, typeof(TControl));
         return true;
     }
 
@@ -121,6 +99,7 @@ public sealed class Theme
     /// <summary>Assigns one semantic color role.</summary>
     /// <param name="role">The semantic role.</param>
     /// <param name="color">The color for the role.</param>
+    /// <exception cref="ArgumentException"><paramref name="color"/> is a deferred role color.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="role"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The theme is frozen.</exception>
     public void SetColor(ColorRole role, Color color)
@@ -130,12 +109,27 @@ public sealed class Theme
             throw new ArgumentOutOfRangeException(nameof(role), role, "The color role is unknown.");
         }
 
-        EnsureMutable();
+        if (color.Kind == ColorKind.Role)
+        {
+            throw new ArgumentException(
+                "A theme palette role must be assigned a concrete color.",
+                nameof(color));
+        }
 
         lock (_gate)
         {
+            EnsureMutable();
+
+            if (_colors.TryGetValue(role, out var current) && current == color)
+            {
+                return;
+            }
+
             _colors[role] = color;
+            Version++;
         }
+
+        RaiseChanged(ChangeImpact.Render, typeof(Control));
     }
 
     /// <summary>Gets one semantic color role when defined.</summary>
@@ -275,7 +269,49 @@ public sealed class Theme
 
     private void InvalidateCaches() => _styleChains.Clear();
 
-    private void RaiseChanged(Impact impact, Type targetType) =>
+    private ChangeImpact SetStyleCore<TControl>(ControlStyle<TControl> style)
+        where TControl : Control
+    {
+        lock (_gate)
+        {
+            EnsureMutable();
+            var impact = ChangeImpact.None;
+
+            if (_styles.TryGetValue(typeof(TControl), out var existing))
+            {
+                impact = existing.AggregateImpact;
+                Unsubscribe(existing);
+            }
+
+            _styles[typeof(TControl)] = style;
+            Subscribe(style);
+            impact = Control.MaximumImpact(impact, style.AggregateImpact);
+            InvalidateCaches();
+            Version++;
+            return impact;
+        }
+    }
+
+    private (bool Removed, ChangeImpact Impact) RemoveStyleCore(Type targetType)
+    {
+        lock (_gate)
+        {
+            EnsureMutable();
+
+            if (!_styles.Remove(targetType, out var existing))
+            {
+                return (false, ChangeImpact.None);
+            }
+
+            var impact = existing.AggregateImpact;
+            Unsubscribe(existing);
+            InvalidateCaches();
+            Version++;
+            return (true, impact);
+        }
+    }
+
+    private void RaiseChanged(ChangeImpact impact, Type targetType) =>
         Changed?.Invoke(this, new ThemeChangedEventArgs(targetType, impact));
 
     private static IControlStyle CloneStyle(IControlStyle style) => ((IStyleLifecycle) style).CloneForTheme();

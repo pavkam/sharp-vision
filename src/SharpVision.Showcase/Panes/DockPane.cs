@@ -6,13 +6,15 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Dock control with side-attached and fill layout specimens.</summary>
-internal sealed class DockPane: View
+internal sealed class DockPane: CompositeControl
 {
+
+    internal DockPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Dock";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         Dock allSides = new()
         {

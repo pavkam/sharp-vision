@@ -6,13 +6,15 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Menu control with command, check, radio, separator, orientation, and disabled-item specimens.</summary>
-internal sealed class MenuPane: View
+internal sealed class MenuPane: CompositeControl
 {
+
+    internal MenuPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Menu";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         Text status = new("Choose an action.");
         Menu menu = new()
@@ -20,13 +22,13 @@ internal sealed class MenuPane: View
             Orientation = Orientation.Vertical,
             Spacing = 0,
         };
-        menu.Items.Add(new MenuItem { Header = "New project" });
-        menu.Items.Add(new MenuItem { Header = "Open recent" });
-        menu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });
-        menu.Items.Add(new MenuItem { Header = "Auto save", Kind = MenuItemKind.Check, IsChecked = true });
-        menu.Items.Add(new MenuItem { Header = "Compact mode", Kind = MenuItemKind.Radio, GroupName = "density", IsChecked = true });
-        menu.Items.Add(new MenuItem { Header = "Comfortable mode", Kind = MenuItemKind.Radio, GroupName = "density" });
-        menu.ItemInvoked += (_, eventArgs) => status.Content = $"Invoked {eventArgs.Item.Header}.";
+        menu.Items.Add(new MenuItem { Content = new Text("New project") });
+        menu.Items.Add(new MenuItem { Content = new Text("Open recent") });
+        menu.Items.Add(new MenuSeparator());
+        menu.Items.Add(new MenuItem { Content = new Text("Auto save"), Kind = MenuItemKind.Check, IsChecked = true });
+        menu.Items.Add(new MenuItem { Content = new Text("Compact mode"), Kind = MenuItemKind.Radio, GroupName = "density", IsChecked = true });
+        menu.Items.Add(new MenuItem { Content = new Text("Comfortable mode"), Kind = MenuItemKind.Radio, GroupName = "density" });
+        menu.ItemInvoked += (_, eventArgs) => status.Content = $"Invoked {Label(eventArgs.Item)}.";
 
         Dock framed = new()
         {
@@ -41,11 +43,11 @@ internal sealed class MenuPane: View
             Orientation = Orientation.Horizontal,
             Spacing = 2,
         };
-        bar.Items.Add(new MenuItem { Header = "File" });
-        bar.Items.Add(new MenuItem { Header = "Edit" });
-        bar.Items.Add(new MenuItem { Header = "View" });
-        bar.Items.Add(new MenuItem { Header = "Help" });
-        bar.ItemInvoked += (_, eventArgs) => barStatus.Content = $"Invoked {eventArgs.Item.Header}.";
+        bar.Items.Add(new MenuItem { Content = new Text("File") });
+        bar.Items.Add(new MenuItem { Content = new Text("Edit") });
+        bar.Items.Add(new MenuItem { Content = new Text("View") });
+        bar.Items.Add(new MenuItem { Content = new Text("Help") });
+        bar.ItemInvoked += (_, eventArgs) => barStatus.Content = $"Invoked {Label(eventArgs.Item)}.";
 
         Dock framedBar = new()
         {
@@ -59,9 +61,9 @@ internal sealed class MenuPane: View
             Orientation = Orientation.Vertical,
             Spacing = 0,
         };
-        withDisabled.Items.Add(new MenuItem { Header = "Available action" });
-        withDisabled.Items.Add(new MenuItem { Header = "Unavailable action", IsEnabled = false });
-        withDisabled.Items.Add(new MenuItem { Header = "Another available action" });
+        withDisabled.Items.Add(new MenuItem { Content = new Text("Available action") });
+        withDisabled.Items.Add(new MenuItem { Content = new Text("Unavailable action"), IsEnabled = false });
+        withDisabled.Items.Add(new MenuItem { Content = new Text("Another available action") });
 
         Dock framedDisabled = new()
         {
@@ -72,13 +74,13 @@ internal sealed class MenuPane: View
 
         var flyoutTrigger = new Button { Content = new Text("Project actions") };
         var flyoutMenu = new Menu { Orientation = Orientation.Vertical };
-        flyoutMenu.Items.Add(new MenuItem { Header = "Build" });
-        flyoutMenu.Items.Add(new MenuItem { Header = "Test" });
-        flyoutMenu.Items.Add(new MenuItem { Header = "Publish" });
+        flyoutMenu.Items.Add(new MenuItem { Content = new Text("Build") });
+        flyoutMenu.Items.Add(new MenuItem { Content = new Text("Test") });
+        flyoutMenu.Items.Add(new MenuItem { Content = new Text("Publish") });
         var flyout = new Popup
         {
             Anchor = flyoutTrigger,
-            Child = flyoutMenu,
+            Content = flyoutMenu,
             IsOpen = true,
             Placement = PopupPlacement.Below,
         };
@@ -92,15 +94,15 @@ internal sealed class MenuPane: View
 
         var selectionStatus = new Text("Selected index: -1; invoked: none");
         var selectionMenu = new Menu { Orientation = Orientation.Vertical };
-        selectionMenu.Items.Add(new MenuItem { Header = "Inspect" });
-        selectionMenu.Items.Add(new MenuItem { Header = "Run" });
+        selectionMenu.Items.Add(new MenuItem { Content = new Text("Inspect") });
+        selectionMenu.Items.Add(new MenuItem { Content = new Text("Run") });
         selectionMenu.ItemInvoked += (_, eventArgs) =>
-            selectionStatus.Content = $"Selected index: {selectionMenu.SelectedIndex}; invoked: {eventArgs.Item.Header}";
+            selectionStatus.Content = $"Selected index: {selectionMenu.SelectedIndex}; invoked: {Label(eventArgs.Item)}";
 
         var relaxed = new Menu { Orientation = Orientation.Horizontal, Spacing = 3 };
-        relaxed.Items.Add(new MenuItem { Header = "Available" });
-        relaxed.Items.Add(new MenuItem { Header = "Unavailable", IsEnabled = false });
-        relaxed.Items.Add(new MenuItem { Header = "Next" });
+        relaxed.Items.Add(new MenuItem { Content = new Text("Available") });
+        relaxed.Items.Add(new MenuItem { Content = new Text("Unavailable"), IsEnabled = false });
+        relaxed.Items.Add(new MenuItem { Content = new Text("Next") });
 
         return Doc.Page(
             Title,
@@ -113,7 +115,7 @@ internal sealed class MenuPane: View
                     "Commands with state",
                     "Arrows skip separators; Enter, Space, or a click commits check/radio state before ItemInvoked reports the action.",
                     Doc.Column(framed, status),
-                    "var menu = new Menu();\nmenu.Items.Add(new MenuItem { Header = \"Open\" });\nmenu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });")),
+                    "var menu = new Menu();\nmenu.Items.Add(new MenuItem { Content = new Text(\"Open\") });\nmenu.Items.Add(new MenuSeparator());")),
             Doc.Section(
                 "📑",
                 "Menu bar",
@@ -130,7 +132,7 @@ internal sealed class MenuPane: View
                     "Anchored project actions",
                     "The open Popup frames and promotes a vertical Menu above ordinary sibling content without inventing modal behavior.",
                     flyoutStage,
-                    "var popup = new Popup { Anchor = trigger, Child = menu, IsOpen = true };")),
+                    "var popup = new Popup { Anchor = trigger, Content = menu, IsOpen = true };")),
             Doc.Section(
                 "📑",
                 "Selection and invocation",
@@ -148,4 +150,6 @@ internal sealed class MenuPane: View
                     "Move from Available to Next: the unavailable middle item never receives selection.",
                     Doc.Column(framedDisabled, relaxed))));
     }
+
+    private static string Label(MenuItem item) => ((Text) item.Content!).Content;
 }

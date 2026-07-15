@@ -10,9 +10,13 @@ invalidates only dependent controls and only the required phase.
 
 Each styleable value is registered as immutable `StyleProperty<T>` metadata on
 its declaring control type. Controls expose conventional CLR properties backed
-by protected `GetValue`, `SetValue`, and public `ClearValue` operations. Local
-values win over every themed, per-instance, class-default, and visual-state
-layer.
+by public `GetValue`, `SetValue`, and `ClearValue` operations. Local values win
+over every themed, per-instance, class-default, and visual-state layer.
+
+Property metadata carries an ordered `ChangeImpact`: `None`, `Render`,
+`Arrange`, or `Measure`. `Arrange` invalidates arrange and render; `Measure`
+invalidates measure, arrange, and render. Assigning an equivalent local value is
+a no-op and raises neither invalidation nor a property-change notification.
 
 Base `Control` registers margin, padding, foreground, background, attributes,
 underline, underline color, fill mode, border chrome, and shadow chrome. Derived
@@ -23,14 +27,24 @@ example, `Button` rounded border and compact shadow).
 
 `Theme` owns at most one `IControlStyle` per control type. `Application.Theme`
 (default `Themes.Dark`) publishes an internal theme context to every attached
-control. Resolution order for each property and visual state is:
+control. Resolution applies these layers from lowest to highest priority:
 
 1. registered default;
 2. most-derived class default;
-3. theme chain from `Control` through the runtime type;
-4. per-instance `Control.Style` overlay (that control only);
-5. active visual-state overlays (hovered, focused, checked, pressed, disabled);
-6. explicit local value.
+3. theme chains for ancestor `IStyleScope` controls, farthest scope to nearest;
+4. the descendant's theme chain from `Control` through its runtime type;
+5. instance styles for ancestor scopes, farthest scope to nearest;
+6. the descendant's per-instance `Control.Style`;
+7. explicit local value.
+
+Within each theme or instance-style layer, the resolver first chooses that
+layer's best matching visual-state value. It then advances to the next layer.
+Layer priority therefore remains authoritative: a focused value in a lower theme
+layer cannot override a normal value in a higher instance layer.
+
+Replacing a style in a `Theme` publishes the maximum aggregate impact of the
+removed and replacement styles. This preserves the invalidation needed to erase
+old geometry even when the replacement itself is render-only.
 
 `Themes.White` and `Themes.Dark` are frozen standard themes built from the
 public `Theme` and `ControlStyle<TControl>` API using the portable 16-color
@@ -38,78 +52,101 @@ palette.
 
 ## Per-instance styles
 
-`Control.Style` is a nullable `IControlStyle` overlay. It applies only to the
-owning control and does not flow to descendants. List-owned items resolve
-`ControlStyle<List>` theme and owner-instance values in addition to their own
-theme chain so row selection styling remains coherent.
+`Control.Style` is a nullable `IControlStyle` overlay. It normally applies only
+to the owning control. When that control implements `IStyleScope`, its style is
+also a lower-priority resource for descendants; nearer scopes override farther
+scopes, and the descendant's own style wins over every scope. Replacing
+`Control.Style` invalidates the maximum aggregate impact of the old and new
+styles.
+
+Scope ancestry follows `Control.Parent` through every registered ownership slot.
+Private content, presentation hosts, popup edges, and framework parts do not
+disappear from the cascade merely because their owner exposes no public
+`Children` collection.
 
 ## Visual states
 
-Standard states are normal, hovered, pressed, focused, checked, and disabled.
-The hovered overlay applies only to interactive (focusable) controls; static
-content such as text and tables is never marked hovered. Measure-impact
-properties are normal-state values only. Render-impact properties may vary by
-overlay state. Visual overlays never control behavior: `IsEnabled` determines
-input acceptance.
+Standard states are normal, hovered, focused, selected, checked, indeterminate,
+pressed, and disabled. The hovered overlay applies only to interactive
+(focusable) controls; static content such as text and tables is never marked
+hovered. Any style property may vary by overlay state; activating such a state
+uses the property's declared `ChangeImpact`. Visual overlays never control
+behavior: `IsEnabled` determines input acceptance.
 
 Public theme resolution accepts any combination of defined state flags and
 rejects unknown bits before evaluating the cascade.
 
-The standard base `Control` focus state does not add underline. Focus is
-expressed by the control type at the semantic surface that represents its
-interaction: `Button` and `ComboBox` use an Accent border, `ScrollBar` uses an
-Accent rail, and choice controls use an Accent mark. Pressed and checked states
-likewise avoid a generic selection-background overlay. `CheckBox` and
-`RadioButton` therefore preserve the parent background while checked, and an
-indeterminate `CheckBox` uses the Warning role for its mark. A custom control
-that needs focus presentation defines its own type style rather than decorating
-every cell inherited from `Control`.
+A third-party CLR property that activates one of these flags uses the protected
+`SetVisualStateProperty` seam. It validates dispatcher and lifetime access
+before equivalence, commits the field, clears resolved caches, calculates the
+strongest active state-style impact, and then publishes one property
+notification. Group controls stage every related field first and use the same
+cache-clear/dynamic- impact rule before publishing any observer callback.
 
 ## Invalidation and tests
 
-Property metadata declares the earliest affected phase: measure, arrange, or
-render. Tests cover registration, theme precedence, local override/clear,
+Property metadata declares the earliest affected phase with `ChangeImpact`.
+Tests cover all four impact mappings, replacement impact, layer and state
+precedence, equivalent assignment, registration, local override/clear,
 application theme switching, standard theme cells, third-party style properties,
 showcase theme toggling, and exact terminal cell output.
 
 ## Shared chrome
 
-Border, shadow, and opaque body fill rasterize through one internal geometry.
-Every `Control` owns this chrome directly; there are no `Border` or `Shadow`
-wrapper controls. A derived control draws the shared chrome through the
-protected `RenderChrome` method (base `OnRender` calls it), while the base
-control expands its visual bounds for shadow overflow without changing desired
-size, arranged bounds, child slots, or pointer hit testing.
+Border, shadow, and opaque body fill are intrinsic `Control` chrome. There are
+no `Border` or `Shadow` wrapper controls. Every control exposes the properties,
+and `BorderThickness` always reserves layout; visible chrome requires a render
+path that calls `RenderChrome` or a specialized `ControlChrome` equivalent.
 
-`BorderThickness` defaults to zero and reserves the enabled edges during measure
-and arrange before padding. Each edge is either zero or one cell; larger values
-are rejected before mutation. `BorderGlyphs` defaults to `Glyphs.Default`, while
-`BorderColor` and `BorderAttributes` default to null and inherit the resolved
-body style. Border thickness invalidates measure; the remaining border
-properties invalidate render. A custom-rendering leaf that needs a separate
-visible frame is wrapped in an ordinary chrome-rendering container such as
-`Dock`, with the intrinsic border properties set on that container.
+| Properties                                                                | Defaults                    | Contract                                                                   |
+| ------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------- |
+| `BorderThickness`                                                         | Zero edges                  | Zero-or-one physical edges; `Measure` impact because layout reserves them. |
+| `BorderGlyphs`, `BorderColor`, `BorderAttributes`                         | Default glyphs, null styles | Validated one-cell glyphs and render-only border appearance.               |
+| `HasShadow`, `ShadowMode`, `ShadowOffset`                                 | `false`, composite, `(0,0)` | Render-only visual overflow; it never enlarges layout or hit targets.      |
+| `ShadowGlyph`, `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `▓`, null styles            | Validated one-cell glyph and render-only shadow appearance.                |
 
-`HasShadow` enables the overflow and defaults to `false` on `Control`.
-`ShadowMode` selects composite styling or block-glyph replacement,
-`ShadowOffset` supplies the signed cell translation, and `ShadowGlyph` supplies
-the printable one-cell block Rune. The base defaults are composite mode, zero
-offset, and dark shade `▓`; derived controls such as `Button` and `Window` may
-publish different class defaults. `ShadowForeground`, `ShadowBackground`, and
-`ShadowAttributes` style only the shadow. An explicit `ShadowBackground`
-replaces the background of shadow cells while composite mode preserves their
-graphemes and complete wide-cell ownership. When `ShadowBackground` is null, a
-generic `Background` supplies the same opaque shadow fallback; when both are
-null, composite shadowing preserves the destination background. Unsupported wide
-block glyphs use the documented fixed-cell fallback under the inherited
-ambiguous-width policy.
+These are registered base defaults. Effective values still resolve through the
+complete cascade. Standard themes, for example, supply semantic body background,
+border color, and shadow foreground values even though the base metadata for
+those colors is null; Button and Window add their own class defaults.
 
-All shadow properties invalidate render only. `ShadowMode` rejects undefined
-values, and `ShadowGlyph` rejects control or non-one-cell Runes before mutation.
-Signed offsets can overflow on any side: the shadow is clipped by the inherited
-ancestor clip and frame bounds, never participates in layout, and never expands
-pointer hit testing.
+`BorderThickness` is reserved by the base measure/arrange pipeline before
+`Padding`; `ContentBounds` is therefore the border-then-padding-deflated content
+box. Combined measure insets saturate, partial physical edges reserve only their
+active cells, and a theme-resolved thickness change remeasures the control.
 
-The base control also deflates `ContentBounds` by border thickness before
-padding. See [Theming a new control](theming-new-controls.md) for the full
-extender surface.
+Base `OnRender` calls protected `RenderChrome`, which rasterizes the body,
+per-side border, and shadow through `ControlChrome`. A derived control that
+fully overrides `OnRender` must call `RenderChrome` before custom content when
+it wants those intrinsic visuals; layout still reserves a configured border when
+it deliberately does not. On the base path, shadow expands `VisualBounds` by the
+signed `ShadowOffset`, remains clipped by ancestor canvases, and reserves no
+layout, child space, or hit target. Button intentionally translates its face and
+owned content while pressed.
+
+Base chrome draws the translated shadow first, then clears the body when
+`FillMode` is opaque or `Background` resolves from any cascade layer, and draws
+the border last. Composite mode restyles existing cells in the shadow footprint;
+block mode replaces them with `ShadowGlyph`. A `(0,0)` offset leaves the
+translated footprint wholly inside the excluded body and is therefore invisible.
+Partial borders draw only enabled physical edges, with corners only where
+adjoining edges meet. If the active ambiguous-width policy would make a
+configured glyph wide, rendering repairs it to portable ASCII `+`, `-`, `|`, or
+`#` rather than splitting a cell.
+
+`Button` does not use the base options verbatim: its specialized `ControlChrome`
+call translates the pressed face/content, preserves the shadow gap, and resolves
+the detached shadow from normal appearance. `Window` retains its bespoke titled
+uniform frame and draws its optional shadow explicitly; it does not express that
+frame through `BorderThickness` or call base `RenderChrome`.
+
+Sealed bespoke renderers such as `Text`, `FigletText`, and `TextInput` do not
+automatically paint base chrome. Use an ordinary chrome-rendering container such
+as `Dock` when callers need to frame or shadow one of those controls.
+
+Intrinsic chrome does not create an ownership edge. When chrome needs its own
+margin, style scope, bounds, routed ancestry, or lifetime, compose an ordinary
+container such as `Dock` as the distinct node and set the intrinsic properties
+on that container. See
+[Custom components](custom-components.md#chrome-and-custom-rendering) and
+[Theming a new control](theming-new-controls.md) for the extender surface.

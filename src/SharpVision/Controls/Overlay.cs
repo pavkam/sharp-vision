@@ -19,11 +19,11 @@ public sealed class Overlay: Container
     public bool ClipToBounds
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = true;
 
     /// <inheritdoc/>
-    internal override bool ClipsChildren => ClipToBounds;
+    protected override bool ClipsChildren => ClipToBounds;
 
     /// <summary>Gets one control's attached signed z-order.</summary>
     /// <param name="control">The non-null control.</param>
@@ -61,22 +61,42 @@ public sealed class Overlay: Container
     }
 
     /// <inheritdoc/>
-    public override Control? HitTest(Point point)
+    public override Control? HitTest(Point point) =>
+        CanHitTestSelf(point, requireContainment: false)
+            ? HitTestPopup(point) ?? (AutoScroll ? HitTestScrollable(point) : HitTestUnscrolled(point))
+            : null;
+
+    private Control? HitTestScrollable(Point point) => Bounds.Contains(point)
+        ? HitTestBars(point) ??
+            (_viewportBounds.Contains(point) ? HitTestOrderedContent(point) : null) ??
+            this
+        : null;
+
+    private Control? HitTestUnscrolled(Point point) =>
+        !ClipToBounds || Bounds.Contains(point)
+            ? HitTestOrderedContent(point) ?? (Bounds.Contains(point) ? this : null)
+            : null;
+
+    private Control? HitTestBars(Point point)
     {
-        if (IsDisposed ||
-            !IsHitTestVisible ||
-            !EffectiveIsVisible ||
-            !EffectiveIsEnabled ||
-            (ClipToBounds && !Bounds.Contains(point)))
+        if (_bars is null)
         {
             return null;
         }
 
-        if (HitTestPopup(point) is { } popup)
+        for (var index = _bars.Count - 1; index >= 0; index--)
         {
-            return popup;
+            if (_bars[index].HitTest(point) is { } bar)
+            {
+                return bar;
+            }
         }
 
+        return null;
+    }
+
+    private Control? HitTestOrderedContent(Point point)
+    {
         var rented = RentOrdered();
 
         try
@@ -94,7 +114,30 @@ public sealed class Overlay: Container
             ArrayPool<Control>.Shared.Return(rented, clearArray: true);
         }
 
-        return Bounds.Contains(point) ? this : null;
+        return null;
+    }
+
+    /// <inheritdoc/>
+    internal override Control? HitTestPopupCore(Point point)
+    {
+        var rented = RentOrdered();
+
+        try
+        {
+            for (var index = Children.Count - 1; index >= 0; index--)
+            {
+                if (rented[index].HitTestPopupBranch(point, OwnedControlLayer.Normal) is { } popup)
+                {
+                    return popup;
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<Control>.Shared.Return(rented, clearArray: true);
+        }
+
+        return null;
     }
 
     /// <inheritdoc/>
@@ -129,7 +172,7 @@ public sealed class Overlay: Container
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas)
+    internal override void RenderContent(TerminalCanvas canvas)
     {
         var rented = RentOrdered();
 
@@ -137,17 +180,33 @@ public sealed class Overlay: Container
         {
             for (var index = 0; index < Children.Count; index++)
             {
-                rented[index].Render(canvas);
+                if (rented[index].RendersInNormalLayer)
+                {
+                    rented[index].Render(canvas);
+                }
             }
         }
         finally
         {
             ArrayPool<Control>.Shared.Return(rented, clearArray: true);
         }
+    }
 
-        if (Parent is null)
+    /// <inheritdoc/>
+    internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
+    {
+        var rented = RentOrdered();
+
+        try
         {
-            RenderPopupLayer(canvas);
+            for (var index = 0; index < Children.Count; index++)
+            {
+                rented[index].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
+            }
+        }
+        finally
+        {
+            ArrayPool<Control>.Shared.Return(rented, clearArray: true);
         }
     }
 

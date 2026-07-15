@@ -6,13 +6,15 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Stack control with orientation, spacing, and reverse-order specimens.</summary>
-internal sealed class StackPane: View
+internal sealed class StackPane: CompositeControl
 {
+
+    internal StackPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Stack";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         Stack horizontal = new() { Orientation = Orientation.Horizontal, Spacing = 2, Width = Length.Cells(40) };
         var fixedCard = Card("Fixed 10", Glyphs.Light);

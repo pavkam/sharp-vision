@@ -3,6 +3,7 @@
 
 namespace SharpVision.Controls;
 
+using System.Runtime.ExceptionServices;
 
 using SharpVision.Terminal.Input;
 
@@ -10,9 +11,10 @@ using SharpVision.Terminal.Input;
 public sealed class RadioButton: Pressable
 {
     private bool _isChecked;
+    private int _checkedVersion;
 
     /// <summary>Initializes an unselected RadioButton.</summary>
-    public RadioButton() : base(capacity: 1)
+    public RadioButton()
     {
     }
 
@@ -54,21 +56,28 @@ public sealed class RadioButton: Pressable
         get;
         set
         {
-            if (Set(ref field, value, Invalidation.None) && IsChecked)
-            {
-                RadioGroup.Select(this, ActivationCause.Programmatic);
-            }
-        }
-    }
+            VerifyMutable();
 
-    /// <summary>Gets or atomically sets optional owned label content.</summary>
-    /// <exception cref="ArgumentException">The value cannot be owned by this RadioButton.</exception>
-    /// <exception cref="InvalidOperationException">The attached member is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The member or value is disposed.</exception>
-    public Control? Content
-    {
-        get => Children.Count == 0 ? null : Children[0];
-        set => Children.SetOnly(value);
+            if (string.Equals(field, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            field = value;
+            var failure = (ExceptionDispatchInfo?) null;
+
+            if (IsChecked)
+            {
+                CaptureFailure(
+                    () => RadioGroup.Select(this, ActivationCause.Programmatic),
+                    ref failure);
+            }
+
+            CaptureFailure(
+                () => NotifyPropertyChanged(nameof(GroupName), ChangeImpact.None),
+                ref failure);
+            failure?.Throw();
+        }
     }
 
     /// <summary>Selects an available member through the programmatic path.</summary>
@@ -97,10 +106,13 @@ public sealed class RadioButton: Pressable
             return new Size(1, 1);
         }
 
-        content.Measure(new Constraint(Subtract(constraint.Width, 2), constraint.Height));
-        return new Size(
-            Add(2, Add(content.DesiredSize.Width, content.Margin.Horizontal)),
-            Math.Max(1, Add(content.DesiredSize.Height, content.Margin.Vertical)));
+        var desired = MeasureChild(content, new Constraint(Subtract(constraint.Width, 2), constraint.Height));
+
+        return content.Visibility == Visibility.Collapsed
+            ? new Size(1, 1)
+            : new Size(
+                Add(2, Add(desired.Width, content.Margin.Horizontal)),
+                Math.Max(1, Add(desired.Height, content.Margin.Vertical)));
     }
 
     /// <inheritdoc/>
@@ -109,10 +121,10 @@ public sealed class RadioButton: Pressable
         if (Content is { } content)
         {
             var consumed = Math.Min(2, bounds.Width);
-            content.Arrange(
+            ArrangeChild(
+                content,
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
-                widthResolved: true,
-                heightResolved: true);
+                ResolvedAxes.Both);
         }
     }
 
@@ -160,7 +172,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnParentChanged(Container? previous, Container? current)
+    protected override void OnParentChanged(Control? previous, Control? current)
     {
         base.OnParentChanged(previous, current);
 
@@ -186,9 +198,42 @@ public sealed class RadioButton: Pressable
         }
     }
 
-    /// <summary>Commits a coordinated checked value without recursive selection.</summary>
-    internal bool Commit(bool value) =>
-        Set(ref _isChecked, value, Invalidation.Render, nameof(IsChecked));
+    /// <summary>Stages a coordinated checked value without publishing a partial group.</summary>
+    /// <param name="value">The checked value to commit.</param>
+    /// <returns>The new commit version, or zero when the value is unchanged.</returns>
+    internal int StageChecked(bool value)
+    {
+        VerifyMutable();
+
+        if (_isChecked == value)
+        {
+            return 0;
+        }
+
+        _isChecked = value;
+        _checkedVersion++;
+        InvalidateVisualState();
+        return _checkedVersion;
+    }
+
+    /// <summary>Gets whether one staged checked commit remains current after callbacks.</summary>
+    /// <param name="version">The positive staged commit version.</param>
+    /// <param name="value">The expected staged value.</param>
+    /// <returns>True when no reentrant selection replaced the commit.</returns>
+    internal bool IsCheckedCommitCurrent(int version, bool value) =>
+        version > 0 && _checkedVersion == version && _isChecked == value;
+
+    /// <summary>Publishes the property notification for one still-current staged commit.</summary>
+    /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    internal void PublishChecked() =>
+        NotifyPropertyChanged(nameof(IsChecked), ChangeImpact.None);
+
+    /// <summary>Requests focus through this member's protected manager boundary.</summary>
+    /// <returns>True when focus is acquired or already owned.</returns>
+    /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    internal bool RequestGroupFocus() => RequestFocus();
 
     /// <summary>Raises Checked after a complete group commit.</summary>
     internal void RaiseChecked(SelectionChangedEventArgs eventArgs) =>
@@ -218,5 +263,17 @@ public sealed class RadioButton: Pressable
         return value.HasValue
             ? Math.Max(0, value.Value - extent)
             : null;
+    }
+
+    private static void CaptureFailure(System.Action action, ref ExceptionDispatchInfo? failure)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
+        }
     }
 }

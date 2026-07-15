@@ -50,11 +50,8 @@ public static class ThemeResolver
 
             var themeContext = control.ThemeContext;
             var scopes = CollectStyleScopes(control);
-
-            foreach (var state in ResolutionOrder(visualState))
-            {
-                ApplyState(control, property, state, themeContext, scopes, ref value);
-            }
+            var states = ResolutionOrder(visualState);
+            ApplyCascade(control, property, states, themeContext, scopes, ref value);
         }
 
         // Collapse semantic colors only after local and cascade precedence is
@@ -107,10 +104,8 @@ public static class ThemeResolver
             value = (T) classDefault!;
         }
 
-        foreach (var state in ResolutionOrder(visualState))
-        {
-            ApplyChain(theme.GetStyleChain(controlType), property, state, ref value);
-        }
+        var states = ResolutionOrder(visualState);
+        ApplyChain(theme.GetStyleChain(controlType), property, states, ref value);
 
         if (value is Color { Kind: ColorKind.Role } role)
         {
@@ -207,58 +202,80 @@ public static class ThemeResolver
 
     #region Cascade application
 
-    private static void ApplyState<T>(
+    private static void ApplyCascade<T>(
         Control control,
         StyleProperty<T> property,
-        State state,
+        IReadOnlyList<State> states,
         ThemeContext? context,
         List<Control> scopes,
         ref T value)
     {
         Debug.Assert(control is not null, "Cascade application requires a live control.");
         Debug.Assert(property is not null, "Cascade application requires registered property metadata.");
+        Debug.Assert(states is not null, "Cascade application requires visual-state precedence.");
         Debug.Assert(scopes is not null, "Cascade application requires a scope collection.");
 
         if (context is not null)
         {
-            ApplyChain(context.GetStyleChain(control.GetType()), property, state, ref value);
-
             // Farthest scope first so a nearer scope overrides a farther one.
             for (var index = scopes.Count - 1; index >= 0; index--)
             {
-                ApplyChain(context.GetStyleChain(scopes[index].GetType()), property, state, ref value);
+                ApplyChain(context.GetStyleChain(scopes[index].GetType()), property, states, ref value);
             }
+
+            ApplyChain(context.GetStyleChain(control.GetType()), property, states, ref value);
         }
 
-        if (control.InstanceStyle is { } own && TryGetSnapshotValue(own, property, state, out var ownValue))
-        {
-            value = (T) ownValue!;
-        }
-
+        // Scope instance styles are also resources. Apply them farthest to
+        // nearest before the descendant's own, highest-priority style.
         for (var index = scopes.Count - 1; index >= 0; index--)
         {
-            if (scopes[index].InstanceStyle is { } scopeStyle &&
-                TryGetSnapshotValue(scopeStyle, property, state, out var scopeValue))
+            if (scopes[index].InstanceStyle is { } scopeStyle)
             {
-                value = (T) scopeValue!;
+                ApplyStyle(scopeStyle, property, states, ref value);
             }
+        }
+
+        if (control.InstanceStyle is { } own)
+        {
+            ApplyStyle(own, property, states, ref value);
         }
     }
 
     private static void ApplyChain<T>(
         IReadOnlyList<IControlStyle> chain,
         StyleProperty<T> property,
-        State state,
+        IReadOnlyList<State> states,
         ref T value)
     {
         Debug.Assert(chain is not null, "Theme cascade application requires a style chain.");
         Debug.Assert(property is not null, "Theme cascade application requires property metadata.");
+        Debug.Assert(states is not null, "Theme cascade application requires visual-state precedence.");
 
         foreach (var style in chain)
         {
-            if (TryGetSnapshotValue(style, property, state, out var themed))
+            ApplyStyle(style, property, states, ref value);
+        }
+    }
+
+    private static void ApplyStyle<T>(
+        IControlStyle style,
+        StyleProperty<T> property,
+        IReadOnlyList<State> states,
+        ref T value)
+    {
+        Debug.Assert(style is not null, "Style cascade application requires a style layer.");
+        Debug.Assert(property is not null, "Style cascade application requires property metadata.");
+        Debug.Assert(states is not null, "Style cascade application requires visual-state precedence.");
+
+        // Resolve the best matching state inside this layer before advancing
+        // to the next layer. A higher layer's Normal value must therefore beat
+        // every state-specific value from a lower layer.
+        foreach (var state in states)
+        {
+            if (TryGetSnapshotValue(style, property, state, out var styled))
             {
-                value = (T) themed!;
+                value = (T) styled!;
             }
         }
     }

@@ -3,10 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-
-
-
-/// <summary>Verifies intrinsic shadow layout, overflow, clipping, and compositing.</summary>
+/// <summary>Verifies intrinsic shadow validation, layout, overflow, clipping, and compositing.</summary>
 public sealed class IntrinsicShadowTests
 {
     #region Contract
@@ -15,28 +12,23 @@ public sealed class IntrinsicShadowTests
     [Fact]
     public void Properties_WhenValueIsInvalid_ThrowBeforeMutation()
     {
-        LayoutProbe control = new() { HasShadow = true };
+        var control = CreateSurface(ShadowMode.Composite, new Point(2, 1));
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             control.ShadowMode = (ShadowMode) 99);
-        _ = Should.Throw<ArgumentException>(() => control.ShadowGlyph = new Rune('界'));
+        _ = Should.Throw<ArgumentException>(() =>
+            control.ShadowGlyph = new Rune('界'));
 
         control.ShadowMode.ShouldBe(ShadowMode.Composite);
         control.ShadowGlyph.ShouldBe(new Rune('▓'));
     }
 
-    /// <summary>Verifies intrinsic shadows do not reserve their visual overflow during layout.</summary>
+    /// <summary>Verifies intrinsic shadow overflow does not change desired size or the child slot.</summary>
     [Fact]
     public void Layout_WhenChildIsPresent_DoesNotReserveShadowOffset()
     {
-        ProbeControl child = new(new Size(3, 2));
-        LayoutProbe control = new()
-        {
-            HasShadow = true,
-            ShadowMode = ShadowMode.Composite,
-            ShadowOffset = new Point(2, 1),
-            ShadowAttributes = Attributes.Dim,
-        };
+        var child = new ProbeControl(new Size(3, 2));
+        var control = CreateSurface(ShadowMode.Composite, new Point(2, 1));
         control.Children.Add(child);
 
         new Engine().Layout(control, new Size(3, 2));
@@ -64,73 +56,75 @@ public sealed class IntrinsicShadowTests
         FrameOracle.Get(frame, new Point(2, 2)).ShouldBe("▓");
         FrameOracle.Get(frame, new Point(3, 2)).ShouldBe("▓");
         FrameOracle.Get(frame, new Point(4, 2)).ShouldBe("▓");
-        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe(string.Empty);
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBeEmpty();
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
-    /// <summary>Verifies composite mode preserves glyphs and changes only their shadow style.</summary>
+    /// <summary>Verifies transparent composite mode preserves glyphs and backgrounds while applying shadow attributes.</summary>
     [Fact]
-    public void Render_WhenModeIsComposite_PreservesUnderlyingGlyphs()
+    public void Render_WhenModeIsComposite_PreservesUnderlyingGlyphsAndBackgrounds()
     {
         var control = CreateArranged(ShadowMode.Composite, new Point(2, 1));
+        var destinationBackground = Color.Indexed(7);
+        using Frame frame = new(new Size(5, 3));
+        frame.Canvas.Fill(
+            frame.Canvas.Bounds,
+            new Rune('x'),
+            new TerminalStyle(Color.Default, destinationBackground));
+
+        control.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(destinationBackground);
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("x");
+        frame.GetCell(new Point(2, 1)).Style.Attributes.ShouldBe(Attributes.None);
+        frame.GetCell(new Point(2, 1)).Style.Background.ShouldBe(destinationBackground);
+    }
+
+    /// <summary>Verifies ordinary chrome fills the body separately and applies the explicit shadow background outside it.</summary>
+    [Fact]
+    public void Render_WhenShadowBackgroundIsSet_SeparatesBodyAndShadowStyles()
+    {
+        var control = CreateArranged(ShadowMode.Composite, new Point(2, 1));
+        control.Background = Color.Indexed(1);
         control.ShadowBackground = Color.Indexed(4);
         using Frame frame = new(new Size(5, 3));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
 
         control.Render(frame.Canvas);
 
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
+        frame.GetCell(new Point(0, 0)).Style.Background.ShouldBe(Color.Indexed(1));
+        frame.GetCell(new Point(0, 0)).Style.Attributes.ShouldBe(Attributes.None);
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
         frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(Color.Indexed(4));
-        frame.GetCell(new Point(2, 1)).Style.ShouldBe(TerminalStyle.Default);
-    }
-
-    /// <summary>Verifies a generic background supplies an opaque composite shadow fallback.</summary>
-    [Fact]
-    public void Render_WhenShadowBackgroundIsNull_UsesGenericBackground()
-    {
-        var control = CreateArranged(ShadowMode.Composite, new Point(2, 1));
-        control.Background = Color.Indexed(4);
-        using Frame frame = new(new Size(5, 3));
-        frame.Canvas.Fill(
-            frame.Canvas.Bounds,
-            new Rune('x'),
-            new TerminalStyle(Color.Default, Color.Indexed(238)));
-
-        control.Render(frame.Canvas);
-
-        control.ShadowBackground.ShouldBeNull();
-        FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("x");
-        frame.GetCell(new Point(3, 1)).Style.Background.Kind.ShouldBe(ColorKind.Indexed);
-        frame.GetCell(new Point(3, 1)).Style.Background.Red.ShouldBe((byte) 4);
         frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
-    /// <summary>Verifies composite mode restyles a complete wide owner.</summary>
+    /// <summary>Verifies composite mode restyles a complete wide grapheme owner.</summary>
     [Fact]
     public void Render_WhenShadowTouchesWideGlyph_StylesCompleteOwner()
     {
         var control = CreateArranged(ShadowMode.Composite, new Point(2, 1));
-        control.ShadowBackground = Color.Indexed(4);
         using Frame frame = new(new Size(5, 3));
         _ = frame.Canvas.Draw("界", new Point(3, 1));
 
         control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("界");
-        frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(Color.Indexed(4));
-        frame.GetCell(new Point(4, 1)).Style.Background.ShouldBe(Color.Indexed(4));
+        frame.GetCell(new Point(4, 1)).IsContinuation.ShouldBeTrue();
+        frame.GetCell(new Point(3, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(4, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
+        frame.GetCell(new Point(3, 1)).Style.Background.ShouldBe(Color.Default);
+        frame.GetCell(new Point(4, 1)).Style.Background.ShouldBe(Color.Default);
     }
 
-    /// <summary>Verifies negative offsets draw above and left without changing hit testing.</summary>
+    /// <summary>Verifies negative offsets draw above and left without expanding hit targets.</summary>
     [Fact]
     public void Render_WhenOffsetIsNegative_DrawsVisualOverflowWithoutHitTarget()
     {
-        LayoutProbe control = new()
-        {
-            HasShadow = true,
-            ShadowMode = ShadowMode.BlockGlyph,
-            ShadowOffset = new Point(-1, -1),
-            ShadowAttributes = Attributes.Dim,
-        };
+        var control = CreateSurface(ShadowMode.BlockGlyph, new Point(-1, -1));
         control.Children.Add(new ProbeControl(new Size(3, 2)));
         control.Measure(new Constraint(3, 2));
         control.Arrange(new Rect(1, 1, 3, 2));
@@ -141,10 +135,12 @@ public sealed class IntrinsicShadowTests
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("▓");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("▓");
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("▓");
         control.HitTest(new Point(0, 0)).ShouldBeNull();
+        control.HitTest(new Point(0, 1)).ShouldBeNull();
     }
 
-    /// <summary>Verifies ancestor clipping contains visual overflow.</summary>
+    /// <summary>Verifies an ancestor canvas clip contains intrinsic visual overflow.</summary>
     [Fact]
     public void Render_WhenAncestorCanvasClipsShadow_DoesNotEscapeClip()
     {
@@ -162,15 +158,18 @@ public sealed class IntrinsicShadowTests
 
     private static LayoutProbe CreateArranged(ShadowMode mode, Point offset)
     {
-        LayoutProbe control = new()
-        {
-            HasShadow = true,
-            ShadowMode = mode,
-            ShadowOffset = offset,
-            ShadowAttributes = Attributes.Dim,
-        };
+        var control = CreateSurface(mode, offset);
         control.Children.Add(new ProbeControl(new Size(3, 2)));
         new Engine().Layout(control, new Size(3, 2));
         return control;
     }
+
+    private static LayoutProbe CreateSurface(ShadowMode mode, Point offset) => new()
+    {
+        HasShadow = true,
+        ShadowMode = mode,
+        ShadowOffset = offset,
+        ShadowGlyph = new Rune('▓'),
+        ShadowAttributes = Attributes.Dim,
+    };
 }

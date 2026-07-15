@@ -13,9 +13,10 @@ namespace SharpVision.Showcase.Tests;
 public sealed class ThemeSwatchLiveThemeTests
 {
     /// <summary>
-    /// Verifies an intrinsic surface with <c>Background = ThemeColors.Accent</c> paints the active theme's
-    /// accent color and repaints the same instance with the new color after <c>Application.Theme</c>
-    /// changes, proving resolution alone (no <c>OnRender</c> theme lookup) keeps it live.
+    /// Verifies an intrinsic control-surface chip with <c>Background = ThemeColors.Accent</c> paints
+    /// the active theme's accent color and repaints the same instance with the new color after
+    /// <c>Application.Theme</c> changes, proving resolution alone (no <c>OnRender</c> theme lookup)
+    /// keeps it live.
     /// </summary>
     [Fact]
     public async Task Chip_WhenApplicationThemeChanges_RepaintsSameInstanceWithNewColorAsync()
@@ -24,8 +25,8 @@ public sealed class ThemeSwatchLiveThemeTests
         var size = new Size(20, 4);
         terminal.QueueResize(new Dimensions(size));
 
-        // The same kind of intrinsic surface ThemingPane.BuildRoleSwatches builds: a Dock whose Background
-        // is a deferred role color. It never reads ThemeContext itself; resolution paints it live.
+        // The same kind of chip ThemingPane.BuildRoleSwatches builds: a plain Dock whose Background is
+        // a deferred role color. It never reads ThemeContext itself; resolution paints it live.
         var chip = new Dock()
         {
             Width = Length.Cells(6),

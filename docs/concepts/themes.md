@@ -65,6 +65,7 @@ entry.
 
 ```json
 {
+  "version": 1,
   "name": "Tokyo Night",
   "slug": "tokyo-night",
   "colorScheme": "dark",
@@ -162,6 +163,17 @@ must never reach the encoder unresolved, `CellStyle` construction and the
 lower-level `Palette`/`Sgr` encode paths throw if given one, so a resolution gap
 fails fast in a test instead of rendering garbage.
 
+`Theme.SetColor` defines the concrete palette behind those deferred values. It
+accepts only `ColorKind.Default`, `ColorKind.Indexed`, or `ColorKind.Rgb`;
+assigning a deferred `ColorKind.Role` throws `ArgumentException` before the
+theme changes. Assigning a changed concrete value increments `Theme.Version` and
+raises one render-impact `Theme.Changed` event targeting `Control`, after the
+new palette value is committed. An equivalent assignment is a no-op: it does not
+publish a version or event on a mutable theme. An attached `Application`
+observes the event on its dispatcher, republishes the complete theme snapshot,
+and invalidates rendering so existing `ThemeColors.*` values resolve against the
+new palette.
+
 ## The base control-style recipe
 
 Once all twelve roles are resolved, the internal `ThemeBuilder` recipe sets
@@ -238,13 +250,21 @@ Theme fromStream = ThemeFile.Load(stream);      // caller owns the stream
 Theme fromDisk = ThemeFile.LoadFile("my-theme.theme.json");
 ```
 
-`ThemeFile` resolves the palette and roles and returns a frozen `Theme`,
-validating the color values and the required `background`/`foreground` roles; it
-does not require the descriptive metadata fields. The non-empty-metadata,
-`colorScheme`, and unique-slug checks apply only to embedded catalog themes. All
-three methods throw `ArgumentNullException` for a null argument and
-`InvalidDataException` for malformed or invalid content; `LoadFile` also
-propagates `FileNotFoundException`/`IOException` from the file read.
+Every document requires schema `version: 1`. `ThemeFile` uses the same strict
+UTF-8 parser for text, streams, files, and embedded resources. It rejects
+unknown or duplicate fields, malformed UTF-8, unsupported versions, more than 64
+KiB of encoded input, JSON deeper than four levels, more than 256 palette or 12
+role entries, keys longer than 64 characters, individual strings longer than
+2,048 characters, and more than 32 KiB of aggregate decoded text. Stream loads
+begin at the current position and never close the caller-owned stream.
+
+The loader resolves the palette and roles and returns a frozen `Theme`,
+validating color values and the required `background`/`foreground` roles. User
+files may omit descriptive metadata; embedded catalog themes additionally
+require non-empty metadata, a valid `colorScheme`, and a unique slug. All three
+methods throw `ArgumentNullException` for a null argument and
+`InvalidDataException` for malformed, oversized, or invalid content; `LoadFile`
+also propagates file-system exceptions from opening and reading the path.
 
 ## Attribution and license policy
 

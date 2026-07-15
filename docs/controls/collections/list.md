@@ -10,12 +10,13 @@ or recycling claim.
 
 Each template result is wrapped by one ordinary pressable `ListItem`. The
 wrapper owns focus, activation, selected visual state, and exactly one template
-control; selection state propagates through that realized subtree so inherited
-`State.Checked` styling reaches the cells that actually render.
+control through inherited `Content`; selection state propagates through that
+realized subtree so inherited `State.Selected` styling reaches the cells that
+actually render.
 
 When the resolved style supplies a background, the List paints its complete
 arranged surface with that normal or disabled appearance. Each realized item
-paints its complete row with the resolved item state, so a `State.Checked`
+paints its complete row with the resolved item state, so a `State.Selected`
 overlay visibly highlights selected rows instead of changing only the label
 cells.
 

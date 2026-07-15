@@ -8,10 +8,28 @@ All controls derive from the
 [styling](../concepts/styling.md#styling-contract), and
 [input](../concepts/input-routing.md#input-routing-contract) rules.
 
+### Authoring roles
+
+- [ContentControl](content-control.md#contentcontrol-contract) owns zero or one
+  publicly replaceable content control.
+- [CompositeControl](composite-control.md#compositecontrol-contract) owns one
+  retained private implementation root initialized by the concrete constructor.
+- [Pressable](pressable.md#pressable-contract) adds focus and completed
+  activation to that single-content role.
+
 ### Display
 
 - [Text](display/text.md#text-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
+
+Border and shadow are intrinsic `Control` chrome configured through
+`BorderThickness`, `BorderGlyphs`, `HasShadow`, `ShadowMode`, and the related
+style properties; neither is a standalone control. `BorderThickness` always
+reserves layout through the base box model, while visible chrome requires a
+render path that calls `RenderChrome` or a specialized equivalent. Use an
+ordinary chrome-rendering container around a sealed bespoke renderer that calls
+neither path when it needs a visible frame or shadow. See the
+[shared chrome contract](../concepts/styling.md#shared-chrome).
 
 ### Input
 
@@ -35,6 +53,6 @@ All controls derive from the
 
 - [List](collections/list.md#list-contract)
 - [Menu](menus/menu.md#menu-contract)
-- [MenuItem](menus/menu-item.md#menuitem-contract)
+- [MenuItem and MenuSeparator](menus/menu-item.md#menuitem-contract)
 - [Popup](windows/popup.md#popup-contract)
 - [Window](windows/window.md#window-contract)

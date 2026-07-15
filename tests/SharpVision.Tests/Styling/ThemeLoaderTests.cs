@@ -10,7 +10,7 @@ public sealed class ThemeLoaderTests
 {
     private static string Json(string roles, string palette = "\"bg\": \"#101010\", \"fg\": \"#e0e0e0\"") =>
         $$"""
-          { "name": "T", "slug": "t", "colorScheme": "dark", "order": 1,
+          { "version": 1, "name": "T", "slug": "t", "colorScheme": "dark", "order": 1,
             "author": "A", "license": "MIT", "source": "s",
             "palette": { {{palette}} }, "roles": { {{roles}} } }
           """;

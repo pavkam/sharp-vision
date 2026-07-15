@@ -3,7 +3,7 @@
 
 namespace SharpVision.Controls;
 
-
+using System.Runtime.ExceptionServices;
 
 /// <summary>Defines a focusable two- or three-state toggle with optional content.</summary>
 public sealed class CheckBox: Pressable
@@ -11,7 +11,7 @@ public sealed class CheckBox: Pressable
     private bool? _isChecked = false;
 
     /// <summary>Initializes an unchecked two-state CheckBox.</summary>
-    public CheckBox() : base(capacity: 1)
+    public CheckBox()
     {
     }
 
@@ -45,26 +45,34 @@ public sealed class CheckBox: Pressable
         get;
         set
         {
-            if (!Set(ref field, value, Invalidation.None))
+            VerifyMutable();
+
+            if (field == value)
             {
                 return;
             }
 
             if (!value && _isChecked is null)
             {
-                SetChecked(false, ActivationCause.Programmatic);
+                field = false;
+                _isChecked = false;
+                InvalidateVisualState();
+                var eventArgs = new CheckChangedEventArgs(previous: null, current: false, ActivationCause.Programmatic);
+                var failure = (ExceptionDispatchInfo?) null;
+                CaptureFailure(
+                    () => NotifyPropertyChanged(nameof(IsThreeState), ChangeImpact.None),
+                    ref failure);
+                CaptureFailure(
+                    () => NotifyPropertyChanged(nameof(IsChecked), ChangeImpact.None),
+                    ref failure);
+                CaptureFailure(() => Unchecked?.Invoke(this, eventArgs), ref failure);
+                CaptureFailure(() => StateChanged?.Invoke(this, eventArgs), ref failure);
+                failure?.Throw();
+                return;
             }
-        }
-    }
 
-    /// <summary>Gets or atomically sets the optional owned label content.</summary>
-    /// <exception cref="ArgumentException">The value cannot be owned by this CheckBox.</exception>
-    /// <exception cref="InvalidOperationException">The attached CheckBox is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The CheckBox or value is disposed.</exception>
-    public Control? Content
-    {
-        get => Children.Count == 0 ? null : Children[0];
-        set => Children.SetOnly(value);
+            _ = SetProperty(ref field, value, ChangeImpact.None);
+        }
     }
 
     /// <summary>Gets or sets the validated state glyphs.</summary>
@@ -73,7 +81,7 @@ public sealed class CheckBox: Pressable
     public Marks Marks
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     } = Marks.Default;
 
     /// <summary>Gets or sets the built-in mark family used before the optional label.</summary>
@@ -90,7 +98,7 @@ public sealed class CheckBox: Pressable
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The checkbox mark style is unknown.");
             }
 
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -129,10 +137,15 @@ public sealed class CheckBox: Pressable
             return new Size(MarkWidth, 1);
         }
 
-        content.Measure(new Constraint(Subtract(constraint.Width, MarkWidth + 1), constraint.Height));
-        return new Size(
-            Add(MarkWidth + 1, Add(content.DesiredSize.Width, content.Margin.Horizontal)),
-            Math.Max(1, Add(content.DesiredSize.Height, content.Margin.Vertical)));
+        var desired = MeasureChild(
+            content,
+            new Constraint(Subtract(constraint.Width, MarkWidth + 1), constraint.Height));
+
+        return content.Visibility == Visibility.Collapsed
+            ? new Size(MarkWidth, 1)
+            : new Size(
+                Add(MarkWidth + 1, Add(desired.Width, content.Margin.Horizontal)),
+                Math.Max(1, Add(desired.Height, content.Margin.Vertical)));
     }
 
     /// <inheritdoc/>
@@ -141,10 +154,10 @@ public sealed class CheckBox: Pressable
         if (Content is { } content)
         {
             var consumed = Math.Min(MarkWidth + 1, bounds.Width);
-            content.Arrange(
+            ArrangeChild(
+                content,
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
-                widthResolved: true,
-                heightResolved: true);
+                ResolvedAxes.Both);
         }
     }
 
@@ -215,7 +228,7 @@ public sealed class CheckBox: Pressable
 
         var previous = _isChecked;
 
-        if (!Set(ref _isChecked, value, Invalidation.Render, nameof(IsChecked)))
+        if (!SetVisualStateProperty(ref _isChecked, value, nameof(IsChecked)))
         {
             return;
         }
@@ -236,6 +249,18 @@ public sealed class CheckBox: Pressable
         }
 
         StateChanged?.Invoke(this, eventArgs);
+    }
+
+    private static void CaptureFailure(Action action, ref ExceptionDispatchInfo? failure)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
+        }
     }
 
     private static int? Subtract(int? value, int extent)

@@ -16,7 +16,7 @@ public interface IStyleProperty
     public string ClrName { get; }
 
     /// <summary>Gets the earliest control phase affected by this property.</summary>
-    public Impact Impact { get; }
+    public ChangeImpact Impact { get; }
 
     /// <summary>Gets the registered default value.</summary>
     public object DefaultValue { get; }

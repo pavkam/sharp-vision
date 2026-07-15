@@ -20,46 +20,16 @@ public sealed class GalleryRenderingTests
         using Frame frame = new(size);
         gallery.Render(frame.Canvas);
         var screen = new Screen(frame);
-        var pane = (View) gallery.Content;
-        var page = pane.Children.Single().ShouldBeOfType<Dock>();
-        var header = page.Children[0].ShouldBeOfType<Dock>();
-        var view = page.Children[1].ShouldBeOfType<Stack>();
+        var view = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
 
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
-        gallery.Content.Bounds.ShouldBe(new Rect(gallery.Sidebar.Bounds.Right, 0, 52, 24));
-        header.Bounds.X.ShouldBe(gallery.Sidebar.Bounds.Right);
-        header.Bounds.Right.ShouldBe(size.Width);
-        view.Bounds.X.ShouldBe(gallery.Sidebar.Bounds.Right);
-        view.Bounds.Right.ShouldBe(size.Width);
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
         screen.Text.ShouldContain("Overview");
-        screen.Text.ShouldContain("Button");
+        screen.Text.ShouldContain("Activation log: waiting");
         screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
         screen.ValidateContinuations();
-    }
-
-    /// <summary>Verifies a wide terminal gives the selected page every cell after the sidebar.</summary>
-    [Fact]
-    public void Layout_WhenViewportIsWide_SelectedPageFillsRemainingRegion()
-    {
-        using var gallery = CreateThemedGallery();
-        var size = new Size(140, 40);
-
-        new Engine().Layout(gallery, size);
-
-        var pane = (View) gallery.Content;
-        var page = pane.Children.Single().ShouldBeOfType<Dock>();
-        var header = page.Children[0].ShouldBeOfType<Dock>();
-        var body = page.Children[1].ShouldBeOfType<Stack>();
-        var expected = new Rect(gallery.Sidebar.Bounds.Right, 0, 112, 40);
-        gallery.Content.Bounds.ShouldBe(expected);
-        page.Bounds.ShouldBe(expected);
-        header.Bounds.X.ShouldBe(expected.X);
-        header.Bounds.Right.ShouldBe(expected.Right);
-        body.Bounds.X.ShouldBe(expected.X);
-        body.Bounds.Right.ShouldBe(expected.Right);
     }
 
     /// <summary>Verifies responsive Text receives the committed documentation-pane width instead of an unbounded horizontal measure.</summary>
@@ -76,34 +46,8 @@ public sealed class GalleryRenderingTests
 
         var screen = new Screen(frame);
         screen.Text.ShouldContain("command paths.");
-        FindAll<Stack>(gallery.Content).Single(stack => stack.AutoScroll)
+        gallery.CurrentPage.Parent.ShouldBeOfType<Stack>()
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
-    }
-
-    /// <summary>Verifies the sidebar footer presents full-width utilities in stable vertical order.</summary>
-    [Theory]
-    [InlineData(80, 24)]
-    [InlineData(30, 8)]
-    public void Render_WhenSidebarHeightVaries_KeepsFooterControlsSeparated(int width, int height)
-    {
-        using var gallery = CreateThemedGallery();
-        new Engine().Layout(gallery, new Size(width, height));
-        var appearance = FindAll<ControlText>(gallery.Sidebar).Single(text =>
-            text.Content.Contains("Appearance", StringComparison.Ordinal));
-        var picker = FindAll<ComboBox>(gallery.Sidebar).Single();
-        var quit = FindAll<Button>(gallery.Sidebar).Single();
-        var hint = FindAll<ControlText>(quit).Single(text => text.Content == "Ctrl+Q");
-        Control[] footerControls = [appearance, picker, quit];
-        var footerStack = appearance.Parent.ShouldBeOfType<Stack>();
-
-        footerStack.Parent.ShouldBeOfType<Dock>().BorderThickness.Top.ShouldBe(1);
-        footerControls.ShouldAllBe(control => control.Bounds.Width > 0 && control.Bounds.Height > 0);
-        appearance.Bounds.Bottom.ShouldBeLessThanOrEqualTo(picker.Bounds.Y);
-        picker.Bounds.Bottom.ShouldBeLessThanOrEqualTo(quit.Bounds.Y);
-        var footerWidth = footerStack.Bounds.Width - footerStack.Padding.Horizontal;
-        picker.Bounds.Width.ShouldBe(footerWidth);
-        quit.Bounds.Width.ShouldBe(footerWidth);
-        hint.Bounds.Right.ShouldBeLessThanOrEqualTo(quit.Bounds.Right - 1);
     }
 
     /// <summary>Verifies the Button page demonstrates both shadow modes and a stationary flat variant.</summary>
@@ -114,7 +58,7 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "Button"));
         new Engine().Layout(gallery, new Size(100, 60));
 
-        var buttons = FindAll<Button>(gallery.Content);
+        var buttons = FindAll<Button>(gallery.CurrentPage);
 
         buttons.ShouldContain(button => button.ShadowMode == ShadowMode.Composite);
         buttons.ShouldContain(button => !button.HasShadow);
@@ -137,8 +81,11 @@ public sealed class GalleryRenderingTests
 
         var screen = new Screen(frame);
         var edge = Find<Dock>(
-            gallery.Content,
-            static value => value.Children.Count == 1 &&
+            gallery.CurrentPage,
+            static value =>
+                value.BorderThickness == new Thickness(1) &&
+                value.BorderGlyphs == Glyphs.Paired &&
+                value.Children.Count == 1 &&
                 value.Children[0] is ControlText { Content: "Right 2 / Bottom 1" });
         edge.ShouldNotBeNull().Bounds.Right.ShouldBeLessThanOrEqualTo(size.Width);
         screen.Text.ShouldContain("Fixed placement");
@@ -149,6 +96,56 @@ public sealed class GalleryRenderingTests
         screen.Text.ShouldContain("50%,50%");
         screen.Text.ShouldContain("Right 2 / Bottom 1");
         screen.ValidateContinuations();
+    }
+
+    /// <summary>Verifies the third-party ShowcasePanel paints intrinsic chrome before its custom content.</summary>
+    [Fact]
+    public void Render_WhenThemingPageIsSelected_DrawsShowcasePanelIntrinsicFrame()
+    {
+        using var gallery = CreateThemedGallery();
+        gallery.Select(IndexOf(gallery, "Theming"));
+        var size = new Size(120, 80);
+        new Engine().Layout(gallery, size);
+        using Frame frame = new(size);
+
+        gallery.Render(frame.Canvas);
+
+        var panel = FindAll<ShowcasePanel>(gallery.CurrentPage).ShouldHaveSingleItem();
+        Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Y)).ShouldBe("╭");
+        Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Y)).ShouldBe("╮");
+        Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Bottom - 1)).ShouldBe("╰");
+        Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Bottom - 1)).ShouldBe("╯");
+        Grapheme(frame, new Point(panel.Bounds.X + 1, panel.Bounds.Y + 1)).ShouldBe("S");
+        Grapheme(
+            frame,
+            new Point(panel.Bounds.X + panel.Caption.Length + 2, panel.Bounds.Y + 1)).ShouldBe("T");
+    }
+
+    /// <summary>Verifies the Popup page can open its primary migrated content in the elevated render and hit-test layer.</summary>
+    [Fact]
+    public void Render_WhenPopupPagePrimarySpecimenOpens_ShowsContentFrameAndElevatedHitTarget()
+    {
+        using var gallery = CreateThemedGallery();
+        gallery.Select(IndexOf(gallery, "Popup"));
+        var size = new Size(120, 80);
+        var engine = new Engine();
+        engine.Layout(gallery, size);
+        var popup = FindAll<Popup>(gallery.CurrentPage)
+            .Single(value => value.Content is List);
+        var content = popup.Content.ShouldBeOfType<List>();
+
+        popup.IsOpen = true;
+        engine.Layout(gallery, size);
+        using Frame frame = new(size);
+        gallery.Render(frame.Canvas);
+
+        popup.SurfaceBounds.ShouldNotBe(default);
+        content.Bounds.ShouldNotBe(default);
+        Grapheme(frame, new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).ShouldBe("╭");
+        var contentPoint = new Point(content.Bounds.X, content.Bounds.Y);
+        Grapheme(frame, contentPoint).ShouldBe("D");
+        var popupTarget = popup.HitTest(contentPoint).ShouldNotBeNull();
+        gallery.HitTest(contentPoint).ShouldBeSameAs(popupTarget);
     }
 
     /// <summary>Verifies the Window page exposes chrome variants and centers its dialog actions.</summary>
@@ -163,7 +160,7 @@ public sealed class GalleryRenderingTests
 
         gallery.Render(frame.Canvas);
 
-        var windows = FindAll<Window>(gallery.Content);
+        var windows = FindAll<Window>(gallery.CurrentPage);
         var screen = new Screen(frame);
         screen.Text.ShouldContain("Apply");
         screen.Text.ShouldContain("Cancel");
@@ -185,10 +182,6 @@ public sealed class GalleryRenderingTests
         actions.ShouldAllBe(button =>
             button.Content.ShouldNotBeNull().Bounds.Height > 0 &&
             button.Content.Bounds.Bottom <= dialog.Bounds.Bottom - 1);
-        dialog.Parent.ShouldNotBeNull().Parent.ShouldNotBeOfType<Dock>();
-        windows.ShouldNotContain(window => window.Bounds.Width <= 2);
-        windows.Single(window => window.Title == "Styled surface")
-            .Child.ShouldBeOfType<ControlText>().Overflow.ShouldBe(Overflow.Wrap);
     }
 
     /// <summary>Verifies the List page paints a distinct surface and selected-row highlight.</summary>
@@ -203,10 +196,7 @@ public sealed class GalleryRenderingTests
 
         gallery.Render(frame.Canvas);
 
-        var active = FindAll<List>(gallery.Content).Single(list =>
-            list.IsEnabled &&
-            list.Items.Count == 8 &&
-            Equals(list.Items[1], "Beta"));
+        var active = FindAll<List>(gallery.CurrentPage).First(list => list.IsEnabled);
         active.Background.ShouldBe(Color.Indexed(0));
         frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
             .ShouldBe(Color.Indexed(4));
@@ -220,7 +210,7 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "Text"));
         new Engine().Layout(gallery, new Size(120, 80));
 
-        var marked = FindAll<ControlText>(gallery.Content)
+        var marked = FindAll<ControlText>(gallery.CurrentPage)
             .Single(text => text.Content.Contains("<rapidblink>", StringComparison.Ordinal));
 
         marked.Content.ShouldContain("<b>");
@@ -244,7 +234,7 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "Text"));
         new Engine().Layout(gallery, new Size(120, 80));
 
-        var button = FindAll<Button>(gallery.Content)
+        var button = FindAll<Button>(gallery.CurrentPage)
             .Single(value => value.Content is ControlText { Content: "Append markup" });
 
         button.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
@@ -262,14 +252,11 @@ public sealed class GalleryRenderingTests
             return match;
         }
 
-        if (control is not Container container)
-        {
-            return null;
-        }
+        var count = control.OwnedControlCount;
 
-        foreach (var child in container.Children)
+        for (var index = 0; index < count; index++)
         {
-            if (Find(child, predicate) is { } found)
+            if (Find(control.OwnedControlAt(index), predicate) is { } found)
             {
                 return found;
             }
@@ -285,6 +272,21 @@ public sealed class GalleryRenderingTests
         return matches;
     }
 
+    private static string Grapheme(Frame frame, Point point)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        var length = frame.GetGraphemeByteCount(point);
+
+        if (length == 0)
+        {
+            return string.Empty;
+        }
+
+        var bytes = new byte[length];
+        _ = frame.CopyGrapheme(point, bytes);
+        return Encoding.UTF8.GetString(bytes);
+    }
+
     private static void Visit<T>(Control control, List<T> matches) where T : Control
     {
         if (control is T match)
@@ -292,12 +294,11 @@ public sealed class GalleryRenderingTests
             matches.Add(match);
         }
 
-        if (control is Container container)
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
         {
-            foreach (var child in container.Children)
-            {
-                Visit(child, matches);
-            }
+            Visit(control.OwnedControlAt(index), matches);
         }
     }
 

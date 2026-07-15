@@ -2,8 +2,8 @@
 
 ## Project structure contract
 
-The solution contains three production projects and one matching test project
-for each.
+The solution contains three production projects, one matching test project for
+each, and one deliberately unprivileged consumer-contract test project.
 
 ```mermaid
 flowchart LR
@@ -12,11 +12,13 @@ flowchart LR
     Showcase["SharpVision.Showcase"]
     TerminalTests["SharpVision.Terminal.Tests"]
     UITests["SharpVision.Tests"]
+    ConsumerTests["SharpVision.Consumer.Tests"]
     ShowcaseTests["SharpVision.Showcase.Tests"]
     UI --> Terminal
     Showcase --> UI
     TerminalTests -. tests .-> Terminal
     UITests -. tests .-> UI
+    ConsumerTests -. public contract .-> UI
     ShowcaseTests -. tests .-> Showcase
 ```
 
@@ -44,13 +46,30 @@ infrastructure namespaces:
 | `SharpVision.Styling`   | Mutable style resources and visual-state resolution.                           |
 | `SharpVision.Runtime`   | Terminal session ownership, application lifecycle, and console host bootstrap. |
 
-Phase 5A adds public Stack, Grid, Dock, Overlay, Canvas, and Text types plus
-intrinsic border properties on the shared control boundary. Remaining controls,
-scrolling, menus, popups, and windows stay assigned to later Phase 5 slices;
-none may move terminal protocol or rendering behavior into the UI layer.
+The current UI project ships the complete
+[control catalog](../controls/index.md#control-catalog): layout panels, text and
+editing, selection and item controls, menus, popups, windows, intrinsic
+container scrolling, styling, focus, and routed input all remain on these
+boundaries. Border and shadow properties live on `Control`, and
+`BorderThickness` always participates in its base box model. A render path
+paints that chrome only when it calls `RenderChrome` or a specialized
+equivalent. A sealed bespoke renderer that calls neither path uses an ordinary
+chrome-rendering container when it needs a visible frame or shadow. Neither
+feature requires a dedicated wrapper type or moves terminal protocol or renderer
+behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.
+
+`SharpVision.Consumer.Tests` compiles the third-party `Gauge`, `FlowPanel`,
+`OverflowPanel`, `InteractiveProbe`, `ExternalContentControl`, and
+`ExternalToggleChip` specimens against only `SharpVision.csproj`. The product
+assembly must not grant it `InternalsVisibleTo`; its build is the executable
+foundation guard for leaf, layout, single-content ownership, pressable
+visual-state mutation, focus/capture, and lifecycle extension contracts.
+Internal `SharpVision.Tests` friendship proves framework invariants, not
+third-party usability. A later pack-and-consume gate proves package shape rather
+than project-reference shape.
 
 ## Namespace and file boundaries
 

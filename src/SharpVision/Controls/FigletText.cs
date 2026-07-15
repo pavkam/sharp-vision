@@ -34,7 +34,7 @@ public sealed class FigletText: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 
@@ -48,7 +48,7 @@ public sealed class FigletText: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            _ = Set(ref field, value, Invalidation.Measure);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -58,7 +58,7 @@ public sealed class FigletText: Control
     public FigletOptions Options
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Measure);
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     #endregion

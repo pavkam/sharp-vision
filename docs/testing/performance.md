@@ -47,9 +47,10 @@ rules in the
 emoji segmentation; unchanged, sparse, and dense 80×24 encoding; and legacy
 text, SGR mouse, and Kitty keyboard decoding. Five 10,000-iteration allocation
 windows must include a zero-byte sample after tiered compilation has crossed its
-warm-up. Test output records elapsed time, .NET runtime, OS, and process
-architecture, but elapsed time is intentionally informational on local and
-ordinary CI machines.
+warm-up. The allocation class belongs to a non-parallel test collection so
+unrelated terminal tests cannot pollute its thread-local measurements. Test
+output records elapsed time, .NET runtime, OS, and process architecture, but
+elapsed time is intentionally informational on local and ordinary CI machines.
 
 ## Current Phase 4 gates
 
@@ -66,7 +67,7 @@ wall-clock values remain informational.
 ## Current Phase 5B gates
 
 `InteractivePerformanceTests` renders a representative List, TextInput,
-ScrollBar, and `AutoScroll`-enabled Stack tree at 80×24 and 200×60. Five
+ScrollBar, and intrinsically scrollable Stack tree at 80×24 and 200×60. Five
 measured 200-frame windows must include a zero-allocation window after warm-up.
 The test process disables tiered compilation so the gate consistently measures
 fully optimized steady-state code instead of background JIT promotion timing.

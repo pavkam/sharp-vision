@@ -19,7 +19,7 @@ public sealed class DataPaneTests
 
         // Assert
         popup.IsOpen.ShouldBeTrue();
-        _ = popup.Child.ShouldBeOfType<Menu>();
+        _ = popup.Content.ShouldBeOfType<Menu>();
     }
 
     /// <summary>Verifies ScrollBar live geometry updates without replacing the control.</summary>

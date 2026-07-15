@@ -53,7 +53,7 @@ public sealed class Text: Control
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            if (Set(ref field, value, Invalidation.Measure))
+            if (SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 _layoutValid = false;
             }
@@ -71,7 +71,7 @@ public sealed class Text: Control
         {
             Validate(value);
 
-            if (Set(ref field, value, Invalidation.Measure))
+            if (SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 _layoutValid = false;
             }
@@ -88,7 +88,7 @@ public sealed class Text: Control
         set
         {
             Validate(value);
-            _ = Set(ref field, value, Invalidation.Arrange);
+            _ = SetProperty(ref field, value, ChangeImpact.Arrange);
         }
     }
 
@@ -112,7 +112,7 @@ public sealed class Text: Control
             AmbiguousWidthValue = value;
             _hasAmbiguousWidth = true;
             _layoutValid = false;
-            NotifyChanged(nameof(AmbiguousWidth), Invalidation.Measure);
+            NotifyPropertyChanged(nameof(AmbiguousWidth), ChangeImpact.Measure);
         }
     }
 

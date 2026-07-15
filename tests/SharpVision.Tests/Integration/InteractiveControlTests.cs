@@ -87,7 +87,7 @@ public sealed class InteractiveControlTests
         await WaitUntilAsync(
             () => scroll.VerticalOffset == 1,
             application,
-            "scroll-view wheel",
+            "intrinsic container wheel",
             TestContext.Current.CancellationToken);
         Click(terminal, points[6]);
         await WaitUntilAsync(

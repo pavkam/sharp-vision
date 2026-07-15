@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using System.Runtime.ExceptionServices;
+
 
 /// <summary>Owns transactional keyboard focus within one attached control tree.</summary>
 public sealed class FocusManager: IDisposable
@@ -54,6 +56,8 @@ public sealed class FocusManager: IDisposable
     private bool IsChanging { get; set; }
 
     private bool CleanupPending { get; set; }
+
+    private List<Control>? EligibilityNotificationsPending { get; set; }
 
     private bool IsDisposed { get; set; }
 
@@ -149,6 +153,30 @@ public sealed class FocusManager: IDisposable
         _ = Change(null, cancellable: false);
     }
 
+    /// <summary>Releases focus when the focused control loses its own eligibility.</summary>
+    /// <param name="control">The non-null owned control whose eligibility changed.</param>
+    /// <returns>Whether cleanup completed synchronously and notification may publish.</returns>
+    internal bool Ineligible(Control control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        Debug.Assert(IsMember(control), "Ineligible controls belong to the focus root.");
+
+        if (!ReferenceEquals(Focused, control))
+        {
+            return true;
+        }
+
+        if (IsChanging)
+        {
+            CleanupPending = true;
+            (EligibilityNotificationsPending ??= []).Add(control);
+            return false;
+        }
+
+        _ = Change(null, cancellable: false);
+        return true;
+    }
+
     /// <summary>Severs manager ownership while the root is being disposed.</summary>
     internal void RootDisposed()
     {
@@ -230,7 +258,34 @@ public sealed class FocusManager: IDisposable
                     _ = Change(null, cancellable: false);
                 }
             }
+
+            PublishEligibilityNotifications();
         }
+    }
+
+    private void PublishEligibilityNotifications()
+    {
+        if (EligibilityNotificationsPending is not { } pending)
+        {
+            return;
+        }
+
+        EligibilityNotificationsPending = null;
+        var failure = (ExceptionDispatchInfo?) null;
+
+        foreach (var control in pending)
+        {
+            try
+            {
+                control.PublishDeferredCanFocusChange();
+            }
+            catch (Exception exception)
+            {
+                failure ??= ExceptionDispatchInfo.Capture(exception);
+            }
+        }
+
+        failure?.Throw();
     }
 
     #endregion
@@ -246,19 +301,18 @@ public sealed class FocusManager: IDisposable
         Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
         Debug.Assert(order >= 0, "Focus traversal order is non-negative.");
 
-        if (IsEligible(control))
+        if (IsEligible(control) && control.IsTabStop)
         {
             candidates.Add((control, order));
         }
 
         order++;
 
-        if (control is Container container)
+        var count = control.NavigationCount;
+
+        for (var index = 0; index < count; index++)
         {
-            for (var index = 0; index < container.NavigationCount; index++)
-            {
-                Collect(container.NavigationAt(index), candidates, ref order);
-            }
+            Collect(control.NavigationAt(index), candidates, ref order);
         }
     }
 

@@ -8,13 +8,15 @@ using SharpVision.Text;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents application theming, type-keyed styles, local overrides, and third-party style properties.</summary>
-internal sealed class ThemingPane: View
+internal sealed class ThemingPane: CompositeControl
 {
+
+    internal ThemingPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Theming";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         ShowcasePanel panel = new();
 

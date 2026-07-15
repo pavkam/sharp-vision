@@ -45,6 +45,35 @@ public sealed class RoutingTests
         eventArgs.Source.ShouldBeSameAs(target);
     }
 
+    /// <summary>Verifies routing follows ownership through private non-interactive slots on non-Container owners.</summary>
+    [Fact]
+    public void Route_WhenAncestryUsesNonContainerSlots_PreviewsAndBubblesCompletePath()
+    {
+        var order = new List<string>();
+        var root = new TraversalOwner();
+        var middle = new TraversalOwner();
+        var target = new ProbeControl();
+        root.AddExcluded(middle);
+        middle.AddPopup(target);
+        Record(root, "root");
+        Record(middle, "middle");
+        Record(target, "target");
+
+        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+
+        order.ShouldBe([
+            "root-Preview",
+            "middle-Preview",
+            "target-Preview",
+            "target-Bubble",
+            "middle-Bubble",
+            "root-Bubble",
+        ]);
+
+        void Record(Control control, string name) =>
+            _ = control.AddHandler(Events.Key, (_, eventArgs) => order.Add($"{name}-{eventArgs.Phase}"));
+    }
+
     /// <summary>Verifies Shift+Tab uses the shared default to move focus backward.</summary>
     [Fact]
     public async Task Route_WhenShiftTabIsPressed_MovesFocusToPreviousTabStopAsync()

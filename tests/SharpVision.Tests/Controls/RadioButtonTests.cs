@@ -51,6 +51,31 @@ public sealed class RadioButtonTests
         order.ShouldBe(["old", "new", "changed"]);
     }
 
+    /// <summary>Verifies old-member property observers see the complete new group selection.</summary>
+    [Fact]
+    public void IsChecked_WhenSiblingSelectionChanges_StagesBothFieldsBeforePropertyNotifications()
+    {
+        var parent = new Stack();
+        var first = new RadioButton() { IsChecked = true };
+        var second = new RadioButton();
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(RadioButton.IsChecked))
+            {
+                first.IsChecked.ShouldBeFalse();
+                second.IsChecked.ShouldBeTrue();
+                observed = true;
+            }
+        };
+
+        second.IsChecked = true;
+
+        observed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies named groups span containers but remain scoped to one root.</summary>
     [Fact]
     public void IsChecked_WhenNamedMembersAreInDifferentContainers_UsesRootScope()
@@ -72,6 +97,43 @@ public sealed class RadioButtonTests
         first.IsChecked.ShouldBeFalse();
         second.IsChecked.ShouldBeTrue();
         unrelated.IsChecked.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies named groups span every owned slot even when no owner is a Container.</summary>
+    [Fact]
+    public void IsChecked_WhenNamedMembersUseNonContainerSlots_UsesCompleteOwnedRoot()
+    {
+        var root = new TraversalOwner();
+        var branch = new TraversalOwner();
+        var first = new RadioButton { GroupName = "density", IsChecked = true };
+        var second = new RadioButton { GroupName = "density" };
+        root.AddNormal(branch);
+        branch.AddExcluded(first);
+        root.AddPopup(second);
+
+        second.IsChecked = true;
+
+        first.IsChecked.ShouldBeFalse();
+        second.IsChecked.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies unnamed groups remain local to their exact ownership slot.</summary>
+    [Fact]
+    public void IsChecked_WhenUnnamedMembersUseDifferentSlots_OnlyExactSlotIsExclusive()
+    {
+        var root = new TraversalOwner();
+        var first = new RadioButton { IsChecked = true };
+        var second = new RadioButton();
+        var otherSlot = new RadioButton { IsChecked = true };
+        root.AddNormal(first);
+        root.AddNormal(second);
+        root.AddExcluded(otherSlot);
+
+        second.IsChecked = true;
+
+        first.IsChecked.ShouldBeFalse();
+        second.IsChecked.ShouldBeTrue();
+        otherSlot.IsChecked.ShouldBeTrue();
     }
 
     /// <summary>Verifies attaching a prechecked member resolves duplicate selection atomically.</summary>
@@ -103,6 +165,31 @@ public sealed class RadioButtonTests
 
         first.IsChecked.ShouldBeTrue();
         second.IsChecked.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies GroupName observers see destination-group exclusivity already resolved.</summary>
+    [Fact]
+    public void GroupName_WhenCheckedMemberMoves_ResolvesDestinationBeforePropertyNotification()
+    {
+        var parent = new Stack();
+        var first = new RadioButton() { GroupName = "a", IsChecked = true };
+        var second = new RadioButton() { GroupName = "b", IsChecked = true };
+        parent.Children.Add(first);
+        parent.Children.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(RadioButton.GroupName))
+            {
+                first.IsChecked.ShouldBeTrue();
+                second.IsChecked.ShouldBeFalse();
+                observed = true;
+            }
+        };
+
+        first.GroupName = "b";
+
+        observed.ShouldBeTrue();
     }
 
     /// <summary>Verifies reentrant old-member handlers suppress stale outer notifications.</summary>

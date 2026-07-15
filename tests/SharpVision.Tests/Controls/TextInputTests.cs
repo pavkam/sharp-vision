@@ -228,6 +228,51 @@ public sealed class TextInputTests
         }
     }
 
+    /// <summary>Verifies intrinsic border reservation positions editor text and caret exactly once.</summary>
+    [Fact]
+    public void Render_WhenBorderThicknessIsSet_InsetsEditorAndCaretExactlyOnce()
+    {
+        var control = new TextInput()
+        {
+            BorderThickness = new Thickness(1),
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Text = "A",
+        };
+        control.SetFocused(true);
+        new Engine().Layout(control, new Size(6, 3));
+        using Frame frame = new(new Size(6, 3));
+
+        control.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("A");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
+        frame.Cursor.Visible.ShouldBeTrue();
+        frame.Cursor.Position.ShouldBe(new Point(2, 1));
+    }
+
+    /// <summary>Verifies a TextInput framework rail remains inside its intrinsic border.</summary>
+    [Fact]
+    public void ScrollBars_WhenBorderThicknessIsSet_ContainsRailInsideBorder()
+    {
+        var control = new TextInput()
+        {
+            BorderThickness = new Thickness(1),
+            Width = Length.Cells(8),
+            Height = Length.Cells(5),
+            AcceptsReturn = true,
+            Text = "one\ntwo\nthree\nfour",
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+        };
+
+        new Engine().Layout(control, new Size(8, 5));
+
+        control.HitTest(new Point(6, 1)).ShouldBeOfType<ScrollBar>()
+            .Orientation.ShouldBe(Orientation.Vertical);
+        control.HitTest(new Point(7, 1)).ShouldBeSameAs(control);
+    }
+
     /// <summary>Verifies pointer press and inferred-pixel drag focus, capture, and select boundaries.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerDrags_SelectsByRenderedCellsAsync()
@@ -548,31 +593,6 @@ public sealed class TextInputTests
             capture.Captured.ShouldBeNull();
             control.IsFocused.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>
-    /// Verifies TextInput.DisposeChildren releases the base Container's own
-    /// owned bars, not only its private _chrome (the self-managed
-    /// _horizontal/_vertical pair), so a caller externally arming the
-    /// inherited AutoScroll does not leak the resulting ScrollBar chrome on
-    /// dispose.
-    /// </summary>
-    [Fact]
-    public void Dispose_WhenBaseAutoScrollIsArmedExternally_DisposesTheOwnedBaseBars()
-    {
-        var control = new TextInput() { AutoScroll = true };
-        var field = typeof(Container).GetField(
-            "_bars",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var bars = (Children) field.GetValue(control)!;
-        bars.Count.ShouldBe(2);
-        var horizontal = bars[0].ShouldBeOfType<ScrollBar>();
-        var vertical = bars[1].ShouldBeOfType<ScrollBar>();
-
-        control.Dispose();
-
-        horizontal.IsDisposed.ShouldBeTrue();
-        vertical.IsDisposed.ShouldBeTrue();
     }
 
     private static void Key(TextInput control, Code code, Modifiers modifiers) =>

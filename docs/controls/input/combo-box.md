@@ -2,25 +2,28 @@
 
 ## ComboBox contract
 
-`ComboBox` displays one selected value in a compact field and owns a
-[Popup](../windows/popup.md#popup-contract) containing a
-[List](../collections/list.md#list-contract) immediately below the field when
-open. The Popup clears and frames its surface before the list renders, so
-choices never show through content behind the drop-down. The list uses the same
-keyboard, pointer, selection, and scrolling semantics as a standalone list. When
-the active style supplies a `State.Checked` background, the selected choice
-fills the complete interior row, including trailing blank cells, under the
-[List row rendering contract](../collections/list.md#list-contract). The
-standard closed field owns an opaque Surface background so its selected value
-remains distinct from the parent even when `BorderThickness` is zero. A caller
-may add intrinsic border chrome normally; focused fields use the Accent
-foreground and border.
+`ComboBox` derives directly from `Control`. It displays one selected value in a
+compact field and owns a private [Popup](../windows/popup.md#popup-contract)
+containing a [List](../collections/list.md#list-contract) immediately below the
+field when open. The Popup clears and frames its surface before the list
+renders, so choices never show through content behind the drop-down. The list
+uses the same keyboard, pointer, selection, and scrolling semantics as a
+standalone list. When the active style supplies a `State.Selected` background,
+the selected choice fills the complete interior row, including trailing blank
+cells, under the
+[List row rendering contract](../collections/list.md#list-contract).
+
+The selected value is the field's face; `ComboBox` therefore exposes neither
+`Content` nor `Children`. It owns exactly one popup-layer framework part, and
+that `Popup.Content` owns the private List. Keyboard and pointer press mechanics
+are composed from the same internal behavior used by `Pressable`, without
+claiming its single-content inheritance role.
 
 ## API
 
 - `Items` copies non-null choices into the owned single-selection list.
 - `SelectedIndex` is `-1` or an index within `Items`; a committed selection
-  raises `SelectionChanged`.
+  publishes `PropertyChanged(SelectedIndex)` before `SelectionChanged`.
 - `DropDownHeight` is a positive terminal-cell maximum for the visible list.
 - `ScrollBars`, `ShowScrollBars`, `ScrollBarChrome`, and `ScrollBarFill` forward
   the common overflow policy to the owned List, so long choice popups use the
@@ -42,20 +45,6 @@ test. A close that began in the list restores keyboard focus to the visible
 ComboBox field during [Popup closing](../windows/popup.md#api), before the list
 becomes unavailable.
 
-While open, a root preview registration observes input outside the ComboBox and
-its popup. A primary press elsewhere or any wheel action elsewhere closes the
-popup without committing the highlighted row; the outside target continues
-receiving the routed input. The same registration is removed on close,
-reparenting, unavailability, and disposal. Focus is restored to the field only
-when the closing list previously owned focus, so an outside click may keep the
-new target focused.
-
-Pointer motion over the list paints the complete hovered row with the theme's
-Surface color without changing `SelectedIndex`. The committed choice retains the
-Checked-state selection colors, keeping hover, keyboard navigation, and
-committed selection visually distinct. Long lists use the
-[theme-owned scrollbar presentation](../../concepts/scrolling.md#scrollbar-presentation).
-
 ## Example
 
 ```csharp
@@ -71,5 +60,5 @@ var density = new ComboBox
 
 Cover item copying, index validation, framed popup rendering/hit testing, popup
 arrangement, Escape, mouse selection through the Popup, keyboard
-focus/navigation/activation, outside click and wheel dismissal, hover without
-commit, scrollable long lists, resize, style states, and exact cells.
+focus/navigation/activation, scrollable long lists, resize, style states, and
+exact cells.

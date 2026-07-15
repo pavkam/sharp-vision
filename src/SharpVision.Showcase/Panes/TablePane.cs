@@ -10,13 +10,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Table control with mixed column sizing and headerless specimens.</summary>
-internal sealed class TablePane: View
+internal sealed class TablePane: CompositeControl
 {
+
+    internal TablePane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Table";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var primary = new Table()
         {

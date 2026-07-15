@@ -9,102 +9,106 @@ public abstract partial class Control
 {
     /// <summary>Identifies the external margin style property.</summary>
     public static StyleProperty<Thickness> MarginProperty { get; } =
-        StyleProperty<Thickness>.Register<Control>("margin", default, Impact.Measure);
+        StyleProperty<Thickness>.Register<Control>("margin", default, ChangeImpact.Measure);
 
     /// <summary>Identifies the internal padding style property.</summary>
     public static StyleProperty<Thickness> PaddingProperty { get; } =
-        StyleProperty<Thickness>.Register<Control>("padding", default, Impact.Measure);
+        StyleProperty<Thickness>.Register<Control>("padding", default, ChangeImpact.Measure);
 
     /// <summary>Identifies the foreground style property.</summary>
     public static StyleProperty<Color?> ForegroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("foreground", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("foreground", null, ChangeImpact.Render);
 
     /// <summary>Identifies the background style property.</summary>
     public static StyleProperty<Color?> BackgroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("background", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("background", null, ChangeImpact.Render);
 
     /// <summary>Identifies the text-attribute style property.</summary>
     public static StyleProperty<TerminalAttributes?> AttributesProperty { get; } =
         StyleProperty<TerminalAttributes?>.Register<Control>(
             "attributes",
             null,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeAttributes);
 
     /// <summary>Identifies the typed underline style property.</summary>
     public static StyleProperty<Underline?> UnderlineProperty { get; } =
-        StyleProperty<Underline?>.Register<Control>("underline", null, Impact.Render);
+        StyleProperty<Underline?>.Register<Control>("underline", null, ChangeImpact.Render);
 
     /// <summary>Identifies the underline color style property.</summary>
     public static StyleProperty<Color?> UnderlineColorProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("underline-color", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("underline-color", null, ChangeImpact.Render);
 
     /// <summary>Identifies the body fill mode style property.</summary>
     public static StyleProperty<FillMode> FillModeProperty { get; } =
-        StyleProperty<FillMode>.Register<Control>("fill-mode", FillMode.Transparent, Impact.Render);
+        StyleProperty<FillMode>.Register<Control>("fill-mode", FillMode.Transparent, ChangeImpact.Render);
 
     /// <summary>Identifies the border thickness style property.</summary>
     public static StyleProperty<Thickness> BorderThicknessProperty { get; } =
         StyleProperty<Thickness>.Register<Control>(
             "border-thickness",
             default,
-            Impact.Measure,
+            ChangeImpact.Measure,
             ValidateThemeBorderThickness);
 
     /// <summary>Identifies the border glyph style property.</summary>
     public static StyleProperty<Glyphs> BorderGlyphsProperty { get; } =
-        StyleProperty<Glyphs>.Register<Control>("border-glyphs", Glyphs.Default, Impact.Render);
+        StyleProperty<Glyphs>.Register<Control>(
+            "border-glyphs",
+            Glyphs.Default,
+            ChangeImpact.Render,
+            ValidateThemeBorderGlyphs);
 
     /// <summary>Identifies the border color style property.</summary>
     public static StyleProperty<Color?> BorderColorProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("border-color", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("border-color", null, ChangeImpact.Render);
 
     /// <summary>Identifies the border attribute style property.</summary>
     public static StyleProperty<TerminalAttributes?> BorderAttributesProperty { get; } =
         StyleProperty<TerminalAttributes?>.Register<Control>(
             "border-attributes",
             null,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeAttributes);
 
     /// <summary>Identifies the shadow visibility style property.</summary>
     public static StyleProperty<bool> HasShadowProperty { get; } =
-        StyleProperty<bool>.Register<Control>("has-shadow", false, Impact.Render);
+        StyleProperty<bool>.Register<Control>("has-shadow", false, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow mode style property.</summary>
     public static StyleProperty<ShadowMode> ShadowModeProperty { get; } =
         StyleProperty<ShadowMode>.Register<Control>(
             "shadow-mode",
             ShadowMode.Composite,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeShadowMode);
 
     /// <summary>Identifies the shadow offset style property.</summary>
     public static StyleProperty<Point> ShadowOffsetProperty { get; } =
-        StyleProperty<Point>.Register<Control>("shadow-offset", default, Impact.Render);
+        StyleProperty<Point>.Register<Control>("shadow-offset", default, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow glyph style property.</summary>
     public static StyleProperty<Rune> ShadowGlyphProperty { get; } =
         StyleProperty<Rune>.Register<Control>(
             "shadow-glyph",
             new Rune('▓'),
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeShadowGlyph);
 
     /// <summary>Identifies the shadow foreground style property.</summary>
     public static StyleProperty<Color?> ShadowForegroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("shadow-foreground", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("shadow-foreground", null, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow background style property.</summary>
     public static StyleProperty<Color?> ShadowBackgroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("shadow-background", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("shadow-background", null, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow attribute style property.</summary>
     public static StyleProperty<TerminalAttributes?> ShadowAttributesProperty { get; } =
         StyleProperty<TerminalAttributes?>.Register<Control>(
             "shadow-attributes",
             null,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeAttributes);
 
     /// <summary>Gets or sets external non-collapsing cell edges.</summary>
@@ -144,6 +148,8 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the optional complete text-attribute set.</summary>
+    /// <exception cref="ArgumentException">The attribute flags conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains an unknown attribute flag.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TerminalAttributes? Attributes
@@ -180,6 +186,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets independently enabled zero-or-one-cell border edges.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Any edge exceeds one cell.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Thickness BorderThickness
@@ -189,6 +196,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the validated physical glyph family used for border edges.</summary>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Glyphs BorderGlyphs
@@ -207,6 +215,8 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the optional border attribute overlay.</summary>
+    /// <exception cref="ArgumentException">The attribute flags conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains an unknown attribute flag.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TerminalAttributes? BorderAttributes
@@ -225,6 +235,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets how the visual shadow changes overflow cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ShadowMode ShadowMode
@@ -243,6 +254,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the printable one-cell-wide shadow glyph.</summary>
+    /// <exception cref="ArgumentException">The value is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune ShadowGlyph
@@ -270,6 +282,8 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the optional shadow attribute overlay.</summary>
+    /// <exception cref="ArgumentException">The attribute flags conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains an unknown attribute flag.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TerminalAttributes? ShadowAttributes
@@ -279,6 +293,21 @@ public abstract partial class Control
     }
 
     private static void ValidateThemeAttributes(TerminalAttributes? value) => Decoration.Validate(value, null, null);
+
+    private static void ValidateThemeBorderGlyphs(Glyphs value)
+    {
+        // The default value of a struct bypasses its validating constructor.
+        // Reconstructing closes that path and applies the same Rune contract to every assignment.
+        _ = new Glyphs(
+            value.TopLeft,
+            value.Top,
+            value.TopRight,
+            value.Right,
+            value.BottomRight,
+            value.Bottom,
+            value.BottomLeft,
+            value.Left);
+    }
 
     private static void ValidateThemeBorderThickness(Thickness value)
     {

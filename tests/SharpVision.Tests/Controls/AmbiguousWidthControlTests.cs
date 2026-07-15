@@ -13,17 +13,17 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Border_WhenAmbiguousWidthIsWide_RendersPortableOneCellGlyphs()
     {
-        var surface = new Dock()
+        var border = new LayoutProbe()
         {
-            Width = Length.Cells(3),
-            Height = Length.Cells(2),
             BorderThickness = new Thickness(1),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
         };
-        surface.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(surface, new Size(3, 2));
+        border.SetCellPolicy(new Policy(Ambiguous.Wide));
+        new Engine().Layout(border, new Size(3, 2));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
-        surface.Render(frame.Canvas);
+        border.Render(frame.Canvas);
 
         FrameOracle.Get(frame, default).ShouldBe("+");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("-");
@@ -34,19 +34,20 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Shadow_WhenAmbiguousWidthIsWide_RendersPortableBlockGlyph()
     {
-        var control = new LayoutProbe()
+        var shadow = new LayoutProbe()
         {
             HasShadow = true,
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowOffset = new Point(1, 1),
+            ShadowGlyph = new Rune('▓'),
             ShadowAttributes = Attributes.Dim,
         };
-        control.Children.Add(new ProbeControl(new Size(2, 1)));
-        control.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(control, new Size(2, 1));
+        shadow.Children.Add(new ProbeControl(new Size(2, 1)));
+        shadow.SetCellPolicy(new Policy(Ambiguous.Wide));
+        new Engine().Layout(shadow, new Size(2, 1));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
-        control.Render(frame.Canvas);
+        shadow.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("#");
     }

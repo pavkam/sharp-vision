@@ -10,17 +10,20 @@ internal sealed class NavigationItem: Pressable
 {
     #region Construction and state
 
+    private bool _isSelected;
+
     /// <summary>Initializes one page navigation entry with a stable non-negative index and label.</summary>
     /// <param name="index">The non-negative catalog position represented by the entry.</param>
     /// <param name="label">The non-empty exact page label.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
     /// <exception cref="ArgumentException"><paramref name="label"/> is empty or whitespace.</exception>
-    internal NavigationItem(int index, string label) : base(capacity: 0)
+    internal NavigationItem(int index, string label)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         Index = index;
         Label = label;
+        Content = new SharpVision.Controls.Text(label);
         Height = Length.Cells(1);
     }
 
@@ -34,22 +37,14 @@ internal sealed class NavigationItem: Pressable
     internal string Label { get; }
 
     /// <summary>Gets whether the page is the gallery's selected page.</summary>
-    internal bool IsSelected { get; private set; }
+    internal bool IsSelected => _isSelected;
 
     /// <summary>Commits the visual selected state without changing the page selection itself.</summary>
     /// <param name="value">Whether the entry represents the selected page.</param>
     /// <exception cref="InvalidOperationException">The attached entry is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The entry is disposed.</exception>
-    internal void SetSelected(bool value)
-    {
-        if (IsSelected == value)
-        {
-            return;
-        }
-
-        IsSelected = value;
-        Invalidate(Invalidation.Render);
-    }
+    internal void SetSelected(bool value) =>
+        _ = SetVisualStateProperty(ref _isSelected, value, nameof(IsSelected));
 
     #endregion
 
@@ -60,12 +55,35 @@ internal sealed class NavigationItem: Pressable
         Invoked?.Invoke(this, new ActivationEventArgs(cause));
 
     /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        var content = Content;
+        Debug.Assert(content is not null, "A navigation entry always owns its label content.");
+        var desired = MeasureChild(
+            content,
+            new Constraint(Subtract(constraint.Width, 3), constraint.Height));
+        return new Size(Add(3, Add(desired.Width, content.Margin.Horizontal)), 1);
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        var content = Content;
+        Debug.Assert(content is not null, "A navigation entry always owns its label content.");
+        var consumed = Math.Min(3, bounds.Width);
+        ArrangeChild(
+            content,
+            new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
+            ResolvedAxes.Both);
+    }
+
+    /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         var marker = IsSelected || IsHovered ? "›" : "·";
-        _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
+        _ = canvas.Draw($" {marker} ".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
 
     /// <inheritdoc/>
@@ -83,4 +101,10 @@ internal sealed class NavigationItem: Pressable
     }
 
     #endregion
+
+    private static int Add(int left, int right) =>
+        (int) Math.Min(int.MaxValue, (long) left + right);
+
+    private static int? Subtract(int? value, int extent) =>
+        value.HasValue ? Math.Max(0, value.Value - extent) : null;
 }

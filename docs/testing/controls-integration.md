@@ -19,12 +19,41 @@ state styles, default cursor preservation, render-time invalidation, and
 exception recovery. Private draw-call recordings supplement these semantic
 oracles; they never replace them.
 
-Intrinsic chrome tests set border and shadow properties on ordinary controls.
-They prove border reservation and partial-edge glyphs, shadow visual overflow,
-composite and block footprints, signed-offset clipping, wide-cell ownership,
-validation-before-mutation, and hit-test exclusion. A chrome-rendering `Dock`
-supplies a distinct frame node when the subject overrides `OnRender` without
-calling `RenderChrome`.
+Intrinsic chrome proof lives on the common `Control` surface rather than on
+wrapper-control suites. `ControlBorderReservationTests`,
+`ContainerAutoSizeTests`, and `ContainerScrollGeometryTests` cover base
+border-before-padding reservation, saturated combined insets, shrink wrapping,
+and scrollbar containment. `IntrinsicBorderTests` and `IntrinsicShadowTests`
+cover validation-before-mutation, partial edges, exact glyphs/cells, composite
+and block shadows, wide-grapheme styling, visual overflow, hit testing, and
+ancestor clipping. `ButtonTests` requires immediate and post-layout pressed
+content parity, while `TextInputTests` proves editor, caret, and private rails
+remain inset exactly once.
+
+## External extension proof
+
+`SharpVision.Consumer.Tests` references only the production `SharpVision`
+project and receives no friend access. Its independently compiled `Gauge`,
+`FlowPanel`, `OverflowPanel`, `InteractiveProbe`, `ExternalContentControl`, and
+`ExternalToggleChip` prove protected property and visual-state mutation,
+Unicode-aware measurement/rendering, ordinary and unclipped custom layout,
+direct-child layout, public single-content ownership, lifecycle publication,
+focus, capture, and capture-cancellation ordering. `ExternalContentControl` also
+proves inherited content layout, rendering, hit testing, and committed change
+observation without tree internals. `ExternalToggleChip` proves an unfriended
+third party can derive from `Pressable`, assign inherited `Content`, and
+activate checked styling without internal access. The external `FlowPanel`
+proves that setting `BorderThickness` insets owned leaves without third-party
+box-model plumbing; `Gauge.OnRender` calls `RenderChrome` before custom content
+drawn through `ContentBounds`. A reflection guard fails if the product friends
+either the consumer project or the production showcase.
+
+`SharpVision.Tests` deliberately retains friend access for internal invariant
+tests and therefore cannot serve as third-party API proof. The unfriended
+consumer project also contains retained `StatusCard` and typed `TagCloud`
+specimens. `make test` packs both production projects into a temporary local
+feed, verifies their XML documentation and assets, then restores, builds, and
+runs those specimens against the packages rather than project references.
 
 ## End-to-end path
 
@@ -41,21 +70,22 @@ mutation, completed frame callbacks, and the final UTF-8 bytes written by the
 renderer transport. `ResizeRenderTests` proves zero-cell suspension resumes with
 committed layout before its first positive frame.
 
-`DisplayPanelTests` composes Grid, intrinsically bordered Dock surfaces, Stack,
-Overlay, Canvas, and Text under a real `Application` backed by `FakeTerminal`.
-It proves startup bytes, committed bounds, exact semantic cells, wide-cell
-continuation ownership, removal damage, text mutation, and resize reflow on the
-same dispatcher-owned tree. Fresh semantic frames confirm removed content does
-not survive, while later transport writes prove incremental output followed each
-mutation.
+`DisplayPanelTests` composes Grid, Dock, Stack, Overlay, Canvas, Text, and a
+distinct intrinsically bordered `Dock` frame under a real `Application` backed
+by `FakeTerminal`. It proves startup bytes, committed bounds, exact semantic
+cells, wide-cell continuation ownership, removal damage, text mutation, and
+resize reflow on the same dispatcher-owned tree. Fresh semantic frames confirm
+removed content does not survive, while later transport writes prove incremental
+output followed each mutation.
 
 `InteractiveControlTests` composes Button, CheckBox, RadioButton, TextInput,
-ScrollBar, an `AutoScroll`-enabled Stack, and List under one real application.
-Raw SGR cell clicks, Kitty Enter, wheel input, UTF-8 CJK, item removal, terminal
-focus loss, and resize prove ordered activation/selection events, focus and
-capture cleanup, exact semantic cells, wide-cell ownership, incremental bytes,
-and cleared stale item rows. A separate editor path adds owned bracketed paste
-containing a combining sequence, legacy Left, and Backspace checkpoints.
+ScrollBar, an intrinsically scrollable Stack, and List under one real
+application. Raw SGR cell clicks, Kitty Enter, wheel input, UTF-8 CJK, item
+removal, terminal focus loss, and resize prove ordered activation/selection
+events, focus and capture cleanup, exact semantic cells, wide-cell ownership,
+incremental bytes, and cleared stale item rows. A separate editor path adds
+owned bracketed paste containing a combining sequence, legacy Left, and
+Backspace checkpoints.
 
 `ScrollingTests` first sends 20 raw SGR wheel reports into nested hidden-bar
 Stacks with intrinsic `AutoScroll` and proves exact inner consumption, outward
@@ -68,6 +98,6 @@ bars after a larger pixel-dimensioned resize.
 ## Controls with state machines
 
 Phase 5 buttons, toggles, radio groups, text editing, selection, menus, popups,
-windows, scrollbars, and intrinsically scrolling containers must enumerate
+windows, scrollbars, and intrinsic container scrolling must enumerate
 valid/invalid transitions and event order. Fake clocks drive hover/open delays,
 timers, idle, and repeated input without wall-clock sleeps.

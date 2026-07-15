@@ -3,7 +3,7 @@
 
 namespace SharpVision.Showcase.Tests;
 
-/// <summary>Traverses public control ownership trees for showcase behavior tests.</summary>
+/// <summary>Traverses every registered control ownership edge for showcase behavior tests.</summary>
 internal static class ControlTree
 {
     /// <summary>Finds every control of one type in stable ownership order.</summary>
@@ -43,12 +43,6 @@ internal static class ControlTree
             matches.Add(match);
         }
 
-        if (control is Container container)
-        {
-            foreach (var child in container.Children)
-            {
-                Visit(child, matches);
-            }
-        }
+        control.VisitChildren(child => Visit(child, matches));
     }
 }

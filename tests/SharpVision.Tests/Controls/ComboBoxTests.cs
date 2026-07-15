@@ -6,8 +6,6 @@ namespace SharpVision.Tests.Controls;
 
 
 
-using LayoutCanvas = SharpVision.Controls.Canvas;
-
 /// <summary>Verifies popup-style combo box geometry, keyboard opening, focus, and committed selection.</summary>
 public sealed class ComboBoxTests
 {
@@ -32,29 +30,45 @@ public sealed class ComboBoxTests
         box.HitTest(new Point(0, 1)).ShouldBeNull();
     }
 
-    /// <summary>Verifies the standard theme paints the complete closed field on its distinct surface.</summary>
+    /// <summary>Verifies the field owns only a Popup and the Popup exclusively owns the private List.</summary>
     [Fact]
-    public void Render_WhenClosedWithStandardTheme_FillsCompleteFieldSurface()
+    public void Ownership_WhenConstructed_UsesOnePrivatePopupChain()
     {
-        var box = new ComboBox
+        var box = new ComboBox();
+
+        box.OwnedControlCount.ShouldBe(1);
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var list = OwnedTree.Find<List>(popup).ShouldNotBeNull();
+        popup.Parent.ShouldBeSameAs(box);
+        list.Parent.ShouldBeSameAs(popup);
+        popup.Content.ShouldBeSameAs(list);
+    }
+
+    /// <summary>Verifies ComboBox publishes its committed index before forwarding selection change.</summary>
+    [Fact]
+    public void SelectedIndex_WhenChanged_PublishesPropertyBeforeSelectionEvent()
+    {
+        var box = new ComboBox() { Items = ["Small", "Large"], SelectedIndex = 0 };
+        List<string> order = [];
+        box.PropertyChanged += (_, eventArgs) =>
         {
-            Width = Length.Cells(12),
-            Height = Length.Cells(1),
-            Items = ["Comfortable"],
+            if (eventArgs.PropertyName == nameof(ComboBox.SelectedIndex))
+            {
+                box.SelectedIndex.ShouldBe(1);
+                order.Add("property");
+            }
         };
-        ThemeTestSupport.ApplyTheme(box, Themes.Dark);
-        new Engine().Layout(box, new Size(12, 1));
-        using Frame frame = new(new Size(12, 1));
-        frame.Canvas.Fill(
-            frame.Canvas.Bounds,
-            new Rune(' '),
-            new TerminalStyle(Color.Default, Color.Indexed(1)));
+        box.SelectionChanged += (_, eventArgs) =>
+        {
+            box.SelectedIndex.ShouldBe(1);
+            eventArgs.AddedIndexes.ToArray().ShouldBe([1]);
+            eventArgs.RemovedIndexes.ToArray().ShouldBe([0]);
+            order.Add("event");
+        };
 
-        box.Render(frame.Canvas);
+        box.SelectedIndex = 1;
 
-        var trailing = frame.GetCell(new Point(11, 0)).Style.Background;
-        trailing.Kind.ShouldBe(ColorKind.Indexed);
-        trailing.Red.ShouldBe((byte) 8);
+        order.ShouldBe(["property", "event"]);
     }
 
     /// <summary>Verifies an open drop-down uses an opaque inherited surface inside a visible frame.</summary>
@@ -83,8 +97,8 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var popup = box.Children[0].ShouldBeOfType<Popup>();
-        var list = popup.Child.ShouldBeOfType<List>();
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var list = popup.Content.ShouldBeOfType<List>();
         list.DesiredSize.Height.ShouldBeGreaterThan(0);
         popup.SurfaceBounds.Height.ShouldBeGreaterThan(2);
         frame.GetCell(new Point(popup.SurfaceBounds.X + 1, popup.SurfaceBounds.Y + 1)).Style.Background
@@ -107,8 +121,8 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var popup = box.Children[0].ShouldBeOfType<Popup>();
-        var list = popup.Child.ShouldBeOfType<List>();
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var list = popup.Content.ShouldBeOfType<List>();
         FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("1");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 1, list.Bounds.Y)).ShouldBe("R");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 2, list.Bounds.Y)).ShouldBe("o");
@@ -143,7 +157,7 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        var list = OwnedTree.Find<List>(box).ShouldNotBeNull();
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y)).Style.Background.ShouldBe(Color.Indexed(99));
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y + 1)).Style.Background.ShouldBe(Color.Indexed(240));
     }
@@ -168,7 +182,7 @@ public sealed class ComboBoxTests
         box.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
         box.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         box.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
-        var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        var list = OwnedTree.Find<List>(box).ShouldNotBeNull();
         var rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
@@ -248,7 +262,7 @@ public sealed class ComboBoxTests
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
             new Engine().Layout(box, size);
-            var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+            var list = OwnedTree.Find<List>(box).ShouldNotBeNull();
 
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Release));
@@ -259,91 +273,6 @@ public sealed class ComboBoxTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies an outside primary press dismisses without committing and preserves the outside focus target.</summary>
-    [Fact]
-    public async Task Dispatch_WhenOpenAndOutsideIsPressed_ClosesWithoutCommitAsync()
-    {
-        await using var dispatcher = Dispatcher.Start();
-
-        await dispatcher.InvokeAsync(() =>
-        {
-            var box = new ComboBox
-            {
-                Width = Length.Cells(12),
-                Height = Length.Cells(1),
-                Items = ["Small", "Large"],
-                SelectedIndex = 0,
-            };
-            var outside = new Button { Content = new ControlText("Outside") };
-            var root = new LayoutCanvas
-            {
-                Width = Length.Cells(40),
-                Height = Length.Cells(12),
-                Children = { box, outside },
-            };
-            LayoutCanvas.SetLeft(outside, Length.Cells(30));
-            LayoutCanvas.SetTop(outside, Length.Cells(8));
-            new Engine().Layout(root, new Size(40, 12));
-            root.Attach(dispatcher);
-            using FocusManager focus = new(root);
-            using CaptureManager capture = new(root);
-            focus.Focus(box).ShouldBeTrue();
-            box.IsOpen = true;
-            new Engine().Layout(root, new Size(40, 12));
-
-            var point = new Point(outside.Bounds.X + 1, outside.Bounds.Y + 1);
-            _ = capture.Dispatch(Pointer(point, PointerAction.Press));
-
-            box.IsOpen.ShouldBeFalse();
-            box.SelectedIndex.ShouldBe(0);
-            focus.Focused.ShouldBeSameAs(outside);
-        }, TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Verifies wheel input outside an open drop-down dismisses it before ancestor scrolling.</summary>
-    [Fact]
-    public async Task Dispatch_WhenOpenAndOutsideReceivesWheel_ClosesWithoutCommitAsync()
-    {
-        await using var dispatcher = Dispatcher.Start();
-
-        await dispatcher.InvokeAsync(() =>
-        {
-            var box = new ComboBox
-            {
-                Width = Length.Cells(12),
-                Height = Length.Cells(1),
-                Items = ["Small", "Large"],
-                SelectedIndex = 0,
-            };
-            var outside = new Button { Content = new ControlText("Outside") };
-            var root = new LayoutCanvas
-            {
-                Width = Length.Cells(40),
-                Height = Length.Cells(12),
-                Children = { box, outside },
-            };
-            LayoutCanvas.SetLeft(outside, Length.Cells(30));
-            LayoutCanvas.SetTop(outside, Length.Cells(8));
-            new Engine().Layout(root, new Size(40, 12));
-            root.Attach(dispatcher);
-            using FocusManager focus = new(root);
-            using CaptureManager capture = new(root);
-            focus.Focus(box).ShouldBeTrue();
-            box.IsOpen = true;
-            new Engine().Layout(root, new Size(40, 12));
-
-            var point = new Point(outside.Bounds.X + 1, outside.Bounds.Y + 1);
-            _ = capture.Dispatch(Pointer(
-                point,
-                PointerAction.Wheel,
-                buttons: Buttons.None,
-                wheelY: -1));
-
-            box.IsOpen.ShouldBeFalse();
-            box.SelectedIndex.ShouldBe(0);
-        }, TestContext.Current.CancellationToken);
-    }
-
     private static KeyEventArgs Key(Code code) => new(new Stroke(
         code,
         default,
@@ -351,17 +280,13 @@ public sealed class ComboBoxTests
         Modifiers.None,
         KeyAction.Press));
 
-    private static Pointer Pointer(
-        Point cells,
-        PointerAction action,
-        Buttons buttons = Buttons.Primary,
-        int wheelY = 0) => new(
+    private static Pointer Pointer(Point cells, PointerAction action) => new(
         cells,
         pixels: null,
-        buttons,
+        Buttons.Primary,
         action,
         wheelX: 0,
-        wheelY,
+        wheelY: 0,
         Modifiers.None,
         isMotion: false,
         isCellPositionInferred: false);

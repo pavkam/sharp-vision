@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Popup control with an anchored, keyboard- and pointer-driven action menu.</summary>
-internal sealed class PopupPane: View
+internal sealed class PopupPane: CompositeControl
 {
+
+    internal PopupPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Popup";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var status = new Text("Choose an item with the mouse, arrows, or Enter.");
         var trigger = new Button() { Content = new Text("Actions ▼") };
@@ -29,7 +31,7 @@ internal sealed class PopupPane: View
             Anchor = trigger,
             Placement = PopupPlacement.Below,
             Glyphs = Glyphs.Rounded,
-            Child = choices,
+            Content = choices,
         };
         trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
         choices.ItemInvoked += (_, eventArgs) =>
@@ -69,7 +71,7 @@ internal sealed class PopupPane: View
             Anchor = placementAnchor,
             Placement = PopupPlacement.Below,
             Glyphs = Glyphs.Rounded,
-            Child = new Text("Placement preview"),
+            Content = new Text("Placement preview"),
         };
         var above = PlacementButton("Above", PopupPlacement.Above, placementPopup, placementStatus);
         var below = PlacementButton("Below", PopupPlacement.Below, placementPopup, placementStatus);
@@ -115,7 +117,7 @@ internal sealed class PopupPane: View
         {
             Anchor = edgeTrigger,
             Placement = PopupPlacement.Below,
-            Child = new Text("Flips above, then clamps"),
+            Content = new Text("Flips above, then clamps"),
         };
         var edgeStage = new Overlay
         {
@@ -138,7 +140,7 @@ internal sealed class PopupPane: View
         var lifecyclePopup = new Popup
         {
             Anchor = lifecycleAnchor,
-            Child = new Text("Lifecycle content"),
+            Content = new Text("Lifecycle content"),
         };
         lifecyclePopup.Closing += (_, _) => lifecycleStatus.Content = "Lifecycle: Closing";
         lifecyclePopup.Closed += (_, _) => lifecycleStatus.Content += " → Closed";
@@ -166,7 +168,7 @@ internal sealed class PopupPane: View
         var styledPopup = new Popup
         {
             Anchor = styledAnchor,
-            Child = new Text("Explicit surface colors"),
+            Content = new Text("Explicit surface colors"),
             BorderColor = Color.Indexed(14),
             Background = Color.Indexed(0),
         };
@@ -188,7 +190,7 @@ internal sealed class PopupPane: View
         var resizePopup = new Popup
         {
             Anchor = resizeAnchor,
-            Child = new Text("Repositions after layout"),
+            Content = new Text("Repositions after layout"),
             Placement = PopupPlacement.Right,
         };
         resizeAnchor.Click += (_, _) => resizePopup.IsOpen = !resizePopup.IsOpen;
@@ -216,7 +218,7 @@ internal sealed class PopupPane: View
                     "Action list",
                     "Open with pointer, Enter, or Space; choose with arrows and Enter; Escape closes and restores trigger focus.",
                     overlay,
-                    "var popup = new Popup\n{\n    Anchor = trigger,\n    Child = choices,\n    Placement = PopupPlacement.Below,\n};")),
+                    "var popup = new Popup\n{\n    Anchor = trigger,\n    Content = choices,\n    Placement = PopupPlacement.Below,\n};")),
             Doc.Section(
                 "💬",
                 "Placement",

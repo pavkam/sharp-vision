@@ -16,6 +16,29 @@ after initial capabilities, root layout, and first committed frame. A
 cancellable stopping request occurs once; stopped occurs after cleanup attempts
 and pending invocation completion.
 
+Initial root attachment is one staged ownership publication. The application
+first commits dispatcher, Unicode policy, and theme context, installs focus and
+pointer-capture managers across the tree, and only then invokes control
+`OnAttached` callbacks. A callback can therefore use protected focus or capture
+helpers immediately and observes every sibling with the same complete inherited
+context. A supplied application root must be both detached and unowned.
+
+Runtime insertion, removal, replacement, and disposal use the
+[owned-control transaction](../controls/control.md#children-and-ownership).
+Removal first performs guarded availability cleanup against the coherent old
+tree: focus releases, capture state clears before cancellation callbacks, and
+`OnUnavailable` runs after those availability callbacks. Disposal of a control
+that owns a focus or capture manager may perform that manager's root cleanup
+after `OnUnavailable`. Membership, parent, dispatcher, Unicode, theme, and
+manager context then commit as one new tree. Parent, theme, detached, and
+attached notifications publish from committed state; the slot impact is then
+invalidated exactly once before the slot notification. A callback failure cannot
+roll the tree back or suppress later cleanup; an unexpected earlier failure
+still requests invalidation from the transaction's `finally` path, and the first
+failure is rethrown afterward. Direct child disposal uses only
+`ReleaseReason.Disposed`, even though clearing attached context still publishes
+the normal `OnDetached` lifecycle hook.
+
 Resize follows the ordering in the
 [runtime event loop](../architecture/runtime-event-loop.md#resize-ordering).
 Frame rendered reports only a completed transport write and its damage/byte

@@ -9,13 +9,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Button control with live, themed activation specimens.</summary>
-internal sealed class ButtonPane: View
+internal sealed class ButtonPane: CompositeControl
 {
+
+    internal ButtonPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Button";
 
     /// <inheritdoc/>
-    protected override Control Build()
+    private static Dock CreateContent()
     {
         var status = new Text("Activation log: waiting");
         var primary = new Button() { Content = new Text("Click or press Enter") };
@@ -60,7 +62,7 @@ internal sealed class ButtonPane: View
             Width = Length.Cells(34),
             Height = Length.Cells(11),
             Title = "Command roles",
-            Child = Doc.Column(
+            Content = Doc.Column(
                 new Text("Enter chooses Apply; Escape chooses Cancel."),
                 dialogFocusTarget,
                 Doc.Row(dialogDefault, dialogCancel),

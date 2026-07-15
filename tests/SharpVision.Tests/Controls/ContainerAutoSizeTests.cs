@@ -92,4 +92,25 @@ public sealed class ContainerAutoSizeTests
 
         container.Bounds.Width.ShouldBe(20);
     }
+
+    /// <summary>Verifies AutoSize includes the complete border-and-padding content inset.</summary>
+    [Fact]
+    public void AutoSize_WhenBorderAndPaddingAreSet_IncludesCompleteContentInset()
+    {
+        var container = new LayoutProbe()
+        {
+            AutoSize = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(1),
+        };
+        container.Children.Add(new ProbeControl(new Size(5, 3))
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+        });
+
+        new Engine().Layout(container, new Size(40, 40));
+
+        container.Bounds.ShouldBe(new Rect(0, 0, 9, 7));
+    }
 }

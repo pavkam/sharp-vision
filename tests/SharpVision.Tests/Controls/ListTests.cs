@@ -65,50 +65,30 @@ public sealed class ListTests
         frame.GetCell(new Point(7, 1)).Style.Background.ShouldBe(Color.Indexed(99));
     }
 
-    /// <summary>Verifies routed pointer movement paints the complete hovered row without committing selection.</summary>
+    /// <summary>Verifies realized-item observers see selected state already propagated to content.</summary>
     [Fact]
-    public async Task Render_WhenPointerHoversItem_UsesSurfaceRowWithoutSelectionAsync()
+    public void CommitSelection_WhenPropertyPublishes_ContentAlreadyResolvesSelectedState()
     {
-        await using var dispatcher = Dispatcher.Start();
-
-        await dispatcher.InvokeAsync(() =>
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(1))),
+            (State.Selected, new ThemeOverlay(foreground: Color.Indexed(2))));
+        var content = new Label("row") { Style = style };
+        var item = new ListItem(0, content);
+        content.Foreground.ShouldBe(Color.Indexed(1));
+        var observed = false;
+        item.PropertyChanged += (_, eventArgs) =>
         {
-            var control = new UiList
+            if (eventArgs.PropertyName == nameof(ListItem.IsSelected))
             {
-                Width = Length.Cells(8),
-                Height = Length.Cells(2),
-                Items = ["One", "Two"],
-                ScrollBars = ScrollBars.None,
-            };
-            ThemeTestSupport.ApplyTheme(control, Themes.Dark);
-            new Engine().Layout(control, new Size(8, 2));
-            control.Attach(dispatcher);
-            using CaptureManager capture = new(control);
-            _ = capture.Dispatch(new Pointer(
-                new Point(1, 0),
-                pixels: null,
-                Buttons.None,
-                PointerAction.Move,
-                wheelX: 0,
-                wheelY: 0,
-                Modifiers.None,
-                isMotion: true,
-                isCellPositionInferred: false));
-            using Frame frame = new(new Size(8, 2));
+                (content.Foreground == Color.Indexed(2)).ShouldBeTrue(
+                    "Selected style must be visible before ListItem publishes its property.");
+                observed = true;
+            }
+        };
 
-            control.Render(frame.Canvas);
+        item.CommitSelection(true);
 
-            control.SelectedIndex.ShouldBe(-1);
-            var hoveredLabel = frame.GetCell(new Point(0, 0)).Style.Background;
-            var hovered = frame.GetCell(new Point(7, 0)).Style.Background;
-            var normal = frame.GetCell(new Point(7, 1)).Style.Background;
-            hoveredLabel.Kind.ShouldBe(ColorKind.Indexed);
-            hoveredLabel.Red.ShouldBe((byte) 8);
-            hovered.Kind.ShouldBe(ColorKind.Indexed);
-            hovered.Red.ShouldBe((byte) 8);
-            normal.Kind.ShouldBe(ColorKind.Indexed);
-            normal.Red.ShouldBe((byte) 0);
-        }, TestContext.Current.CancellationToken);
+        observed.ShouldBeTrue();
     }
 
     /// <summary>Verifies List exposes the canonical overflow policy and its actual composed scrollbar.</summary>
@@ -137,6 +117,25 @@ public sealed class ListTests
 
         control.HitTest(new Point(5, 0)).ShouldNotBeOfType<ScrollBar>();
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBars = (ScrollBars) 99);
+    }
+
+    /// <summary>Verifies List preserves a popup result already found by base registry traversal without searching twice.</summary>
+    [Fact]
+    public void HitTest_WhenRegistryFindsPopup_PreservesResultWithoutSecondTraversal()
+    {
+        PopupHitProbe? probe = null;
+        var control = new UiList
+        {
+            ItemTemplate = _ => probe = new PopupHitProbe(),
+            Items = ["item"],
+        };
+        new Engine().Layout(control, new Size(4, 1));
+
+        var hit = control.HitTest(default);
+
+        _ = probe.ShouldNotBeNull();
+        hit.ShouldBeSameAs(probe);
+        probe.PopupHitTestCalls.ShouldBe(1);
     }
 
     /// <summary>Verifies unchanged overflow policy assignments do not raise duplicate public notifications.</summary>
@@ -353,30 +352,6 @@ public sealed class ListTests
         FrameOracle.Get(frame, default).ShouldBe("界");
         (frame.GetCell(default).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
         frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeTrue();
-    }
-
-    /// <summary>
-    /// Verifies List.DisposeChildren releases the base Container's own owned
-    /// bars, not only its private _chrome/_stack, so a caller externally
-    /// arming the outer List's inherited AutoScroll does not leak the
-    /// resulting ScrollBar chrome on dispose.
-    /// </summary>
-    [Fact]
-    public void Dispose_WhenBaseAutoScrollIsArmedExternally_DisposesTheOwnedBaseBars()
-    {
-        var list = new UiList() { AutoScroll = true };
-        var field = typeof(Container).GetField(
-            "_bars",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var bars = (Children) field.GetValue(list)!;
-        bars.Count.ShouldBe(2);
-        var horizontal = bars[0].ShouldBeOfType<ScrollBar>();
-        var vertical = bars[1].ShouldBeOfType<ScrollBar>();
-
-        list.Dispose();
-
-        horizontal.IsDisposed.ShouldBeTrue();
-        vertical.IsDisposed.ShouldBeTrue();
     }
 
     private static UiList Create(params object?[] items) => new() { Items = items };

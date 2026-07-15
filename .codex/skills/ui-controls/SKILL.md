@@ -33,6 +33,13 @@ and a showcase page.
   arrange, or render as required.
 - A child has one parent. Managed collections reject nulls, duplicates, cycles,
   and cross-parent insertion, and clean focus/capture on removal.
+- Match the ownership role to the public contract: only a true panel derives
+  from `Container` and exposes `Children`; use `ContentControl` for replaceable
+  one-child content, `CompositeControl` for a constructor-owned private root,
+  and `ItemsControl` for a typed semantic collection with a private host.
+- Never construct composition from measure, arrange, or render. A composite
+  constructor creates its retained root and calls `InitializeContent` exactly
+  once; `View` and `Build()` are retired.
 - Visual-state precedence for normal, hovered, pressed, focused, checked, and
   disabled remains deterministic for combined states.
 - Keyboard and pointer paths produce equivalent semantic actions. Disabled or
@@ -74,6 +81,7 @@ make test
 ## Common mistakes
 
 - Drawing bytes directly or bypassing clipping and shared geometry.
-- Allowing arbitrary child lists or cross-thread property mutation.
+- Allowing arbitrary child lists, measure-time construction, or cross-thread
+  property mutation.
 - Testing appearance without event order, focus, disabled, or resize behavior.
 - Shipping a control without its normative doc and showcase page.
