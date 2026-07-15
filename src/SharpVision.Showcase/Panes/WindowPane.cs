@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
+using SharpVision.Text;
+
 using Text = SharpVision.Controls.Text;
 
 
@@ -17,9 +19,9 @@ internal sealed class WindowPane: View
     protected override Control Build()
     {
         var chromeOptions = Doc.Row(
-            WindowVariant("Left", Glyphs.Rounded, WindowTitlePlacement.Left),
-            WindowVariant("Center", Glyphs.Paired, WindowTitlePlacement.Center),
-            WindowVariant("Right", Glyphs.Ascii, WindowTitlePlacement.Right));
+            WindowStage(WindowVariant("Left", Glyphs.Rounded, WindowTitlePlacement.Left), 18, 8),
+            WindowStage(WindowVariant("Center", Glyphs.Paired, WindowTitlePlacement.Center), 18, 8),
+            WindowStage(WindowVariant("Right", Glyphs.Ascii, WindowTitlePlacement.Right), 18, 8));
 
         var apply = ActionButton(new Text("Apply"));
         apply.IsDefault = true;
@@ -53,15 +55,15 @@ internal sealed class WindowPane: View
             Height = Length.Auto,
             Title = "Project settings",
             HasShadow = true,
-            ShadowMode = ShadowMode.BlockGlyph,
-            ShadowOffset = new Point(2, 1),
+            ShadowMode = ShadowMode.Composite,
+            ShadowOffset = new Point(1, 1),
             Child = form,
         };
 
         var stage = new Canvas()
         {
-            Width = Length.Cells(48),
-            Height = Length.Cells(13),
+            Width = Length.Cells(52),
+            Height = Length.Cells(15),
             ClipToBounds = true,
         };
         var workspace = ApplicationSurface(
@@ -70,8 +72,8 @@ internal sealed class WindowPane: View
             "  sharp-vision      modified now\n" +
             "  terminal-lab      modified 8m ago\n\n" +
             "Ready · 2 tasks running");
-        workspace.Width = Length.Cells(48);
-        workspace.Height = Length.Cells(13);
+        workspace.Width = Length.Cells(52);
+        workspace.Height = Length.Cells(15);
         stage.Children.Add(workspace);
         Canvas.SetLeft(window, Length.Cells(1));
         Canvas.SetTop(window, Length.Cells(1));
@@ -83,16 +85,21 @@ internal sealed class WindowPane: View
         block.ShadowGlyph = new Rune('░');
         var flat = WindowVariant("No shadow", Glyphs.Ascii, WindowTitlePlacement.Right);
         flat.HasShadow = false;
+        var shadowVariants = Doc.Row(
+            WindowStage(composite, 18, 8),
+            WindowStage(block, 18, 8),
+            WindowStage(flat, 18, 8));
 
         var styled = new Window
         {
-            Width = Length.Cells(30),
+            Width = Length.Cells(40),
             Height = Length.Cells(6),
             Title = "Styled surface",
             BorderColor = Color.Indexed(14),
             Background = Color.Indexed(0),
             Attributes = TerminalAttributes.Bold,
-            Child = new Text("Explicit chrome over theme defaults"),
+            Padding = new Thickness(1, 0),
+            Child = new Text("Explicit chrome over theme defaults") { Overflow = Overflow.Wrap },
         };
 
         var overlayWindow = new Window
@@ -100,6 +107,8 @@ internal sealed class WindowPane: View
             Width = Length.Cells(28),
             Height = Length.Cells(6),
             Title = "Overlay child",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
             Child = new Button { Content = new Text("Focusable content") },
         };
         var overlayComposition = new Overlay
@@ -118,17 +127,17 @@ internal sealed class WindowPane: View
 
         var longTitle = new Window
         {
-            Width = Length.Cells(18),
-            Height = Length.Cells(4),
+            Width = Length.Cells(24),
+            Height = Length.Cells(5),
             Title = "A deliberately long title that clips safely",
-            Child = new Text("Corners survive"),
+            Child = new Text("Corners survive") { Overflow = Overflow.Wrap },
         };
-        var tiny = new Window
+        var minimum = new Window
         {
-            Width = Length.Cells(2),
-            Height = Length.Cells(2),
-            Title = "Tiny",
-            Child = new Text("x"),
+            Width = Length.Cells(14),
+            Height = Length.Cells(4),
+            Title = "Minimum",
+            Child = new Text("Readable"),
         };
 
         return Doc.Page(
@@ -150,7 +159,7 @@ internal sealed class WindowPane: View
                 Doc.Example(
                     "Three depth treatments",
                     "Compare quiet composite darkening, visible block glyphs, and a surface with shadow disabled.",
-                    Doc.Row(composite, block, flat))),
+                    shadowVariants)),
             Doc.Section(
                 "🪟",
                 "Default and cancel",
@@ -158,12 +167,7 @@ internal sealed class WindowPane: View
                 Doc.Example(
                     "Project settings surface",
                     "The Window visibly floats above a populated workspace while remaining an ordinary routed-input child. Move focus, then try Enter for Apply and Escape for Cancel.",
-                    new Dock
-                    {
-                        BorderThickness = new Thickness(1),
-                        BorderGlyphs = Glyphs.Light,
-                        Children = { stage },
-                    })),
+                    stage)),
             Doc.Section(
                 "🪟",
                 "Surface style",
@@ -171,7 +175,7 @@ internal sealed class WindowPane: View
                 Doc.Example(
                     "Explicit chrome",
                     "Only this Window owns the local color and attribute overrides; sibling windows continue following the theme.",
-                    styled)),
+                    WindowStage(styled, 44, 9))),
             Doc.Section(
                 "🪟",
                 "Composition",
@@ -186,8 +190,10 @@ internal sealed class WindowPane: View
                 "Long titles clip before corners and tiny boxes saturate safely without drawing outside their committed bounds.",
                 Doc.Example(
                     "Long and tiny windows",
-                    "The long title preserves both corners; the two-cell surface degrades without negative interior geometry.",
-                    Doc.Row(longTitle, tiny))));
+                    "The long title preserves both corners; the minimum specimen remains readable. Exact two-cell saturation stays covered by Window unit tests.",
+                    Doc.Row(
+                        WindowStage(longTitle, 28, 8),
+                        WindowStage(minimum, 18, 7)))));
     }
 
     private static Window WindowVariant(string title, Glyphs glyphs, WindowTitlePlacement placement) => new()
@@ -223,4 +229,22 @@ internal sealed class WindowPane: View
         VerticalAlignment = VerticalAlignment.Stretch,
         Children = { new Text(content) },
     };
+
+    private static Overlay WindowStage(Window window, int width, int height)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        window.HorizontalAlignment = HorizontalAlignment.Center;
+        window.VerticalAlignment = VerticalAlignment.Center;
+        return new Overlay
+        {
+            Width = Length.Cells(width),
+            Height = Length.Cells(height),
+            ClipToBounds = true,
+            Children =
+            {
+                ApplicationSurface("Workspace\n\nReady"),
+                window,
+            },
+        };
+    }
 }

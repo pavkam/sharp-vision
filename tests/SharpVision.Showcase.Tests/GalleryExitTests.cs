@@ -25,7 +25,8 @@ public sealed class GalleryExitTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         var quit = await application.Dispatcher.InvokeAsync(
-            () => Find<Button>(gallery.Sidebar, static value => value.Content is ControlText { Content: "Quit" }),
+            () => Find<Button>(gallery.Sidebar, static value =>
+                Find<ControlText>(value, static text => text.Content == "⏻ Quit") is not null),
             TestContext.Current.CancellationToken);
         var button = quit.ShouldNotBeNull();
 

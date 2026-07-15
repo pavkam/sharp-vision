@@ -114,6 +114,7 @@ public sealed class LayerPaneTests
         windows.ShouldContain(value => value.ShadowMode == ShadowMode.BlockGlyph && value.HasShadow);
         windows.ShouldContain(value => !value.HasShadow);
         windows.ShouldContain(value => value.Title.StartsWith("A deliberately long title", StringComparison.Ordinal));
+        windows.ShouldNotContain(value => value.Bounds.Width <= 2);
     }
 
     /// <summary>Verifies primary Popup and Window demonstrations overlap populated application surfaces.</summary>

@@ -80,7 +80,7 @@ public sealed class GalleryRenderingTests
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
     }
 
-    /// <summary>Verifies the compact sidebar footer keeps its labels and controls in distinct grid cells.</summary>
+    /// <summary>Verifies the sidebar footer presents full-width utilities in stable vertical order.</summary>
     [Theory]
     [InlineData(80, 24)]
     [InlineData(30, 8)]
@@ -88,24 +88,22 @@ public sealed class GalleryRenderingTests
     {
         using var gallery = CreateThemedGallery();
         new Engine().Layout(gallery, new Size(width, height));
-        var theme = FindAll<ControlText>(gallery.Sidebar).Single(text => text.Content == "Theme");
+        var appearance = FindAll<ControlText>(gallery.Sidebar).Single(text =>
+            text.Content.Contains("Appearance", StringComparison.Ordinal));
         var picker = FindAll<ComboBox>(gallery.Sidebar).Single();
         var quit = FindAll<Button>(gallery.Sidebar).Single();
-        var hint = FindAll<ControlText>(gallery.Sidebar).Single(text => text.Content == "Ctrl+C to quit");
-        Control[] footerControls = [theme, picker, quit, hint];
-        var footerGrid = FindAll<Grid>(gallery.Sidebar).Single();
+        var hint = FindAll<ControlText>(quit).Single(text => text.Content == "Ctrl+Q");
+        Control[] footerControls = [appearance, picker, quit];
+        var footerStack = appearance.Parent.ShouldBeOfType<Stack>();
 
-        footerGrid.Parent.ShouldBeOfType<Dock>().BorderThickness.Top.ShouldBe(1);
+        footerStack.Parent.ShouldBeOfType<Dock>().BorderThickness.Top.ShouldBe(1);
         footerControls.ShouldAllBe(control => control.Bounds.Width > 0 && control.Bounds.Height > 0);
-
-        for (var first = 0; first < footerControls.Length; first++)
-        {
-            for (var second = first + 1; second < footerControls.Length; second++)
-            {
-                var overlap = footerControls[first].Bounds.Intersect(footerControls[second].Bounds);
-                (overlap.Width * overlap.Height).ShouldBe(0);
-            }
-        }
+        appearance.Bounds.Bottom.ShouldBeLessThanOrEqualTo(picker.Bounds.Y);
+        picker.Bounds.Bottom.ShouldBeLessThanOrEqualTo(quit.Bounds.Y);
+        var footerWidth = footerStack.Bounds.Width - footerStack.Padding.Horizontal;
+        picker.Bounds.Width.ShouldBe(footerWidth);
+        quit.Bounds.Width.ShouldBe(footerWidth);
+        hint.Bounds.Right.ShouldBeLessThanOrEqualTo(quit.Bounds.Right - 1);
     }
 
     /// <summary>Verifies the Button page demonstrates both shadow modes and a stationary flat variant.</summary>
@@ -187,6 +185,10 @@ public sealed class GalleryRenderingTests
         actions.ShouldAllBe(button =>
             button.Content.ShouldNotBeNull().Bounds.Height > 0 &&
             button.Content.Bounds.Bottom <= dialog.Bounds.Bottom - 1);
+        dialog.Parent.ShouldNotBeNull().Parent.ShouldNotBeOfType<Dock>();
+        windows.ShouldNotContain(window => window.Bounds.Width <= 2);
+        windows.Single(window => window.Title == "Styled surface")
+            .Child.ShouldBeOfType<ControlText>().Overflow.ShouldBe(Overflow.Wrap);
     }
 
     /// <summary>Verifies the List page paints a distinct surface and selected-row highlight.</summary>

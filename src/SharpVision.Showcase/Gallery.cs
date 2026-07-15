@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase;
 
+using SharpVision.Text;
+
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
@@ -112,7 +114,22 @@ public sealed class Gallery: Screen
             SelectedIndex = darkIndex >= 0 ? darkIndex : 0,
         };
         _themePicker.SelectionChanged += OnThemeSelected;
-        _quit = new Button { Content = new Text("Quit") };
+        var quitHint = new Text("Ctrl+Q") { Attributes = TerminalAttributes.Dim };
+        Dock.SetSide(quitHint, Side.Right);
+        var quitContent = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Children =
+            {
+                quitHint,
+                new Text("⏻ Quit"),
+            },
+        };
+        _quit = new Button
+        {
+            Content = quitContent,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
         _quit.Click += OnQuitClicked;
         var footer = CreateSidebarFooter(_themePicker, _quit);
         Dock.SetSide(header, Side.Top);
@@ -257,40 +274,26 @@ public sealed class Gallery: Screen
 
     private static Dock CreateSidebarFooter(ComboBox themePicker, Button quit)
     {
-        var themeLabel = new Text("Theme")
+        var appearance = new Text("<accent><b>🎨 Appearance</b></accent>")
         {
-            Attributes = TerminalAttributes.Dim,
-            VerticalAlignment = VerticalAlignment.Center,
+            Overflow = Overflow.Clip,
         };
-        var exitHint = new Text("Ctrl+C to quit")
+        var utilities = new Stack
         {
-            Attributes = TerminalAttributes.Dim,
-            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(1, 0),
+            Children =
+            {
+                appearance,
+                themePicker,
+                quit,
+            },
         };
-        var grid = new Grid { ColumnSpacing = 1 };
-        grid.Columns.Add(Track.Auto());
-        grid.Columns.Add(Track.Star(1));
-        grid.Rows.Add(Track.Auto());
-        grid.Rows.Add(Track.Auto());
-        Grid.SetRow(themeLabel, 0);
-        Grid.SetColumn(themeLabel, 0);
-        Grid.SetRow(themePicker, 0);
-        Grid.SetColumn(themePicker, 1);
-        Grid.SetRow(quit, 1);
-        Grid.SetColumn(quit, 0);
-        Grid.SetRow(exitHint, 1);
-        Grid.SetColumn(exitHint, 1);
-        grid.Children.Add(themeLabel);
-        grid.Children.Add(themePicker);
-        grid.Children.Add(quit);
-        grid.Children.Add(exitHint);
 
         return new Dock
         {
             BorderThickness = new Thickness(0, 1, 0, 0),
             BorderGlyphs = Glyphs.Light,
-            Padding = new Thickness(1, 0),
-            Children = { grid },
+            Children = { utilities },
         };
     }
 
