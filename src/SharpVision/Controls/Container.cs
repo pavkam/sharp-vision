@@ -664,11 +664,15 @@ public abstract class Container: Control
 
         Resolve(new Size(padded.Width, padded.Height), ContentExtent, out bool horizontal, out bool vertical, out Size viewport);
         _viewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
+        bool extentChanged = _extent != ContentExtent;
         _ = Set(ref _extent, ContentExtent, Invalidation.None, nameof(Extent));
         _ = Set(ref _viewport, viewport, Invalidation.None, nameof(Viewport));
         _reserveHorizontal = horizontal;
         _reserveVertical = vertical;
-        _ = Apply(Math.Min(HorizontalOffset, MaximumX()), Math.Min(VerticalOffset, MaximumY()), Cause.Resize);
+        _ = Apply(
+            Math.Min(HorizontalOffset, MaximumX()),
+            Math.Min(VerticalOffset, MaximumY()),
+            extentChanged ? Cause.Content : Cause.Resize);
 
         return new Rect(
             Difference(padded.X, HorizontalOffset),

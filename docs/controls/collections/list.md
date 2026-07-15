@@ -4,9 +4,9 @@
 
 `List` is a focusable selection control over an owned item snapshot and
 caller-configurable template. The first milestone deliberately realizes every
-item into a private vertical `Stack` inside a private
-[`ScrollView`](../layout/scroll-view.md#scrollview-contract). It makes no
-virtualization or recycling claim.
+item into a private vertical `Stack` armed with the intrinsic
+[`AutoScroll`](../../concepts/scrolling.md) contract. It makes no virtualization
+or recycling claim.
 
 Each template result is wrapped by one ordinary pressable `ListItem`. The
 wrapper owns focus, activation, selected visual state, and exactly one template

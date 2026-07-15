@@ -124,6 +124,10 @@ in the protocol document.
   dispatcher.
 - Percentage sizing inside unbounded measure and automatic scrollbar feedback
   follow their normative algorithms; do not invent local exceptions.
+- Scrolling and grow/shrink are intrinsic `Container` properties (`AutoScroll`,
+  `AutoSize`, `AutoSizeMode`), not a dedicated scroll container. There is no
+  `ScrollView` type; any container becomes scrollable or content-sized by
+  setting those properties directly.
 - Build a composite control by deriving from `View` and implementing
   `protected override Control Build()`; the layout/render override seams are
   `MeasureOverride`/`ArrangeOverride`/`OnRender`.

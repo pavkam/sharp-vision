@@ -60,7 +60,7 @@ constraints are applied before the result is capped to the margin-deflated slot,
 so tiny viewports always produce contained non-negative rectangles.
 
 Layout surfaces such as `Stack`, `Grid`, `Dock`, `Border`, `Overlay`, and
-`ScrollView` opt into horizontal stretch because they own a viewport or shared
+`Container` opt into horizontal stretch because they own a viewport or shared
 slot. Their ordinary child controls remain content-sized unless the surface's
 layout contract explicitly resolves that child to its slot.
 
@@ -102,6 +102,27 @@ remaining physical edges in child order. `Overlay` shares the content box and
 uses stable attached z-order for render and hit testing. `Canvas` positions
 children through cells or deferred percentages and clips by policy. `Border`
 adds validated zero-or-one physical edges around one atomically owned child.
+
+## Grow and shrink
+
+Every [`Container`](../../src/SharpVision/Controls/Container.cs) can size itself
+to its content instead of its explicit `Width`/`Height`. `AutoSize` (default
+`false`) sizes the border box to content on the enabled axis, overriding an
+explicit fixed or star length while still honoring `MinWidth`/
+`MaxWidth`/`MinHeight`/`MaxHeight`. `AutoSizeMode` chooses how the fixed request
+participates once `AutoSize` is on: `GrowAndShrink` (default) fits content
+exactly, growing or shrinking below an explicit fixed-cell size; `GrowOnly`
+treats an explicit fixed-cell length as a floor, so the container grows to fit
+larger content but never shrinks smaller than the requested size. Both modes
+clamp the final result to `Min`/`Max` before arrangement.
+
+`AutoSize` and `AutoScroll` (see [Scrolling](scrolling.md)) compose along
+independent axes of the same container. A determinate axis — one sized by an
+explicit length rather than `AutoSize` — scrolls its content on overflow when
+`AutoScroll` is enabled and that axis is selected by `ScrollBars`. An auto-sized
+axis instead grows to fit its content up to `Max`; once content exceeds `Max`,
+the axis stops growing, caps at that bound, and — if `AutoScroll` is enabled for
+it — scrolls the remainder exactly like a determinate axis.
 
 ## Test contract
 

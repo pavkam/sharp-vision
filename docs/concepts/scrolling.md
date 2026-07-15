@@ -2,9 +2,23 @@
 
 ## Scrolling contract
 
-A scroll view owns content, viewport, extent, offsets, and independent
-horizontal/vertical policies: automatic, always, or hidden. Hidden suppresses a
-bar but does not by itself forbid programmatic scrolling.
+Scrolling is not a dedicated control. `AutoScroll` is an intrinsic, opt-in-only
+(default `false`) property of every
+[`Container`](../../src/SharpVision/Controls/Container.cs), following the
+VCL/WinForms lineage of `ScrollableControl.AutoScroll`/`TWinControl`: any panel
+can become scrollable by turning on one flag rather than by wrapping content in
+a dedicated scroll-view control. An armed container owns content, viewport,
+extent, offsets, and independent horizontal/vertical policies: automatic,
+always, or hidden. Hidden suppresses a bar but does not by itself forbid
+programmatic scrolling.
+
+`ScrollBars` selects which axes are eligible to scroll and defaults to
+`Vertical`. Eligible axes are measured unbounded so children can report their
+natural, intrinsic extent — the WinForms `DisplayRectangle` model — rather than
+being clamped to the current viewport. `Control.MeasureOverride`'s
+`ResolveMeasureAxis` step clamps `DesiredSize` to the incoming constraint, so
+any axis not selected by `ScrollBars` remains bounded and cannot overflow
+silently.
 
 The allocation-free [`Range`](../../src/SharpVision/Scrolling/Range.cs) value
 stores non-negative inclusive `Minimum` and `Maximum` endpoints, a contained
@@ -55,18 +69,30 @@ below, and `Always` reserves space even when the range is stationary.
 
 Line/page/home/end commands, wheel and pixel deltas, buttons, track clicks,
 thumb dragging, and programmatic bring-into-view all use typed scroll commands.
-Unused delta propagates to the nearest scrollable ancestor. Pointer capture owns
-thumb dragging and is released on disable, detach, close, or cancellation.
+Unused delta propagates to the nearest scrollable ancestor container. Pointer
+capture owns thumb dragging and is released on disable, detach, close, or
+cancellation.
 
-[`ScrollView`](../../src/SharpVision/Controls/ScrollView.cs) implements the
-automatic algorithm with two ordinary owned
+An armed [`Container`](../../src/SharpVision/Controls/Container.cs) implements
+the automatic algorithm with two ordinary owned
 [`ScrollBar`](../../src/SharpVision/Controls/ScrollBar.cs) controls configured
-through their public orientation, chrome, and fill APIs. Wheel input first
-offers the leaf control its normal default behavior; a child that moves handles
-the event. Once that child reaches an endpoint, it leaves the next unchanged
-wheel event unhandled and the enclosing view consumes the clamped delta. Content
-and resize changes clamp offsets before the typed change event and before
-translated arrangement.
+through their public orientation, chrome, and fill APIs. The reservation probe
+runs against `ScrollBars` and the per-axis `HorizontalBarVisibility`/
+`VerticalBarVisibility`: an automatic bar on one axis can consume space that
+forces the other axis over its threshold too, so both bars can induce each other
+before the probe stabilizes. Once the viewport is settled, content is translated
+by the committed offsets and rendered through a canvas clipped to the viewport.
+
+Wheel input first offers the leaf control its normal default behavior; a child
+that moves handles the event. Once that child reaches an endpoint, it leaves the
+next unchanged wheel event unhandled and the enclosing container consumes the
+clamped delta, so wheel scrolling propagates outward through nested armed
+containers. Keyboard arrows, PageUp/PageDown, and Home/End drive the same typed
+commands. `BringIntoView(Control)` accepts only an owned content descendant and
+makes the smallest two-axis offset change that exposes its arranged bounds.
+Content and resize changes clamp offsets before the typed `ScrollChanged` event
+(carrying the previous/committed offset, `Extent`, `Viewport`, and typed
+`Cause`) and before translated arrangement.
 
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after offset and never targets clipped content.

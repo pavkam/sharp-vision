@@ -32,7 +32,6 @@ All controls derive from the
 - [Overlay](layout/overlay.md#overlay-contract)
 - [Canvas](layout/canvas.md#canvas-contract)
 - [Table](layout/table.md#table-contract)
-- [ScrollView](layout/scroll-view.md#scrollview-contract)
 - [ScrollBar](layout/scroll-bar.md#scrollbar-contract)
 
 ### Collections, menus, and windows

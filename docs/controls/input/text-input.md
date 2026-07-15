@@ -111,8 +111,8 @@ Wheel deltas scroll the editor's existing horizontal and vertical content
 offsets in cell and logical-line units. The editor handles a wheel event only
 when at least one enabled offset changes. At either endpoint it leaves an
 otherwise unmoved event unhandled, so normal bubble routing can offer it to an
-enclosing [`ScrollView`](../layout/scroll-view.md) instead of swallowing nested
-scrolling.
+enclosing [scrollable `Container`](../../concepts/scrolling.md) instead of
+swallowing nested scrolling.
 
 ## Example
 

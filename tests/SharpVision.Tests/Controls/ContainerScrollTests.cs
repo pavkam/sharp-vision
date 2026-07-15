@@ -523,15 +523,9 @@ public sealed class ContainerScrollTests
     }
 
     /// <summary>
-    /// Verifies content shrink clamps both offsets before its change notification.
-    /// Note: the deleted ScrollView contract additionally distinguished a
-    /// dedicated <see cref="Cause.Content"/> here (see the pre-migration
-    /// ScrollView.ArrangeOverride, which compared the previous and current
-    /// measured extent to pick Content vs Resize). Container.ResolveContentSlot
-    /// always reports <see cref="Cause.Resize"/> for any clamp it raises,
-    /// whether content or viewport changed, so Cause.Content is currently
-    /// unreachable. This assertion documents the real, current behavior; see
-    /// the Task 14 report for the tracked contract gap.
+    /// Verifies content shrink clamps both offsets before its change notification,
+    /// reporting <see cref="Cause.Content"/> because the content extent (not the
+    /// viewport) changed.
     /// </summary>
     [Fact]
     public void Layout_WhenContentShrinks_ClampsOffsets()
@@ -556,7 +550,7 @@ public sealed class ContainerScrollTests
         container.Extent.ShouldBe(new Size(4, 2));
         new Point(container.HorizontalOffset, container.VerticalOffset).ShouldBe(default);
         _ = change.ShouldNotBeNull();
-        change.Cause.ShouldBe(Cause.Resize);
+        change.Cause.ShouldBe(Cause.Content);
         change.Offset.ShouldBe(default);
     }
 
