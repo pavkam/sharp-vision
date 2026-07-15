@@ -9,6 +9,156 @@ namespace SharpVision.Terminal.Tests.Rendering;
 /// <summary>Verifies validated Rune, fill, and grapheme-preserving style primitives.</summary>
 public sealed class CanvasPrimitiveTests
 {
+    #region Arbitrary geometry
+
+    /// <summary>Verifies every line octant includes both caller-supplied endpoints.</summary>
+    [Theory]
+    [InlineData(0, 0, 5, 3)]
+    [InlineData(5, 3, 0, 0)]
+    [InlineData(0, 3, 5, 0)]
+    [InlineData(3, 0, 1, 3)]
+    public void DrawLine_WhenEndpointsVary_RasterizesBothEndpoints(
+        int x1,
+        int y1,
+        int x2,
+        int y2)
+    {
+        using Frame frame = new(new Size(6, 4));
+
+        frame.Canvas.DrawLine(new Point(x1, y1), new Point(x2, y2), new Rune('*'));
+
+        FrameTests.GetText(frame, new Point(x1, y1)).ShouldBe("*");
+        FrameTests.GetText(frame, new Point(x2, y2)).ShouldBe("*");
+    }
+
+    /// <summary>Verifies a shallow diagonal follows exact deterministic Bresenham cells.</summary>
+    [Fact]
+    public void DrawLine_WhenSlopeIsShallow_RasterizesExactCells()
+    {
+        using Frame frame = new(new Size(6, 4));
+
+        frame.Canvas.DrawLine(default, new Point(5, 3), new Rune('*'));
+
+        AssertRows(frame, "*     ", " **   ", "   ** ", "     *");
+    }
+
+    /// <summary>Verifies clipped line traversal paints only visible cells.</summary>
+    [Fact]
+    public void DrawLine_WhenEndpointsCrossClip_PaintsVisibleIntersection()
+    {
+        using Frame frame = new(new Size(6, 3));
+        var canvas = frame.Canvas.Clip(new Rect(1, 1, 4, 1));
+
+        canvas.DrawLine(new Point(-2, 1), new Point(7, 1), new Rune('-'));
+
+        AssertRows(frame, "      ", " ---- ", "      ");
+    }
+
+    /// <summary>Verifies odd ellipse bounds rasterize one symmetric outline.</summary>
+    [Fact]
+    public void DrawEllipse_WhenBoundsAreOdd_RasterizesExactOutline()
+    {
+        using Frame frame = new(new Size(7, 5));
+
+        frame.Canvas.DrawEllipse(frame.Canvas.Bounds, new Rune('*'));
+
+        AssertRows(frame, "  ***  ", " *   * ", "*     *", " *   * ", "  ***  ");
+    }
+
+    /// <summary>Verifies even ellipse bounds rasterize one symmetric outline.</summary>
+    [Fact]
+    public void DrawEllipse_WhenBoundsAreEven_RasterizesExactOutline()
+    {
+        using Frame frame = new(new Size(6, 4));
+
+        frame.Canvas.DrawEllipse(frame.Canvas.Bounds, new Rune('*'));
+
+        AssertRows(frame, " **** ", "*    *", "*    *", " **** ");
+    }
+
+    /// <summary>Verifies ellipse points outside a child canvas are skipped.</summary>
+    [Fact]
+    public void DrawEllipse_WhenCanvasIsClipped_PaintsOnlyVisibleOutline()
+    {
+        using Frame frame = new(new Size(5, 3));
+        var canvas = frame.Canvas.Clip(new Rect(2, 0, 2, 3));
+
+        canvas.DrawEllipse(frame.Canvas.Bounds, new Rune('*'));
+
+        AssertRows(frame, "  ** ", "     ", "  ** ");
+    }
+
+    /// <summary>Verifies one-cell ellipse axes degrade to deterministic lines and points.</summary>
+    [Fact]
+    public void DrawEllipse_WhenOneAxisIsOneCell_DrawsDegenerateGeometry()
+    {
+        using Frame frame = new(new Size(5, 5));
+
+        frame.Canvas.DrawEllipse(new Rect(2, 0, 1, 5), new Rune('|'));
+        frame.Canvas.DrawEllipse(new Rect(0, 2, 5, 1), new Rune('-'));
+
+        AssertRows(frame, "  |  ", "  |  ", "-----", "  |  ", "  |  ");
+    }
+
+    /// <summary>Verifies zero and positive radii use cell-coordinate circle geometry.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void DrawCircle_WhenRadiusIsValid_PaintsCardinalCells(int radius)
+    {
+        using Frame frame = new(new Size(9, 9));
+        var center = new Point(4, 4);
+
+        frame.Canvas.DrawCircle(center, radius, new Rune('o'));
+
+        FrameTests.GetText(frame, new Point(center.X, center.Y - radius)).ShouldBe("o");
+        FrameTests.GetText(frame, new Point(center.X + radius, center.Y)).ShouldBe("o");
+        FrameTests.GetText(frame, new Point(center.X, center.Y + radius)).ShouldBe("o");
+        FrameTests.GetText(frame, new Point(center.X - radius, center.Y)).ShouldBe("o");
+    }
+
+    /// <summary>Verifies identical geometry calls produce identical frame cells.</summary>
+    [Fact]
+    public void DrawEllipse_WhenRepeated_ProducesIdenticalCells()
+    {
+        using Frame first = new(new Size(8, 6));
+        using Frame second = new(new Size(8, 6));
+
+        first.Canvas.DrawEllipse(new Rect(1, 1, 6, 4), new Rune('#'));
+        second.Canvas.DrawEllipse(new Rect(1, 1, 6, 4), new Rune('#'));
+
+        for (var y = 0; y < 6; y++)
+        {
+            for (var x = 0; x < 8; x++)
+            {
+                first.GetCell(new Point(x, y)).ShouldBe(second.GetCell(new Point(x, y)));
+            }
+        }
+    }
+
+    /// <summary>Verifies invalid geometry arguments fail before changing the frame.</summary>
+    [Fact]
+    public void DrawGeometry_WhenInputIsInvalid_ThrowsBeforeMutation()
+    {
+        using Frame frame = new(new Size(3, 3));
+
+        _ = Should.Throw<ArgumentException>(() =>
+            frame.Canvas.DrawLine(default, new Point(2, 2), new Rune('界')));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            frame.Canvas.DrawCircle(new Point(1, 1), -1, new Rune('*')));
+
+        for (var y = 0; y < 3; y++)
+        {
+            for (var x = 0; x < 3; x++)
+            {
+                frame.GetCell(new Point(x, y)).ShouldBe(CellInfo.Blank);
+            }
+        }
+    }
+
+    #endregion
+
     #region Rune drawing
 
     /// <summary>Verifies drawing rejects a wide Rune before changing the frame.</summary>
@@ -118,4 +268,29 @@ public sealed class CanvasPrimitiveTests
     }
 
     #endregion
+
+    private static void AssertRows(Frame frame, params string[] expected)
+    {
+        expected.Length.ShouldBe(frame.Size.Height);
+
+        for (var y = 0; y < expected.Length; y++)
+        {
+            expected[y].Length.ShouldBe(frame.Size.Width);
+
+            for (var x = 0; x < expected[y].Length; x++)
+            {
+                var actual = FrameTests.GetText(frame, new Point(x, y));
+                var value = expected[y][x];
+
+                if (value == ' ')
+                {
+                    actual.ShouldBeEmpty();
+                }
+                else
+                {
+                    actual.ShouldBe(value.ToString());
+                }
+            }
+        }
+    }
 }

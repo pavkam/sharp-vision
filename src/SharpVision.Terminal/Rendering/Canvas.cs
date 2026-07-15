@@ -66,6 +66,153 @@ public readonly struct Canvas
         _ = Draw(buffer[..length], origin, style, background: background);
     }
 
+    /// <summary>Draws a clipped deterministic line between two inclusive cell coordinates.</summary>
+    /// <param name="start">The first absolute frame cell.</param>
+    /// <param name="end">The final absolute frame cell.</param>
+    /// <param name="value">The printable one-cell Rune used for every rasterized point.</param>
+    /// <param name="style">The semantic cell style.</param>
+    /// <remarks>Both endpoints are included. Traversal uses integer Bresenham geometry in cell coordinates.</remarks>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="value"/> is a control or does not occupy exactly one cell.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    public void DrawLine(Point start, Point end, Rune value, CellStyle style = default)
+    {
+        Span<char> buffer = stackalloc char[2];
+        var length = ValidateRune(value, buffer);
+        DrawLineValidated(start, end, buffer[..length], style);
+    }
+
+    /// <summary>Draws a clipped deterministic ellipse outline inside half-open cell bounds.</summary>
+    /// <param name="bounds">The half-open ellipse bounds in absolute frame cells.</param>
+    /// <param name="value">The printable one-cell Rune used for every rasterized point.</param>
+    /// <param name="style">The semantic cell style.</param>
+    /// <remarks>Empty bounds draw nothing. A one-cell axis degrades to the corresponding line or point.</remarks>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="value"/> is a control or does not occupy exactly one cell.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    public void DrawEllipse(Rect bounds, Rune value, CellStyle style = default)
+    {
+        Span<char> buffer = stackalloc char[2];
+        var length = ValidateRune(value, buffer);
+
+        if (bounds.Width == 0 || bounds.Height == 0)
+        {
+            return;
+        }
+
+        if (bounds.Width == 1)
+        {
+            DrawLineValidated(
+                new Point(bounds.X, bounds.Y),
+                new Point(bounds.X, bounds.Bottom - 1),
+                buffer[..length],
+                style);
+            return;
+        }
+
+        if (bounds.Height == 1)
+        {
+            DrawLineValidated(
+                new Point(bounds.X, bounds.Y),
+                new Point(bounds.Right - 1, bounds.Y),
+                buffer[..length],
+                style);
+            return;
+        }
+
+        var left = (long) bounds.X;
+        var right = left + bounds.Width - 1;
+        var top = (long) bounds.Y;
+        var bottom = top + bounds.Height - 1;
+        var width = right - left;
+        var height = bottom - top;
+        var oddHeight = height & 1;
+        var horizontalError = 4 * (1 - width) * height * height;
+        var verticalError = 4 * (oddHeight + 1) * width * width;
+        var error = horizontalError + verticalError + (oddHeight * width * width);
+
+        top += (height + 1) / 2;
+        bottom = top - oddHeight;
+        width *= 8 * width;
+        oddHeight = 8 * height * height;
+
+        do
+        {
+            DrawGeometryPoint(right, top, buffer[..length], style);
+            DrawGeometryPoint(left, top, buffer[..length], style);
+            DrawGeometryPoint(left, bottom, buffer[..length], style);
+            DrawGeometryPoint(right, bottom, buffer[..length], style);
+            var doubled = 2 * error;
+
+            if (doubled <= verticalError)
+            {
+                top++;
+                bottom--;
+                error += verticalError += width;
+            }
+
+            if (doubled >= horizontalError || 2 * error > verticalError)
+            {
+                left++;
+                right--;
+                error += horizontalError += oddHeight;
+            }
+        }
+        while (left <= right);
+
+        while (top - bottom < height)
+        {
+            DrawGeometryPoint(left - 1, top, buffer[..length], style);
+            DrawGeometryPoint(right + 1, top, buffer[..length], style);
+            top++;
+            DrawGeometryPoint(left - 1, bottom, buffer[..length], style);
+            DrawGeometryPoint(right + 1, bottom, buffer[..length], style);
+            bottom--;
+        }
+    }
+
+    /// <summary>Draws a clipped deterministic circle outline in cell coordinates.</summary>
+    /// <param name="center">The center absolute frame cell.</param>
+    /// <param name="radius">The non-negative radius measured in terminal cells.</param>
+    /// <param name="value">The printable one-cell Rune used for every rasterized point.</param>
+    /// <param name="style">The semantic cell style.</param>
+    /// <remarks>Radius zero draws exactly the center cell.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="radius"/> is negative.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="value"/> is a control or does not occupy exactly one cell.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The finite frame arena would be exceeded.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    public void DrawCircle(Point center, int radius, Rune value, CellStyle style = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(radius);
+        Span<char> buffer = stackalloc char[2];
+        var length = ValidateRune(value, buffer);
+        var x = (long) radius;
+        var y = 0L;
+        var error = 1L - radius;
+
+        while (x >= y)
+        {
+            DrawCircleOctants(center, x, y, buffer[..length], style);
+            y++;
+
+            if (error < 0)
+            {
+                error += (2 * y) + 1;
+            }
+            else
+            {
+                x--;
+                error += (2 * (y - x)) + 1;
+            }
+        }
+    }
+
     /// <summary>Fills a clipped region with one validated printable narrow Rune.</summary>
     /// <param name="region">The requested half-open frame region.</param>
     /// <param name="value">The Rune repeated into every visible cell.</param>
@@ -495,6 +642,74 @@ public readonly struct Canvas
             : throw new ArgumentException(
                 "A drawing Rune must be printable and exactly one cell wide.",
                 nameof(value));
+    }
+
+    private void DrawCircleOctants(
+        Point center,
+        long x,
+        long y,
+        ReadOnlySpan<char> value,
+        CellStyle style)
+    {
+        DrawGeometryPoint(center.X + x, center.Y + y, value, style);
+        DrawGeometryPoint(center.X + y, center.Y + x, value, style);
+        DrawGeometryPoint(center.X - y, center.Y + x, value, style);
+        DrawGeometryPoint(center.X - x, center.Y + y, value, style);
+        DrawGeometryPoint(center.X - x, center.Y - y, value, style);
+        DrawGeometryPoint(center.X - y, center.Y - x, value, style);
+        DrawGeometryPoint(center.X + y, center.Y - x, value, style);
+        DrawGeometryPoint(center.X + x, center.Y - y, value, style);
+    }
+
+    private void DrawGeometryPoint(long x, long y, ReadOnlySpan<char> value, CellStyle style)
+    {
+        if (x < _clip.X || x >= _clip.Right || y < _clip.Y || y >= _clip.Bottom)
+        {
+            return;
+        }
+
+        _ = Draw(value, new Point((int) x, (int) y), style);
+    }
+
+    private void DrawLineValidated(
+        Point start,
+        Point end,
+        ReadOnlySpan<char> value,
+        CellStyle style)
+    {
+        var x = (long) start.X;
+        var y = (long) start.Y;
+        var endX = (long) end.X;
+        var endY = (long) end.Y;
+        var dx = Math.Abs(endX - x);
+        var stepX = x < endX ? 1L : -1L;
+        var dy = -Math.Abs(endY - y);
+        var stepY = y < endY ? 1L : -1L;
+        var error = dx + dy;
+
+        while (true)
+        {
+            DrawGeometryPoint(x, y, value, style);
+
+            if (x == endX && y == endY)
+            {
+                return;
+            }
+
+            var doubled = error * 2;
+
+            if (doubled >= dy)
+            {
+                error += dy;
+                x += stepX;
+            }
+
+            if (doubled <= dx)
+            {
+                error += dx;
+                y += stepY;
+            }
+        }
     }
 
     private void DrawLineCell(
