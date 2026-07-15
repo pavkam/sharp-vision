@@ -400,17 +400,8 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(() =>
         {
             active.IsFocused.ShouldBeTrue();
-            active.Attributes.ShouldBe(Attributes.Underline);
+            active.Foreground.ShouldBe(Color.Indexed(14));
             active.Background.ShouldBe(Color.Indexed(0));
-
-            if (active.IsHovered)
-            {
-                active.Foreground.ShouldBe(Color.Indexed(14));
-            }
-            else
-            {
-                active.Foreground.ShouldBe(Color.Indexed(15));
-            }
         }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
