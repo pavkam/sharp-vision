@@ -679,7 +679,7 @@ NOTE: a broad `Border` search also matches the `Border` color role /
 `ThemeColors.Border` / `ColorRole.Border` / `Glyphs` — those are NOT the
 control; migrate only `Border`-_control_ constructions.
 
-- [ ] **Step 1: Find every Border-control reference**
+- [x] **Step 1: Find every Border-control reference**
 
 Run:
 
@@ -690,7 +690,12 @@ rg -n "new Border\b|ShouldBeOfType<Border>|Find<Border>|\bBorder (border|chip|co
 Expected: the deleted files plus the production and test files enumerated in
 this task. Re-run immediately before deletion.
 
-- [ ] **Step 2: Port the Border render/layout contract to
+Evidence: the pre-edit search found every enumerated construction plus two
+additional concrete usages in `Styling/ControlChromeTests.cs`. The migration
+also audited numeric showcase navigation assumptions after removing the first
+catalog entry.
+
+- [x] **Step 2: Port the Border render/layout contract to
       `IntrinsicBorderTests.cs`**
 
 Read the deleted-target `tests/SharpVision.Tests/Controls/BorderTests.cs` and
@@ -712,7 +717,14 @@ port its cases to an intrinsic-bordered control (a `LayoutProbe`/`Stack` with
   `BorderGlyphs`/`BorderThickness` property-setter tests on `Control` (these
   validators already live on `Control`).
 
-- [ ] **Step 3: Migrate `Border`-control usages**
+Evidence: `IntrinsicBorderTests` now contains 18 discovered cases covering the
+nine glyph presets, public validation, full margin/border/padding layout,
+complete and partial cells/styles, Unicode continuation ownership, and tiny
+bounds. Temporarily setting the complete frame's `BorderThickness` to zero made
+the focused test fail at `(0,0)` with expected `┌`, actual `界`; restoring the
+intrinsic property returned the suite to 18/18.
+
+- [x] **Step 3: Migrate `Border`-control usages**
 
 Use an ordinary `Dock` whenever the old wrapper supplied a distinct ownership or
 rendering node:
@@ -751,7 +763,14 @@ display-panel frame, performance navigation cards, and theme swatch chip. In
 `ThemeSwatchLiveThemeTests`, change the helper parameter type and comments from
 `Border` to `Dock`/“intrinsic control surface.”
 
-- [ ] **Step 4: Delete `Border.cs`, `BorderPane.cs`, `BorderTests.cs`; drop the
+Evidence: every wrapper construction now uses a distinct `Dock` ownership and
+chrome node (or `LayoutProbe` in focused infrastructure tests), including the
+opaque popup cover, integration/performance surfaces, theme swatch, and the
+extra shared-chrome tests. `Doc.Card` uses the exact shared idiom and every
+former `Glyphs` alias is now `BorderGlyphs`; background/fill behavior remains on
+the replacement surface.
+
+- [x] **Step 4: Delete `Border.cs`, `BorderPane.cs`, `BorderTests.cs`; drop the
       `Border` showcase page**
 
 ```bash
@@ -771,7 +790,15 @@ existing `IndexOf` helper where the page is named, change `Find<Border>` to
 `screen.Text.ShouldContain("Button")`. Change the tmux Down count from 17 to 16
 because Text moves one additional catalog position earlier.
 
-- [ ] **Step 5: Build + verify**
+Evidence: the wrapper, dedicated showcase page, wrapper tests, and obsolete
+control specification are deleted. The catalog now starts at Button, index 1 is
+Canvas, the sidebar and main surface are `Dock`, pointer/keyboard navigation
+tests use the new stable identities, and tmux reaches Text after 16 Down keys.
+Current normative layout, rendering, ownership, showcase, integration, styling,
+project-structure, and control-index documentation no longer claims a Border
+control.
+
+- [x] **Step 5: Build + verify**
 
 Run:
 
@@ -785,7 +812,17 @@ dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s
 Expected: the wrapper-type search is silent; build and focused suites pass.
 `ColorRole.Border`, `ThemeColors.Border`, and `BorderGlyphs` remain valid.
 
-- [ ] **Step 6: Commit**
+Evidence: the concrete wrapper search is silent; the no-incremental Release
+build completed with zero warnings and zero errors; the focused intrinsic,
+ambiguous-width, popup, display-panel, and shared-chrome suite passed 36/36;
+full `SharpVision.Tests` passed 674/674; and full Showcase tests passed 47/47.
+Documentation tests passed 24/24, C# type and external-resource validation
+passed, all nine changed normative Markdown files passed scoped Prettier and
+Markdown lint, and `git diff --check` passed. The repository-wide link checker
+still reports only the known missing `showcase-dashboard.png` references in the
+showcase architecture and testing documents.
+
+- [x] **Step 6: Commit**
 
 ```bash
 git commit -m "refactor: remove Border control; border is intrinsic via BorderThickness" -- \
@@ -814,6 +851,10 @@ git commit -m "refactor: remove Border control; border is intrinsic via BorderTh
   tests/SharpVision.Showcase.Tests/ThemeSwatchLiveThemeTests.cs \
   tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs
 ```
+
+Evidence: commit `36cc157` contains the atomic Border removal, intrinsic
+contract tests, runtime/showcase migrations, catalog-navigation corrections, and
+synchronized current normative documentation.
 
 ---
 
