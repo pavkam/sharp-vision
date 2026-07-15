@@ -32,9 +32,9 @@ public sealed class GalleryRenderingTests
         screen.ValidateContinuations();
     }
 
-    /// <summary>Verifies responsive RichText receives the committed documentation-pane width instead of an unbounded horizontal measure.</summary>
+    /// <summary>Verifies responsive Text receives the committed documentation-pane width instead of an unbounded horizontal measure.</summary>
     [Fact]
-    public void Render_WhenDocumentationPaneIsNarrow_WrapsCompleteRichTextGuidance()
+    public void Render_WhenDocumentationPaneIsNarrow_WrapsCompleteTextGuidance()
     {
         using var gallery = CreateThemedGallery();
         gallery.Select(1);
@@ -167,42 +167,40 @@ public sealed class GalleryRenderingTests
             .ShouldBe(Color.Indexed(4));
     }
 
-    /// <summary>Verifies the RichText page demonstrates every supported terminal text attribute.</summary>
+    /// <summary>Verifies the Text page demonstrates every supported terminal text attribute tag.</summary>
     [Fact]
-    public void CreateExamples_WhenRichTextPageIsSelected_ShowsTerminalAttributeRuns()
+    public void CreateExamples_WhenTextPageIsSelected_ShowsTerminalAttributeMarkup()
     {
         using var gallery = CreateThemedGallery();
-        gallery.Select(IndexOf(gallery, "RichText"));
+        gallery.Select(IndexOf(gallery, "Text"));
         new Engine().Layout(gallery, new Size(120, 80));
 
-        List<Run> runs = [.. FindAll<RichText>(gallery.Content).SelectMany(static richText => richText.Inlines.OfType<Run>())];
+        ControlText marked = FindAll<ControlText>(gallery.Content)
+            .Single(text => text.Content.Contains("<rapidblink>", StringComparison.Ordinal));
 
-        runs.ShouldContain(run => run.Attributes == Attributes.Bold);
-        runs.ShouldContain(run => run.Attributes == Attributes.Dim);
-        runs.ShouldContain(run => run.Attributes == Attributes.Italic);
-        runs.ShouldContain(run => run.Attributes == Attributes.Underline);
-        runs.ShouldContain(run => run.Attributes == Attributes.Blink);
-        runs.ShouldContain(run => run.Attributes == Attributes.Reverse);
-        runs.ShouldContain(run => run.Attributes == Attributes.Strike);
-        runs.ShouldContain(run => run.Attributes == Attributes.Hidden);
-        runs.ShouldContain(run => run.Attributes == Attributes.RapidBlink);
-        runs.ShouldContain(run => run.Attributes == Attributes.Overline);
-        runs.ShouldContain(run =>
-            run.Underline == Underline.Curly &&
-            run.UnderlineColor == Color.Indexed(11));
-        runs.ShouldContain(run => run.Attributes == (Attributes.Bold | Attributes.Underline | Attributes.Italic));
+        marked.Content.ShouldContain("<b>");
+        marked.Content.ShouldContain("<d>");
+        marked.Content.ShouldContain("<i>");
+        marked.Content.ShouldContain("<u>");
+        marked.Content.ShouldContain("<blink>");
+        marked.Content.ShouldContain("<reverse>");
+        marked.Content.ShouldContain("<s>");
+        marked.Content.ShouldContain("<hidden>");
+        marked.Content.ShouldContain("<rapidblink>");
+        marked.Content.ShouldContain("<overline>");
+        marked.Content.ShouldContain("<u=curly><uc=11>");
     }
 
-    /// <summary>Verifies the RichText action keeps its intrinsic content width instead of filling the document column.</summary>
+    /// <summary>Verifies the Text markup action keeps its intrinsic content width.</summary>
     [Fact]
-    public void Render_WhenRichTextActionIsLaidOut_UsesIntrinsicButtonWidth()
+    public void Render_WhenTextMarkupActionIsLaidOut_UsesIntrinsicButtonWidth()
     {
         using var gallery = CreateThemedGallery();
-        gallery.Select(IndexOf(gallery, "RichText"));
+        gallery.Select(IndexOf(gallery, "Text"));
         new Engine().Layout(gallery, new Size(120, 80));
 
         var button = FindAll<Button>(gallery.Content)
-            .Single(value => value.Content is ControlText { Content: "Append a Run" });
+            .Single(value => value.Content is ControlText { Content: "Append markup" });
 
         button.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
         button.Bounds.Width.ShouldBe(button.DesiredSize.Width);

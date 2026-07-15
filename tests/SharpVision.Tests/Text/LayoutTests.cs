@@ -38,7 +38,7 @@ public sealed class LayoutTests
     public void Format_WhenWrappingByGrapheme_PreservesClusterBoundaries()
     {
         const string content = "e\u0301界x";
-        var lines = Format(content, width: 2, wrapping: Wrapping.Grapheme);
+        var lines = Format(content, width: 2, overflow: Overflow.WrapAnywhere);
 
         lines.ShouldBe([
             new Line(0, 2, 1, 0, false),
@@ -52,7 +52,7 @@ public sealed class LayoutTests
     public void Format_WhenWrappingWords_MovesWholeWordToNextLine()
     {
         const string content = "one two";
-        var lines = Format(content, width: 5, wrapping: Wrapping.Word);
+        var lines = Format(content, width: 5, overflow: Overflow.Wrap);
 
         lines.Length.ShouldBe(2);
         content.AsSpan(lines[0].Offset, lines[0].Length).ToString().ShouldBe("one ");
@@ -65,7 +65,7 @@ public sealed class LayoutTests
     public void Format_WhenClipping_TruncatesAtGraphemeBoundary()
     {
         const string content = "ab界c";
-        var lines = Format(content, width: 3, trimming: Trimming.Clip);
+        var lines = Format(content, width: 3, overflow: Overflow.Clip);
 
         lines.ShouldBe([new Line(0, 2, 2, 0, false)]);
     }
@@ -75,7 +75,7 @@ public sealed class LayoutTests
     public void Format_WhenUsingGraphemeEllipsis_ReservesEllipsisCell()
     {
         const string content = "ab界c";
-        var lines = Format(content, width: 4, trimming: Trimming.GraphemeEllipsis);
+        var lines = Format(content, width: 4, overflow: Overflow.Ellipsis);
 
         lines.ShouldBe([new Line(0, 2, 3, 0, true)]);
     }
@@ -85,7 +85,7 @@ public sealed class LayoutTests
     public void Format_WhenUsingWordEllipsis_RemovesPartialWord()
     {
         const string content = "one two";
-        var lines = Format(content, width: 6, trimming: Trimming.WordEllipsis);
+        var lines = Format(content, width: 6, overflow: Overflow.Ellipsis);
 
         lines.ShouldBe([new Line(0, 3, 4, 0, true)]);
     }
@@ -126,7 +126,7 @@ public sealed class LayoutTests
     [Fact]
     public void Format_WhenWidthIsZero_ReturnsEmptyClippedLine()
     {
-        var lines = Format("界", width: 0, wrapping: Wrapping.Grapheme);
+        var lines = Format("界", width: 0, overflow: Overflow.WrapAnywhere);
 
         lines.ShouldBe([new Line(1, 0, 0, 0, false)]);
     }
@@ -140,8 +140,7 @@ public sealed class LayoutTests
         var required = TextLayout.Format(
             "a\nb".AsSpan(),
             8,
-            Wrapping.None,
-            Trimming.None,
+            Overflow.Visible,
             Alignment.Start,
             Ambiguous.Narrow,
             lines);
@@ -156,9 +155,9 @@ public sealed class LayoutTests
     {
         var lines = new[] { new Line(1, 1, 1, 1, true) };
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            TextLayout.Format("x", -1, Wrapping.None, Trimming.None, Alignment.Start, Ambiguous.Narrow, lines));
+            TextLayout.Format("x", -1, Overflow.Visible, Alignment.Start, Ambiguous.Narrow, lines));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            TextLayout.Format("x", 1, (Wrapping) 99, Trimming.None, Alignment.Start, Ambiguous.Narrow, lines));
+            TextLayout.Format("x", 1, (Overflow) 99, Alignment.Start, Ambiguous.Narrow, lines));
 
         lines[0].ShouldBe(new Line(1, 1, 1, 1, true));
     }
@@ -276,16 +275,14 @@ public sealed class LayoutTests
     private static Line[] Format(
         string content,
         int width,
-        Wrapping wrapping = Wrapping.None,
-        Trimming trimming = Trimming.None,
+        Overflow overflow = Overflow.Visible,
         Alignment alignment = Alignment.Start)
     {
         Span<Line> initial = stackalloc Line[4];
         var required = TextLayout.Format(
             content,
             width,
-            wrapping,
-            trimming,
+            overflow,
             alignment,
             Ambiguous.Narrow,
             initial);
@@ -293,8 +290,7 @@ public sealed class LayoutTests
         _ = TextLayout.Format(
             content,
             width,
-            wrapping,
-            trimming,
+            overflow,
             alignment,
             Ambiguous.Narrow,
             result);

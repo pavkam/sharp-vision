@@ -22,7 +22,6 @@ public sealed class GalleryTests
         "Overlay",
         "Popup",
         "RadioButton",
-        "RichText",
         "ScrollBar",
         "Shadow",
         "Stack",
@@ -73,9 +72,9 @@ public sealed class GalleryTests
         main.VerticalOffset.ShouldBe(0);
     }
 
-    /// <summary>Verifies every registered page includes typed RichText documentation.</summary>
+    /// <summary>Verifies every registered page includes responsive marked Text documentation.</summary>
     [Fact]
-    public void CreatePage_WhenEachPageIsSelected_ContainsRichTextDescription()
+    public void CreatePage_WhenEachPageIsSelected_ContainsWrappedTextDescription()
     {
         using Gallery gallery = new();
 
@@ -84,17 +83,19 @@ public sealed class GalleryTests
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
 
-            ContainsRichText(gallery.Content).ShouldBeTrue(gallery.SelectedPage);
+            FindText(gallery.Content, "<b>Overview</b>").ShouldNotBeNull(gallery.SelectedPage);
         }
     }
 
-    /// <summary>Verifies a newly created RichText document wraps words by default for responsive documentation.</summary>
+    /// <summary>Verifies showcase documentation opts into wrapping despite Text preserving visible overflow by default.</summary>
     [Fact]
-    public void Constructor_WhenRichTextIsCreated_UsesWordWrapping()
+    public void CreatePage_WhenDocumentationIsBuilt_UsesWrappedText()
     {
-        var document = new RichText();
+        using var page = Gallery.CreatePage(0);
+        new Engine().Layout(page, new Size(80, 24));
+        var document = FindText(page, "<b>Overview</b>").ShouldNotBeNull();
 
-        document.Wrapping.ShouldBe(Wrapping.Word);
+        document.Overflow.ShouldBe(Overflow.Wrap);
     }
 
     /// <summary>Verifies pages that still supply a practical recipe wrap it, now that documentation prose is
@@ -110,11 +111,11 @@ public sealed class GalleryTests
             var name = gallery.Pages[index];
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
-            var recipe = FindRichText(gallery.Content, "Practical recipe");
+            var recipe = FindText(gallery.Content, "Practical recipe");
 
             if (recipe is { } found)
             {
-                found.Wrapping.ShouldBe(Wrapping.Word, name);
+                found.Overflow.ShouldBe(Overflow.Wrap, name);
             }
         }
     }
@@ -160,38 +161,15 @@ public sealed class GalleryTests
         }
     }
 
-    private static bool ContainsRichText(Control control)
-    {
-        if (control is RichText)
-        {
-            return true;
-        }
-
-        if (control is not Container container)
-        {
-            return false;
-        }
-
-        foreach (var child in container.Children)
-        {
-            if (ContainsRichText(child))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static RichText? FindRichText(Control control, string content)
+    private static SharpVision.Controls.Text? FindText(Control control, string content)
     {
         ArgumentNullException.ThrowIfNull(control);
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
 
-        if (control is RichText richText && richText.Inlines.OfType<Run>().Any(inline =>
-                string.Equals(inline.Content, content, StringComparison.Ordinal)))
+        if (control is SharpVision.Controls.Text text &&
+            text.Content.Contains(content, StringComparison.Ordinal))
         {
-            return richText;
+            return text;
         }
 
         if (control is not Container container)
@@ -201,7 +179,7 @@ public sealed class GalleryTests
 
         foreach (var child in container.Children)
         {
-            if (FindRichText(child, content) is { } found)
+            if (FindText(child, content) is { } found)
             {
                 return found;
             }

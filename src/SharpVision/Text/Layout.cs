@@ -22,48 +22,13 @@ public static class Layout
     /// <exception cref="ArgumentOutOfRangeException">
     /// The width is negative or an enum value is unknown.
     /// </exception>
-    public static int Format(
-        ReadOnlySpan<char> value,
-        int width,
-        Overflow overflow,
-        Alignment alignment,
-        Ambiguous ambiguous,
-        Span<Line> destination)
-    {
-        Validate(overflow);
-        var (wrapping, trimming) = overflow switch
-        {
-            Overflow.Wrap => (Wrapping.Word, Trimming.None),
-            Overflow.WrapAnywhere => (Wrapping.Grapheme, Trimming.None),
-            Overflow.Clip => (Wrapping.None, Trimming.Clip),
-            Overflow.Ellipsis => (Wrapping.None, Trimming.WordEllipsis),
-            Overflow.Visible => (Wrapping.None, Trimming.None),
-            _ => throw new UnreachableException(),
-        };
-
-        return Format(value, width, wrapping, trimming, alignment, ambiguous, destination);
-    }
-
-    /// <summary>Formats text into caller-owned line storage and reports required capacity.</summary>
-    /// <param name="value">The UTF-16 text borrowed for this call.</param>
-    /// <param name="width">The non-negative finite line width in terminal cells.</param>
-    /// <param name="wrapping">The logical-line wrapping policy.</param>
-    /// <param name="trimming">The unwrapped overflow policy.</param>
-    /// <param name="alignment">The horizontal placement policy.</param>
-    /// <param name="ambiguous">The East Asian Ambiguous width policy.</param>
-    /// <param name="destination">Caller-owned prefix storage.</param>
-    /// <returns>The complete required line count, which may exceed destination length.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// The width is negative or an enum value is unknown.
-    /// </exception>
     /// <example>
     /// <code>
     /// Span&lt;Line&gt; lines = stackalloc Line[8];
     /// var required = Layout.Format(
     ///     "one two",
     ///     5,
-    ///     Wrapping.Word,
-    ///     Trimming.None,
+    ///     Overflow.Wrap,
     ///     Alignment.Start,
     ///     Ambiguous.Narrow,
     ///     lines);
@@ -72,15 +37,13 @@ public static class Layout
     public static int Format(
         ReadOnlySpan<char> value,
         int width,
-        Wrapping wrapping,
-        Trimming trimming,
+        Overflow overflow,
         Alignment alignment,
         Ambiguous ambiguous,
         Span<Line> destination)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(width);
-        Validate(wrapping);
-        Validate(trimming);
+        Validate(overflow);
         Validate(alignment);
         Validate(ambiguous);
         var count = 0;
@@ -95,13 +58,13 @@ public static class Layout
                 end++;
             }
 
-            if (wrapping == Wrapping.None)
+            if (overflow is Overflow.Wrap or Overflow.WrapAnywhere)
             {
-                FormatUnwrapped(
+                FormatWrapped(
                     value[start..end],
                     start,
                     width,
-                    trimming,
+                    overflow == Overflow.Wrap,
                     alignment,
                     ambiguous,
                     destination,
@@ -109,11 +72,11 @@ public static class Layout
             }
             else
             {
-                FormatWrapped(
+                FormatUnwrapped(
                     value[start..end],
                     start,
                     width,
-                    wrapping,
+                    overflow,
                     alignment,
                     ambiguous,
                     destination,
@@ -198,7 +161,7 @@ public static class Layout
         ReadOnlySpan<char> value,
         int sourceOffset,
         int width,
-        Trimming trimming,
+        Overflow overflow,
         Alignment alignment,
         Ambiguous ambiguous,
         Span<Line> destination,
@@ -206,7 +169,7 @@ public static class Layout
     {
         var completeCells = Cells(value, ambiguous);
 
-        if (trimming == Trimming.None || completeCells <= width)
+        if (overflow == Overflow.Visible || completeCells <= width)
         {
             Emit(
                 sourceOffset,
@@ -221,7 +184,7 @@ public static class Layout
         }
 
         var ellipsisCells = Width.Measure(_ellipsis, ambiguous).Cells;
-        var ellipsis = trimming is Trimming.GraphemeEllipsis or Trimming.WordEllipsis &&
+        var ellipsis = overflow == Overflow.Ellipsis &&
             width >= ellipsisCells;
         var limit = Math.Max(0, width - (ellipsis ? ellipsisCells : 0));
         var position = 0;
@@ -250,7 +213,7 @@ public static class Layout
             position += grapheme.Length;
         }
 
-        if (trimming == Trimming.WordEllipsis && wordEnd > 0)
+        if (overflow == Overflow.Ellipsis && wordEnd > 0)
         {
             position = wordEnd;
             cells = wordCells;
@@ -271,7 +234,7 @@ public static class Layout
         ReadOnlySpan<char> value,
         int sourceOffset,
         int width,
-        Wrapping wrapping,
+        bool wordBoundaries,
         Alignment alignment,
         Ambiguous ambiguous,
         Span<Line> destination,
@@ -309,7 +272,7 @@ public static class Layout
                 continue;
             }
 
-            if (wrapping == Wrapping.Word && breakEnd > lineStart)
+            if (wordBoundaries && breakEnd > lineStart)
             {
                 Emit(
                     sourceOffset + lineStart,

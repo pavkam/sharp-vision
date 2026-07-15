@@ -23,15 +23,14 @@ public sealed class RandomizedLayoutTests
         {
             var content = Content(random);
             var width = random.Next(0, 21);
-            var wrapping = (Wrapping) random.Next(0, 3);
-            var trimming = (Trimming) random.Next(0, 4);
+            var overflow = (Overflow) random.Next(0, 5);
             var alignment = (Alignment) random.Next(0, 3);
             var ambiguous = (Ambiguous) random.Next(0, 2);
             var context = $"seed=0x{_seed:X8}, case={sample}, width={width}, " +
-                $"wrapping={wrapping}, trimming={trimming}, alignment={alignment}, " +
+                $"overflow={overflow}, alignment={alignment}, " +
                 $"utf16={Convert.ToHexString(Encoding.Unicode.GetBytes(content))}";
-            var first = Format(content, width, wrapping, trimming, alignment, ambiguous);
-            var second = Format(content, width, wrapping, trimming, alignment, ambiguous);
+            var first = Format(content, width, overflow, alignment, ambiguous);
+            var second = Format(content, width, overflow, alignment, ambiguous);
             var boundaries = Boundaries(content);
             var previous = 0;
 
@@ -50,7 +49,7 @@ public sealed class RandomizedLayoutTests
                     (line.HasEllipsis ? Width.Measure("…", ambiguous).Cells : 0), context);
                 line.Leading.ShouldBeGreaterThanOrEqualTo(0, context);
 
-                if (width > 0 && (wrapping != Wrapping.None || trimming != Trimming.None))
+                if (width > 0 && overflow != Overflow.Visible)
                 {
                     line.Cells.ShouldBeLessThanOrEqualTo(width, context);
                 }
@@ -109,16 +108,14 @@ public sealed class RandomizedLayoutTests
     private static Line[] Format(
         string content,
         int width,
-        Wrapping wrapping,
-        Trimming trimming,
+        Overflow overflow,
         Alignment alignment,
         Ambiguous ambiguous)
     {
         var required = TextLayout.Format(
             content,
             width,
-            wrapping,
-            trimming,
+            overflow,
             alignment,
             ambiguous,
             []);
@@ -126,8 +123,7 @@ public sealed class RandomizedLayoutTests
         _ = TextLayout.Format(
             content,
             width,
-            wrapping,
-            trimming,
+            overflow,
             alignment,
             ambiguous,
             result);

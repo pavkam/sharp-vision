@@ -5,6 +5,7 @@ namespace SharpVision.Showcase.Panes;
 
 using SharpVision.Text;
 
+using TextControl = SharpVision.Controls.Text;
 
 /// <summary>Small composable helpers for building example-rich showcase pages.</summary>
 internal static class Doc
@@ -22,12 +23,11 @@ internal static class Doc
         ArgumentException.ThrowIfNullOrWhiteSpace(overview);
         ArgumentNullException.ThrowIfNull(sections);
 
-        var heading = new RichText() { Wrapping = Wrapping.Word };
-        heading.Inlines.Add(new Run(name) { Attributes = TerminalAttributes.Bold });
-        heading.Inlines.Add(new LineBreak());
-        heading.Inlines.Add(new Run("Overview") { Attributes = TerminalAttributes.Bold });
-        heading.Inlines.Add(new LineBreak());
-        heading.Inlines.Add(new Run(overview));
+        var heading = new TextControl(
+            $"<b>{TextControl.Escape(name)}</b>\n<b>Overview</b>\n{TextControl.Escape(overview)}")
+        {
+            Overflow = Overflow.Wrap,
+        };
 
         var page = new Stack() { Padding = new Thickness(1), Spacing = 1 };
         page.Children.Add(heading);
@@ -53,10 +53,11 @@ internal static class Doc
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(specimen);
 
-        var text = new RichText() { Wrapping = Wrapping.Word };
-        text.Inlines.Add(new Run(heading) { Attributes = TerminalAttributes.Bold });
-        text.Inlines.Add(new LineBreak());
-        text.Inlines.Add(new Run(description) { Attributes = TerminalAttributes.Dim });
+        var text = new TextControl(
+            $"<b>{TextControl.Escape(heading)}</b>\n<d>{TextControl.Escape(description)}</d>")
+        {
+            Overflow = Overflow.Wrap,
+        };
 
         var block = new Stack() { Spacing = 1 };
         block.Children.Add(text);

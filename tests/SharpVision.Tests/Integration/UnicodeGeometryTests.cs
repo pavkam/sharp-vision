@@ -6,11 +6,8 @@ namespace SharpVision.Tests.Integration;
 
 
 using ComboBoxControl = ComboBox;
-using RichTextControl = RichText;
-using RunInline = Run;
 using TextControl = ControlText;
 using TextInputControl = TextInput;
-using TextWrapping = Wrapping;
 
 /// <summary>Verifies end-to-end Unicode geometry across controls, frames, and pointer routing.</summary>
 public sealed class UnicodeGeometryTests
@@ -26,8 +23,7 @@ public sealed class UnicodeGeometryTests
         {
             var policy = new Policy(Ambiguous.Wide);
             var text = new TextControl() { Content = "·" };
-            var rich = new RichTextControl() { Wrapping = TextWrapping.None };
-            rich.Inlines.Add(new RunInline("·"));
+            var marked = new TextControl("<b>·</b>");
             var input = new TextInputControl() { Text = "·" };
             var table = new Table();
             table.Columns.Add(TableColumn.Fixed("Value", 4));
@@ -35,7 +31,7 @@ public sealed class UnicodeGeometryTests
             var combo = new ComboBoxControl() { Items = ["·"] };
             var stack = new Stack();
             stack.Children.Add(text);
-            stack.Children.Add(rich);
+            stack.Children.Add(marked);
             stack.Children.Add(input);
             stack.Children.Add(table);
             stack.Children.Add(combo);
@@ -44,7 +40,7 @@ public sealed class UnicodeGeometryTests
 
             // Assert
             text.DesiredSize.Width.ShouldBe(2);
-            rich.DesiredSize.Width.ShouldBe(2);
+            marked.DesiredSize.Width.ShouldBe(2);
             input.DesiredSize.Width.ShouldBe(2);
             table.DesiredSize.Width.ShouldBeGreaterThanOrEqualTo(2);
             combo.DesiredSize.Width.ShouldBeGreaterThanOrEqualTo(2);

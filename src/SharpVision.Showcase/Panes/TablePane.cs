@@ -33,9 +33,11 @@ internal sealed class TablePane: View
             new Text("Stable"),
             new Text("ANSI, OSC, CSI, and input decoding."),
         ]));
-        var linked = new RichText() { Wrapping = Wrapping.Word };
-        linked.Inlines.Add(new Run("Open "));
-        linked.Inlines.Add(new Hyperlink("protocol guide", "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html"));
+        var linked = new Text(
+            "Open <link=https://invisible-island.net/xterm/ctlseqs/ctlseqs.html>protocol guide</link>")
+        {
+            Overflow = Overflow.Wrap,
+        };
         primary.Rows.Add(new TableRow([
             new Text("UI toolkit"),
             new Text("Preview"),

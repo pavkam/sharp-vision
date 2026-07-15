@@ -149,9 +149,9 @@ public sealed class GalleryInteractionTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies the RichText sample appends a Run and records the activation path in its visible activity log.</summary>
+    /// <summary>Verifies the Text sample appends markup and records the activation path in its visible activity log.</summary>
     [Fact]
-    public async Task Input_WhenRichTextMutationButtonIsActivated_UpdatesActivityLogAsync()
+    public async Task Input_WhenTextMarkupButtonIsActivated_UpdatesActivityLogAsync()
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(100, 40)));
@@ -164,17 +164,17 @@ public sealed class GalleryInteractionTests
         await application.StartAsync(TestContext.Current.CancellationToken);
 
         await application.Dispatcher.InvokeAsync(
-            () => gallery.Select(IndexOf(gallery, "RichText")),
+            () => gallery.Select(IndexOf(gallery, "Text")),
             TestContext.Current.CancellationToken);
         await WaitUntilAsync(
-            () => gallery.SelectedPage == "RichText",
+            () => gallery.SelectedPage == "Text",
             application,
-            "RichText page selection");
+            "Text page selection");
 
         var append = await application.Dispatcher.InvokeAsync(
             () => Find<Button>(
                 gallery.Content,
-                static value => value.Content is ControlText { Content: "Append a Run" }),
+                static value => value.Content is ControlText { Content: "Append markup" }),
             TestContext.Current.CancellationToken);
         var activeAppend = append.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
@@ -187,7 +187,7 @@ public sealed class GalleryInteractionTests
                 gallery.Content,
                 static value => value.Content.StartsWith("Activity log: Keyboard", StringComparison.Ordinal)) is not null,
             application,
-            "RichText inline mutation");
+            "Text markup mutation");
 
         application.Failure.ShouldBeNull();
         await application.StopAsync(TestContext.Current.CancellationToken);

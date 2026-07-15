@@ -6,11 +6,8 @@ namespace SharpVision.Tests.Runtime;
 
 
 using LayoutEngine = Engine;
-using RichTextControl = RichText;
-using RunInline = Run;
 using TextControl = ControlText;
 using TextInputControl = TextInput;
-using TextWrapping = Wrapping;
 
 /// <summary>Verifies one immutable Unicode cell policy reaches the complete tree.</summary>
 public sealed class CellPolicyTests
@@ -66,7 +63,7 @@ public sealed class CellPolicyTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies rich text and editing geometry consume the inherited policy.</summary>
+    /// <summary>Verifies display and editing geometry consume the inherited policy.</summary>
     [Fact]
     public async Task Layout_WhenTextConsumersInheritWidePolicy_MeasuresConsistentlyAsync()
     {
@@ -76,19 +73,18 @@ public sealed class CellPolicyTests
         await dispatcher.InvokeAsync(() =>
         {
             var policy = new Policy(Ambiguous.Wide);
-            var rich = new RichTextControl() { Wrapping = TextWrapping.None };
-            rich.Inlines.Add(new RunInline("·"));
+            var text = new TextControl("<b>·</b>");
             var input = new TextInputControl() { Text = "·" };
-            rich.Attach(dispatcher, policy);
+            text.Attach(dispatcher, policy);
             input.Attach(dispatcher, policy);
             var engine = new LayoutEngine();
 
             // Act
-            engine.Layout(rich, new Size(10, 2));
+            engine.Layout(text, new Size(10, 2));
             engine.Layout(input, new Size(10, 2));
 
             // Assert
-            rich.DesiredSize.Width.ShouldBe(2);
+            text.DesiredSize.Width.ShouldBe(2);
             input.DesiredSize.Width.ShouldBe(2);
         }, TestContext.Current.CancellationToken);
     }

@@ -57,7 +57,7 @@ public sealed class TmuxSmokeTests
             var navigate = new ProcessStartInfo()
             {
                 FileName = "tmux",
-                Arguments = $"send-keys -t {session} " + string.Join(' ', Enumerable.Repeat("Down", 18)),
+                Arguments = $"send-keys -t {session} " + string.Join(' ', Enumerable.Repeat("Down", 17)),
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
