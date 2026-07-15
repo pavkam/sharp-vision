@@ -866,16 +866,17 @@ synchronized current normative documentation.
 **Files:**
 
 - Modify: `docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md`,
+  `docs/superpowers/specs/2026-07-14-theming-v2-semantic-colors-design.md`,
   `docs/concepts/layout.md`, `docs/concepts/styling.md`,
   `docs/controls/control.md`, `docs/controls/index.md`,
   `docs/controls/input/button.md`, `docs/architecture/rendering-pipeline.md`,
-  `docs/architecture/memory-ownership.md`,
+  `docs/architecture/memory-ownership.md`, `docs/architecture/showcase.md`,
   `docs/testing/controls-integration.md`, `docs/testing/showcase.md`, and
   `AGENTS.md`.
 - Delete: `docs/controls/display/border.md` and
   `docs/controls/display/shadow.md`.
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 - Correct the sibling design spec: `Button` removes its padding class default;
   `OnPressedChanged` remains intentional; wrapper-default shadow offset/dim
@@ -893,42 +894,54 @@ synchronized current normative documentation.
 - Remove the retired control specs and catalog entries. Update rendering,
   memory, integration-test, and showcase-test docs so they no longer name
   `Border`/`Shadow` as concrete controls or require a dedicated Shadow page.
+- Remove unsupported checked-in showcase-image claims; the repository does not
+  contain the promised PNG, and executable tmux/application tests remain the
+  normative live evidence.
 - `AGENTS.md`: add that border and shadow are intrinsic `Control` properties and
   there are no dedicated `Border`/`Shadow` controls.
 
-- [ ] **Step 2: Validate documentation and retired names**
+Evidence: the intrinsic design now records the implemented Button and wrapper
+migrations; the control, styling, rendering, ownership, integration, showcase,
+and agent contracts describe one intrinsic property surface. The stale
+theming-v2 examples now use `Dock`, and unsupported checked-in-image claims were
+removed instead of inventing a missing artifact.
+
+- [x] **Step 2: Validate documentation and retired names**
 
 ```bash
-rg -n "display/border|display/shadow|new Border|new Shadow|Border control|Shadow control" docs AGENTS.md
+! rg -n 'display/(border|shadow)|new (Border|Shadow)\b|Border control|Shadow control' \
+  docs AGENTS.md --glob '!docs/superpowers/plans/**'
+rg -n 'display/(border|shadow)|new (Border|Shadow)\b|Border control|Shadow control' \
+  docs/superpowers/plans
 npm run lint:markdown
 npm run lint:links
 npm run test:docs
 ```
 
-Expected: no retired API link/example remains and every documentation command
-passes. Remaining “border” and “shadow” text describes intrinsic chrome, colors,
-or historical migration context.
+Expected: the current-guidance scan is silent. The historical-plan scan reports
+only preserved implementation/migration records (including commands and code
+snapshots that were correct at their execution bases); it is classified rather
+than falsely required to be silent. Every documentation command passes.
+Remaining “border” and “shadow” text describes intrinsic chrome, colors, or
+historical migration context.
 
-- [ ] **Step 3: Commit**
+Evidence: the current-guidance scan was silent. The historical scan found only
+preserved plan snapshots and migration commands. `lint:markdown` passed all 111
+Markdown files with zero errors after narrow file-local exemptions preserved
+verbatim historical plan text; link validation passed; documentation tests
+passed 24/24.
+
+- [x] **Step 3: Commit**
 
 ```bash
-git commit -m "docs: intrinsic border/shadow; remove Border/Shadow control docs" -- \
-  AGENTS.md \
-  docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md \
-  docs/concepts/layout.md \
-  docs/concepts/styling.md \
-  docs/controls/control.md \
-  docs/controls/index.md \
-  docs/controls/input/button.md \
-  docs/controls/display/border.md \
-  docs/controls/display/shadow.md \
-  docs/architecture/rendering-pipeline.md \
-  docs/architecture/memory-ownership.md \
-  docs/testing/controls-integration.md \
-  docs/testing/showcase.md
+git show --stat --oneline ab0f5f8
 ```
 
-- [ ] **Step 4: Run the full isolated-worktree gate**
+Evidence: commit `ab0f5f8` contains the normative/API guidance, root-agent
+rules, theming sibling-spec correction, unsupported image-claim removal, and
+historical-plan lint policy.
+
+- [x] **Step 4: Run the full isolated-worktree gate**
 
 ```bash
 make format
@@ -942,6 +955,11 @@ Expected: every command exits zero, build reports zero warnings and zero errors,
 test discovery meets the configured minimum, Markdown/link checks pass, and
 `git diff --check` is silent. Inspect formatting changes before committing them;
 do not absorb unrelated paths.
+
+Evidence: `make format`, `make lint`, `make build`, and `make test` each exited
+zero. The build reported zero warnings and zero errors; the full test run passed
+1,383/1,383 with no skips; Markdown lint reported zero errors; links and 24/24
+documentation tests passed; `git diff --check` was silent.
 
 ---
 
