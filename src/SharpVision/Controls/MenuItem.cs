@@ -228,6 +228,13 @@ public sealed class MenuItem: Pressable
             return;
         }
 
+        var style = ResolvedStyle;
+
+        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        {
+            canvas.Clear(Bounds, style);
+        }
+
         var marker = Kind switch
         {
             MenuItemKind.Check => _isChecked ? "☑ " : "☐ ",
@@ -238,7 +245,7 @@ public sealed class MenuItem: Pressable
         _ = canvas.Draw(
             marker.AsSpan(),
             new Point(Bounds.X, Bounds.Y),
-            ResolvedStyle,
+            style,
             background: BackgroundMode.Transparent);
     }
 

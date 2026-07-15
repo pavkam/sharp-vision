@@ -16,7 +16,6 @@ public sealed class NavigationItemRoleTests
         typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
         type.GetProperty("Children").ShouldBeNull();
         var item = new NavigationItem(0, "Button");
-        var content = type.GetProperty(nameof(ContentControl.Content)).ShouldNotBeNull().GetValue(item);
-        content.ShouldBeOfType<ControlText>().Content.ShouldBe("Button");
+        item.Label.ShouldBe("Button");
     }
 }

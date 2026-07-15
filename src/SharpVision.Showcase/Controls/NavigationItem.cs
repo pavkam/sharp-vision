@@ -23,7 +23,6 @@ internal sealed class NavigationItem: Pressable
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         Index = index;
         Label = label;
-        Content = new SharpVision.Controls.Text(label);
         Height = Length.Cells(1);
     }
 
@@ -57,25 +56,13 @@ internal sealed class NavigationItem: Pressable
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var content = Content;
-        Debug.Assert(content is not null, "A navigation entry always owns its label content.");
-        var desired = MeasureChild(
-            content,
-            new Constraint(Subtract(constraint.Width, 3), constraint.Height));
-        return new Size(Add(3, Add(desired.Width, content.Margin.Horizontal)), 1);
+        _ = constraint;
+        var labelCells = SharpVision.Terminal.Unicode.Width.Measure(Label).Cells;
+        return new Size(Add(3, labelCells), 1);
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        var content = Content;
-        Debug.Assert(content is not null, "A navigation entry always owns its label content.");
-        var consumed = Math.Min(3, bounds.Width);
-        ArrangeChild(
-            content,
-            new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
-            ResolvedAxes.Both);
-    }
+    protected override void ArrangeOverride(Rect bounds) { }
 
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
@@ -83,7 +70,7 @@ internal sealed class NavigationItem: Pressable
         var style = ResolvedStyle;
         canvas.Clear(Bounds, style);
         var marker = IsSelected || IsHovered ? "›" : "·";
-        _ = canvas.Draw($" {marker} ".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
+        _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
 
     /// <inheritdoc/>
@@ -104,7 +91,4 @@ internal sealed class NavigationItem: Pressable
 
     private static int Add(int left, int right) =>
         (int) Math.Min(int.MaxValue, (long) left + right);
-
-    private static int? Subtract(int? value, int extent) =>
-        value.HasValue ? Math.Max(0, value.Value - extent) : null;
 }
