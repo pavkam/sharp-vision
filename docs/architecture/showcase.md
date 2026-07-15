@@ -10,8 +10,10 @@ flowchart LR
     Gallery["Gallery catalog"] --> Sidebar["Framed dashboard sidebar"]
     Gallery --> Page["Selected pane (View)"]
     Page --> Overview["Overview heading"]
-    Page --> Example["Doc.Example blocks"]
+    Page --> Section["Doc.Section groups"]
+    Section --> Example["Doc.Example blocks"]
     Example --> Specimen["Live control specimen"]
+    Example --> Source["Optional compact C# excerpt"]
 ```
 
 Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
@@ -19,12 +21,16 @@ Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
 first layout, exactly like any other application-authored `View`. There is no
 shared showcase base class and no mandatory metadata: a pane composes public
 `Stack`, marked `Text`, intrinsic chrome properties, and layout APIs directly.
-`Doc` (in `src/SharpVision.Showcase/Panes/Doc.cs`) holds the small composition
-helpers every pane shares: `Doc.Page(name, overview, sections...)` builds the
-bold heading plus an "Overview" paragraph and stacks the given sections beneath
-it; `Doc.Example(heading, description, specimen)` builds one labeled block
-pairing prose with a live specimen; `Doc.Card`, `Doc.Row`, and `Doc.Column` are
-composition shorthands for framing and arranging specimens.
+`Doc` (in `src/SharpVision.Showcase/Doc.cs`) holds the small composition helpers
+every pane shares: `Doc.Page(name, overview, sections...)` builds the bold
+heading plus an "Overview" paragraph and stacks the given sections beneath it;
+`Doc.Section(heading, description, examples...)` groups related live examples
+into one progressive teaching area; and
+`Doc.Example(heading, description, specimen, source?)` pairs actionable prose
+with one live specimen and an optional escaped C# excerpt. `Doc.Card`,
+`Doc.Row`, and `Doc.Column` remain composition shorthands for framing and
+arranging specimens. Source excerpts illustrate the same public setup used by
+the specimen and never define behavior absent from production code.
 
 `Gallery` owns the stable catalog of pane titles and factories
 (`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
@@ -33,21 +39,31 @@ Grid, List, Menu, Overlay, Popup, RadioButton, ScrollBar, Stack, Table, Text,
 TextInput, Window, and Theming. Foundation types and unimplemented
 specifications are not navigation entries.
 
-Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
-blocks: an Overview paragraph stating the control's purpose, followed by
-labeled, live examples that show its real behavior (activation, selection,
-shadow styles, disabled state, and so on) using only behavior available to
-ordinary application code — reflection and private render paths are forbidden.
-There are no Property or Interaction tables and no separate "Practical recipe"
-narrative section; documentation prose lives inline next to the specimen it
-describes. Marked `Text` headings and example descriptions use `Overflow.Wrap`,
-so they reflow as the page narrows along with the live specimens.
+Each pane's `Build()` returns a `Doc.Page` with at least four visible teaching
+sections, one reproducible C# excerpt, a live instance of its subject, an
+application-shaped composition, and a relevant interaction, state, layout,
+Unicode, or constrained-size boundary. Sections progress from first use through
+configuration, interaction, composition, and limits, using names appropriate to
+the subject instead of mandatory boilerplate. Every material claim remains next
+to the live public-API specimen that proves it; reflection and private render
+paths are forbidden. Marked `Text` headings, descriptions, and excerpts wrap so
+they reflow with the documentation column. The exact per-page teaching areas are
+part of the
+[showcase test contract](../testing/showcase.md#progressive-content-contract).
 
-Canvas demonstrates visual behavior as several labeled, framed live specimens
-rather than a single crowded sample. Each stage keeps fixed, percentage,
-edge-constrained, layered, and clipped children on the real layout and rendering
-path. Intrinsic shadow chrome is demonstrated by the Button page's composite,
-block-glyph, and disabled-shadow variants rather than a dedicated control page.
+The Canvas page explicitly separates the
+[layout `Canvas` control](../controls/layout/canvas.md#canvas-contract) from the
+`TerminalCanvas` received by a custom control in `OnRender`. Layout sections
+cover fixed, percentage, trailing-edge, opposing-edge stretch, explicit-size
+precedence, intrinsic union, negative placement, clipping, layering, and pointer
+transparency. Drawing sections cover line and box topology, fill and clear,
+shade and quadrant blocks, Unicode grapheme ownership at clip edges, a
+deterministic chart, and routed pointer coordinates. Custom drawing follows the
+[semantic rendering pipeline](rendering-pipeline.md#rendering-pipeline-contract)
+and
+[Unicode cell geometry](../concepts/unicode-cell-geometry.md#unicode-cell-geometry-contract);
+it never emits terminal bytes. Intrinsic shadow chrome remains demonstrated by
+ordinary Button and Window pages rather than a dedicated control page.
 
 ## Responsive behavior
 
@@ -85,13 +101,14 @@ selected page and keep its entry visible. Enter activates the focused entry
 using the same path as a primary pointer release.
 
 The FigletText page is an editor, not a static ornament: a `TextInput` updates
-the preview as text changes, while a Button-disclosed, scrollable List exposes
-the 400 audited catalog names and loads only the font the user selects. The
-ScrollBar page includes an explicit live value label beside the draggable
-horizontal thumb so capture, drag geometry, and commit are directly observable.
-Every showcase `TextInput` inherits the active theme, and the control paints its
-resolved background across its entire committed box. Empty space is therefore
-visibly part of the input rather than blending into its card.
+the preview as text changes, while a scrollable `ComboBox` exposes the 400
+audited catalog names and loads only the font the user selects. Font-comparison,
+layout-option, style, bounded scrolling, and fallback sections supplement the
+live editor. The ScrollBar page includes an explicit live value label beside the
+draggable horizontal thumb so capture, drag geometry, and commit are directly
+observable. Every showcase `TextInput` inherits the active theme, and the
+control paints its resolved background across its entire committed box. Empty
+space is therefore visibly part of the input rather than blending into its card.
 
 On Unix, `ConsoleApplication.RunAsync` reads directly from `/dev/tty` through a
 one-byte asynchronous stream after acquiring its raw-input lease. This avoids
@@ -106,8 +123,10 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 ## Test contract
 
-Showcase tests assert the exact inventory, marked `Text` documentation coverage,
-fresh detached page ownership, and matching runtime control type. They render
+Showcase tests assert the exact inventory, progressive section and source
+coverage, fresh detached page ownership, and matching runtime control type.
+Domain-focused page tests exercise command, selection, editing, layout, data,
+layering, display, theme, Canvas, Unicode, and lifecycle recipes. They render
 every page at 30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell
 continuation structure, and prove automatic scrolling. A full Application test
 drives SGR pointer selection, keyboard sidebar navigation and button activation,

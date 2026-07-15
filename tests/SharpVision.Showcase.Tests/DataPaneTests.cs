@@ -1,0 +1,68 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Showcase.Tests;
+
+/// <summary>Verifies menu, range, and tabular showcase recipes.</summary>
+public sealed class DataPaneTests
+{
+    /// <summary>Verifies Menu demonstrates conventional Popup composition.</summary>
+    [Fact]
+    public void Menu_WhenPopupRecipeBuilds_ContainsOpenPopupWithMenuChild()
+    {
+        // Arrange
+        using var page = new MenuPane();
+        new Engine().Layout(page, new Size(100, 120));
+
+        // Act
+        var popup = ControlTree.FindAll<Popup>(page).Single();
+
+        // Assert
+        popup.IsOpen.ShouldBeTrue();
+        _ = popup.Child.ShouldBeOfType<Menu>();
+    }
+
+    /// <summary>Verifies ScrollBar live geometry updates without replacing the control.</summary>
+    [Fact]
+    public void ScrollBar_WhenViewportActionRuns_UpdatesViewportAndStatus()
+    {
+        // Arrange
+        using var page = new ScrollBarPane();
+        new Engine().Layout(page, new Size(100, 120));
+        var scrollBar = ControlTree.FindAll<ScrollBar>(page).Single(value =>
+            value.Maximum == 100 && value.ViewportSize == 20);
+        var increase = FindButton(page, "Increase viewport");
+
+        // Act
+        increase.PerformClick();
+
+        // Assert
+        scrollBar.ViewportSize.ShouldBe(30);
+        ControlTree.Text(page).ShouldContain("Range: 0..100, value 20, viewport 30");
+    }
+
+    /// <summary>Verifies Table dynamically accepts a newly detached row.</summary>
+    [Fact]
+    public void Table_WhenAddRowActionRuns_OwnsNewInteractiveRow()
+    {
+        // Arrange
+        using var page = new TablePane();
+        new Engine().Layout(page, new Size(100, 140));
+        var table = ControlTree.FindAll<Table>(page).Single(value =>
+            value.Columns.Count == 2 &&
+            value.Rows.Count == 1 &&
+            value.Columns[0].Header == "Release");
+        var add = FindButton(page, "Add release row");
+
+        // Act
+        add.PerformClick();
+
+        // Assert
+        table.Rows.Count.ShouldBe(2);
+        ControlTree.Text(page).ShouldContain("Rows: 2");
+    }
+
+    private static Button FindButton(Control root, string content) =>
+        ControlTree.FindAll<Button>(root).Single(value =>
+            value.Content is ControlText text && text.Content == content);
+}

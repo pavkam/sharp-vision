@@ -4,10 +4,46 @@
 
 The showcase catalog test contains the exact concrete shipped-control inventory
 and fails when a control lacks its own page, wrapped marked-`Text`
-documentation, or a fresh live example. Each example tree must contain the
-control named by its sidebar entry and must be detached and independently owned.
-Property tables, interaction tables, and Practical recipe sections are optional
-page content, not catalog preconditions.
+documentation, a fresh live example, progressive teaching sections, or a compact
+escaped C# excerpt. Each example tree must contain the control named by its
+sidebar entry and must be detached and independently owned. Property tables and
+separate Practical recipe prose are not required; application-shaped recipes
+live beside their specimens.
+
+## Progressive content contract
+
+Every page has at least four subject-specific teaching areas, a live subject
+control, one reproducible source excerpt, an application-shaped composition, and
+a relevant state, interaction, layout, Unicode, or constrained-size proof. The
+content test requires these stable areas:
+
+| Page        | Required teaching areas                                                            |
+| ----------- | ---------------------------------------------------------------------------------- |
+| Button      | Start here; Commands; Window roles; Chrome and states                              |
+| Canvas      | Canvas layout; Constraints; Drawing fundamentals; Useful custom drawing            |
+| CheckBox    | Two-state choice; Three-state policy; Marks; Form recipe                           |
+| ComboBox    | Start here; Commit versus dismiss; Long choices; Constrained placement             |
+| Dock        | Application shell; Order and spacing; Sizing from the remainder; Constrained space |
+| FigletText  | Live editor; Font comparison; Layout options; Large output                         |
+| Grid        | Track fundamentals; Percentage and limits; Responsive form; Constrained space      |
+| List        | Single selection; Selection modes; Templates; Long data                            |
+| Menu        | Command menu; Menu bar; Popup composition; Selection and invocation                |
+| Overlay     | Layering; Stable ties; Pointer transparency; Clipping                              |
+| Popup       | Anchored menu; Placement; Fallback and clamp; Lifecycle                            |
+| RadioButton | Named group; Arrow traversal; Unnamed scope; Events                                |
+| ScrollBar   | Range anatomy; Input parity; Live range; Tiny rails                                |
+| Stack       | Orientation; Mixed sizing; Visibility; Constrained space                           |
+| Table       | Column sizing; Interactive cells; Dynamic rows; Boundary states                    |
+| Text        | Safe content; Markup; Overflow; Unicode                                            |
+| TextInput   | Editing and submission; Selection; Clipboard and history; Multiline                |
+| Window      | Frame and title; Shadows; Default and cancel; Boundaries                           |
+| Theming     | Application theme; Catalog; Visual states; Third-party controls                    |
+
+The table is a minimum navigation contract, not a maximum example count. Tests
+also exercise page-defining behavior: programmatic activation, custom marks,
+empty and multiple selection, responsive form layout, dynamic rows, popup
+lifecycle order, FIGfont comparison, theme catalog metadata, opposing Canvas
+constraints, and custom semantic drawing.
 
 Navigation tests require the executable showcase policy to emit xterm any-event
 tracking (`1003`) and SGR cell-mouse mode enables before its first frame. They
@@ -38,17 +74,22 @@ mask input buffering. It also opens and selects the Figlet font dropdown, then
 drags the ScrollBar thumb with SGR press, motion, and release reports, asserting
 each visible committed value.
 
-Current `Doc.Page` panes use an Overview paragraph followed by labeled live
-examples with inline marked-`Text` descriptions. A pane may still supply a
-Practical recipe or structured interaction data when that improves the example;
-tests require any supplied recipe to use word wrapping, but do not require
-either optional section on every page.
+Current `Doc.Page` panes use an Overview paragraph followed by wrapped
+`Doc.Section` groups. Each `Doc.Example` contains actionable marked-`Text`
+guidance, one live specimen, and optionally a framed C# excerpt escaped through
+`Text.Escape`. Tests render special characters in an excerpt to prove generic
+syntax, backslashes, and comparison operators remain literal visible text.
 
-Canvas has dedicated virtual-screen assertions for its labeled fixed,
-percentage, edge-constraint, and clipping stages within the viewport. Shadow is
+Canvas has dedicated layout assertions for fixed, percentage, trailing-edge,
+opposing-edge stretch, explicit-size precedence, intrinsic, negative-origin,
+layering, clipping, and pointer-transparent stages. Separate custom-control
+samples prove line/box topology, shade and quadrants, fill/clear, Unicode clip
+repair, deterministic charting, and routed pointer readout through semantic
+cells. Every sample validates wide-cell continuation ownership under the
+[rendering correctness oracle](rendering.md#correctness-oracle). Shadow is
 intrinsic control chrome rather than a catalog page: focused control-frame tests
 prove composite and block-glyph footprints, clipping, wide-cell styling, and
-hit-test exclusion, while the Button page retains visible composite,
+hit-test exclusion, while Button and Window retain visible composite,
 block-glyph, and shadow-disabled variants.
 
 The TextInput rendering suite additionally requires a configured background to

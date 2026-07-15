@@ -27,6 +27,31 @@ internal sealed class ComboBoxPane: View
             density.Content = comboBox.SelectedIndex >= 0
                 ? $"Selected: {comboBox.Items[comboBox.SelectedIndex]}."
                 : "No selection.";
+        var commitStatus = new Text("Committed: Comfortable");
+        var commitCombo = new ComboBox
+        {
+            Width = Length.Cells(28),
+            Items = ["Compact", "Comfortable", "Spacious"],
+            SelectedIndex = 1,
+        };
+        commitCombo.SelectionChanged += (_, _) =>
+            commitStatus.Content = commitCombo.SelectedIndex >= 0
+                ? $"Committed: {commitCombo.Items[commitCombo.SelectedIndex]}"
+                : "Committed: none";
+
+        var emptyStatus = new Text("Selected: Clearable one.");
+        var emptyCombo = new ComboBox
+        {
+            Width = Length.Cells(28),
+            Items = ["Clearable one", "Clearable two"],
+            SelectedIndex = 0,
+        };
+        emptyCombo.SelectionChanged += (_, _) =>
+            emptyStatus.Content = emptyCombo.SelectedIndex >= 0
+                ? $"Selected: {emptyCombo.Items[emptyCombo.SelectedIndex]}."
+                : "No selection.";
+        var clearSelection = new Button() { Content = new Text("Clear selection") };
+        clearSelection.Click += (_, _) => emptyCombo.SelectedIndex = -1;
         var stage = new Canvas()
         {
             Width = Length.Cells(30),
@@ -69,20 +94,71 @@ internal sealed class ComboBoxPane: View
             IsEnabled = false,
         };
 
+        var edgeStatus = new Text("Open near the lower edge to observe fallback placement.");
+        var edgeChoice = new ComboBox
+        {
+            Width = Length.Cells(24),
+            Items = ["Above when needed", "Clamped to host"],
+            SelectedIndex = 0,
+            DropDownHeight = 4,
+        };
+        edgeChoice.SelectionChanged += (_, _) =>
+            edgeStatus.Content = $"Committed: {edgeChoice.Items[edgeChoice.SelectedIndex]}";
+        var edgeStage = new Canvas
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(5),
+            ClipToBounds = false,
+        };
+        Canvas.SetTop(edgeChoice, Length.Cells(3));
+        edgeStage.Children.Add(edgeChoice);
+
         return Doc.Page(
             Title,
             "Displays one selected value and opens an owned popup-style List for keyboard or pointer choice.",
-            Doc.Example(
-                "Popup choice field",
-                "Click, Enter, or Space opens the drop-down. The owned list handles arrow navigation while open; Enter commits the highlighted item and closes the popup, while Escape dismisses it and keeps the previous selection.",
-                Doc.Column(stage, density)),
-            Doc.Example(
-                "Capped drop-down height",
-                "DropDownHeight caps how many rows the popup shows regardless of item count. With more items than fit, the owned list's own scrolling takes over inside the capped popup.",
-                Doc.Column(tallStage, tallStatus)),
-            Doc.Example(
-                "Disabled",
-                "A disabled ComboBox keeps its current selection visible while refusing focus, so it can neither open its popup nor change its value.",
-                disabled));
+            Doc.Section(
+                "Start here",
+                "Choose one compact value while keeping the full choice list available on demand.",
+                Doc.Example(
+                    "Popup choice field",
+                    "Click, Enter, or Space to open. Arrows move the highlighted row and Enter commits it.",
+                    Doc.Column(stage, density),
+                    "var density = new ComboBox\n{\n    Items = [\"Compact\", \"Comfortable\", \"Spacious\"],\n    SelectedIndex = 1,\n};")),
+            Doc.Section(
+                "Commit versus dismiss",
+                "The popup keeps highlighted navigation separate from the field's committed selection.",
+                Doc.Example(
+                    "Enter commits; Escape dismisses",
+                    "Open the first field, move with arrows, then compare Enter with Escape. Escape closes without replacing the previous value.",
+                    Doc.Column(commitCombo, commitStatus))),
+            Doc.Section(
+                "Long choices",
+                "Cap popup height and let the owned List provide ordinary scrolling for the remaining choices.",
+                Doc.Example(
+                    "Capped drop-down",
+                    "Only six rows are visible. Arrow, wheel, and paging input scroll inside the popup before the page.",
+                    Doc.Column(tallStage, tallStatus),
+                    "combo.DropDownHeight = 6;\ncombo.ShowScrollBars = ShowScrollBars.WhenNeeded;")),
+            Doc.Section(
+                "No selection",
+                "SelectedIndex -1 is a valid explicit empty state.",
+                Doc.Example(
+                    "Clear the committed value",
+                    "Activate Clear selection. The field and status update through the same SelectionChanged contract.",
+                    Doc.Column(clearSelection, emptyCombo, emptyStatus))),
+            Doc.Section(
+                "Constrained placement",
+                "The owned Popup prefers below, flips when the lower edge cannot fit, and clamps to its host.",
+                Doc.Example(
+                    "Lower-edge field",
+                    "Open this field near the stage bottom and resize the terminal to watch placement recompute.",
+                    Doc.Column(edgeStage, edgeStatus))),
+            Doc.Section(
+                "Unavailable state",
+                "Keep a locked choice visible without allowing focus or popup activation.",
+                Doc.Example(
+                    "Disabled field",
+                    "The committed value remains readable while keyboard and pointer changes are ignored.",
+                    disabled)));
     }
 }

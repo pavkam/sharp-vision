@@ -21,23 +21,23 @@ internal sealed class DockPane: View
             LastChildFills = true,
             Spacing = 1,
         };
-        var left = Card("Left", Glyphs.Light);
+        var left = Card("Explorer", Glyphs.Light);
         left.Width = Length.Cells(7);
         Dock.SetSide(left, Side.Left);
         allSides.Children.Add(left);
-        var top = Card("Top", Glyphs.Heavy);
+        var top = Card("Header", Glyphs.Heavy);
         top.Height = Length.Cells(2);
         Dock.SetSide(top, Side.Top);
         allSides.Children.Add(top);
-        var right = Card("Right", Glyphs.Paired);
+        var right = Card("Inspector", Glyphs.Paired);
         right.Width = Length.Cells(8);
         Dock.SetSide(right, Side.Right);
         allSides.Children.Add(right);
-        var bottom = Card("Bottom", Glyphs.Ascii);
+        var bottom = Card("Status", Glyphs.Ascii);
         bottom.Height = Length.Cells(2);
         Dock.SetSide(bottom, Side.Bottom);
         allSides.Children.Add(bottom);
-        allSides.Children.Add(Card("Fill", Glyphs.Rounded));
+        allSides.Children.Add(Card("Main", Glyphs.Rounded));
 
         Dock order = new()
         {
@@ -66,21 +66,97 @@ internal sealed class DockPane: View
         Dock.SetSide(onlyChild, Side.Top);
         noFill.Children.Add(onlyChild);
 
+        var remaining = new Dock
+        {
+            Width = Length.Cells(40),
+            Height = Length.Cells(5),
+            Spacing = 1,
+        };
+        var firstPercent = Card("50% of 40", Glyphs.Light);
+        firstPercent.Width = Length.Percent(50);
+        Dock.SetSide(firstPercent, Side.Left);
+        remaining.Children.Add(firstPercent);
+        var secondPercent = Card("50% of remainder", Glyphs.Heavy);
+        secondPercent.Width = Length.Percent(50);
+        Dock.SetSide(secondPercent, Side.Left);
+        remaining.Children.Add(secondPercent);
+        remaining.Children.Add(Card("Fill", Glyphs.Rounded));
+
+        var shell = new Dock { Width = Length.Cells(38), Height = Length.Cells(6) };
+        var collapsibleSidebar = Card("Sidebar", Glyphs.Light);
+        collapsibleSidebar.Width = Length.Cells(12);
+        Dock.SetSide(collapsibleSidebar, Side.Left);
+        shell.Children.Add(collapsibleSidebar);
+        shell.Children.Add(Card("Main content", Glyphs.Rounded));
+        var shellStatus = new Text("Sidebar: visible");
+        var toggleSidebar = new Button { Content = new Text("Toggle sidebar") };
+        toggleSidebar.Click += (_, _) =>
+        {
+            collapsibleSidebar.Visibility = collapsibleSidebar.Visibility == Visibility.Visible
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+            shellStatus.Content = collapsibleSidebar.Visibility == Visibility.Collapsed
+                ? "Sidebar: collapsed; main reclaimed the remainder"
+                : "Sidebar: visible";
+        };
+
+        var constrained = new Dock { Width = Length.Cells(14), Height = Length.Cells(4), Spacing = 2 };
+        var tooWide = Card("12 cells", Glyphs.Light);
+        tooWide.Width = Length.Cells(12);
+        Dock.SetSide(tooWide, Side.Left);
+        constrained.Children.Add(tooWide);
+        var trailing = Card("Safe", Glyphs.Heavy);
+        trailing.Width = Length.Cells(12);
+        Dock.SetSide(trailing, Side.Right);
+        constrained.Children.Add(trailing);
+        constrained.Children.Add(Card("Fill", Glyphs.Rounded));
+
         return Doc.Page(
             Title,
             "Consumes remaining physical edges in child order and optionally gives the final child all remaining space.",
-            Doc.Example(
-                "Four sides and a fill",
-                "Each child attaches a Side via the Dock.SetSide attached property. Children consume the remaining rectangle in insertion order, and LastChildFills lets the final child claim whatever space is left.",
-                allSides),
-            Doc.Example(
-                "Order matters",
-                "Two children both attached to Side.Left stack left-to-right in insertion order: the first claims the outermost strip, the second claims what remains after it, and the fill takes the rest.",
-                order),
-            Doc.Example(
-                "LastChildFills disabled",
-                "With LastChildFills set to false, the final child docks to its own side like any other and the remaining rectangle is left empty rather than claimed.",
-                noFill));
+            Doc.Section(
+                "Application shell",
+                "Compose familiar application regions by consuming physical edges and leaving the center to the final child.",
+                Doc.Example(
+                    "Header, tools, status, and main",
+                    "Each region uses Dock.SetSide; Main receives the rectangle left after the four edge regions.",
+                    allSides,
+                    "var shell = new Dock { LastChildFills = true };\nDock.SetSide(sidebar, Side.Left);\nshell.Children.Add(sidebar);\nshell.Children.Add(main);")),
+            Doc.Section(
+                "Order and spacing",
+                "Children consume the current remainder in insertion order, with spacing after each non-final participant.",
+                Doc.Example(
+                    "Repeated left sides",
+                    "The first left child takes the outer strip; the second starts after it and its gap.",
+                    order)),
+            Doc.Section(
+                "Sizing from the remainder",
+                "Percentage edge sizes resolve against the rectangle available at that iteration, not the original panel.",
+                Doc.Example(
+                    "Successive percentages",
+                    "The first receives half of forty cells; the second receives half of what remains; Fill receives the rest.",
+                    remaining)),
+            Doc.Section(
+                "Collapse and fill",
+                "Collapsed edge regions consume neither geometry nor spacing, so the fill child reclaims their cells.",
+                Doc.Example(
+                    "Optional sidebar",
+                    "Toggle the sidebar and watch Main content reclaim or release the exact left strip.",
+                    Doc.Column(toggleSidebar, shellStatus, shell))),
+            Doc.Section(
+                "Constrained space",
+                "Over-consumption saturates the remaining rectangle at zero instead of producing negative child bounds.",
+                Doc.Example(
+                    "Requests larger than the host",
+                    "Both edge requests exceed the available width; every committed rectangle remains contained and non-negative.",
+                    constrained)),
+            Doc.Section(
+                "Fill policy",
+                "Disable LastChildFills when the final child should honor its own side and leave unused remainder visible.",
+                Doc.Example(
+                    "Unclaimed remainder",
+                    "The final top child takes only its requested extent; the rest of the panel stays empty.",
+                    noFill)));
     }
 
     private static Dock Card(string label, Glyphs glyphs) => new()

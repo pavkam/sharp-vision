@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
+using SharpVision.Text;
+
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Grid control with fixed, star, auto, and spanning track specimens.</summary>
@@ -82,21 +84,106 @@ internal sealed class GridPane: View
         spans.Children.Add(both);
         AddCell(spans, "1x1", 2, 0);
 
+        var percentage = new Grid
+        {
+            Width = Length.Cells(40),
+            Height = Length.Cells(5),
+            ColumnSpacing = 1,
+        };
+        percentage.Columns.Add(Track.Percent(40, minimum: 10, maximum: 16));
+        percentage.Columns.Add(Track.Star(1, minimum: 8));
+        percentage.Rows.Add(Track.Star(1));
+        AddCell(percentage, "40% min 10 max 16", 0, 0);
+        AddCell(percentage, "Star min 8", 0, 1);
+
+        var implicitGrid = new Grid { Width = Length.Cells(28), Height = Length.Cells(3) };
+        implicitGrid.Children.Add(Card("Implicit auto row + column"));
+
+        var form = new Grid
+        {
+            Width = Length.Cells(42),
+            RowSpacing = 1,
+            ColumnSpacing = 1,
+        };
+        form.Columns.Add(Track.Cells(10));
+        form.Columns.Add(Track.Star(1, minimum: 12));
+        form.Rows.Add(Track.Auto());
+        form.Rows.Add(Track.Auto());
+        form.Rows.Add(Track.Auto());
+        AddFormCell(form, new Text("Project"), 0, 0);
+        AddFormCell(form, new TextInput { Text = "SharpVision" }, 0, 1);
+        AddFormCell(form, new Text("Owner"), 1, 0);
+        AddFormCell(form, new TextInput { Text = "Terminal team" }, 1, 1);
+        var validation = new Text("Validation wraps beneath the finite field width.")
+        {
+            Overflow = Overflow.Wrap,
+        };
+        Grid.SetRow(validation, 2);
+        Grid.SetColumn(validation, 1);
+        form.Children.Add(validation);
+
+        var constrained = new Grid
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            ColumnSpacing = 3,
+        };
+        constrained.Columns.Add(Track.Cells(8));
+        constrained.Columns.Add(Track.Star(1));
+        constrained.Rows.Add(Track.Star(1));
+        AddCell(constrained, "Fixed", 0, 0);
+        AddCell(constrained, "Star", 0, 1);
+
         return Doc.Page(
             Title,
             "Allocates fixed, automatic, percentage, and proportional tracks across rows and columns with exact integer rounding and spans.",
-            Doc.Example(
-                "Fixed tracks",
-                "Every column is a Track.Cells fixed width, so each cell keeps exactly the same 9-cell width regardless of the Grid's overall size.",
-                fixedTracks),
-            Doc.Example(
-                "Auto and star tracks",
-                "The first row uses Track.Auto and sizes to its widest cell's content. The remaining rows split the leftover height between a Track.Star(2) and a Track.Star(1) row, a 2:1 ratio; columns split width the same way.",
-                proportionalTracks),
-            Doc.Example(
-                "Row and column spans",
-                "Grid.SetRowSpan and Grid.SetColumnSpan stretch one child across multiple tracks: a row span down the left column, a column span across the top right, and a child spanning both directions where they would otherwise overlap.",
-                spans));
+            Doc.Section(
+                "Track fundamentals",
+                "Combine fixed, automatic, and proportional tracks on both axes.",
+                Doc.Example(
+                    "Fixed columns",
+                    "Each column keeps exactly nine cells while spacing remains outside the track widths.",
+                    fixedTracks,
+                    "grid.Columns.Add(Track.Cells(9));\ngrid.Columns.Add(Track.Star(1));"),
+                Doc.Example(
+                    "Auto and star allocation",
+                    "Auto fits intrinsic content; 2* and 1* tracks split the finite remainder in a two-to-one ratio.",
+                    proportionalTracks)),
+            Doc.Section(
+                "Percentage and limits",
+                "Percentage and star tracks honor visible minimum and maximum cell constraints.",
+                Doc.Example(
+                    "Bounded responsive tracks",
+                    "Resize the page: the percentage track stays between ten and sixteen cells while star absorbs the safe remainder.",
+                    percentage)),
+            Doc.Section(
+                "Spans",
+                "A child may own the union of adjacent rows, columns, or both, including internal gaps.",
+                Doc.Example(
+                    "Row and column spans",
+                    "The three labeled cards occupy a vertical span, horizontal span, and combined area without inventing nested layout.",
+                    spans)),
+            Doc.Section(
+                "Implicit grid",
+                "Empty row and column definitions behave exactly like one automatic track on each axis.",
+                Doc.Example(
+                    "Definition-free single cell",
+                    "Use the implicit grid for one cell; add explicit tracks only when the layout needs them.",
+                    implicitGrid)),
+            Doc.Section(
+                "Responsive form",
+                "Finite column widths remeasure wrapped controls so text growth can influence automatic rows.",
+                Doc.Example(
+                    "Labels, editors, and validation",
+                    "Narrow the terminal and the validation message wraps beneath its field while the label column stays fixed.",
+                    form)),
+            Doc.Section(
+                "Constrained space",
+                "When tracks and gaps cannot fit, spacing saturates and tracks shrink deterministically without negative geometry.",
+                Doc.Example(
+                    "Tiny two-column grid",
+                    "The fixed request and wide gap leave only a contained remainder for the star track.",
+                    constrained)));
     }
 
     private static void AddCell(Grid grid, string text, int row, int column)
@@ -105,6 +192,13 @@ internal sealed class GridPane: View
         Grid.SetRow(cell, row);
         Grid.SetColumn(cell, column);
         grid.Children.Add(cell);
+    }
+
+    private static void AddFormCell(Grid grid, Control control, int row, int column)
+    {
+        Grid.SetRow(control, row);
+        Grid.SetColumn(control, column);
+        grid.Children.Add(control);
     }
 
     private static Dock Card(string text) => new()

@@ -89,22 +89,101 @@ internal sealed class OverlayPane: View
         };
         unclipped.Children.Add(unclippedContent);
 
+        var equalTies = new Overlay { Width = Length.Cells(30), Height = Length.Cells(4) };
+        var tieFirst = new Text("First at z=5") { HorizontalAlignment = HorizontalAlignment.Left };
+        var tieSecond = new Text("Second at z=5") { HorizontalAlignment = HorizontalAlignment.Right };
+        Overlay.SetZIndex(tieFirst, 5);
+        Overlay.SetZIndex(tieSecond, 5);
+        equalTies.Children.Add(tieFirst);
+        equalTies.Children.Add(tieSecond);
+
+        var pointerStatus = new Text("Pointer: waiting");
+        var underlying = new Button { Content = new Text("Underlying action") };
+        underlying.Click += (_, eventArgs) => pointerStatus.Content = $"Pointer: action received ({eventArgs.Cause})";
+        var decoration = new Text("Decorative overlay")
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsHitTestVisible = false,
+            Attributes = TerminalAttributes.Dim,
+        };
+        var transparent = new Overlay { Width = Length.Cells(32), Height = Length.Cells(5) };
+        transparent.Children.Add(underlying);
+        Overlay.SetZIndex(decoration, 10);
+        transparent.Children.Add(decoration);
+
+        var percent = new Overlay { Width = Length.Cells(32), Height = Length.Cells(6) };
+        percent.Children.Add(new Dock
+        {
+            Width = Length.Percent(60),
+            Height = Length.Percent(50),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { new Text("60% × 50% centered") },
+        });
+
+        var notification = new Overlay { Width = Length.Cells(36), Height = Length.Cells(6) };
+        notification.Children.Add(new Text("Editor content remains first in focus order."));
+        var banner = Doc.Card(new Text("Saved successfully"));
+        banner.HorizontalAlignment = HorizontalAlignment.Right;
+        banner.VerticalAlignment = VerticalAlignment.Top;
+        Overlay.SetZIndex(banner, 20);
+        notification.Children.Add(banner);
+
         return Doc.Page(
             Title,
             "Arranges children into one shared content box with stable attached z-order for rendering and hit testing.",
-            Doc.Example(
-                "Layered z-order",
-                "Three children share the same content box. The Overlay.SetZIndex attached property orders rendering and hit testing: the background layer sits at -1, the middle card renders at the default 0, and the front label sits at 10 so it always wins overlapping pointer hits.",
-                zOrder),
-            Doc.Example(
-                "Alignment variants",
-                "Every child arranges within the same shared box, so HorizontalAlignment and VerticalAlignment alone place five labels at the four corners and the center without any explicit position or z-index.",
-                alignment),
-            Doc.Example(
-                "Clip to bounds",
-                "ClipToBounds, true by default, cuts a child's overflow at the overlay's edge; setting it to false, as Popup specimens do, lets the same oversized card render past the edge instead.",
-                Doc.Row(
-                    Doc.Column(new Text("Clipped"), clipped),
-                    Doc.Column(new Text("Unclipped"), unclipped))));
+            Doc.Section(
+                "Layering",
+                "All children share one content box while attached z-order controls paint and pointer priority.",
+                Doc.Example(
+                    "Negative, default, and high z",
+                    "Background paints at -1, the framed middle at 0, and the front label at 10.",
+                    zOrder,
+                    "var overlay = new Overlay();\nOverlay.SetZIndex(status, 10);\noverlay.Children.Add(status);")),
+            Doc.Section(
+                "Stable ties",
+                "Equal z-index values preserve collection order so rendering remains deterministic.",
+                Doc.Example(
+                    "Two children at z=5",
+                    "First remains before Second until their collection order or z-index changes.",
+                    equalTies)),
+            Doc.Section(
+                "Pointer transparency",
+                "Decorative layers may render above interactive content without becoming pointer targets.",
+                Doc.Example(
+                    "Input passes through decoration",
+                    "Click the visible overlap. Decorative overlay is not hit-test-visible, so the underlying Button receives activation.",
+                    Doc.Column(transparent, pointerStatus),
+                    "decoration.IsHitTestVisible = false;")),
+            Doc.Section(
+                "Alignment and sizing",
+                "Each child independently resolves length and alignment against the shared box.",
+                Doc.Example(
+                    "Five alignments",
+                    "The labels occupy four corners and center without absolute coordinates.",
+                    alignment),
+                Doc.Example(
+                    "Percentage card",
+                    "The centered card resolves sixty percent width and half height whenever the host resizes.",
+                    percent)),
+            Doc.Section(
+                "Clipping",
+                "ClipToBounds controls descendant drawing and hit testing while the Overlay itself remains safely clipped.",
+                Doc.Example(
+                    "Clipped and visible overflow",
+                    "The same oversized card is cut by the first Overlay and allowed past the second Overlay's edge.",
+                    Doc.Row(
+                        Doc.Column(new Text("Clipped"), clipped),
+                        Doc.Column(new Text("Unclipped"), unclipped)))),
+            Doc.Section(
+                "Notification composition",
+                "High visual priority does not rewrite collection-based focus traversal.",
+                Doc.Example(
+                    "Non-modal saved banner",
+                    "The banner paints above editor content while ordinary ownership and focus order remain unchanged.",
+                    notification)));
     }
 }

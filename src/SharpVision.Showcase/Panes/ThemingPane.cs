@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
+using SharpVision.Text;
+
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents application theming, type-keyed styles, local overrides, and third-party style properties.</summary>
@@ -60,29 +62,83 @@ internal sealed class ThemingPane: View
 
         var roleSwatches = BuildRoleSwatches();
 
+        var catalogEntry = ThemeCatalog.Default.Entries[0];
+        var catalog = new Text(
+            $"Catalog entry: {Text.Escape(catalogEntry.Name)}\n" +
+            $"Slug: {Text.Escape(catalogEntry.Slug)} · Scheme: {catalogEntry.ColorScheme}\n" +
+            $"Author: {Text.Escape(catalogEntry.Author)} · License: {Text.Escape(catalogEntry.License)}")
+        {
+            Overflow = Overflow.Wrap,
+        };
+
+        var stateMatrix = Doc.Column(
+            new Button { Content = new Text("Hover or focus me") },
+            new Button { Content = new Text("Disabled"), IsEnabled = false },
+            new CheckBox { Content = new Text("Checked state"), IsChecked = true },
+            new CheckBox { Content = new Text("Indeterminate state"), IsThreeState = true, IsChecked = null });
+
+        var chrome = new Dock
+        {
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Heavy,
+            HasShadow = true,
+            ShadowMode = ShadowMode.BlockGlyph,
+            ShadowGlyph = new Rune('░'),
+            Padding = new Thickness(1, 0),
+            Children = { new Text("Intrinsic themed border and shadow") },
+        };
+
         return Doc.Page(
             Title,
             "Demonstrates application themes, type-keyed styles, local overrides, and third-party style properties.",
-            Doc.Example(
+            Doc.Section(
                 "Application theme",
-                "Use the theme picker in the sidebar footer. Application.Theme publishes a frozen snapshot to every attached control without ancestor-style inheritance.",
-                panel),
-            Doc.Example(
-                "Type-keyed style",
-                "Theme.SetStyle<Button> associates one style with every Button resolved under that theme. This scratch theme is never installed application-wide, so the readout below queries it directly by type.",
-                Doc.Column(typedPreview, typedReadout)),
-            Doc.Example(
-                "Local override",
-                "A control's Style property attaches a ControlStyle to that single instance, resolved after the theme cascade so it always wins. Only the first button below carries an override; its themed sibling still follows the application theme.",
-                Doc.Row(overridden, plain)),
-            Doc.Example(
-                "Third-party style property",
-                "ShowcasePanel registers LabelPlacement through StyleProperty metadata. Themes and local values resolve it with the same cascade as built-in chrome. All four placements are reachable below.",
-                placement),
-            Doc.Example(
-                "Theme roles",
-                "Themes are JSON palette files loaded through ThemeCatalog and ThemeFile. Every theme defines these 12 semantic ColorRole values; the swatches below show the active application theme and update live when you change the theme in the sidebar picker.",
-                roleSwatches));
+                "The sidebar picker publishes one frozen application theme snapshot to every attached control.",
+                Doc.Example(
+                    "Live semantic roles",
+                    "Change themes in the sidebar and both the custom panel and all twelve role swatches update through Application.Theme.",
+                    Doc.Column(panel, roleSwatches),
+                    "application.Theme = ThemeCatalog.Default.Load(\"default-dark\");")),
+            Doc.Section(
+                "Catalog",
+                "ThemeCatalog exposes stable metadata before an application chooses to load the immutable theme payload.",
+                Doc.Example(
+                    "Attribution and scheme metadata",
+                    "Display name, slug, dark/light scheme, author, and license support discoverable theme pickers and attribution.",
+                    catalog)),
+            Doc.Section(
+                "Type and local styles",
+                "Type-keyed theme recipes apply broadly; a Control.Style override resolves later and affects only that instance.",
+                Doc.Example(
+                    "Type-keyed Button style",
+                    "The scratch theme resolves one Button style by type and the preview borrows it locally for visibility.",
+                    Doc.Column(typedPreview, typedReadout)),
+                Doc.Example(
+                    "Per-instance override",
+                    "Only me owns the ASCII/yellow override; the sibling continues following the application theme.",
+                    Doc.Row(overridden, plain))),
+            Doc.Section(
+                "Visual states",
+                "Normal, hovered, focused, pressed, checked, indeterminate, and disabled values resolve through deterministic state precedence.",
+                Doc.Example(
+                    "Interactive state matrix",
+                    "Move focus and pointer across the controls; checked, indeterminate, and disabled states remain visible in combination.",
+                    stateMatrix)),
+            Doc.Section(
+                "Shared chrome",
+                "Border and shadow are intrinsic style properties on ordinary controls rather than wrapper control types.",
+                Doc.Example(
+                    "Themeable surface chrome",
+                    "The Dock owns its border and block shadow directly while its child remains an ordinary content node.",
+                    chrome)),
+            Doc.Section(
+                "Third-party controls",
+                "Custom controls register StyleProperty metadata and resolve it through the same theme/local cascade as built-in chrome.",
+                Doc.Example(
+                    "ShowcasePanel label placement",
+                    "Choose all four placements; LabelPlacement is a custom style property, not a private theme mechanism.",
+                    placement,
+                    "var property = StyleProperty<LabelPlacement>.Register<ShowcasePanel>(\"LabelPlacement\");")));
     }
 
     private static Stack BuildRoleSwatches()

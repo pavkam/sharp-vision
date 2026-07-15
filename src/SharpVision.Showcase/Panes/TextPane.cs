@@ -16,6 +16,13 @@ internal sealed class TextPane: View
     /// <inheritdoc/>
     protected override Control Build()
     {
+        var dynamicValue = "2 < 3";
+        var safe = new Text(
+            $"Dynamic: {Text.Escape(dynamicValue)}\n" +
+            "Malformed: <unknown=bad>")
+        {
+            Overflow = Overflow.Wrap,
+        };
         var geometry = new Text("é vs é · orphan ́ · ambiguous · · 你好 · 👩‍💻 · 🇺🇸");
 
         var introductory = new Text(
@@ -86,36 +93,97 @@ internal sealed class TextPane: View
             Overflow = Overflow.Ellipsis,
         };
 
+        const string overflowSource = "Alpha café 你好 👩‍💻 omega words that exceed eighteen cells";
+        var visible = new Text(overflowSource) { Width = Length.Cells(18), Overflow = Overflow.Visible };
+        var wrap = new Text(overflowSource) { Width = Length.Cells(18), Overflow = Overflow.Wrap };
+        var anywhere = new Text(overflowSource) { Width = Length.Cells(18), Overflow = Overflow.WrapAnywhere };
+        var clip = new Text(overflowSource) { Width = Length.Cells(18), Overflow = Overflow.Clip };
+        var ellipsis = new Text(overflowSource) { Width = Length.Cells(18), Overflow = Overflow.Ellipsis };
+
+        var endAligned = new Text("End aligned")
+        {
+            Width = Length.Cells(28),
+            TextAlignment = Alignment.End,
+        };
+        var lineMetrics = new Text("Lines: resize to recompute wrapped offsets and cell widths.")
+        {
+            Width = Length.Cells(28),
+            Overflow = Overflow.Wrap,
+        };
+        var tabs = new Text("Name\tState\nRenderer\tStable\r\nInput\tPreview")
+        {
+            Overflow = Overflow.Visible,
+        };
+
         return Doc.Page(
             Title,
             "Formats Unicode text by grapheme cluster and applies compact inline markup for semantic terminal styling.",
-            Doc.Example(
-                "Cell geometry specimen",
-                "Composed and decomposed text share width. Orphan combining marks render as replacement cells without changing source text.",
-                geometry),
-            Doc.Example(
-                "Uneven pixel pointer grid",
-                "Pixel coordinates stay exact. Mapped cells appear only when exact grid metrics are available.",
-                new PointerProbe()),
-            Doc.Example(
-                "Inline markup and OSC 8 link",
-                "Named tags compose colors, attributes, typed underlines, and semantic links without exposing a mutable run object model.",
-                Doc.Card(introductory)),
-            Doc.Example(
-                "Terminal text attributes",
-                "Every supported attribute and underline form is represented by markup. Unsupported terminal presentation degrades below the cell model.",
-                Doc.Card(attributes)),
-            Doc.Example(
-                "Responsive marked reading column",
-                "Use Wrap for prose. Activate the button to replace Content with a longer marked string and watch layout reflow.",
-                Doc.Card(Doc.Column(wrapped, append, activity))),
-            Doc.Example(
-                "Centered label",
-                "Center alignment is independent from inline style markup.",
-                centered),
-            Doc.Example(
-                "Single-line truncation",
-                "Ellipsis preserves complete grapheme clusters when a one-line label must fit.",
-                trimmed));
+            Doc.Section(
+                "Unicode",
+                "Segmentation and width apply to complete grapheme clusters before wrapping, clipping, pointer mapping, and drawing.",
+                Doc.Example(
+                    "Cell geometry specimen",
+                    "Composed and decomposed text share width; orphan combining marks render conservatively without changing source text.",
+                    geometry),
+                Doc.Example(
+                    "Uneven pixel pointer grid",
+                    "Pixel coordinates stay exact and map to cells only when terminal metrics make the mapping reliable.",
+                    new PointerProbe())),
+            Doc.Section(
+                "Safe content",
+                "Escape dynamic visible text before interpolating it into marked content; malformed markup remains literal instead of throwing.",
+                Doc.Example(
+                    "Dynamic and malformed input",
+                    "The comparison operator is escaped as visible text, while the unknown tag fragment is preserved exactly for deterministic recovery.",
+                    safe,
+                    "var user = \"2 < 3\";\nvar text = new Text($\"Dynamic: {Text.Escape(user)}\");")),
+            Doc.Section(
+                "Markup",
+                "Compact tags compose semantic colors, attributes, typed underlines, and OSC 8 link metadata.",
+                Doc.Example(
+                    "Inline markup and link",
+                    "The visible link owns hyperlink metadata but never opens a URL automatically.",
+                    Doc.Card(introductory)),
+                Doc.Example(
+                    "Terminal attributes",
+                    "Every supported attribute and underline form is visible; unsupported terminal presentation degrades below the cell model.",
+                    Doc.Card(attributes))),
+            Doc.Section(
+                "Overflow",
+                "Choose whether a finite width preserves full lines, wraps at words or graphemes, clips, or reserves an ellipsis.",
+                Doc.Example(
+                    "Five policies over identical Unicode",
+                    "Compare Visible, Wrap, WrapAnywhere, Clip, and Ellipsis. None splits the CJK or emoji grapheme ownership.",
+                    Doc.Column(
+                        Doc.Row(new Text("Visible"), visible),
+                        Doc.Row(new Text("Wrap"), wrap),
+                        Doc.Row(new Text("Anywhere"), anywhere),
+                        Doc.Row(new Text("Clip"), clip),
+                        Doc.Row(new Text("Ellipsis"), ellipsis)))),
+            Doc.Section(
+                "Alignment and lines",
+                "Alignment places each formatted line inside the arranged width; Lines exposes committed visible metrics until the next layout.",
+                Doc.Example(
+                    "Start-independent alignment",
+                    "Center and End alignment work independently from markup and overflow policy.",
+                    Doc.Column(centered, endAligned, lineMetrics)),
+                Doc.Example(
+                    "Single-line truncation",
+                    "Ellipsis preserves complete grapheme clusters when a label must remain one line.",
+                    trimmed)),
+            Doc.Section(
+                "Tabs and logical lines",
+                "Tabs advance to four-cell stops and CR, LF, and CRLF create stable logical lines.",
+                Doc.Example(
+                    "Aligned tabular text",
+                    "The same tab-stop and newline rules feed line metrics and semantic cell drawing.",
+                    tabs)),
+            Doc.Section(
+                "Live mutation",
+                "Changing Content reparses markup and remeasures only the affected Text control.",
+                Doc.Example(
+                    "Responsive marked reading column",
+                    "Append a new marked line and resize the narrow reading column to watch safe reflow.",
+                    Doc.Card(Doc.Column(wrapped, append, activity)))));
     }
 }

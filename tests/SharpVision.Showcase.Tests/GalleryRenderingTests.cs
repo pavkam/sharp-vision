@@ -143,7 +143,10 @@ public sealed class GalleryRenderingTests
 
         gallery.Render(frame.Canvas);
 
-        var active = FindAll<List>(gallery.Content).Single(list => list.IsEnabled);
+        var active = FindAll<List>(gallery.Content).Single(list =>
+            list.IsEnabled &&
+            list.Items.Count == 8 &&
+            Equals(list.Items[1], "Beta"));
         active.Background.ShouldBe(Color.Indexed(0));
         frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
             .ShouldBe(Color.Indexed(4));

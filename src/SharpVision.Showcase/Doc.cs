@@ -10,6 +10,40 @@ using TextControl = SharpVision.Controls.Text;
 /// <summary>Small composable helpers for building example-rich showcase pages.</summary>
 internal static class Doc
 {
+    /// <summary>Builds one progressive documentation section with ordered examples.</summary>
+    /// <param name="heading">The section heading.</param>
+    /// <param name="description">The orientation paragraph shown beneath the heading.</param>
+    /// <param name="examples">The live examples in reading order.</param>
+    /// <returns>A vertically stacked section.</returns>
+    /// <exception cref="ArgumentException"><paramref name="heading"/> or <paramref name="description"/> is blank.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="examples"/> or one of its entries is null.</exception>
+    internal static Control Section(string heading, string description, params Control[] examples)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(heading);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentNullException.ThrowIfNull(examples);
+
+        foreach (var example in examples)
+        {
+            ArgumentNullException.ThrowIfNull(example);
+        }
+
+        var introduction = new TextControl(
+            $"<b>{TextControl.Escape(heading)}</b>\n<d>{TextControl.Escape(description)}</d>")
+        {
+            Overflow = Overflow.Wrap,
+        };
+        var section = new Stack() { Spacing = 1 };
+        section.Children.Add(introduction);
+
+        foreach (var example in examples)
+        {
+            section.Children.Add(example);
+        }
+
+        return section;
+    }
+
     /// <summary>Builds a page root: a heading with an Overview summary, then the given sections.</summary>
     /// <param name="name">The exact control/page name shown as the heading.</param>
     /// <param name="overview">The one- or two-sentence overview shown under the heading.</param>
@@ -44,14 +78,24 @@ internal static class Doc
     /// <param name="heading">The example heading.</param>
     /// <param name="description">The prose describing what the specimen demonstrates.</param>
     /// <param name="specimen">The live control specimen.</param>
+    /// <param name="source">An optional compact C# excerpt that reproduces the specimen's essential setup.</param>
     /// <returns>A vertically stacked example block.</returns>
-    /// <exception cref="ArgumentException"><paramref name="heading"/> or <paramref name="description"/> is blank.</exception>
+    /// <exception cref="ArgumentException"><paramref name="heading"/>, <paramref name="description"/>, or a supplied <paramref name="source"/> is blank.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="specimen"/> is null.</exception>
-    internal static Control Example(string heading, string description, Control specimen)
+    internal static Control Example(
+        string heading,
+        string description,
+        Control specimen,
+        string? source = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(heading);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentNullException.ThrowIfNull(specimen);
+
+        if (source is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        }
 
         var text = new TextControl(
             $"<b>{TextControl.Escape(heading)}</b>\n<d>{TextControl.Escape(description)}</d>")
@@ -62,6 +106,22 @@ internal static class Doc
         var block = new Stack() { Spacing = 1 };
         block.Children.Add(text);
         block.Children.Add(specimen);
+
+        if (source is not null)
+        {
+            var code = new TextControl($"<b>C#</b>\n{TextControl.Escape(source)}")
+            {
+                Overflow = Overflow.WrapAnywhere,
+            };
+            block.Children.Add(new Dock
+            {
+                BorderThickness = new Thickness(1),
+                BorderGlyphs = Glyphs.Light,
+                Padding = new Thickness(1, 0),
+                Children = { code },
+            });
+        }
+
         return block;
     }
 

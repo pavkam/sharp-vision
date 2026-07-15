@@ -70,20 +70,77 @@ internal sealed class MenuPane: View
             Children = { withDisabled },
         };
 
+        var flyoutTrigger = new Button { Content = new Text("Project actions") };
+        var flyoutMenu = new Menu { Orientation = Orientation.Vertical };
+        flyoutMenu.Items.Add(new MenuItem { Header = "Build" });
+        flyoutMenu.Items.Add(new MenuItem { Header = "Test" });
+        flyoutMenu.Items.Add(new MenuItem { Header = "Publish" });
+        var flyout = new Popup
+        {
+            Anchor = flyoutTrigger,
+            Child = flyoutMenu,
+            IsOpen = true,
+            Placement = PopupPlacement.Below,
+        };
+        var flyoutStage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(8),
+            ClipToBounds = false,
+            Children = { flyoutTrigger, flyout },
+        };
+
+        var selectionStatus = new Text("Selected index: -1; invoked: none");
+        var selectionMenu = new Menu { Orientation = Orientation.Vertical };
+        selectionMenu.Items.Add(new MenuItem { Header = "Inspect" });
+        selectionMenu.Items.Add(new MenuItem { Header = "Run" });
+        selectionMenu.ItemInvoked += (_, eventArgs) =>
+            selectionStatus.Content = $"Selected index: {selectionMenu.SelectedIndex}; invoked: {eventArgs.Item.Header}";
+
+        var relaxed = new Menu { Orientation = Orientation.Horizontal, Spacing = 3 };
+        relaxed.Items.Add(new MenuItem { Header = "Available" });
+        relaxed.Items.Add(new MenuItem { Header = "Unavailable", IsEnabled = false });
+        relaxed.Items.Add(new MenuItem { Header = "Next" });
+
         return Doc.Page(
             Title,
             "Arranges typed command, check, radio, and separator items with semantic selected state and keyboard navigation.",
-            Doc.Example(
-                "Command menu with state",
-                "Arrow keys skip the separator while Enter or Space activates the selected item, or click one directly with the pointer. Check and radio state commits before the invocation message below updates.",
-                Doc.Column(framed, status)),
-            Doc.Example(
-                "Horizontal menu bar",
-                "Orientation.Horizontal lays items out left to right with Left and Right arrow navigation instead of Up and Down, the shape of a conventional top-level menu bar.",
-                Doc.Column(framedBar, barStatus)),
-            Doc.Example(
-                "Disabled item",
-                "A disabled MenuItem is skipped by arrow-key navigation and ignores activation, just like a disabled Button.",
-                framedDisabled));
+            Doc.Section(
+                "Command menu",
+                "Combine command, separator, check, and radio items in one typed ownership collection.",
+                Doc.Example(
+                    "Commands with state",
+                    "Arrows skip separators; Enter, Space, or a click commits check/radio state before ItemInvoked reports the action.",
+                    Doc.Column(framed, status),
+                    "var menu = new Menu();\nmenu.Items.Add(new MenuItem { Header = \"Open\" });\nmenu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });")),
+            Doc.Section(
+                "Menu bar",
+                "Horizontal orientation switches traversal to Left and Right while preserving the same item semantics.",
+                Doc.Example(
+                    "Top-level application menu",
+                    "Move across File, Edit, View, and Help, then activate the selected item through the same invocation event.",
+                    Doc.Column(framedBar, barStatus))),
+            Doc.Section(
+                "Popup composition",
+                "Menu remains an ordinary control; place it in Popup when an anchored flyout is required.",
+                Doc.Example(
+                    "Anchored project actions",
+                    "The open Popup frames and promotes a vertical Menu above ordinary sibling content without inventing modal behavior.",
+                    flyoutStage,
+                    "var popup = new Popup { Anchor = trigger, Child = menu, IsOpen = true };")),
+            Doc.Section(
+                "Selection and invocation",
+                "Keyboard navigation changes SelectedIndex; activation separately raises ItemInvoked after item state commits.",
+                Doc.Example(
+                    "Two observable states",
+                    "Move without activating, then press Enter and compare the selected index with the invoked header.",
+                    Doc.Column(selectionMenu, selectionStatus))),
+            Doc.Section(
+                "Spacing and unavailable items",
+                "Spacing changes geometry only; unavailable entries remain visible and are skipped by focus and activation.",
+                Doc.Example(
+                    "Relaxed command strip",
+                    "Move from Available to Next: the unavailable middle item never receives selection.",
+                    Doc.Column(framedDisabled, relaxed))));
     }
 }
