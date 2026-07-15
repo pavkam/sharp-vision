@@ -100,7 +100,7 @@ public sealed class PopupTests
             DropDownHeight = 2,
             IsOpen = true,
         };
-        var cover = new Border() { Background = Color.Indexed(7) };
+        var cover = new Dock() { Background = Color.Indexed(7) };
         var root = new Overlay() { ClipToBounds = false };
         root.Children.Add(comboBox);
         root.Children.Add(cover);
@@ -112,6 +112,8 @@ public sealed class PopupTests
 
         root.Render(frame.Canvas);
 
+        cover.Bounds.ShouldBe(root.Bounds);
+        frame.GetCell(new Point(15, 7)).Style.Background.ShouldBe(Color.Indexed(7));
         _ = root.HitTest(point).ShouldBeOfType<ListItem>();
         FrameOracle.Get(frame, point).ShouldBe("m");
     }
