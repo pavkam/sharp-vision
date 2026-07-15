@@ -331,6 +331,30 @@ public sealed class TextInputTests
         rail.Fill.ShouldBe(ScrollBarFill.Line);
     }
 
+    /// <summary>Verifies an editor's owned rail follows the standard theme without a local presentation override.</summary>
+    [Fact]
+    public void ScrollBars_WhenStandardThemeIsApplied_UsesThinLinePresentation()
+    {
+        var control = new TextInput
+        {
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            AcceptsReturn = true,
+            Text = "one\ntwo\nthree\nfour\nfive",
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+        };
+        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+
+        new Engine().Layout(control, new Size(8, 3));
+
+        var rail = control.HitTest(new Point(7, 0)).ShouldBeOfType<ScrollBar>();
+        control.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
+        control.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
+        rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
+        rail.Fill.ShouldBe(ScrollBarFill.Line);
+    }
+
     /// <summary>Verifies an editor at its wheel endpoint leaves the routed delta for its enclosing viewport.</summary>
     [Fact]
     public void Dispatch_WhenEditorWheelReachesEndpoint_OffersNextDeltaToEnclosingViewport()

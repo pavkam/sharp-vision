@@ -97,6 +97,31 @@ public sealed class ContainerScrollTests
         vertical.Visibility.ShouldBe(Visibility.Collapsed);
     }
 
+    /// <summary>Verifies owned bars use the active theme's canonical chrome and fill.</summary>
+    [Fact]
+    public void ScrollBars_WhenStandardThemeIsApplied_UseThinLinePresentation()
+    {
+        var container = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Always,
+        };
+        container.Children.Add(new ProbeControl(new Size(20, 20)));
+        ThemeTestSupport.ApplyTheme(container, Themes.Dark);
+
+        new Engine().Layout(container, new Size(6, 4));
+
+        var horizontal = container.NavigationAt(container.NavigationCount - 2)
+            .ShouldBeOfType<ScrollBar>();
+        var vertical = container.NavigationAt(container.NavigationCount - 1)
+            .ShouldBeOfType<ScrollBar>();
+        horizontal.Chrome.ShouldBe(ScrollBarChrome.Thin);
+        horizontal.Fill.ShouldBe(ScrollBarFill.Line);
+        vertical.Chrome.ShouldBe(ScrollBarChrome.Thin);
+        vertical.Fill.ShouldBe(ScrollBarFill.Line);
+    }
+
     /// <summary>
     /// Verifies an armed Stack's owned scrollbar chrome participates in
     /// default Tab navigation instead of crashing: Stack.NavigationAt used to

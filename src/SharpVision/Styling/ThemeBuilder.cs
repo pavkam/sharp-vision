@@ -23,6 +23,7 @@ internal static class ThemeBuilder
         }
 
         theme.SetStyle(BuildBaseStyle());
+        theme.SetStyle(BuildContainerStyle());
         theme.SetStyle(BuildButtonStyle());
         theme.SetStyle(BuildScrollBarStyle());
         theme.SetStyle(BuildCheckBoxStyle());
@@ -65,10 +66,22 @@ internal static class ThemeBuilder
         return style;
     }
 
+    private static ControlStyle<Container> BuildContainerStyle()
+    {
+        var style = new ControlStyle<Container>();
+
+        style.Set(Container.ScrollBarChromeProperty, State.Normal, ScrollBarChrome.Thin);
+        style.Set(Container.ScrollBarFillProperty, State.Normal, ScrollBarFill.Line);
+
+        return style;
+    }
+
     private static ControlStyle<ScrollBar> BuildScrollBarStyle()
     {
         var style = new ControlStyle<ScrollBar>();
 
+        style.Set(ScrollBar.ChromeProperty, State.Normal, ScrollBarChrome.Thin);
+        style.Set(ScrollBar.FillProperty, State.Normal, ScrollBarFill.Line);
         style.Set(Control.ForegroundProperty, State.Focused, ThemeColors.Accent);
         style.Set(Control.ForegroundProperty, State.Pressed, ThemeColors.Accent);
 

@@ -115,6 +115,25 @@ public sealed class StandardThemeTests
         backgroundColor.Red.ShouldBe((byte) 0);
     }
 
+    /// <summary>Verifies the standard theme publishes one compact scrollbar policy to standalone and owning controls.</summary>
+    [Fact]
+    public void Dark_WhenScrollBarPolicyResolves_UsesThinLinePresentation()
+    {
+        var rail = new ScrollBar();
+        var container = new Stack();
+        var editor = new TextInput();
+        ThemeTestSupport.ApplyTheme(rail, Themes.Dark);
+        ThemeTestSupport.ApplyTheme(container, Themes.Dark);
+        ThemeTestSupport.ApplyTheme(editor, Themes.Dark);
+
+        rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
+        rail.Fill.ShouldBe(ScrollBarFill.Line);
+        container.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
+        container.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
+        editor.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
+        editor.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
+    }
+
     /// <summary>Verifies the standard themes are frozen, stable singletons distinct from each other.</summary>
     [Fact]
     public void Themes_AreCachedFrozenInstances()

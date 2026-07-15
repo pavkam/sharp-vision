@@ -390,26 +390,35 @@ public abstract class Container: Control
         }
     } = ScrollBarVisibility.Auto;
 
+    /// <summary>Identifies the themeable shared chrome form used by owned bars.</summary>
+    public static StyleProperty<ScrollBarChrome> ScrollBarChromeProperty { get; } =
+        StyleProperty<ScrollBarChrome>.Register<Container>(
+            "scroll-bar-chrome",
+            ScrollBarChrome.Full,
+            Impact.Measure,
+            Validate);
+
     /// <summary>Gets or sets the shared chrome form used by both owned bars.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public ScrollBarChrome ScrollBarChrome
     {
-        get;
+        get => GetValue(ScrollBarChromeProperty);
         set
         {
-            Validate(value);
-
-            if (!Set(ref field, value, Invalidation.Measure))
-            {
-                return;
-            }
-
-            _ = _horizontal?.Chrome = value;
-            _ = _vertical?.Chrome = value;
+            SetValue(ScrollBarChromeProperty, value);
+            SynchronizeBarAppearance();
         }
-    } = ScrollBarChrome.Full;
+    }
+
+    /// <summary>Identifies the themeable generated glyph treatment used by owned bars.</summary>
+    public static StyleProperty<ScrollBarFill> ScrollBarFillProperty { get; } =
+        StyleProperty<ScrollBarFill>.Register<Container>(
+            "scroll-bar-fill",
+            ScrollBarFill.Block,
+            Impact.Render,
+            Validate);
 
     /// <summary>Gets or sets the shared generated glyph treatment used by both owned bars.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -417,20 +426,13 @@ public abstract class Container: Control
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public ScrollBarFill ScrollBarFill
     {
-        get;
+        get => GetValue(ScrollBarFillProperty);
         set
         {
-            Validate(value);
-
-            if (!Set(ref field, value, Invalidation.Render))
-            {
-                return;
-            }
-
-            _ = _horizontal?.Fill = value;
-            _ = _vertical?.Fill = value;
+            SetValue(ScrollBarFillProperty, value);
+            SynchronizeBarAppearance();
         }
-    } = ScrollBarFill.Block;
+    }
 
     /// <summary>Gets or sets the non-negative arrow and wheel change in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -710,6 +712,7 @@ public abstract class Container: Control
 
         Debug.Assert(_horizontal is not null && _vertical is not null, "Created scrollbar chrome owns both axes.");
 
+        SynchronizeBarAppearance();
         SetVisibility(_horizontal, _reserveHorizontal);
         SetVisibility(_vertical, _reserveVertical);
         _horizontal.Arrange(
@@ -730,23 +733,45 @@ public abstract class Container: Control
             return;
         }
 
-        _horizontal = new ScrollBar
-        {
-            Orientation = Orientation.Horizontal,
-            Chrome = ScrollBarChrome,
-            Fill = ScrollBarFill,
-        };
-        _vertical = new ScrollBar
-        {
-            Orientation = Orientation.Vertical,
-            Chrome = ScrollBarChrome,
-            Fill = ScrollBarFill,
-        };
+        _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
+        _vertical = new ScrollBar { Orientation = Orientation.Vertical };
         _horizontal.ValueChanged += OnHorizontalChanged;
         _vertical.ValueChanged += OnVerticalChanged;
         _bars = new Children(this, capacity: 2) { _horizontal, _vertical };
+        SynchronizeBarAppearance();
 
         Debug.Assert(_bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
+    }
+
+    private void SynchronizeBarAppearance()
+    {
+        if (_horizontal is null || _vertical is null)
+        {
+            return;
+        }
+
+        var chrome = ScrollBarChrome;
+        var fill = ScrollBarFill;
+
+        if (_horizontal.Chrome != chrome)
+        {
+            _horizontal.Chrome = chrome;
+        }
+
+        if (_vertical.Chrome != chrome)
+        {
+            _vertical.Chrome = chrome;
+        }
+
+        if (_horizontal.Fill != fill)
+        {
+            _horizontal.Fill = fill;
+        }
+
+        if (_vertical.Fill != fill)
+        {
+            _vertical.Fill = fill;
+        }
     }
 
     private void Synchronize()

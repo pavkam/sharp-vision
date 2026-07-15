@@ -235,21 +235,13 @@ public sealed class TextInput: Container
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public new ScrollBarChrome ScrollBarChrome
     {
-        get;
+        get => base.ScrollBarChrome;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar chrome is unknown.");
-            }
-
-            if (Set(ref field, value, Invalidation.Arrange))
-            {
-                _horizontal.Chrome = value;
-                _vertical.Chrome = value;
-            }
+            base.ScrollBarChrome = value;
+            SynchronizeBarAppearance();
         }
-    } = ScrollBarChrome.Full;
+    }
 
     /// <summary>Gets or sets the generated line or block glyph treatment requested for editor rails.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -257,21 +249,13 @@ public sealed class TextInput: Container
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public new ScrollBarFill ScrollBarFill
     {
-        get;
+        get => base.ScrollBarFill;
         set
         {
-            if (!Enum.IsDefined(value))
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar fill is unknown.");
-            }
-
-            if (Set(ref field, value, Invalidation.Render))
-            {
-                _horizontal.Fill = value;
-                _vertical.Fill = value;
-            }
+            base.ScrollBarFill = value;
+            SynchronizeBarAppearance();
         }
-    } = ScrollBarFill.Block;
+    }
 
     /// <summary>Gets or sets the maximum retained undo snapshots.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -880,6 +864,7 @@ public sealed class TextInput: Container
 
     private void ArrangeChrome()
     {
+        SynchronizeBarAppearance();
         MeasureText(out _contentWidth, out _contentHeight);
         var bounds = ContentBounds;
         var horizontal = (ScrollBars & ScrollBars.Horizontal) != 0 &&
@@ -905,6 +890,32 @@ public sealed class TextInput: Container
         _vertical.Arrange(new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height), true, true);
         Configure(_horizontal, Math.Max(0, _contentWidth - viewport.Width + 1), viewport.Width, HorizontalOffset);
         Configure(_vertical, Math.Max(0, _contentHeight - viewport.Height + 1), viewport.Height, VerticalOffset);
+    }
+
+    private void SynchronizeBarAppearance()
+    {
+        var chrome = base.ScrollBarChrome;
+        var fill = base.ScrollBarFill;
+
+        if (_horizontal.Chrome != chrome)
+        {
+            _horizontal.Chrome = chrome;
+        }
+
+        if (_vertical.Chrome != chrome)
+        {
+            _vertical.Chrome = chrome;
+        }
+
+        if (_horizontal.Fill != fill)
+        {
+            _horizontal.Fill = fill;
+        }
+
+        if (_vertical.Fill != fill)
+        {
+            _vertical.Fill = fill;
+        }
     }
 
     private void OnHorizontalChanged(object? sender, ScrollEventArgs eventArgs)

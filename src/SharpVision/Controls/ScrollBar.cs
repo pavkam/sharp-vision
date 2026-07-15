@@ -159,19 +159,31 @@ public sealed class ScrollBar: Control
         }
     }
 
+    /// <summary>Identifies the themeable compact-or-full chrome style property.</summary>
+    public static StyleProperty<ScrollBarChrome> ChromeProperty { get; } =
+        StyleProperty<ScrollBarChrome>.Register<ScrollBar>(
+            "chrome",
+            ScrollBarChrome.Full,
+            Impact.Measure,
+            Validate);
+
     /// <summary>Gets or sets compact or full scrollbar chrome.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBarChrome Chrome
     {
-        get;
-        set
-        {
-            Validate(value);
-            _ = Set(ref field, value, Invalidation.Measure);
-        }
-    } = ScrollBarChrome.Full;
+        get => GetValue(ChromeProperty);
+        set => SetValue(ChromeProperty, value);
+    }
+
+    /// <summary>Identifies the themeable line-or-block fill style property.</summary>
+    public static StyleProperty<ScrollBarFill> FillProperty { get; } =
+        StyleProperty<ScrollBarFill>.Register<ScrollBar>(
+            "fill",
+            ScrollBarFill.Block,
+            Impact.Render,
+            Validate);
 
     /// <summary>Gets or sets the generated line or block glyph treatment.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -179,13 +191,9 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBarFill Fill
     {
-        get;
-        set
-        {
-            Validate(value);
-            _ = Set(ref field, value, Invalidation.Render);
-        }
-    } = ScrollBarFill.Block;
+        get => GetValue(FillProperty);
+        set => SetValue(FillProperty, value);
+    }
 
     /// <summary>Gets or sets the printable narrow decrement-button glyph.</summary>
     /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
