@@ -23,6 +23,10 @@ internal static class ThemeBuilder
         }
 
         theme.SetStyle(BuildBaseStyle());
+        theme.SetStyle(BuildButtonStyle());
+        theme.SetStyle(BuildScrollBarStyle());
+        theme.SetStyle(BuildCheckBoxStyle());
+        theme.SetStyle(BuildRadioButtonStyle());
         theme.Freeze();
         return theme;
     }
@@ -41,13 +45,53 @@ internal static class ThemeBuilder
         style.Set(Control.BackgroundProperty, State.Normal, ThemeColors.Background);
         style.Set(Control.BorderColorProperty, State.Normal, ThemeColors.Border);
         style.Set(Control.ForegroundProperty, State.Hovered, ThemeColors.Accent);
-        style.Set(Control.AttributesProperty, State.Focused, TerminalAttributes.Underline);
-        style.Set(Control.ForegroundProperty, State.Checked, ThemeColors.SelectionForeground);
-        style.Set(Control.BackgroundProperty, State.Checked, ThemeColors.SelectionBackground);
         style.Set(Control.ForegroundProperty, State.Selected, ThemeColors.SelectionForeground);
         style.Set(Control.BackgroundProperty, State.Selected, ThemeColors.SelectionBackground);
         style.Set(Control.ForegroundProperty, State.Disabled, ThemeColors.Muted);
         style.Set(Control.ShadowForegroundProperty, State.Normal, ThemeColors.Border);
+
+        return style;
+    }
+
+    private static ControlStyle<Button> BuildButtonStyle()
+    {
+        var style = new ControlStyle<Button>();
+
+        style.Set(Control.BorderColorProperty, State.Hovered, ThemeColors.Accent);
+        style.Set(Control.BorderColorProperty, State.Focused, ThemeColors.Accent);
+        style.Set(Control.BorderColorProperty, State.Pressed, ThemeColors.Accent);
+        style.Set(Control.ForegroundProperty, State.Pressed, ThemeColors.Accent);
+
+        return style;
+    }
+
+    private static ControlStyle<ScrollBar> BuildScrollBarStyle()
+    {
+        var style = new ControlStyle<ScrollBar>();
+
+        style.Set(Control.ForegroundProperty, State.Focused, ThemeColors.Accent);
+        style.Set(Control.ForegroundProperty, State.Pressed, ThemeColors.Accent);
+
+        return style;
+    }
+
+    private static ControlStyle<CheckBox> BuildCheckBoxStyle()
+    {
+        var style = new ControlStyle<CheckBox>();
+
+        style.Set(Control.ForegroundProperty, State.Focused, ThemeColors.Accent);
+        style.Set(Control.ForegroundProperty, State.Checked, ThemeColors.Accent);
+        style.Set(Control.ForegroundProperty, State.Indeterminate, ThemeColors.Warning);
+
+        return style;
+    }
+
+    private static ControlStyle<RadioButton> BuildRadioButtonStyle()
+    {
+        var style = new ControlStyle<RadioButton>();
+
+        style.Set(Control.ForegroundProperty, State.Focused, ThemeColors.Accent);
+        style.Set(Control.ForegroundProperty, State.Checked, ThemeColors.Accent);
 
         return style;
     }

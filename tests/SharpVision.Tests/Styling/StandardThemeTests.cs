@@ -36,6 +36,85 @@ public sealed class StandardThemeTests
             .ShouldBe(Color.Indexed(15));
     }
 
+    /// <summary>Verifies the standard base focus state never decorates arbitrary control cells with underline.</summary>
+    [Fact]
+    public void Dark_WhenBaseControlIsFocused_DoesNotApplyUnderline()
+    {
+        var control = new ProbeControl();
+        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+
+        var attributes = ThemeTestSupport.Resolve(
+            control,
+            Control.AttributesProperty,
+            State.Focused);
+
+        (attributes.GetValueOrDefault() & Attributes.Underline).ShouldBe(Attributes.None);
+    }
+
+    /// <summary>Verifies a focused Button uses the semantic accent on its frame.</summary>
+    [Fact]
+    public void Dark_WhenButtonIsFocused_UsesAccentBorder()
+    {
+        var control = new Button();
+        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+
+        var border = ThemeTestSupport.Resolve(
+            control,
+            Control.BorderColorProperty,
+            State.Focused);
+        var borderColor = border.ShouldNotBeNull();
+        borderColor.Kind.ShouldBe(ColorKind.Indexed);
+        borderColor.Red.ShouldBe((byte) 14);
+    }
+
+    /// <summary>Verifies a focused ScrollBar colors its repeated rail glyphs without decorating them.</summary>
+    [Fact]
+    public void Dark_WhenScrollBarIsFocused_UsesAccentWithoutUnderline()
+    {
+        var control = new ScrollBar();
+        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+
+        var foreground = ThemeTestSupport.Resolve(
+            control,
+            Control.ForegroundProperty,
+            State.Focused);
+        var foregroundColor = foreground.ShouldNotBeNull();
+        foregroundColor.Kind.ShouldBe(ColorKind.Indexed);
+        foregroundColor.Red.ShouldBe((byte) 14);
+        var attributes = ThemeTestSupport.Resolve(
+            control,
+            Control.AttributesProperty,
+            State.Focused);
+        (attributes.GetValueOrDefault() & Attributes.Underline).ShouldBe(Attributes.None);
+    }
+
+    /// <summary>Verifies checked choice controls accent only their marks and retain the normal background.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Dark_WhenChoiceIsChecked_UsesAccentWithoutSelectionBackground(bool checkBox)
+    {
+        Control control = checkBox
+            ? new CheckBox { IsChecked = true }
+            : new RadioButton { IsChecked = true };
+        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+
+        var foreground = ThemeTestSupport.Resolve(
+            control,
+            Control.ForegroundProperty,
+            State.Checked);
+        var foregroundColor = foreground.ShouldNotBeNull();
+        foregroundColor.Kind.ShouldBe(ColorKind.Indexed);
+        foregroundColor.Red.ShouldBe((byte) 14);
+        var background = ThemeTestSupport.Resolve(
+            control,
+            Control.BackgroundProperty,
+            State.Checked);
+        var backgroundColor = background.ShouldNotBeNull();
+        backgroundColor.Kind.ShouldBe(ColorKind.Indexed);
+        backgroundColor.Red.ShouldBe((byte) 0);
+    }
+
     /// <summary>Verifies the standard themes are frozen, stable singletons distinct from each other.</summary>
     [Fact]
     public void Themes_AreCachedFrozenInstances()
