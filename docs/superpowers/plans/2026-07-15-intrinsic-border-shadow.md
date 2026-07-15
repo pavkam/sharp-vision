@@ -955,6 +955,11 @@ claim, aligns showcase testing with its optional/current page structure, marks
 the older API-design inventory and precondition as superseded execution context,
 and gives every historical Markdown exemption a nearby rule-specific rationale.
 
+Quality-review follow-up commit `996d350` records the ShadowBackground opacity
+correction and fallback regressions, aligns the rendering contract with the
+`VisualBounds` canvas actually passed to `OnRender`, and replaces the stale
+pre-execution handoff with the completed branch and execution-base status.
+
 - [x] **Step 4: Run the full isolated-worktree gate**
 
 ```bash
