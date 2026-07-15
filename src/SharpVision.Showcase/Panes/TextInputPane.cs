@@ -57,6 +57,35 @@ internal sealed class TextInputPane: View
             historyStatus.Content = $"History: undo={history.CanUndo}, redo={history.CanRedo}";
         };
 
+        var clipboard = new TextInput { Width = Length.Cells(28), Text = "Copy café 👩‍💻" };
+        clipboard.Select(0, clipboard.Text.Length);
+        var clipboardStatus = new Text("Clipboard: select Copy or Cut");
+        var copy = new Button() { Content = new Text("Copy selection") };
+        copy.Click += (_, _) => clipboardStatus.Content = $"Clipboard: copied {clipboard.CopySelection()}";
+        var cut = new Button() { Content = new Text("Cut selection") };
+        cut.Click += (_, _) => clipboardStatus.Content = $"Clipboard: cut {clipboard.CutSelection()}";
+
+        var eventEditor = new TextInput { Width = Length.Cells(28), Text = "Accepted" };
+        var eventStatus = new Text("Events: waiting");
+        eventEditor.TextChanging += (_, eventArgs) =>
+        {
+            if (eventArgs.Proposal.Text.Contains('!'))
+            {
+                eventArgs.Cancel = true;
+                eventStatus.Content = "Events: TextChanging canceled";
+            }
+            else
+            {
+                eventStatus.Content = "Events: TextChanging";
+            }
+        };
+        eventEditor.TextChanged += (_, _) => eventStatus.Content += " → TextChanged";
+        eventEditor.SelectionChanged += (_, _) => eventStatus.Content += " → SelectionChanged";
+        var rejectEdit = new Button() { Content = new Text("Try rejected edit") };
+        rejectEdit.Click += (_, _) => eventEditor.Text += "!";
+        var acceptEdit = new Button() { Content = new Text("Commit accepted edit") };
+        acceptEdit.Click += (_, _) => eventEditor.Text += " revision";
+
         var readOnly = new TextInput()
         {
             Width = Length.Cells(28),
@@ -90,10 +119,14 @@ internal sealed class TextInputPane: View
             ScrollBarFill = ScrollBarFill.Line,
             Text = "Multiline editor\nWheel here to scroll\nwithout losing focus\nAt the edge, the page scrolls",
         };
+        var offsetStatus = new Text("Offsets: horizontal=0, vertical=0");
+        var reportOffsets = new Button() { Content = new Text("Report editor offsets") };
+        reportOffsets.Click += (_, _) =>
+            offsetStatus.Content = $"Offsets: horizontal={multiline.HorizontalOffset}, vertical={multiline.VerticalOffset}";
         var unicode = new TextInput
         {
             Width = Length.Cells(28),
-            Text = "Move café 👩‍💻 as clusters",
+            Text = "Delete 👩‍💻",
         };
 
         return Doc.Page(
@@ -119,9 +152,21 @@ internal sealed class TextInputPane: View
                 "Clipboard and history",
                 "Copy/cut shortcuts and bounded undo/redo operate on immutable text-and-selection snapshots.",
                 Doc.Example(
+                    "Owned clipboard text",
+                    "Copy returns an owned string without mutation; Cut returns the same selection and deletes it through the ordinary edit transaction.",
+                    Doc.Column(clipboard, Doc.Row(copy, cut), clipboardStatus),
+                    "var copied = editor.CopySelection();\nvar cut = editor.CutSelection();"),
+                Doc.Example(
                     "Revision history",
                     "Append a revision, then use Undo and Redo. Availability updates after every committed snapshot.",
                     Doc.Column(history, Doc.Row(revise, undo, redo), historyStatus))),
+            Doc.Section(
+                "Edit events",
+                "TextChanging can cancel a valid proposal before state mutates; committed edits then raise TextChanged before SelectionChanged.",
+                Doc.Example(
+                    "Cancellation and commit order",
+                    "Reject the exclamation edit, then commit the accepted revision. The readout exposes the exact pre-commit and post-commit sequence.",
+                    Doc.Column(eventEditor, Doc.Row(rejectEdit, acceptEdit), eventStatus))),
             Doc.Section(
                 "Policies",
                 "Read-only, password, and maximum-length policies reject only the mutations they own.",
@@ -138,15 +183,15 @@ internal sealed class TextInputPane: View
                 "Return, Tab, scrolling, selection, and caret geometry share one editor viewport.",
                 Doc.Example(
                     "Editor with canonical scrollbar",
-                    "Wheel over the editor first. At its endpoint, an unchanged wheel event bubbles to the surrounding documentation viewport.",
-                    multiline,
+                    "Wheel over the editor first, then report its cell offsets. At its endpoint, an unchanged wheel event bubbles to the surrounding documentation viewport.",
+                    Doc.Column(multiline, reportOffsets, offsetStatus),
                     "editor.AcceptsReturn = true;\neditor.ScrollBars = ScrollBars.Vertical;")),
             Doc.Section(
                 "Unicode boundary",
                 "Movement, deletion, selection, and pointer placement never expose an interior UTF-16 or wide-cell position.",
                 Doc.Example(
-                    "Combining and ZWJ content",
-                    "Move through café and the developer emoji: each behaves as one user-visible cluster where the Unicode contract requires it.",
+                    "Delete one complete ZWJ grapheme",
+                    "Place the caret after the developer emoji and press Backspace once. The complete emoji disappears without exposing an interior UTF-16 position.",
                     unicode)));
     }
 }

@@ -152,6 +152,41 @@ public sealed class GalleryInteractionTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies decoded pointer motion updates the custom-drawn Canvas coordinate specimen.</summary>
+    [Fact]
+    public async Task Input_WhenPointerMovesOverCanvasDrawingSample_UpdatesCoordinateReadoutAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(120, 80)));
+        using Gallery gallery = new();
+        await using Application application = new(
+            gallery,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "Canvas")),
+            TestContext.Current.CancellationToken);
+        var sample = await application.Dispatcher.InvokeAsync(
+            () => Find<CanvasPointerSample>(gallery.Content, static _ => true),
+            TestContext.Current.CancellationToken);
+        var activeSample = sample.ShouldNotBeNull();
+        await BringIntoViewAsync(activeSample, gallery, application);
+        var target = await application.Dispatcher.InvokeAsync(
+            () => new Point(activeSample.Bounds.X + 2, activeSample.Bounds.Y + 2),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<35;{target.X + 1};{target.Y + 1}M"));
+        await WaitUntilAsync(
+            () => RenderedGalleryContains(gallery, application.Size, $"Cells: {target.X},{target.Y}"),
+            application,
+            "Canvas pointer coordinate readout");
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies the Text sample appends markup and records the activation path in its visible activity log.</summary>
     [Fact]
     public async Task Input_WhenTextMarkupButtonIsActivated_UpdatesActivityLogAsync()
@@ -677,6 +712,82 @@ public sealed class GalleryInteractionTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies decoded arrow input traverses the showcased RadioButton group and skips unavailable members.</summary>
+    [Fact]
+    public async Task Input_WhenRadioTraversalReceivesArrow_SelectsNextEligibleMemberAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(100, 60)));
+        using Gallery gallery = new();
+        await using Application application = new(
+            gallery,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "RadioButton")),
+            TestContext.Current.CancellationToken);
+        var first = await application.Dispatcher.InvokeAsync(
+            () => Find<RadioButton>(gallery.Content, static value =>
+                value.Content is ControlText { Content: "Traversal one" }),
+            TestContext.Current.CancellationToken);
+        var second = await application.Dispatcher.InvokeAsync(
+            () => Find<RadioButton>(gallery.Content, static value =>
+                value.Content is ControlText { Content: "Traversal two" }),
+            TestContext.Current.CancellationToken);
+        var activeFirst = first.ShouldNotBeNull();
+        var activeSecond = second.ShouldNotBeNull();
+        await BringIntoViewAsync(activeFirst, gallery, application);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(activeFirst).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\u001b[C"u8);
+        await WaitUntilAsync(
+            () => activeSecond.IsChecked && RenderedGalleryContains(gallery, application.Size, "Traversal: two"),
+            application,
+            "RadioButton arrow traversal");
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Backspace removes one complete showcased ZWJ grapheme through decoded terminal input.</summary>
+    [Fact]
+    public async Task Input_WhenBackspaceTargetsUnicodeEditor_DeletesCompleteGraphemeAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(100, 70)));
+        using Gallery gallery = new();
+        await using Application application = new(
+            gallery,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "TextInput")),
+            TestContext.Current.CancellationToken);
+        var editor = await application.Dispatcher.InvokeAsync(
+            () => Find<TextInput>(gallery.Content, static value => value.Text == "Delete 👩‍💻"),
+            TestContext.Current.CancellationToken);
+        var activeEditor = editor.ShouldNotBeNull();
+        await BringIntoViewAsync(activeEditor, gallery, application);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(activeEditor).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\u007f"u8);
+        await WaitUntilAsync(
+            () => activeEditor.Text == "Delete ",
+            application,
+            "TextInput complete grapheme deletion");
+
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     private static T? Find<T>(Control control, Func<T, bool> predicate) where T : Control
     {
         ArgumentNullException.ThrowIfNull(control);
@@ -725,6 +836,15 @@ public sealed class GalleryInteractionTests
             application.FrameRendered -= Complete;
             _ = completion.TrySetResult();
         }
+    }
+
+    private static bool RenderedGalleryContains(Gallery gallery, Size size, string expected)
+    {
+        ArgumentNullException.ThrowIfNull(gallery);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expected);
+        using Frame frame = new(size);
+        gallery.Render(frame.Canvas);
+        return new Screen(frame).Text.Contains(expected, StringComparison.Ordinal);
     }
 
     private static async Task BringIntoViewAsync(

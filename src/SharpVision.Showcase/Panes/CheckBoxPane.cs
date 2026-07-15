@@ -69,6 +69,13 @@ internal sealed class CheckBoxPane: View
         eventProbe.Indeterminate += (_, _) => eventStatus.Content = "Events: Indeterminate";
         eventProbe.StateChanged += (_, _) => eventStatus.Content += " → StateChanged";
 
+        var programmaticStatus = new Text("Programmatic toggle: waiting");
+        var programmaticTarget = new CheckBox() { Content = new Text("Programmatic target") };
+        programmaticTarget.StateChanged += (_, eventArgs) =>
+            programmaticStatus.Content = $"Programmatic toggle: {eventArgs.Current} ({eventArgs.Cause})";
+        var programmaticTrigger = new Button() { Content = new Text("Toggle programmatically") };
+        programmaticTrigger.Click += (_, _) => programmaticTarget.PerformToggle();
+
         var settings = Doc.Card(Doc.Column(
             new Text("Export options") { Attributes = TerminalAttributes.Bold },
             new CheckBox { Content = new Text("Include metadata"), IsChecked = true },
@@ -107,7 +114,12 @@ internal sealed class CheckBoxPane: View
                 Doc.Example(
                     "Committed event order",
                     "Toggle the probe and read the exact state-specific → StateChanged sequence.",
-                    Doc.Column(eventProbe, eventStatus))),
+                    Doc.Column(eventProbe, eventStatus)),
+                Doc.Example(
+                    "Programmatic activation",
+                    "Toggle the target through PerformToggle. The same event contract reports Programmatic as the cause.",
+                    Doc.Column(programmaticTrigger, programmaticTarget, programmaticStatus),
+                    "target.PerformToggle();")),
             Doc.Section(
                 "Form recipe",
                 "Group related options and keep unavailable retained values visible as context.",

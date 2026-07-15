@@ -44,6 +44,11 @@ internal sealed class ButtonPane: View
         };
 
         var roleStatus = new Text("Window action: waiting");
+        var dialogFocusTarget = new Dock
+        {
+            CanFocus = true,
+            Children = { new Text("Focus here, then use Enter or Escape") },
+        };
         var dialogDefault = new Button() { Content = new Text("Apply"), IsDefault = true };
         dialogDefault.Click += (_, eventArgs) => roleStatus.Content = $"Window action: Apply ({eventArgs.Cause})";
         var dialogCancel = new Button() { Content = new Text("Cancel"), IsCancel = true };
@@ -51,10 +56,11 @@ internal sealed class ButtonPane: View
         var dialog = new Window
         {
             Width = Length.Cells(34),
-            Height = Length.Cells(9),
+            Height = Length.Cells(11),
             Title = "Command roles",
             Child = Doc.Column(
                 new Text("Enter chooses Apply; Escape chooses Cancel."),
+                dialogFocusTarget,
                 Doc.Row(dialogDefault, dialogCancel),
                 roleStatus),
         };
@@ -100,7 +106,7 @@ internal sealed class ButtonPane: View
                 "Default and cancel buttons become Enter and Escape fallbacks only inside an owning Window.",
                 Doc.Example(
                     "Dialog fallback actions",
-                    "Move focus within the window, then use Enter for Apply or Escape for Cancel. The same Click event reports the keyboard cause.",
+                    "Focus the neutral target, then use Enter for Apply or Escape for Cancel. The owning Window invokes the matching role through its public activation path.",
                     dialog)),
             Doc.Section(
                 "Chrome and states",

@@ -59,6 +59,7 @@ public sealed class DisplayPaneTests
 
         // Assert
         content.ShouldContain("Catalog entry:");
+        content.ShouldContain("Impact.Measure");
         buttons.ShouldContain(value => !value.IsEnabled);
         ControlTree.FindAll<CheckBox>(page).ShouldNotBeEmpty();
     }

@@ -138,7 +138,7 @@ internal sealed class ThemingPane: View
                     "ShowcasePanel label placement",
                     "Choose all four placements; LabelPlacement is a custom style property, not a private theme mechanism.",
                     placement,
-                    "var property = StyleProperty<LabelPlacement>.Register<ShowcasePanel>(\"LabelPlacement\");")));
+                    "var property = StyleProperty<LabelPlacement>.Register<ShowcasePanel>(\n    \"label-placement\",\n    LabelPlacement.Left,\n    Impact.Measure);")));
     }
 
     private static Stack BuildRoleSwatches()
