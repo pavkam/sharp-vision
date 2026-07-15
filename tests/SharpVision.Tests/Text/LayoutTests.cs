@@ -163,6 +163,116 @@ public sealed class LayoutTests
         lines[0].ShouldBe(new Line(1, 1, 1, 1, true));
     }
 
+    /// <summary>Verifies word overflow prefers a complete separator boundary.</summary>
+    [Fact]
+    public void Format_WhenOverflowWrapIsUsed_MovesWholeWordToNextLine()
+    {
+        Span<Line> lines = stackalloc Line[4];
+
+        var count = TextLayout.Format(
+            "one two",
+            5,
+            Overflow.Wrap,
+            Alignment.Start,
+            Ambiguous.Narrow,
+            lines);
+
+        count.ShouldBe(2);
+        lines[0].ShouldBe(new Line(0, 4, 4, 0, false));
+        lines[1].ShouldBe(new Line(4, 3, 3, 0, false));
+    }
+
+    /// <summary>Verifies anywhere overflow breaks only between complete grapheme clusters.</summary>
+    [Fact]
+    public void Format_WhenOverflowWrapAnywhereIsUsed_PreservesGraphemes()
+    {
+        Span<Line> lines = stackalloc Line[4];
+
+        var count = TextLayout.Format(
+            "e\u0301界",
+            1,
+            Overflow.WrapAnywhere,
+            Alignment.Start,
+            Ambiguous.Narrow,
+            lines);
+
+        count.ShouldBe(2);
+        lines[0].ShouldBe(new Line(0, 2, 1, 0, false));
+        lines[1].ShouldBe(new Line(3, 0, 0, 0, false));
+    }
+
+    /// <summary>Verifies clip overflow keeps one line ending at a complete grapheme.</summary>
+    [Fact]
+    public void Format_WhenOverflowClipIsUsed_ClipsCompleteCluster()
+    {
+        Span<Line> lines = stackalloc Line[2];
+
+        var count = TextLayout.Format(
+            "ab界",
+            3,
+            Overflow.Clip,
+            Alignment.Start,
+            Ambiguous.Narrow,
+            lines);
+
+        count.ShouldBe(1);
+        lines[0].ShouldBe(new Line(0, 2, 2, 0, false));
+    }
+
+    /// <summary>Verifies ellipsis overflow prefers a word boundary and reserves the marker width.</summary>
+    [Fact]
+    public void Format_WhenOverflowEllipsisIsUsed_TrimsAtWordBoundary()
+    {
+        Span<Line> lines = stackalloc Line[2];
+
+        var count = TextLayout.Format(
+            "one two",
+            6,
+            Overflow.Ellipsis,
+            Alignment.Start,
+            Ambiguous.Narrow,
+            lines);
+
+        count.ShouldBe(1);
+        lines[0].ShouldBe(new Line(0, 3, 4, 0, true));
+    }
+
+    /// <summary>Verifies visible overflow reports complete width without clipping.</summary>
+    [Fact]
+    public void Format_WhenOverflowVisibleIsUsed_KeepsCompleteLogicalLine()
+    {
+        Span<Line> lines = stackalloc Line[2];
+
+        var count = TextLayout.Format(
+            "abcdefgh",
+            4,
+            Overflow.Visible,
+            Alignment.Start,
+            Ambiguous.Narrow,
+            lines);
+
+        count.ShouldBe(1);
+        lines[0].ShouldBe(new Line(0, 8, 8, 0, false));
+    }
+
+    /// <summary>Verifies an unknown overflow value fails before mutating caller storage.</summary>
+    [Fact]
+    public void Format_WhenOverflowIsUnknown_ThrowsBeforeWritingDestination()
+    {
+        var lines = new[] { new Line(1, 1, 1, 1, true) };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            TextLayout.Format(
+                "x",
+                1,
+                (Overflow) 99,
+                Alignment.Start,
+                Ambiguous.Narrow,
+                lines));
+
+        lines[0].ShouldBe(new Line(1, 1, 1, 1, true));
+    }
+
     private static Line[] Format(
         string content,
         int width,

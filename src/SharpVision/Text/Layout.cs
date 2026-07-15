@@ -11,6 +11,39 @@ public static class Layout
     private const int _tabSize = 4;
     private const string _ellipsis = "…";
 
+    /// <summary>Formats text with one overflow policy into caller-owned line storage.</summary>
+    /// <param name="value">The UTF-16 text borrowed for this call.</param>
+    /// <param name="width">The non-negative finite line width in terminal cells.</param>
+    /// <param name="overflow">The horizontal overflow policy.</param>
+    /// <param name="alignment">The horizontal placement policy.</param>
+    /// <param name="ambiguous">The East Asian Ambiguous width policy.</param>
+    /// <param name="destination">Caller-owned prefix storage.</param>
+    /// <returns>The complete required line count, which may exceed destination length.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The width is negative or an enum value is unknown.
+    /// </exception>
+    public static int Format(
+        ReadOnlySpan<char> value,
+        int width,
+        Overflow overflow,
+        Alignment alignment,
+        Ambiguous ambiguous,
+        Span<Line> destination)
+    {
+        Validate(overflow);
+        var (wrapping, trimming) = overflow switch
+        {
+            Overflow.Wrap => (Wrapping.Word, Trimming.None),
+            Overflow.WrapAnywhere => (Wrapping.Grapheme, Trimming.None),
+            Overflow.Clip => (Wrapping.None, Trimming.Clip),
+            Overflow.Ellipsis => (Wrapping.None, Trimming.WordEllipsis),
+            Overflow.Visible => (Wrapping.None, Trimming.None),
+            _ => throw new UnreachableException(),
+        };
+
+        return Format(value, width, wrapping, trimming, alignment, ambiguous, destination);
+    }
+
     /// <summary>Formats text into caller-owned line storage and reports required capacity.</summary>
     /// <param name="value">The UTF-16 text borrowed for this call.</param>
     /// <param name="width">The non-negative finite line width in terminal cells.</param>
