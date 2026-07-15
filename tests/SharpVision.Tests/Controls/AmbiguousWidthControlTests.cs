@@ -30,17 +30,18 @@ public sealed class AmbiguousWidthControlTests
     [Fact]
     public void Shadow_WhenAmbiguousWidthIsWide_RendersPortableBlockGlyph()
     {
-        Shadow shadow = new()
+        LayoutProbe control = new()
         {
-            Child = new ProbeControl(new Size(2, 1)),
-            Mode = ShadowMode.BlockGlyph,
-            Offset = new Point(1, 1),
+            HasShadow = true,
+            ShadowMode = ShadowMode.BlockGlyph,
+            ShadowOffset = new Point(1, 1),
         };
-        shadow.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(shadow, new Size(2, 1));
+        control.Children.Add(new ProbeControl(new Size(2, 1)));
+        control.SetCellPolicy(new Policy(Ambiguous.Wide));
+        new Engine().Layout(control, new Size(2, 1));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
-        shadow.Render(frame.Canvas);
+        control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("#");
     }

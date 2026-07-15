@@ -464,9 +464,16 @@ record.
   `tests/SharpVision.Tests/Controls/ShadowTests.cs`
 - Create: `tests/SharpVision.Tests/Controls/IntrinsicShadowTests.cs` (port the
   `Shadow` render contract onto a plain control)
-- Modify: `tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs` and
-  the showcase inventory (`Gallery.cs` +
+- Modify: `src/SharpVision/Controls/ControlChrome.cs`,
+  `src/SharpVision/Controls/ShadowMode.cs`,
+  `tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs`,
+  `tests/SharpVision.Tests/Styling/ControlChromeTests.cs`, and the showcase
+  inventory (`Gallery.cs` +
   `GalleryTests`/`GalleryRenderingTests`/`TmuxSmokeTests`)
+- Delete: `docs/controls/display/shadow.md`
+- Modify: `docs/architecture/showcase.md`, `docs/concepts/styling.md`,
+  `docs/controls/index.md`, `docs/controls/input/button.md`, and
+  `docs/testing/showcase.md`
 
 **Interfaces:**
 
@@ -478,7 +485,7 @@ record.
 This is atomic (deleting `Shadow.cs` breaks every referencing file, so all
 migrations land in one commit).
 
-- [ ] **Step 1: Find every reference**
+- [x] **Step 1: Find every reference**
 
 Run:
 
@@ -490,7 +497,11 @@ Expected on the execution base: `ShadowPane.cs`, `ShadowTests.cs`, and the
 ambiguous-width control test. Re-run immediately before deletion so a newly
 added call site cannot escape migration.
 
-- [ ] **Step 2: Port the Shadow render contract to `IntrinsicShadowTests.cs`**
+Evidence: the pre-edit audit found those expected sites plus an additional
+concrete construction in `Styling/ControlChromeTests.cs`; the broader required
+declaration/type-assertion search recorded every match before migration.
+
+- [x] **Step 2: Port the Shadow render contract to `IntrinsicShadowTests.cs`**
 
 Read the deleted-target `tests/SharpVision.Tests/Controls/ShadowTests.cs` and
 port its render cases (`Render_WhenModeIsBlockGlyph_DrawsTurboVisionFootprint`,
@@ -524,7 +535,16 @@ Port the invalid-mode and invalid-glyph cases to the same `LayoutProbe` public
 properties. Keep the existing `Frame`/`FrameOracle`, clipping, wide-owner, and
 hit-testing assertions unchanged.
 
-- [ ] **Step 3: Migrate production/showcase `Shadow` usages**
+Evidence: `IntrinsicShadowTests` ports seven observable validation, layout, and
+rendering cases onto `LayoutProbe`; the focused intrinsic plus ambiguous-width
+run passed 12/12. A temporary `HasShadow = false` change made the
+block-footprint test fail at `(3, 1)` (expected `▓`, actual empty), and
+restoring it passed 1/1. The composite case also proved that an explicit
+`ShadowBackground` must replace only shadow-cell backgrounds; its initial red
+exposed transparent background application in `ControlChrome`, and the minimal
+fix passed the focused suite.
+
+- [x] **Step 3: Migrate production/showcase `Shadow` usages**
 
 At this base there is no shipped production construction outside the page being
 deleted. In `AmbiguousWidthControlTests`, replace the wrapper with a
@@ -536,7 +556,11 @@ container and explicitly preserve every non-base wrapper default it relied on:
 `HasShadow = true`, `ShadowOffset = new Point(2, 1)`, and
 `ShadowAttributes = Attributes.Dim`.
 
-- [ ] **Step 4: Delete `Shadow.cs`, `ShadowPane.cs`, `ShadowTests.cs`; drop the
+Evidence: the ambiguous-width test now uses an intrinsic `LayoutProbe` and
+retains the `#` fallback assertion; the additional styling test uses the same
+chrome-rendering host and explicitly preserves dim shadow styling.
+
+- [x] **Step 4: Delete `Shadow.cs`, `ShadowPane.cs`, `ShadowTests.cs`; drop the
       `Shadow` showcase page**
 
 ```bash
@@ -549,32 +573,63 @@ Remove the `ShadowPane` entry from `Gallery.cs`'s page list, and remove
 and the `Down`-count in `TmuxSmokeTests.cs` (change 18 to 17 because Text moves
 one catalog position earlier).
 
-- [ ] **Step 5: Build + verify**
+Delete the obsolete Shadow control specification and update the control index,
+shared chrome contract, Button contract, showcase architecture, and showcase
+testing contract in the same atomic change.
+
+Evidence: the wrapper, page, old tests, and dedicated control specification are
+deleted; Gallery inventory and navigation are updated; the dedicated page test
+is removed; and the post-deletion concrete-type search is silent.
+
+- [x] **Step 5: Build + verify**
 
 Run:
 
 ```bash
 rg -n "new Shadow\b|ShouldBeOfType<Shadow>|Find<Shadow>|\bShadow shadow\b" src tests --glob '*.cs'
 dotnet build SharpVision.slnx --configuration Release --no-incremental
-dotnet test --project tests/SharpVision.Tests --filter-class "*IntrinsicShadowTests|*AmbiguousWidthControlTests" --timeout 180s
-dotnet test --project tests/SharpVision.Showcase.Tests --timeout 300s
+dotnet test --project tests/SharpVision.Tests --configuration Release --filter-class '*IntrinsicShadowTests' '*AmbiguousWidthControlTests' '*ControlChromeTests' --minimum-expected-tests 16 --timeout 180s
+dotnet test --project tests/SharpVision.Tests --configuration Release --no-build --minimum-expected-tests 3 --timeout 300s
+dotnet test --project tests/SharpVision.Showcase.Tests --configuration Release --no-build --minimum-expected-tests 3 --timeout 300s
 ```
 
-Expected: the search is silent; build and both test commands pass.
+Expected: the search is silent; build and all test commands pass.
+
+Evidence: the concrete-type search is silent; the no-incremental Release build
+completed with zero warnings and zero errors; the expanded focused suite passed
+16/16; full `SharpVision.Tests` passed 674/674; and full Showcase tests passed
+47/47. `make format`, `dotnet format --verify-no-changes`, the named-type and
+external-resource checks, `npm run test:docs` (24/24), scoped Prettier and
+Markdown lint, and `git diff --check` all passed. The repository-wide link
+checker reports only the known missing showcase image at
+`docs/architecture/showcase.md:52` and `docs/testing/showcase.md:31`. Full
+Markdown lint remains blocked by 88 pre-existing errors confined to older
+superpowers plan files; every Markdown file changed by Task 3 passes the scoped
+lint.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git commit -m "refactor: remove Shadow control; shadow is intrinsic via HasShadow" -- \
   src/SharpVision/Controls/Shadow.cs \
+  src/SharpVision/Controls/ControlChrome.cs \
+  src/SharpVision/Controls/ShadowMode.cs \
   src/SharpVision.Showcase/Gallery.cs \
   src/SharpVision.Showcase/Panes/ShadowPane.cs \
   tests/SharpVision.Tests/Controls/ShadowTests.cs \
   tests/SharpVision.Tests/Controls/IntrinsicShadowTests.cs \
   tests/SharpVision.Tests/Controls/AmbiguousWidthControlTests.cs \
+  tests/SharpVision.Tests/Styling/ControlChromeTests.cs \
   tests/SharpVision.Showcase.Tests/GalleryTests.cs \
   tests/SharpVision.Showcase.Tests/GalleryRenderingTests.cs \
-  tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs
+  tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs \
+  docs/architecture/showcase.md \
+  docs/concepts/styling.md \
+  docs/controls/display/shadow.md \
+  docs/controls/index.md \
+  docs/controls/input/button.md \
+  docs/testing/showcase.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 ```
 
 ---

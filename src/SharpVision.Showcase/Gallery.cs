@@ -36,7 +36,6 @@ public sealed class Gallery: Screen
         (RadioButtonPane.Title, static () => new RadioButtonPane()),
         (RichTextPane.Title, static () => new RichTextPane()),
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
-        (ShadowPane.Title, static () => new ShadowPane()),
         (StackPane.Title, static () => new StackPane()),
         (TablePane.Title, static () => new TablePane()),
         (TextPane.Title, static () => new TextPane()),

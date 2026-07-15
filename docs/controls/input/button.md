@@ -25,8 +25,10 @@ choices when an application needs a different surface. A composite shadow
 preserves the graphemes beneath its translated footprint and dims their style;
 block-glyph mode replaces that footprint outside the button body with the
 configured shade Rune. The shared
-[Shadow contract](../display/shadow.md#shadow-contract) defines the same two
-footprint semantics for controls that need to decorate an arbitrary child.
+[intrinsic chrome contract](../../concepts/styling.md#shared-chrome) defines the
+same two footprint semantics on every control; custom controls use the
+[styling extension point](../control.md#styling-extension-point) when they
+override rendering.
 
 Hover and focus appearance apply to the complete Button face, including its
 physical border, while the detached shadow retains normal dim styling. During a

@@ -54,25 +54,6 @@ public sealed class GalleryRenderingTests
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
     }
 
-    /// <summary>Verifies the Shadow page stages both modes separately with a readable block-glyph footprint.</summary>
-    [Fact]
-    public void Render_WhenShadowPageIsSelected_ShowsSeparatedCompositeAndBlockGlyphStages()
-    {
-        using Gallery gallery = CreateThemedGallery();
-        gallery.Select(IndexOf(gallery, "Shadow"));
-        Size size = new(100, 60);
-        new Engine().Layout(gallery, size);
-        using Frame frame = new(size);
-
-        gallery.Render(frame.Canvas);
-
-        Screen screen = new(frame);
-        screen.Text.ShouldContain("Composite stage");
-        screen.Text.ShouldContain("Block glyph stage");
-        screen.Text.ShouldContain("░");
-        screen.ValidateContinuations();
-    }
-
     /// <summary>Verifies the Button page demonstrates both shadow modes and a stationary flat variant.</summary>
     [Fact]
     public void CreateExamples_WhenButtonPageIsSelected_ProvidesShadowAndFlatVariants()

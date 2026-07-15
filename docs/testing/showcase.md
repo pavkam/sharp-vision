@@ -46,10 +46,12 @@ is a standalone Table with Input, Behavior, and Result columns rather than
 another prose card. The page test protects the narrative's borderless structure
 alongside its responsive wrapping.
 
-Canvas and Shadow have dedicated virtual-screen assertions: Canvas must retain
-its labeled fixed, percentage, edge-constraint, and clipping stages within the
-viewport, while Shadow must render separate composite and block-glyph stages
-with a readable light-shade footprint.
+Canvas has dedicated virtual-screen assertions for its labeled fixed,
+percentage, edge-constraint, and clipping stages within the viewport. Shadow is
+intrinsic control chrome rather than a catalog page: focused control-frame tests
+prove composite and block-glyph footprints, clipping, wide-cell styling, and
+hit-test exclusion, while the Button page retains visible composite,
+block-glyph, and shadow-disabled variants.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The

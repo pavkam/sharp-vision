@@ -26,7 +26,6 @@ public sealed class GalleryTests
         "RadioButton",
         "RichText",
         "ScrollBar",
-        "Shadow",
         "Stack",
         "Table",
         "Text",

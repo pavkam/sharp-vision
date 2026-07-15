@@ -30,8 +30,8 @@ composition shorthands for framing and arranging specimens.
 (`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
 concrete shipped control: Border, Button, Canvas, CheckBox, ComboBox, Dock,
 FigletText, Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar,
-ScrollView, Shadow, Stack, Table, Text, TextInput, Window, and Theming.
-Foundation types and unimplemented specifications are not navigation entries.
+ScrollView, Stack, Table, Text, TextInput, Window, and Theming. Foundation types
+and unimplemented specifications are not navigation entries.
 
 Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
 blocks: an Overview paragraph stating the control's purpose, followed by
@@ -43,11 +43,11 @@ narrative section; documentation prose lives inline next to the specimen it
 describes. `RichText` headings and example descriptions use word wrapping, so
 they reflow as the page narrows along with the live specimens.
 
-Canvas and Shadow demonstrate visual behavior as several labeled, framed live
-specimens rather than a single crowded sample. Each stage keeps the control's
-real layout and rendering path visible beside concise guidance: fixed,
-percentage, edge-constrained, layered, and clipped Canvas children; and separate
-composite and light-shade block-glyph shadows.
+Canvas demonstrates visual behavior as several labeled, framed live specimens
+rather than a single crowded sample. Each stage keeps fixed, percentage,
+edge-constrained, layered, and clipped children on the real layout and rendering
+path. Intrinsic shadow chrome is demonstrated by the Button page's composite,
+block-glyph, and disabled-shadow variants rather than a dedicated control page.
 
 ![Live colored dashboard captured from tmux](../images/showcase-dashboard.png)
 
