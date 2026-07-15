@@ -8,6 +8,38 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies hit testing, local coordinates, capture, and pointer state cleanup.</summary>
 public sealed class PointerTests
 {
+    /// <summary>Verifies removing focus eligibility releases focus without cancelling independent pointer capture.</summary>
+    [Fact]
+    public async Task CanFocus_WhenFocusedControlIsCaptured_ReleasesFocusAndPreservesCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
+            var child = new ProbeControl()
+            {
+                Bounds = new Rect(0, 0, 10, 5),
+                CanFocus = true,
+            };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var capture = new CaptureManager(root);
+            focus.Focus(child).ShouldBeTrue();
+            capture.Capture(child).ShouldBeTrue();
+            var cancellations = 0;
+            capture.Cancelled += (_, _) => cancellations++;
+
+            child.CanFocus = false;
+
+            focus.Focused.ShouldBeNull();
+            child.IsFocused.ShouldBeFalse();
+            capture.Captured.ShouldBeSameAs(child);
+            cancellations.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies pixel-only input cannot hit the top-left control.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerHasNoCells_DoesNotFabricateHitAsync()

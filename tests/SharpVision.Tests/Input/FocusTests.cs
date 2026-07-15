@@ -8,6 +8,195 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies transactional focus, navigation, and invalid-state cleanup.</summary>
 public sealed class FocusTests
 {
+    /// <summary>Verifies making the focused control ineligible commits uncancellable cleanup before notification returns.</summary>
+    [Fact]
+    public async Task CanFocus_WhenFocusedControlBecomesFalse_ReleasesFocusSynchronouslyAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var child = new ProbeControl() { CanFocus = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(child).ShouldBeTrue();
+            var changingCalls = 0;
+            var lostCalls = 0;
+            var order = new List<string>();
+            manager.Changing += (_, eventArgs) =>
+            {
+                changingCalls++;
+                eventArgs.Cancel = true;
+            };
+            manager.Lost += (_, eventArgs) =>
+            {
+                manager.Focused.ShouldBeNull();
+                child.CanFocus.ShouldBeFalse();
+                child.IsFocused.ShouldBeFalse();
+                eventArgs.Previous.ShouldBeSameAs(child);
+                eventArgs.Current.ShouldBeNull();
+                lostCalls++;
+                order.Add("lost");
+            };
+            child.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                {
+                    manager.Focused.ShouldBeNull();
+                    child.IsFocused.ShouldBeFalse();
+                    order.Add("can-focus");
+                }
+            };
+
+            child.CanFocus = false;
+
+            manager.Focused.ShouldBeNull();
+            child.IsFocused.ShouldBeFalse();
+            changingCalls.ShouldBe(0);
+            lostCalls.ShouldBe(1);
+            order.ShouldBe(["lost", "can-focus"]);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies ineligibility raised inside a focus notification is cleaned before the enclosing request returns.</summary>
+    [Fact]
+    public async Task Focus_WhenGainedMakesControlIneligible_CleansBeforeRequestReturnsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var child = new ProbeControl() { CanFocus = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            var focusReturned = false;
+            var gainedCalls = 0;
+            var lostCalls = 0;
+            var notificationCalls = 0;
+            manager.Gained += (_, eventArgs) =>
+            {
+                eventArgs.Current.ShouldBeSameAs(child);
+                gainedCalls++;
+                child.CanFocus = false;
+            };
+            manager.Lost += (_, eventArgs) =>
+            {
+                focusReturned.ShouldBeFalse();
+                manager.Focused.ShouldBeNull();
+                child.CanFocus.ShouldBeFalse();
+                child.IsFocused.ShouldBeFalse();
+                eventArgs.Previous.ShouldBeSameAs(child);
+                eventArgs.Current.ShouldBeNull();
+                lostCalls++;
+            };
+            child.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                {
+                    focusReturned.ShouldBeFalse();
+                    manager.Focused.ShouldBeNull();
+                    child.IsFocused.ShouldBeFalse();
+                    notificationCalls++;
+                }
+            };
+
+            manager.Focus(child).ShouldBeTrue();
+            focusReturned = true;
+
+            manager.Focused.ShouldBeNull();
+            child.IsFocused.ShouldBeFalse();
+            gainedCalls.ShouldBe(1);
+            lostCalls.ShouldBe(1);
+            notificationCalls.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies one control's local focus eligibility does not evict a focused descendant.</summary>
+    [Fact]
+    public async Task CanFocus_WhenAncestorBecomesFalse_PreservesDescendantFocusAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer() { CanFocus = true };
+            var child = new ProbeControl() { CanFocus = true };
+            root.Children.Add(child);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(child).ShouldBeTrue();
+
+            root.CanFocus = false;
+
+            manager.Focused.ShouldBeSameAs(child);
+            child.IsFocused.ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies one focus transaction drains eligibility notifications for both old and new targets.</summary>
+    [Fact]
+    public async Task Focus_WhenOldAndNewTargetsBecomeIneligible_PublishesEveryDeferredChangeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var previous = new ProbeControl() { CanFocus = true };
+            var next = new ProbeControl() { CanFocus = true };
+            root.Children.Add(previous);
+            root.Children.Add(next);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(previous).ShouldBeTrue();
+            var previousNotifications = 0;
+            var nextNotifications = 0;
+            previous.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                {
+                    manager.Focused.ShouldBeNull();
+                    previousNotifications++;
+                }
+            };
+            next.PropertyChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.PropertyName == nameof(Control.CanFocus))
+                {
+                    manager.Focused.ShouldBeNull();
+                    nextNotifications++;
+                }
+            };
+            manager.Changing += (_, eventArgs) =>
+            {
+                if (ReferenceEquals(eventArgs.Next, next))
+                {
+                    previous.CanFocus = false;
+                }
+            };
+            manager.Gained += (_, eventArgs) =>
+            {
+                if (ReferenceEquals(eventArgs.Current, next))
+                {
+                    next.CanFocus = false;
+                }
+            };
+
+            manager.Focus(next).ShouldBeTrue();
+
+            manager.Focused.ShouldBeNull();
+            previousNotifications.ShouldBe(1);
+            nextNotifications.ShouldBe(1);
+            previous.CanFocus = true;
+            previous.CanFocus = false;
+            previousNotifications.ShouldBe(3);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies commit happens before lost and gained callbacks.</summary>
     [Fact]
     public async Task Focus_WhenTargetIsEligible_CommitsBeforeNotificationsAsync()

@@ -226,12 +226,50 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     } = true;
 
     /// <summary>Gets or sets whether the control may receive keyboard focus.</summary>
+    /// <remarks>
+    /// Setting this property to false releases focus before the property-change
+    /// notification. During an active focus callback, both cleanup and notification
+    /// complete before the enclosing focus request returns. Pointer capture is unaffected.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool CanFocus
     {
         get;
-        set => _ = Set(ref field, value, Invalidation.Render);
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            Invalidate(Invalidation.Render);
+
+            if (CanFocusNotificationPending)
+            {
+                return;
+            }
+
+            CanFocusNotificationPending = true;
+
+            try
+            {
+                if (!value && FocusOwner?.Ineligible(this) == false)
+                {
+                    return;
+                }
+
+                PublishDeferredCanFocusChange();
+            }
+            catch
+            {
+                CanFocusNotificationPending = false;
+                throw;
+            }
+        }
     }
 
     /// <summary>Gets or sets the deterministic tab-order key.</summary>
@@ -342,6 +380,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     private bool IsArranging { get; set; }
 
     private bool IsRendering { get; set; }
+
+    private bool CanFocusNotificationPending { get; set; }
 
     private bool HasSelectedState { get; set; }
 
@@ -843,6 +883,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Invalidate(VisualStateInvalidation());
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused)));
         OnFocusChanged(value);
+    }
+
+    /// <summary>Publishes a focus-eligibility change after deferred manager cleanup commits.</summary>
+    internal void PublishDeferredCanFocusChange()
+    {
+        Debug.Assert(CanFocusNotificationPending, "Only a deferred eligibility change is published.");
+        CanFocusNotificationPending = false;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanFocus)));
     }
 
     /// <summary>Updates hover visual state on the owning dispatcher.</summary>

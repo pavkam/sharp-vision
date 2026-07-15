@@ -40,6 +40,17 @@ Detach, hide/collapse, disable, disposal, or manager disposal releases invalid
 focus deterministically. Modal focus containment and popup/menu restoration are
 Phase 5 responsibilities built from these manager guarantees.
 
+Setting `CanFocus` to false on the focused control commits the new eligibility
+before synchronously clearing `FocusManager.Focused` and `IsFocused`. This
+cleanup bypasses the cancellable `Changing` event, and `Lost` observes the
+committed false/null state before the `CanFocus` property-change notification.
+If eligibility changes from a `Changing`, `Lost`, or `Gained` callback, cleanup
+waits only for the active transaction guard to unwind and completes before the
+enclosing `Focus` request returns. Its `CanFocus` property-change notification
+is deferred behind that cleanup, preserving the same observable ordering. Focus
+eligibility is local to the control and independent of pointer capture, so this
+transition neither releases capture nor evicts a focused descendant.
+
 Terminal focus from
 [mode 1004](../protocols/paste-focus.md#paste-and-focus-contract) is separate
 from control focus and never invents a new focused control.
