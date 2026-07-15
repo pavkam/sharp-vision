@@ -29,9 +29,9 @@ composition shorthands for framing and arranging specimens.
 `Gallery` owns the stable catalog of pane titles and factories
 (`(string Name, Func<View> Create)[]`). The sidebar contains one entry for each
 concrete shipped control: Button, Canvas, CheckBox, ComboBox, Dock, FigletText,
-Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar, ScrollView,
-Stack, Table, Text, TextInput, Window, and Theming. Foundation types and
-unimplemented specifications are not navigation entries.
+Grid, List, Menu, Overlay, Popup, RadioButton, RichText, ScrollBar, Stack,
+Table, Text, TextInput, Window, and Theming. Foundation types and unimplemented
+specifications are not navigation entries.
 
 Each pane's `Build()` returns `Doc.Page` composed of one or more `Doc.Example`
 blocks: an Overview paragraph stating the control's purpose, followed by
@@ -52,20 +52,21 @@ block-glyph, and disabled-shadow variants rather than a dedicated control page.
 ## Responsive behavior
 
 The root is a `Dock` with a fixed 28-cell intrinsically bordered `Dock` sidebar
-and the main `ScrollView` in the remaining space. The sidebar owns product
-identity, component-only stateful navigation entries, and compact interaction
-hints; its selected, focused, hovered, and pressed states follow the active
-application theme. The sidebar footer hosts a theme picker `ComboBox` and a
-visible `Quit` button. The picker lists every theme in the embedded
-`SharpVision.Styling.ThemeCatalog.Default` catalog — the built-in Light and Dark
-themes plus the curated editor themes (Dracula, Nord, Gruvbox, Solarized, and
-others) — grouped dark-first then light, and republishes the chosen application
-theme when selected. The Theming page renders the 12 semantic `ColorRole` values
-as labeled color swatches of the active application theme, updating live as the
-sidebar picker changes themes. `Ctrl+C` also exits from anywhere: the gallery
-handles it as a key in the preview pass so it works even when the terminal's
-Kitty keyboard protocol reports `Ctrl+C` as a key event rather than raising a
-host cancellation signal. The executable app runs through
+and the main `Stack` in the remaining space. The main stack enables intrinsic
+`AutoScroll` on the vertical axis and reserves its scrollbar only when needed.
+The sidebar owns product identity, component-only stateful navigation entries,
+and compact interaction hints; its selected, focused, hovered, and pressed
+states follow the active application theme. The sidebar footer hosts a theme
+picker `ComboBox` and a visible `Quit` button. The picker lists every theme in
+the embedded `SharpVision.Styling.ThemeCatalog.Default` catalog — the built-in
+Light and Dark themes plus the curated editor themes (Dracula, Nord, Gruvbox,
+Solarized, and others) — grouped dark-first then light, and republishes the
+chosen application theme when selected. The Theming page renders the 12 semantic
+`ColorRole` values as labeled color swatches of the active application theme,
+updating live as the sidebar picker changes themes. `Ctrl+C` also exits from
+anywhere: the gallery handles it as a key in the preview pass so it works even
+when the terminal's Kitty keyboard protocol reports `Ctrl+C` as a key event
+rather than raising a host cancellation signal. The executable app runs through
 `ConsoleApplication.RunAsync` with a `Gallery` screen and no further
 configuration, so it gets the default xterm any-event (`1003`) SGR cell mouse
 reporting from `ConsoleRunOptions` while `ConsoleApplication` owns the Unix
