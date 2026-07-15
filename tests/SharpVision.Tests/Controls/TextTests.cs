@@ -317,7 +317,7 @@ public sealed class TextTests
 
         text.Render(frame.Canvas);
 
-        TerminalStyle style = frame.GetCell(default).Style;
+        var style = frame.GetCell(default).Style;
         style.Foreground.ShouldBe(Color.Indexed(2));
         style.Background.ShouldBe(Color.Rgb(16, 32, 48));
         style.Underline.ShouldBe(Underline.Curly);
@@ -385,7 +385,7 @@ public sealed class TextTests
 
         text.Render(frame.Canvas);
 
-        TerminalStyle style = frame.GetCell(default).Style;
+        var style = frame.GetCell(default).Style;
         style.Attributes.ShouldBe(TerminalAttributes.None);
         style.Underline.ShouldBe(Underline.Dashed);
     }

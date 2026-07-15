@@ -3,13 +3,11 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Styling;
-using SharpVision.Terminal.Protocols;
 using SharpVision.Terminal.Rendering;
 using SharpVision.Text;
 
+using TerminalUnderline = Underline;
 using TextLayout = SharpVision.Text.Layout;
-using TerminalUnderline = SharpVision.Terminal.Protocols.Underline;
 
 /// <summary>Displays grapheme-safe inline-markup text through semantic terminal cells.</summary>
 public sealed class Text: Control

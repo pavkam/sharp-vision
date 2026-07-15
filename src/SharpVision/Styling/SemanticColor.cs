@@ -23,14 +23,11 @@ internal static class SemanticColor
 
         var role = (ColorRole) color.RoleId;
 
-        if (!Enum.IsDefined(role))
-        {
-            throw new ArgumentException(
+        return !Enum.IsDefined(role)
+            ? throw new ArgumentException(
                 $"The color carries an unknown role id {color.RoleId}; use a ThemeColors.* value.",
-                nameof(color));
-        }
-
-        return context is not null && context.TryGetColor(role, out var resolved)
+                nameof(color))
+            : context is not null && context.TryGetColor(role, out var resolved)
             ? resolved
             : Color.Default;
     }

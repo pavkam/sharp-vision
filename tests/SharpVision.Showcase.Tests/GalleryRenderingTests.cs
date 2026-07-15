@@ -175,7 +175,7 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "Text"));
         new Engine().Layout(gallery, new Size(120, 80));
 
-        ControlText marked = FindAll<ControlText>(gallery.Content)
+        var marked = FindAll<ControlText>(gallery.Content)
             .Single(text => text.Content.Contains("<rapidblink>", StringComparison.Ordinal));
 
         marked.Content.ShouldContain("<b>");

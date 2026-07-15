@@ -117,7 +117,7 @@ public sealed class DisplayPanelPerformanceTests
 
         content.Children.Add(new ControlText("e\u0301 · 界 · 👩‍💻")
         {
-            Overflow = SharpVision.Text.Overflow.Wrap,
+            Overflow = Overflow.Wrap,
         });
         return root;
     }

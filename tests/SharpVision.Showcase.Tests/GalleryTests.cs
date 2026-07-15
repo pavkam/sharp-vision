@@ -83,7 +83,7 @@ public sealed class GalleryTests
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
 
-            FindText(gallery.Content, "<b>Overview</b>").ShouldNotBeNull(gallery.SelectedPage);
+            _ = FindText(gallery.Content, "<b>Overview</b>").ShouldNotBeNull(gallery.SelectedPage);
         }
     }
 
@@ -161,12 +161,12 @@ public sealed class GalleryTests
         }
     }
 
-    private static SharpVision.Controls.Text? FindText(Control control, string content)
+    private static ControlText? FindText(Control control, string content)
     {
         ArgumentNullException.ThrowIfNull(control);
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
 
-        if (control is SharpVision.Controls.Text text &&
+        if (control is ControlText text &&
             text.Content.Contains(content, StringComparison.Ordinal))
         {
             return text;
