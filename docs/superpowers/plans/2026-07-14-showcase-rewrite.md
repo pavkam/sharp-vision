@@ -1,5 +1,7 @@
 # Showcase Rewrite Implementation Plan
 
+<!-- markdownlint-disable MD013 -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development to implement this plan task-by-task.
 > Steps use checkbox (`- [ ]`) syntax.

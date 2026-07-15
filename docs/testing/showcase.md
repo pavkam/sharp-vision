@@ -27,16 +27,15 @@ previous offset, protecting leaf-first wheel routing from future regressions.
 Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
 component navigation, non-default cell colors, page headings, automatic
-overflow, semantic text, and every wide-cell continuation relationship. The
-checked-in [live tmux capture](../images/showcase-dashboard.png) is visually
-reviewed but does not replace cell, event, focus, resize, or scrolling
-assertions. It is also a required live interaction smoke test: it sends Down,
-then a no-button SGR motion report, proves Canvas receives the visible hover
-marker, and proves a terminal leave report clears it. It next sends independent
-complete SGR clicks for Canvas and Button, waiting for each visible page change
-without adding a trailing key that could mask input buffering. It also opens and
-selects the Figlet font dropdown, then drags the ScrollBar thumb with SGR press,
-motion, and release reports, asserting each visible committed value.
+overflow, semantic text, and every wide-cell continuation relationship. The live
+tmux smoke test supplements but does not replace cell, event, focus, resize, or
+scrolling assertions. It sends Down, then a no-button SGR motion report, proves
+Canvas receives the visible hover marker, and proves a terminal leave report
+clears it. It next sends independent complete SGR clicks for Canvas and Button,
+waiting for each visible page change without adding a trailing key that could
+mask input buffering. It also opens and selects the Figlet font dropdown, then
+drags the ScrollBar thumb with SGR press, motion, and release reports, asserting
+each visible committed value.
 
 Every page must also contain a Practical recipe: one borderless, full-width,
 word-wrapped RichText narrative that explains when to use the control, describes

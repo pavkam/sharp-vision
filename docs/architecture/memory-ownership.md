@@ -69,6 +69,11 @@ dispatcher reference for the lifetime of the attachment. A control subscribes
 only to its direct `Style`; replacement, detachment where applicable, and
 disposal remove owned registrations deterministically.
 
+Intrinsic border and shadow properties add no child or buffer ownership. When
+chrome needs a distinct node, an ordinary container owns the framed child under
+the same collection contract; no border or shadow wrapper has a separate
+lifetime.
+
 Routed input snapshots both ancestry and matching handler registrations before
 invocation. The router owns its rented arrays only through synchronous preview,
 target, and bubble delivery and clears them before pool return. Handlers must

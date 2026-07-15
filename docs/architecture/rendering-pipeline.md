@@ -64,8 +64,10 @@ coordinates remain absolute terminal cells, avoiding accumulated transform
 rounding.
 
 Derived controls draw only through semantic `Canvas` operations and use their
-padding-deflated content bounds. They never write ANSI, split graphemes, or
-touch pooled frame storage.
+border-then-padding-deflated content bounds. The base `OnRender` draws shared
+body, border, and shadow chrome; a full `OnRender` override calls protected
+`RenderChrome` when it opts into that intrinsic chrome. Controls never write
+ANSI, split graphemes, or touch pooled frame storage.
 
 ## Commit and invalidation
 

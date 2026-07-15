@@ -19,6 +19,13 @@ state styles, default cursor preservation, render-time invalidation, and
 exception recovery. Private draw-call recordings supplement these semantic
 oracles; they never replace them.
 
+Intrinsic chrome tests set border and shadow properties on ordinary controls.
+They prove border reservation and partial-edge glyphs, shadow visual overflow,
+composite and block footprints, signed-offset clipping, wide-cell ownership,
+validation-before-mutation, and hit-test exclusion. A chrome-rendering `Dock`
+supplies a distinct frame node when the subject overrides `OnRender` without
+calling `RenderChrome`.
+
 ## End-to-end path
 
 Representative tests start with raw terminal key/mouse/paste/resize bytes and
