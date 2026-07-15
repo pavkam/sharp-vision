@@ -61,8 +61,10 @@ The root is a `Dock`. Its fixed 28-cell sidebar is another `Dock` whose frame is
 configured with intrinsic `BorderThickness` and `BorderGlyphs`; an intrinsically
 scrollable `Stack` occupies the remaining space. The sidebar owns product
 identity, component-only stateful navigation entries, and compact interaction
-hints; its selected, focused, hovered, and pressed states follow the active
-application theme. The sidebar footer hosts a theme picker `ComboBox` and a
+hints. Each entry is a single-content `Pressable` whose inherited Text content
+is measured and arranged beside its marker; selected, focused, hovered, and
+pressed states follow the active application theme. The sidebar footer hosts a
+theme picker `ComboBox` and a
 visible `Quit` button. The picker lists every theme in the embedded
 `SharpVision.Styling.ThemeCatalog.Default` catalog — the built-in Light and Dark
 themes plus the curated editor themes (Dracula, Nord, Gruvbox, Solarized, and

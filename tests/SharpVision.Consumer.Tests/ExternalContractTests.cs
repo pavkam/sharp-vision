@@ -6,6 +6,39 @@ namespace SharpVision.Consumer.Tests;
 /// <summary>Verifies third-party controls need only the documented public and protected surface.</summary>
 public sealed class ExternalContractTests
 {
+    /// <summary>Verifies an unfriended third-party toggle can derive from the single-content pressable role.</summary>
+    [Fact]
+    public void ExternalToggleChip_WhenInspected_UsesOnlyThePublicPressableSurface()
+    {
+        var type = typeof(ExternalContractTests).Assembly.GetType("SharpVision.Consumer.Tests.ExternalToggleChip")
+            .ShouldNotBeNull();
+
+        type.BaseType.ShouldBe(typeof(Pressable));
+        typeof(ContentControl).IsAssignableFrom(type).ShouldBeTrue();
+        typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
+        type.GetProperty("Children").ShouldBeNull();
+    }
+
+    /// <summary>Verifies external activation resolves checked styles and publishes once.</summary>
+    [Fact]
+    public void ExternalToggleChip_WhenActivated_UsesProtectedVisualStateMutation()
+    {
+        var style = new ControlStyle<ExternalToggleChip>();
+        style.Set(Control.ForegroundProperty, State.Checked, Color.Indexed(5));
+        var content = new Gauge();
+        var chip = new ExternalToggleChip { Content = content, Style = style };
+        List<string?> properties = [];
+        chip.PropertyChanged += (_, eventArgs) => properties.Add(eventArgs.PropertyName);
+
+        chip.PerformToggle();
+
+        chip.IsChecked.ShouldBeTrue();
+        chip.ActivationCount.ShouldBe(1);
+        (chip.Foreground == Color.Indexed(5)).ShouldBeTrue();
+        content.Parent.ShouldBeSameAs(chip);
+        properties.ShouldContain(nameof(ExternalToggleChip.IsChecked));
+    }
+
     /// <summary>Verifies an external single-content role publishes committed replacement state.</summary>
     [Fact]
     public void Content_WhenExternalRoleReplacesValue_UsesPublicOwnershipContract()

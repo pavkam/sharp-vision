@@ -1327,6 +1327,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
 
         HasSelectedState = value;
+        InvalidateResolvedStyleCache();
         Invalidate(VisualStateInvalidation());
         VisitChildren(child => child.SetSelectedState(value));
     }
@@ -1770,6 +1771,40 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         field = value;
         Invalidate(InvalidationFor(impact));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
+    }
+
+    /// <summary>Commits one derived semantic state and invalidates the active visual-state cascade.</summary>
+    /// <typeparam name="T">The semantic state value type.</typeparam>
+    /// <param name="field">The current backing field.</param>
+    /// <param name="value">The validated replacement value.</param>
+    /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <returns>Whether a changed value was committed.</returns>
+    /// <remarks>
+    /// Use this seam when a CLR property changes <see cref="GetVisualState"/>. The helper clears
+    /// resolved values before calculating the strongest impact declared by the newly active state.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected bool SetVisualStateProperty<T>(
+        ref T field,
+        T value,
+        [CallerMemberName] string? propertyName = null)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        VerifyMutable();
+
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return false;
+        }
+
+        field = value;
+        InvalidateResolvedStyleCache();
+        Invalidate(VisualStateInvalidation());
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         return true;
     }

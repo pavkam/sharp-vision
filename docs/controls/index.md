@@ -12,6 +12,8 @@ All controls derive from the
 
 - [ContentControl](content-control.md#contentcontrol-contract) owns zero or one
   publicly replaceable content control.
+- [Pressable](pressable.md#pressable-contract) adds focus and completed
+  activation to that single-content role.
 
 ### Display
 
@@ -49,6 +51,6 @@ neither path when it needs a visible frame or shadow. See the
 
 - [List](collections/list.md#list-contract)
 - [Menu](menus/menu.md#menu-contract)
-- [MenuItem](menus/menu-item.md#menuitem-contract)
+- [MenuItem and MenuSeparator](menus/menu-item.md#menuitem-contract)
 - [Popup](windows/popup.md#popup-contract)
 - [Window](windows/window.md#window-contract)

@@ -26,9 +26,10 @@ public sealed class ButtonTests
         button.Glyphs.ShouldBe(Glyphs.Rounded);
         button.HasShadow.ShouldBeTrue();
         button.ShadowOffset.ShouldBe(new Point(1, 1));
-        button.Children.Add(new ProbeControl());
-        _ = Should.Throw<InvalidOperationException>(() =>
-            button.Children.Add(new ProbeControl()));
+        var content = new ProbeControl();
+        button.Content = content;
+        content.Parent.ShouldBeSameAs(button);
+        typeof(Button).GetProperty("Children").ShouldBeNull();
     }
 
     /// <summary>Verifies the default chrome preserves one content cell on every physical edge.</summary>

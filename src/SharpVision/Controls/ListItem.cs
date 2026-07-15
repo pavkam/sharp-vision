@@ -8,18 +8,16 @@ using SharpVision.Terminal.Input;
 /// <summary>Owns one realized List template control and its selection behavior.</summary>
 internal sealed class ListItem: Pressable
 {
-    private bool _isSelected;
-
     /// <summary>Initializes one indexed detached realized control.</summary>
     /// <param name="index">The non-negative stable item index.</param>
     /// <param name="content">The non-null detached template control.</param>
-    internal ListItem(int index, Control content) : base(capacity: 1)
+    internal ListItem(int index, Control content)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
         HorizontalAlignment = HorizontalAlignment.Stretch;
         Index = index;
-        Children.Add(content);
+        Content = content;
     }
 
     /// <summary>Raised after eligible Space, Enter, or primary pointer activation.</summary>
@@ -28,11 +26,8 @@ internal sealed class ListItem: Pressable
     /// <summary>Gets the stable item index.</summary>
     internal int Index { get; }
 
-    /// <summary>Gets the owned template control.</summary>
-    internal Control Content => Children[0];
-
     /// <summary>Gets whether this item is committed selected.</summary>
-    internal bool IsSelected => _isSelected;
+    internal bool IsSelected { get; private set; }
 
     /// <summary>Gets modifiers captured from the activation transition.</summary>
     internal Modifiers LastModifiers { get; private set; }
@@ -41,7 +36,7 @@ internal sealed class ListItem: Pressable
     internal Code? LastKey { get; private set; }
 
     /// <summary>Gets whether content is effectively available for navigation and activation.</summary>
-    internal bool IsAvailable => Content.EffectiveIsEnabled && Content.EffectiveIsVisible;
+    internal bool IsAvailable => Content is { } content && content.EffectiveIsEnabled && content.EffectiveIsVisible;
 
     /// <summary>Commits selected visual state after the owning transaction.</summary>
     /// <param name="value">The committed selected flag.</param>
@@ -84,10 +79,15 @@ internal sealed class ListItem: Pressable
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        Content.Measure(constraint);
-        return new Size(
-            Add(Content.DesiredSize.Width, Content.Margin.Horizontal),
-            Add(Content.DesiredSize.Height, Content.Margin.Vertical));
+        var content = Content;
+        Debug.Assert(content is not null, "A realized ListItem always owns template content.");
+        var desired = MeasureChild(content, constraint);
+
+        return content.Visibility == Visibility.Collapsed
+            ? default
+            : new Size(
+                Add(desired.Width, content.Margin.Horizontal),
+                Add(desired.Height, content.Margin.Vertical));
     }
 
     /// <inheritdoc/>
@@ -102,8 +102,12 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        Content.Arrange(bounds, widthResolved: true, heightResolved: false);
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        var content = Content;
+        Debug.Assert(content is not null, "A realized ListItem always owns template content.");
+        ArrangeChild(content, bounds, ResolvedAxes.Width);
+    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -126,9 +130,15 @@ internal sealed class ListItem: Pressable
 
     private void Commit(bool value)
     {
-        if (SetProperty(ref _isSelected, value, ChangeImpact.Render, nameof(IsSelected)))
+        VerifyMutable();
+
+        if (IsSelected == value)
         {
-            SetSelectedState(value);
+            return;
         }
+
+        IsSelected = value;
+        SetSelectedState(value);
+        NotifyPropertyChanged(nameof(IsSelected), ChangeImpact.None);
     }
 }

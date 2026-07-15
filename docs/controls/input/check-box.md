@@ -2,8 +2,8 @@
 
 ## CheckBox contract
 
-`CheckBox` is a focusable toggle with optional content and explicit two- or
-three-state behavior.
+`CheckBox` is a sealed [`Pressable`](../pressable.md#pressable-contract) toggle
+with optional inherited `Content` and explicit two- or three-state behavior.
 
 ## API
 
@@ -15,8 +15,11 @@ three-state behavior.
 - `Checked`, `Unchecked`, `Indeterminate`, and `StateChanged` are control
   events.
 
-State setters validate before mutation, update visual state, invalidate render,
-then raise the specific event followed by `StateChanged`.
+State setters validate before mutation, clear resolved style caches, and request
+the strongest impact declared by the active visual-state styles. They then
+raise the specific event followed by `StateChanged`. Disabling three-state mode
+from null stages `IsThreeState = false` and `IsChecked = false` before either
+property notification, so no callback can observe an invalid false/null pair.
 
 The shipped events carry immutable `CheckChangedEventArgs` with previous/current
 state and Keyboard, Pointer, or Programmatic cause. `PerformToggle()` shares the

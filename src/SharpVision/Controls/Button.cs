@@ -22,22 +22,12 @@ public sealed partial class Button: Pressable
     #region Construction and command properties
 
     /// <summary>Initializes an empty focusable Button with a rounded border and compact shadow.</summary>
-    public Button() : base(capacity: 1)
+    public Button()
     {
     }
 
     /// <summary>Raised after released state commits and before command execution.</summary>
     public event EventHandler<ActivationEventArgs>? Click;
-
-    /// <summary>Gets or atomically sets the optional owned content.</summary>
-    /// <exception cref="ArgumentException">The value cannot be owned by this Button.</exception>
-    /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Button or value is disposed.</exception>
-    public Control? Content
-    {
-        get => Children.Count == 0 ? null : Children[0];
-        set => Children.SetOnly(value);
-    }
 
     /// <summary>Gets or sets the optional command invoked after Click.</summary>
     /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
@@ -141,15 +131,23 @@ public sealed partial class Button: Pressable
             return default;
         }
 
-        content.Measure(constraint);
-        return new Size(
-            Add(content.DesiredSize.Width, content.Margin.Horizontal),
-            Add(content.DesiredSize.Height, content.Margin.Vertical));
+        var desired = MeasureChild(content, constraint);
+
+        return content.Visibility == Visibility.Collapsed
+            ? default
+            : new Size(
+                Add(desired.Width, content.Margin.Horizontal),
+                Add(desired.Height, content.Margin.Vertical));
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        Content?.Arrange(FaceContentBounds(bounds), widthResolved: true, heightResolved: true);
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        if (Content is { } content)
+        {
+            ArrangeChild(content, FaceContentBounds(bounds), ResolvedAxes.Both);
+        }
+    }
 
     /// <inheritdoc/>
     protected override Rect VisualBounds =>
@@ -185,7 +183,7 @@ public sealed partial class Button: Pressable
 
         // Pointer and keyboard press state must be drawable before a later
         // layout drain, so keep owned content in the same translated face box.
-        content.Arrange(FaceContentBounds(ContentBounds), widthResolved: true, heightResolved: true);
+        ArrangeChild(content, FaceContentBounds(ContentBounds), ResolvedAxes.Both);
         Invalidate(Invalidation.Arrange);
     }
 

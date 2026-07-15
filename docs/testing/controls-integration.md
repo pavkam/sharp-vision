@@ -34,12 +34,15 @@ remain inset exactly once.
 
 `SharpVision.Consumer.Tests` references only the production `SharpVision`
 project and receives no friend access. Its independently compiled `Gauge`,
-`FlowPanel`, `OverflowPanel`, `InteractiveProbe`, and `ExternalContentControl`
-prove protected property mutation, Unicode-aware measurement/rendering, ordinary
-and unclipped custom layout, direct-child layout, public single-content
-ownership, lifecycle publication, focus, capture, and capture-cancellation
-ordering. `ExternalContentControl` also proves inherited content layout,
-rendering, hit testing, and committed change observation without tree internals.
+`FlowPanel`, `OverflowPanel`, `InteractiveProbe`, `ExternalContentControl`, and
+`ExternalToggleChip` prove protected property and visual-state mutation,
+Unicode-aware measurement/rendering, ordinary and unclipped custom layout,
+direct-child layout, public single-content ownership, lifecycle publication,
+focus, capture, and capture-cancellation ordering. `ExternalContentControl`
+also proves inherited content layout, rendering, hit testing, and committed
+change observation without tree internals. `ExternalToggleChip` proves an
+unfriended third party can derive from `Pressable`, assign inherited `Content`,
+and activate checked styling without internal access.
 The external `FlowPanel` proves that setting `BorderThickness` insets owned
 leaves without third-party box-model plumbing; `Gauge.OnRender` calls
 `RenderChrome` before custom content drawn through `ContentBounds`. A reflection

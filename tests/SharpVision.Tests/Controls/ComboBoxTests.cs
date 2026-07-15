@@ -30,6 +30,47 @@ public sealed class ComboBoxTests
         box.HitTest(new Point(0, 1)).ShouldBeNull();
     }
 
+    /// <summary>Verifies the field owns only a Popup and the Popup exclusively owns the private List.</summary>
+    [Fact]
+    public void Ownership_WhenConstructed_UsesOnePrivatePopupChain()
+    {
+        var box = new ComboBox();
+
+        box.OwnedControlCount.ShouldBe(1);
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var list = OwnedTree.Find<SharpVision.Controls.List>(popup).ShouldNotBeNull();
+        popup.Parent.ShouldBeSameAs(box);
+        list.Parent.ShouldBeSameAs(popup);
+        popup.Content.ShouldBeSameAs(list);
+    }
+
+    /// <summary>Verifies ComboBox publishes its committed index before forwarding selection change.</summary>
+    [Fact]
+    public void SelectedIndex_WhenChanged_PublishesPropertyBeforeSelectionEvent()
+    {
+        var box = new ComboBox() { Items = ["Small", "Large"], SelectedIndex = 0 };
+        List<string> order = [];
+        box.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ComboBox.SelectedIndex))
+            {
+                box.SelectedIndex.ShouldBe(1);
+                order.Add("property");
+            }
+        };
+        box.SelectionChanged += (_, eventArgs) =>
+        {
+            box.SelectedIndex.ShouldBe(1);
+            eventArgs.AddedIndexes.ToArray().ShouldBe([1]);
+            eventArgs.RemovedIndexes.ToArray().ShouldBe([0]);
+            order.Add("event");
+        };
+
+        box.SelectedIndex = 1;
+
+        order.ShouldBe(["property", "event"]);
+    }
+
     /// <summary>Verifies an open drop-down uses an opaque inherited surface inside a visible frame.</summary>
     [Fact]
     public void Render_WhenOpen_UsesOpaqueFramedDropDownSurface()
@@ -56,7 +97,7 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var popup = box.Children[0].ShouldBeOfType<Popup>();
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
         var list = popup.Content.ShouldBeOfType<List>();
         list.DesiredSize.Height.ShouldBeGreaterThan(0);
         popup.SurfaceBounds.Height.ShouldBeGreaterThan(2);
@@ -80,7 +121,7 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var popup = box.Children[0].ShouldBeOfType<Popup>();
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
         var list = popup.Content.ShouldBeOfType<List>();
         FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("1");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 1, list.Bounds.Y)).ShouldBe("R");
@@ -116,7 +157,7 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var list = box.Children[0].ShouldBeOfType<Popup>().Content.ShouldBeOfType<List>();
+        var list = OwnedTree.Find<SharpVision.Controls.List>(box).ShouldNotBeNull();
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y)).Style.Background.ShouldBe(Color.Indexed(99));
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y + 1)).Style.Background.ShouldBe(Color.Indexed(240));
     }
@@ -141,7 +182,7 @@ public sealed class ComboBoxTests
         box.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
         box.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         box.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
-        var list = box.Children[0].ShouldBeOfType<Popup>().Content.ShouldBeOfType<List>();
+        var list = OwnedTree.Find<SharpVision.Controls.List>(box).ShouldNotBeNull();
         var rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
@@ -221,7 +262,7 @@ public sealed class ComboBoxTests
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
             new Engine().Layout(box, size);
-            var list = box.Children[0].ShouldBeOfType<Popup>().Content.ShouldBeOfType<List>();
+            var list = OwnedTree.Find<SharpVision.Controls.List>(box).ShouldNotBeNull();
 
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Release));

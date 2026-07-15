@@ -2,8 +2,9 @@
 
 ## RadioButton contract
 
-`RadioButton` is a focusable selection control. At most one owned member in the
-same effective group is checked; a group may initially have none.
+`RadioButton` is a sealed [`Pressable`](../pressable.md#pressable-contract)
+selection control. At most one owned member in the same effective group is
+checked; a group may initially have none.
 
 ## API
 
@@ -29,6 +30,11 @@ Selection commits old false and new true flags before notifications. `Unchecked`
 precedes `Checked`, followed by `SelectionChanged` on the new member; if a
 handler reselects, stale remaining outer notifications are suppressed.
 Programmatic false is valid and leaves a group empty.
+
+Property notifications follow the same staged commit: the old member's
+`PropertyChanged(IsChecked)` observer already sees the new member selected. A
+checked member moving groups resolves the destination group before publishing
+`GroupName`.
 
 ## Interaction
 

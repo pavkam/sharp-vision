@@ -118,4 +118,131 @@ public sealed class StateModelTests
             },
             TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies checked geometry resolves immediately after a warmed normal-state lookup.</summary>
+    [Fact]
+    public async Task Checked_WhenMeasureOverlayActivates_ClearsCacheAndInvalidatesMeasureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                var style = ThemeTestSupport.CreateStyle<Control>();
+                style.Set(Control.PaddingProperty, State.Checked, new Thickness(2));
+                var control = new CheckBox() { Style = style };
+                control.Attach(dispatcher);
+                control.Padding.ShouldBe(default);
+                control.Clear(Invalidation.All);
+
+                control.IsChecked = true;
+
+                control.Padding.ShouldBe(new Thickness(2));
+                control.Pending.ShouldBe(Invalidation.All);
+            },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies indeterminate geometry resolves immediately after a warmed normal-state lookup.</summary>
+    [Fact]
+    public async Task Indeterminate_WhenMeasureOverlayActivates_ClearsCacheAndInvalidatesMeasureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                var style = ThemeTestSupport.CreateStyle<Control>();
+                style.Set(Control.PaddingProperty, State.Indeterminate, new Thickness(3));
+                var control = new CheckBox() { IsThreeState = true, Style = style };
+                control.Attach(dispatcher);
+                control.Padding.ShouldBe(default);
+                control.Clear(Invalidation.All);
+
+                control.IsChecked = null;
+
+                control.Padding.ShouldBe(new Thickness(3));
+                control.Pending.ShouldBe(Invalidation.All);
+            },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies selected-state propagation clears resolved caches before impact calculation.</summary>
+    [Fact]
+    public async Task Selected_WhenMeasureOverlayActivates_ClearsCacheAndInvalidatesMeasureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                var style = ThemeTestSupport.CreateStyle<Control>();
+                style.Set(Control.PaddingProperty, State.Selected, new Thickness(4));
+                var control = new ProbeControl() { Style = style };
+                control.Attach(dispatcher);
+                control.Padding.ShouldBe(default);
+                control.Clear(Invalidation.All);
+
+                control.SetSelectedState(true);
+
+                control.Padding.ShouldBe(new Thickness(4));
+                control.Pending.ShouldBe(Invalidation.All);
+            },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a render-only checked overlay stays render-only and equivalent state is quiet.</summary>
+    [Fact]
+    public async Task Checked_WhenRenderOverlayActivates_InvalidatesOnlyOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                var style = ThemeTestSupport.CreateStyle<Control>();
+                style.Set(Control.ForegroundProperty, State.Checked, Color.Indexed(3));
+                var control = new CheckBox() { Style = style };
+                var notifications = 0;
+                control.PropertyChanged += (_, eventArgs) =>
+                {
+                    if (eventArgs.PropertyName == nameof(CheckBox.IsChecked))
+                    {
+                        notifications++;
+                    }
+                };
+                control.Attach(dispatcher);
+                _ = control.Foreground;
+                control.Clear(Invalidation.All);
+
+                control.IsChecked = true;
+
+                control.Pending.ShouldBe(Invalidation.Render);
+                (control.Foreground == Color.Indexed(3)).ShouldBeTrue();
+                control.Clear(Invalidation.All);
+                control.IsChecked = true;
+                control.Pending.ShouldBe(Invalidation.None);
+                notifications.ShouldBe(1);
+            },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies attached equivalent visual-state assignment still checks dispatcher access.</summary>
+    [Fact]
+    public async Task Checked_WhenEquivalentAssignmentIsOffDispatcher_ThrowsBeforeObservationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = new CheckBox();
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                control.Attach(dispatcher);
+                control.IsChecked = true;
+            },
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => control.IsChecked = true);
+
+        control.IsChecked.ShouldBe(true);
+    }
 }

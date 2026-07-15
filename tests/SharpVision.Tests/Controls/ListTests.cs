@@ -65,6 +65,32 @@ public sealed class ListTests
         frame.GetCell(new Point(7, 1)).Style.Background.ShouldBe(Color.Indexed(99));
     }
 
+    /// <summary>Verifies realized-item observers see selected state already propagated to content.</summary>
+    [Fact]
+    public void CommitSelection_WhenPropertyPublishes_ContentAlreadyResolvesSelectedState()
+    {
+        var style = ThemeTestSupport.OverlayStyle<Control>(
+            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(1))),
+            (State.Selected, new ThemeOverlay(foreground: Color.Indexed(2))));
+        var content = new Label("row") { Style = style };
+        var item = new ListItem(0, content);
+        content.Foreground.ShouldBe(Color.Indexed(1));
+        var observed = false;
+        item.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ListItem.IsSelected))
+            {
+                (content.Foreground == Color.Indexed(2)).ShouldBeTrue(
+                    "Selected style must be visible before ListItem publishes its property.");
+                observed = true;
+            }
+        };
+
+        item.CommitSelection(true);
+
+        observed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies List exposes the canonical overflow policy and its actual composed scrollbar.</summary>
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardCommonPolicyToComposedViewport()

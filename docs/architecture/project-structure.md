@@ -62,14 +62,14 @@ behavior into the UI layer.
 responsive gallery. Production projects never reference the showcase or tests.
 
 `SharpVision.Consumer.Tests` compiles the third-party `Gauge`, `FlowPanel`,
-`OverflowPanel`, `InteractiveProbe`, and `ExternalContentControl` specimens
+`OverflowPanel`, `InteractiveProbe`, `ExternalContentControl`, and
+`ExternalToggleChip` specimens
 against only `SharpVision.csproj`. The product assembly must not grant it
 `InternalsVisibleTo`; its build is the executable foundation guard for leaf,
-layout, single-content ownership, focus/capture, and lifecycle extension
-contracts. Internal `SharpVision.Tests` friendship proves framework invariants,
-not third-party usability. Role-specific specimens are added during the role
-migration, and a later pack-and-consume gate proves package shape rather than
-project-reference shape.
+layout, single-content ownership, pressable visual-state mutation,
+focus/capture, and lifecycle extension contracts. Internal `SharpVision.Tests`
+friendship proves framework invariants, not third-party usability. A later
+pack-and-consume gate proves package shape rather than project-reference shape.
 
 ## Namespace and file boundaries
 

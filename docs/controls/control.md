@@ -214,7 +214,12 @@ coordinated mutation that has already committed all of its fields uses
 access, and lifetime validation. `Invalidate(impact)` validates the impact and
 requests work without a property notification, while `InvalidateVisualState()`
 clears resolved appearance caches and requests the strongest phase required by
-active styles. None of these seams exposes the framework's pending phase flags.
+active styles. A CLR property that changes `GetVisualState()` uses
+`SetVisualStateProperty(ref field, value)`: it performs access and lifetime
+validation before equivalence, commits the state, clears resolved caches,
+calculates the dynamic aggregate style impact, and publishes exactly one
+property notification. None of these seams exposes the framework's pending
+phase flags.
 
 ## Lifecycle and events
 

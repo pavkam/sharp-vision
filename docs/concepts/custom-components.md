@@ -33,8 +33,11 @@ reserved for the later role-migration phase.
 
 Compose with `View` when the new type is an arrangement of existing controls.
 Derive directly from `Control` for a new leaf, `Container` for a genuinely new
-multi-child layout, or `Pressable` for a new interaction primitive that no
-shipped control can express. That path participates directly in
+multi-child layout, or [`Pressable`](../controls/pressable.md#pressable-contract)
+for a focusable component with one publicly replaceable content face. A
+data-derived face such as ComboBox remains a direct `Control` and composes
+interaction behavior internally rather than claiming a false content role.
+That path participates directly in
 `MeasureOverride`/`ArrangeOverride`/`OnRender` and takes on the box-model and
 input responsibilities the
 [control contract](../controls/control.md#control-contract) describes.

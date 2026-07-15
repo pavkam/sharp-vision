@@ -199,16 +199,21 @@ public sealed class Gauge : Control
 Equivalent assignments are quiet. Unknown impacts and invalid public values are
 rejected before field mutation. The public setter must validate its own domain
 before calling `SetProperty`; the helper validates its property name, impact,
-dispatcher access, and lifetime. A multi-child owner derives from `Container`,
+dispatcher access, and lifetime. A property that changes checked,
+indeterminate, selected, or another visual-state flag calls
+`SetVisualStateProperty` instead, so warmed resolved values are cleared and
+geometry-bearing state styles request layout rather than render alone. A
+multi-child owner derives from `Container`,
 iterates only its `Children`, and uses `MeasureChild`/`ArrangeChild`; it never
 calls raw layout transactions.
 
 `tests/SharpVision.Consumer.Tests` is the executable foundation proof. It
 references only the production UI project and receives no `InternalsVisibleTo`.
-Its `Gauge`, `FlowPanel`, `OverflowPanel`, and `InteractiveProbe` specimens
+Its `Gauge`, `FlowPanel`, `OverflowPanel`, `InteractiveProbe`,
+`ExternalContentControl`, and `ExternalToggleChip` specimens
 prove Unicode-aware leaf rendering, ordinary and unclipped custom layout,
-protected focus/capture, lifecycle observation, and cancellation ordering.
-Content, composite, item, open-state, named-part, and semantic specimens are
-added by the later role and orthogonal phases. Packing and consuming the
+protected focus/capture, lifecycle observation, single-content ownership,
+visual-state mutation, and cancellation ordering. Composite, item, open-state,
+named-part, and semantic specimens are added by later phases. Packing and consuming the
 produced package is also a later gate; the project-reference suite does not
 claim to prove package contents.

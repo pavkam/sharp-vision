@@ -14,9 +14,9 @@ public sealed class MenuTests
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {
         var menu = new Menu() { Orientation = Orientation.Vertical };
-        menu.Items.Add(new MenuItem { Header = "Open" });
-        menu.Items.Add(new MenuItem { Header = "Pinned", Kind = MenuItemKind.Check, IsChecked = true });
-        menu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });
+        menu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        menu.Items.Add(new MenuItem { Content = new ControlText("Pinned"), Kind = MenuItemKind.Check, IsChecked = true });
+        menu.Items.Add(new MenuSeparator());
         var size = new Size(12, 5);
         new Engine().Layout(menu, size);
         using Frame frame = new(size);
@@ -40,9 +40,9 @@ public sealed class MenuTests
         await dispatcher.InvokeAsync(() =>
         {
             var menu = new Menu() { Orientation = Orientation.Vertical };
-            var first = new MenuItem() { Header = "First" };
-            var separator = new MenuItem() { Kind = MenuItemKind.Separator };
-            var second = new MenuItem() { Header = "Second" };
+            var first = new MenuItem() { Content = new ControlText("First") };
+            var separator = new MenuSeparator();
+            var second = new MenuItem() { Content = new ControlText("Second") };
             menu.Items.Add(first);
             menu.Items.Add(separator);
             menu.Items.Add(second);
@@ -67,14 +67,15 @@ public sealed class MenuTests
     public void PerformInvoke_WhenCheckAndRadioItemsActivate_CommitsStateBeforeEvent()
     {
         var menu = new Menu();
-        var check = new MenuItem() { Header = "Auto save", Kind = MenuItemKind.Check };
-        var first = new MenuItem() { Header = "Small", Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
-        var second = new MenuItem() { Header = "Large", Kind = MenuItemKind.Radio, GroupName = "size" };
+        var check = new MenuItem() { Content = new ControlText("Auto save"), Kind = MenuItemKind.Check };
+        var first = new MenuItem() { Content = new ControlText("Small"), Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        var second = new MenuItem() { Content = new ControlText("Large"), Kind = MenuItemKind.Radio, GroupName = "size" };
         List<string> observed = [];
         menu.Items.Add(check);
         menu.Items.Add(first);
         menu.Items.Add(second);
-        menu.ItemInvoked += (_, eventArgs) => observed.Add($"{eventArgs.Item.Header}:{eventArgs.Item.IsChecked}");
+        menu.ItemInvoked += (_, eventArgs) =>
+            observed.Add($"{eventArgs.Item.Content.ShouldBeOfType<ControlText>().Content}:{eventArgs.Item.IsChecked}");
 
         check.PerformInvoke();
         second.PerformInvoke();
@@ -83,5 +84,117 @@ public sealed class MenuTests
         first.IsChecked.ShouldBeFalse();
         second.IsChecked.ShouldBeTrue();
         observed.ShouldBe(["Auto save:True", "Large:True"]);
+    }
+
+    /// <summary>Verifies radio property observers see a complete group commit.</summary>
+    [Fact]
+    public void IsChecked_WhenRadioSelectionChanges_StagesEveryFieldBeforePropertyNotifications()
+    {
+        var menu = new Menu();
+        var first = new MenuItem() { Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        var second = new MenuItem() { Kind = MenuItemKind.Radio, GroupName = "size" };
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.IsChecked))
+            {
+                first.IsChecked.ShouldBeFalse();
+                second.IsChecked.ShouldBeTrue();
+                observed = true;
+            }
+        };
+
+        second.IsChecked = true;
+
+        observed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an item reports its invocation before the owning menu forwards it.</summary>
+    [Fact]
+    public void PerformInvoke_WhenItemActivates_RaisesItemBeforeMenuNotification()
+    {
+        var menu = new Menu();
+        var item = new MenuItem();
+        List<string> order = [];
+        menu.Items.Add(item);
+        item.Invoked += (_, _) => order.Add("item");
+        menu.ItemInvoked += (_, _) => order.Add("menu");
+
+        item.PerformInvoke();
+
+        order.ShouldBe(["item", "menu"]);
+    }
+
+    /// <summary>Verifies a separator is never focusable, hit-testable, selectable, or invokable.</summary>
+    [Fact]
+    public async Task MenuSeparator_WhenUsed_RemainsNonInteractiveAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu();
+            var item = new MenuItem { Content = new ControlText("Open") };
+            var separator = new MenuSeparator();
+            menu.Items.Add(item);
+            menu.Items.Add(separator);
+            new Engine().Layout(menu, new Size(12, 1));
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+
+            separator.CanFocus.ShouldBeFalse();
+            separator.HitTest(new Point(separator.Bounds.X, separator.Bounds.Y)).ShouldBeNull();
+            focus.Focus(separator).ShouldBeFalse();
+            _ = Should.Throw<ArgumentException>(() => menu.SelectedIndex = 1);
+            menu.SelectedIndex.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies changing a checked item to command clears checked state before observers.</summary>
+    [Fact]
+    public void Kind_WhenCheckedItemBecomesCommand_StagesUncheckedStateBeforeNotification()
+    {
+        var item = new MenuItem { Kind = MenuItemKind.Check, IsChecked = true };
+        var observed = false;
+        item.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.Kind))
+            {
+                item.Kind.ShouldBe(MenuItemKind.Command);
+                item.IsChecked.ShouldBeFalse();
+                observed = true;
+            }
+        };
+
+        item.Kind = MenuItemKind.Command;
+
+        observed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies moving a checked radio item resolves its destination before GroupName publication.</summary>
+    [Fact]
+    public void GroupName_WhenCheckedRadioMoves_ResolvesDestinationBeforePropertyNotification()
+    {
+        var menu = new Menu();
+        var first = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "a", IsChecked = true };
+        var second = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "b", IsChecked = true };
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.GroupName))
+            {
+                first.IsChecked.ShouldBeTrue();
+                second.IsChecked.ShouldBeFalse();
+                observed = true;
+            }
+        };
+
+        first.GroupName = "b";
+
+        observed.ShouldBeTrue();
     }
 }

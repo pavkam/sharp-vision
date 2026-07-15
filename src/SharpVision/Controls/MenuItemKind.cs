@@ -14,7 +14,4 @@ public enum MenuItemKind
 
     /// <summary>Selects one checked item within its containing menu and group name.</summary>
     Radio,
-
-    /// <summary>Draws a non-interactive separator.</summary>
-    Separator,
 }

@@ -71,6 +71,24 @@ public sealed class CheckBoxTests
         order.ShouldBe(["unchecked", "changed"]);
     }
 
+    /// <summary>Verifies observers never see two-state mode paired with an indeterminate value.</summary>
+    [Fact]
+    public void IsThreeState_WhenDisabledFromNull_StagesBothPropertiesBeforeNotification()
+    {
+        var checkBox = new CheckBox() { IsThreeState = true, IsChecked = null };
+        List<string?> properties = [];
+        checkBox.PropertyChanged += (_, eventArgs) =>
+        {
+            (checkBox.IsThreeState || checkBox.IsChecked is not null).ShouldBeTrue();
+            properties.Add(eventArgs.PropertyName);
+        };
+
+        checkBox.IsThreeState = false;
+
+        properties.ShouldBe([nameof(CheckBox.IsThreeState), nameof(CheckBox.IsChecked)]);
+        checkBox.IsChecked.ShouldBe(false);
+    }
+
     /// <summary>Verifies specific events precede StateChanged from committed programmatic state.</summary>
     [Fact]
     public void IsChecked_WhenChangedProgrammatically_RaisesSpecificThenGeneral()

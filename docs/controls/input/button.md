@@ -2,8 +2,9 @@
 
 ## Button contract
 
-`Button` is a focusable command control with one optional content child. One
-completed activation raises `Click` and invokes its command once.
+`Button` is a sealed [`Pressable`](../pressable.md#pressable-contract) command
+control with one optional inherited `Content` child. One completed activation
+raises `Click` and invokes its command once.
 
 ## API
 

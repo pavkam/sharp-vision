@@ -13,7 +13,9 @@ value. A component whose retained implementation tree is private uses the
 separate composition role described by the
 [component architecture](../superpowers/specs/2026-07-15-component-architecture-v2-design.md#compositecontrol).
 A general-purpose panel whose callers may add arbitrary children remains a
-`Container`.
+`Container`. Focusable single-face controls derive from
+[`Pressable`](pressable.md#pressable-contract), which inherits this exact
+content transaction instead of adding another content property.
 
 ## Ownership and mutation
 

@@ -191,10 +191,12 @@ byte split, cover malformed recovery and completion, and require warmed ASCII
 and non-ASCII Rune decoding to allocate zero managed bytes per event. The
 fixed-seed hostile-byte suite caps paste/parser retention, injects an explicit
 recovery boundary, and requires a known trailing Rune to survive every case.
-`Pressable` is the shared traditional-control activation state machine. Space
-holds pressed state until a matching release; Enter activates directly. Primary
-pointer press focuses and captures, movement updates inside/outside pressed
-state, and release inside activates once. Focus loss, capture cancellation,
-disable, hide, detach, and disposal clear all held state without activation.
-Completed activations carry a validated `ActivationCause` of Keyboard, Pointer,
-or Programmatic.
+[`Pressable`](../controls/pressable.md#pressable-contract) is the public
+single-content activation role. Space holds pressed state until a matching
+release; Enter activates directly. Primary pointer press focuses and captures,
+movement updates inside/outside pressed state, and release inside activates
+once. Focus loss, capture cancellation, disable, hide, detach, and disposal
+clear all held state without activation. Completed activations carry a validated
+`ActivationCause` of Keyboard, Pointer, or Programmatic. The transient state
+machine is one internal composed behavior also used by direct-`Control`
+`ComboBox`; interaction reuse does not dictate public inheritance.

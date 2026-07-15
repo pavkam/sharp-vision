@@ -526,7 +526,7 @@ public sealed class PopupTests
         root.Children.Add(cover);
         var size = new Size(16, 8);
         new Engine().Layout(root, size);
-        var list = comboBox.Children[0].ShouldBeOfType<Popup>().Content.ShouldBeOfType<List>();
+        var list = OwnedTree.Find<List>(comboBox).ShouldNotBeNull();
         var point = new Point(list.Bounds.X + 1, list.Bounds.Y);
         using Frame frame = new(size);
 
@@ -564,26 +564,27 @@ public sealed class PopupTests
         root.HitTest(new Point(child.Bounds.X, child.Bounds.Y)).ShouldNotBeSameAs(child);
     }
 
-    /// <summary>Verifies the shipped ComboBox normal slot promotes its Popup without painting the content twice.</summary>
+    /// <summary>Verifies the shipped ComboBox registers its private Popup directly in the elevated layer.</summary>
     [Fact]
-    public void Render_WhenComboBoxPopupUsesOrdinaryChildSlot_RendersContentExactlyOnce()
+    public void Ownership_WhenComboBoxOwnsPopup_UsesDedicatedPopupLayer()
     {
         var box = new ComboBox
         {
             IsOpen = true,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
+            Items = ["pick"],
         };
-        var popup = box.Children[0].ShouldBeOfType<Popup>();
-        var content = new ProbeControl(new Size(4, 1)) { Content = "pick".AsMemory() };
-        popup.Content = content;
         var size = new Size(12, 6);
         new Engine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
 
-        content.RenderCalls.ShouldBe(1);
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        popup.OwningSlot.ShouldNotBeNull().Options.Layer.ShouldBe(OwnedControlLayer.Popup);
+        var list = OwnedTree.Find<List>(popup).ShouldNotBeNull();
+        FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("p");
     }
 
     /// <summary>Verifies Escape bubbles through popup content and closes the owner.</summary>

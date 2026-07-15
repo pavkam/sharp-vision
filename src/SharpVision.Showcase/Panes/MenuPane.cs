@@ -21,13 +21,14 @@ internal sealed class MenuPane: View
             Orientation = Orientation.Vertical,
             Spacing = 0,
         };
-        menu.Items.Add(new MenuItem { Header = "New project" });
-        menu.Items.Add(new MenuItem { Header = "Open recent" });
-        menu.Items.Add(new MenuItem { Kind = MenuItemKind.Separator });
-        menu.Items.Add(new MenuItem { Header = "Auto save", Kind = MenuItemKind.Check, IsChecked = true });
-        menu.Items.Add(new MenuItem { Header = "Compact mode", Kind = MenuItemKind.Radio, GroupName = "density", IsChecked = true });
-        menu.Items.Add(new MenuItem { Header = "Comfortable mode", Kind = MenuItemKind.Radio, GroupName = "density" });
-        menu.ItemInvoked += (_, eventArgs) => status.Content = $"Invoked {eventArgs.Item.Header}.";
+        menu.Items.Add(new MenuItem { Content = new Text("New project") });
+        menu.Items.Add(new MenuItem { Content = new Text("Open recent") });
+        menu.Items.Add(new MenuSeparator());
+        menu.Items.Add(new MenuItem { Content = new Text("Auto save"), Kind = MenuItemKind.Check, IsChecked = true });
+        menu.Items.Add(new MenuItem { Content = new Text("Compact mode"), Kind = MenuItemKind.Radio, GroupName = "density", IsChecked = true });
+        menu.Items.Add(new MenuItem { Content = new Text("Comfortable mode"), Kind = MenuItemKind.Radio, GroupName = "density" });
+        menu.ItemInvoked += (_, eventArgs) =>
+            status.Content = $"Invoked {((Text) eventArgs.Item.Content!).Content}.";
 
         var framed = new Dock()
         {
@@ -42,11 +43,12 @@ internal sealed class MenuPane: View
             Orientation = Orientation.Horizontal,
             Spacing = 2,
         };
-        bar.Items.Add(new MenuItem { Header = "File" });
-        bar.Items.Add(new MenuItem { Header = "Edit" });
-        bar.Items.Add(new MenuItem { Header = "View" });
-        bar.Items.Add(new MenuItem { Header = "Help" });
-        bar.ItemInvoked += (_, eventArgs) => barStatus.Content = $"Invoked {eventArgs.Item.Header}.";
+        bar.Items.Add(new MenuItem { Content = new Text("File") });
+        bar.Items.Add(new MenuItem { Content = new Text("Edit") });
+        bar.Items.Add(new MenuItem { Content = new Text("View") });
+        bar.Items.Add(new MenuItem { Content = new Text("Help") });
+        bar.ItemInvoked += (_, eventArgs) =>
+            barStatus.Content = $"Invoked {((Text) eventArgs.Item.Content!).Content}.";
 
         var framedBar = new Dock()
         {
@@ -60,9 +62,9 @@ internal sealed class MenuPane: View
             Orientation = Orientation.Vertical,
             Spacing = 0,
         };
-        withDisabled.Items.Add(new MenuItem { Header = "Available action" });
-        withDisabled.Items.Add(new MenuItem { Header = "Unavailable action", IsEnabled = false });
-        withDisabled.Items.Add(new MenuItem { Header = "Another available action" });
+        withDisabled.Items.Add(new MenuItem { Content = new Text("Available action") });
+        withDisabled.Items.Add(new MenuItem { Content = new Text("Unavailable action"), IsEnabled = false });
+        withDisabled.Items.Add(new MenuItem { Content = new Text("Another available action") });
 
         var framedDisabled = new Dock()
         {

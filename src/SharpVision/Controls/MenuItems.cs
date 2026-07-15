@@ -3,9 +3,8 @@
 
 namespace SharpVision.Controls;
 
-
-/// <summary>Exposes one menu's typed managed item collection.</summary>
-public sealed class MenuItems: IReadOnlyList<MenuItem>
+/// <summary>Exposes one menu's constrained item and separator collection.</summary>
+public sealed class MenuItems: IReadOnlyList<Control>
 {
     private readonly Menu _owner;
 
@@ -19,13 +18,13 @@ public sealed class MenuItems: IReadOnlyList<MenuItem>
     }
 
     /// <inheritdoc/>
-    public MenuItem this[int index] => _owner.ItemAt(index);
+    public Control this[int index] => _owner.ItemAt(index);
 
     /// <inheritdoc/>
     public int Count => _owner.Children.Count;
 
     /// <summary>Adds one detached non-null menu item.</summary>
-    /// <param name="item">The item to own.</param>
+    /// <param name="item">The menu item to own.</param>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="ArgumentException">The item already belongs to a control tree.</exception>
     /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
@@ -36,8 +35,20 @@ public sealed class MenuItems: IReadOnlyList<MenuItem>
         _owner.Add(item);
     }
 
+    /// <summary>Adds one detached non-null menu separator.</summary>
+    /// <param name="separator">The menu separator to own.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
+    /// <exception cref="ArgumentException">The separator already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The menu or separator is disposed.</exception>
+    public void Add(MenuSeparator separator)
+    {
+        ArgumentNullException.ThrowIfNull(separator);
+        _owner.Add(separator);
+    }
+
     /// <summary>Removes one owned menu item.</summary>
-    /// <param name="item">The non-null owned item.</param>
+    /// <param name="item">The menu item to remove.</param>
     /// <returns>True when ownership was removed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
@@ -48,13 +59,25 @@ public sealed class MenuItems: IReadOnlyList<MenuItem>
         return _owner.Remove(item);
     }
 
-    /// <summary>Removes every owned item.</summary>
+    /// <summary>Removes one owned menu separator.</summary>
+    /// <param name="separator">The menu separator to remove.</param>
+    /// <returns>True when ownership was removed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The menu or separator is disposed.</exception>
+    public bool Remove(MenuSeparator separator)
+    {
+        ArgumentNullException.ThrowIfNull(separator);
+        return _owner.Remove(separator);
+    }
+
+    /// <summary>Removes every owned item and separator.</summary>
     /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
     public void Clear() => _owner.ClearItems();
 
     /// <inheritdoc/>
-    public IEnumerator<MenuItem> GetEnumerator()
+    public IEnumerator<Control> GetEnumerator()
     {
         for (var index = 0; index < Count; index++)
         {

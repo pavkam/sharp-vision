@@ -3,18 +3,22 @@
 
 namespace SharpVision.Controls;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Terminal.Input;
 
-/// <summary>Displays one selected list value and opens an owned popup-style list for keyboard or pointer choice.</summary>
-public sealed class ComboBox: Pressable
+/// <summary>Displays one selected value and composes a private popup list for choosing another.</summary>
+public sealed class ComboBox: Control
 {
     private readonly List _list;
     private readonly Popup _popup;
+    private readonly OwnedControlSlot _popupSlot;
+    private readonly PressInteraction _interaction;
 
     #region Construction and properties
 
-    /// <summary>Initializes an empty combo box with a framed popup containing a single-selection list.</summary>
-    public ComboBox() : base(capacity: 1)
+    /// <summary>Initializes an empty combo box with a framed private popup list.</summary>
+    public ComboBox()
     {
         _list = new List
         {
@@ -29,7 +33,27 @@ public sealed class ComboBox: Pressable
         };
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
-        Children.Add(_popup);
+        _popupSlot = RegisterOwnedSlot(
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Popup,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: "drop-down",
+                ChangeImpact.Measure),
+            capacity: 1);
+        _popupSlot.Add(_popup);
+        _interaction = new PressInteraction(
+            () => Bounds,
+            () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => FocusOwner is null || IsFocused,
+            RequestFocus,
+            CapturePointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            SetPressed,
+            Activate);
+        CanFocus = true;
     }
 
     /// <summary>Raised after a selected index commits through direct assignment or the drop-down list.</summary>
@@ -54,7 +78,7 @@ public sealed class ComboBox: Pressable
                 _list.SelectedIndex = 0;
             }
 
-            Invalidate(Invalidation.Measure);
+            NotifyPropertyChanged(nameof(Items), ChangeImpact.Measure);
         }
     }
 
@@ -86,7 +110,7 @@ public sealed class ComboBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public new ScrollBars ScrollBars
+    public ScrollBars ScrollBars
     {
         get => _list.ScrollBars;
         set
@@ -107,7 +131,7 @@ public sealed class ComboBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public new ShowScrollBars ShowScrollBars
+    public ShowScrollBars ShowScrollBars
     {
         get => _list.ShowScrollBars;
         set
@@ -128,7 +152,7 @@ public sealed class ComboBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public new ScrollBarChrome ScrollBarChrome
+    public ScrollBarChrome ScrollBarChrome
     {
         get => _list.ScrollBarChrome;
         set
@@ -149,7 +173,7 @@ public sealed class ComboBox: Pressable
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public new ScrollBarFill ScrollBarFill
+    public ScrollBarFill ScrollBarFill
     {
         get => _list.ScrollBarFill;
         set
@@ -166,7 +190,7 @@ public sealed class ComboBox: Pressable
         }
     }
 
-    /// <summary>Gets or sets whether the owned drop-down list is arranged, rendered, and hit-testable.</summary>
+    /// <summary>Gets or sets whether the private drop-down is arranged, rendered, and hit-testable.</summary>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public bool IsOpen
@@ -176,12 +200,10 @@ public sealed class ComboBox: Pressable
         {
             VerifyMutable();
 
-            if (_popup.IsOpen == value)
+            if (_popup.IsOpen != value)
             {
-                return;
+                _popup.IsOpen = value;
             }
-
-            _popup.IsOpen = value;
         }
     }
 
@@ -190,54 +212,25 @@ public sealed class ComboBox: Pressable
     #region Input, layout, and rendering
 
     /// <inheritdoc/>
-    protected override bool ClipsChildren => false;
-
-    /// <inheritdoc/>
-    protected override Rect VisualBounds => IsOpen
-        ? Union(Bounds, _popup.SurfaceBounds)
-        : Bounds;
-
-    /// <inheritdoc/>
-    public override Control? HitTest(Point point)
-    {
-        return IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled
-            ? null
-            : (IsOpen ? _popup.HitTest(point) : null) ?? (Bounds.Contains(point) ? this : null);
-    }
-
-    /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause)
-    {
-        _ = cause;
-        IsOpen = !IsOpen;
-    }
-
-    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _popup.Measure(new Constraint(constraint.Width, Add(DropDownHeight, 2)));
-        var text = SelectedText();
-        var width = Add(Terminal.Unicode.Width.Measure(text).Cells, 2);
+        _ = MeasureChild(_popup, new Constraint(constraint.Width, Add(DropDownHeight, 2)));
+        var width = Add(Terminal.Unicode.Width.Measure(SelectedText()).Cells, 2);
         return new Size(width, 1);
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        if (!IsOpen)
-        {
-            return;
-        }
-
-        _popup.Arrange(
-            RootBounds(bounds),
-            widthResolved: true,
-            heightResolved: true);
-    }
+    protected override void ArrangeOverride(Rect bounds) =>
+        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
 
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
+        if (Bounds.Width == 0 || Bounds.Height == 0)
+        {
+            return;
+        }
+
         var style = ResolvedStyle;
 
         if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
@@ -246,16 +239,27 @@ public sealed class ComboBox: Pressable
         }
 
         var label = canvas.Clip(new Rect(Bounds.X, Bounds.Y, Math.Max(0, Bounds.Width - 2), 1));
-        _ = label.Draw(SelectedText().AsSpan(), new Point(Bounds.X, Bounds.Y), style, background: BackgroundMode.Transparent);
-        _ = canvas.Draw(" ▼".AsSpan(), new Point(Math.Max(Bounds.X, Bounds.Right - 2), Bounds.Y), style, background: BackgroundMode.Transparent);
+        _ = label.Draw(
+            SelectedText().AsSpan(),
+            new Point(Bounds.X, Bounds.Y),
+            style,
+            background: BackgroundMode.Transparent);
+        _ = canvas.Draw(
+            " ▼".AsSpan(),
+            new Point(Math.Max(Bounds.X, Bounds.Right - 2), Bounds.Y),
+            style,
+            background: BackgroundMode.Transparent);
     }
 
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         base.OnEvent(eventArgs);
+        _interaction.Handle(eventArgs);
 
-        if (eventArgs.Handled || !IsOpen || eventArgs is not KeyEventArgs { Stroke: { Code: Code.Escape, Action: KeyAction.Press } })
+        if (eventArgs.Handled ||
+            !IsOpen ||
+            eventArgs is not KeyEventArgs { Stroke: { Code: Code.Escape, Action: KeyAction.Press } })
         {
             return;
         }
@@ -265,9 +269,24 @@ public sealed class ComboBox: Pressable
     }
 
     /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+        _interaction.FocusChanged(focused);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    {
+        base.OnPointerCaptureCancelled(reason);
+        _interaction.CaptureCancelled();
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
+        _interaction.Unavailable();
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -283,6 +302,12 @@ public sealed class ComboBox: Pressable
 
     #region Drop-down coordination
 
+    private void Activate(ActivationCause cause)
+    {
+        _ = cause;
+        IsOpen = !IsOpen;
+    }
+
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
     {
         _ = sender;
@@ -293,8 +318,12 @@ public sealed class ComboBox: Pressable
     private void OnSelectionChanged(object? sender, ListSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
-        Invalidate(Invalidation.Render);
-        SelectionChanged?.Invoke(this, eventArgs);
+        var failure = (ExceptionDispatchInfo?) null;
+        CaptureFailure(
+            () => NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Measure),
+            ref failure);
+        CaptureFailure(() => SelectionChanged?.Invoke(this, eventArgs), ref failure);
+        failure?.Throw();
     }
 
     private void OnPopupClosing(object? sender, EventArgs eventArgs)
@@ -302,11 +331,9 @@ public sealed class ComboBox: Pressable
         _ = sender;
         _ = eventArgs;
 
-        if (IsWithin(_list, FocusOwner?.Focused))
+        if (ContainsFocused(_list))
         {
-            // Popup invokes Closing while the List remains visible, which lets
-            // this field recover focus before the child becomes unavailable.
-            _ = FocusOwner!.Focus(this);
+            _ = RequestFocus();
         }
     }
 
@@ -325,7 +352,9 @@ public sealed class ComboBox: Pressable
     {
         var index = _list.SelectedIndex;
 
-        return index < 0 || index >= _list.Items.Count ? string.Empty : _list.Items[index]?.ToString() ?? string.Empty;
+        return index < 0 || index >= _list.Items.Count
+            ? string.Empty
+            : Convert.ToString(_list.Items[index], CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
     private static int Add(int left, int right)
@@ -334,6 +363,36 @@ public sealed class ComboBox: Pressable
         Debug.Assert(right >= 0, "ComboBox accumulation uses non-negative extents.");
 
         return (int) Math.Min(int.MaxValue, (long) left + right);
+    }
+
+    private static void CaptureFailure(System.Action action, ref ExceptionDispatchInfo? failure)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+    }
+
+    private static bool ContainsFocused(Control control)
+    {
+        if (control.IsFocused)
+        {
+            return true;
+        }
+
+        for (var index = 0; index < control.OwnedControlCount; index++)
+        {
+            if (ContainsFocused(control.OwnedControlAt(index)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private Rect RootBounds(Rect fallback)
@@ -350,41 +409,12 @@ public sealed class ComboBox: Pressable
             return root.Bounds;
         }
 
-        // A standalone field may deliberately be one cell high. Its popup is
-        // still constrained by the measure viewport, not by that field box.
         var viewport = LastMeasureConstraint;
         return new Rect(
             fallback.X,
             fallback.Y,
             viewport?.Width ?? fallback.Width,
             viewport?.Height ?? fallback.Height);
-    }
-
-    private static bool IsWithin(Control ancestor, Control? candidate)
-    {
-        for (var current = candidate; current is not null; current = current.Parent)
-        {
-            if (ReferenceEquals(current, ancestor))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static Rect Union(Rect left, Rect right)
-    {
-        var x = Math.Min(left.X, right.X);
-        var y = Math.Min(left.Y, right.Y);
-        var rightEdge = Math.Max(left.Right, right.Right);
-        var bottom = Math.Max(left.Bottom, right.Bottom);
-
-        return new Rect(
-            x,
-            y,
-            (int) Math.Max(0L, (long) rightEdge - x),
-            (int) Math.Max(0L, (long) bottom - y));
     }
 
     #endregion

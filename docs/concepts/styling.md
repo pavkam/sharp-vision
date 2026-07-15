@@ -76,6 +76,13 @@ behavior: `IsEnabled` determines input acceptance.
 Public theme resolution accepts any combination of defined state flags and
 rejects unknown bits before evaluating the cascade.
 
+A third-party CLR property that activates one of these flags uses the protected
+`SetVisualStateProperty` seam. It validates dispatcher and lifetime access before
+equivalence, commits the field, clears resolved caches, calculates the strongest
+active state-style impact, and then publishes one property notification. Group
+controls stage every related field first and use the same cache-clear/dynamic-
+impact rule before publishing any observer callback.
+
 ## Invalidation and tests
 
 Property metadata declares the earliest affected phase with `ChangeImpact`.
