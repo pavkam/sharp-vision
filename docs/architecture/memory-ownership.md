@@ -77,6 +77,14 @@ attachment. A control subscribes only to its direct `Style`; replacement,
 detachment where applicable, and disposal remove owned registrations
 deterministically.
 
+Intrinsic border and shadow chrome are style state on the decorated `Control`;
+they allocate no child, add no registry edge, and do not change parentage,
+routed ancestry, style scope, or disposal ownership. Shadow overflow is drawn
+only into the borrowed frame canvas for the current render. When chrome requires
+distinct bounds, margin, style, ancestry, or lifetime, an ordinary container
+such as `Dock` owns the decorated content through its normal registry slot and
+is disposed by the same tree rules as every other container.
+
 Routed input snapshots both ancestry and matching handler registrations before
 invocation. The router owns its rented arrays only through synchronous preview,
 target, and bubble delivery and clears them before pool return. Handlers must

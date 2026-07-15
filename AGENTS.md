@@ -128,6 +128,12 @@ in the protocol document.
   `AutoSize`, `AutoSizeMode`), not a dedicated scroll container. There is no
   `ScrollView` type; any container becomes scrollable or content-sized by
   setting those properties directly.
+- Border and shadow are intrinsic `Control` properties (`BorderThickness`,
+  `BorderGlyphs`, `HasShadow`, and the related style properties), not wrapper
+  controls. There are no `Border` or `Shadow` types. Use an ordinary container
+  when chrome needs a distinct layout, styling, ownership, or routed-ancestry
+  node. A custom `OnRender` that opts into intrinsic chrome must call
+  `RenderChrome` before custom content.
 - Build a composite control by deriving from `View` and implementing
   `protected override Control Build()`; the layout/render override seams are
   `MeasureOverride`/`ArrangeOverride`/`OnRender`.

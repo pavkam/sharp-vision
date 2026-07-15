@@ -50,10 +50,12 @@ The current UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and
 editing, selection and item controls, menus, popups, windows, intrinsic
 container scrolling, styling, focus, and routed input all remain on these
-boundaries. Shadow is intrinsic `Control` chrome configured on the decorated
-control. Border is likewise intrinsic chrome configured through
-`BorderThickness`, `BorderGlyphs`, and the related style properties; neither
-feature requires a wrapper control or moves terminal protocol or renderer
+boundaries. Border and shadow properties live on `Control`, and
+`BorderThickness` always participates in its base box model. A render path
+paints that chrome only when it calls `RenderChrome` or a specialized
+equivalent. A sealed bespoke renderer that calls neither path uses an ordinary
+chrome-rendering container when it needs a visible frame or shadow. Neither
+feature requires a dedicated wrapper type or moves terminal protocol or renderer
 behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a

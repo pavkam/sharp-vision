@@ -15,7 +15,11 @@ All controls derive from the
 
 Border and shadow are intrinsic `Control` chrome configured through
 `BorderThickness`, `BorderGlyphs`, `HasShadow`, `ShadowMode`, and the related
-style properties; neither is a standalone control. See the
+style properties; neither is a standalone control. `BorderThickness` always
+reserves layout through the base box model, while visible chrome requires a
+render path that calls `RenderChrome` or a specialized equivalent. Use an
+ordinary chrome-rendering container around a sealed bespoke renderer that calls
+neither path when it needs a visible frame or shadow. See the
 [shared chrome contract](../concepts/styling.md#shared-chrome).
 
 ### Input

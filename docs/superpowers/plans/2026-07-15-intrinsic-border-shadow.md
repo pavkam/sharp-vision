@@ -1172,15 +1172,18 @@ git commit -m "refactor: remove Border control; border is intrinsic via BorderTh
 
 - Modify: `docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md`,
   `docs/concepts/styling.md`, `docs/concepts/custom-components.md`,
+  `docs/controls/control.md`, `docs/controls/index.md`,
   `docs/architecture/rendering-pipeline.md`,
-  `docs/architecture/memory-ownership.md`, and
-  `docs/testing/controls-integration.md`
-- Modify: `AGENTS.md`
+  `docs/architecture/memory-ownership.md`,
+  `docs/architecture/project-structure.md`, and
+  `docs/testing/controls-integration.md`, `docs/testing/showcase.md`
+- Modify: `src/SharpVision/Controls/Control.StyleProperties.cs`,
+  `src/SharpVision/Controls/Button.cs`, and `AGENTS.md`
+- Modify: `docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md`
 - Regenerate: `docs/images/showcase-dashboard.png`
 - Verify the already-updated paths from earlier tasks:
-  `docs/concepts/layout.md`, `docs/controls/control.md`,
-  `docs/controls/input/button.md`, `docs/controls/index.md`,
-  `docs/architecture/showcase.md`, and `docs/testing/showcase.md`
+  `docs/concepts/layout.md`, `docs/controls/input/button.md`, and
+  `docs/architecture/showcase.md`
 
 - [ ] **Step 1: Update docs**
 
@@ -1205,27 +1208,45 @@ git commit -m "refactor: remove Border control; border is intrinsic via BorderTh
   wrapper examples with intrinsic properties or ordinary `Dock` frame nodes.
 - `AGENTS.md`: add the locked rule that border and shadow are intrinsic
   `Control` properties (`BorderThickness`, `BorderGlyphs`, `HasShadow`, and the
-  related style properties), there are no `Border` or `Shadow` wrapper types,
-  and an ordinary container supplies a distinct chrome node when needed.
+  related style properties), there are no `Border` or `Shadow` wrapper types, an
+  ordinary container supplies a distinct chrome node when needed, and a custom
+  `OnRender` calls `RenderChrome` when it opts into intrinsic chrome.
+- Complete the public XML exception contract for validated attributes,
+  `ShadowMode`, `ShadowGlyph`, and `Button.Glyphs`; focused API tests must
+  retain validation-before-mutation behavior.
 - After the final architecture and gallery behavior settle, run
   `scripts/capture-showcase.sh docs/images/showcase-dashboard.png` to regenerate
   the checked-in Release dashboard capture and visually verify the 19-page
-  Button-first sidebar.
+  Button-first sidebar contains no retired Border or Shadow entry.
 
 - [ ] **Step 2: Validate documentation and retired names**
 
 ```bash
+rg -n "new Border\b|new Shadow\b|class Border\b|class Shadow\b|ShouldBeOfType<(Border|Shadow)>|Find<(Border|Shadow)>" \
+  src tests --glob '*.cs'
 rg -n "display/border|display/shadow|new Border|new Shadow|Border control|Shadow control" \
   docs AGENTS.md --glob '*.md' --glob '!docs/superpowers/**'
 scripts/capture-showcase.sh docs/images/showcase-dashboard.png
+file docs/images/showcase-dashboard.png
 npx prettier --write \
   AGENTS.md \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md \
   docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md \
   docs/concepts/styling.md \
   docs/concepts/custom-components.md \
+  docs/controls/control.md \
+  docs/controls/index.md \
   docs/architecture/rendering-pipeline.md \
   docs/architecture/memory-ownership.md \
-  docs/testing/controls-integration.md
+  docs/architecture/project-structure.md \
+  docs/testing/controls-integration.md \
+  docs/testing/showcase.md
+dotnet test --project tests/SharpVision.Tests \
+  --filter-class "*IntrinsicBorderTests" "*IntrinsicShadowTests" \
+  "*ControlChromeTests" "*StylePropertyTests" "*ButtonTests" \
+  --parallel none --timeout 300s
+dotnet test --project tests/SharpVision.Consumer.Tests \
+  --filter-class "*ExternalContractTests" --parallel none --timeout 300s
 npm run format:check
 npm run lint:markdown
 npm run lint:links
@@ -1241,12 +1262,19 @@ or historical migration context.
 ```bash
 git add -- \
   AGENTS.md \
+  src/SharpVision/Controls/Control.StyleProperties.cs \
+  src/SharpVision/Controls/Button.cs \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md \
   docs/superpowers/specs/2026-07-15-intrinsic-border-shadow-design.md \
   docs/concepts/styling.md \
   docs/concepts/custom-components.md \
+  docs/controls/control.md \
+  docs/controls/index.md \
   docs/architecture/rendering-pipeline.md \
   docs/architecture/memory-ownership.md \
+  docs/architecture/project-structure.md \
   docs/testing/controls-integration.md \
+  docs/testing/showcase.md \
   docs/images/showcase-dashboard.png
 git commit -m "docs: reconcile intrinsic border and shadow contracts"
 ```

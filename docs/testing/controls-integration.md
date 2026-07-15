@@ -19,6 +19,17 @@ state styles, default cursor preservation, render-time invalidation, and
 exception recovery. Private draw-call recordings supplement these semantic
 oracles; they never replace them.
 
+Intrinsic chrome proof lives on the common `Control` surface rather than on
+wrapper-control suites. `ControlBorderReservationTests`,
+`ContainerAutoSizeTests`, and `ContainerScrollGeometryTests` cover base
+border-before-padding reservation, saturated combined insets, shrink wrapping,
+and scrollbar containment. `IntrinsicBorderTests` and `IntrinsicShadowTests`
+cover validation-before-mutation, partial edges, exact glyphs/cells, composite
+and block shadows, wide-grapheme styling, visual overflow, hit testing, and
+ancestor clipping. `ButtonTests` requires immediate and post-layout pressed
+content parity, while `TextInputTests` proves editor, caret, and private rails
+remain inset exactly once.
+
 ## External extension proof
 
 `SharpVision.Consumer.Tests` references only the production `SharpVision`
@@ -26,8 +37,11 @@ project and receives no friend access. Its independently compiled `Gauge`,
 `FlowPanel`, `OverflowPanel`, and `InteractiveProbe` prove protected property
 mutation, Unicode-aware measurement/rendering, ordinary and unclipped custom
 layout, direct-child layout, lifecycle publication, focus, capture, and
-capture-cancellation ordering. A reflection guard fails if the product friends
-either the consumer project or the production showcase.
+capture-cancellation ordering. The external `FlowPanel` also proves that setting
+`BorderThickness` insets owned leaves without third-party box-model plumbing;
+`Gauge.OnRender` calls `RenderChrome` before custom content drawn through
+`ContentBounds`. A reflection guard fails if the product friends either the
+consumer project or the production showcase.
 
 `SharpVision.Tests` deliberately retains friend access for internal invariant
 tests and therefore cannot serve as third-party API proof. Content, composite,
@@ -50,12 +64,13 @@ mutation, completed frame callbacks, and the final UTF-8 bytes written by the
 renderer transport. `ResizeRenderTests` proves zero-cell suspension resumes with
 committed layout before its first positive frame.
 
-`DisplayPanelTests` composes Grid, Dock, Stack, Overlay, Canvas, Border, and
-Text under a real `Application` backed by `FakeTerminal`. It proves startup
-bytes, committed bounds, exact semantic cells, wide-cell continuation ownership,
-removal damage, text mutation, and resize reflow on the same dispatcher-owned
-tree. Fresh semantic frames confirm removed content does not survive, while
-later transport writes prove incremental output followed each mutation.
+`DisplayPanelTests` composes Grid, Dock, Stack, Overlay, Canvas, Text, and a
+distinct intrinsically bordered `Dock` frame under a real `Application` backed
+by `FakeTerminal`. It proves startup bytes, committed bounds, exact semantic
+cells, wide-cell continuation ownership, removal damage, text mutation, and
+resize reflow on the same dispatcher-owned tree. Fresh semantic frames confirm
+removed content does not survive, while later transport writes prove incremental
+output followed each mutation.
 
 `InteractiveControlTests` composes Button, CheckBox, RadioButton, TextInput,
 ScrollBar, an intrinsically scrollable Stack, and List under one real

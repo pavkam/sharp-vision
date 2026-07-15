@@ -86,8 +86,60 @@ showcase theme toggling, and exact terminal cell output.
 
 ## Shared chrome
 
-Border, shadow, and opaque body fill rasterize through one internal geometry so
-`Button`, `Window`, `Border`, and any derived control that uses `RenderChrome`
-share a single draw path. Base `OnRender` calls that protected method; the base
-control deflates `ContentBounds` by border thickness before padding. See
-[Theming a new control](theming-new-controls.md) for the full extender surface.
+Border, shadow, and opaque body fill are intrinsic `Control` chrome. There are
+no `Border` or `Shadow` wrapper controls. Every control exposes the properties,
+and `BorderThickness` always reserves layout; visible chrome requires a render
+path that calls `RenderChrome` or a specialized `ControlChrome` equivalent.
+
+| Properties                                                                | Defaults                    | Contract                                                                   |
+| ------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------- |
+| `BorderThickness`                                                         | Zero edges                  | Zero-or-one physical edges; `Measure` impact because layout reserves them. |
+| `BorderGlyphs`, `BorderColor`, `BorderAttributes`                         | Default glyphs, null styles | Validated one-cell glyphs and render-only border appearance.               |
+| `HasShadow`, `ShadowMode`, `ShadowOffset`                                 | `false`, composite, `(0,0)` | Render-only visual overflow; it never enlarges layout or hit targets.      |
+| `ShadowGlyph`, `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `▓`, null styles            | Validated one-cell glyph and render-only shadow appearance.                |
+
+These are registered base defaults. Effective values still resolve through the
+complete cascade. Standard themes, for example, supply semantic body background,
+border color, and shadow foreground values even though the base metadata for
+those colors is null; Button and Window add their own class defaults.
+
+`BorderThickness` is reserved by the base measure/arrange pipeline before
+`Padding`; `ContentBounds` is therefore the border-then-padding-deflated content
+box. Combined measure insets saturate, partial physical edges reserve only their
+active cells, and a theme-resolved thickness change remeasures the control.
+
+Base `OnRender` calls protected `RenderChrome`, which rasterizes the body,
+per-side border, and shadow through `ControlChrome`. A derived control that
+fully overrides `OnRender` must call `RenderChrome` before custom content when
+it wants those intrinsic visuals; layout still reserves a configured border when
+it deliberately does not. On the base path, shadow expands `VisualBounds` by the
+signed `ShadowOffset`, remains clipped by ancestor canvases, and reserves no
+layout, child space, or hit target. Button intentionally translates its face and
+owned content while pressed.
+
+Base chrome draws the translated shadow first, then clears the body when
+`FillMode` is opaque or `Background` resolves from any cascade layer, and draws
+the border last. Composite mode restyles existing cells in the shadow footprint;
+block mode replaces them with `ShadowGlyph`. A `(0,0)` offset leaves the
+translated footprint wholly inside the excluded body and is therefore invisible.
+Partial borders draw only enabled physical edges, with corners only where
+adjoining edges meet. If the active ambiguous-width policy would make a
+configured glyph wide, rendering repairs it to portable ASCII `+`, `-`, `|`, or
+`#` rather than splitting a cell.
+
+`Button` does not use the base options verbatim: its specialized `ControlChrome`
+call translates the pressed face/content, preserves the shadow gap, and resolves
+the detached shadow from normal appearance. `Window` retains its bespoke titled
+uniform frame and draws its optional shadow explicitly; it does not express that
+frame through `BorderThickness` or call base `RenderChrome`.
+
+Sealed bespoke renderers such as `Text`, `FigletText`, and `TextInput` do not
+automatically paint base chrome. Use an ordinary chrome-rendering container such
+as `Dock` when callers need to frame or shadow one of those controls.
+
+Intrinsic chrome does not create an ownership edge. When chrome needs its own
+margin, style scope, bounds, routed ancestry, or lifetime, compose an ordinary
+container such as `Dock` as the distinct node and set the intrinsic properties
+on that container. See
+[Custom components](custom-components.md#chrome-and-custom-rendering) and
+[Theming a new control](theming-new-controls.md) for the extender surface.

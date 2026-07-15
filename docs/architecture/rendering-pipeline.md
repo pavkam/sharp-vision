@@ -52,10 +52,11 @@ according to the
 ## Control rendering
 
 `Control.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It clears
-render invalidation before extension code, clips the supplied canvas to
-committed `Bounds`, calls `OnRender`, then renders owned children. An
-invalidation raised during either callback therefore remains pending for the
-next frame. An exception restores render dirtiness before propagating.
+render invalidation before extension code, clips own drawing to `VisualBounds`,
+calls `OnRender`, then renders owned children through either the arranged
+`Bounds` clip or the documented unclipped-child path. An invalidation raised
+during either callback therefore remains pending for the next frame. An
+exception restores render dirtiness before propagating.
 
 Hidden, collapsed, and effectively hidden subtrees draw nothing. Every control
 renders normal-layer ownership slots in slot-registration then item order, so a
@@ -68,9 +69,32 @@ documented ordering and viewport semantics. Every descendant canvas intersects
 all applicable ancestor clips; coordinates remain absolute terminal cells,
 avoiding accumulated transform rounding.
 
+The base `OnRender` implementation calls `RenderChrome`, which draws configured
+body fill, per-side border, and intrinsic shadow. A derived control that
+completely overrides `OnRender` must call `RenderChrome` before custom content
+when it opts into those visuals; the base layout pipeline still reserves
+`BorderThickness` even when custom drawing omits the border. Base chrome draws
+shadow, then an opaque body, then border. Body opacity is active when `FillMode`
+is opaque or a `Background` value resolves from any cascade layer. Partial
+borders draw only enabled edges and repair glyphs that are wide under the active
+ambiguous-width policy to portable ASCII. On the base path, shadow expands own
+`VisualBounds` by its signed offset without reserving layout, child space, or
+hit targets, and ancestor canvas clips still contain that overflow. Button
+intentionally translates its owned content while pressed.
+
+Button uses specialized `ControlChrome` options for pressed-face translation,
+normal-appearance shadow styling, and its shadow gap. Window instead draws its
+bespoke titled uniform frame and explicit shadow without calling base
+`RenderChrome`; its frame is not `BorderThickness` chrome.
+
+Sealed bespoke renderers such as `Text`, `FigletText`, and `TextInput` do not
+call base `RenderChrome`. Their `BorderThickness` still reserves layout, but a
+caller that needs a visible frame or shadow composes an ordinary
+chrome-rendering container such as `Dock` around them.
+
 Derived controls draw only through semantic `Canvas` operations and use their
-padding-deflated content bounds. They never write ANSI, split graphemes, or
-touch pooled frame storage.
+border-and-padding-deflated `ContentBounds`. They never write ANSI, split
+graphemes, repeat base box-model deflation, or touch pooled frame storage.
 
 ## Commit and invalidation
 
@@ -118,11 +142,13 @@ capability snapshot is always a full redraw.
 
 ## Correctness oracle
 
-Phase 5A panels commit geometry and child order only. Text and Border are the
-display leaves: Text draws committed grapheme-aligned slices and a typed
-ellipsis, while Border clears its clipped background and draws complete
-validated one-cell Runes. Neither layer emits escape bytes; frame differencing
-and terminal encoding remain below the canvas boundary.
+Phase 5A panels commit geometry and child order. Text draws committed
+grapheme-aligned slices and a typed ellipsis, while intrinsic control chrome
+fills the body and draws validated one-cell border glyphs through the same
+semantic canvas. Composite shadow preserves the destination grapheme and
+restyles its complete cell owner; block-glyph shadow replaces only the
+translated, non-body footprint. No control emits escape bytes; frame
+differencing and terminal encoding remain below the canvas boundary.
 
 Tests apply incremental bytes for frame B to a virtual terminal initialized by
 frame A and compare the final screen, cursor, style, hyperlink, and mode state

@@ -88,6 +88,7 @@ public sealed partial class Button: Pressable
     }
 
     /// <summary>Gets or sets the validated physical glyph family used by the button border.</summary>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached button is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The button is disposed.</exception>
     public Glyphs Glyphs

@@ -39,6 +39,65 @@ ancestor chain. Changing an inherited state invalidates affected descendants.
 `IsHitTestVisible` affects pointer targeting only; it does not suppress drawing,
 visibility, enabled state, or explicit focus.
 
+## Intrinsic chrome
+
+Border, shadow, and body fill are properties of every `Control`; there are no
+Border or Shadow wrapper controls. `BorderThickness` always participates in the
+base box model. Visual chrome is automatic only for a render path that calls
+`RenderChrome` or a specialized `ControlChrome` equivalent.
+
+| Property group                                             | Base default                | Impact  | Validation and contract                                                                        |
+| ---------------------------------------------------------- | --------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `Background`, `FillMode`                                   | `null`, transparent         | Render  | A background resolved from any cascade layer or opaque fill mode makes the body own its cells. |
+| `BorderThickness`                                          | Zero edges                  | Measure | Every physical edge is zero or one cell and is reserved before padding.                        |
+| `BorderGlyphs`                                             | `Glyphs.Default`            | Render  | Every Rune is printable and one cell under the narrow policy; invalid default rejected.        |
+| `BorderColor`, `BorderAttributes`                          | `null`, `null`              | Render  | Optional appearance overlays; attributes reject unknown flags or conflicts.                    |
+| `HasShadow`, `ShadowMode`, `ShadowOffset`                  | `false`, composite, `(0,0)` | Render  | Mode is defined; offset is signed visual overflow and never reserves layout.                   |
+| `ShadowGlyph`                                              | `▓`                         | Render  | Printable one-cell Rune; used only by block-glyph mode.                                        |
+| `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `null`, `null`, `null`      | Render  | Optional overlays; attributes reject unknown flags or conflicts.                               |
+
+These are registered base defaults. Effective values resolve through class
+defaults, style scopes, the active standard theme, instance style, visual state,
+and local values. Standard themes resolve a body background, border color, and
+shadow foreground from semantic roles, so their effective values differ from the
+nullable base metadata without changing property defaults.
+
+All validation occurs before observable mutation for local and theme values. At
+render time, a glyph that becomes wide only under the active ambiguous-width
+policy is repaired to a portable ASCII edge (`+`, `-`, or `|`) or block (`#`),
+so chrome never writes half of a wide cell. Partial borders draw only enabled
+edges; a corner glyph appears only when both adjoining edges are active.
+
+Base `RenderChrome` draws shadow first, then clears the body when `FillMode` is
+opaque or a background resolves from any cascade layer, then draws the border
+last. Composite shadow restyles the translated cells it covers; block-glyph
+shadow replaces those cells with `ShadowGlyph`. The body rectangle is excluded
+from either shadow. `HasShadow = true` with the base `(0,0)` offset therefore
+has no visible footprint. On the base render/layout path, shadow expands
+`VisualBounds` for drawing but reserves no desired size, arranged bounds, child
+space, or hit target. Button is intentionally different while pressed: it
+translates its face and owned content by `ShadowOffset` without changing its
+arranged border box.
+
+These are base defaults, not universal control appearance. `Button` publishes a
+one-cell rounded border, composite shadow, `(1,1)` offset, and dim shadow while
+retaining zero padding. It invokes `ControlChrome` with specialized pressed-face
+and shadow-gap options. `Window` keeps its bespoke one-cell titled frame, uses a
+composite `(2,1)` dim shadow by default, and draws that frame/title/shadow
+through its specialized renderer rather than base `RenderChrome`.
+
+Sealed bespoke content renderers such as `Text`, `FigletText`, and `TextInput`
+do not call base `RenderChrome`. Setting `BorderThickness` on them still
+reserves the base layout inset but does not automatically paint a frame or
+shadow. Wrap one in an ordinary chrome-rendering container such as `Dock` when
+callers need a distinct visible frame or shadow.
+
+Intrinsic chrome adds no ownership edge. Use an ordinary container such as
+`Dock` when the chrome needs distinct bounds, margin, style, ancestry, or
+lifetime. A custom `OnRender` that opts into intrinsic chrome calls
+`RenderChrome` before custom content and draws that content through
+`ContentBounds` without repeating border or padding deflation.
+
 ## Children and ownership
 
 Every `Control` owns one central registry of distinct ordered visual slots.
@@ -207,12 +266,15 @@ primitive, does not use these seams directly; derive from
 [`View`](../concepts/custom-components.md#custom-components-contract) and
 implement `Build()` instead.
 
-Control content always draws through a canvas clipped to its own `Bounds`. The
-protected `ClipsChildren` override defaults to true. Containers may return false
-to retain only the ancestor clip for descendants; this is the shared mechanism
-behind documented Overlay and Canvas unclipped-child modes. An unclipped owner
-also hit-tests eligible ordinary children outside its own `Bounds`, while the
-owner itself remains a target only inside that box. Enabling intrinsic
+`OnRender` receives a canvas clipped to the control's `VisualBounds`, so
+deliberate own-content overflow such as shadow can extend beyond arranged
+`Bounds` while remaining inside ancestor clips. Ordinary descendants render
+through the owner's `Bounds` clip; intrinsic scrolling uses its committed
+viewport clip. A container whose protected `ClipsChildren` override returns
+false retains only the ancestor clip for descendants, which is the shared
+mechanism behind documented Overlay and Canvas unclipped-child modes. Such an
+owner also hit-tests eligible ordinary children outside its own `Bounds`, while
+the owner itself remains a target only inside that box. Enabling intrinsic
 `AutoScroll` restores viewport and owner-bounds clipping regardless of the
 override.
 
@@ -232,10 +294,10 @@ cell style used by rendering.
 
 The default `OnRender` calls `RenderChrome`, which draws configured body fill,
 per-side border, and shadow. A control that fully overrides `OnRender` and wants
-those intrinsic visuals must call `RenderChrome` itself before or around custom
-content. Layout still reserves a non-zero `BorderThickness` even when a custom
-renderer deliberately omits the visual, so rendering and reservation cannot
-silently invent different geometry.
+those intrinsic visuals must call `RenderChrome` itself before custom content.
+Layout still reserves a non-zero `BorderThickness` even when a custom renderer
+deliberately omits the visual, so rendering and reservation cannot silently
+invent different geometry.
 
 Primitive controls also read the protected inherited `CellPolicy` during
 measurement and drawing. This keeps grapheme width decisions identical to the

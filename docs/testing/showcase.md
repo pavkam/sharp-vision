@@ -51,9 +51,9 @@ Canvas has dedicated virtual-screen assertions and must retain its labeled
 fixed, percentage, edge-constraint, and clipping stages within the viewport.
 Button and Window assertions continue to cover intrinsic composite and
 block-glyph shadow properties through their live specimens. The Theming page
-also proves that a third-party control with a custom render override calls
-`RenderChrome` before drawing its own caption and body, preserving its intrinsic
-rounded frame.
+also proves that an unprivileged showcase-authored derivative with a custom
+render override calls `RenderChrome` before custom content (its caption and
+body), preserving its intrinsic rounded frame.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The
@@ -66,4 +66,5 @@ library consumers.
 
 The capture renderer has its own ANSI-to-HTML test, while
 `scripts/capture-showcase.sh` fails if the Release app exits early, never
-renders Overview and Examples, or does not produce a valid PNG.
+renders `SHARP VISION`, `Overview`, and the final Button specimen, or does not
+produce a valid PNG.

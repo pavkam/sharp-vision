@@ -23,9 +23,11 @@ the next measure retries `Build()`. After successful installation, mutate the
 subtree like any other control tree (add or remove children, set properties)
 instead of expecting reactive rebuilding.
 
-A `View` owns exactly one child and stretches it to fill the view's content box,
-like `Border`/`Button`; return a layout container (`Stack`, `Dock`, or `Grid`)
-when the content should have multiple children or should not simply fill.
+A `View` owns exactly one built content root and stretches it to fill the view's
+border-and-padding-deflated content box. Return a layout container (`Stack`,
+`Dock`, or `Grid`) when the content should have multiple children or needs a
+distinct layout or chrome node. The composition-root ownership role remains
+reserved for the later role-migration phase.
 
 ## Composing vs. deriving from a primitive
 
@@ -39,6 +41,22 @@ input responsibilities the
 Externally derived primitives mutate through the protected extension kernel and
 never call internal layout, focus, capture, or rendering transactions.
 
+## Chrome and custom rendering
+
+Border and shadow are intrinsic `Control` properties, not wrapper controls. Set
+`BorderThickness`, `BorderGlyphs`, `HasShadow`, and the related style properties
+on the component itself when it owns that chrome. When the frame needs distinct
+bounds, margin, styling, routed ancestry, or disposal identity, return an
+ordinary `Dock`, `Grid`, or `Stack` as the built content root and configure the
+chrome on that node.
+
+A primitive that fully overrides `OnRender` and opts into intrinsic chrome calls
+`RenderChrome` before custom content. Its custom content uses `ContentBounds`;
+the base layout pipeline has already reserved border and padding, so the
+override must not repeat that deflation. `HasShadow = true` with the base
+`(0,0)` `ShadowOffset` has no visible footprint; configure a non-zero offset
+when the component needs a visible shadow.
+
 `Screen : View` follows the same `Build()` contract and adds
 `OnAttach`/`OnStarted`/`OnDispose` lifecycle hooks; see
 [Screen](screen.md#screen-contract).
@@ -48,6 +66,16 @@ never call internal layout, focus, capture, or rendering transactions.
 ```csharp
 public sealed class LoginPanel : View
 {
+    public LoginPanel()
+    {
+        BorderThickness = new Thickness(1);
+        BorderGlyphs = Glyphs.Rounded;
+        Padding = new Thickness(1);
+        HasShadow = true;
+        ShadowOffset = new Point(1, 1);
+        ShadowAttributes = Attributes.Dim;
+    }
+
     protected override Control Build() =>
         new Stack
         {

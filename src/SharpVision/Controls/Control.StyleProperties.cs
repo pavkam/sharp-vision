@@ -148,6 +148,8 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the optional complete text-attribute set.</summary>
+    /// <exception cref="ArgumentException">The attribute flags conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains an unknown attribute flag.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TerminalAttributes? Attributes
@@ -213,6 +215,8 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the optional border attribute overlay.</summary>
+    /// <exception cref="ArgumentException">The attribute flags conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains an unknown attribute flag.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TerminalAttributes? BorderAttributes
@@ -231,6 +235,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets how the visual shadow changes overflow cells.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ShadowMode ShadowMode
@@ -249,6 +254,7 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the printable one-cell-wide shadow glyph.</summary>
+    /// <exception cref="ArgumentException">The value is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune ShadowGlyph
@@ -276,6 +282,8 @@ public abstract partial class Control
     }
 
     /// <summary>Gets or sets the optional shadow attribute overlay.</summary>
+    /// <exception cref="ArgumentException">The attribute flags conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value contains an unknown attribute flag.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public TerminalAttributes? ShadowAttributes
