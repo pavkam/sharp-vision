@@ -43,6 +43,13 @@ all slots remain within the Grid. Empty definitions behave exactly as one
 implicit automatic track. Collapsed children contribute no request and receive
 empty bounds.
 
+An ancestor with `AutoScroll` may translate a Grid to a negative visual origin;
+track extents and gaps remain non-negative while their committed screen
+coordinates preserve that signed translation. This is the ordinary scrolling
+arrangement defined by the
+[scrolling contract](../../concepts/scrolling.md#scrolling-contract), not an
+invalid Grid placement.
+
 Shrinking a definition collection validates every owned child's candidate origin
 and span before mutation. A failure throws `InvalidOperationException` and
 preserves the definitions and placements unchanged.
@@ -61,7 +68,8 @@ var grid = new Grid
 
 Cover all track kinds/mixes, min/max, spacing, spans, competing intrinsic
 requirements, rounding/remainders, collapsed children, invalid attached values,
-zero/tiny/overflow sizes, wrapping remeasure, resize, ownership, and exact
-bounds/cells. Seed `0x051A475A` runs 10,000 mixed valid grids twice and proves
-determinism, containment, non-negative geometry, ordered shared edges, and exact
-axis consumption when an uncapped proportional track absorbs the remainder.
+zero/tiny/overflow sizes, wrapping remeasure, resize, ownership, signed origins
+under ancestor scrolling, and exact bounds/cells. Seed `0x051A475A` runs 10,000
+mixed valid grids twice and proves determinism, containment, non-negative
+geometry, ordered shared edges, and exact axis consumption when an uncapped
+proportional track absorbs the remainder.

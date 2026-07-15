@@ -192,6 +192,23 @@ public sealed class GridTests
         second.Bounds.Right.ShouldBeLessThanOrEqualTo(3);
     }
 
+    /// <summary>Verifies a Grid accepts a negative visual origin while its scrolling owner is offset.</summary>
+    [Fact]
+    public void Arrange_WhenGridIsScrolled_UsesNegativeVisualOrigin()
+    {
+        var grid = new Grid() { Height = Length.Cells(20) };
+        grid.Children.Add(new ProbeControl(new Size(3, 1)));
+        var host = new Stack() { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        host.Children.Add(grid);
+        var engine = new Engine();
+
+        engine.Layout(host, new Size(5, 5));
+        _ = host.ScrollBy(0, 2);
+        engine.Layout(host, new Size(5, 5));
+
+        grid.Bounds.Y.ShouldBe(-2);
+    }
+
     /// <summary>Verifies shrinking definitions cannot strand an owned child out of range.</summary>
     [Fact]
     public void RemoveAt_WhenChildWouldBecomeOutOfRange_ThrowsBeforeMutation()

@@ -262,6 +262,21 @@ public sealed class Grid: Container
         return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
+    private static int Offset(int origin, int extent)
+    {
+        // A scrolling parent translates the committed Grid origin into negative
+        // screen coordinates. Only the extent is intrinsically non-negative.
+        Debug.Assert(extent >= 0, "Grid coordinate offsets use non-negative extents.");
+
+        var result = (long) origin + extent;
+        return result switch
+        {
+            > int.MaxValue => int.MaxValue,
+            < int.MinValue => int.MinValue,
+            _ => (int) result,
+        };
+    }
+
     private static Track[] Definitions(TrackCollection source)
     {
         Debug.Assert(source is not null, "Grid definitions require a non-null collection.");
@@ -388,12 +403,12 @@ public sealed class Grid: Container
         for (var index = 0; index < extents.Length; index++)
         {
             result[index] = position;
-            position = Add(position, extents[index]);
+            position = Offset(position, extents[index]);
 
             if (index < extents.Length - 1)
             {
                 var gap = Math.Min(spacing, remainingSpacing);
-                position = Add(position, gap);
+                position = Offset(position, gap);
                 remainingSpacing -= gap;
             }
         }
