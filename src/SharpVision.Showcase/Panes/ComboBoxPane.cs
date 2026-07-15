@@ -27,6 +27,14 @@ internal sealed class ComboBoxPane: View
             density.Content = comboBox.SelectedIndex >= 0
                 ? $"Selected: {comboBox.Items[comboBox.SelectedIndex]}."
                 : "No selection.";
+        var bordered = new ComboBox
+        {
+            Width = Length.Cells(28),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            Items = ["Compact", "Comfortable", "Spacious"],
+            SelectedIndex = 0,
+        };
         var commitStatus = new Text("Committed: Comfortable");
         var commitCombo = new ComboBox
         {
@@ -121,14 +129,19 @@ internal sealed class ComboBoxPane: View
                 "Start here",
                 "Choose one compact value while keeping the full choice list available on demand.",
                 Doc.Example(
-                    "Popup choice field",
-                    "Click, Enter, or Space to open. Arrows move the highlighted row and Enter commits it.",
-                    Doc.Column(stage, density),
+                    "Default and bordered fields",
+                    "Both fields own an opaque Surface. Click, Enter, or Space opens the list; Enter commits, Escape or an outside click or wheel dismisses without changing the value.",
+                    Doc.Column(
+                        new Text("Default field") { Attributes = TerminalAttributes.Bold },
+                        stage,
+                        new Text("Explicit rounded border") { Attributes = TerminalAttributes.Bold },
+                        bordered,
+                        density),
                     "var density = new ComboBox\n{\n    Items = [\"Compact\", \"Comfortable\", \"Spacious\"],\n    SelectedIndex = 1,\n};")),
             Doc.Section(
                 "🔽",
                 "Commit versus dismiss",
-                "The popup keeps highlighted navigation separate from the field's committed selection.",
+                "The popup keeps hover and keyboard highlight separate from the committed selection, and outside input closes it cleanly.",
                 Doc.Example(
                     "Enter commits; Escape dismisses",
                     "Open the first field, move with arrows, then compare Enter with Escape. Escape closes without replacing the previous value.",

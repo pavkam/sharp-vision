@@ -13,18 +13,42 @@ public sealed class InputPaneTests
 {
     /// <summary>Verifies the Button page demonstrates the public programmatic activation path.</summary>
     [Fact]
-    public void Button_WhenProgrammaticExampleRuns_ReportsProgrammaticCause()
+    public void Button_WhenAutosaveExampleRuns_ReportsProgrammaticCauseAndCount()
     {
         // Arrange
         using var page = new ButtonPane();
         new Engine().Layout(page, new Size(100, 80));
-        var trigger = FindButton(page, "Run programmatically");
+        var trigger = FindButton(page, "Simulate autosave");
 
         // Act
         trigger.PerformClick();
+        trigger.PerformClick();
 
         // Assert
-        ControlTree.Text(page).ShouldContain("Programmatic log: Programmatic");
+        ControlTree.Text(page).ShouldContain("Autosave log: Programmatic · 2 drafts saved");
+    }
+
+    /// <summary>Verifies shadow depth is demonstrated over a populated semantic surface and flat press stays stationary.</summary>
+    [Fact]
+    public void Button_WhenChromeExamplesBuild_ShowsPatternedParentAndStationaryFlatFace()
+    {
+        using var page = new ButtonPane();
+        new Engine().Layout(page, new Size(100, 90));
+        var stage = ControlTree.FindAll<Overlay>(page).Single(value =>
+            ControlTree.FindAll<Button>(value).Any(button => button.ShadowMode == ShadowMode.Composite));
+        var backdrop = stage.Children[0];
+        var flat = FindButton(page, "Flat: color only");
+        var before = flat.Bounds;
+
+        Router.Route(flat, Events.Key, Key(Code.Character, new Rune(' ')));
+
+        backdrop.TryGetLocalValue(Control.BackgroundProperty, out var background).ShouldBeTrue();
+        var surface = background.ShouldNotBeNull();
+        surface.Kind.ShouldBe(ColorKind.Role);
+        surface.RoleId.ShouldBe((int) ColorRole.Surface);
+        ControlTree.Text(backdrop).ShouldContain("·");
+        flat.IsPressed.ShouldBeTrue();
+        flat.Bounds.ShouldBe(before);
     }
 
     /// <summary>Verifies command execution and availability through the live Button recipe.</summary>
@@ -160,9 +184,9 @@ public sealed class InputPaneTests
         ControlTree.FindAll<RadioButton>(root).Single(value =>
             value.Content is ControlText text && text.Content == content);
 
-    private static KeyEventArgs Key(Code code) => new(new Stroke(
+    private static KeyEventArgs Key(Code code, Rune? character = null) => new(new Stroke(
         code,
-        character: null,
+        character,
         nativeCode: 0,
         Modifiers.None,
         InputAction.Press));

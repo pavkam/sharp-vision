@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
+using SharpVision.Text;
+
 using Text = SharpVision.Controls.Text;
 
 
@@ -65,22 +67,57 @@ internal sealed class ButtonPane: View
                 roleStatus),
         };
 
-        var composite = new Button() { Content = new Text("Composite shadow") };
+        var composite = new Button() { Content = new Text("Composite: parent pattern") };
         var blockShadow = new Button()
         {
-            Content = new Text("Block glyph shadow"),
+            Content = new Text("Block: independent glyph"),
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowGlyph = new Rune('░'),
         };
-        var flat = new Button() { Content = new Text("Flat, no shadow"), HasShadow = false };
+        var flat = new Button() { Content = new Text("Flat: color only"), HasShadow = false };
         var disabled = new Button() { Content = new Text("Disabled"), IsEnabled = false };
+        var shadowBackdrop = new Dock
+        {
+            Background = ThemeColors.Surface,
+            FillMode = FillMode.Opaque,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children =
+            {
+                new Text(
+                    "· · · · · · · · · · · · · · · · · · · · · · · ·\n" +
+                    " · · · · · · · · · · · · · · · · · · · · · · · ·\n" +
+                    "· · · · · · · · · · · · · · · · · · · · · · · ·\n" +
+                    " · · · · · · · · · · · · · · · · · · · · · · · ·\n" +
+                    "· · · · · · · · · · · · · · · · · · · · · · · ·")
+                {
+                    Foreground = ThemeColors.Muted,
+                    Overflow = Overflow.Clip,
+                },
+            },
+        };
+        var shadowVariants = Doc.Column(
+            Doc.Row(composite, blockShadow),
+            Doc.Row(flat, disabled));
+        shadowVariants.Margin = new Thickness(1);
+        var shadowStage = new Overlay
+        {
+            Width = Length.Cells(56),
+            Height = Length.Cells(9),
+            Children = { shadowBackdrop, shadowVariants },
+        };
 
-        var programmaticStatus = new Text("Programmatic log: waiting");
-        var programmaticTarget = new Button() { Content = new Text("Programmatic target") };
-        programmaticTarget.Click += (_, eventArgs) =>
-            programmaticStatus.Content = $"Programmatic log: {eventArgs.Cause}";
-        var programmaticTrigger = new Button() { Content = new Text("Run programmatically") };
-        programmaticTrigger.Click += (_, _) => programmaticTarget.PerformClick();
+        var autosaveStatus = new Text("Autosave log: waiting");
+        var savedDrafts = 0;
+        var saveDraft = new Button() { Content = new Text("Save draft") };
+        saveDraft.Click += (_, eventArgs) =>
+        {
+            savedDrafts++;
+            var noun = savedDrafts == 1 ? "draft" : "drafts";
+            autosaveStatus.Content = $"Autosave log: {eventArgs.Cause} · {savedDrafts} {noun} saved";
+        };
+        var autosave = new Button() { Content = new Text("Simulate autosave") };
+        autosave.Click += (_, _) => saveDraft.PerformClick();
 
         return Doc.Page(
             Title,
@@ -117,16 +154,16 @@ internal sealed class ButtonPane: View
                 "Choose depth and border treatment without changing the command contract.",
                 Doc.Example(
                     "Shadow and availability variants",
-                    "Compare composite lift, block-glyph depth, a stationary flat face, and the unavailable state.",
-                    Doc.Column(Doc.Row(composite, blockShadow), Doc.Row(flat, disabled)))),
+                    "The patterned Surface makes the distinction honest: composite shadow restyles parent cells, block shadow owns its glyph, and the flat face changes color without translating.",
+                    shadowStage)),
             Doc.Section(
                 "🔘",
                 "Programmatic use",
                 "PerformClick shares validation, event ordering, and command execution with user activation.",
                 Doc.Example(
-                    "One public activation path",
-                    "Activate Run programmatically. It calls PerformClick on the target and reports Programmatic rather than pretending to be keyboard input.",
-                    Doc.Column(programmaticTrigger, programmaticTarget, programmaticStatus),
-                    "target.PerformClick();")));
+                    "Autosave shares the Save action",
+                    "Save draft is the user action. Simulate autosave calls the same PerformClick path, reports Programmatic, and increments the visible save count.",
+                    Doc.Column(Doc.Row(saveDraft, autosave), autosaveStatus),
+                    "autosave.Click += (_, _) => saveDraft.PerformClick();")));
     }
 }

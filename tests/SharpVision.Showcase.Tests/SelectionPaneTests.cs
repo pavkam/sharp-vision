@@ -25,6 +25,41 @@ public sealed class SelectionPaneTests
         ControlTree.Text(page).ShouldContain("No selection.");
     }
 
+    /// <summary>Verifies the ComboBox page contrasts default and explicitly bordered closed fields.</summary>
+    [Fact]
+    public void ComboBox_WhenPageBuilds_ShowsDefaultAndBorderedFields()
+    {
+        using var page = new ComboBoxPane();
+        new Engine().Layout(page, new Size(100, 100));
+        var fields = ControlTree.FindAll<ComboBox>(page)
+            .Where(value => value.Items.Count == 3 && Equals(value.Items[0], "Compact"))
+            .ToArray();
+
+        fields.ShouldContain(value => value.BorderThickness == default);
+        fields.ShouldContain(value => value.BorderThickness == new Thickness(1));
+        ControlTree.Text(page).ShouldContain("outside click or wheel dismisses");
+    }
+
+    /// <summary>Verifies same-name RadioButtons remain exclusive across separate visual cards.</summary>
+    [Fact]
+    public void RadioButton_WhenCrossContainerChoiceChanges_ClearsPreviousMember()
+    {
+        using var page = new RadioButtonPane();
+        new Engine().Layout(page, new Size(100, 100));
+        var fast = FindRadioButton(page, "Fast");
+        var balanced = FindRadioButton(page, "Balanced");
+
+        fast.Parent.ShouldNotBeSameAs(balanced.Parent);
+        fast.GroupName.ShouldBe("quality");
+        balanced.GroupName.ShouldBe("quality");
+
+        balanced.PerformSelect();
+
+        balanced.IsChecked.ShouldBeTrue();
+        fast.IsChecked.ShouldBeFalse();
+        ControlTree.Text(page).ShouldContain("Selected quality: Balanced");
+    }
+
     /// <summary>Verifies the List page demonstrates deterministic multiple selection.</summary>
     [Fact]
     public void List_WhenMultipleSelectionActionRuns_ReportsSortedItems()
@@ -120,5 +155,9 @@ public sealed class SelectionPaneTests
 
     private static Button FindButton(Control root, string content) =>
         ControlTree.FindAll<Button>(root).Single(value =>
+            value.Content is ControlText text && text.Content == content);
+
+    private static RadioButton FindRadioButton(Control root, string content) =>
+        ControlTree.FindAll<RadioButton>(root).Single(value =>
             value.Content is ControlText text && text.Content == content);
 }

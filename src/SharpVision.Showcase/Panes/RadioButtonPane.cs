@@ -27,22 +27,19 @@ internal sealed class RadioButtonPane: View
             BorderThickness = new Thickness(1),
             BorderGlyphs = Glyphs.Rounded,
             Padding = new Thickness(1, 0),
-            Children = { Doc.Column(fast, balanced, unavailable) },
+            Children = { Doc.Column(new Text("Primary card") { Attributes = TerminalAttributes.Bold }, fast, unavailable) },
         };
 
-        var independent = new RadioButton()
-        {
-            Content = new Text("Independent selection group"),
-            GroupName = "delivery",
-            IsChecked = true,
-        };
         var separate = new Dock()
         {
             BorderThickness = new Thickness(1),
             BorderGlyphs = Glyphs.Light,
             Padding = new Thickness(1, 0),
-            Children = { independent },
+            Children = { Doc.Column(new Text("Secondary card") { Attributes = TerminalAttributes.Bold }, balanced) },
         };
+        var qualityStatus = new Text("Selected quality: Fast");
+        fast.Checked += (_, _) => qualityStatus.Content = "Selected quality: Fast";
+        balanced.Checked += (_, _) => qualityStatus.Content = "Selected quality: Balanced";
 
         var traversalStatus = new Text("Traversal: one");
         var traversalOne = new RadioButton
@@ -118,8 +115,8 @@ internal sealed class RadioButtonPane: View
                 "Use one ordinal GroupName when choices may live in different layout containers but still select exclusively.",
                 Doc.Example(
                     "Quality choice",
-                    "Choose Fast or Balanced. The disabled member remains part of the group but keyboard traversal skips it.",
-                    Doc.Column(group, separate),
+                    "Fast and Balanced live in separate cards but share the exact quality group. Selecting either clears the other; the disabled member remains visible and traversal skips it.",
+                    Doc.Column(Doc.Row(group, separate), qualityStatus),
                     "var fast = new RadioButton { GroupName = \"quality\", IsChecked = true };")),
             Doc.Section(
                 "📻",

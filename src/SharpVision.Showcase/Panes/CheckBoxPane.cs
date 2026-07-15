@@ -39,6 +39,13 @@ internal sealed class CheckBoxPane: View
             IsThreeState = true,
             IsChecked = null,
         };
+        var stateStage = new Dock
+        {
+            Background = ThemeColors.Surface,
+            FillMode = FillMode.Opaque,
+            Padding = new Thickness(1, 0),
+            Children = { Doc.Column(unchecked_, checked_, indeterminate) },
+        };
 
         var disabled = new CheckBox()
         {
@@ -100,8 +107,8 @@ internal sealed class CheckBoxPane: View
                 "Use null only when the option genuinely represents an inherited or mixed value.",
                 Doc.Example(
                     "Cycle and normalize",
-                    "The three examples show every state. Return the live policy to two states and its indeterminate value normalizes to false before notifications finish.",
-                    Doc.Column(unchecked_, checked_, indeterminate, policy, twoState, policyStatus),
+                    "The compact marks sit on a contrasting Surface without painting selection blocks. Return the live policy to two states and null normalizes to false.",
+                    Doc.Column(stateStage, policy, twoState, policyStatus),
                     "option.IsThreeState = true;\noption.IsChecked = null;")),
             Doc.Section(
                 "☑️",
