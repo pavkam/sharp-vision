@@ -7,6 +7,9 @@ using SharpVision.Scrolling;
 using SharpVision.Terminal.Input;
 using SharpVision.Tests.Support;
 
+using ControlText = SharpVision.Controls.Text;
+using Wrapping = SharpVision.Text.Wrapping;
+
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
 public sealed class ContainerScrollTests
 {
@@ -301,5 +304,310 @@ public sealed class ContainerScrollTests
 
         inner.VerticalOffset.ShouldBe(10);
         leaf.Bounds.Y.ShouldBe(-10);
+    }
+
+    /// <summary>Verifies an armed container renders the automatic horizontal bar chrome.</summary>
+    [Fact]
+    public void Render_WhenHorizontalBarIsAutomatic_UsesScrollBarGlyphs()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            HorizontalBarVisibility = ScrollBarVisibility.Auto,
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 1)));
+        Size size = new(3, 3);
+        new Engine().Layout(container, size);
+        using Frame frame = new(size);
+
+        container.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("◀");
+        FrameOracle.Get(frame, new Point(1, 2)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(2, 2)).ShouldBe("▶");
+    }
+
+    /// <summary>Verifies passive viewport track cells use a shaded glyph that remains visually distinct from the thumb.</summary>
+    [Fact]
+    public void Render_WhenVerticalChromeHasUnoccupiedTrack_UsesShadedTrackGlyph()
+    {
+        LayoutProbe container = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Auto,
+        };
+        container.Children.Add(new ProbeControl(new Size(1, 100)));
+        Size size = new(3, 6);
+        new Engine().Layout(container, size);
+        using Frame frame = new(size);
+
+        container.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(2, 1)).ShouldBe("▓");
+        FrameOracle.Get(frame, new Point(2, 2)).ShouldBe("░");
+    }
+
+    /// <summary>Verifies exact fit does not show automatic bars while Always reserves both axes regardless of overflow.</summary>
+    [Fact]
+    public void Layout_WhenPoliciesDiffer_UsesExactFitAndAlwaysReservation()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Auto,
+            VerticalBarVisibility = ScrollBarVisibility.Auto,
+        };
+        container.Children.Add(new ProbeControl(new Size(5, 3)));
+        Engine engine = new();
+
+        engine.Layout(container, new Size(5, 3));
+        container.Viewport.ShouldBe(new Size(5, 3));
+
+        container.HorizontalBarVisibility = ScrollBarVisibility.Always;
+        container.VerticalBarVisibility = ScrollBarVisibility.Always;
+        engine.Layout(container, new Size(5, 3));
+        container.Viewport.ShouldBe(new Size(4, 2));
+    }
+
+    /// <summary>Verifies the common Never policy suppresses chrome without disabling the enabled overflow axis.</summary>
+    [Fact]
+    public void Layout_WhenScrollBarsAreVerticalAndNever_ShowsNoChromeButRetainsVerticalRange()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Never,
+        };
+        container.Children.Add(new ProbeControl(new Size(8, 10)));
+
+        new Engine().Layout(container, new Size(4, 3));
+
+        container.Viewport.ShouldBe(new Size(4, 3));
+        container.HorizontalOffset.ShouldBe(0);
+        container.VerticalOffset.ShouldBe(0);
+        container.ScrollBy(4, 4).ShouldBeTrue();
+        container.HorizontalOffset.ShouldBe(0);
+        container.VerticalOffset.ShouldBe(4);
+    }
+
+    /// <summary>Verifies a ScrollBy delta exceeding the extent clamps to the endpoint and raises exactly one event.</summary>
+    [Fact]
+    public void ScrollBy_WhenDeltaExceedsExtent_ClampsAndRaisesOneEvent()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        };
+        container.Children.Add(new ProbeControl(new Size(20, 10)));
+        new Engine().Layout(container, new Size(5, 3));
+        List<ScrollChangedEventArgs> changes = [];
+        container.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => container.HorizontalOffset = 16);
+        container.ScrollBy(int.MaxValue, int.MaxValue, Cause.Wheel).ShouldBeTrue();
+
+        container.HorizontalOffset.ShouldBe(15);
+        container.VerticalOffset.ShouldBe(7);
+        changes.Count.ShouldBe(1);
+        changes[0].PreviousOffset.ShouldBe(default);
+        changes[0].Offset.ShouldBe(new Point(15, 7));
+        changes[0].Cause.ShouldBe(Cause.Wheel);
+    }
+
+    /// <summary>Verifies a growing viewport clamps offsets before exposing the committed geometry.</summary>
+    [Fact]
+    public void Layout_WhenViewportGrows_ClampsOffsetsWithResizeCause()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        };
+        container.Children.Add(new ProbeControl(new Size(20, 10)));
+        Engine engine = new();
+        engine.Layout(container, new Size(5, 3));
+        _ = container.ScrollBy(100, 100);
+        ScrollChangedEventArgs? change = null;
+        container.ScrollChanged += (_, eventArgs) => change = eventArgs;
+
+        engine.Layout(container, new Size(18, 9));
+
+        container.HorizontalOffset.ShouldBe(2);
+        container.VerticalOffset.ShouldBe(1);
+        _ = change.ShouldNotBeNull();
+        change.Cause.ShouldBe(Cause.Resize);
+    }
+
+    /// <summary>Verifies arranged translation, viewport clipping, and hit testing agree once content is scrolled.</summary>
+    [Fact]
+    public void Render_WhenContentIsScrolled_ClipsAndTargetsOnlyViewport()
+    {
+        ProbeControl content = new(new Size(8, 1)) { Content = "ABCDEFGH".AsMemory() };
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        };
+        container.Children.Add(content);
+        new Engine().Layout(container, new Size(4, 1));
+        _ = container.ScrollBy(2, 0);
+        new Engine().Layout(container, new Size(4, 1));
+        using Frame frame = new(new Size(4, 1));
+
+        container.Render(frame.Canvas);
+
+        content.Bounds.X.ShouldBe(-2);
+        FrameOracle.Get(frame, default).ShouldBe("C");
+        container.HitTest(new Point(0, 0)).ShouldBeSameAs(content);
+        container.HitTest(new Point(3, 0)).ShouldBeSameAs(content);
+    }
+
+    /// <summary>Verifies a hidden horizontal bar gives word-wrapping content the committed viewport width during measurement.</summary>
+    [Fact]
+    public void Layout_WhenHorizontalBarIsHidden_ReflowsWordWrappedContentToViewportWidth()
+    {
+        ControlText text = new("one two three") { Wrapping = Wrapping.Word };
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        };
+        container.Children.Add(text);
+
+        new Engine().Layout(container, new Size(5, 3));
+
+        container.Extent.ShouldBe(new Size(5, 3));
+        container.Viewport.ShouldBe(new Size(5, 3));
+    }
+
+    /// <summary>Verifies wheel, arrows, pages, and endpoint keys share the typed command path.</summary>
+    [Fact]
+    public void OnEvent_WhenCommandsArrive_UsesLinePageAndEndpointChanges()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+            LineSize = 2,
+            PageOverlap = 1,
+        };
+        container.Children.Add(new ProbeControl(new Size(20, 20)));
+        new Engine().Layout(container, new Size(5, 4));
+
+        container.RaiseWheel(-1, -2);
+        container.RaiseKey(Code.Right);
+        container.RaiseKey(Code.PageDown);
+        container.RaiseKey(Code.End);
+
+        container.HorizontalOffset.ShouldBe(4);
+        container.VerticalOffset.ShouldBe(16);
+        container.RaiseKey(Code.Home);
+        container.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies content shrink clamps both offsets before its change notification.
+    /// Note: the deleted ScrollView contract additionally distinguished a
+    /// dedicated <see cref="Cause.Content"/> here (see the pre-migration
+    /// ScrollView.ArrangeOverride, which compared the previous and current
+    /// measured extent to pick Content vs Resize). Container.ResolveContentSlot
+    /// always reports <see cref="Cause.Resize"/> for any clamp it raises,
+    /// whether content or viewport changed, so Cause.Content is currently
+    /// unreachable. This assertion documents the real, current behavior; see
+    /// the Task 14 report for the tracked contract gap.
+    /// </summary>
+    [Fact]
+    public void Layout_WhenContentShrinks_ClampsOffsets()
+    {
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        };
+        container.Children.Add(new ProbeControl(new Size(20, 10)));
+        Engine engine = new();
+        engine.Layout(container, new Size(5, 3));
+        _ = container.ScrollBy(100, 100);
+        ScrollChangedEventArgs? change = null;
+        container.ScrollChanged += (_, eventArgs) => change = eventArgs;
+        container.Children[0] = new ProbeControl(new Size(4, 2));
+
+        engine.Layout(container, new Size(5, 3));
+
+        container.Extent.ShouldBe(new Size(4, 2));
+        new Point(container.HorizontalOffset, container.VerticalOffset).ShouldBe(default);
+        _ = change.ShouldNotBeNull();
+        change.Cause.ShouldBe(Cause.Resize);
+        change.Offset.ShouldBe(default);
+    }
+
+    /// <summary>Verifies horizontal clipping never exposes half of a two-cell grapheme.</summary>
+    [Fact]
+    public void Render_WhenOffsetCrossesWideRune_ClipsCompleteCellOwner()
+    {
+        ProbeControl content = new(new Size(3, 1)) { Content = "界A".AsMemory() };
+        LayoutProbe container = new()
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalBarVisibility = ScrollBarVisibility.Hidden,
+        };
+        container.Children.Add(content);
+        new Engine().Layout(container, new Size(2, 1));
+        _ = container.ScrollBy(1, 0);
+        new Engine().Layout(container, new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
+
+        container.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, default).ShouldBeEmpty();
+        frame.GetCell(default).IsContinuation.ShouldBeFalse();
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("A");
+    }
+
+    /// <summary>Verifies disposal releases the child content and the owned composed bar chrome exactly once.</summary>
+    [Fact]
+    public void Dispose_WhenArmed_ReleasesCompleteComposedTree()
+    {
+        ProbeControl content = new();
+        LayoutProbe container = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+        };
+        container.Children.Add(content);
+        new Engine().Layout(container, new Size(8, 4));
+        ScrollBar horizontal = container.HitTest(new Point(2, 3)).ShouldBeOfType<ScrollBar>();
+        ScrollBar vertical = container.HitTest(new Point(7, 2)).ShouldBeOfType<ScrollBar>();
+
+        container.Dispose();
+
+        container.IsDisposed.ShouldBeTrue();
+        content.IsDisposed.ShouldBeTrue();
+        horizontal.IsDisposed.ShouldBeTrue();
+        vertical.IsDisposed.ShouldBeTrue();
     }
 }
