@@ -895,8 +895,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         VisitChildren(static child => child.ValidateAttachment());
     }
 
-    /// <summary>Measures content inside margin, border-size, and padding constraints.</summary>
-    /// <param name="constraint">The content-box constraint.</param>
+    /// <summary>Measures content after margin is removed, the border box is resolved, and <see cref="BorderThickness"/> then <see cref="Padding"/> are deflated.</summary>
+    /// <param name="constraint">The border-then-padding-deflated content-box constraint.</param>
     /// <returns>The non-negative intrinsic content size.</returns>
     protected virtual Size MeasureOverride(Constraint constraint)
     {
@@ -905,7 +905,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Adjusts the content constraint before content measurement. Default returns it unchanged.</summary>
-    /// <param name="content">The padding-deflated content constraint.</param>
+    /// <param name="content">The border-then-padding-deflated content constraint.</param>
     /// <returns>The constraint passed to <see cref="MeasureOverride"/>.</returns>
     internal virtual Constraint OnMeasuringContent(Constraint content) => content;
 
@@ -914,13 +914,13 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <returns>The committed desired size.</returns>
     internal virtual Size OnMeasuredDesired(Size desired) => desired;
 
-    /// <summary>Adjusts the padding-deflated border box before content arrangement. Default returns it unchanged.</summary>
-    /// <param name="padded">The padding-deflated border-box rectangle.</param>
+    /// <summary>Adjusts the border-then-padding-deflated content box before content arrangement. Default returns it unchanged.</summary>
+    /// <param name="padded">The border-then-padding-deflated content-box rectangle.</param>
     /// <returns>The rectangle passed to <see cref="ArrangeOverride"/>.</returns>
     internal virtual Rect ResolveContentSlot(Rect padded) => padded;
 
-    /// <summary>Arranges overlay chrome anchored to the padding-deflated border box. Default is a no-op.</summary>
-    /// <param name="padded">The padding-deflated border-box rectangle.</param>
+    /// <summary>Arranges overlay chrome anchored to the border-then-padding-deflated content box. Default is a no-op.</summary>
+    /// <param name="padded">The border-then-padding-deflated content-box rectangle.</param>
     internal virtual void ArrangeOverlays(Rect padded) { }
 
     /// <summary>Gets whether this control sizes its width to content, overriding stretch. Default false.</summary>
@@ -929,8 +929,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether this control sizes its height to content, overriding stretch. Default false.</summary>
     internal virtual bool ShrinkWrapsHeight => false;
 
-    /// <summary>Arranges content inside the committed padded border box.</summary>
-    /// <param name="bounds">The non-negative content-box rectangle.</param>
+    /// <summary>Arranges content after margin is removed, the border box is resolved and aligned, and <see cref="BorderThickness"/> then <see cref="Padding"/> are deflated.</summary>
+    /// <param name="bounds">The non-negative border-then-padding-deflated content-box rectangle.</param>
     protected virtual void ArrangeOverride(Rect bounds) =>
         Debug.Assert(!IsDisposed, "A disposed control cannot arrange content.");
 

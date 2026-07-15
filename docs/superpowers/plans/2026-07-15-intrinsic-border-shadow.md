@@ -82,6 +82,8 @@ and arrange pipelines reserve the same border+padding inset.
   Task 4 deletes the type)
 - Modify: `docs/controls/input/button.md` (replace the obsolete default-padding
   claim with the intrinsic border inset)
+- Modify: `docs/concepts/layout.md` (align the normative extension-point box
+  model with border-then-padding reservation)
 - Test: `tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs`
   (create)
 - Test: `tests/SharpVision.Tests/Controls/ButtonTests.cs` (add committed-bounds
@@ -330,6 +332,11 @@ dotnet build SharpVision.slnx --configuration Release --no-incremental
 Expected: all six reservation tests and every selected existing test pass; the
 Release build reports zero warnings and zero errors.
 
+The documentation compliance follow-up repeats the reservation class and Release
+build after aligning `layout.md` and the `Control` extension-point XML
+documentation, then runs file-scoped Prettier and Markdown lint plus
+`git diff --check`.
+
 - [x] **Step 8: Commit**
 
 ```bash
@@ -340,6 +347,15 @@ git commit -m "feat(layout): reserve BorderThickness in the base measure/arrange
   docs/controls/input/button.md \
   tests/SharpVision.Tests/Controls/ControlBorderReservationTests.cs \
   tests/SharpVision.Tests/Controls/ButtonTests.cs \
+  docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
+```
+
+The scoped documentation follow-up is committed separately:
+
+```bash
+git commit -m "docs(layout): align intrinsic border box model contracts" -- \
+  src/SharpVision/Controls/Control.cs \
+  docs/concepts/layout.md \
   docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 ```
 

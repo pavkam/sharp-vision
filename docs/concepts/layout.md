@@ -3,8 +3,11 @@
 ## Layout contract
 
 Layout uses measure then arrange over integer terminal cells. Width and height
-describe the border box. Margin is external, padding internal, and neither
-collapses. Deflation saturates at zero.
+describe the border box. Margin is external, `BorderThickness` reserves physical
+cells inside the border box, padding is internal to those edges, and none
+collapses. The box model removes margin, resolves the border box, then deflates
+`BorderThickness` and `Padding` in that order. Deflation saturates at zero, so
+zero and tiny boxes never produce negative content extents.
 
 ## Lengths
 
@@ -14,8 +17,9 @@ maximum constraints clamp the resolved border box and validate `min <= max`.
 
 During unbounded measure, a percentage dimension behaves as automatic/intrinsic
 for desired size. During arrange it resolves against the final containing
-content box after padding and reserved scrollbars. If the effective constraint
-changes, content such as wrapped text is remeasured before final arrangement.
+content box after border, padding, and reserved scrollbars. If the effective
+constraint changes, content such as wrapped text is remeasured before final
+arrangement.
 
 ## Primitive API
 
@@ -45,11 +49,14 @@ rejects nested transactions. A changed viewport remeasures even when no property
 is dirty.
 
 `Control.MeasureOverride(Constraint)` receives the content-box constraint after
-margin, the resolved border-box request, and padding are removed. It returns an
-intrinsic content size. `Control.ArrangeOverride(Rect)` receives the final
-content rectangle after the border box is aligned and padding is removed. Both
-extension points run only for hidden or visible controls; collapsed controls
-desire zero, commit empty bounds, and skip both callbacks.
+margin is removed, the border-box request is resolved, and `BorderThickness`
+then `Padding` are reserved. It returns an intrinsic content size.
+`Control.ArrangeOverride(Rect)` receives the final content rectangle after
+margin is removed, the border box is resolved and aligned, and `BorderThickness`
+then `Padding` are deflated. Border edges therefore reserve layout cells before
+either extension point runs. Both extension points run only for hidden or
+visible controls; collapsed controls desire zero, commit empty bounds, and skip
+both callbacks.
 
 Fixed and percentage dimensions override alignment. Horizontal controls default
 to `Left`, so an automatic width uses the measured desired size; applications
