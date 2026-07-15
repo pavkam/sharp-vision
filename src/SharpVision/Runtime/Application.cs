@@ -772,7 +772,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         }
 
         PublishThemeContext();
-        Root.Invalidate(eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render);
+        Root.Invalidate(Control.InvalidationFor(eventArgs.Impact));
         ProcessInvalidation();
     }
 

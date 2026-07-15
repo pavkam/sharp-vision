@@ -6,19 +6,19 @@ namespace SharpVision.Styling;
 /// <summary>Immutable committed values for one control style, keyed by property and visual state.</summary>
 internal sealed class ControlStyleSnapshot
 {
-    internal static ControlStyleSnapshot Empty { get; } = new([], Impact.Render);
+    internal static ControlStyleSnapshot Empty { get; } = new([], ChangeImpact.None);
 
     private readonly Dictionary<(IStyleProperty Property, State State), object> _values;
 
     internal ControlStyleSnapshot(
         Dictionary<(IStyleProperty Property, State State), object> values,
-        Impact aggregateImpact)
+        ChangeImpact aggregateImpact)
     {
         _values = values;
         AggregateImpact = aggregateImpact;
     }
 
-    internal Impact AggregateImpact { get; }
+    internal ChangeImpact AggregateImpact { get; }
 
     internal bool TryGet(IStyleProperty property, State state, out object? value) =>
         _values.TryGetValue((property, state), out value);

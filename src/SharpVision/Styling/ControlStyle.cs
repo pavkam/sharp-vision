@@ -31,7 +31,7 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
     public bool IsFrozen { get; }
 
     /// <inheritdoc/>
-    public Impact AggregateImpact => CurrentSnapshot.AggregateImpact;
+    public ChangeImpact AggregateImpact => CurrentSnapshot.AggregateImpact;
 
     /// <summary>Adds or replaces one property value for a visual state.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
@@ -183,21 +183,17 @@ public sealed class ControlStyle<TControl>: IControlStyle, IStyleLifecycle
         }
     }
 
-    private void RaiseChanged(Impact impact) =>
+    private void RaiseChanged(ChangeImpact impact) =>
         Changed?.Invoke(this, new ThemeChangedEventArgs(typeof(TControl), impact));
 
     private ControlStyleSnapshot BuildSnapshot()
     {
         var copy = new Dictionary<(IStyleProperty Property, State State), object>(_values);
-        var aggregate = Impact.Render;
+        var aggregate = ChangeImpact.None;
 
         foreach (var entry in copy.Keys)
         {
-            if (entry.Property.Impact == Impact.Measure)
-            {
-                aggregate = Impact.Measure;
-                break;
-            }
+            aggregate = Control.MaximumImpact(aggregate, entry.Property.Impact);
         }
 
         return new ControlStyleSnapshot(copy, aggregate);

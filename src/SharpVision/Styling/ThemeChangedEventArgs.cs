@@ -11,13 +11,13 @@ public sealed class ThemeChangedEventArgs: EventArgs
     /// <param name="impact">The earliest affected control phase.</param>
     /// <exception cref="ArgumentNullException"><paramref name="targetType"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
-    public ThemeChangedEventArgs(Type targetType, Impact impact)
+    public ThemeChangedEventArgs(Type targetType, ChangeImpact impact)
     {
         ArgumentNullException.ThrowIfNull(targetType);
 
         if (!Enum.IsDefined(impact))
         {
-            throw new ArgumentOutOfRangeException(nameof(impact), impact, "The style impact is unknown.");
+            throw new ArgumentOutOfRangeException(nameof(impact), impact, "The change impact is unknown.");
         }
 
         TargetType = targetType;
@@ -28,5 +28,5 @@ public sealed class ThemeChangedEventArgs: EventArgs
     public Type TargetType { get; }
 
     /// <summary>Gets the earliest affected control phase.</summary>
-    public Impact Impact { get; }
+    public ChangeImpact Impact { get; }
 }

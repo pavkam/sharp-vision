@@ -15,6 +15,36 @@ public sealed class StyleScopeTests
         return style;
     }
 
+    /// <summary>Verifies a descendant's type theme overrides the theme layer inherited from a scope.</summary>
+    [Fact]
+    public void Resolve_WhenDescendantThemeStyleExists_WinsOverAncestorScopeTheme()
+    {
+        var theme = new Theme();
+        var scopeStyle = new ControlStyle<ProbeScope>();
+        scopeStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(1));
+        var descendantStyle = new ControlStyle<ProbeControl>();
+        descendantStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
+        theme.SetStyle(scopeStyle);
+        theme.SetStyle(descendantStyle);
+        var scope = new ProbeScope();
+        var child = new ProbeControl();
+        scope.Children.Add(child);
+        ThemeTestSupport.ApplyTheme(scope, theme);
+
+        child.Foreground.ShouldBe(Color.Indexed(2));
+    }
+
+    /// <summary>Verifies a descendant's instance style overrides an instance style inherited from a scope.</summary>
+    [Fact]
+    public void Resolve_WhenDescendantInstanceStyleExists_WinsOverAncestorScopeInstance()
+    {
+        var scope = new ProbeScope() { Style = Foreground(1) };
+        var child = new ProbeControl() { Style = Foreground(2) };
+        scope.Children.Add(child);
+
+        child.Foreground.ShouldBe(Color.Indexed(2));
+    }
+
     /// <summary>Verifies a descendant inherits a non-list ancestor scope's per-instance style.</summary>
     [Fact]
     public void Resolve_WhenAncestorIsStyleScope_DescendantInheritsScopeInstanceStyle()

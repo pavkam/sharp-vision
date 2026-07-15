@@ -8,11 +8,59 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies style-property registration and class defaults.</summary>
 public sealed class StylePropertyTests
 {
+    /// <summary>Verifies an unknown change impact is rejected before property registration.</summary>
+    [Fact]
+    public void Register_WhenImpactIsUnknown_ThrowsBeforeRegistration()
+    {
+        const string name = "probe-unknown-impact";
+        var unknown = (ChangeImpact) 99;
+
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            StyleProperty<int>.Register<Control>(name, 0, unknown));
+
+        exception.ParamName.ShouldBe("impact");
+        StylePropertyRegistry.FindProperty(typeof(Control), name).ShouldBeNull();
+    }
+
+    /// <summary>Verifies an arrange-impact local value invalidates arrange and render without measurement.</summary>
+    [Fact]
+    public void SetValue_WhenPropertyHasArrangeImpact_InvalidatesArrangeAndRender()
+    {
+        var property = StyleProperty<int>.Register<Control>(
+            "probe-arrange-impact",
+            0,
+            ChangeImpact.Arrange);
+        var control = new ProbeControl();
+        control.Clear(Invalidation.All);
+
+        control.SetValue(property, 1);
+
+        property.Impact.ShouldBe(ChangeImpact.Arrange);
+        control.Pending.ShouldBe(Invalidation.Arrange | Invalidation.Render);
+    }
+
+    /// <summary>Verifies assigning an equivalent local value publishes no property change or invalidation.</summary>
+    [Fact]
+    public void SetValue_WhenLocalValueIsEquivalent_IsNoOp()
+    {
+        var property = StyleProperty<int>.Register<Control>("probe-equivalent-local", 0, ChangeImpact.Render);
+        var control = new ProbeControl();
+        control.SetValue(property, 7);
+        control.Clear(Invalidation.All);
+        var changes = new List<string?>();
+        control.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+
+        control.SetValue(property, 7);
+
+        control.Pending.ShouldBe(Invalidation.None);
+        changes.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies duplicate class-default registration fails before publication.</summary>
     [Fact]
     public void RegisterClassDefault_WhenTypeIsDuplicated_ThrowsBeforePublication()
     {
-        var property = StyleProperty<int>.Register<Control>("probe-default-dup", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-default-dup", 0, ChangeImpact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(7);
 
         _ = Should.Throw<ArgumentException>(() => property.RegisterClassDefault<ProbeControl>(8));
@@ -22,7 +70,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void Resolve_WhenClassDefaultExists_UsesMostDerivedDefault()
     {
-        var property = StyleProperty<int>.Register<Control>("probe-class-host", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-class-host", 0, ChangeImpact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(7);
         var control = new ProbeControl();
 
@@ -33,7 +81,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void TryGetClassDefault_WhenBaseAndDerivedRegistered_PrefersMostDerived()
     {
-        var property = StyleProperty<int>.Register<Control>("probe-derived-precedence", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-derived-precedence", 0, ChangeImpact.Render);
         _ = property.RegisterClassDefault<Control>(1);
         _ = property.RegisterClassDefault<ProbeControl>(2);
 
@@ -67,7 +115,7 @@ public sealed class StylePropertyTests
     [Fact]
     public void Resolve_WhenThemeDefinesPerControlDefault_OverridesClassDefault()
     {
-        var property = StyleProperty<int>.Register<Control>("probe-theme-vs-class", 0, Impact.Render);
+        var property = StyleProperty<int>.Register<Control>("probe-theme-vs-class", 0, ChangeImpact.Render);
         _ = property.RegisterClassDefault<ProbeControl>(1);
         var theme = new Theme();
         var style = new ControlStyle<ProbeControl>();

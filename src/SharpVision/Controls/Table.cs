@@ -86,15 +86,15 @@ public sealed class Table: Container
 
     /// <summary>Identifies the themeable header-text foreground style property.</summary>
     public static StyleProperty<Color?> HeaderForegroundProperty { get; } =
-        StyleProperty<Color?>.Register<Table>("header-foreground", null, Impact.Render);
+        StyleProperty<Color?>.Register<Table>("header-foreground", null, ChangeImpact.Render);
 
     /// <summary>Identifies the themeable header-row background style property.</summary>
     public static StyleProperty<Color?> HeaderBackgroundProperty { get; } =
-        StyleProperty<Color?>.Register<Table>("header-background", null, Impact.Render);
+        StyleProperty<Color?>.Register<Table>("header-background", null, ChangeImpact.Render);
 
     /// <summary>Identifies the themeable grid-line color style property.</summary>
     public static StyleProperty<Color?> GridLineColorProperty { get; } =
-        StyleProperty<Color?>.Register<Table>("grid-line-color", null, Impact.Render);
+        StyleProperty<Color?>.Register<Table>("grid-line-color", null, ChangeImpact.Render);
 
     /// <summary>Gets or sets an optional foreground override for header text, resolved through the theme.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>

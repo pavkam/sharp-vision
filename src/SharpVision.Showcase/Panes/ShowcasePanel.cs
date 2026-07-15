@@ -15,7 +15,7 @@ public sealed class ShowcasePanel: Control
         StyleProperty<LabelPlacement>.Register<ShowcasePanel>(
             "label-placement",
             LabelPlacement.Left,
-            Impact.Measure);
+            ChangeImpact.Measure);
 
     /// <summary>Initializes a compact themed panel specimen.</summary>
     public ShowcasePanel()

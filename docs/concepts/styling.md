@@ -10,9 +10,13 @@ invalidates only dependent controls and only the required phase.
 
 Each styleable value is registered as immutable `StyleProperty<T>` metadata on
 its declaring control type. Controls expose conventional CLR properties backed
-by protected `GetValue`, `SetValue`, and public `ClearValue` operations. Local
-values win over every themed, per-instance, class-default, and visual-state
-layer.
+by public `GetValue`, `SetValue`, and `ClearValue` operations. Local values win
+over every themed, per-instance, class-default, and visual-state layer.
+
+Property metadata carries an ordered `ChangeImpact`: `None`, `Render`,
+`Arrange`, or `Measure`. `Arrange` invalidates arrange and render; `Measure`
+invalidates measure, arrange, and render. Assigning an equivalent local value is
+a no-op and raises neither invalidation nor a property-change notification.
 
 Base `Control` registers margin, padding, foreground, background, attributes,
 underline, underline color, fill mode, border chrome, and shadow chrome. Derived
@@ -23,14 +27,24 @@ example, `Button` rounded border and compact shadow).
 
 `Theme` owns at most one `IControlStyle` per control type. `Application.Theme`
 (default `Themes.Dark`) publishes an internal theme context to every attached
-control. Resolution order for each property and visual state is:
+control. Resolution applies these layers from lowest to highest priority:
 
 1. registered default;
 2. most-derived class default;
-3. theme chain from `Control` through the runtime type;
-4. per-instance `Control.Style` overlay (that control only);
-5. active visual-state overlays (hovered, focused, checked, pressed, disabled);
-6. explicit local value.
+3. theme chains for ancestor `IStyleScope` controls, farthest scope to nearest;
+4. the descendant's theme chain from `Control` through its runtime type;
+5. instance styles for ancestor scopes, farthest scope to nearest;
+6. the descendant's per-instance `Control.Style`;
+7. explicit local value.
+
+Within each theme or instance-style layer, the resolver first chooses that
+layer's best matching visual-state value. It then advances to the next layer.
+Layer priority therefore remains authoritative: a focused value in a lower theme
+layer cannot override a normal value in a higher instance layer.
+
+Replacing a style in a `Theme` publishes the maximum aggregate impact of the
+removed and replacement styles. This preserves the invalidation needed to erase
+old geometry even when the replacement itself is render-only.
 
 `Themes.White` and `Themes.Dark` are frozen standard themes built from the
 public `Theme` and `ControlStyle<TControl>` API using the portable 16-color
@@ -38,27 +52,30 @@ palette.
 
 ## Per-instance styles
 
-`Control.Style` is a nullable `IControlStyle` overlay. It applies only to the
-owning control and does not flow to descendants. List-owned items resolve
-`ControlStyle<List>` theme and owner-instance values in addition to their own
-theme chain so row selection styling remains coherent.
+`Control.Style` is a nullable `IControlStyle` overlay. It normally applies only
+to the owning control. When that control implements `IStyleScope`, its style is
+also a lower-priority resource for descendants; nearer scopes override farther
+scopes, and the descendant's own style wins over every scope. Replacing
+`Control.Style` invalidates the maximum aggregate impact of the old and new
+styles.
 
 ## Visual states
 
-Standard states are normal, hovered, pressed, focused, checked, and disabled.
-The hovered overlay applies only to interactive (focusable) controls; static
-content such as text and tables is never marked hovered. Measure-impact
-properties are normal-state values only. Render-impact properties may vary by
-overlay state. Visual overlays never control behavior: `IsEnabled` determines
-input acceptance.
+Standard states are normal, hovered, focused, selected, checked, indeterminate,
+pressed, and disabled. The hovered overlay applies only to interactive
+(focusable) controls; static content such as text and tables is never marked
+hovered. Any style property may vary by overlay state; activating such a state
+uses the property's declared `ChangeImpact`. Visual overlays never control
+behavior: `IsEnabled` determines input acceptance.
 
 Public theme resolution accepts any combination of defined state flags and
 rejects unknown bits before evaluating the cascade.
 
 ## Invalidation and tests
 
-Property metadata declares the earliest affected phase: measure, arrange, or
-render. Tests cover registration, theme precedence, local override/clear,
+Property metadata declares the earliest affected phase with `ChangeImpact`.
+Tests cover all four impact mappings, replacement impact, layer and state
+precedence, equivalent assignment, registration, local override/clear,
 application theme switching, standard theme cells, third-party style properties,
 showcase theme toggling, and exact terminal cell output.
 

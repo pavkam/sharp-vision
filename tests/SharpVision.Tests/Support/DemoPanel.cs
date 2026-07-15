@@ -14,7 +14,7 @@ internal sealed class DemoPanel: Control
         StyleProperty<DemoLabelPlacement>.Register<DemoPanel>(
             "label-placement",
             DemoLabelPlacement.Left,
-            Impact.Measure);
+            ChangeImpact.Measure);
 
     /// <summary>Initializes a compact panel specimen for theme extensibility tests.</summary>
     internal DemoPanel()

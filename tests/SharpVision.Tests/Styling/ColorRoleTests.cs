@@ -28,7 +28,7 @@ public sealed class ColorRoleTests
         changeCount.ShouldBe(1);
         var observed = changed.ShouldNotBeNull();
         observed.TargetType.ShouldBe(typeof(Control));
-        observed.Impact.ShouldBe(Impact.Render);
+        observed.Impact.ShouldBe(ChangeImpact.Render);
     }
 
     /// <summary>Verifies assigning the current concrete role value publishes no redundant change.</summary>

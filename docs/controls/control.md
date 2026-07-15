@@ -67,7 +67,8 @@ Debug.Assert(control.Parent == container);
 Dirty phases form a dependency closure: measure implies arrange and render,
 arrange implies render, and render stands alone. Property setters request the
 earliest affected phase and coalesce repeated requests while they bubble to the
-root.
+root. Public style-property metadata expresses that phase as ordered
+`ChangeImpact.None`, `Render`, `Arrange`, or `Measure` values.
 
 | Change                                            | Dirty phases                 |
 | ------------------------------------------------- | ---------------------------- |
@@ -75,6 +76,13 @@ root.
 | Horizontal or vertical alignment                  | Arrange and render           |
 | Enabled state or visible/hidden transition        | Render                       |
 | Hit-test visibility                               | No layout or render phase    |
+| Style replacement                                 | Maximum old/new style impact |
+
+The `Arrange` impact always requests arrange plus render, while `Measure`
+requests all three phases. Assigning an equivalent value through `SetValue` is a
+no-op. Replacing either `Control.Style` or a type style in `Theme` uses the
+maximum aggregate impact of the removed and new styles, so removing geometric
+values still invalidates their previous layout.
 
 ## Lifecycle and events
 
@@ -115,7 +123,8 @@ shared mechanism behind documented Overlay and Canvas unclipped-child modes.
 
 Style properties, themes, and visual-state resolution are defined in
 [Styling and visual states](../concepts/styling.md#styling-contract). This
-control exposes only its own properties and class defaults here.
+control exposes its registered properties through `GetValue`, `SetValue`, and
+`ClearValue`; each operation validates applicability before observable mutation.
 
 `GetVisualState()` derives normal, hovered, focused, pressed, and disabled flags
 from behavior. Controls with semantic selection override it to add checked

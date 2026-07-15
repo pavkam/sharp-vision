@@ -244,7 +244,9 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
-    /// <exception cref="ArgumentException">The style targets a type this control does not derive from.</exception>
+    /// <exception cref="ArgumentException">
+    /// The style targets a type this control does not derive from or reports an unknown change impact.
+    /// </exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public IControlStyle? Style
@@ -266,12 +268,26 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            UnsubscribeInstanceStyle(InstanceStyle);
+            var replacementImpact = value?.AggregateImpact ?? ChangeImpact.None;
+
+            if (!Enum.IsDefined(replacementImpact))
+            {
+                throw new ArgumentException(
+                    "The style reports an unknown change impact.",
+                    nameof(value));
+            }
+
+            var previous = InstanceStyle;
+            var impact = MaximumImpact(
+                previous?.AggregateImpact ?? ChangeImpact.None,
+                replacementImpact);
+            var invalidation = InvalidationFor(impact);
+            UnsubscribeInstanceStyle(previous);
             InstanceStyle = value;
             SubscribeInstanceStyle(value);
             InvalidateResolvedStyleCache();
-            Invalidate(Invalidation.Measure);
-            CascadeStyleScopeInvalidation(Invalidation.Measure);
+            Invalidate(invalidation);
+            CascadeStyleScopeInvalidation(invalidation);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Style)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
         }
@@ -1068,40 +1084,67 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     /// <summary>Gets the invalidation a visual-state change requires for this control.</summary>
     /// <remarks>
-    /// A change is render-only unless an applicable style contains a measure-impact property (for
-    /// example padding or border thickness that differs by state), in which case layout must rerun.
+    /// A change is render-only unless an applicable style contains an arrange- or measure-impact
+    /// property, in which case the corresponding layout work also reruns.
     /// </remarks>
     private Invalidation VisualStateInvalidation()
     {
-        if (InstanceStyle?.AggregateImpact == Impact.Measure)
-        {
-            return Invalidation.Measure;
-        }
+        var impact = MaximumImpact(
+            ChangeImpact.Render,
+            InstanceStyle?.AggregateImpact ?? ChangeImpact.None);
 
         if (ThemeContext is { } context)
         {
             foreach (var style in context.GetStyleChain(GetType()))
             {
-                if (style.AggregateImpact == Impact.Measure)
-                {
-                    return Invalidation.Measure;
-                }
+                impact = MaximumImpact(impact, style.AggregateImpact);
             }
         }
 
         for (var current = Parent; current is not null; current = current.Parent)
         {
-            if (current is IStyleScope && current.InstanceStyle?.AggregateImpact == Impact.Measure)
+            if (current is not IStyleScope)
             {
-                return Invalidation.Measure;
+                continue;
             }
+
+            if (ThemeContext is { } scopeContext)
+            {
+                foreach (var style in scopeContext.GetStyleChain(current.GetType()))
+                {
+                    impact = MaximumImpact(impact, style.AggregateImpact);
+                }
+            }
+
+            impact = MaximumImpact(
+                impact,
+                current.InstanceStyle?.AggregateImpact ?? ChangeImpact.None);
         }
 
-        return Invalidation.Render;
+        return InvalidationFor(impact);
     }
 
     /// <summary>Gets the committed content rectangle after padding deflation.</summary>
     protected Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
+
+    /// <summary>Returns the earlier and therefore stronger of two validated change impacts.</summary>
+    /// <param name="left">The first validated impact.</param>
+    /// <param name="right">The second validated impact.</param>
+    /// <returns>The impact with the greatest ordered value.</returns>
+    internal static ChangeImpact MaximumImpact(ChangeImpact left, ChangeImpact right) =>
+        (int) left >= (int) right ? left : right;
+
+    /// <summary>Maps one validated public change impact to the complete internal dirty-phase closure.</summary>
+    /// <param name="impact">The validated earliest affected UI phase.</param>
+    /// <returns>The internal dirty phases requested by the change.</returns>
+    internal static Invalidation InvalidationFor(ChangeImpact impact) => impact switch
+    {
+        ChangeImpact.None => Invalidation.None,
+        ChangeImpact.Render => Invalidation.Render,
+        ChangeImpact.Arrange => Invalidation.Arrange | Invalidation.Render,
+        ChangeImpact.Measure => Invalidation.All,
+        _ => throw new UnreachableException(),
+    };
 
     private static Invalidation Expand(Invalidation value) => value switch
     {
@@ -1298,7 +1341,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         InvalidateResolvedStyleCache();
 
-        var invalidation = eventArgs.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
+        var invalidation = InvalidationFor(eventArgs.Impact);
         Invalidate(invalidation);
         CascadeStyleScopeInvalidation(invalidation);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));

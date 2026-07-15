@@ -1,9 +1,6 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-// Copyright (c) SharpVision contributors. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-
 namespace SharpVision.Styling;
 
 
@@ -20,7 +17,7 @@ public sealed class StyleProperty<T>: IStyleProperty
         string name,
         string clrName,
         T defaultValue,
-        Impact impact,
+        ChangeImpact impact,
         Action<T>? validate)
     {
         DeclaringType = declaringType;
@@ -47,7 +44,7 @@ public sealed class StyleProperty<T>: IStyleProperty
     object IStyleProperty.DefaultValue => DefaultValue!;
 
     /// <inheritdoc/>
-    public Impact Impact { get; }
+    public ChangeImpact Impact { get; }
 
     /// <summary>Registers one style property on a declaring control type.</summary>
     /// <typeparam name="TControl">The control type that owns the property.</typeparam>
@@ -64,11 +61,12 @@ public sealed class StyleProperty<T>: IStyleProperty
     /// <paramref name="name"/> is empty, <typeparamref name="TControl"/> does not derive from
     /// <see cref="Control"/>, or the name is already registered on the declaring type.
     /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
     [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Typed registration is the public style-property contract.")]
     public static StyleProperty<T> Register<TControl>(
         string name,
         T defaultValue,
-        Impact impact,
+        ChangeImpact impact,
         Action<T>? validate = null,
         string? clrName = null)
         where TControl : Control

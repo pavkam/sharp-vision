@@ -9,102 +9,102 @@ public abstract partial class Control
 {
     /// <summary>Identifies the external margin style property.</summary>
     public static StyleProperty<Thickness> MarginProperty { get; } =
-        StyleProperty<Thickness>.Register<Control>("margin", default, Impact.Measure);
+        StyleProperty<Thickness>.Register<Control>("margin", default, ChangeImpact.Measure);
 
     /// <summary>Identifies the internal padding style property.</summary>
     public static StyleProperty<Thickness> PaddingProperty { get; } =
-        StyleProperty<Thickness>.Register<Control>("padding", default, Impact.Measure);
+        StyleProperty<Thickness>.Register<Control>("padding", default, ChangeImpact.Measure);
 
     /// <summary>Identifies the foreground style property.</summary>
     public static StyleProperty<Color?> ForegroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("foreground", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("foreground", null, ChangeImpact.Render);
 
     /// <summary>Identifies the background style property.</summary>
     public static StyleProperty<Color?> BackgroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("background", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("background", null, ChangeImpact.Render);
 
     /// <summary>Identifies the text-attribute style property.</summary>
     public static StyleProperty<TerminalAttributes?> AttributesProperty { get; } =
         StyleProperty<TerminalAttributes?>.Register<Control>(
             "attributes",
             null,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeAttributes);
 
     /// <summary>Identifies the typed underline style property.</summary>
     public static StyleProperty<Underline?> UnderlineProperty { get; } =
-        StyleProperty<Underline?>.Register<Control>("underline", null, Impact.Render);
+        StyleProperty<Underline?>.Register<Control>("underline", null, ChangeImpact.Render);
 
     /// <summary>Identifies the underline color style property.</summary>
     public static StyleProperty<Color?> UnderlineColorProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("underline-color", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("underline-color", null, ChangeImpact.Render);
 
     /// <summary>Identifies the body fill mode style property.</summary>
     public static StyleProperty<FillMode> FillModeProperty { get; } =
-        StyleProperty<FillMode>.Register<Control>("fill-mode", FillMode.Transparent, Impact.Render);
+        StyleProperty<FillMode>.Register<Control>("fill-mode", FillMode.Transparent, ChangeImpact.Render);
 
     /// <summary>Identifies the border thickness style property.</summary>
     public static StyleProperty<Thickness> BorderThicknessProperty { get; } =
         StyleProperty<Thickness>.Register<Control>(
             "border-thickness",
             default,
-            Impact.Measure,
+            ChangeImpact.Measure,
             ValidateThemeBorderThickness);
 
     /// <summary>Identifies the border glyph style property.</summary>
     public static StyleProperty<Glyphs> BorderGlyphsProperty { get; } =
-        StyleProperty<Glyphs>.Register<Control>("border-glyphs", Glyphs.Default, Impact.Render);
+        StyleProperty<Glyphs>.Register<Control>("border-glyphs", Glyphs.Default, ChangeImpact.Render);
 
     /// <summary>Identifies the border color style property.</summary>
     public static StyleProperty<Color?> BorderColorProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("border-color", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("border-color", null, ChangeImpact.Render);
 
     /// <summary>Identifies the border attribute style property.</summary>
     public static StyleProperty<TerminalAttributes?> BorderAttributesProperty { get; } =
         StyleProperty<TerminalAttributes?>.Register<Control>(
             "border-attributes",
             null,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeAttributes);
 
     /// <summary>Identifies the shadow visibility style property.</summary>
     public static StyleProperty<bool> HasShadowProperty { get; } =
-        StyleProperty<bool>.Register<Control>("has-shadow", false, Impact.Render);
+        StyleProperty<bool>.Register<Control>("has-shadow", false, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow mode style property.</summary>
     public static StyleProperty<ShadowMode> ShadowModeProperty { get; } =
         StyleProperty<ShadowMode>.Register<Control>(
             "shadow-mode",
             ShadowMode.Composite,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeShadowMode);
 
     /// <summary>Identifies the shadow offset style property.</summary>
     public static StyleProperty<Point> ShadowOffsetProperty { get; } =
-        StyleProperty<Point>.Register<Control>("shadow-offset", default, Impact.Render);
+        StyleProperty<Point>.Register<Control>("shadow-offset", default, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow glyph style property.</summary>
     public static StyleProperty<Rune> ShadowGlyphProperty { get; } =
         StyleProperty<Rune>.Register<Control>(
             "shadow-glyph",
             new Rune('▓'),
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeShadowGlyph);
 
     /// <summary>Identifies the shadow foreground style property.</summary>
     public static StyleProperty<Color?> ShadowForegroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("shadow-foreground", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("shadow-foreground", null, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow background style property.</summary>
     public static StyleProperty<Color?> ShadowBackgroundProperty { get; } =
-        StyleProperty<Color?>.Register<Control>("shadow-background", null, Impact.Render);
+        StyleProperty<Color?>.Register<Control>("shadow-background", null, ChangeImpact.Render);
 
     /// <summary>Identifies the shadow attribute style property.</summary>
     public static StyleProperty<TerminalAttributes?> ShadowAttributesProperty { get; } =
         StyleProperty<TerminalAttributes?>.Register<Control>(
             "shadow-attributes",
             null,
-            Impact.Render,
+            ChangeImpact.Render,
             ValidateThemeAttributes);
 
     /// <summary>Gets or sets external non-collapsing cell edges.</summary>

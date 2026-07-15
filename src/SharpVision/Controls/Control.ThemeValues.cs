@@ -91,6 +91,13 @@ public abstract partial class Control
         EnsureThemeProperty(property);
         property.ValidateValue(value);
         VerifyMutable();
+
+        if (_localValues.TryGetValue(property, out var stored) &&
+            EqualityComparer<T>.Default.Equals((T) stored!, value))
+        {
+            return;
+        }
+
         _localValues[property] = value;
         InvalidateThemeProperty(property);
     }
@@ -210,7 +217,7 @@ public abstract partial class Control
         Debug.Assert(property is not null, "Theme invalidation requires a non-null property.");
 
         InvalidateResolvedStyleCache();
-        Invalidate(property.Impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render);
+        Invalidate(InvalidationFor(property.Impact));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property.ClrName));
     }
 }

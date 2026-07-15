@@ -84,6 +84,22 @@ public sealed class StyleTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies replacing a geometric instance style preserves the removed layout impact.</summary>
+    [Fact]
+    public void Style_WhenReplacingMeasureWithRender_InvalidatesMeasure()
+    {
+        var measured = new ControlStyle<Control>();
+        measured.Set(Control.PaddingProperty, State.Normal, new Thickness(1));
+        var rendered = new ControlStyle<Control>();
+        rendered.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(2));
+        var control = new ProbeControl() { Style = measured };
+        control.Clear(Invalidation.All);
+
+        control.Style = rendered;
+
+        control.Pending.ShouldBe(Invalidation.All);
+    }
+
     /// <summary>Verifies foreground reads behavior but never mutates enabled state.</summary>
     [Fact]
     public void Foreground_WhenDisabledOverlayExists_DoesNotControlBehavior()
@@ -133,6 +149,23 @@ public sealed class StyleTests
         _ = Should.Throw<ArgumentException>(() => control.Style = foreign);
     }
 
+    /// <summary>Verifies a third-party style cannot publish an undefined invalidation contract.</summary>
+    [Fact]
+    public void Style_WhenAggregateImpactIsUnknown_ThrowsBeforeMutation()
+    {
+        var previous = new ControlStyle<Control>();
+        previous.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(3));
+        var control = new ProbeControl() { Style = previous };
+        control.Clear(Invalidation.All);
+        var invalid = new InvalidImpactStyle();
+
+        var exception = Should.Throw<ArgumentException>(() => control.Style = invalid);
+
+        exception.ParamName.ShouldBe("value");
+        control.Style.ShouldBeSameAs(previous);
+        control.Pending.ShouldBe(Invalidation.None);
+    }
+
     /// <summary>Verifies assigning a base-typed style to a derived control is accepted.</summary>
     [Fact]
     public void Style_WhenTargetTypeIsBase_Accepted()
@@ -158,9 +191,9 @@ public sealed class StyleTests
         control.GetValue(Control.ForegroundProperty).ShouldBeNull();
     }
 
-    private static void InvalidateThemeDependents(Control control, Impact impact)
+    private static void InvalidateThemeDependents(Control control, ChangeImpact impact)
     {
-        var invalidation = impact == Impact.Measure ? Invalidation.Measure : Invalidation.Render;
+        var invalidation = Control.InvalidationFor(impact);
 
         if (control.InstanceStyle is null)
         {

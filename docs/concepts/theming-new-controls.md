@@ -14,11 +14,15 @@ type:
 public sealed class Gauge : Control
 {
     public static StyleProperty<Color?> FillColorProperty { get; } =
-        StyleProperty<Color?>.Register<Gauge>("fill-color", null, Impact.Render);
+        StyleProperty<Color?>.Register<Gauge>("fill-color", null, ChangeImpact.Render);
 
     // Optional: give the CLR name explicitly when it differs from the serialized name.
     public static StyleProperty<int> SegmentsProperty { get; } =
-        StyleProperty<int>.Register<Gauge>("segments", 10, Impact.Measure, clrName: nameof(Segments));
+        StyleProperty<int>.Register<Gauge>(
+            "segments",
+            10,
+            ChangeImpact.Measure,
+            clrName: nameof(Segments));
 
     public Color? FillColor
     {
@@ -34,10 +38,15 @@ public sealed class Gauge : Control
 }
 ```
 
-- `Impact.Render` re-renders on change; `Impact.Measure` also re-runs layout.
+- `ChangeImpact.None` changes no UI phase, `Render` regenerates cells, `Arrange`
+  recalculates bounds and cells, and `Measure` recalculates the full layout and
+  cells. The values are ordered so an aggregate uses the strongest impact.
 - `GetValue`/`SetValue`/`ClearValue` are public: they resolve through the full
-  cascade (local value → ancestor style scopes → per-instance style → theme →
-  class default → registered default) and honor visual states.
+  cascade (registered and class defaults → far-to-near scope theme chains →
+  descendant theme chain → far-to-near scope instance styles → descendant
+  instance style → local value) and honor visual states.
+- Reassigning an equivalent local value is a no-op: it does not invalidate or
+  raise `PropertyChanged`.
 - Change notifications (`INotifyPropertyChanged.PropertyChanged`) report the
   `clrName` (defaulting to the PascalCase form of the serialized name, e.g.
   `"fill-color"` → `FillColor`).
@@ -84,7 +93,8 @@ protected override bool IsIndeterminateState => _isMixed;     // drives State.In
 Base `GetVisualState` combines these with `Hovered`, `Focused`, `Pressed`, and
 `Disabled`. A style may target `State.Normal`, any single overlay, or a
 **combination** (for example `State.Hovered | State.Focused`); a more specific
-combination wins over single-flag definitions.
+combination wins over single-flag definitions inside that style layer. The next
+higher cascade layer then overrides it even with a `State.Normal` value.
 
 ## 5. Cascade style to descendants
 
@@ -95,10 +105,11 @@ A container whose style should flow to its logical children implements
 public sealed class Tree : Container, IStyleScope { }
 ```
 
-Every descendant then inherits the tree's themed and per-instance style values,
-with the nearest scope winning and a descendant's own values winning over any
-scope. This is the same mechanism the built-in list uses; it is not restricted
-to a specific control type.
+Every descendant then uses the tree's theme chain and per-instance style as
+lower-priority resources. Scope resources apply farthest to nearest, followed by
+the descendant's theme chain and own instance style, so the descendant always
+wins over an ancestor scope. This is the same mechanism the built-in list uses;
+it is not restricted to a specific control type.
 
 ## 6. Use semantic theme colors
 

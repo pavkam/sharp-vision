@@ -21,7 +21,7 @@ public interface IControlStyle
     public bool IsFrozen { get; }
 
     /// <summary>Gets the earliest impact of the current style contents.</summary>
-    public Impact AggregateImpact { get; }
+    public ChangeImpact AggregateImpact { get; }
 
     /// <summary>Gets one stored value from the current immutable snapshot.</summary>
     /// <param name="styleProperty">The style property.</param>
