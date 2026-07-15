@@ -34,11 +34,14 @@ public sealed class ControlChromeTests
     [Fact]
     public void DrawShadow_WhenCompositeModeIsUsed_LeavesBodyCellsUntouched()
     {
-        var shadow = new Shadow()
+        var shadow = new LayoutProbe()
         {
             Bounds = new Rect(0, 0, 2, 2),
-            Mode = ShadowMode.Composite,
-            Offset = new Point(1, 1),
+            HasShadow = true,
+            ShadowMode = ShadowMode.Composite,
+            ShadowOffset = new Point(1, 1),
+            ShadowGlyph = new Rune('▓'),
+            ShadowAttributes = Attributes.Dim,
         };
         using Frame frame = new(new Size(4, 4));
         frame.Canvas.Fill(frame.Canvas.Bounds, new Rune('x'));
