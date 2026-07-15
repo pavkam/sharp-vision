@@ -48,6 +48,73 @@ public sealed class MarkupTests
         spans[3].Foreground.ShouldBe(Color.Role((int) ColorRole.Accent));
     }
 
+    /// <summary>Verifies every documented ANSI palette name resolves to its exact index.</summary>
+    [Theory]
+    [InlineData("black", 0)]
+    [InlineData("red", 1)]
+    [InlineData("green", 2)]
+    [InlineData("yellow", 3)]
+    [InlineData("blue", 4)]
+    [InlineData("magenta", 5)]
+    [InlineData("cyan", 6)]
+    [InlineData("white", 7)]
+    [InlineData("brightblack", 8)]
+    [InlineData("gray", 8)]
+    [InlineData("grey", 8)]
+    [InlineData("brightred", 9)]
+    [InlineData("brightgreen", 10)]
+    [InlineData("brightyellow", 11)]
+    [InlineData("brightblue", 12)]
+    [InlineData("brightmagenta", 13)]
+    [InlineData("brightcyan", 14)]
+    [InlineData("brightwhite", 15)]
+    public void Parse_WhenAnsiColorNameIsMarked_ResolvesPaletteIndex(string name, int index)
+    {
+        var spans = Markup.Parse($"<{name}>x</{name}>", out var display);
+
+        display.ShouldBe("x");
+        spans.ShouldHaveSingleItem().Foreground.ShouldBe(Color.Indexed(index));
+    }
+
+    /// <summary>Verifies every documented attribute spelling contributes its semantic flag.</summary>
+    [Theory]
+    [InlineData("b", Attributes.Bold)]
+    [InlineData("bold", Attributes.Bold)]
+    [InlineData("d", Attributes.Dim)]
+    [InlineData("dim", Attributes.Dim)]
+    [InlineData("i", Attributes.Italic)]
+    [InlineData("italic", Attributes.Italic)]
+    [InlineData("s", Attributes.Strike)]
+    [InlineData("strike", Attributes.Strike)]
+    [InlineData("reverse", Attributes.Reverse)]
+    [InlineData("blink", Attributes.Blink)]
+    [InlineData("rapidblink", Attributes.RapidBlink)]
+    [InlineData("hidden", Attributes.Hidden)]
+    [InlineData("conceal", Attributes.Hidden)]
+    [InlineData("overline", Attributes.Overline)]
+    public void Parse_WhenAttributeTagIsMarked_ResolvesSemanticFlag(
+        string name,
+        Attributes expected)
+    {
+        var spans = Markup.Parse($"<{name}>x</{name}>", out var display);
+
+        display.ShouldBe("x");
+        spans.ShouldHaveSingleItem().Attributes.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies explicit foreground and hyperlink aliases retain their documented semantics.</summary>
+    [Fact]
+    public void Parse_WhenValueAliasesAreMarked_ResolvesColorAndLink()
+    {
+        var spans = Markup.Parse(
+            "<color=brightblue>a</color><a=https://example.test>b</a>",
+            out var display);
+
+        display.ShouldBe("ab");
+        spans[0].Foreground.ShouldBe(Color.Indexed(12));
+        spans[1].Link.ShouldBe("https://example.test");
+    }
+
     /// <summary>Verifies independent facets remain active when named tags close out of stack order.</summary>
     [Fact]
     public void Parse_WhenTagsOverlap_ClosesNearestMatchingName()

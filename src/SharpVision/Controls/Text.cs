@@ -247,7 +247,6 @@ public sealed class Text: Control
     {
         var cells = 0;
         var spanIndex = SpanIndexAt(line.Offset);
-        var lastSpan = default(StyleSpan);
 
         foreach (var grapheme in Graphemes.Enumerate(_display.AsSpan(line.Offset, line.Length)))
         {
@@ -261,16 +260,16 @@ public sealed class Text: Control
                 ResolveSpanStyle(span),
                 background: ResolveBackgroundMode(span));
             cells += Terminal.Unicode.Width.Measure(cluster, AmbiguousWidth).Cells;
-            lastSpan = span;
         }
 
         if (line.HasEllipsis)
         {
+            var span = spanIndex >= 0 ? _spans[spanIndex] : default;
             _ = canvas.Draw(
                 _ellipsis,
                 new Point(bounds.X + line.Leading + cells, bounds.Y + row),
-                ResolveSpanStyle(lastSpan),
-                background: ResolveBackgroundMode(lastSpan));
+                ResolveSpanStyle(span),
+                background: ResolveBackgroundMode(span));
         }
     }
 

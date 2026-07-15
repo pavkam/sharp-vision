@@ -44,19 +44,19 @@ controls one facet; stacking tags composes facets. `</name>` removes the nearest
 still-open tag with that exact name, so independent facets may overlap. `</>`
 removes the most recently opened tag.
 
-| Facet            | Accepted tags                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------ |
-| Bold             | `<b>`, `<bold>`                                                                                  |
-| Dim              | `<d>`, `<dim>`                                                                                   |
-| Italic           | `<i>`, `<italic>`                                                                                |
-| Underline        | `<u>`, `<underline>`                                                                             |
-| Strike           | `<s>`, `<strike>`                                                                                |
-| Other attributes | `<reverse>`, `<blink>`, `<rapidblink>`, `<hidden>`, `<conceal>`, `<overline>`                    |
-| Foreground       | `<color>`, `<fg=value>`, `<color=value>`, or a bare color/role tag such as `<red>` or `<accent>` |
-| Background       | `<bg=value>`                                                                                     |
-| Underline color  | `<uc=value>`                                                                                     |
-| Underline shape  | `<u=straight>`, `<u=double>`, `<u=curly>`, `<u=dotted>`, `<u=dashed>`                            |
-| Hyperlink        | `<link=target>`, `<a=target>`                                                                    |
+| Facet            | Accepted tags                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| Bold             | `<b>`, `<bold>`                                                                       |
+| Dim              | `<d>`, `<dim>`                                                                        |
+| Italic           | `<i>`, `<italic>`                                                                     |
+| Underline        | `<u>`, `<underline>`                                                                  |
+| Strike           | `<s>`, `<strike>`                                                                     |
+| Other attributes | `<reverse>`, `<blink>`, `<rapidblink>`, `<hidden>`, `<conceal>`, `<overline>`         |
+| Foreground       | `<fg=value>`, `<color=value>`, or a bare color/role tag such as `<red>` or `<accent>` |
+| Background       | `<bg=value>`                                                                          |
+| Underline color  | `<uc=value>`                                                                          |
+| Underline shape  | `<u=straight>`, `<u=double>`, `<u=curly>`, `<u=dotted>`, `<u=dashed>`                 |
+| Hyperlink        | `<link=target>`, `<a=target>`                                                         |
 
 Bare `<u>` and valued `<u=...>` tags are one underline facet. The most recently
 opened underline wins until it closes; `double` maps to the semantic paired

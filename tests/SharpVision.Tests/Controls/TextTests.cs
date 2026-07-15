@@ -121,6 +121,20 @@ public sealed class TextTests
         frame.GetCell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies an ellipsis replacing the first wide cluster keeps that cluster's markup style.</summary>
+    [Fact]
+    public void Render_WhenMarkedWideClusterBecomesEllipsis_PreservesMarkupStyle()
+    {
+        var text = new ControlText("<red>界</red>") { Overflow = Overflow.Ellipsis };
+        new Engine().Layout(text, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+
+        text.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, default).ShouldBe("…");
+        frame.GetCell(default).Style.Foreground.ShouldBe(Color.Indexed(1));
+    }
+
     /// <summary>Verifies direct overrides compose over inherited resolved appearance.</summary>
     [Fact]
     public void Render_WhenOverridesAreSet_ComposesExactCellStyle()
