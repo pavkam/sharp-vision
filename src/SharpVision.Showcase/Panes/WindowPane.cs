@@ -51,7 +51,7 @@ internal sealed class WindowPane: View
             HasShadow = true,
             ShadowMode = ShadowMode.BlockGlyph,
             ShadowOffset = new Point(2, 1),
-            Child = form,
+            Content = form,
         };
 
         var stage = new Canvas()
@@ -66,10 +66,10 @@ internal sealed class WindowPane: View
 
         return Doc.Page(
             Title,
-            "Frames one owned child as a titled terminal application surface with optional Turbo Vision-style shadowing.",
+            "Frames one owned content control as a titled terminal application surface with optional Turbo Vision-style shadowing.",
             Doc.Example(
                 "Border and title options",
-                "Each Window uses the same child contract with a different Glyphs family and title placement: rounded left, paired center, and portable ASCII right.",
+                "Each Window uses the same content contract with a different Glyphs family and title placement: rounded left, paired center, and portable ASCII right.",
                 chromeOptions),
             Doc.Example(
                 "Titled application surface",
@@ -90,7 +90,7 @@ internal sealed class WindowPane: View
         TitlePlacement = placement,
         Glyphs = glyphs,
         ShadowOffset = new Point(1, 1),
-        Child = new Text("Preview")
+        Content = new Text("Preview")
         {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,

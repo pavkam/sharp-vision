@@ -133,6 +133,12 @@ the manager-level `Cancelled` event then publishes the precise `ReleaseReason`.
 Capture requests made from either cancellation callback return false until the
 complete callback sequence has unwound.
 
+Disabling, hiding, or collapsing a control commits the availability property,
+clears focus and capture, and only then publishes its property notification. A
+throwing focus, capture, unavailability, or property callback cannot skip the
+remaining cleanup or notification; the earliest failure is rethrown after the
+full transition.
+
 An externally derived control uses `RequestFocus()` and `CapturePointer()`
 instead of retaining manager references. Both return false while detached or
 ineligible. `HasPointerCapture` reports identity ownership, and

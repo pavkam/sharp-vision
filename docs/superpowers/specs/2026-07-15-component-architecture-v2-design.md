@@ -213,15 +213,12 @@ derives directly from `Control` and owns zero or one publicly replaceable
 `Content` control. It supplies default child measure/arrange, rendering, hit
 testing, navigation, theme/context propagation, and disposal.
 
-The following types migrate to it:
+`Window` and `Popup` derive from `ContentControl` and expose its inherited
+`Content` property. Their former `Child` aliases are removed, and neither type
+inherits an arbitrary `Children` collection.
 
-- `Window`;
-- `Popup`;
-- `Pressable`, and therefore `Button`, `CheckBox`, `RadioButton`, `MenuItem`,
-  and `ComboBox`.
-
-`Window.Child` and `Popup.Child` become `Content`. No inherited arbitrary
-`Children` collection remains.
+The remaining interaction family migrates to the same role through `Pressable`:
+`Button`, `CheckBox`, `RadioButton`, `MenuItem`, and `ComboBox`.
 
 ### `CompositeControl`
 

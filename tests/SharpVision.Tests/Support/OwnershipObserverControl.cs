@@ -57,6 +57,14 @@ internal sealed class OwnershipObserverControl: Control
     /// <summary>Gets the inherited capture manager.</summary>
     internal CaptureManager? InheritedCaptureOwner => CaptureOwner;
 
+    /// <summary>Requests keyboard focus through the protected consumer seam.</summary>
+    /// <returns>Whether focus was acquired or already owned.</returns>
+    internal bool RequestObserverFocus() => RequestFocus();
+
+    /// <summary>Requests pointer capture through the protected consumer seam.</summary>
+    /// <returns>Whether capture was acquired or already owned.</returns>
+    internal bool CaptureObserverPointer() => CapturePointer();
+
     /// <inheritdoc/>
     protected override void OnParentChanged(Control? previous, Control? current)
     {

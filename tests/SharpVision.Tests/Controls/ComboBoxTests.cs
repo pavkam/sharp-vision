@@ -57,7 +57,7 @@ public sealed class ComboBoxTests
         box.Render(frame.Canvas);
 
         var popup = box.Children[0].ShouldBeOfType<Popup>();
-        var list = popup.Child.ShouldBeOfType<List>();
+        var list = popup.Content.ShouldBeOfType<List>();
         list.DesiredSize.Height.ShouldBeGreaterThan(0);
         popup.SurfaceBounds.Height.ShouldBeGreaterThan(2);
         frame.GetCell(new Point(popup.SurfaceBounds.X + 1, popup.SurfaceBounds.Y + 1)).Style.Background
@@ -81,7 +81,7 @@ public sealed class ComboBoxTests
         box.Render(frame.Canvas);
 
         var popup = box.Children[0].ShouldBeOfType<Popup>();
-        var list = popup.Child.ShouldBeOfType<List>();
+        var list = popup.Content.ShouldBeOfType<List>();
         FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y)).ShouldBe("1");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 1, list.Bounds.Y)).ShouldBe("R");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 2, list.Bounds.Y)).ShouldBe("o");
@@ -116,7 +116,7 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        var list = box.Children[0].ShouldBeOfType<Popup>().Content.ShouldBeOfType<List>();
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y)).Style.Background.ShouldBe(Color.Indexed(99));
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y + 1)).Style.Background.ShouldBe(Color.Indexed(240));
     }
@@ -141,7 +141,7 @@ public sealed class ComboBoxTests
         box.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
         box.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         box.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
-        var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+        var list = box.Children[0].ShouldBeOfType<Popup>().Content.ShouldBeOfType<List>();
         var rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
@@ -221,7 +221,7 @@ public sealed class ComboBoxTests
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
             new Engine().Layout(box, size);
-            var list = box.Children[0].ShouldBeOfType<Popup>().Child.ShouldBeOfType<List>();
+            var list = box.Children[0].ShouldBeOfType<Popup>().Content.ShouldBeOfType<List>();
 
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Release));

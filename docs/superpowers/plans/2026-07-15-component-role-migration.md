@@ -105,19 +105,41 @@ removes them instead of laundering them into the content hierarchy.
 **Tests/docs:**
 
 - Update the Window and Popup tests and public control specifications.
+- Update ComboBox tests, popup/window showcase panes, API examples, and current
+  architecture/index documentation that names their single-content surface.
 - Add reflection tests asserting neither derives from `Container` or exposes
-  `Children`.
+  `Children` or the retired `Child` alias.
 
-- [ ] For each remaining control, write/adjust the reflection and
-      semantic-ownership test before changing its base.
-- [ ] Rename Window and Popup `Child` to inherited `Content` across source,
+- [x] For each remaining control, write/adjust the reflection and
+      semantic-ownership test before changing its base. Prove `Window` and
+      `Popup` derive from `ContentControl`, expose only inherited `Content`, and
+      retain no capacity constructor.
+- [x] Rename Window and Popup `Child` to inherited `Content` across source,
       tests, showcase, and docs in the same task. The repository is pre-1.0; do
       not retain a second alias that recreates ambiguity.
-- [ ] Replace direct internal child transactions with protected helpers.
-- [ ] Preserve exact measurement, frame geometry, popup focus restoration,
-      window default/cancel button search, and disposal event order.
-- [ ] Run each control's focused suite and `GalleryRenderingTests` after its
-      migration.
+- [x] Replace direct internal child transactions with protected
+      `MeasureChild`/`ArrangeChild(..., ResolvedAxes.Both)` calls. Preserve
+      visible/open Window title, frame, shadow, and Popup surface geometry;
+      intentionally correct collapsed Window and closed Popup geometry to the
+      `ContentControl` contract by clearing stale content state and omitting
+      collapsed margins.
+- [x] Override `Popup.OnContentChanged`, call the base hook, and set newly
+      committed content to Visible while open or Collapsed while closed. Leave
+      detached previous content at its committed visibility, allow this ordinary
+      property mutation under guarded publication, and preserve coherent
+      structure/property notification if either hook or subscriber callbacks
+      throw.
+- [x] Preserve exact visible/open measurement and frame geometry, popup focus
+      restoration, popup promotion/layer behavior and event order, window
+      default/cancel registry traversal, direct-content disposal, and owner
+      disposal order. Collapsed/closed geometry is intentionally corrected to
+      the inherited `ContentControl` contract.
+- [x] Search production, tests, showcase, and current specifications for stale
+      Window/Popup `Child` use or assumptions that either type exposes
+      `Children`; do not rewrite general panel-child APIs.
+- [x] Run Window, Popup, ComboBox, ownership/traversal/routing/focus, and
+      focused showcase suites plus documentation, build, format, link, and diff
+      checks.
 
 ## Task 3: Make `Pressable` a true one-content interaction base
 

@@ -693,14 +693,11 @@ public sealed class GalleryInteractionTests
             return match;
         }
 
-        if (control is not Container container)
-        {
-            return null;
-        }
+        var count = control.OwnedControlCount;
 
-        foreach (var child in container.Children)
+        for (var index = 0; index < count; index++)
         {
-            if (Find(child, predicate) is { } found)
+            if (Find(control.OwnedControlAt(index), predicate) is { } found)
             {
                 return found;
             }

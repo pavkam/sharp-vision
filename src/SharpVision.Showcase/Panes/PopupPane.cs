@@ -29,7 +29,7 @@ internal sealed class PopupPane: View
             Anchor = trigger,
             Placement = PopupPlacement.Below,
             Glyphs = Glyphs.Rounded,
-            Child = choices,
+            Content = choices,
         };
         trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
         choices.ItemInvoked += (_, eventArgs) =>
@@ -52,7 +52,7 @@ internal sealed class PopupPane: View
 
         return Doc.Page(
             Title,
-            "Displays one owned child on an opaque bordered surface relative to an optional anchor.",
+            "Displays one owned content control on an opaque bordered surface relative to an optional anchor.",
             Doc.Example(
                 "Anchored action menu",
                 "Click the trigger, or focus it and press Enter or Space, to open the compact list anchored below it. Arrow keys and Enter navigate and choose inside the popup; Escape closes it without selecting anything and restores focus to the trigger.",
@@ -71,7 +71,7 @@ internal sealed class PopupPane: View
             Anchor = trigger,
             Placement = placement,
             Glyphs = Glyphs.Rounded,
-            Child = new Text($"{label} content"),
+            Content = new Text($"{label} content"),
         };
         trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
 

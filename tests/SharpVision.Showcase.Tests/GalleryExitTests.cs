@@ -75,14 +75,13 @@ public sealed class GalleryExitTests
             return match;
         }
 
-        if (root is Container container)
+        var count = root.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
         {
-            foreach (var child in container.Children)
+            if (Find(root.OwnedControlAt(index), predicate) is { } found)
             {
-                if (Find(child, predicate) is { } found)
-                {
-                    return found;
-                }
+                return found;
             }
         }
 

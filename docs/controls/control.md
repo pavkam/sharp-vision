@@ -32,7 +32,11 @@ dispatcher.
 Setters validate before mutation, verify dispatcher access while attached, and
 raise `PropertyChanged` once after the changed value is committed. Invalid
 lengths, negative constraints, inconsistent min/max, invalid enum values, and
-disposed access throw documented argument or object-lifetime exceptions.
+disposed access throw documented argument or object-lifetime exceptions. Changes
+that hide, collapse, or disable a control additionally complete focus and
+pointer-capture cleanup before `PropertyChanged`. Cleanup and property
+publication are both attempted when either callback path fails, and the earliest
+failure is rethrown after the state and manager transitions are complete.
 
 `EffectiveIsEnabled` and `EffectiveIsVisible` are computed through the complete
 ancestor chain. Changing an inherited state invalidates affected descendants.

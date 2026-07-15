@@ -155,21 +155,21 @@ public sealed class StackTests
         panel.Children.Add(second);
         ArrangePopup(first, panel.Bounds);
         ArrangePopup(second, panel.Bounds);
-        var bounds = first.Child!.Bounds;
+        var bounds = first.Content!.Bounds;
         var point = new Point(bounds.X, bounds.Y);
         using Frame forward = new(new Size(6, 4));
 
         panel.Render(forward.Canvas);
 
         FrameOracle.Get(forward, point).ShouldBe("B");
-        panel.HitTest(point).ShouldBeSameAs(second.Child);
+        panel.HitTest(point).ShouldBeSameAs(second.Content);
 
         panel.Reverse = true;
         using Frame reverse = new(new Size(6, 4));
         panel.Render(reverse.Canvas);
 
         FrameOracle.Get(reverse, point).ShouldBe("A");
-        panel.HitTest(point).ShouldBeSameAs(first.Child);
+        panel.HitTest(point).ShouldBeSameAs(first.Content);
     }
 
     /// <summary>Verifies resize recomputes percentage and star allocation deterministically.</summary>
@@ -233,7 +233,7 @@ public sealed class StackTests
 
     private static Popup CreatePopup(string content) => new()
     {
-        Child = new ProbeControl(new Size(1, 1)) { Content = content.AsMemory() },
+        Content = new ProbeControl(new Size(1, 1)) { Content = content.AsMemory() },
         IsOpen = true,
     };
 

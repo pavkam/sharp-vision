@@ -25,7 +25,7 @@ public sealed class ComboBox: Pressable
         _popup = new Popup
         {
             Anchor = this,
-            Child = _list,
+            Content = _list,
         };
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;

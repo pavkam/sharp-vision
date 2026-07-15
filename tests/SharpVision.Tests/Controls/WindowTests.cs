@@ -9,6 +9,104 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies framed terminal window layout, title chrome, and visual shadow behavior.</summary>
 public sealed class WindowTests
 {
+    /// <summary>Verifies Window exposes only the public single-content authoring role.</summary>
+    [Fact]
+    public void Type_WhenInspected_DerivesFromContentControlWithoutChildCollectionOrAlias()
+    {
+        var type = typeof(Window);
+
+        type.BaseType.ShouldBe(typeof(ContentControl));
+        typeof(Container).IsAssignableFrom(type).ShouldBeFalse();
+        type.GetProperty(nameof(Container.Children)).ShouldBeNull();
+        type.GetProperty(nameof(Container.AutoScroll)).ShouldBeNull();
+        type.GetProperty(nameof(Container.AutoSize)).ShouldBeNull();
+        type.GetProperty("Child").ShouldBeNull();
+        _ = type.GetProperty(nameof(ContentControl.Content)).ShouldNotBeNull();
+        var constructor = type.GetConstructors().ShouldHaveSingleItem();
+        constructor.GetParameters().ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies inherited content publication and direct disposal expose committed Window ownership.</summary>
+    [Fact]
+    public void Content_WhenAssignedThenDisposedDirectly_PublishesCommittedWindowOwnership()
+    {
+        var window = new Window();
+        ContentControl owner = window;
+        var content = new ProbeControl();
+        var observations = new List<(Control? Content, Control? Parent)>();
+        owner.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ContentControl.Content))
+            {
+                observations.Add((owner.Content, content.Parent));
+            }
+        };
+
+        owner.Content = content;
+        content.Dispose();
+
+        observations.ShouldBe([(content, window), (null, null)]);
+        owner.Content.ShouldBeNull();
+        content.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Window disposal clears published content, disposes only its current content, and does so once.</summary>
+    [Fact]
+    public void Dispose_WhenWindowOwnsReplacement_DisposesCurrentOnceAndPublishesCommittedClear()
+    {
+        var window = new Window();
+        var replaced = new OwnershipObserverControl();
+        var current = new OwnershipObserverControl();
+        window.Content = replaced;
+        window.Content = current;
+        var observations = new List<(Control? Content, Control? Parent, bool Disposed, int DisposingCalls)>();
+        window.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ContentControl.Content))
+            {
+                observations.Add((window.Content, current.Parent, current.IsDisposed, current.DisposingCalls));
+            }
+        };
+
+        window.Dispose();
+        window.Dispose();
+
+        window.IsDisposed.ShouldBeTrue();
+        window.Content.ShouldBeNull();
+        current.IsDisposed.ShouldBeTrue();
+        current.DisposingCalls.ShouldBe(1);
+        observations.ShouldBe([(null, null, false, 1)]);
+        replaced.IsDisposed.ShouldBeFalse();
+        replaced.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies collapsed content contributes no margin and has stale layout state cleared.</summary>
+    [Fact]
+    public void Layout_WhenContentCollapses_PreservesFrameMinimumAndClearsContentGeometry()
+    {
+        var content = new ProbeControl(new Size(4, 2))
+        {
+            Margin = new Thickness(3),
+        };
+        var window = new Window { Content = content };
+        var engine = new Engine();
+
+        engine.Layout(window, new Size(20, 10));
+        var measureCalls = content.MeasureConstraints.Count;
+        var arrangeCalls = content.ArrangeBounds.Count;
+        content.DesiredSize.ShouldNotBe(default);
+        content.Bounds.ShouldNotBe(default);
+
+        content.Visibility = Visibility.Collapsed;
+        engine.Layout(window, new Size(20, 10));
+
+        window.DesiredSize.ShouldBe(new Size(2, 2));
+        content.DesiredSize.ShouldBe(default);
+        content.Bounds.ShouldBe(default);
+        content.MeasureConstraints.Count.ShouldBe(measureCalls);
+        content.ArrangeBounds.Count.ShouldBe(arrangeCalls);
+    }
+
     /// <summary>Verifies a title owns the top edge while content receives the bounded interior box.</summary>
     [Fact]
     public void Render_WhenTitleAndChildArePresent_DrawsFramedChromeAndInterior()
@@ -17,7 +115,7 @@ public sealed class WindowTests
         var window = new Window()
         {
             Title = "Tools",
-            Child = child,
+            Content = child,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var size = new Size(10, 4);
@@ -133,7 +231,7 @@ public sealed class WindowTests
         cancel.Click += (_, _) => cancels++;
         content.Children.Add(accept);
         content.Children.Add(cancel);
-        var window = new Window() { Child = content };
+        var window = new Window() { Content = content };
 
         Router.Route(window, Events.Key, Key(Code.Enter));
         Router.Route(window, Events.Key, Key(Code.Escape));
@@ -157,7 +255,7 @@ public sealed class WindowTests
         content.AddExcluded(branch);
         branch.AddExcluded(accept);
         content.AddPopup(cancel);
-        var window = new Window { Child = content };
+        var window = new Window { Content = content };
 
         Router.Route(window, Events.Key, Key(Code.Enter));
         Router.Route(window, Events.Key, Key(Code.Escape));
@@ -166,10 +264,84 @@ public sealed class WindowTests
         cancels.ShouldBe(1);
     }
 
-    private static KeyEventArgs Key(Code code) => new(new Stroke(
+    /// <summary>Verifies fallback discovery skips unavailable candidates and activates only the first eligible slot member.</summary>
+    [Fact]
+    public void Dispatch_WhenEarlierFallbackButtonsAreUnavailable_ActivatesFirstEligibleAcrossSlots()
+    {
+        var content = new TraversalOwner();
+        var disabled = FallbackButton();
+        disabled.IsEnabled = false;
+        var hidden = FallbackButton();
+        hidden.Visibility = Visibility.Hidden;
+        var collapsed = FallbackButton();
+        collapsed.Visibility = Visibility.Collapsed;
+        var firstEligible = FallbackButton();
+        var laterEligible = FallbackButton();
+        var invocations = new Dictionary<Button, int>
+        {
+            [disabled] = 0,
+            [hidden] = 0,
+            [collapsed] = 0,
+            [firstEligible] = 0,
+            [laterEligible] = 0,
+        };
+
+        foreach (var button in invocations.Keys)
+        {
+            button.Click += (_, _) => invocations[button]++;
+        }
+
+        content.AddNormal(disabled);
+        content.AddExcluded(hidden);
+        content.AddSecondary(collapsed);
+        content.AddPopup(firstEligible);
+        content.AddPopup(laterEligible);
+        var window = new Window { Content = content };
+
+        Router.Route(window, Events.Key, Key(Code.Enter));
+        Router.Route(window, Events.Key, Key(Code.Escape));
+
+        invocations[disabled].ShouldBe(0);
+        invocations[hidden].ShouldBe(0);
+        invocations[collapsed].ShouldBe(0);
+        invocations[firstEligible].ShouldBe(2);
+        invocations[laterEligible].ShouldBe(0);
+    }
+
+    /// <summary>Verifies handled keys and non-press strokes do not invoke Window fallbacks.</summary>
+    [Fact]
+    public void Dispatch_WhenKeyIsHandledOrNotPress_IgnoresFallbackButton()
+    {
+        var invocations = 0;
+        var button = FallbackButton();
+        button.Click += (_, _) => invocations++;
+        var window = new Window { Content = button };
+        var handled = Key(Code.Enter);
+        _ = window.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Stroke is { Code: Code.Enter, Action: KeyAction.Press })
+            {
+                eventArgs.Handled = true;
+            }
+        });
+
+        Router.Route(window, Events.Key, handled);
+        Router.Route(window, Events.Key, Key(Code.Escape, KeyAction.Release));
+
+        handled.Handled.ShouldBeTrue();
+        invocations.ShouldBe(0);
+    }
+
+    private static Button FallbackButton() => new()
+    {
+        IsDefault = true,
+        IsCancel = true,
+    };
+
+    private static KeyEventArgs Key(Code code, KeyAction action = KeyAction.Press) => new(new Stroke(
         code,
         default,
         nativeCode: 0,
         Modifiers.None,
-        KeyAction.Press));
+        action));
 }

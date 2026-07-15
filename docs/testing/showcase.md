@@ -30,17 +30,18 @@ Virtual-screen assertions render all 19 pages at 30 by 8, 80 by 24, and 140 by
 40 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
 component navigation, non-default cell colors, page headings, automatic
 overflow, semantic text, and every wide-cell continuation relationship. The
-checked-in [live tmux capture](../images/showcase-dashboard.png) is visually
-reviewed but does not replace cell, event, focus, resize, or scrolling
-assertions. It is also a required live interaction smoke test: it sends Down,
-proves the initial Button selection moves to Canvas, and sends Up to return to
-Button. A no-button SGR motion report then proves Canvas receives the visible
-hover marker, and a terminal leave report clears it. The smoke test next sends
-independent complete SGR clicks for Canvas and Button, waiting for each visible
-page change without adding a trailing key that could mask input buffering. It
-also opens and selects the Figlet font dropdown, then drags the ScrollBar thumb
-with SGR press, motion, and release reports, asserting each visible committed
-value.
+discovery helpers traverse every registered owned-control slot and never assume
+descendants are limited to `Container.Children`. The checked-in
+[live tmux capture](../images/showcase-dashboard.png) is visually reviewed but
+does not replace cell, event, focus, resize, or scrolling assertions. It is also
+a required live interaction smoke test: it sends Down, proves the initial Button
+selection moves to Canvas, and sends Up to return to Button. A no-button SGR
+motion report then proves Canvas receives the visible hover marker, and a
+terminal leave report clears it. The smoke test next sends independent complete
+SGR clicks for Canvas and Button, waiting for each visible page change without
+adding a trailing key that could mask input buffering. It also opens and selects
+the Figlet font dropdown, then drags the ScrollBar thumb with SGR press, motion,
+and release reports, asserting each visible committed value.
 
 Every page must contain a wrapped marked `Text` Overview. Practical-recipe
 guidance is optional; when a page supplies it, the text must wrap. Pages compose

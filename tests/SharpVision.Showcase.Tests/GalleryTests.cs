@@ -170,14 +170,11 @@ public sealed class GalleryTests
             return text;
         }
 
-        if (control is not Container container)
-        {
-            return null;
-        }
+        var count = control.OwnedControlCount;
 
-        foreach (var child in container.Children)
+        for (var index = 0; index < count; index++)
         {
-            if (FindText(child, content) is { } found)
+            if (FindText(control.OwnedControlAt(index), content) is { } found)
             {
                 return found;
             }
@@ -198,14 +195,11 @@ public sealed class GalleryTests
             return true;
         }
 
-        if (control is not Container container)
-        {
-            return false;
-        }
+        var count = control.OwnedControlCount;
 
-        foreach (var child in container.Children)
+        for (var index = 0; index < count; index++)
         {
-            if (ContainsType(child, name))
+            if (ContainsType(control.OwnedControlAt(index), name))
             {
                 return true;
             }

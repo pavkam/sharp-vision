@@ -2,14 +2,19 @@
 
 ## Window contract
 
-`Window` frames one owned child as a titled terminal application surface. It
+`Window` is a [`ContentControl`](../content-control.md#contentcontrol-contract)
+that frames its inherited `Content` as a titled terminal application surface. It
 renders its own border and optional Turbo Vision-style shadow without changing
-the child's ordinary box-model or input routing.
+the content's ordinary box-model or input routing.
 
 ## API
 
-- `Child` uses managed capacity-one ownership and is arranged inside the
-  one-cell physical frame.
+- Inherited `Content` uses managed capacity-one ownership and is arranged inside
+  the one-cell physical frame. Collapsed content contributes neither desired
+  size nor margin; its stale desired size and bounds are cleared through the
+  ordinary collapsed-content transactions. Replacement leaves previous content
+  detached and caller-owned; disposing the Window disposes only currently
+  assigned content and publishes the committed `Content == null` transition.
 - `Title` is non-null content written on the top edge and clipped before either
   corner can be overwritten; `TitlePlacement` aligns it left, center, or right
   inside those corners.
@@ -21,7 +26,7 @@ the child's ordinary box-model or input routing.
 ## Lifecycle and interaction
 
 Windows do not introduce a special activation, modality, move, or resize model:
-their child remains in the surrounding control tree and receives normal focus,
+their content remains in the surrounding control tree and receives normal focus,
 keyboard, pointer, resize, and clipping behavior. This makes `Window` useful as
 a composable visual surface inside an `Overlay` or `Canvas`. If an unhandled
 Enter or Escape bubbles through the window, its first available `Button` with
@@ -39,7 +44,7 @@ centered, and right titles so the chrome choices are visible side by side.
 var window = new Window
 {
     Title = "SharpVision Showcase",
-    Child = root,
+    Content = root,
     Width = Length.Percent(100),
     Height = Length.Percent(100),
 };
@@ -47,7 +52,7 @@ var window = new Window
 
 ## Test obligations
 
-Cover title clipping, child measurement and arrangement, each glyph family,
-surface color, composite and block shadow placement, tiny bounds, ownership,
-default/cancel discovery across private slots, terminal resize, and final
-semantic frame cells.
+Cover title clipping, content measurement, collapsed geometry, and arrangement,
+each glyph family, surface color, composite and block shadow placement, tiny
+bounds, ownership, default/cancel discovery across private slots, terminal
+resize, and final semantic frame cells.

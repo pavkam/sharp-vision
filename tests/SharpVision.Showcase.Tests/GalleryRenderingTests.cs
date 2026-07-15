@@ -121,6 +121,33 @@ public sealed class GalleryRenderingTests
             new Point(panel.Bounds.X + panel.Caption.Length + 2, panel.Bounds.Y + 1)).ShouldBe("T");
     }
 
+    /// <summary>Verifies the Popup page can open its primary migrated content in the elevated render and hit-test layer.</summary>
+    [Fact]
+    public void Render_WhenPopupPagePrimarySpecimenOpens_ShowsContentFrameAndElevatedHitTarget()
+    {
+        using var gallery = CreateThemedGallery();
+        gallery.Select(IndexOf(gallery, "Popup"));
+        var size = new Size(120, 80);
+        var engine = new Engine();
+        engine.Layout(gallery, size);
+        var popup = FindAll<Popup>(gallery.Content)
+            .Single(value => value.Content is List);
+        var content = popup.Content.ShouldBeOfType<List>();
+
+        popup.IsOpen = true;
+        engine.Layout(gallery, size);
+        using Frame frame = new(size);
+        gallery.Render(frame.Canvas);
+
+        popup.SurfaceBounds.ShouldNotBe(default);
+        content.Bounds.ShouldNotBe(default);
+        Grapheme(frame, new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).ShouldBe("╭");
+        var contentPoint = new Point(content.Bounds.X, content.Bounds.Y);
+        Grapheme(frame, contentPoint).ShouldBe("D");
+        var popupTarget = popup.HitTest(contentPoint).ShouldNotBeNull();
+        gallery.HitTest(contentPoint).ShouldBeSameAs(popupTarget);
+    }
+
     /// <summary>Verifies the Window page exposes chrome variants and centers its dialog actions.</summary>
     [Fact]
     public void Render_WhenWindowPageIsSelected_ShowsChromeOptionsAndCenteredActions()
@@ -225,14 +252,11 @@ public sealed class GalleryRenderingTests
             return match;
         }
 
-        if (control is not Container container)
-        {
-            return null;
-        }
+        var count = control.OwnedControlCount;
 
-        foreach (var child in container.Children)
+        for (var index = 0; index < count; index++)
         {
-            if (Find(child, predicate) is { } found)
+            if (Find(control.OwnedControlAt(index), predicate) is { } found)
             {
                 return found;
             }
@@ -270,12 +294,11 @@ public sealed class GalleryRenderingTests
             matches.Add(match);
         }
 
-        if (control is Container container)
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
         {
-            foreach (var child in container.Children)
-            {
-                Visit(child, matches);
-            }
+            Visit(control.OwnedControlAt(index), matches);
         }
     }
 

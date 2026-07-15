@@ -230,7 +230,7 @@ public sealed class OverlayTests
         var popup = new Popup()
         {
             Anchor = anchor,
-            Child = new ProbeControl(new Size(2, 1)) { Content = "PP".AsMemory() },
+            Content = new ProbeControl(new Size(2, 1)) { Content = "PP".AsMemory() },
             IsOpen = true,
         };
         var cover = new ProbeControl(new Size(8, 8)) { Content = "CCCCCCCC".AsMemory() };
@@ -279,14 +279,14 @@ public sealed class OverlayTests
         layer.Children.Add(low);
         var size = new Size(6, 4);
         new Engine().Layout(layer, size);
-        var bounds = high.Child!.Bounds;
+        var bounds = high.Content!.Bounds;
         var point = new Point(bounds.X, bounds.Y);
         using Frame frame = new(size);
 
         layer.Render(frame.Canvas);
 
         FrameOracle.Get(frame, point).ShouldBe("H");
-        layer.HitTest(point).ShouldBeSameAs(high.Child);
+        layer.HitTest(point).ShouldBeSameAs(high.Content);
     }
 
     /// <summary>Verifies equal popup ZIndex retains collection order for drawing and reverse hit priority.</summary>
@@ -304,14 +304,14 @@ public sealed class OverlayTests
         layer.Children.Add(second);
         var size = new Size(6, 4);
         new Engine().Layout(layer, size);
-        var bounds = second.Child!.Bounds;
+        var bounds = second.Content!.Bounds;
         var point = new Point(bounds.X, bounds.Y);
         using Frame frame = new(size);
 
         layer.Render(frame.Canvas);
 
         FrameOracle.Get(frame, point).ShouldBe("B");
-        layer.HitTest(point).ShouldBeSameAs(second.Child);
+        layer.HitTest(point).ShouldBeSameAs(second.Content);
     }
 
     /// <summary>Verifies z-order never changes collection-order focus traversal.</summary>
@@ -369,7 +369,7 @@ public sealed class OverlayTests
 
     private static Popup CreatePopup(string content) => new()
     {
-        Child = new ProbeControl(new Size(1, 1)) { Content = content.AsMemory() },
+        Content = new ProbeControl(new Size(1, 1)) { Content = content.AsMemory() },
         IsOpen = true,
     };
 }

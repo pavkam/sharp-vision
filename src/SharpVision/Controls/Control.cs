@@ -166,6 +166,11 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     } = VerticalAlignment.Stretch;
 
     /// <summary>Gets or sets local layout/render/input participation.</summary>
+    /// <remarks>
+    /// A change to hidden or collapsed state commits and invalidates first, completes focus and
+    /// pointer-capture cleanup, and then raises <see cref="PropertyChanged"/>. Cleanup and property
+    /// callbacks both run when either fails, and the earliest failure is rethrown afterward.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -178,20 +183,41 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             var impact = value == Visibility.Collapsed || field == Visibility.Collapsed
                 ? ChangeImpact.Measure
                 : ChangeImpact.Render;
+            VerifyMutable();
 
-            if (SetProperty(ref field, value, impact))
+            if (field == value)
             {
-                InvalidateDescendants(InvalidationFor(impact));
-
-                if (value != Visibility.Visible)
-                {
-                    NotifyUnavailable(ReleaseReason.Hidden);
-                }
+                return;
             }
+
+            field = value;
+            var invalidation = InvalidationFor(impact);
+            Invalidate(invalidation);
+            InvalidateDescendants(invalidation);
+            var failure = (ExceptionDispatchInfo?) null;
+
+            if (value != Visibility.Visible)
+            {
+                CaptureFailure(
+                    () => NotifyUnavailable(ReleaseReason.Hidden),
+                    ref failure);
+            }
+
+            CaptureFailure(
+                () => PropertyChanged?.Invoke(
+                    this,
+                    new PropertyChangedEventArgs(nameof(Visibility))),
+                ref failure);
+            failure?.Throw();
         }
     } = Visibility.Visible;
 
     /// <summary>Gets or sets whether local behavior accepts input.</summary>
+    /// <remarks>
+    /// Disabling commits and invalidates first, completes focus and pointer-capture cleanup, and
+    /// then raises <see cref="PropertyChanged"/>. Cleanup and property callbacks both run when
+    /// either fails, and the earliest failure is rethrown afterward.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool IsEnabled
@@ -199,15 +225,31 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         get;
         set
         {
-            if (SetProperty(ref field, value, ChangeImpact.Render))
-            {
-                InvalidateDescendants(Invalidation.Render);
+            VerifyMutable();
 
-                if (!value)
-                {
-                    NotifyUnavailable(ReleaseReason.Disabled);
-                }
+            if (field == value)
+            {
+                return;
             }
+
+            field = value;
+            Invalidate(Invalidation.Render);
+            InvalidateDescendants(Invalidation.Render);
+            var failure = (ExceptionDispatchInfo?) null;
+
+            if (!value)
+            {
+                CaptureFailure(
+                    () => NotifyUnavailable(ReleaseReason.Disabled),
+                    ref failure);
+            }
+
+            CaptureFailure(
+                () => PropertyChanged?.Invoke(
+                    this,
+                    new PropertyChangedEventArgs(nameof(IsEnabled))),
+                ref failure);
+            failure?.Throw();
         }
     } = true;
 
