@@ -69,4 +69,31 @@ public sealed class SemanticColorResolutionTests
         ThemeTestSupport.Resolve(control, Control.BackgroundProperty, State.Normal)
             .ShouldBe(Color.Indexed(2));
     }
+
+    /// <summary>Verifies a defined role the theme never sets falls back to <see cref="Color.Default"/>.</summary>
+    [Fact]
+    public void Resolve_WhenDefinedRoleUndefinedByTheme_FallsBackToDefault()
+    {
+        Theme theme = new();
+        ControlStyle<Control> style = new();
+        style.Set(Control.ForegroundProperty, State.Normal, ThemeColors.Warning);
+        theme.SetStyle(style);
+        theme.SetColor(ColorRole.Foreground, Color.Indexed(15));
+        theme.SetColor(ColorRole.Background, Color.Indexed(0));
+        theme.Freeze();
+
+        ThemeResolver.Resolve(theme, typeof(Control), Control.ForegroundProperty, State.Normal)
+            .ShouldBe(Color.Default);
+    }
+
+    /// <summary>Verifies a role color carrying an unknown role id fails fast during resolution.</summary>
+    [Fact]
+    public void GetValue_WhenRoleIdIsUnknown_Throws()
+    {
+        ProbeControl control = new();
+        ThemeTestSupport.ApplyTheme(control, ThemeWith(Color.Indexed(1), Color.Indexed(2)));
+        control.SetValue(Control.BackgroundProperty, Color.Role(99));
+
+        _ = Should.Throw<ArgumentException>(() => control.GetValue(Control.BackgroundProperty));
+    }
 }
