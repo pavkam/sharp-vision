@@ -442,13 +442,16 @@ registration on `Button`; the full Release `ButtonTests` run passed 29/29; and
 the Release no-incremental solution build completed with zero warnings and zero
 errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "test(controls): prove pressed Button follows translated face" -- \
   tests/SharpVision.Tests/Controls/ButtonTests.cs \
   docs/superpowers/plans/2026-07-15-intrinsic-border-shadow.md
 ```
+
+Evidence: commit `0894bb5` contains the regression and its verified Task 2
+record.
 
 ---
 
