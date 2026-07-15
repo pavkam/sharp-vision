@@ -212,6 +212,9 @@ public sealed class ComboBox: Control
     #region Input, layout, and rendering
 
     /// <inheritdoc/>
+    protected override bool OwnsPointerState => true;
+
+    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = MeasureChild(_popup, new Constraint(constraint.Width, Add(DropDownHeight, 2)));

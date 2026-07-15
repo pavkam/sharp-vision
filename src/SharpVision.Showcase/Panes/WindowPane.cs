@@ -8,13 +8,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Window control with framed chrome and titled application surface specimens.</summary>
-internal sealed class WindowPane: View
+internal sealed class WindowPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Window";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Window documentation page.</summary>
+    internal WindowPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var chromeOptions = Doc.Row(
             WindowVariant("Left", Glyphs.Rounded, WindowTitlePlacement.Left),

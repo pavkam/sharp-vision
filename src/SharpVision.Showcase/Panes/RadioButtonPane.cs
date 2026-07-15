@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the RadioButton control with grouped, mutually exclusive selection specimens.</summary>
-internal sealed class RadioButtonPane: View
+internal sealed class RadioButtonPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "RadioButton";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained RadioButton documentation page.</summary>
+    internal RadioButtonPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var fast = new RadioButton() { Content = new Text("Fast"), GroupName = "quality", IsChecked = true };
         var balanced = new RadioButton() { Content = new Text("Balanced"), GroupName = "quality" };

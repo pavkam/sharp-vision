@@ -301,7 +301,7 @@ public sealed class FocusManager: IDisposable
         Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
         Debug.Assert(order >= 0, "Focus traversal order is non-negative.");
 
-        if (IsEligible(control))
+        if (IsEligible(control) && control.IsTabStop)
         {
             candidates.Add((control, order));
         }

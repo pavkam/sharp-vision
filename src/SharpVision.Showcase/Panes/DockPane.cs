@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Dock control with side-attached and fill layout specimens.</summary>
-internal sealed class DockPane: View
+internal sealed class DockPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Dock";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Dock documentation page.</summary>
+    internal DockPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var allSides = new Dock()
         {

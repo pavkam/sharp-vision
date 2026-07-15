@@ -21,7 +21,7 @@ public sealed class MenuItems: IReadOnlyList<Control>
     public Control this[int index] => _owner.ItemAt(index);
 
     /// <inheritdoc/>
-    public int Count => _owner.Children.Count;
+    public int Count => _owner.ItemCount;
 
     /// <summary>Adds one detached non-null menu item.</summary>
     /// <param name="item">The menu item to own.</param>

@@ -24,6 +24,9 @@ public abstract class Pressable: ContentControl
         CanFocus = true;
     }
 
+    /// <inheritdoc/>
+    protected override bool OwnsPointerState => true;
+
     /// <summary>Completes one validated activation in a concrete control.</summary>
     /// <param name="cause">The input path that completed activation.</param>
     protected abstract void Activate(ActivationCause cause);

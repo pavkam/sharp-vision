@@ -13,6 +13,9 @@ internal sealed class ProbeContainer: Container
     {
     }
 
+    /// <inheritdoc/>
+    protected override bool OwnsPointerState => CanFocus;
+
     /// <summary>Gets or sets whether rendering clips owned descendants.</summary>
     internal bool ClipChildren { get; set; } = true;
 

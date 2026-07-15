@@ -33,6 +33,9 @@ public sealed class ScrollBar: Control
     /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
     public ScrollBar() => CanFocus = true;
 
+    /// <inheritdoc/>
+    protected override bool OwnsPointerState => true;
+
     /// <summary>Raised after a changed value commits.</summary>
     public event EventHandler<ScrollEventArgs>? ValueChanged;
 

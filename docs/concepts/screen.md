@@ -2,55 +2,86 @@
 
 ## Screen contract
 
-`Screen` is the abstract application-root `View`. A screen is a normal control
-in the tree: it measures, arranges, renders, routes input, and participates in
-focus like any other container. Executable hosts pass a detached screen to
-`Application.RunConsoleAsync` instead of assembling transport, terminal policy,
-and application binding themselves.
+`Screen : CompositeControl` is the abstract application root. A concrete screen
+creates its retained control tree in its constructor and installs exactly one
+private composition root with `InitializeContent`. It is not a `Container` and
+does not expose `Children`; use a real layout container such as `Dock`, `Grid`,
+or `Stack` as the composition root when the screen needs multiple visuals.
 
 ```mermaid
 flowchart LR
-    Host["Executable host"] --> Run["Application.RunConsoleAsync"]
-    Run --> Screen["Screen : View"]
-    Run --> Application["Application"]
-    Application --> Screen
+    Host["ConsoleApplication host"] --> Application["Application"]
+    Application --> Screen["Screen : CompositeControl"]
+    Screen --> Root["private retained composition root"]
 ```
 
-Concrete screens derive from `Screen` and override
-`protected override Control Build()` to return their content root, exactly like
-any other [`View`](custom-components.md#custom-components-contract), and
-override `OnAttach` or `OnStarted` when they need the running `Application`.
-There is no separate root wrapper.
+The normal hosting surface is
+`SharpVision.Runtime.ConsoleApplication.CreateBuilder(screen)` or
+`ConsoleApplication.RunAsync(screen)`. The host constructs the `Application`,
+binds it to the detached screen, and later attaches the retained tree to the UI
+dispatcher.
 
-Because shipped layout roots such as `Dock` and `Stack` are sealed, a screen
-that needs dock layout returns a `Dock` (or another shipped container) from
-`Build()`.
+## Construction and lifecycle
 
-A `Screen` owns exactly one child — its `Build()` result — and, being capacity-1
-like any `View`, arranges that child to fill the screen's content box; a root
-that should not fill must set its own alignment/size.
+Construction is application-independent. It creates every control whose identity
+the screen retains and calls `InitializeContent` before the constructor returns.
+Composition never runs from measure, render, attachment, or a virtual
+base-constructor callback.
 
-## Lifecycle
+The observable lifecycle is:
 
-Construction leaves the screen detached. `Build()` builds a view's content once,
-on its first measure, whether or not the view is attached — but for a `Screen`,
-the first measure always happens after `Attach`/`OnAttach`, because the
-`Application` drives layout only after attachment. The observable lifecycle
-order is therefore fixed:
-`OnAttach → Build → first committed frame → OnStarted → OnDispose`.
+1. the concrete constructor installs its composition root;
+2. `OnAttach` receives the constructed `Application` before startup;
+3. the application attaches, measures, arranges, and commits the first frame;
+4. `OnStarted` runs after that frame, or after a valid suspended startup; and
+5. `OnDispose` runs while disposal releases application-specific resources.
 
-The runtime calls `OnAttach` after the `Application` is constructed and before
-`StartAsync`. `OnStarted` runs after the first committed frame or a valid
-suspended zero-cell startup. `OnDispose` runs when the screen control is
-disposed.
+`OnAttach` is the place for application configuration such as theme publication.
+`OnStarted` is the place for work that requires the attached tree, including
+initial focus. Constructors must not require an `Application`, focus manager,
+dispatcher, terminal service, or committed geometry.
 
-Screens that need the running application, such as for theme publication or
-initial focus, use the protected `Application` property from `OnAttach`,
-`Build()`, or `OnStarted`. Control mutation remains dispatcher-affine after
-attachment.
+Application binding validates the complete composition before publishing the
+protected `Application` property. An uninitialized, disposed, owned, or already
+attached tree is rejected without changing the binding. If `OnAttach` throws,
+the binding is cleared and the screen is not subscribed to
+`Application.Started`.
+
+Disposal unsubscribes the started callback, invokes `OnDispose`, clears the
+application binding, runs base unavailability cleanup, and then disposes the
+owned composition root. Cleanup continues after callback failures and rethrows
+the earliest failure after state is consistent.
+
+## Example
+
+```csharp
+public sealed class MainScreen : Screen
+{
+    private readonly TextInput _name;
+
+    public MainScreen()
+    {
+        _name = new TextInput();
+        InitializeContent(new Stack
+        {
+            Children =
+            {
+                new Text("Name"),
+                _name,
+            },
+        });
+    }
+
+    protected override void OnStarted(Application application)
+    {
+        _ = application.Focus.Focus(_name);
+    }
+}
+```
 
 ## Tests
 
-Prove detached-root validation, attach/build/started ordering, disposal through
-the control lifetime, and one end-to-end `RunConsoleAsync` path through a
-concrete screen.
+Prove construction-time composition, private root identity across first layout,
+attach and started ordering, missing-composition rejection before application
+mutation, attach-failure rollback, exception-complete disposal, and one hosted
+end-to-end startup path.

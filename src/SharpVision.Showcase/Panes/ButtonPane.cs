@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Button control with live, themed activation specimens.</summary>
-internal sealed class ButtonPane: View
+internal sealed class ButtonPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Button";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Button documentation page.</summary>
+    internal ButtonPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var status = new Text("Activation log: waiting");
         var primary = new Button() { Content = new Text("Click or press Enter") };

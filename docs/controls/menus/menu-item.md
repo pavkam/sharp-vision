@@ -2,10 +2,10 @@
 
 ## MenuItem contract
 
-`MenuItem` is a sealed [`Pressable`](../pressable.md#pressable-contract) command,
-check, or radio entry inside a [Menu](menu.md#menu-contract). It uses inherited
-`Content` as its sole visible face; there is no competing text-only `Header`
-property.
+`MenuItem` is a sealed [`Pressable`](../pressable.md#pressable-contract)
+command, check, or radio entry inside a [Menu](menu.md#menu-contract). It uses
+inherited `Content` as its sole visible face; there is no competing text-only
+`Header` property.
 
 ## API
 

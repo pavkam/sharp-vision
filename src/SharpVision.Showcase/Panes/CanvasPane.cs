@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Canvas control with fixed, percentage, and edge-anchored placement specimens.</summary>
-internal sealed class CanvasPane: View
+internal sealed class CanvasPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Canvas";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Canvas documentation page.</summary>
+    internal CanvasPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var fixedStage = Stage();
         var fixedCard = Card("fixed 2,1", Glyphs.Light);

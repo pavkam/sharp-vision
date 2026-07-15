@@ -6,13 +6,15 @@ namespace SharpVision.Showcase.Panes;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Overlay control with layered, z-ordered, aligned, and clipped specimens.</summary>
-internal sealed class OverlayPane: View
+internal sealed class OverlayPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Overlay";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Overlay documentation page.</summary>
+    internal OverlayPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var zOrder = new Overlay()
         {

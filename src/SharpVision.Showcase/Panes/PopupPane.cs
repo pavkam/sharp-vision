@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Popup control with an anchored, keyboard- and pointer-driven action menu.</summary>
-internal sealed class PopupPane: View
+internal sealed class PopupPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Popup";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Popup documentation page.</summary>
+    internal PopupPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var status = new Text("Choose an item with the mouse, arrows, or Enter.");
         var trigger = new Button() { Content = new Text("Actions ▼") };

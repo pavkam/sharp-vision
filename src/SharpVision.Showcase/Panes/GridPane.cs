@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Grid control with fixed, star, auto, and spanning track specimens.</summary>
-internal sealed class GridPane: View
+internal sealed class GridPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Grid";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Grid documentation page.</summary>
+    internal GridPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var fixedTracks = new Grid()
         {

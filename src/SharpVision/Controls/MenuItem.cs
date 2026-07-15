@@ -52,7 +52,7 @@ public sealed class MenuItem: Pressable
 
             var failure = (ExceptionDispatchInfo?) null;
 
-            if (value == MenuItemKind.Radio && _isChecked && Parent is Menu menu)
+            if (value == MenuItemKind.Radio && _isChecked && FindMenu() is { } menu)
             {
                 CaptureFailure(() => menu.SelectRadio(this), ref failure);
             }
@@ -96,7 +96,7 @@ public sealed class MenuItem: Pressable
             field = value;
             var failure = (ExceptionDispatchInfo?) null;
 
-            if (Kind == MenuItemKind.Radio && _isChecked && Parent is Menu menu)
+            if (Kind == MenuItemKind.Radio && _isChecked && FindMenu() is { } menu)
             {
                 CaptureFailure(() => menu.SelectRadio(this), ref failure);
             }
@@ -125,7 +125,7 @@ public sealed class MenuItem: Pressable
 
             VerifyMutable();
 
-            if (Kind == MenuItemKind.Radio && value && Parent is Menu menu)
+            if (Kind == MenuItemKind.Radio && value && FindMenu() is { } menu)
             {
                 menu.SelectRadio(this);
                 return;
@@ -157,7 +157,7 @@ public sealed class MenuItem: Pressable
                 _ = SetVisualStateProperty(ref _isChecked, !_isChecked, nameof(IsChecked));
                 break;
             case MenuItemKind.Radio:
-                if (Parent is Menu menu)
+                if (FindMenu() is { } menu)
                 {
                     menu.SelectRadio(this);
                 }
@@ -174,7 +174,7 @@ public sealed class MenuItem: Pressable
         }
 
         var eventArgs = new MenuItemInvokedEventArgs(this, cause);
-        var owner = Parent as Menu;
+        var owner = FindMenu();
         var failure = (ExceptionDispatchInfo?) null;
         CaptureFailure(() => Invoked?.Invoke(this, eventArgs), ref failure);
 
@@ -325,5 +325,18 @@ public sealed class MenuItem: Pressable
         return value.HasValue
             ? Math.Max(0, value.Value - extent)
             : null;
+    }
+
+    private Menu? FindMenu()
+    {
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (current is Menu menu)
+            {
+                return menu;
+            }
+        }
+
+        return null;
     }
 }

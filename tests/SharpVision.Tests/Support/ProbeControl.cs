@@ -17,6 +17,9 @@ internal sealed class ProbeControl: Control
     /// <param name="intrinsic">The non-negative intrinsic content size.</param>
     internal ProbeControl(Size intrinsic = default) => _intrinsic = intrinsic;
 
+    /// <inheritdoc/>
+    protected override bool OwnsPointerState => CanFocus;
+
     /// <summary>Gets constraints received by the content measure extension point.</summary>
     internal List<Constraint> MeasureConstraints { get; } = [];
 

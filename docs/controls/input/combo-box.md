@@ -3,14 +3,14 @@
 ## ComboBox contract
 
 `ComboBox` derives directly from `Control`. It displays one selected value in a
-compact field and owns a private
-[Popup](../windows/popup.md#popup-contract) containing a
-[List](../collections/list.md#list-contract) immediately below the field when
-open. The Popup clears and frames its surface before the list renders, so
-choices never show through content behind the drop-down. The list uses the same
-keyboard, pointer, selection, and scrolling semantics as a standalone list. When
-the active style supplies a `State.Selected` background, the selected choice
-fills the complete interior row, including trailing blank cells, under the
+compact field and owns a private [Popup](../windows/popup.md#popup-contract)
+containing a [List](../collections/list.md#list-contract) immediately below the
+field when open. The Popup clears and frames its surface before the list
+renders, so choices never show through content behind the drop-down. The list
+uses the same keyboard, pointer, selection, and scrolling semantics as a
+standalone list. When the active style supplies a `State.Selected` background,
+the selected choice fills the complete interior row, including trailing blank
+cells, under the
 [List row rendering contract](../collections/list.md#list-contract).
 
 The selected value is the field's face; `ComboBox` therefore exposes neither

@@ -8,7 +8,7 @@ using Text = SharpVision.Controls.Text;
 /// <summary>Builds the navigable traditional-control documentation gallery.</summary>
 public sealed class Gallery: Screen
 {
-    private static readonly (string Name, Func<View> Create)[] _catalog =
+    private static readonly (string Name, Func<CompositeControl> Create)[] _catalog =
     [
         (ButtonPane.Title, static () => new ButtonPane()),
         (CanvasPane.Title, static () => new CanvasPane()),
@@ -65,7 +65,6 @@ public sealed class Gallery: Screen
     private readonly NavigationItem[] _navigation;
     private readonly ComboBox _themePicker;
     private readonly Button _quit;
-    private readonly Dock _root;
     private FocusManager? _focus;
 
     #region Construction and navigation
@@ -153,7 +152,7 @@ public sealed class Gallery: Screen
         Dock.SetSide(Sidebar, Side.Left);
         layout.Children.Add(Sidebar);
         layout.Children.Add(surface);
-        _root = layout;
+        InitializeContent(layout);
         Select(0);
     }
 
@@ -161,9 +160,7 @@ public sealed class Gallery: Screen
     public Dock Sidebar { get; }
 
     /// <summary>Gets the current documentation page content.</summary>
-    /// <remarks>Deliberately hides <see cref="View.Content"/>: this is the selected showcase page,
-    /// unrelated to the protected built-content root that <see cref="View"/> exposes to subclasses.</remarks>
-    public new Control Content => (_main.Children.Count > 0 ? _main.Children[0] : null)!;
+    public Control CurrentPage => (_main.Children.Count > 0 ? _main.Children[0] : null)!;
 
     /// <summary>Gets the current exact concrete control name.</summary>
     public string SelectedPage => Pages[SelectedIndex];
@@ -181,15 +178,12 @@ public sealed class Gallery: Screen
     /// <param name="index">The zero-based page index.</param>
     /// <returns>A new showcase pane instance.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
-    internal static View CreatePage(int index)
+    internal static CompositeControl CreatePage(int index)
     {
         return (uint) index >= (uint) _catalog.Length
             ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
             : _catalog[index].Create();
     }
-
-    /// <inheritdoc/>
-    protected override Control Build() => _root;
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="application"/> is null.</exception>

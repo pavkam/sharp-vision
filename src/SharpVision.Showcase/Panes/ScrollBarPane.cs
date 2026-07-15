@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the ScrollBar control with full-rail, vertical, and thin-chrome specimens.</summary>
-internal sealed class ScrollBarPane: View
+internal sealed class ScrollBarPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "ScrollBar";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained ScrollBar documentation page.</summary>
+    internal ScrollBarPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var horizontal = new ScrollBar()
         {

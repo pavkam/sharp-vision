@@ -10,8 +10,8 @@ activation, and menu-level invocation notifications.
 ## API
 
 - `Items : MenuItems` exposes `IReadOnlyList<Control>` inspection plus typed
-  `Add`/`Remove` overloads for `MenuItem` and `MenuSeparator`; arbitrary controls
-  cannot enter through the semantic collection.
+  `Add`/`Remove` overloads for `MenuItem` and `MenuSeparator`; arbitrary
+  controls cannot enter through the semantic collection.
 - `Orientation` and `Spacing` control horizontal or vertical geometry.
 - `SelectedIndex` tracks the active `MenuItem`; `-1` clears selection and a
   separator index is rejected.
@@ -47,7 +47,7 @@ menu.Items.Add(new MenuItem
 
 ## Test obligations
 
-Cover constrained mixed ownership, separator selection rejection, horizontal
-and vertical layout, keyboard focus movement, pointer and keyboard invocation,
+Cover constrained mixed ownership, separator selection rejection, horizontal and
+vertical layout, keyboard focus movement, pointer and keyboard invocation,
 atomic check/radio publication, disabled items, item/menu event order, tiny
 bounds, and final cells.

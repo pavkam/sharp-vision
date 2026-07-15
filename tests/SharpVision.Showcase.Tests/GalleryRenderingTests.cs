@@ -20,7 +20,7 @@ public sealed class GalleryRenderingTests
         using Frame frame = new(size);
         gallery.Render(frame.Canvas);
         var screen = new Screen(frame);
-        var view = gallery.Content.Parent.ShouldBeOfType<Stack>();
+        var view = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
 
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
         screen.Text.ShouldContain("SHARP VISION");
@@ -46,7 +46,7 @@ public sealed class GalleryRenderingTests
 
         var screen = new Screen(frame);
         screen.Text.ShouldContain("command paths.");
-        gallery.Content.Parent.ShouldBeOfType<Stack>()
+        gallery.CurrentPage.Parent.ShouldBeOfType<Stack>()
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
     }
 
@@ -58,7 +58,7 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "Button"));
         new Engine().Layout(gallery, new Size(100, 60));
 
-        var buttons = FindAll<Button>(gallery.Content);
+        var buttons = FindAll<Button>(gallery.CurrentPage);
 
         buttons.ShouldContain(button => button.ShadowMode == ShadowMode.Composite);
         buttons.ShouldContain(button => !button.HasShadow);
@@ -81,7 +81,7 @@ public sealed class GalleryRenderingTests
 
         var screen = new Screen(frame);
         var edge = Find<Dock>(
-            gallery.Content,
+            gallery.CurrentPage,
             static value =>
                 value.BorderThickness == new Thickness(1) &&
                 value.BorderGlyphs == Glyphs.Paired &&
@@ -110,7 +110,7 @@ public sealed class GalleryRenderingTests
 
         gallery.Render(frame.Canvas);
 
-        var panel = FindAll<ShowcasePanel>(gallery.Content).ShouldHaveSingleItem();
+        var panel = FindAll<ShowcasePanel>(gallery.CurrentPage).ShouldHaveSingleItem();
         Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Y)).ShouldBe("╭");
         Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Y)).ShouldBe("╮");
         Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Bottom - 1)).ShouldBe("╰");
@@ -130,7 +130,7 @@ public sealed class GalleryRenderingTests
         var size = new Size(120, 80);
         var engine = new Engine();
         engine.Layout(gallery, size);
-        var popup = FindAll<Popup>(gallery.Content)
+        var popup = FindAll<Popup>(gallery.CurrentPage)
             .Single(value => value.Content is List);
         var content = popup.Content.ShouldBeOfType<List>();
 
@@ -160,7 +160,7 @@ public sealed class GalleryRenderingTests
 
         gallery.Render(frame.Canvas);
 
-        var windows = FindAll<Window>(gallery.Content);
+        var windows = FindAll<Window>(gallery.CurrentPage);
         var screen = new Screen(frame);
         screen.Text.ShouldContain("Apply");
         screen.Text.ShouldContain("Cancel");
@@ -196,7 +196,7 @@ public sealed class GalleryRenderingTests
 
         gallery.Render(frame.Canvas);
 
-        var active = FindAll<List>(gallery.Content).Single(list => list.IsEnabled);
+        var active = FindAll<List>(gallery.CurrentPage).Single(list => list.IsEnabled);
         active.Background.ShouldBe(Color.Indexed(0));
         frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
             .ShouldBe(Color.Indexed(4));
@@ -210,7 +210,7 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "Text"));
         new Engine().Layout(gallery, new Size(120, 80));
 
-        var marked = FindAll<ControlText>(gallery.Content)
+        var marked = FindAll<ControlText>(gallery.CurrentPage)
             .Single(text => text.Content.Contains("<rapidblink>", StringComparison.Ordinal));
 
         marked.Content.ShouldContain("<b>");
@@ -234,7 +234,7 @@ public sealed class GalleryRenderingTests
         gallery.Select(IndexOf(gallery, "Text"));
         new Engine().Layout(gallery, new Size(120, 80));
 
-        var button = FindAll<Button>(gallery.Content)
+        var button = FindAll<Button>(gallery.CurrentPage)
             .Single(value => value.Content is ControlText { Content: "Append markup" });
 
         button.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);

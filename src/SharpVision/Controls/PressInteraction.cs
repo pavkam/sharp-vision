@@ -19,8 +19,8 @@ internal sealed class PressInteraction
     private readonly Func<bool> _capturePointer;
     private readonly Func<bool> _hasPointerCapture;
     private readonly System.Action _releasePointerCapture;
-    private readonly System.Action<bool> _setPressed;
-    private readonly System.Action<ActivationCause> _activate;
+    private readonly Action<bool> _setPressed;
+    private readonly Action<ActivationCause> _activate;
     private bool _pointerHeld;
     private bool _spaceHeld;
 
@@ -43,8 +43,8 @@ internal sealed class PressInteraction
         Func<bool> capturePointer,
         Func<bool> hasPointerCapture,
         System.Action releasePointerCapture,
-        System.Action<bool> setPressed,
-        System.Action<ActivationCause> activate)
+        Action<bool> setPressed,
+        Action<ActivationCause> activate)
     {
         ArgumentNullException.ThrowIfNull(bounds);
         ArgumentNullException.ThrowIfNull(isAvailable);

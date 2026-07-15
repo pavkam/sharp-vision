@@ -329,6 +329,19 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set => _ = SetProperty(ref field, value, ChangeImpact.None);
     }
 
+    /// <summary>Gets or sets whether this focusable control participates in Tab traversal.</summary>
+    /// <remarks>
+    /// Explicit and pointer-originated focus use <see cref="CanFocus"/> only. Changing this value
+    /// never releases an already focused control; it affects only future traversal.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool IsTabStop
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
+    } = true;
+
     /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
     /// <exception cref="ArgumentException">
     /// The style targets a type this control does not derive from or reports an unknown change impact.
@@ -388,14 +401,15 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether an active pointer press began on this control.</summary>
     public bool IsPressed { get; private set; }
 
-    /// <summary>Gets whether this control is an interactive hover target.</summary>
+    /// <summary>Gets whether this control owns pointer-derived hover and pressed appearance.</summary>
     /// <remarks>
-    /// Hover feedback is reserved for interactive controls, so the default follows
-    /// <see cref="CanFocus"/>. Hover over a non-interactive descendant resolves up to
-    /// the nearest owner, which is how a composite interactive control claims one
-    /// semantic hover state for its visible content.
+    /// The default is false. Interactive controls opt in independently of keyboard focus and tab
+    /// traversal, allowing a non-focusable composite to own one pointer state for its content.
     /// </remarks>
-    internal virtual bool OwnsHover => CanFocus;
+    protected virtual bool OwnsPointerState => false;
+
+    /// <summary>Gets whether this control owns hover during routed pointer dispatch.</summary>
+    internal virtual bool OwnsHover => OwnsPointerState;
 
     /// <summary>Gets the desired border-box size from the last successful measure.</summary>
     public Size DesiredSize { get; internal set; }
@@ -1333,7 +1347,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Validates that the complete subtree may receive a dispatcher.</summary>
-    internal void ValidateAttachment()
+    internal virtual void ValidateAttachment()
     {
         ThrowIfDisposed();
 

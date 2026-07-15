@@ -118,14 +118,15 @@ determines membership and capacity.
 
 The role vocabulary is container child, content, composition root, item visual,
 item host, or framework part. The foundation instantiates container children,
-the List item host, and private framework parts; the public
-[`ContentControl`](content-control.md#contentcontrol-contract) now instantiates
-the capacity-one content role. Composition-root and item-visual slots become
-concrete in later role-migration slices. A slot also selects normal or popup
-layer, hit-test and navigation participation, an optional stable part key, and
-the earliest invalidation impact. These are independent policies: excluding an
-edge from hit testing or navigation never excludes it from parentage, inherited
-context, lifecycle, or disposal.
+item hosts, and private framework parts. The public
+[`ContentControl`](content-control.md#contentcontrol-contract) instantiates the
+capacity-one content role, while
+[`CompositeControl`](composite-control.md#compositecontrol-contract)
+instantiates the permanent capacity-one composition-root role. A slot also
+selects normal or popup layer, hit-test and navigation participation, an
+optional stable part key, and the earliest invalidation impact. These are
+independent policies: excluding an edge from hit testing or navigation never
+excludes it from parentage, inherited context, lifecycle, or disposal.
 
 Cross-cutting traversal reads this registry directly instead of testing whether
 an owner is a `Container`. Stable tree order is slot registration order followed
@@ -218,8 +219,8 @@ active styles. A CLR property that changes `GetVisualState()` uses
 `SetVisualStateProperty(ref field, value)`: it performs access and lifetime
 validation before equivalence, commits the state, clears resolved caches,
 calculates the dynamic aggregate style impact, and publishes exactly one
-property notification. None of these seams exposes the framework's pending
-phase flags.
+property notification. None of these seams exposes the framework's pending phase
+flags.
 
 ## Lifecycle and events
 
@@ -274,10 +275,10 @@ If an extension point changes a layout property, that invalidation remains
 pending for a later transaction. If it throws, the active phase is marked dirty
 again before the exception escapes.
 
-Building a composite control out of existing controls, rather than a new
+Building a retained component out of existing controls, rather than a new
 primitive, does not use these seams directly; derive from
-[`View`](../concepts/custom-components.md#custom-components-contract) and
-implement `Build()` instead.
+[`CompositeControl`](composite-control.md#compositecontrol-contract), construct
+the private tree once, and transfer its root through `InitializeContent`.
 
 `OnRender` receives a canvas clipped to the control's `VisualBounds`, so
 deliberate own-content overflow such as shadow can extend beyond arranged

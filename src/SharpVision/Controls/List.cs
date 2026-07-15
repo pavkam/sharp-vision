@@ -15,7 +15,7 @@ using Label = Text;
     "Naming",
     "CA1710:Identifiers should have correct suffix",
     Justification = "List is the approved concise terminal control name, not a collection implementation.")]
-public sealed class List: Container, IStyleScope
+public sealed class List: ItemsControl
 {
     private readonly Stack _stack;
     private readonly GenericList _items = [];
@@ -27,7 +27,7 @@ public sealed class List: Container, IStyleScope
     private int _selectionAnchor = -1;
 
     /// <summary>Initializes an empty single-selection List with a text template.</summary>
-    public List() : base(capacity: 0)
+    public List()
     {
         _itemsView = _items.AsReadOnly();
         _selectedView = _selectedItems.AsReadOnly();
@@ -37,19 +37,7 @@ public sealed class List: Container, IStyleScope
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
         };
-        _ = new Children(
-            this,
-            capacity: 1,
-            new OwnedControlOptions(
-                OwnedControlRole.ItemHost,
-                OwnedControlLayer.Normal,
-                participatesInHitTesting: true,
-                participatesInNavigation: true,
-                partKey: "items-host",
-                ChangeImpact.Measure))
-        {
-            _stack
-        };
+        InitializeItemsHost(_stack);
         _ = AddHandler(Events.Key, OnKeyRouted);
         CanFocus = true;
     }
@@ -185,13 +173,13 @@ public sealed class List: Container, IStyleScope
     public int ActiveIndex { get; private set; } = -1;
 
     /// <summary>Gets the composed vertical scroll offset.</summary>
-    public new int VerticalOffset => _stack.VerticalOffset;
+    public int VerticalOffset => _stack.VerticalOffset;
 
     /// <summary>Gets or sets the axes available to the composed overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public new ScrollBars ScrollBars
+    public ScrollBars ScrollBars
     {
         get => _stack.ScrollBars;
         set
@@ -212,7 +200,7 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public new ShowScrollBars ShowScrollBars
+    public ShowScrollBars ShowScrollBars
     {
         get => _stack.ShowScrollBars;
         set
@@ -233,7 +221,7 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public new ScrollBarChrome ScrollBarChrome
+    public ScrollBarChrome ScrollBarChrome
     {
         get => _stack.ScrollBarChrome;
         set
@@ -254,7 +242,7 @@ public sealed class List: Container, IStyleScope
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached List is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The List is disposed.</exception>
-    public new ScrollBarFill ScrollBarFill
+    public ScrollBarFill ScrollBarFill
     {
         get => _stack.ScrollBarFill;
         set
@@ -316,27 +304,7 @@ public sealed class List: Container, IStyleScope
     }
 
     /// <inheritdoc/>
-    public override Control? HitTest(Point point)
-    {
-        var hit = base.HitTest(point);
-
-        return hit switch
-        {
-            null => null,
-            _ when !ReferenceEquals(hit, this) => hit,
-            _ => _stack.HitTest(point) ?? this,
-        };
-    }
-
-    /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas) => _stack.Render(canvas);
-
-    /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        _stack.Measure(constraint);
-        return _stack.DesiredSize;
-    }
+    protected override Size MeasureOverride(Constraint constraint) => MeasureChild(_stack, constraint);
 
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
@@ -351,7 +319,7 @@ public sealed class List: Container, IStyleScope
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds) =>
-        _stack.Arrange(bounds, widthResolved: true, heightResolved: true);
+        ArrangeChild(_stack, bounds, ResolvedAxes.Both);
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -440,12 +408,20 @@ public sealed class List: Container, IStyleScope
         Debug.Assert(realized is not null, "List replacement requires realized items.");
         Debug.Assert(realized.Length == items.Count, "Realized items must match the source count.");
 
-        while (_stack.Children.Count > 0)
+        List<ListItem> previous = [];
+
+        for (var index = 0; index < ItemControlCount; index++)
         {
-            var previous = (ListItem) _stack.Children[^1];
-            previous.Activated -= OnActivated;
-            _stack.Children.RemoveAt(_stack.Children.Count - 1);
-            previous.Dispose();
+            var item = (ListItem) GetItemControl(index);
+            item.Activated -= OnActivated;
+            previous.Add(item);
+        }
+
+        ReplaceItemControls(realized);
+
+        foreach (var item in previous)
+        {
+            item.Dispose();
         }
 
         if (replaceItems)
@@ -461,7 +437,6 @@ public sealed class List: Container, IStyleScope
         foreach (var item in realized)
         {
             item.Activated += OnActivated;
-            _stack.Children.Add(item);
             item.CommitSelection(_selection.Contains(item.Index));
         }
 
@@ -508,9 +483,9 @@ public sealed class List: Container, IStyleScope
         _selection.UnionWith(next);
         _selectionVersion++;
 
-        for (var index = 0; index < _stack.Children.Count; index++)
+        for (var index = 0; index < ItemControlCount; index++)
         {
-            ((ListItem) _stack.Children[index]).CommitSelection(_selection.Contains(index));
+            ((ListItem) GetItemControl(index)).CommitSelection(_selection.Contains(index));
         }
 
         RefreshSelectedItems();
@@ -671,7 +646,7 @@ public sealed class List: Container, IStyleScope
         return null;
     }
 
-    private ListItem? ItemAt(int index) => index < 0 || index >= _stack.Children.Count ? null : (ListItem) _stack.Children[index];
+    private ListItem? ItemAt(int index) => index < 0 || index >= ItemControlCount ? null : (ListItem) GetItemControl(index);
 
     private static ListItem? FindItem(Control? source)
     {

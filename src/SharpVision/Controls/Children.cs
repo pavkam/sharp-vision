@@ -8,6 +8,17 @@ public sealed class Children: IList<Control>, IReadOnlyList<Control>
 {
     private readonly OwnedControlSlot _slot;
 
+    /// <summary>Raised after one complete collection change, including child-initiated disposal.</summary>
+    /// <remarks>
+    /// This internal seam lets framework ownership roles observe the same committed slot used by
+    /// public containers without exposing either the slot or its notifications to callers.
+    /// </remarks>
+    internal event Action? Changed
+    {
+        add => _slot.Changed += value;
+        remove => _slot.Changed -= value;
+    }
+
     /// <summary>Initializes an empty public container-child collection.</summary>
     /// <param name="owner">The owning container.</param>
     /// <param name="capacity">The non-negative maximum child count.</param>

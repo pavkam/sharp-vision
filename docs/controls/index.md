@@ -12,6 +12,8 @@ All controls derive from the
 
 - [ContentControl](content-control.md#contentcontrol-contract) owns zero or one
   publicly replaceable content control.
+- [CompositeControl](composite-control.md#compositecontrol-contract) owns one
+  retained private implementation root initialized by the concrete constructor.
 - [Pressable](pressable.md#pressable-contract) adds focus and completed
   activation to that single-content role.
 

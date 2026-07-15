@@ -5,4 +5,10 @@ namespace SharpVision.PackageConsumer;
 
 using SharpVision.Consumer.Tests.PackageSpecimens;
 
-await PackageProbe.RunAsync();
+/// <summary>Starts the isolated packed-package contract probe.</summary>
+public static class Program
+{
+    /// <summary>Runs the externally compiled component proof.</summary>
+    /// <returns>A task that completes after the public-API probe succeeds.</returns>
+    public static Task Main() => PackageProbe.RunAsync();
+}

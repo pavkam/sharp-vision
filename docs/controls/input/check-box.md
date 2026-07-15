@@ -16,9 +16,9 @@ with optional inherited `Content` and explicit two- or three-state behavior.
   events.
 
 State setters validate before mutation, clear resolved style caches, and request
-the strongest impact declared by the active visual-state styles. They then
-raise the specific event followed by `StateChanged`. Disabling three-state mode
-from null stages `IsThreeState = false` and `IsChecked = false` before either
+the strongest impact declared by the active visual-state styles. They then raise
+the specific event followed by `StateChanged`. Disabling three-state mode from
+null stages `IsThreeState = false` and `IsChecked = false` before either
 property notification, so no callback can observe an invalid false/null pair.
 
 The shipped events carry immutable `CheckChangedEventArgs` with previous/current

@@ -31,9 +31,9 @@ clear. Keyboard and pointer completions carry `Keyboard` and `Pointer`
 
 The input state machine is one internal composed behavior shared with
 `ComboBox`. It owns no control-tree state and operates only through the
-protected focus/capture boundaries. This keeps the public inheritance role
-about replaceable single content rather than using inheritance merely to reuse
-event handling.
+protected focus/capture boundaries. This keeps the public inheritance role about
+replaceable single content rather than using inheritance merely to reuse event
+handling.
 
 ## Visual state and extension
 
@@ -62,7 +62,7 @@ public sealed class ToggleChip : Pressable
 ## Test obligations
 
 Tests cover inheritance and absence of `Children`, replaceable content
-ownership, Space/Enter transitions, content-originated pointer routes, focus
-and capture, inside/outside release, every availability cancellation path,
-combined visual-state impacts, callback ordering, Unicode content, tiny bounds,
-and compilation from the unfriended consumer assembly.
+ownership, Space/Enter transitions, content-originated pointer routes, focus and
+capture, inside/outside release, every availability cancellation path, combined
+visual-state impacts, callback ordering, Unicode content, tiny bounds, and
+compilation from the unfriended consumer assembly.

@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Menu control with command, check, radio, separator, orientation, and disabled-item specimens.</summary>
-internal sealed class MenuPane: View
+internal sealed class MenuPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Menu";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Menu documentation page.</summary>
+    internal MenuPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var status = new Text("Choose an action.");
         var menu = new Menu()

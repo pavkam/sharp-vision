@@ -38,7 +38,7 @@ public sealed class ComboBoxTests
 
         box.OwnedControlCount.ShouldBe(1);
         var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
-        var list = OwnedTree.Find<SharpVision.Controls.List>(popup).ShouldNotBeNull();
+        var list = OwnedTree.Find<List>(popup).ShouldNotBeNull();
         popup.Parent.ShouldBeSameAs(box);
         list.Parent.ShouldBeSameAs(popup);
         popup.Content.ShouldBeSameAs(list);
@@ -157,7 +157,7 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        var list = OwnedTree.Find<SharpVision.Controls.List>(box).ShouldNotBeNull();
+        var list = OwnedTree.Find<List>(box).ShouldNotBeNull();
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y)).Style.Background.ShouldBe(Color.Indexed(99));
         frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y + 1)).Style.Background.ShouldBe(Color.Indexed(240));
     }
@@ -182,7 +182,7 @@ public sealed class ComboBoxTests
         box.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
         box.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
         box.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
-        var list = OwnedTree.Find<SharpVision.Controls.List>(box).ShouldNotBeNull();
+        var list = OwnedTree.Find<List>(box).ShouldNotBeNull();
         var rail = list.HitTest(new Point(list.Bounds.Right - 1, list.Bounds.Y)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
         rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
@@ -262,7 +262,7 @@ public sealed class ComboBoxTests
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
             new Engine().Layout(box, size);
-            var list = OwnedTree.Find<SharpVision.Controls.List>(box).ShouldNotBeNull();
+            var list = OwnedTree.Find<List>(box).ShouldNotBeNull();
 
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Release));

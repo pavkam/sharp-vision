@@ -10,7 +10,7 @@ using SharpVision.Text;
 using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
-public sealed class TextInput: Container
+public sealed class TextInput: Control
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -21,24 +21,23 @@ public sealed class TextInput: Container
     private CaptureManager? _subscribedCapture;
     private int _contentWidth;
     private int _contentHeight = 1;
-    private readonly Children _chrome;
+    private readonly OwnedControlSlot _chrome;
     private readonly ScrollBar _horizontal;
     private readonly ScrollBar _vertical;
     private Rect _editorBounds;
 
     /// <summary>Initializes an empty focusable single-line editor.</summary>
-    public TextInput() : base(capacity: 0)
+    public TextInput()
     {
-        _chrome = new Children(
-            this,
-            capacity: 2,
+        _chrome = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,
                 OwnedControlLayer.Normal,
                 participatesInHitTesting: true,
                 participatesInNavigation: false,
                 partKey: "editor-scroll-bars",
-                ChangeImpact.Arrange));
+                ChangeImpact.Arrange),
+            capacity: 2);
         _horizontal = new ScrollBar { Orientation = Orientation.Horizontal };
         _vertical = new ScrollBar { Orientation = Orientation.Vertical };
         _horizontal.ValueChanged += OnHorizontalChanged;
@@ -47,6 +46,9 @@ public sealed class TextInput: Container
         _chrome.Add(_vertical);
         CanFocus = true;
     }
+
+    /// <inheritdoc/>
+    protected override bool OwnsPointerState => true;
 
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>
     public event EventHandler<TextChangingEventArgs>? TextChanging;
@@ -191,16 +193,16 @@ public sealed class TextInput: Container
     public string SelectedText => Text.Substring(SelectionStart, SelectionLength);
 
     /// <summary>Gets the current horizontal cell offset.</summary>
-    public new int HorizontalOffset { get; private set; }
+    public int HorizontalOffset { get; private set; }
 
     /// <summary>Gets the current vertical line offset.</summary>
-    public new int VerticalOffset { get; private set; }
+    public int VerticalOffset { get; private set; }
 
     /// <summary>Gets or sets the axes eligible for editor overflow scrolling.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ScrollBars ScrollBars
+    public ScrollBars ScrollBars
     {
         get;
         set
@@ -221,7 +223,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ShowScrollBars ShowScrollBars
+    public ShowScrollBars ShowScrollBars
     {
         get;
         set
@@ -242,7 +244,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ScrollBarChrome ScrollBarChrome
+    public ScrollBarChrome ScrollBarChrome
     {
         get;
         set
@@ -264,7 +266,7 @@ public sealed class TextInput: Container
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public new ScrollBarFill ScrollBarFill
+    public ScrollBarFill ScrollBarFill
     {
         get;
         set
@@ -492,6 +494,8 @@ public sealed class TextInput: Container
 
         if (reason == ReleaseReason.Disposed)
         {
+            _horizontal.ValueChanged -= OnHorizontalChanged;
+            _vertical.ValueChanged -= OnVerticalChanged;
             TextChanging = null;
             TextChanged = null;
             SelectionChanged = null;
@@ -886,8 +890,14 @@ public sealed class TextInput: Container
         _editorBounds = viewport;
         _horizontal.Visibility = horizontal ? Visibility.Visible : Visibility.Collapsed;
         _vertical.Visibility = vertical ? Visibility.Visible : Visibility.Collapsed;
-        _horizontal.Arrange(new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, horizontal ? 1 : 0), true, true);
-        _vertical.Arrange(new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height), true, true);
+        ArrangeChild(
+            _horizontal,
+            new Rect(bounds.X, bounds.Y + viewport.Height, viewport.Width, horizontal ? 1 : 0),
+            ResolvedAxes.Both);
+        ArrangeChild(
+            _vertical,
+            new Rect(bounds.X + viewport.Width, bounds.Y, vertical ? 1 : 0, viewport.Height),
+            ResolvedAxes.Both);
         Configure(_horizontal, Math.Max(0, _contentWidth - viewport.Width + 1), viewport.Width, HorizontalOffset);
         Configure(_vertical, Math.Max(0, _contentHeight - viewport.Height + 1), viewport.Height, VerticalOffset);
     }

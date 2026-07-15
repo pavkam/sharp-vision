@@ -61,7 +61,7 @@ public sealed class GalleryInteractionTests
             "Button page selection");
 
         var button = await application.Dispatcher.InvokeAsync(
-            () => Find<Button>(gallery.Content, static value => value.IsEnabled),
+            () => Find<Button>(gallery.CurrentPage, static value => value.IsEnabled),
             TestContext.Current.CancellationToken);
         var activeButton = button.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
@@ -70,12 +70,12 @@ public sealed class GalleryInteractionTests
         terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
             () => Find<ControlText>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.Content.StartsWith("Activation log: Keyboard", StringComparison.Ordinal)) is not null,
             application,
             "Button keyboard activation");
 
-        var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
+        var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
         var wheel = string.Concat(Enumerable.Repeat("\u001b[<65;30;10M", 8));
         terminal.QueueInput(Encoding.ASCII.GetBytes(wheel));
         await WaitUntilAsync(
@@ -91,7 +91,7 @@ public sealed class GalleryInteractionTests
             application,
             "TextInput page selection");
         var input = await application.Dispatcher.InvokeAsync(
-            () => Find<TextInput>(gallery.Content, static value => !value.IsReadOnly),
+            () => Find<TextInput>(gallery.CurrentPage, static value => !value.IsReadOnly),
             TestContext.Current.CancellationToken);
         var activeInput = input.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
@@ -131,7 +131,7 @@ public sealed class GalleryInteractionTests
             TestContext.Current.CancellationToken);
         var editor = await application.Dispatcher.InvokeAsync(
             () => Find<TextInput>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.AcceptsReturn && value.Height == Length.Cells(3)),
             TestContext.Current.CancellationToken);
         var activeEditor = editor.ShouldNotBeNull();
@@ -139,7 +139,7 @@ public sealed class GalleryInteractionTests
         var target = await application.Dispatcher.InvokeAsync(
             () => new Point(activeEditor.Bounds.X + 1, activeEditor.Bounds.Y + 1),
             TestContext.Current.CancellationToken);
-        var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
+        var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
         var previousPageOffset = await application.Dispatcher.InvokeAsync(
             () => main.VerticalOffset,
             TestContext.Current.CancellationToken);
@@ -181,7 +181,7 @@ public sealed class GalleryInteractionTests
 
         var append = await application.Dispatcher.InvokeAsync(
             () => Find<Button>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.Content is ControlText { Content: "Append markup" }),
             TestContext.Current.CancellationToken);
         var activeAppend = append.ShouldNotBeNull();
@@ -192,7 +192,7 @@ public sealed class GalleryInteractionTests
         terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
             () => Find<ControlText>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.Content.StartsWith("Activity log: Keyboard", StringComparison.Ordinal)) is not null,
             application,
             "Text markup mutation");
@@ -225,7 +225,7 @@ public sealed class GalleryInteractionTests
 
         var active = await application.Dispatcher.InvokeAsync(
             () => Find<List>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.IsEnabled),
             TestContext.Current.CancellationToken);
         var selected = active.ShouldNotBeNull();
@@ -238,7 +238,7 @@ public sealed class GalleryInteractionTests
 
         await WaitUntilAsync(
             () => Find<ControlText>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.Content.StartsWith("Selected item: Gamma", StringComparison.Ordinal)) is not null,
             application,
             "List selection status");
@@ -498,7 +498,7 @@ public sealed class GalleryInteractionTests
             () => gallery.Select(IndexOf(gallery, "ScrollBar")),
             TestContext.Current.CancellationToken);
         var scrollBar = await application.Dispatcher.InvokeAsync(
-            () => Find<ScrollBar>(gallery.Content, static value => value.Orientation == Orientation.Horizontal),
+            () => Find<ScrollBar>(gallery.CurrentPage, static value => value.Orientation == Orientation.Horizontal),
             TestContext.Current.CancellationToken);
         var activeScrollBar = scrollBar.ShouldNotBeNull();
         await BringIntoViewAsync(activeScrollBar, gallery, application);
@@ -537,7 +537,7 @@ public sealed class GalleryInteractionTests
             "showcase scrollbar thumb drag");
         await WaitUntilAsync(
             () => Find<ControlText>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.Content == "Thumb value: 100") is not null,
             application,
             "showcase scrollbar value status");
@@ -561,14 +561,14 @@ public sealed class GalleryInteractionTests
             () => gallery.Select(IndexOf(gallery, "FigletText")),
             TestContext.Current.CancellationToken);
         var editor = await application.Dispatcher.InvokeAsync(
-            () => Find<TextInput>(gallery.Content, static value => value.Text == "SharpVision"),
+            () => Find<TextInput>(gallery.CurrentPage, static value => value.Text == "SharpVision"),
             TestContext.Current.CancellationToken);
         var preview = await application.Dispatcher.InvokeAsync(
-            () => Find<FigletText>(gallery.Content, static value => value.Content == "SharpVision"),
+            () => Find<FigletText>(gallery.CurrentPage, static value => value.Content == "SharpVision"),
             TestContext.Current.CancellationToken);
         var picker = await application.Dispatcher.InvokeAsync(
             () => Find<ComboBox>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.SelectedIndex >= 0 && value.Items[value.SelectedIndex] is "Standard"),
             TestContext.Current.CancellationToken);
         var activeEditor = editor.ShouldNotBeNull();
@@ -591,13 +591,13 @@ public sealed class GalleryInteractionTests
         terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
             () => Find<ComboBox>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.IsOpen) is not null,
             application,
             "FIGlet dropdown open");
         var fonts = await application.Dispatcher.InvokeAsync(
             () => Find<List>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.EffectiveIsVisible),
             TestContext.Current.CancellationToken);
         var activeFonts = fonts.ShouldNotBeNull();
@@ -662,11 +662,11 @@ public sealed class GalleryInteractionTests
             TestContext.Current.CancellationToken);
         var picker = await application.Dispatcher.InvokeAsync(
             () => Find<ComboBox>(
-                gallery.Content,
+                gallery.CurrentPage,
                 static value => value.SelectedIndex >= 0 && value.Items[value.SelectedIndex] is "Standard"),
             TestContext.Current.CancellationToken);
         var preview = await application.Dispatcher.InvokeAsync(
-            () => Find<FigletText>(gallery.Content, static value => value.Content == "SharpVision"),
+            () => Find<FigletText>(gallery.CurrentPage, static value => value.Content == "SharpVision"),
             TestContext.Current.CancellationToken);
         var activePicker = picker.ShouldNotBeNull();
         var activePreview = preview.ShouldNotBeNull();
@@ -742,7 +742,7 @@ public sealed class GalleryInteractionTests
         application.FrameRendered += Complete;
         var moved = await application.Dispatcher.InvokeAsync(() =>
         {
-            var main = gallery.Content.Parent.ShouldBeOfType<Stack>();
+            var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
             return main.BringIntoView(control);
         }, TestContext.Current.CancellationToken);
 

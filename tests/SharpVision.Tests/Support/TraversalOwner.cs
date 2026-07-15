@@ -15,6 +15,9 @@ internal sealed class TraversalOwner: Control, IStyleScope
     internal bool ClipChildren { get; set; } = true;
 
     /// <inheritdoc/>
+    protected override bool OwnsPointerState => CanFocus;
+
+    /// <inheritdoc/>
     protected override bool ClipsChildren => ClipChildren;
 
     /// <summary>Initializes deterministic slots in normal, excluded, then popup registration order.</summary>

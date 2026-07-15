@@ -53,7 +53,7 @@ public sealed class ComponentRoleTests
         type.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
         type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Any(property => property.PropertyType == typeof(Popup) ||
-                property.PropertyType == typeof(SharpVision.Controls.List))
+                property.PropertyType == typeof(List))
             .ShouldBeFalse();
     }
 

@@ -160,7 +160,7 @@ public sealed class ThemeGalleryTests
             TestContext.Current.CancellationToken);
 
         await WaitUntilAsync(
-            () => Find<ShowcasePanel>(gallery.Content, static _ => true) is not null,
+            () => Find<ShowcasePanel>(gallery.CurrentPage, static _ => true) is not null,
             application,
             "Theming page content");
 

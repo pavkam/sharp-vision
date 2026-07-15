@@ -7,13 +7,15 @@ using Text = SharpVision.Controls.Text;
 
 
 /// <summary>Documents the Stack control with orientation, spacing, and reverse-order specimens.</summary>
-internal sealed class StackPane: View
+internal sealed class StackPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Stack";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Stack documentation page.</summary>
+    internal StackPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var horizontal = new Stack() { Orientation = Orientation.Horizontal, Spacing = 2, Width = Length.Cells(40) };
         var fixedCard = Card("Fixed 10", Glyphs.Light);

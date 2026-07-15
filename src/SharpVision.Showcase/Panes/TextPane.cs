@@ -8,13 +8,15 @@ using SharpVision.Text;
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents Text geometry, markup, overflow, links, and live content mutation.</summary>
-internal sealed class TextPane: View
+internal sealed class TextPane: CompositeControl
 {
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "Text";
 
-    /// <inheritdoc/>
-    protected override Control Build()
+    /// <summary>Initializes the retained Text documentation page.</summary>
+    internal TextPane() => InitializeContent(CreateContent());
+
+    private static Stack CreateContent()
     {
         var geometry = new Text("é vs é · orphan ́ · ambiguous · · 你好 · 👩‍💻 · 🇺🇸");
 
