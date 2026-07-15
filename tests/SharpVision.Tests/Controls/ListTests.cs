@@ -65,6 +65,49 @@ public sealed class ListTests
         frame.GetCell(new Point(7, 1)).Style.Background.ShouldBe(Color.Indexed(99));
     }
 
+    /// <summary>Verifies routed pointer movement paints the complete hovered row without committing selection.</summary>
+    [Fact]
+    public async Task Render_WhenPointerHoversItem_UsesSurfaceRowWithoutSelectionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var control = new UiList
+            {
+                Width = Length.Cells(8),
+                Height = Length.Cells(2),
+                Items = ["One", "Two"],
+                ScrollBars = ScrollBars.None,
+            };
+            ThemeTestSupport.ApplyTheme(control, Themes.Dark);
+            new Engine().Layout(control, new Size(8, 2));
+            control.Attach(dispatcher);
+            using CaptureManager capture = new(control);
+            _ = capture.Dispatch(new Pointer(
+                new Point(1, 0),
+                pixels: null,
+                Buttons.None,
+                PointerAction.Move,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: true,
+                isCellPositionInferred: false));
+            using Frame frame = new(new Size(8, 2));
+
+            control.Render(frame.Canvas);
+
+            control.SelectedIndex.ShouldBe(-1);
+            var hovered = frame.GetCell(new Point(7, 0)).Style.Background;
+            var normal = frame.GetCell(new Point(7, 1)).Style.Background;
+            hovered.Kind.ShouldBe(ColorKind.Indexed);
+            hovered.Red.ShouldBe((byte) 8);
+            normal.Kind.ShouldBe(ColorKind.Indexed);
+            normal.Red.ShouldBe((byte) 0);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies List exposes the canonical overflow policy and its actual composed scrollbar.</summary>
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardCommonPolicyToComposedViewport()

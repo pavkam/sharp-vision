@@ -10,6 +10,7 @@ public sealed class ComboBox: Pressable
 {
     private readonly List _list;
     private readonly Popup _popup;
+    private IDisposable? _outsideInputRegistration;
 
     #region Construction and properties
 
@@ -182,6 +183,7 @@ public sealed class ComboBox: Pressable
             }
 
             _popup.IsOpen = value;
+            UpdateOutsideInputRegistration();
         }
     }
 
@@ -238,16 +240,29 @@ public sealed class ComboBox: Pressable
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
-        var style = ResolvedStyle;
+        RenderChrome(canvas);
+        var content = ContentBounds;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (content.Width == 0 || content.Height == 0)
         {
-            canvas.Clear(Bounds, style);
+            return;
         }
 
-        var label = canvas.Clip(new Rect(Bounds.X, Bounds.Y, Math.Max(0, Bounds.Width - 2), 1));
-        _ = label.Draw(SelectedText().AsSpan(), new Point(Bounds.X, Bounds.Y), style, background: BackgroundMode.Transparent);
-        _ = canvas.Draw(" ▼".AsSpan(), new Point(Math.Max(Bounds.X, Bounds.Right - 2), Bounds.Y), style, background: BackgroundMode.Transparent);
+        var style = ResolvedStyle;
+        var label = canvas.Clip(new Rect(content.X, content.Y, Math.Max(0, content.Width - 2), 1));
+        _ = label.Draw(SelectedText().AsSpan(), new Point(content.X, content.Y), style, background: BackgroundMode.Transparent);
+        _ = canvas.Draw(
+            " ▼".AsSpan(),
+            new Point(Math.Max(content.X, content.Right - 2), content.Y),
+            style,
+            background: BackgroundMode.Transparent);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnParentChanged(Container? previous, Container? current)
+    {
+        base.OnParentChanged(previous, current);
+        UpdateOutsideInputRegistration();
     }
 
     /// <inheritdoc/>
@@ -268,6 +283,12 @@ public sealed class ComboBox: Pressable
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
+        DisposeOutsideInputRegistration();
+
+        if (IsOpen)
+        {
+            _popup.IsOpen = false;
+        }
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -314,7 +335,56 @@ public sealed class ComboBox: Pressable
     {
         _ = sender;
         _ = eventArgs;
+        DisposeOutsideInputRegistration();
         NotifyChanged(nameof(IsOpen), Invalidation.None);
+    }
+
+    private void OnRootPointer(object? sender, PointerEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (!IsOpen || eventArgs.Phase != Phase.Preview || eventArgs.Pointer.Cells is not { } point)
+        {
+            return;
+        }
+
+        var outside = !Bounds.Contains(point) && !_popup.SurfaceBounds.Contains(point);
+        var dismiss = eventArgs.Pointer.Action == PointerAction.Wheel ||
+            (eventArgs.Pointer.Action == PointerAction.Press &&
+                (eventArgs.Pointer.Buttons & Buttons.Primary) != 0);
+
+        if (outside && dismiss)
+        {
+            IsOpen = false;
+        }
+    }
+
+    private void UpdateOutsideInputRegistration()
+    {
+        DisposeOutsideInputRegistration();
+
+        if (!IsOpen || IsDisposed)
+        {
+            return;
+        }
+
+        Control root = this;
+
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        _outsideInputRegistration = root.AddHandler(
+            Events.Pointer,
+            OnRootPointer,
+            handledEventsToo: true);
+    }
+
+    private void DisposeOutsideInputRegistration()
+    {
+        _outsideInputRegistration?.Dispose();
+        _outsideInputRegistration = null;
     }
 
     #endregion
