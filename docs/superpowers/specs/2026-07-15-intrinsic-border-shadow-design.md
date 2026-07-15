@@ -59,7 +59,9 @@ wrapper control.
 
 ## Non-goals
 
-- No change to `ControlChrome` rendering, `RenderChrome`, or `VisualBounds`.
+- No redesign of `RenderChrome`, `VisualBounds`, or shadow geometry. Migration
+  exposed and corrected one `ControlChrome` opacity defect: an explicit
+  `ShadowBackground` had been resolved but applied in transparent mode.
 - No new border/shadow properties — every property already exists.
 - No redesign of `Window`'s bespoke title-bar frame (it hardcodes its own 1-cell
   frame and does not use `BorderThickness`; see §4).
@@ -105,15 +107,32 @@ Effect:
 
 `ContentBounds` and `VisualBounds` are unchanged.
 
-### 2. Rendering is already intrinsic
+### 2. Rendering was intrinsic; shadow-background opacity was corrected
 
-No rendering change is needed. The default `OnRender` → `RenderChrome` →
-`ControlChrome.Render` draws the per-side border and the shadow for any control
-whose `BorderThickness`/`HasShadow` are set. Containers that do **not** override
+The default `OnRender` → `RenderChrome` → `ControlChrome.Render` already drew
+the per-side border and shadow for any control whose
+`BorderThickness`/`HasShadow` were set. Containers that do **not** override
 `OnRender` (`Stack`, `Grid`, `Canvas`, `Dock`, `View`) therefore draw their own
-border for free. A container that **does** override `OnRender` and wants a
-visible border must call `RenderChrome` (most do not need one); this is
-documented, not a silent gap.
+border directly. A container that **does** override `OnRender` and wants a
+visible border calls `RenderChrome` (most do not need one); this is documented,
+not a silent gap.
+
+The migration did require one correctness fix in commit `54db46d`.
+`ControlChrome.DrawShadow` had resolved an explicit `ShadowBackground` but
+passed through the body's transparent background mode, so the selected color was
+not written. An explicit `ShadowBackground` now forces opaque application.
+Without that explicit value, the background value resolves through
+`ShadowBackground ?? Background ?? appearanceSource.Background` while the mode
+continues to inherit the body's opaque/transparent decision: a generic
+`Background` supplies the opaque fallback, and a fully transparent/null path
+preserves the destination background. Composite mode preserves the destination
+glyph and complete wide-cell ownership in every branch.
+
+Three regressions distinguish those contracts: explicit shadow background
+replacement; generic `Background` fallback; and the transparent null path that
+keeps a pre-existing indexed destination background while applying dim shadow
+attributes. Sensitivity changes to the opacity decision or fallback value made
+the focused tests fail before the correct branches were restored.
 
 ### 3. Shadow migration uses intrinsic chrome
 
@@ -189,6 +208,9 @@ focused test on committed content position/`Bounds`.
   double inset or tiny-height collapse.
 - **Shadow intrinsic:** setting `HasShadow` on an ordinary control produces the
   retired wrapper's cells and expanded `VisualBounds`.
+- **Shadow background:** explicit, generic-background fallback, and transparent
+  null cases prove the corrected opacity decision without replacing composite
+  glyphs or wide-cell ownership.
 - **Border contract:** the retired suite's per-side, glyph, and partial-border
   cases run against an intrinsic-bordered control.
 - **Migration:** representative screens that used `Border`/`Shadow` render

@@ -1015,14 +1015,14 @@ across tasks and match the current code (`Control.cs:591,1104,1345-1365`).
 
 ---
 
-## Execution Handoff
+## Completed implementation status
 
-Two execution options:
-
-1. **Subagent-Driven (recommended)** — fresh subagent per task, review between
-   tasks.
-2. **Inline Execution** — execute tasks in this session with checkpoints.
-
-Use the subagent-driven option from an isolated `codex/intrinsic-border-shadow`
-worktree based on `codex/runtime-protocol-router`. Do not begin while any target
-path has uncommitted changes in that worktree.
+Tasks 1–5 were implemented and reviewed on branch
+`codex/intrinsic-border-shadow-impl` in the isolated
+`.worktrees/intrinsic-border-shadow` worktree, using the execution base recorded
+at the top of this plan (`779208c` plus corrected-plan commit `43f19cd`). The
+dedicated wrapper controls and showcase pages are deleted; intrinsic layout,
+rendering, migration, documentation, and regression coverage are committed; and
+the recorded formatting, lint, build, and 1,383-test gates pass. No
+pre-execution choice or alternate base remains; only the caller's branch
+integration decision is outstanding.

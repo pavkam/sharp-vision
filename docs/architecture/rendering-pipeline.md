@@ -52,16 +52,24 @@ according to the
 ## Control rendering
 
 `Control.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It clears
-render invalidation before extension code, clips the supplied canvas to
-committed `Bounds`, calls `OnRender`, then renders owned children. An
-invalidation raised during either callback therefore remains pending for the
-next frame. An exception restores render dirtiness before propagating.
+render invalidation before extension code, intersects the supplied ancestor
+canvas with `VisualBounds`, and passes that visual canvas to `OnRender`. This
+allows the control's own shadow or other deliberate visual overflow to draw
+outside committed `Bounds` while remaining clipped by the frame and every
+retained ancestor clip. It separately prepares a `Bounds`-clipped canvas for
+children: `RenderChildren` receives that canvas when `ClipsChildren` is true, or
+the inherited ancestor canvas when the control deliberately permits unclipped
+descendants. An invalidation raised during either callback remains pending for
+the next frame; an exception restores render dirtiness before propagating.
 
 Hidden, collapsed, and effectively hidden subtrees draw nothing. Containers
 render their own content before children in collection order, so later children
-have higher z-order. Every descendant canvas intersects all ancestor clips;
-coordinates remain absolute terminal cells, avoiding accumulated transform
-rounding.
+have higher z-order. A descendant retains the inherited ancestor clip and adds
+each clipping parent's arranged `Bounds`; a parent with `ClipsChildren = false`
+omits only its own bounds intersection. Coordinates remain absolute terminal
+cells, avoiding accumulated transform rounding. Pointer hit testing continues to
+use arranged bounds and the separate documented overflow policy, never
+`VisualBounds`.
 
 Derived controls draw only through semantic `Canvas` operations and use their
 border-then-padding-deflated content bounds. The base `OnRender` draws shared
