@@ -1,6 +1,7 @@
 # Unified Text with Inline Markup — Implementation Plan
 
 <!-- markdownlint-disable MD013 MD036 -->
+<!-- Historical snapshot: MD013 preserves exact code; MD036 preserves original task labels. -->
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or

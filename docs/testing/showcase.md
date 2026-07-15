@@ -3,10 +3,11 @@
 ## Showcase testing
 
 The showcase catalog test contains the exact concrete shipped-control inventory
-and fails when a control lacks its own page, typed RichText documentation,
-meaningful property descriptions, structured interaction rows, or fresh live
-example. Each example tree must contain the control named by its sidebar entry
-and must be detached and independently owned.
+and fails when a control lacks its own page, typed RichText documentation, or a
+fresh live example. Each example tree must contain the control named by its
+sidebar entry and must be detached and independently owned. Property tables,
+interaction tables, and Practical recipe sections are optional page content, not
+catalog preconditions.
 
 Navigation tests require the executable showcase policy to emit xterm any-event
 tracking (`1003`) and SGR cell-mouse mode enables before its first frame. They
@@ -21,7 +22,7 @@ take focus, and shutdown to complete without runtime failure.
 
 The same runtime suite targets an SGR wheel report at the overflowing multiline
 `TextInput` specimen. It proves decoded terminal input advances the editor's own
-`VerticalOffset` while the enclosing documentation `ScrollView` retains its
+`VerticalOffset` while the enclosing scrolling documentation `Stack` retains its
 previous offset, protecting leaf-first wheel routing from future regressions.
 
 Virtual-screen assertions render every page at 30 by 8, 80 by 24, and 140 by 40
@@ -37,13 +38,11 @@ mask input buffering. It also opens and selects the Figlet font dropdown, then
 drags the ScrollBar thumb with SGR press, motion, and release reports, asserting
 each visible committed value.
 
-Every page must also contain a Practical recipe: one borderless, full-width,
-word-wrapped RichText narrative that explains when to use the control, describes
-each supported interaction path, and explains how resizing affects the page.
-Examples remain the place for bordered live specimens. The Interaction section
-is a standalone Table with Input, Behavior, and Result columns rather than
-another prose card. The page test protects the narrative's borderless structure
-alongside its responsive wrapping.
+Current `Doc.Page` panes use an Overview paragraph followed by labeled live
+examples with inline RichText descriptions. A pane may still supply a Practical
+recipe or structured interaction data when that improves the example; tests
+require any supplied recipe to use word wrapping, but do not require either
+optional section on every page.
 
 Canvas has dedicated virtual-screen assertions for its labeled fixed,
 percentage, edge-constraint, and clipping stages within the viewport. Shadow is
@@ -61,6 +60,6 @@ Showcase examples compile as production code and use no internal APIs,
 reflection shortcuts, fake controls, or rendering behavior unavailable to
 library consumers.
 
-The capture renderer has its own ANSI-to-HTML test, while
-`scripts/capture-showcase.sh` fails if the Release app exits early, never
-renders Overview and Examples, or does not produce a valid PNG.
+The ANSI-to-HTML capture renderer has its own conversion test. Live interaction
+correctness remains owned by the application and tmux smoke tests above rather
+than a checked-in image artifact.

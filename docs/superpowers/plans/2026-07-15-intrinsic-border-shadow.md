@@ -913,24 +913,30 @@ removed instead of inventing a missing artifact.
 
 ```bash
 ! rg -n 'display/(border|shadow)|new (Border|Shadow)\b|Border control|Shadow control' \
-  docs AGENTS.md --glob '!docs/superpowers/plans/**'
+  AGENTS.md docs/index.md docs/architecture docs/concepts docs/controls docs/testing
 rg -n 'display/(border|shadow)|new (Border|Shadow)\b|Border control|Shadow control' \
-  docs/superpowers/plans
+  docs/superpowers/plans docs/superpowers/specs
+rg -n '\b(Border|Shadow|ScrollView)\b' \
+  docs/superpowers/specs/2026-07-13-api-conformance-view-build-design.md
 npm run lint:markdown
 npm run lint:links
 npm run test:docs
 ```
 
-Expected: the current-guidance scan is silent. The historical-plan scan reports
-only preserved implementation/migration records (including commands and code
-snapshots that were correct at their execution bases); it is classified rather
-than falsely required to be silent. Every documentation command passes.
-Remaining “border” and “shadow” text describes intrinsic chrome, colors, or
-historical migration context.
+Expected: the live normative-guidance scan is silent. The historical and design
+record scan reports only preserved implementation/migration snapshots or
+explicitly superseded guidance (including commands and code snapshots that were
+correct at their execution bases); it is classified rather than falsely required
+to be silent. Every documentation command passes. Remaining “border” and
+“shadow” text describes intrinsic chrome, colors, or historical migration
+context.
 
-Evidence: the current-guidance scan was silent. The historical scan found only
-preserved plan snapshots and migration commands. `lint:markdown` passed all 111
-Markdown files with zero errors after narrow file-local exemptions preserved
+Evidence: the live normative-guidance scan was silent. The historical/design
+scan found only preserved plan snapshots, migration commands, and explicitly
+superseded design context; the focused older-design scan showed only its
+retained execution-base path snapshot, while the document status explicitly
+links the superseding designs. `lint:markdown` passed all 111 Markdown files
+with zero errors after narrow, justified file-local exemptions preserved
 verbatim historical plan text; link validation passed; documentation tests
 passed 24/24.
 

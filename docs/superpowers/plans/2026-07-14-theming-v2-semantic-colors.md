@@ -1,6 +1,7 @@
 # Theming v2: Semantic Colors Implementation Plan
 
 <!-- markdownlint-disable MD013 -->
+<!-- Historical snapshot: MD013 is disabled so exact signatures and commands remain verbatim. -->
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or

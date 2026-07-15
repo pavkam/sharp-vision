@@ -23,9 +23,8 @@ defines Unicode drawing and visual overflow, while the
 [FigletText contract](controls/display/figlet-text.md#figlettext-contract)
 defines large-text rendering and the audited compressed font library. The
 [showcase contract](architecture/showcase.md#showcase-contract) defines the
-runnable documentation gallery and external-resource boundary, and the
-[showcase architecture](architecture/showcase.md#showcase-contract) links its
-current live terminal capture.
+runnable documentation gallery, executable interaction evidence, and
+external-resource boundary.
 
 ## Documentation contract
 
