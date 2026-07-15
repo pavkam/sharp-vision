@@ -5,6 +5,7 @@ namespace SharpVision.Styling;
 
 using System.Numerics;
 
+using SharpVision.Terminal.Protocols;
 
 /// <summary>Resolves effective style-property values through the theme cascade.</summary>
 public static class ThemeResolver
@@ -86,6 +87,13 @@ public static class ThemeResolver
         foreach (State state in ResolutionOrder(visualState))
         {
             ApplyChain(theme.GetStyleChain(controlType), property, state, ref value);
+        }
+
+        if (value is Color { Kind: ColorKind.Role } role)
+        {
+            value = (T) (object) SemanticColor.Resolve(
+                role,
+                r => theme.TryGetColor(r, out Color c) ? c : null);
         }
 
         return value;

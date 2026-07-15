@@ -91,6 +91,18 @@ public abstract partial class Control
         }
 
         T? value = ThemeResolver.Resolve(this, property, visualState);
+
+        // A role color collapses to the active theme's concrete color at this single point, so every
+        // consumer (appearance, chrome, public getters) sees a concrete color.
+        if (value is Color { Kind: ColorKind.Role } role)
+        {
+            ThemeContext? context = ThemeContext;
+            Color concrete = SemanticColor.Resolve(
+                role,
+                r => context is not null && context.TryGetColor(r, out Color c) ? c : null);
+            value = (T) (object) concrete;
+        }
+
         _resolvedPropertyCache[key] = value;
         return value;
     }
