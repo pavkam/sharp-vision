@@ -950,6 +950,11 @@ Evidence: commit `ab0f5f8` contains the normative/API guidance, root-agent
 rules, theming sibling-spec correction, unsupported image-claim removal, and
 historical-plan lint policy.
 
+Spec-review follow-up commit `c1b5571` removes the remaining root-index capture
+claim, aligns showcase testing with its optional/current page structure, marks
+the older API-design inventory and precondition as superseded execution context,
+and gives every historical Markdown exemption a nearby rule-specific rationale.
+
 - [x] **Step 4: Run the full isolated-worktree gate**
 
 ```bash
