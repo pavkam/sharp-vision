@@ -20,6 +20,7 @@ public sealed class GalleryTests
         "GroupBox",
         "List",
         "Menu",
+        "NavigationView",
         "Overlay",
         "Popup",
         "ProgressBar",

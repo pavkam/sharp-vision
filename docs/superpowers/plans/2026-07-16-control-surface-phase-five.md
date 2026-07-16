@@ -29,19 +29,19 @@ responsible retained control rather than hidden in expectations.
   spec, and showcase pane.
 - Modify integration points only: gallery catalog and showcase expectations.
 
-- [ ] **Step 1: Port only the eight NavigationView files**
+- [x] **Step 1: Port only the eight NavigationView files**
 
 Use the committed user slice as provenance. Do not import its older GroupBox,
 Expander, TabControl, layout, focus, menu, showcase-shell, or Snake changes,
 which have independent newer implementations on this branch.
 
-- [ ] **Step 2: Adapt mechanical current-architecture differences**
+- [x] **Step 2: Adapt mechanical current-architecture differences**
 
 Preserve public names and semantic shape while satisfying current one-type/file,
 XML documentation, retained ownership, intrinsic chrome, style scope, Unicode,
 and dispatcher rules. Record any behavior change in the normative spec.
 
-- [ ] **Step 3: Run restored focused tests**
+- [x] **Step 3: Run restored focused tests**
 
 Run `*NavigationViewTests`, ownership, CompositeControl, focus, Pressable,
 Stack, and scrolling fixtures. Fix only demonstrated compatibility defects.

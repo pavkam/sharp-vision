@@ -23,6 +23,7 @@ public sealed class Gallery: Screen
         (GroupBoxPane.Title, static () => new GroupBoxPane()),
         (ListPane.Title, static () => new ListPane()),
         (MenuPane.Title, static () => new MenuPane()),
+        (NavigationViewPane.Title, static () => new NavigationViewPane()),
         (OverlayPane.Title, static () => new OverlayPane()),
         (PopupPane.Title, static () => new PopupPane()),
         (ProgressBarPane.Title, static () => new ProgressBarPane()),

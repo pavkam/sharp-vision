@@ -20,6 +20,7 @@ public sealed class ShowcaseContentTests
             ["GroupBox"] = ["Frame and header", "Unicode and style scope", "Glyphs and constrained space"],
             ["List"] = ["Single selection", "Selection modes", "Templates", "Long data"],
             ["Menu"] = ["Command menu", "Menu bar", "Popup composition", "Selection and invocation"],
+            ["NavigationView"] = ["Selection and availability", "Groups and separators", "Footer and overflow"],
             ["Overlay"] = ["Layering", "Stable ties", "Pointer transparency", "Clipping"],
             ["Popup"] = ["Anchored menu", "Placement", "Fallback and clamp", "Lifecycle"],
             ["ProgressBar"] = ["Determinate range", "Orientation and uncertainty", "Live mutation"],
