@@ -34,7 +34,7 @@ public sealed class SnakeScreen: Screen
     /// <summary>Initializes the full game layout.</summary>
     public SnakeScreen()
     {
-        _state = new GameState(width: 60, height: 22, difficulty: 0);
+        _state = new GameState(width: 40, height: 20, difficulty: 0);
 
         _board = new SnakeBoard { State = _state };
         _board.DirectionChanged += OnDirectionChanged;
@@ -193,7 +193,9 @@ public sealed class SnakeScreen: Screen
     private void StartGame()
     {
         _phase = GamePhase.Playing;
-        _state = new GameState(width: 60, height: 22, difficulty: _selectedDifficulty);
+        var playWidth = Math.Max(10, _board.Bounds.Width - 2);
+        var playHeight = Math.Max(6, _board.Bounds.Height - 2);
+        _state = new GameState(width: playWidth, height: playHeight, difficulty: _selectedDifficulty);
         _board.State = _state;
         _board.ShowBoard = true;
         _titleOverlay.Visibility = Visibility.Collapsed;
