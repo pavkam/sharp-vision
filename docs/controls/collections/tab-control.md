@@ -16,15 +16,16 @@ arrow keys switch the selected tab.
 
 - `Items : TabItems` exposes typed `Add`/`Remove`/`Clear` overloads for
   `TabItem`. Arbitrary controls cannot enter through the semantic collection.
-- `SelectedIndex` tracks the active page; `-1` clears selection. The first
-  added tab auto-selects.
+- `SelectedIndex` tracks the active page; `-1` clears selection. The first added
+  tab auto-selects.
 - `SelectionChanged` fires after a committed index change.
 
 ## TabItem
 
-`TabItem` extends [`ContentControl`](../content-control.md#contentcontrol-contract).
-`Header` is a non-null string rendered in the tab bar. `Content` is the single
-owned child arranged below the header when this page is selected.
+`TabItem` extends
+[`ContentControl`](../content-control.md#contentcontrol-contract). `Header` is a
+non-null string rendered in the tab bar. `Content` is the single owned child
+arranged below the header when this page is selected.
 
 ## Example
 

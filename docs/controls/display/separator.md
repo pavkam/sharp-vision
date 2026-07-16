@@ -18,5 +18,5 @@ var separator = new Separator { Orientation = Orientation.Horizontal };
 
 ## Test obligations
 
-Cover horizontal and vertical rendering, zero bounds, orientation changes,
-style inheritance, and final cells.
+Cover horizontal and vertical rendering, zero bounds, orientation changes, style
+inheritance, and final cells.
