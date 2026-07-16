@@ -21,13 +21,15 @@ internal sealed class ScrollBarPane: CompositeControl
         {
             Width = Length.Cells(28),
             Orientation = Orientation.Horizontal,
+            Chrome = ScrollBarChrome.Full,
+            Fill = ScrollBarFill.Block,
             Maximum = 100,
             ViewportSize = 25,
             Value = 35,
             DecrementGlyph = new Rune('◀'),
             IncrementGlyph = new Rune('▶'),
-            TrackGlyph = new Rune('─'),
-            ThumbGlyph = new Rune('█'),
+            TrackGlyph = new Rune('░'),
+            ThumbGlyph = new Rune('▓'),
         };
         var status = new Text($"Thumb value: {horizontal.Value}");
         var causeStatus = new Text("Input cause: waiting");
@@ -44,13 +46,15 @@ internal sealed class ScrollBarPane: CompositeControl
         var vertical = new ScrollBar()
         {
             Height = Length.Cells(8),
+            Chrome = ScrollBarChrome.Full,
+            Fill = ScrollBarFill.Block,
             Maximum = 40,
             ViewportSize = 10,
             Value = 12,
             DecrementGlyph = new Rune('▲'),
             IncrementGlyph = new Rune('▼'),
-            TrackGlyph = new Rune('│'),
-            ThumbGlyph = new Rune('█'),
+            TrackGlyph = new Rune('░'),
+            ThumbGlyph = new Rune('▓'),
         };
 
         var thin = new ScrollBar()

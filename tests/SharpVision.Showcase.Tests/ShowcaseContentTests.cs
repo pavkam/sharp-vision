@@ -9,7 +9,7 @@ public sealed class ShowcaseContentTests
     private static readonly Dictionary<string, string[]> _sections =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["Button"] = ["Start here", "Commands", "Window roles", "Chrome and states"],
+            ["Button"] = ["Start here", "Commands", "Window roles", "Shadow depth"],
             ["Canvas"] = ["Canvas layout", "Constraints", "Drawing fundamentals", "Useful custom drawing"],
             ["CheckBox"] = ["Two-state choice", "Three-state policy", "Marks", "Form recipe"],
             ["ComboBox"] = ["Start here", "Commit versus dismiss", "Long choices", "Constrained placement"],

@@ -152,11 +152,11 @@ internal sealed class ButtonPane: CompositeControl
                     dialog)),
             Doc.Section(
                 "🔘",
-                "Chrome and states",
-                "Choose depth and border treatment without changing the command contract.",
+                "Shadow depth",
+                "Each button uses a different shadow mode while sharing the same activation and command contract.",
                 Doc.Example(
-                    "Shadow and availability variants",
-                    "The patterned Surface makes the distinction honest: composite shadow restyles parent cells, block shadow owns its glyph, and the flat face changes color without translating.",
+                    "Composite, block, flat, and disabled",
+                    "Composite blends the shadow with the surface behind it. Block uses a visible glyph character. Flat removes the shadow entirely. Disabled greys out both the label and the border.",
                     shadowStage)),
             Doc.Section(
                 "🔘",
