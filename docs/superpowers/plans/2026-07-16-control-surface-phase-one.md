@@ -137,7 +137,7 @@ Stage only the three Task 1 files and commit
 - Modify: `docs/controls/display/text.md`
 - Modify: `docs/controls/display/figlet-text.md`
 
-- [ ] **Step 1: Write the failing Text scenarios**
+- [x] **Step 1: Write the failing Text scenarios**
 
 Add separately named facts for styled markup with a combining sequence and wide
 glyph, ellipsis/alignment in fixed width, and content mutation that clears stale
@@ -163,19 +163,19 @@ surface.Cell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
 The exact expected row must be calculated from the Text contract and confirmed
 against the independent cell-width oracle before implementation changes.
 
-- [ ] **Step 2: Run `*TextSurfaceTests` and verify RED**
+- [x] **Step 2: Run `*TextSurfaceTests` and verify RED**
 
 Expected: at least the mutation/clearing or intended overflow assertion fails
 for a behavioral reason. If all behavior already conforms, temporarily invert
 one semantic assertion to prove the new fixture detects a mismatch, restore it,
 and record that no production fix was required.
 
-- [ ] **Step 3: Fix only demonstrated Text/core defects and verify GREEN**
+- [x] **Step 3: Fix only demonstrated Text/core defects and verify GREEN**
 
 For each failure, retain the focused test, change the smallest responsible
 Text/layout/rendering method, and run both `*TextSurfaceTests` and `*TextTests`.
 
-- [ ] **Step 4: Write the failing FigletText scenarios**
+- [x] **Step 4: Write the failing FigletText scenarios**
 
 Load one deterministic embedded font through `FigletCatalog.Default`, mount a
 short source in clipped bounds, assert exact rows and styles, then change
@@ -192,12 +192,12 @@ var title = new FigletText(FigletCatalog.Default.Load("Small"))
 Use the audited embedded `Small` font; do not embed a second parser fixture in
 the surface suite.
 
-- [ ] **Step 5: Verify RED, apply minimal fixes, and verify GREEN**
+- [x] **Step 5: Verify RED, apply minimal fixes, and verify GREEN**
 
 Run `*FigletTextSurfaceTests`, then `*FigletTextTests`. Any clipping, cache, or
 cell-width correction must retain the failing surface regression.
 
-- [ ] **Step 6: Link both specs and commit the display proof**
+- [x] **Step 6: Link both specs and commit the display proof**
 
 Add one mounted-surface paragraph to each control's test obligations and commit
 only the two fixtures, verified production fixes, and two specs.
