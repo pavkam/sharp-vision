@@ -288,6 +288,13 @@ public static class ThemeResolver
 
         for (var current = control.Parent; current is not null; current = current.Parent)
         {
+            // Popups create a visually separate surface; their content must not
+            // inherit style scopes (like selection colors) from above the popup.
+            if (current is Popup)
+            {
+                break;
+            }
+
             if (current is IStyleScope)
             {
                 (scopes ??= []).Add(current);

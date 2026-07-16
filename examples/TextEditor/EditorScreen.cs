@@ -56,6 +56,7 @@ public sealed class EditorScreen: Screen
 
         var menuBar = new Dock
         {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             Background = ThemeColors.Surface,
             FillMode = FillMode.Opaque,
             Height = Length.Cells(1),
