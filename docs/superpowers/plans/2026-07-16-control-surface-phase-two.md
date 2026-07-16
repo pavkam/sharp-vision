@@ -225,36 +225,36 @@ Commit only helper/test files as
 - Create: `tests/SharpVision.Tests/Controls/ScrollBarSurfaceTests.cs`
 - Modify: `docs/controls/layout/scroll-bar.md`
 
-- [ ] **Step 1: Write exact horizontal and vertical appearance scenarios**
+- [x] **Step 1: Write exact horizontal and vertical appearance scenarios**
 
 Mount full-chrome bars with deterministic ASCII glyphs. Assert exact buttons,
 track, thumb length/position, focused/hovered/pressed styles,
 one-/two-/three-cell fallbacks, and resize recomputation.
 
-- [ ] **Step 2: Write keyboard, pointer, and wheel cause scenarios**
+- [x] **Step 2: Write keyboard, pointer, and wheel cause scenarios**
 
 Prove arrows, Page, Home/End, buttons, track presses, and wheel use their public
 changes and exact `Cause`. At an endpoint, assert an unchanged wheel produces no
 event or value change.
 
-- [ ] **Step 3: Write captured thumb-drag and cancellation scenarios**
+- [x] **Step 3: Write captured thumb-drag and cancellation scenarios**
 
 Drag the thumb by cells to the endpoint, assert held pressed state during the
 sequence through explicit press/move/release steps, and prove release clears it.
 In a separate mounted instance, disable during a held drag and assert capture
 cancellation causes no spurious value event.
 
-- [ ] **Step 4: Verify RED and apply minimal production fixes**
+- [x] **Step 4: Verify RED and apply minimal production fixes**
 
 Run `*ScrollBarSurfaceTests`. Fix only demonstrated range, geometry, routing,
 capture, style, or rendering defects and retain every failing scenario.
 
-- [ ] **Step 5: Verify ScrollBar and scrolling regressions GREEN**
+- [x] **Step 5: Verify ScrollBar and scrolling regressions GREEN**
 
 Run `*ScrollBarSurfaceTests`, `*ScrollBarTests`, `*ScrollingTests`, and
 `*AmbiguousWidthControlTests`.
 
-- [ ] **Step 6: Link the ScrollBar proof and commit**
+- [x] **Step 6: Link the ScrollBar proof and commit**
 
 Update its test obligations and commit as
 `test: cover scroll bars on mounted surfaces`.
