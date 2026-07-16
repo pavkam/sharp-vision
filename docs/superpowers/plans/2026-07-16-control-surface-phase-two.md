@@ -45,7 +45,7 @@ and the independent component screen model.
 - Modify: `tests/SharpVision.Tests/Support/ComponentSurface.cs`
 - Modify: `tests/SharpVision.Tests/Support/ComponentSurfaceTests.cs`
 
-- [ ] **Step 1: Write failing helper-contract tests**
+- [x] **Step 1: Write failing helper-contract tests**
 
 Mount a single-line TextInput, focus it with Tab, type `Á界`, press Left and
 Backspace, then send one bracketed paste. Assert public text and final cursor
@@ -65,12 +65,12 @@ Add a separate Shift+Left assertion through
 `PressAsync(Code.Left, Modifiers.Shift)` so modifier encoding is not inferred
 from the TextInput suite alone.
 
-- [ ] **Step 2: Run `*ComponentSurfaceTests` and verify RED**
+- [x] **Step 2: Run `*ComponentSurfaceTests` and verify RED**
 
 Expected: compilation fails because typing, paste, navigation overloads, and
 cursor assertions do not exist.
 
-- [ ] **Step 3: Encode only the required keyboard actions**
+- [x] **Step 3: Encode only the required keyboard actions**
 
 `TypeAsync` validates non-empty text without terminal controls and sends its
 owned UTF-8 bytes once. `PasteAsync` validates non-null text and emits one owned
@@ -95,19 +95,19 @@ internal Task PasteAsync(string value) =>
 Use a single allocation-oriented buffer construction in the implementation; the
 concatenation above documents bytes, not a hot-path requirement.
 
-- [ ] **Step 4: Model final cursor semantics**
+- [x] **Step 4: Model final cursor semantics**
 
 Teach `ComponentScreen.Csi` to apply DEC private `?25h` and `?25l`, expose its
 locked cursor position and visibility, and add
 `ComponentSurface.ShouldHaveCursor(Point, bool)`. Validate the point against the
 current resized screen before comparison.
 
-- [ ] **Step 5: Verify helper and Button surface fixtures GREEN**
+- [x] **Step 5: Verify helper and Button surface fixtures GREEN**
 
 Run `*ComponentSurfaceTests` and `*ButtonSurfaceTests`. Expected: all tests pass
 and existing screen parsing remains unchanged.
 
-- [ ] **Step 6: Commit the keyboard/cursor harness slice**
+- [x] **Step 6: Commit the keyboard/cursor harness slice**
 
 Commit only these helper files as
 `test: drive text input on component surfaces`.

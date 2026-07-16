@@ -103,6 +103,18 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="point"/> is outside the surface.</exception>
     internal SurfaceCell Cell(Point point) => _terminal.Screen.Cell(point);
 
+    /// <summary>Asserts exact final terminal cursor position and visibility.</summary>
+    /// <param name="position">The in-bounds zero-based expected cursor cell.</param>
+    /// <param name="visible">Whether the terminal cursor must be visible.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="position"/> is outside the current surface.</exception>
+    internal void ShouldHaveCursor(Point position, bool visible)
+    {
+        var screen = _terminal.Screen;
+        _ = screen.Cell(position);
+        screen.CursorPosition.ShouldBe(position);
+        screen.CursorVisible.ShouldBe(visible);
+    }
+
     /// <summary>Resolves a mounted control's deterministic interior point on the UI dispatcher.</summary>
     /// <param name="control">The mounted control or one of its owned descendants.</param>
     /// <returns>The zero-based center point of its non-empty arranged bounds.</returns>

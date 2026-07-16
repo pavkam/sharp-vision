@@ -23,14 +23,70 @@ internal sealed class ComponentKeyboard
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="code"/> is undefined.</exception>
     /// <exception cref="NotSupportedException"><paramref name="code"/> has no component-driver encoding yet.</exception>
     internal Task PressAsync(Code code)
+        => PressAsync(code, Modifiers.None);
+
+    /// <summary>Presses one supported key and modifier combination through real terminal encoding.</summary>
+    /// <param name="code">The defined key code to press.</param>
+    /// <param name="modifiers">The exact supported modifier flags.</param>
+    /// <returns>A task completed after routed key behavior and rendering settle.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">A code or modifier flag is undefined.</exception>
+    /// <exception cref="NotSupportedException">The combination has no component-driver encoding yet.</exception>
+    internal Task PressAsync(Code code, Modifiers modifiers)
     {
-        return !Enum.IsDefined(code)
-            ? throw new ArgumentOutOfRangeException(nameof(code), code, "The keyboard code is undefined.")
-            : code == Code.Tab
-                ? _surface.SendAsync("\t"u8.ToArray(), "press Tab")
-                : code == Code.Down
-                    ? _surface.SendAsync("\u001b[B"u8.ToArray(), "press Down")
-                : throw new NotSupportedException($"Component keyboard encoding for {code} is not supported.");
+        if (!Enum.IsDefined(code))
+        {
+            throw new ArgumentOutOfRangeException(nameof(code), code, "The keyboard code is undefined.");
+        }
+
+        const Modifiers known = Modifiers.Shift | Modifiers.Alt | Modifiers.Control |
+            Modifiers.Super | Modifiers.Hyper | Modifiers.Meta | Modifiers.CapsLock | Modifiers.NumLock;
+
+        return (modifiers & ~known) != 0
+            ? throw new ArgumentOutOfRangeException(
+                nameof(modifiers),
+                modifiers,
+                "The keyboard modifiers are undefined.")
+            : (code, modifiers) switch
+            {
+                (Code.Tab, Modifiers.None) => _surface.SendAsync("\t"u8.ToArray(), "press Tab"),
+                (Code.Down, Modifiers.None) => _surface.SendAsync("\u001b[B"u8.ToArray(), "press Down"),
+                (Code.Left, Modifiers.None) => _surface.SendAsync("\u001b[D"u8.ToArray(), "press Left"),
+                (Code.Left, Modifiers.Shift) => _surface.SendAsync("\u001b[1;2D"u8.ToArray(), "press Shift+Left"),
+                (Code.Backspace, Modifiers.None) => _surface.SendAsync(new byte[] { 0x7f }, "press Backspace"),
+                _ => throw new NotSupportedException(
+                    $"Component keyboard encoding for {modifiers}+{code} is not supported."),
+            };
+    }
+
+    /// <summary>Types non-empty printable text through its owned UTF-8 terminal bytes.</summary>
+    /// <param name="value">The non-null text containing no terminal controls.</param>
+    /// <returns>A task completed after all decoded text and rendering settle.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is empty or contains a terminal control.</exception>
+    internal Task TypeAsync(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return value.Length == 0 || Width.Measure(value, Ambiguous.Narrow).Controls > 0
+            ? throw new ArgumentException(
+                "Typed text must be non-empty and contain no terminal controls.",
+                nameof(value))
+            : _surface.SendAsync(Encoding.UTF8.GetBytes(value), "type text");
+    }
+
+    /// <summary>Pastes one owned string through a complete bracketed-paste transaction.</summary>
+    /// <param name="value">The non-null paste payload.</param>
+    /// <returns>A task completed after the atomic paste and rendering settle.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    internal Task PasteAsync(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        var payload = Encoding.UTF8.GetBytes(value);
+        var bytes = new byte[checked(12 + payload.Length)];
+        "\u001b[200~"u8.CopyTo(bytes);
+        payload.CopyTo(bytes, 6);
+        "\u001b[201~"u8.CopyTo(bytes.AsSpan(6 + payload.Length));
+        return _surface.SendAsync(bytes, "paste text");
     }
 
     /// <summary>Completes one character through distinct Kitty press and release input actions.</summary>

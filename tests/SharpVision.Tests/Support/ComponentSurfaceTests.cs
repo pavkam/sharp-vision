@@ -99,4 +99,61 @@ public sealed class ComponentSurfaceTests
         text.Bounds.ShouldBe(new Rect(0, 0, 4, 1));
         surface.ShouldRender("abcd");
     }
+
+    /// <summary>Verifies raw text, navigation, deletion, paste, and cursor state use the terminal path.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEditorReceivesTextAndPaste_CommitsGraphemesAndCursorAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            Width = Length.Cells(4),
+            Height = Length.Cells(1),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+        surface.ShouldHaveCursor(default, visible: false);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.TypeAsync("A\u0301界");
+        await surface.Keyboard.PressAsync(Code.Left);
+        await surface.Keyboard.PressAsync(Code.Backspace);
+        await surface.Keyboard.PasteAsync("e\u0301");
+
+        // Assert
+        input.Text.ShouldBe("e\u0301界");
+        input.CaretIndex.ShouldBe(2);
+        surface.ShouldRender("e\u0301界");
+        surface.ShouldHaveCursor(new Point(1, 0), visible: true);
+    }
+
+    /// <summary>Verifies a Shift-modified navigation sequence extends selection through decoding.</summary>
+    [Fact]
+    public async Task Keyboard_WhenShiftLeftIsPressed_SelectsOneCompleteWideGraphemeAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            Text = "A界",
+            Width = Length.Cells(4),
+            Height = Length.Cells(1),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Left, Modifiers.Shift);
+
+        // Assert
+        input.SelectionStart.ShouldBe(1);
+        input.SelectionLength.ShouldBe(1);
+        input.SelectedText.ShouldBe("界");
+        surface.ShouldHaveCursor(new Point(1, 0), visible: true);
+    }
 }

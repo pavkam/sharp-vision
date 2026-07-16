@@ -15,6 +15,7 @@ internal sealed class ComponentScreen: ISequenceSink
     private Attributes _attributes;
     private Underline _underline;
     private string? _hyperlink;
+    private bool CursorVisibleValue { get; set; } = true;
 
     /// <summary>Initializes a blank screen with positive dimensions.</summary>
     /// <param name="size">The positive terminal surface dimensions.</param>
@@ -34,6 +35,30 @@ internal sealed class ComponentScreen: ISequenceSink
 
     /// <summary>Gets the fixed terminal surface dimensions.</summary>
     internal Size Size { get; }
+
+    /// <summary>Gets the latest terminal cursor position under the screen lock.</summary>
+    internal Point CursorPosition
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _position;
+            }
+        }
+    }
+
+    /// <summary>Gets whether the latest terminal cursor mode is visible under the screen lock.</summary>
+    internal bool CursorVisible
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return CursorVisibleValue;
+            }
+        }
+    }
 
     /// <summary>Applies one complete encoded terminal write.</summary>
     /// <param name="value">The complete emitted bytes.</param>
@@ -130,6 +155,10 @@ internal sealed class ComponentScreen: ISequenceSink
         else if (final == (byte) 'm')
         {
             ApplySgr(parameters);
+        }
+        else if (parameters.SequenceEqual("?25"u8) && final is (byte) 'h' or (byte) 'l')
+        {
+            CursorVisibleValue = final == (byte) 'h';
         }
     }
 
