@@ -52,7 +52,7 @@ screen model.
 - Modify: `tests/SharpVision.Tests/Support/ComponentKeyboard.cs`
 - Create: `tests/SharpVision.Tests/Support/ComponentSurfaceTests.cs`
 
-- [ ] **Step 1: Write failing helper-contract tests**
+- [x] **Step 1: Write failing helper-contract tests**
 
 Add `UpdateAsync_WhenMountedControlChanges_SettlesTheRenderedMutationAsync`,
 `ShouldHaveState_WhenOwnedDescendantIsPassed_ObservesItsStateAsync`, and
@@ -71,7 +71,7 @@ checkBox.IsChecked.ShouldBe(true);
 surface.ShouldHaveState(checkBox, State.Focused);
 ```
 
-- [ ] **Step 2: Run the helper fixture and verify RED**
+- [x] **Step 2: Run the helper fixture and verify RED**
 
 ```bash
 dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
@@ -81,7 +81,7 @@ dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
 Expected: compilation fails because `UpdateAsync`, descendant state,
 `CompleteCharacterAsync`, and descendant state observation are absent.
 
-- [ ] **Step 3: Add dispatcher-safe mutation and state composition**
+- [x] **Step 3: Add dispatcher-safe mutation and state composition**
 
 Implement `UpdateAsync(Action, string)` by validating both arguments, invoking
 the action on `_application.Dispatcher`, and waiting for the same idle/frame
@@ -102,7 +102,7 @@ internal async Task UpdateAsync(Action update, string description)
 }
 ```
 
-- [ ] **Step 4: Add complete keyboard actions through Kitty CSI-u**
+- [x] **Step 4: Add complete keyboard actions through Kitty CSI-u**
 
 Encode `Code.Enter`, `Code.Up`, `Code.Down`, `Code.Left`, and `Code.Right` with
 their Kitty native values. Encode printable characters as
@@ -118,12 +118,12 @@ internal async Task CompleteCharacterAsync(Rune value)
 }
 ```
 
-- [ ] **Step 5: Run helper and Button surface fixtures and verify GREEN**
+- [x] **Step 5: Run helper and Button surface fixtures and verify GREEN**
 
 Run the Task 1 command, then the same command with filter class
 `*ButtonSurfaceTests`. Expected: all discovered tests pass without warnings.
 
-- [ ] **Step 6: Commit the harness increment**
+- [x] **Step 6: Commit the harness increment**
 
 Stage only the three Task 1 files and commit
 `test: extend component surface actions`.

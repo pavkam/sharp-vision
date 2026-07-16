@@ -175,8 +175,47 @@ internal sealed class ComponentSurface: IAsyncDisposable
         }
     }
 
+    /// <summary>Runs one public control mutation on the application dispatcher and waits for idle.</summary>
+    /// <param name="update">The non-null mutation to execute.</param>
+    /// <param name="description">The non-empty diagnostic action description.</param>
+    /// <returns>A task completed after mutation, layout, rendering, and output settle.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="update"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="description"/> is empty.</exception>
+    /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    internal async Task UpdateAsync(System.Action update, string description)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        ArgumentException.ThrowIfNullOrEmpty(description);
+        var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnIdle(object? sender, EventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = idle.TrySetResult();
+        }
+
+        _application.Idle += OnIdle;
+
+        try
+        {
+            await _application.Dispatcher.InvokeAsync(update, _cancellationToken);
+            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException(
+                $"Component action '{description}' did not settle. Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
+                exception);
+        }
+        finally
+        {
+            _application.Idle -= OnIdle;
+        }
+    }
+
     /// <summary>Asserts the mounted control has exactly the observable expected visual-state flags.</summary>
-    /// <param name="control">The mounted control.</param>
+    /// <param name="control">The mounted control or one of its owned descendants.</param>
     /// <param name="expected">The expected Normal, Hovered, Focused, Pressed, or Disabled flags.</param>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not mounted by this surface.</exception>
@@ -185,9 +224,9 @@ internal sealed class ComponentSurface: IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        if (!ReferenceEquals(control, _mounted))
+        if (!IsOwned(control))
         {
-            throw new ArgumentException("The state target is not the control mounted by this surface.", nameof(control));
+            throw new ArgumentException("The state target is not owned by this component surface.", nameof(control));
         }
 
         if ((expected & ~_observableStates) != 0)

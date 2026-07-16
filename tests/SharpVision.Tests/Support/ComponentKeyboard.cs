@@ -30,4 +30,22 @@ internal sealed class ComponentKeyboard
                 ? _surface.SendAsync("\t"u8.ToArray(), "press Tab")
                 : throw new NotSupportedException($"Component keyboard encoding for {code} is not supported.");
     }
+
+    /// <summary>Completes one character through distinct Kitty press and release input actions.</summary>
+    /// <param name="value">The Unicode scalar character to complete.</param>
+    /// <returns>A task completed after both routed actions and rendering settle.</returns>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is a control scalar.</exception>
+    internal async Task CompleteCharacterAsync(Rune value)
+    {
+        if (Rune.GetUnicodeCategory(value) == UnicodeCategory.Control)
+        {
+            throw new ArgumentException("A completed character cannot be a control scalar.", nameof(value));
+        }
+
+        await _surface.SendAsync(Encode(value, eventType: 1), $"press {value}");
+        await _surface.SendAsync(Encode(value, eventType: 3), $"release {value}");
+    }
+
+    private static byte[] Encode(Rune value, int eventType) => Encoding.ASCII.GetBytes(
+        FormattableString.Invariant($"\u001b[{value.Value};1:{eventType}u"));
 }
