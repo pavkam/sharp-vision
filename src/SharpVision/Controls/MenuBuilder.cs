@@ -148,7 +148,7 @@ public sealed class MenuBuilder
         return this;
     }
 
-    /// <summary>Adds a menu item with nested submenu content configured by a callback.</summary>
+    /// <summary>Adds a menu item with a nested submenu that opens as a popup on activation.</summary>
     /// <param name="label">The visible label text for the parent item.</param>
     /// <param name="configure">A callback that receives a nested builder for the submenu.</param>
     /// <returns>This builder for chaining.</returns>
@@ -161,11 +161,12 @@ public sealed class MenuBuilder
         {
             var sub = Vertical();
             configure(sub);
-            var subMenu = sub.Build();
-            var item = new MenuItem { Content = new Text(label) };
+            var item = new MenuItem
+            {
+                Content = new Text(label),
+                Submenu = sub.Build(),
+            };
             menu.Items.Add(item);
-            _ = item;
-            _ = subMenu;
         });
         return this;
     }

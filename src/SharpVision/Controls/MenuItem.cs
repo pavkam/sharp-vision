@@ -12,12 +12,59 @@ public sealed class MenuItem: Pressable
     private int _checkedVersion;
 
     /// <summary>Initializes an ordinary command item with no content.</summary>
+    private Popup? _submenuPopup;
+
+    /// <summary>Initializes an ordinary command item with no content.</summary>
     public MenuItem()
     {
     }
 
     /// <summary>Raised after an eligible item commits its optional check state and activation.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? Invoked;
+
+    /// <summary>Gets or sets an optional submenu that opens as a popup when this item is activated.</summary>
+    /// <remarks>
+    /// When a submenu is assigned, activating this item opens a popup anchored below instead of
+    /// raising <see cref="Invoked"/>. The submenu closes on Escape or when one of its items is invoked.
+    /// Items invoked in the submenu propagate through the owning <see cref="Menu.ItemInvoked"/> event.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public Menu? Submenu
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (ReferenceEquals(field, value))
+            {
+                return;
+            }
+
+            _submenuPopup?.Dispose();
+            _submenuPopup = null;
+
+            field = value;
+
+            if (value is not null)
+            {
+                _submenuPopup ??= new Popup
+                {
+                    Anchor = this,
+                    Placement = PopupPlacement.Below,
+                };
+                _submenuPopup.Content = value;
+                value.ItemInvoked += OnSubmenuItemInvoked;
+            }
+            else
+            {
+                _submenuPopup = null;
+            }
+
+            NotifyPropertyChanged(nameof(Submenu), ChangeImpact.None);
+        }
+    }
 
     /// <summary>Gets or sets the optional keyboard shortcut hint displayed right-aligned after the label.</summary>
     /// <remarks>When non-null, the text renders with dim attributes and accounts for two extra spacing cells.</remarks>
@@ -161,6 +208,12 @@ public sealed class MenuItem: Pressable
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {
+        if (_submenuPopup is not null)
+        {
+            _submenuPopup.IsOpen = !_submenuPopup.IsOpen;
+            return;
+        }
+
         switch (Kind)
         {
             case MenuItemKind.Check:
@@ -304,8 +357,24 @@ public sealed class MenuItem: Pressable
 
         if (reason == ReleaseReason.Disposed)
         {
+            if (Submenu is { } submenu)
+            {
+                submenu.ItemInvoked -= OnSubmenuItemInvoked;
+            }
+
+            _submenuPopup?.Dispose();
             Invoked = null;
         }
+    }
+
+    private void OnSubmenuItemInvoked(object? sender, MenuItemInvokedEventArgs eventArgs)
+    {
+        _ = sender;
+        if (_submenuPopup is { IsOpen: true } popup)
+        {
+            popup.IsOpen = false;
+        }
+        FindMenu()?.NotifyItemInvoked(eventArgs);
     }
 
     /// <summary>Stages a checked state for a coordinated menu radio transaction.</summary>

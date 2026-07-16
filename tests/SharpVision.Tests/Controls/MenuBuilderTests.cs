@@ -143,6 +143,46 @@ public sealed class MenuBuilderTests
         _ = menu.Items[8].ShouldBeOfType<MenuItem>();
     }
 
+    /// <summary>Verifies Submenu creates a MenuItem with a nested Menu assigned to its Submenu property.</summary>
+    [Fact]
+    public void Submenu_WhenConfigured_CreatesItemWithSubmenuProperty()
+    {
+        var menu = MenuBuilder.Horizontal()
+            .Submenu("File", file => file
+                .Item("New")
+                .Separator()
+                .Item("Quit"))
+            .Build();
+
+        menu.Items.Count.ShouldBe(1);
+        var item = menu.Items[0].ShouldBeOfType<MenuItem>();
+        item.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("File");
+        var submenu = item.Submenu.ShouldNotBeNull();
+        submenu.Items.Count.ShouldBe(3);
+        _ = submenu.Items[0].ShouldBeOfType<MenuItem>();
+        _ = submenu.Items[1].ShouldBeOfType<MenuSeparator>();
+        _ = submenu.Items[2].ShouldBeOfType<MenuItem>();
+    }
+
+    /// <summary>Verifies a complete menu bar with multiple submenus builds correctly.</summary>
+    [Fact]
+    public void Build_WhenMenuBarWithSubmenus_ProducesHierarchicalStructure()
+    {
+        var menu = MenuBuilder.Horizontal(spacing: 2)
+            .Submenu("File", f => f.Item("New").Item("Quit"))
+            .Submenu("Edit", e => e.Item("Undo").Item("Redo"))
+            .Build();
+
+        menu.Orientation.ShouldBe(Orientation.Horizontal);
+        menu.Items.Count.ShouldBe(2);
+
+        var file = menu.Items[0].ShouldBeOfType<MenuItem>();
+        file.Submenu.ShouldNotBeNull().Items.Count.ShouldBe(2);
+
+        var edit = menu.Items[1].ShouldBeOfType<MenuItem>();
+        edit.Submenu.ShouldNotBeNull().Items.Count.ShouldBe(2);
+    }
+
     /// <summary>Verifies null label throws ArgumentNullException.</summary>
     [Fact]
     public void Item_WhenLabelIsNull_Throws() =>
