@@ -161,11 +161,11 @@ internal sealed class TextPane: CompositeControl
                     "Five policies over identical Unicode",
                     "Compare Visible, Wrap, WrapAnywhere, Clip, and Ellipsis. None splits the CJK or emoji grapheme ownership.",
                     Doc.Column(
-                        Doc.Row(new Text("Visible"), visible),
-                        Doc.Row(new Text("Wrap"), wrap),
-                        Doc.Row(new Text("Anywhere"), anywhere),
-                        Doc.Row(new Text("Clip"), clip),
-                        Doc.Row(new Text("Ellipsis"), ellipsis)))),
+                        Doc.Row(new Text("Visible"), OverflowCard(visible)),
+                        Doc.Row(new Text("Wrap"), OverflowCard(wrap)),
+                        Doc.Row(new Text("Anywhere"), OverflowCard(anywhere)),
+                        Doc.Row(new Text("Clip"), OverflowCard(clip)),
+                        Doc.Row(new Text("Ellipsis"), OverflowCard(ellipsis))))),
             Doc.Section(
                 "✍️",
                 "Alignment and lines",
@@ -195,4 +195,13 @@ internal sealed class TextPane: CompositeControl
                     "Append a new marked line and resize the narrow reading column to watch safe reflow.",
                     Doc.Card(Doc.Column(wrapped, append, activity)))));
     }
+
+    private static Dock OverflowCard(Text text) => new()
+    {
+        BorderThickness = new Thickness(1),
+        BorderGlyphs = Glyphs.Light,
+        BorderColor = ThemeColors.Border,
+        Width = Length.Cells(20),
+        Children = { text },
+    };
 }

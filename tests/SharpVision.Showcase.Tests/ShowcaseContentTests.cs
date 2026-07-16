@@ -50,7 +50,7 @@ public sealed class ShowcaseContentTests
             "Begin with the smallest useful command.",
             first,
             second);
-        var size = new Size(80, 20);
+        var size = new Size(80, 30);
         new Engine().Layout(section, size);
         using Frame frame = new(size);
 

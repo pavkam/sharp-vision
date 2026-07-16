@@ -81,7 +81,7 @@ public sealed class GalleryTests
             gallery.Select(index);
             new Engine().Layout(gallery, new Size(80, 24));
 
-            _ = FindText(gallery.CurrentPage, "<b>Overview</b>").ShouldNotBeNull(gallery.SelectedPage);
+            _ = FindText(gallery.CurrentPage, $"<accent><b>{gallery.SelectedPage}</b></accent>").ShouldNotBeNull(gallery.SelectedPage);
         }
     }
 
@@ -91,7 +91,7 @@ public sealed class GalleryTests
     {
         using var page = Gallery.CreatePage(0);
         new Engine().Layout(page, new Size(80, 24));
-        var document = FindText(page, "<b>Overview</b>").ShouldNotBeNull();
+        var document = FindText(page, "<accent><b>Button</b></accent>").ShouldNotBeNull();
 
         document.Overflow.ShouldBe(Overflow.Wrap);
     }

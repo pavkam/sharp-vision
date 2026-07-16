@@ -25,7 +25,7 @@ public sealed class GalleryRenderingTests
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
         screen.Text.ShouldContain("SHARP VISION");
         screen.Text.ShouldContain("Components");
-        screen.Text.ShouldContain("Overview");
+        screen.Text.ShouldContain("Button");
         screen.Text.ShouldContain("Activation log: waiting");
         screen.HasNonDefaultColor().ShouldBeTrue();
         view.Extent.Height.ShouldBeGreaterThan(view.Viewport.Height);
@@ -115,10 +115,8 @@ public sealed class GalleryRenderingTests
         Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Y)).ShouldBe("╮");
         Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Bottom - 1)).ShouldBe("╰");
         Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Bottom - 1)).ShouldBe("╯");
-        Grapheme(frame, new Point(panel.Bounds.X + 1, panel.Bounds.Y + 1)).ShouldBe("S");
-        Grapheme(
-            frame,
-            new Point(panel.Bounds.X + panel.Caption.Length + 2, panel.Bounds.Y + 1)).ShouldBe("T");
+        Grapheme(frame, new Point(panel.Bounds.X + 2, panel.Bounds.Y + 2)).ShouldBe("S");
+        Grapheme(frame, new Point(panel.Bounds.X + 2, panel.Bounds.Y + 3)).ShouldBe("T");
     }
 
     /// <summary>Verifies the Popup page can open its primary migrated content in the elevated render and hit-test layer.</summary>
@@ -337,7 +335,7 @@ public sealed class GalleryRenderingTests
             if (width >= 80 && height >= 24)
             {
                 screen.Text.ShouldContain(gallery.SelectedPage);
-                screen.Text.ShouldContain("Overview");
+                screen.Text.ShouldContain("Button");
             }
         }
     }

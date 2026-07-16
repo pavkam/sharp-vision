@@ -66,7 +66,7 @@ internal static class Doc
 
         var heading = new TextControl(
             $"<accent><b>{TextControl.Escape(name)}</b></accent>\n" +
-            $"<b>Overview</b>\n<d>{TextControl.Escape(overview)}</d>")
+            $"<d>{TextControl.Escape(overview)}</d>")
         {
             Overflow = Overflow.Wrap,
         };
@@ -74,8 +74,9 @@ internal static class Doc
         {
             Background = ThemeColors.Surface,
             FillMode = FillMode.Opaque,
-            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderThickness = new Thickness(0, 1, 0, 1),
             BorderGlyphs = Glyphs.Light,
+            BorderColor = ThemeColors.Border,
             Padding = new Thickness(1, 0),
             Children = { heading },
         };
