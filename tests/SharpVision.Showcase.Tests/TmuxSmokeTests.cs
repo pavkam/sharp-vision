@@ -54,7 +54,7 @@ public sealed class TmuxSmokeTests
             await startProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
             startProcess.ExitCode.ShouldBe(0);
 
-            _ = await WaitForPaneTextAsync(session, "Overview", TimeSpan.FromSeconds(15));
+            _ = await WaitForPaneTextAsync(session, "Start here", TimeSpan.FromSeconds(15));
 
             var navigate = new ProcessStartInfo()
             {
