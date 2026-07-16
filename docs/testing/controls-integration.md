@@ -101,11 +101,12 @@ surface.ShouldRender("""
 ```
 
 `ShouldRender` compares every final surface row and right-pads omitted trailing
-blank cells. Whole-surface text is a reviewable appearance oracle, not
-sufficient proof by itself. Every scenario also asserts public control state and
-representative semantic cells, including resolved colors, attributes,
-continuation ownership, border cells, and shadow cells. This keeps the mounted
-path aligned with the
+blank cells by measured terminal-cell width rather than UTF-16 length. Wide and
+combining graphemes therefore preserve their cell geometry. Whole-surface text
+is a reviewable appearance oracle, not sufficient proof by itself. Every
+scenario also asserts public control state and representative semantic cells,
+including resolved colors, attributes, continuation ownership, border cells, and
+shadow cells. This keeps the mounted path aligned with the
 [input-routing](../concepts/input-routing.md#input-routing),
 [focus](../concepts/focus.md#focus-contract),
 [visual-state](../concepts/styling.md#visual-states), and

@@ -46,11 +46,12 @@ The exact Button art and styles will be taken from the verified implementation
 rather than assumed by this illustrative example.
 
 Inline text represents every surface row and preserves leading and interior
-spaces. The assertion right-pads shorter rows with blank cells to the surface
-width, avoiding invisible trailing whitespace in source files. It provides a
-compact reviewable appearance oracle. Tests must also assert the relevant
-control state and representative cell styles so a text-only snapshot cannot
-conceal a styling or interaction regression.
+spaces. The assertion measures grapheme cell width and right-pads shorter rows
+with blank cells to the surface width, avoiding invisible trailing whitespace in
+source files without corrupting wide or combining text. It provides a compact
+reviewable appearance oracle. Tests must also assert the relevant control state
+and representative cell styles so a text-only snapshot cannot conceal a styling
+or interaction regression.
 
 ## Architecture
 
