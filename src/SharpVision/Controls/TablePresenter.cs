@@ -89,6 +89,15 @@ internal sealed class TablePresenter: Container
         }
     }
 
+    /// <inheritdoc/>
+    protected override void OnRender(TerminalCanvas canvas)
+    {
+        // Table.OnRender draws headers and grid lines on the table canvas first.
+        // The presenter must not clear the body with an opaque fill, which would
+        // overwrite that chrome. Skip RenderChrome entirely; scrollbar framework
+        // parts render independently as owned children.
+    }
+
     /// <summary>Renders the table header and grid before ordinary cell content is rendered by the shared owner path.</summary>
     /// <param name="canvas">The clipped frame canvas.</param>
     internal void RenderTableChrome(TerminalCanvas canvas)
