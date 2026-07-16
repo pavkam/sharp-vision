@@ -234,22 +234,19 @@ public sealed class ComboBox: Control
             return;
         }
 
+        RenderChrome(canvas);
+
+        var content = ContentBounds;
         var style = ResolvedStyle;
-
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
-        {
-            canvas.Clear(Bounds, style);
-        }
-
-        var label = canvas.Clip(new Rect(Bounds.X, Bounds.Y, Math.Max(0, Bounds.Width - 2), 1));
+        var label = canvas.Clip(new Rect(content.X, content.Y, Math.Max(0, content.Width - 2), 1));
         _ = label.Draw(
             SelectedText().AsSpan(),
-            new Point(Bounds.X, Bounds.Y),
+            new Point(content.X, content.Y),
             style,
             background: BackgroundMode.Transparent);
         _ = canvas.Draw(
             " ▼".AsSpan(),
-            new Point(Math.Max(Bounds.X, Bounds.Right - 2), Bounds.Y),
+            new Point(Math.Max(content.X, content.Right - 2), content.Y),
             style,
             background: BackgroundMode.Transparent);
     }
