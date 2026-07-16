@@ -230,6 +230,41 @@ validation, label validation-before-mutation, focus publication, tab-stop
 invariants, group ownership, availability repair, and separator
 non-interactivity.
 
+### Mounted coverage catalog
+
+`ComponentSurfaceCoverageTests` reflects the exported production assembly and
+fails when a new concrete `Control` lacks either named mounted evidence or an
+explicit deferred-family decision. Composed semantic controls map to the owner
+fixture that actually mounts them; private presenters and collection objects are
+not controls and do not enter this catalog.
+
+| Public control                                                                           | Mounted evidence             |
+| ---------------------------------------------------------------------------------------- | ---------------------------- |
+| `Button`                                                                                 | `ButtonSurfaceTests`         |
+| `Text`                                                                                   | `TextSurfaceTests`           |
+| `FigletText`                                                                             | `FigletTextSurfaceTests`     |
+| `Separator`                                                                              | `SeparatorSurfaceTests`      |
+| `ProgressBar`                                                                            | `ProgressBarSurfaceTests`    |
+| `CheckBox`                                                                               | `CheckBoxSurfaceTests`       |
+| `RadioButton`                                                                            | `RadioButtonSurfaceTests`    |
+| `TextInput`                                                                              | `TextInputSurfaceTests`      |
+| `Stack`                                                                                  | `StackSurfaceTests`          |
+| `Grid`                                                                                   | `GridSurfaceTests`           |
+| `Dock`                                                                                   | `DockSurfaceTests`           |
+| `Overlay`                                                                                | `OverlaySurfaceTests`        |
+| `Canvas`                                                                                 | `CanvasSurfaceTests`         |
+| `Table`                                                                                  | `TableSurfaceTests`          |
+| `ScrollBar`                                                                              | `ScrollBarSurfaceTests`      |
+| `GroupBox`                                                                               | `GroupBoxSurfaceTests`       |
+| `Expander`                                                                               | `ExpanderSurfaceTests`       |
+| `List`                                                                                   | `ListSurfaceTests`           |
+| `TabControl`, `TabItem`                                                                  | `TabControlSurfaceTests`     |
+| `NavigationView`, `NavigationViewItem`, `NavigationViewGroup`, `NavigationViewSeparator` | `NavigationViewSurfaceTests` |
+
+`ComboBox`, `Menu`, `MenuItem`, `MenuSeparator`, `Popup`, and `Window` are the
+explicitly deferred transient-layer families. The guard names those exact types;
+“similar enough” does not silently exempt future controls.
+
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route
 payloads, pixel-to-cell inference, owned paste bytes, repeat action, control

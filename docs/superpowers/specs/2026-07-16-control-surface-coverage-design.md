@@ -220,3 +220,14 @@ missing control families ship with docs, XML documentation, and showcase
 examples; the testing contract and control specs link to their proof; and
 `make format`, `make lint`, `make build`, and `make test` pass with no warnings
 or missing-test failures.
+
+## Completion audit
+
+The six delivery phases are implemented. Every included exported concrete
+control maps to a named mounted fixture in `ComponentSurfaceCoverageTests`;
+`TabItem` and the NavigationView entry types are mounted through their public
+semantic owner. The exact excluded types are held in the same executable guard.
+Display, toggle, editor, scrolling, layout, collection, tab, and navigation
+scenarios have unit, mounted, normative-spec, and showcase evidence. Repository
+quality-gate results are recorded by the final verified commit rather than
+inferred from this design document.
