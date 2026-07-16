@@ -267,6 +267,11 @@ public sealed class MenuItem: Pressable
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
+        if (_submenuPopup is not null)
+        {
+            _ = MeasureChild(_submenuPopup, new Constraint(constraint.Width, null));
+        }
+
         var content = Content;
         var shortcutExtra = ShortcutText is { Length: > 0 }
             ? ShortcutText.Length + 2
@@ -298,6 +303,11 @@ public sealed class MenuItem: Pressable
                 content,
                 new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
                 ResolvedAxes.Both);
+        }
+
+        if (_submenuPopup is not null)
+        {
+            ArrangeChild(_submenuPopup, RootBounds(bounds), ResolvedAxes.Both);
         }
     }
 
@@ -461,6 +471,28 @@ public sealed class MenuItem: Pressable
         return value.HasValue
             ? Math.Max(0, value.Value - extent)
             : null;
+    }
+
+    private Rect RootBounds(Rect fallback)
+    {
+        Control root = this;
+
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        if (!ReferenceEquals(root, this) && root.Bounds.Width != 0 && root.Bounds.Height != 0)
+        {
+            return root.Bounds;
+        }
+
+        var viewport = LastMeasureConstraint;
+        return new Rect(
+            fallback.X,
+            fallback.Y,
+            viewport?.Width ?? fallback.Width,
+            viewport?.Height ?? fallback.Height);
     }
 
     private Menu? FindMenu()
