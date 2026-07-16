@@ -120,25 +120,25 @@ Update the three specifications and commit as
 - Create: `tests/SharpVision.Tests/Controls/TableSurfaceTests.cs`
 - Modify: `docs/controls/layout/table.md`
 
-- [ ] **Step 1: Write exact table appearance and mutation scenarios**
+- [x] **Step 1: Write exact table appearance and mutation scenarios**
 
 Mount headers and rows containing ASCII, combining, and wide cells across
 automatic, fixed, and proportional columns. Assert exact cells and committed
 column/row geometry.
 
-- [ ] **Step 2: Add scrolling, resize, and stale-cell scenarios**
+- [x] **Step 2: Add scrolling, resize, and stale-cell scenarios**
 
 Drive real wheel reports through overflowing vertical and horizontal axes,
 remove and replace rows through public collections, resize the same surface, and
 prove clipped or removed cells do not survive.
 
-- [ ] **Step 3: Verify RED and correct only demonstrated table defects**
+- [x] **Step 3: Verify RED and correct only demonstrated table defects**
 
 Run `*TableSurfaceTests`, `*TableTests`, and the relevant scrolling fixtures.
 Keep semantic row/column state as the primary oracle and screen cells as the
 cross-layer proof.
 
-- [ ] **Step 4: Link proof and commit**
+- [x] **Step 4: Link proof and commit**
 
 Update the Table test obligations and commit as
 `test: cover tables on mounted surfaces`.
