@@ -169,6 +169,31 @@ public sealed class TableTests
         table.VerticalOffset.ShouldBe(3);
     }
 
+    /// <summary>Verifies a pure scroll-origin arrangement neither remeasures cells nor remains invalidated.</summary>
+    [Fact]
+    public void Layout_WhenOnlyScrollOriginChanges_DoesNotRemeasureCellsOrRemainArrangeInvalidated()
+    {
+        var first = new ProbeControl(new Size(2, 1));
+        var table = new Table
+        {
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Never,
+        };
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+        table.Rows.Add(new TableRow([first, new ProbeControl(new Size(2, 1))]));
+        var engine = new Engine();
+        var size = new Size(10, 3);
+        engine.Layout(table, size);
+        var measurements = first.MeasureConstraints.Count;
+
+        table.HorizontalOffset = 1;
+        engine.Layout(table, size);
+
+        first.MeasureConstraints.Count.ShouldBe(measurements);
+        table.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies headers and light grid lines render around ordinary owned cell controls.</summary>
     [Fact]
     public void Render_WhenHeaderAndGridLinesAreEnabled_WritesHeaderCellsAndIntersections()
