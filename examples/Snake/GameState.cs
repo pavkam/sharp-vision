@@ -295,7 +295,8 @@ public sealed class GameState
 
     private void EnsureApples()
     {
-        var target = 2 + Difficulty;
+        var area = Width * Height;
+        var target = Math.Max(2, (area / 200) + Difficulty + 1);
 
         while (_apples.Count < target)
         {
@@ -372,12 +373,14 @@ public sealed class GameState
 
     private void GenerateObstacles()
     {
-        var count = Difficulty switch
+        var area = Width * Height;
+        var density = Difficulty switch
         {
-            0 => 5,
-            1 => 12,
-            _ => 20,
+            0 => 80,
+            1 => 50,
+            _ => 30,
         };
+        var count = Math.Max(3, area / density);
 
         for (var i = 0; i < count; i++)
         {
