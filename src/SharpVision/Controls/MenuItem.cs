@@ -371,7 +371,9 @@ public sealed class MenuItem: Pressable
 
         if (focused)
         {
-            FindMenu()?.NotifyItemFocused(this);
+            var menu = FindMenu();
+            Debug.Assert(menu is not null, "A focused MenuItem belongs to a Menu.");
+            menu.NotifyItemFocused(this);
         }
     }
 

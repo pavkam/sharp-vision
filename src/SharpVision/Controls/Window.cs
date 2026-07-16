@@ -9,9 +9,7 @@ using SharpVision.Terminal.Input;
 public sealed partial class Window: ContentControl
 {
     private bool _dragging;
-    private Point _dragStart;
-    private int _dragLeftStart;
-    private int _dragTopStart;
+    private Point _dragPrevious;
 
     #region Construction and properties
 
@@ -279,17 +277,16 @@ public sealed partial class Window: ContentControl
             CapturePointer())
         {
             _dragging = true;
-            _dragStart = cells;
-            _dragLeftStart = Bounds.X;
-            _dragTopStart = Bounds.Y;
+            _dragPrevious = cells;
             eventArgs.Handled = true;
         }
         else if (action == PointerAction.Move && _dragging && HasPointerCapture)
         {
-            var deltaX = cells.X - _dragStart.X;
-            var deltaY = cells.Y - _dragStart.Y;
-            Canvas.SetLeft(this, Length.Cells(_dragLeftStart + deltaX));
-            Canvas.SetTop(this, Length.Cells(_dragTopStart + deltaY));
+            var deltaX = cells.X - _dragPrevious.X;
+            var deltaY = cells.Y - _dragPrevious.Y;
+            _dragPrevious = cells;
+            Left = Length.Cells(Math.Max(0, LocalBounds.X + deltaX));
+            Top = Length.Cells(Math.Max(0, LocalBounds.Y + deltaY));
             eventArgs.Handled = true;
         }
         else if (action == PointerAction.Release && _dragging)

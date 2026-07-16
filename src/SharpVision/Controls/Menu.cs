@@ -23,7 +23,7 @@ public sealed class Menu: ItemsControl
         };
         InitializeItemsHost(_stack);
         Items = new MenuItems(this);
-        TabNavigation = TabNavigation.Cycle;
+        TabNavigation = TabNavigation.Continue;
     }
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>

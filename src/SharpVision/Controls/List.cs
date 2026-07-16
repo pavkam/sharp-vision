@@ -509,6 +509,18 @@ public sealed class List: ItemsControl
         }
     }
 
+    /// <summary>Selects the item that received focus, unifying focus and selection.</summary>
+    internal void NotifyItemFocused(ListItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var index = IndexOfItemControl(item);
+        Debug.Assert(index >= 0, "A focused ListItem is a realized child of this List.");
+
+        ActiveIndex = index;
+        _ = _stack.BringIntoView(item);
+        ApplyInputSelection(index, Modifiers.None);
+    }
+
     private void OnActivated(object? sender, ActivationEventArgs eventArgs)
     {
         var item = (ListItem) sender!;
@@ -520,7 +532,12 @@ public sealed class List: ItemsControl
             return;
         }
 
-        ApplyInputSelection(item.Index, item.LastModifiers);
+        var modifiers = item.LastModifiers;
+        var isSpaceToggle = SelectionMode == SelectionMode.Multiple &&
+            eventArgs.Cause == ActivationCause.Keyboard &&
+            (modifiers & (Modifiers.Control | Modifiers.Shift)) == 0;
+
+        ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
         if (eventArgs.Cause == ActivationCause.Pointer)
         {

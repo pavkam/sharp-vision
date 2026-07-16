@@ -484,6 +484,104 @@ public sealed class FocusTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies MoveNext from outside a Cycle scope can enter the scope.</summary>
+    [Fact]
+    public async Task MoveNext_WhenOutsideCycleScope_EntersScopeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var before = new ProbeControl() { CanFocus = true };
+            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var inner1 = new ProbeControl() { CanFocus = true };
+            var inner2 = new ProbeControl() { CanFocus = true };
+            scope.Children.Add(inner1);
+            scope.Children.Add(inner2);
+            var after = new ProbeControl() { CanFocus = true };
+            root.Children.Add(before);
+            root.Children.Add(scope);
+            root.Children.Add(after);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(before).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies MoveNext from outside a Contained scope can enter it, and Tab then traps inside.</summary>
+    [Fact]
+    public async Task MoveNext_WhenOutsideContainedScope_EntersAndTrapsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var before = new ProbeControl() { CanFocus = true };
+            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
+            var inner1 = new ProbeControl() { CanFocus = true };
+            var inner2 = new ProbeControl() { CanFocus = true };
+            scope.Children.Add(inner1);
+            scope.Children.Add(inner2);
+            var after = new ProbeControl() { CanFocus = true };
+            root.Children.Add(before);
+            root.Children.Add(scope);
+            root.Children.Add(after);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(before).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner1);
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner2);
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Tab traversal visits controls, enters scopes, and exits correctly in a mixed tree.</summary>
+    [Fact]
+    public async Task MoveNext_WhenTreeHasMixedScopes_TraversesFullyAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var a = new ProbeControl() { CanFocus = true };
+            var menu = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var m1 = new ProbeControl() { CanFocus = true };
+            var m2 = new ProbeControl() { CanFocus = true };
+            menu.Children.Add(m1);
+            menu.Children.Add(m2);
+            var b = new ProbeControl() { CanFocus = true };
+            root.Children.Add(a);
+            root.Children.Add(menu);
+            root.Children.Add(b);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(a);
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(m1);
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(m2);
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(m1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies disable, hide, detach, and preview mutation clear or reject safely.</summary>
     [Fact]
     public async Task Focus_WhenTreeMutates_ReleasesInvalidReferencesAsync()

@@ -360,6 +360,63 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
+    /// <summary>Gets or sets the optional leading horizontal position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? Left
+    {
+        get;
+        set
+        {
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
+
+    /// <summary>Gets or sets the optional leading vertical position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? Top
+    {
+        get;
+        set
+        {
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
+
+    /// <summary>Gets or sets the optional trailing horizontal position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? Right
+    {
+        get;
+        set
+        {
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
+
+    /// <summary>Gets or sets the optional trailing vertical position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? Bottom
+    {
+        get;
+        set
+        {
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
+
+
     /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
     /// <exception cref="ArgumentException">
     /// The style targets a type this control does not derive from or reports an unknown change impact.
@@ -1643,7 +1700,23 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Gets the committed content rectangle after border and padding deflation.</summary>
-    protected Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
+    /// <summary>Gets the committed content area after border and padding deflation.</summary>
+    public Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
+
+    /// <summary>Gets the committed bounds relative to the parent's content area.</summary>
+    public Rect LocalBounds
+    {
+        get
+        {
+            if (Parent is not { } parent)
+            {
+                return Bounds;
+            }
+
+            var origin = parent.ContentBounds;
+            return new Rect(Bounds.X - origin.X, Bounds.Y - origin.Y, Bounds.Width, Bounds.Height);
+        }
+    }
 
     /// <summary>Returns the earlier and therefore stronger of two validated change impacts.</summary>
     /// <param name="left">The first validated impact.</param>
@@ -1791,6 +1864,15 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             throw new ArgumentOutOfRangeException(nameof(value), value, "The enum value is unknown.");
         }
     }
+
+    private static void ValidatePositionOffset(Length? value)
+    {
+        if (value is { Kind: Kind.Auto or Kind.Star })
+        {
+            throw new ArgumentException("Position offsets must use cells or percentage values.", nameof(value));
+        }
+    }
+
 
     /// <summary>Commits one derived or base property and requests its earliest phase.</summary>
     /// <typeparam name="T">The property value type.</typeparam>

@@ -60,6 +60,19 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (focused)
+        {
+            var list = FindList();
+            Debug.Assert(list is not null, "A focused ListItem belongs to a List.");
+            list.NotifyItemFocused(this);
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         if (eventArgs is KeyEventArgs { Stroke.Action: KeyAction.Press } key)
@@ -118,6 +131,20 @@ internal sealed class ListItem: Pressable
         {
             Activated = null;
         }
+    }
+
+    private List? FindList()
+    {
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (current is List list)
+            {
+                return list;
+            }
+        }
+
+        Debug.Assert(false, "A ListItem always has a List ancestor while attached.");
+        return null;
     }
 
     private static int Add(int left, int right)

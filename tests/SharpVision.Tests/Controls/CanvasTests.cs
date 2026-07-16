@@ -225,18 +225,19 @@ public sealed class CanvasTests
         panel.HitTest(new Point(3, 3)).ShouldBeSameAs(panel);
     }
 
-    /// <summary>Verifies attached offset mutation invalidates measure and requires affinity.</summary>
+    /// <summary>Verifies position offset mutation stores the value and requires dispatcher affinity.</summary>
     [Fact]
-    public async Task SetLeft_WhenChildIsOwned_InvalidatesMeasureAndRequiresDispatcherAsync()
+    public async Task SetLeft_WhenChildIsOwned_StoresValueAndRequiresDispatcherAsync()
     {
         await using var dispatcher = Dispatcher.Start();
         var panel = new Panel();
         var child = new ProbeControl();
         panel.Children.Add(child);
-        panel.Clear(Invalidation.All);
 
         Panel.SetLeft(child, Length.Cells(2));
-        panel.Pending.ShouldBe(Invalidation.All);
+        child.Left.ShouldBe(Length.Cells(2));
+        Panel.GetLeft(child).ShouldBe(Length.Cells(2));
+
         await dispatcher.InvokeAsync(
             () => panel.Attach(dispatcher),
             TestContext.Current.CancellationToken);

@@ -151,9 +151,9 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies Tab cycles within Menu items instead of escaping to sibling controls.</summary>
+    /// <summary>Verifies Tab flows through Menu items to sibling controls.</summary>
     [Fact]
-    public async Task Dispatch_WhenTabPressed_CyclesWithinMenuItemsAsync()
+    public async Task Dispatch_WhenTabPressed_FlowsThroughMenuItemsAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -179,7 +179,7 @@ public sealed class MenuTests
             Router.Route(b, Events.Key, Tab());
             focus.Focused.ShouldBeSameAs(c);
             Router.Route(c, Events.Key, Tab());
-            focus.Focused.ShouldBeSameAs(a);
+            focus.Focused.ShouldBeSameAs(outside);
         }, TestContext.Current.CancellationToken);
     }
 

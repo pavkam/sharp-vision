@@ -17,15 +17,21 @@ public sealed class Gallery: Screen
         (CheckBoxPane.Title, static () => new CheckBoxPane()),
         (ComboBoxPane.Title, static () => new ComboBoxPane()),
         (DockPane.Title, static () => new DockPane()),
+        (ExpanderPane.Title, static () => new ExpanderPane()),
         (FigletTextPane.Title, static () => new FigletTextPane()),
         (GridPane.Title, static () => new GridPane()),
+        (GroupBoxPane.Title, static () => new GroupBoxPane()),
         (ListPane.Title, static () => new ListPane()),
         (MenuPane.Title, static () => new MenuPane()),
+        (NavigationViewPane.Title, static () => new NavigationViewPane()),
         (OverlayPane.Title, static () => new OverlayPane()),
         (PopupPane.Title, static () => new PopupPane()),
+        (ProgressBarPane.Title, static () => new ProgressBarPane()),
         (RadioButtonPane.Title, static () => new RadioButtonPane()),
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
+        (SeparatorPane.Title, static () => new SeparatorPane()),
         (StackPane.Title, static () => new StackPane()),
+        (TabControlPane.Title, static () => new TabControlPane()),
         (TablePane.Title, static () => new TablePane()),
         (TextPane.Title, static () => new TextPane()),
         (TextInputPane.Title, static () => new TextInputPane()),
@@ -62,12 +68,11 @@ public sealed class Gallery: Screen
         return [.. ordered];
     }
 
-    private readonly Stack _main;
-    private readonly Stack _navigationScroll;
-    private readonly NavigationItem[] _navigation;
+    private readonly Dock _main;
+    private readonly NavigationView _nav;
+    private readonly NavigationViewItem[] _navigation;
     private readonly ComboBox _themePicker;
     private readonly Button _quit;
-    private FocusManager? _focus;
 
     #region Construction and navigation
 
@@ -75,40 +80,22 @@ public sealed class Gallery: Screen
     public Gallery()
     {
         Pages = Array.ConvertAll(_catalog, static entry => entry.Name);
-        _main = new Stack
-        {
-            AutoScroll = true,
-            ScrollBars = ScrollBars.Vertical,
-            HorizontalBarVisibility = ScrollBarVisibility.Hidden,
-            ShowScrollBars = ShowScrollBars.WhenNeeded,
-        };
-        _navigation = new NavigationItem[Pages.Count];
-        var entries = new Stack() { Padding = new Thickness(1, 0) };
-        entries.Children.Add(new Text("Components")
-        {
-            Attributes = TerminalAttributes.Bold,
-        });
+        _main = new Dock();
+        _nav = new NavigationView { Header = "Components" };
+        _navigation = new NavigationViewItem[Pages.Count];
 
         for (var index = 0; index < Pages.Count; index++)
         {
-            var item = new NavigationItem(index, Pages[index])
+            var item = new NavigationViewItem
             {
+                Header = Pages[index],
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
-            item.Invoked += OnNavigationInvoked;
             _navigation[index] = item;
-            entries.Children.Add(item);
+            _nav.Items.Add(item);
         }
 
-        _navigationScroll = new Stack
-        {
-            AutoScroll = true,
-            ScrollBars = ScrollBars.Both,
-            ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarChrome = ScrollBarChrome.Thin,
-            ScrollBarFill = ScrollBarFill.Line,
-            Children = { entries },
-        };
+        _nav.SelectionChanged += OnNavigationSelectionChanged;
         var sidebarLayout = new Dock();
         var header = CreateSidebarHeader();
         var darkIndex = Array.FindIndex(_themePickerEntries, static entry => entry.Slug == "default-dark");
@@ -139,10 +126,9 @@ public sealed class Gallery: Screen
         var footer = CreateSidebarFooter(_themePicker, _quit);
         Dock.SetSide(header, Side.Top);
         Dock.SetSide(footer, Side.Bottom);
-        // Reserve the actionable footer first so constrained terminals retain theme and exit controls.
         sidebarLayout.Children.Add(footer);
         sidebarLayout.Children.Add(header);
-        sidebarLayout.Children.Add(_navigationScroll);
+        sidebarLayout.Children.Add(_nav);
         Sidebar = new Dock
         {
             Width = Length.Cells(28),
@@ -150,7 +136,6 @@ public sealed class Gallery: Screen
             BorderGlyphs = Glyphs.Rounded,
             Children = { sidebarLayout },
         };
-        _ = Sidebar.AddHandler(Events.Key, OnNavigationKey);
 
         // Quit is handled at the screen root in the preview pass so Ctrl+Q exits from anywhere
         // without stealing the standard TextInput copy chord.
@@ -187,7 +172,7 @@ public sealed class Gallery: Screen
     internal IReadOnlyList<string> Pages { get; }
 
     /// <summary>Gets the stable stateful navigation entries in catalog order.</summary>
-    internal IReadOnlyList<NavigationItem> Navigation => _navigation;
+    internal IReadOnlyList<NavigationViewItem> Navigation => _navigation;
 
     /// <summary>Creates a fresh detached showcase pane for one catalog index.</summary>
     /// <param name="index">The zero-based page index.</param>
@@ -223,7 +208,6 @@ public sealed class Gallery: Screen
     internal bool FocusSelected(FocusManager focus)
     {
         ArgumentNullException.ThrowIfNull(focus);
-        _focus = focus;
         return focus.Focus(_navigation[SelectedIndex]);
     }
 
@@ -237,19 +221,13 @@ public sealed class Gallery: Screen
             throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.");
         }
 
-        Debug.Assert(_navigation[index].Label == _catalog[index].Name);
+        Debug.Assert(_navigation[index].Header == _catalog[index].Name);
         var previous = _main.Children.Count > 0 ? _main.Children[0] : null;
         SelectedIndex = index;
 
         // A catalog selection creates a fresh page and therefore a fresh body viewport at offset zero.
         _main.Children.Clear();
         _main.Children.Add(_catalog[index].Create());
-        _main.VerticalOffset = 0;
-
-        for (var navigationIndex = 0; navigationIndex < _navigation.Length; navigationIndex++)
-        {
-            _navigation[navigationIndex].SetSelected(navigationIndex == index);
-        }
 
         previous?.Dispose();
     }
@@ -350,97 +328,28 @@ public sealed class Gallery: Screen
     /// <summary>Drives graceful shutdown through the attached application's cooperative close path.</summary>
     private void RequestQuit() => Application?.Closed();
 
-    private void OnNavigationInvoked(object? sender, ActivationEventArgs eventArgs)
-    {
-        _ = eventArgs;
-
-        if (sender is NavigationItem item)
-        {
-            Select(item.Index);
-        }
-    }
-
-    private void OnNavigationKey(object? sender, KeyEventArgs eventArgs)
+    private void OnNavigationSelectionChanged(object? sender, EventArgs eventArgs)
     {
         _ = sender;
+        _ = eventArgs;
 
-        if (eventArgs.Phase != Phase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        if (_nav.SelectedItem is { } selected)
         {
-            return;
-        }
+            var index = Array.IndexOf(_navigation, selected);
 
-        var current = FindNavigation(eventArgs.OriginalSource) ?? _navigation[SelectedIndex];
-        var target = ResolveNavigation(current.Index, eventArgs.Stroke);
-
-        if (target < 0)
-        {
-            return;
-        }
-
-        Select(target);
-        _ = _focus?.Focus(_navigation[target]);
-        _ = _navigationScroll.BringIntoView(_navigation[target]);
-        eventArgs.Handled = true;
-    }
-
-    private int ResolveNavigation(int current, Stroke stroke)
-    {
-        var count = _navigation.Length;
-
-        if (stroke.Code is Code.Up or Code.Left ||
-            (stroke.Code == Code.Tab && (stroke.Modifiers & Modifiers.Shift) != 0))
-        {
-            return Math.Max(0, current - 1);
-        }
-
-        if (stroke.Code is Code.Down or Code.Right or Code.Tab)
-        {
-            return Math.Min(count - 1, current + 1);
-        }
-
-        if (stroke.Code == Code.Home)
-        {
-            return 0;
-        }
-
-        if (stroke.Code == Code.End)
-        {
-            return count - 1;
-        }
-
-        var page = Math.Max(1, _navigationScroll.Viewport.Height - 1);
-
-        return stroke.Code == Code.PageUp
-            ? Math.Max(0, current - page)
-            : stroke.Code == Code.PageDown
-            ? Math.Min(count - 1, current + page)
-            : -1;
-    }
-
-    private static NavigationItem? FindNavigation(Control? source)
-    {
-        for (var current = source; current is not null; current = current.Parent)
-        {
-            if (current is NavigationItem item)
+            if (index >= 0 && index != SelectedIndex)
             {
-                return item;
+                Select(index);
             }
         }
-
-        return null;
     }
 
     /// <inheritdoc/>
     protected override void OnDispose()
     {
-        foreach (var item in _navigation)
-        {
-            item.Invoked -= OnNavigationInvoked;
-        }
-
+        _nav.SelectionChanged -= OnNavigationSelectionChanged;
         _themePicker.SelectionChanged -= OnThemeSelected;
         _quit.Click -= OnQuitClicked;
-        _focus = null;
     }
 
     #endregion

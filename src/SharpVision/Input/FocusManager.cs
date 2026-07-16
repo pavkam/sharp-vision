@@ -310,6 +310,7 @@ public sealed class FocusManager: IDisposable
 
         if (!ReferenceEquals(control, scope) && control.TabNavigation != TabNavigation.Continue)
         {
+            CollectFirstEligible(control, candidates, order);
             return;
         }
 
@@ -319,6 +320,29 @@ public sealed class FocusManager: IDisposable
         {
             Collect(control.NavigationAt(index), candidates, ref order, scope);
         }
+    }
+
+    private void CollectFirstEligible(Control childScope, List<(Control Control, int Order)> candidates, int order)
+    {
+        Debug.Assert(childScope is not null, "Child scope entry requires a concrete scope root.");
+        Debug.Assert(childScope.TabNavigation != TabNavigation.Continue, "Child scope entry targets a non-Continue scope.");
+
+        var inner = new List<(Control Control, int Order)>();
+        var innerOrder = 0;
+        Collect(childScope, inner, ref innerOrder, childScope);
+
+        if (inner.Count == 0)
+        {
+            return;
+        }
+
+        inner.Sort(static (left, right) =>
+        {
+            var tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
+            return tab != 0 ? tab : left.Order.CompareTo(right.Order);
+        });
+
+        candidates.Add((inner[0].Control, order));
     }
 
     private Control FindScope(Control? focused)

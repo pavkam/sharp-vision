@@ -156,21 +156,42 @@ public abstract class Container: Control
     }
 
     /// <inheritdoc/>
-    internal override Size OnMeasuredDesired(Size desired) => !AutoSize
-        ? desired
-        : new Size(
-            AutoSizeAxis(
-                ContentExtent.Width,
-                Add(Padding.Horizontal, BorderThickness.Horizontal),
-                Width,
-                MinWidth,
-                MaxWidth),
-            AutoSizeAxis(
-                ContentExtent.Height,
-                Add(Padding.Vertical, BorderThickness.Vertical),
-                Height,
-                MinHeight,
-                MaxHeight));
+    internal override Size OnMeasuredDesired(Size desired)
+    {
+        var result = !AutoSize
+            ? desired
+            : new Size(
+                AutoSizeAxis(
+                    ContentExtent.Width,
+                    Add(Padding.Horizontal, BorderThickness.Horizontal),
+                    Width,
+                    MinWidth,
+                    MaxWidth),
+                AutoSizeAxis(
+                    ContentExtent.Height,
+                    Add(Padding.Vertical, BorderThickness.Vertical),
+                    Height,
+                    MinHeight,
+                    MaxHeight));
+
+        if (!AutoScroll)
+        {
+            return result;
+        }
+
+        var needsVertical = Width.Kind == Kind.Auto &&
+            (ScrollBars & ScrollBars.Vertical) != 0 &&
+            (VerticalBarVisibility == ScrollBarVisibility.Always ||
+             (VerticalBarVisibility == ScrollBarVisibility.Auto && ContentExtent.Height > result.Height));
+        var needsHorizontal = Height.Kind == Kind.Auto &&
+            (ScrollBars & ScrollBars.Horizontal) != 0 &&
+            (HorizontalBarVisibility == ScrollBarVisibility.Always ||
+             (HorizontalBarVisibility == ScrollBarVisibility.Auto && ContentExtent.Width > result.Width));
+
+        return new Size(
+            needsVertical ? Add(result.Width, 1) : result.Width,
+            needsHorizontal ? Add(result.Height, 1) : result.Height);
+    }
 
     // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit
     // fixed-cell size. Both honor Min/Max.
