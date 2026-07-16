@@ -9,15 +9,26 @@ or a primary pointer click on the header toggles visibility of the content
 region below. The header always renders a directional glyph (`▼` expanded, `▶`
 collapsed) followed by the header text.
 
+The header is one retained framework part created by the concrete constructor.
+It is not rebuilt when state changes. `Expander` is a style scope, so inherited
+style lookup crosses the retained header and caller content through the ordinary
+control ancestry.
+
 ## API
 
-- `Header` is a non-null string rendered beside the toggle glyph. Default is
-  empty.
+- `Header` is a non-null string rendered beside the toggle glyph. Terminal
+  control characters are rejected before state changes. Default is empty.
 - `IsExpanded` controls content visibility. When `false`, only the header row
-  renders and content is excluded from measure. Default is `true`.
+  renders and content is excluded from measure, arrangement, rendering, hit
+  testing, and navigation. The content remains owned and attached. Default is
+  `true`.
 - `ExpandedChanged` fires after `IsExpanded` commits a changed value.
 - `Content` is the single owned child, arranged below the header row when
-  expanded.
+  expanded. Replacing content while collapsed immediately releases the previous
+  child without changing expansion state.
+
+Inherited disabled state applies to the retained header. An unavailable header
+remains visible but pointer, Space, and Enter input cannot change expansion.
 
 ## Example
 
@@ -39,6 +50,9 @@ var details = new Expander
 
 ## Test obligations
 
-Cover expanded and collapsed measurement, toggle event, header glyph rendering,
-keyboard and pointer activation, content arrangement, zero bounds, style states,
-and final cells.
+Cover expanded and collapsed measurement, ownership-preserving exclusion, toggle
+event order, exact header glyph/text cells, keyboard and pointer activation,
+disabled refusal, focus, content replacement, Unicode cell geometry,
+resize/reflow, stale-cell clearing, and final cells. The showcase must include
+expanded, collapsed, nested, disabled, wide-header, and replaced-content
+specimens.

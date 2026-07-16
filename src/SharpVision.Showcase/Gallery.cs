@@ -17,6 +17,7 @@ public sealed class Gallery: Screen
         (CheckBoxPane.Title, static () => new CheckBoxPane()),
         (ComboBoxPane.Title, static () => new ComboBoxPane()),
         (DockPane.Title, static () => new DockPane()),
+        (ExpanderPane.Title, static () => new ExpanderPane()),
         (FigletTextPane.Title, static () => new FigletTextPane()),
         (GridPane.Title, static () => new GridPane()),
         (GroupBoxPane.Title, static () => new GroupBoxPane()),

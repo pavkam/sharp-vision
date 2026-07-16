@@ -196,26 +196,26 @@ Commit as `feat: add group box control`.
 - Modify: `docs/controls/layout/expander.md`
 - Modify: gallery/catalog registration and showcase section expectations.
 
-- [ ] **Step 1: Write expanded/collapsed and activation RED tests**
+- [x] **Step 1: Write expanded/collapsed and activation RED tests**
 
 Specify the retained header row, exact expanded/collapsed glyph and text cells,
 content exclusion from collapsed measure/hit testing, pointer and Space/Enter
 parity, focus, event order, disabled refusal, content replacement, resize, and
 zero/tiny behavior. Watch tests fail because `Expander` does not exist.
 
-- [ ] **Step 2: Implement retained composition without rebuilding**
+- [x] **Step 2: Implement retained composition without rebuilding**
 
 Derive from `ContentControl`, create the private retained header toggle in the
 constructor, and keep caller content ownership stable. `IsExpanded` updates
 measure/render/hit-test visibility atomically and raises `ExpandedChanged` only
 after a changed commit. Do not introduce `Build()`, virtual trees, or hooks.
 
-- [ ] **Step 3: Verify unit and mounted behavior GREEN**
+- [x] **Step 3: Verify unit and mounted behavior GREEN**
 
 Run `*ExpanderTests`, `*ExpanderSurfaceTests`, content ownership, focus,
 capture, and routing fixtures.
 
-- [ ] **Step 4: Add showcase and normative proof**
+- [x] **Step 4: Add showcase and normative proof**
 
 Add one gallery pane with expanded, collapsed, nested, disabled, Unicode, and
 content-replacement examples plus a representative screen test. Update catalog

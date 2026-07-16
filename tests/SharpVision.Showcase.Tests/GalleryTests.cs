@@ -14,6 +14,7 @@ public sealed class GalleryTests
         "CheckBox",
         "ComboBox",
         "Dock",
+        "Expander",
         "FigletText",
         "Grid",
         "GroupBox",

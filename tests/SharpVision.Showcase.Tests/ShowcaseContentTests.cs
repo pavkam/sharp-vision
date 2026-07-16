@@ -14,6 +14,7 @@ public sealed class ShowcaseContentTests
             ["CheckBox"] = ["Two-state choice", "Three-state policy", "Marks", "Form recipe"],
             ["ComboBox"] = ["Start here", "Commit versus dismiss", "Long choices", "Constrained placement"],
             ["Dock"] = ["Application shell", "Order and spacing", "Sizing from the remainder", "Constrained space"],
+            ["Expander"] = ["Expansion state", "Composition and availability", "Unicode and replacement"],
             ["FigletText"] = ["Live editor", "Font comparison", "Layout options", "Large output"],
             ["Grid"] = ["Track fundamentals", "Percentage and limits", "Responsive form", "Constrained space"],
             ["GroupBox"] = ["Frame and header", "Unicode and style scope", "Glyphs and constrained space"],
