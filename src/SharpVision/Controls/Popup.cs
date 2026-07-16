@@ -123,6 +123,7 @@ public sealed class Popup: ContentControl
 
                 if (value)
                 {
+                    CaptureFailure(() => CloseOtherPopups(this), ref failure);
                     CaptureFailure(
                         () =>
                         {
@@ -429,6 +430,48 @@ public sealed class Popup: ContentControl
         }
 
         return null;
+    }
+
+    private static void CloseOtherPopups(Popup opening)
+    {
+        Control root = opening;
+
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        CloseDescendantPopups(root, opening);
+    }
+
+    private static void CloseDescendantPopups(Control control, Popup except)
+    {
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            var child = control.OwnedControlAt(index);
+
+            if (child is Popup { IsOpen: true } popup && !ReferenceEquals(popup, except) && !IsAncestorOf(popup, except))
+            {
+                popup.IsOpen = false;
+            }
+
+            CloseDescendantPopups(child, except);
+        }
+    }
+
+    private static bool IsAncestorOf(Control candidate, Control descendant)
+    {
+        for (var current = descendant.Parent; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, candidate))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     #endregion
