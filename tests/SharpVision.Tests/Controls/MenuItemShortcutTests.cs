@@ -14,6 +14,7 @@ public sealed class MenuItemShortcutTests
         {
             Content = new ControlText("Save"),
             ShortcutText = "Ctrl+S",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var size = new Size(20, 1);
         new Engine().Layout(item, size);
@@ -21,7 +22,7 @@ public sealed class MenuItemShortcutTests
 
         item.Render(frame.Canvas);
 
-        // "Ctrl+S" is 6 chars, so it should start at column 20 - 6 = 14.
+        // "Ctrl+S" is 6 chars, right-aligned in 20-cell bounds starts at column 14.
         FrameOracle.Get(frame, new Point(14, 0)).ShouldBe("C");
         FrameOracle.Get(frame, new Point(15, 0)).ShouldBe("t");
         FrameOracle.Get(frame, new Point(19, 0)).ShouldBe("S");

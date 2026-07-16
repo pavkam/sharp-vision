@@ -9,6 +9,7 @@ global using SharpVision.Input;
 global using SharpVision.Layout;
 global using SharpVision.Runtime;
 global using SharpVision.Styling;
+global using SharpVision.Text;
 global using SharpVision.Terminal.Geometry;
 global using SharpVision.Terminal.Input;
 global using SharpVision.Terminal.Protocols;
