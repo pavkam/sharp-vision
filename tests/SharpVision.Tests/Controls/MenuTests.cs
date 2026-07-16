@@ -26,7 +26,7 @@ public sealed class MenuTests
         menu.Items.Count.ShouldBe(3);
         menu.SelectedIndex.ShouldBe(0);
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
-        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("☑");
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("[");
         FrameOracle.Get(frame, new Point(0, 4)).ShouldBe("─");
     }
 

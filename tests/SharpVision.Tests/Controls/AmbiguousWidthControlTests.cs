@@ -78,6 +78,7 @@ public sealed class AmbiguousWidthControlTests
         var checkBox = new CheckBox()
         {
             IsChecked = true,
+            MarkStyle = CheckBoxMarks.Square,
             Marks = new Marks(new Rune('o'), new Rune('·'), new Rune('-')),
         };
         checkBox.SetCellPolicy(new Policy(Ambiguous.Wide));

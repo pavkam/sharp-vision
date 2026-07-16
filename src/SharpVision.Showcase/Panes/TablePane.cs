@@ -117,12 +117,28 @@ internal sealed class TablePane: CompositeControl
             },
         ]));
 
-        var headerOnly = new Table { Width = Length.Cells(28), ShowHeader = true };
-        headerOnly.Columns.Add(TableColumn.Fill("Header only"));
-        var tiny = new Table { Width = Length.Cells(8), ShowGridLines = true };
-        tiny.Columns.Add(TableColumn.Fixed("A", 6));
-        tiny.Columns.Add(TableColumn.Fill("B"));
-        tiny.Rows.Add(new TableRow([new Text("Alpha"), new Text("Beta")]));
+        var headerOnly = new Table
+        {
+            Width = Length.Cells(44),
+            ShowHeader = true,
+            CellPadding = new Thickness(1, 0),
+            HeaderForeground = ThemeColors.Accent,
+            GridLineColor = ThemeColors.Border,
+        };
+        headerOnly.Columns.Add(TableColumn.Fixed("Environment", 14));
+        headerOnly.Columns.Add(TableColumn.Fill("Status"));
+        var constrained = new Table
+        {
+            Width = Length.Cells(44),
+            ShowGridLines = true,
+            CellPadding = new Thickness(1, 0),
+            GridLineColor = ThemeColors.Border,
+        };
+        constrained.Columns.Add(TableColumn.Fixed("Shortcut", 12));
+        constrained.Columns.Add(TableColumn.Fill("Description"));
+        constrained.Rows.Add(new TableRow([new Text("F5"), new Text("Start debugging")]));
+        constrained.Rows.Add(new TableRow([new Text("Ctrl+Shift+B"), new Text("Build solution")]));
+        constrained.Rows.Add(new TableRow([new Text("Ctrl+P"), new Text("Quick open file")]));
 
         var scrolling = new Table
         {
@@ -194,11 +210,11 @@ internal sealed class TablePane: CompositeControl
             Doc.Section(
                 "📊",
                 "Boundary states",
-                "Header-only and tiny tables reserve only geometry they can safely contain.",
+                "A header-only table renders columns and the separator without reserving data rows. A headerless table renders rows immediately.",
                 Doc.Example(
-                    "No phantom row and constrained columns",
-                    "The first table has no data rows; the second saturates its narrow columns without drawing outside bounds.",
-                    Doc.Column(headerOnly, tiny)),
+                    "Header-only and headerless tables",
+                    "The first table defines columns but contains no data rows. The second omits the header row entirely.",
+                    Doc.Column(headerOnly, constrained)),
                 Doc.Example(
                     "Deliberate two-axis overflow",
                     "This operational dataset is intentionally wider and taller than its viewport. Header, grid, cells, hit testing, and both themed rails stay aligned while scrolling.",

@@ -140,7 +140,7 @@ public sealed class CheckBoxTests
     public void Render_WhenCheckedWithContent_WritesExactMarkAndUnicodeCells()
     {
         var content = new ControlText("界");
-        var checkBox = new CheckBox() { Content = content, IsChecked = true };
+        var checkBox = new CheckBox() { Content = content, IsChecked = true, MarkStyle = CheckBoxMarks.Square };
         new Engine().Layout(checkBox, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
 

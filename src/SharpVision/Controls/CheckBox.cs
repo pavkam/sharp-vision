@@ -100,7 +100,7 @@ public sealed class CheckBox: Pressable
 
             _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
-    }
+    } = CheckBoxMarks.Brackets;
 
     /// <summary>Toggles an available CheckBox through the programmatic activation path.</summary>
     /// <exception cref="InvalidOperationException">The attached CheckBox is accessed off-dispatcher.</exception>
@@ -280,9 +280,9 @@ public sealed class CheckBox: Pressable
         {
             CheckBoxMarks.Brackets => _isChecked switch
             {
-                true => "[x]",
+                true => "[✓]",
                 false => "[ ]",
-                null => "[-]",
+                null => "[─]",
             },
             CheckBoxMarks.Tick => _isChecked switch
             {

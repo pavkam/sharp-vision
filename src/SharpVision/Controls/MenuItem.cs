@@ -237,7 +237,7 @@ public sealed class MenuItem: Pressable
 
         var marker = Kind switch
         {
-            MenuItemKind.Check => _isChecked ? "☑ " : "☐ ",
+            MenuItemKind.Check => _isChecked ? "[✓] " : "[ ] ",
             MenuItemKind.Radio => _isChecked ? "◉ " : "○ ",
             MenuItemKind.Command => string.Empty,
             _ => throw new UnreachableException(),
@@ -303,7 +303,7 @@ public sealed class MenuItem: Pressable
     /// <param name="value">Whether this item is the menu's selected item.</param>
     internal void CommitSelection(bool value) => SetSelectedState(value);
 
-    private int PrefixWidth => Kind is MenuItemKind.Check or MenuItemKind.Radio ? 2 : 0;
+    private int PrefixWidth => Kind == MenuItemKind.Check ? 4 : Kind == MenuItemKind.Radio ? 2 : 0;
 
     private static int Add(int left, int right)
     {
