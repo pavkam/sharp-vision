@@ -14,6 +14,7 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
         Channel.CreateUnbounded<(byte[] Bytes, TaskCompletionSource Consumed)>();
     private readonly Channel<(Dimensions Value, TaskCompletionSource Consumed)> _resize =
         Channel.CreateUnbounded<(Dimensions Value, TaskCompletionSource Consumed)>();
+    private TaskCompletionSource? _pendingInput;
     private ComponentScreen _screen;
     private int _disposed;
 
@@ -27,7 +28,7 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
 
     /// <summary>Queues immutable terminal input and returns a signal completed when transport reads it.</summary>
     /// <param name="value">The non-empty terminal input bytes.</param>
-    /// <returns>A task completed after the bytes are copied into the session read buffer.</returns>
+    /// <returns>A task completed after the session routes the bytes and requests its next read.</returns>
     /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
     /// <exception cref="ObjectDisposedException">The terminal is disposed.</exception>
     internal Task QueueInput(ReadOnlySpan<byte> value)
@@ -62,6 +63,8 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
     /// <inheritdoc/>
     public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken)
     {
+        _ = Interlocked.Exchange(ref _pendingInput, null)?.TrySetResult();
+
         try
         {
             var (bytes, consumed) = await _input.Reader.ReadAsync(cancellationToken);
@@ -69,7 +72,7 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
             try
             {
                 bytes.AsSpan().CopyTo(destination.Span);
-                _ = consumed.TrySetResult();
+                Volatile.Write(ref _pendingInput, consumed);
                 return bytes.Length;
             }
             catch (Exception exception)
@@ -114,6 +117,7 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
         {
             _ = _input.Writer.TryComplete();
             _ = _resize.Writer.TryComplete();
+            _ = Interlocked.Exchange(ref _pendingInput, null)?.TrySetCanceled();
 
             while (_input.Reader.TryRead(out var value))
             {

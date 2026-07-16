@@ -53,6 +53,8 @@ internal sealed class ComponentKeyboard
                 (Code.Left, Modifiers.None) => _surface.SendAsync("\u001b[D"u8.ToArray(), "press Left"),
                 (Code.Left, Modifiers.Shift) => _surface.SendAsync("\u001b[1;2D"u8.ToArray(), "press Shift+Left"),
                 (Code.Backspace, Modifiers.None) => _surface.SendAsync(new byte[] { 0x7f }, "press Backspace"),
+                (Code.Delete, Modifiers.None) => _surface.SendAsync("\u001b[3~"u8.ToArray(), "press Delete"),
+                (Code.Enter, Modifiers.None) => _surface.SendAsync("\u001b[13u"u8.ToArray(), "press Enter"),
                 _ => throw new NotSupportedException(
                     $"Component keyboard encoding for {modifiers}+{code} is not supported."),
             };

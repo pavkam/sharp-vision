@@ -119,7 +119,7 @@ Commit only these helper files as
 - Create: `tests/SharpVision.Tests/Controls/TextInputSurfaceTests.cs`
 - Modify: `docs/controls/input/text-input.md`
 
-- [ ] **Step 1: Write placeholder, focus, typing, and grapheme tests**
+- [x] **Step 1: Write placeholder, focus, typing, and grapheme tests**
 
 Prove unfocused placeholder cells are dim with hidden cursor; Tab focuses and
 reveals the cursor; raw UTF-8 inserts combining and wide graphemes; Left/Right,
@@ -137,32 +137,32 @@ surface.Cell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
 surface.ShouldHaveCursor(new Point(3, 0), visible: true);
 ```
 
-- [ ] **Step 2: Verify RED and fix only demonstrated editor/cursor defects**
+- [x] **Step 2: Verify RED and fix only demonstrated editor/cursor defects**
 
 Run `*TextInputSurfaceTests`. Every failure must identify decoded input,
 grapheme transaction, focus, committed cursor, or final-cell disagreement.
 Retain one regression per production correction.
 
-- [ ] **Step 3: Add selection, paste, submit, and policy scenarios**
+- [x] **Step 3: Add selection, paste, submit, and policy scenarios**
 
 Prove Shift selection, atomic combining-sequence paste, single-line Enter
 submission, multiline Enter insertion, read-only refusal, disabled refusal,
 password masking without source text in snapshots, and selection styling across
 a wide lead/continuation pair.
 
-- [ ] **Step 4: Add resize and automatic offset repair**
+- [x] **Step 4: Add resize and automatic offset repair**
 
 Type content wider and taller than a fixed editor, assert horizontal/vertical
 offsets and cursor, resize the same surface, and prove offsets clamp while stale
 cells disappear. Use public `HorizontalOffset`/`VerticalOffset` as the semantic
 oracle and final screen/cursor as cross-layer proof.
 
-- [ ] **Step 5: Run TextInput surface and unit fixtures GREEN**
+- [x] **Step 5: Run TextInput surface and unit fixtures GREEN**
 
 Run `*TextInputSurfaceTests`, `*TextInputTests`, and `*EditTests`. Expected: all
 editor, pure model, Unicode, and mounted behavior passes.
 
-- [ ] **Step 6: Link the TextInput proof and commit**
+- [x] **Step 6: Link the TextInput proof and commit**
 
 Update the control test obligations and commit the fixture plus only verified
 production fixes as `test: cover text input on mounted surfaces`.
