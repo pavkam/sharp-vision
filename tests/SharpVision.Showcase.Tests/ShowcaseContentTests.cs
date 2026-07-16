@@ -26,7 +26,7 @@ public sealed class ShowcaseContentTests
             ["Table"] = ["Column sizing", "Interactive cells", "Dynamic rows", "Boundary states"],
             ["Text"] = ["Safe content", "Markup", "Overflow", "Unicode"],
             ["TextInput"] = ["Editing and submission", "Selection", "Clipboard and history", "Multiline"],
-            ["Window"] = ["Frame and title", "Shadows", "Default and cancel", "Boundaries"],
+            ["Window"] = ["Draggable window", "Modal dialog", "Shadow depth", "Title placement"],
             ["Theming"] = ["Application theme", "Catalog", "Visual states", "Third-party controls"],
         };
 

@@ -42,8 +42,79 @@ focusable leaf focuses that leaf. The committed focus state drives the control's
 `Focused` visual-state overlay.
 
 Detach, hide/collapse, disable, disposal, or manager disposal releases invalid
-focus deterministically. Modal focus containment and popup/menu restoration are
-Phase 5 responsibilities built from these manager guarantees.
+focus deterministically.
+
+## Navigation scopes
+
+`Control.TabNavigation` governs how Tab traversal treats one control's subtree.
+Three modes are available:
+
+```
+TabNavigation.Continue    (default — no boundary, global flat traversal)
+TabNavigation.Cycle       (Tab wraps within this control's children)
+TabNavigation.Contained   (Tab is trapped; focus cannot exit via Tab/Shift+Tab)
+```
+
+`FocusManager.MoveNext` resolves the nearest ancestor with a non-`Continue`
+`TabNavigation` mode and collects eligible tab stops only within that scope. The
+scope root itself is excluded from its own candidate list; nested scopes define
+independent boundaries so the innermost scope always wins. Controls that do not
+set `TabNavigation` behave identically to prior versions — their tab stops are
+part of the enclosing scope (or the tree root for the default global traversal).
+
+The scope resolution walk, the scope-bounded collection, and the per-mode
+wrapping behavior form the complete scope algorithm:
+
+```
+                        ┌────────────────────────────────────────┐
+   Tab pressed          │  FocusManager.MoveNext                 │
+  ─────────────────►    │                                        │
+                        │  1. FindScope(Focused)                 │
+                        │     walk Focused → Parent → … → Root   │
+                        │     return first TabNavigation≠Continue │
+                        │     or Root if none                    │
+                        │                                        │
+                        │  2. Collect tab stops within scope     │
+                        │     • skip scope root itself           │
+                        │     • skip nested scope subtrees       │
+                        │     • sort (TabIndex, TreeOrder)       │
+                        │                                        │
+                        │  3. Navigate                           │
+                        │     Cycle / Contained: wrap in scope   │
+                        │     Continue (root):   wrap globally   │
+                        └────────────────────────────────────────┘
+```
+
+### Standard scope assignments
+
+**ComboBox popup** sets `TabNavigation.Contained` on the owned `Popup` and
+`IsTabStop = false` on the inner List. When the drop-down opens, the popup
+becomes a closed navigation scope: Tab cycles through the realized `ListItem`
+controls and cannot escape to controls outside the popup.
+
+```
+ComboBox
+├─ [Popup]  TabNavigation = Contained
+│  └─ List  IsTabStop = false
+│     ├─ ListItem  "A"
+│     ├─ ListItem  "B"     ◄── Tab cycles A → B → C → A
+│     └─ ListItem  "C"
+└─ (field)
+```
+
+**Menu** sets `TabNavigation.Cycle`. Tab wraps through the menu's `MenuItem`
+children, skipping separators. `MenuItem.OnFocusChanged` synchronizes
+`Menu.SelectedIndex` whenever a child receives focus externally (for example
+through Tab), so subsequent arrow-key navigation starts from the correct
+position.
+
+```
+Menu  TabNavigation = Cycle
+├─ MenuItem  "File"
+├─ MenuItem  "Edit"        ◄── Tab cycles File → Edit → Help → File
+├─ MenuSeparator           (skipped: not focusable)
+└─ MenuItem  "Help"
+```
 
 Setting `CanFocus` to false on the focused control commits the new eligibility
 before synchronously clearing `FocusManager.Focused` and `IsFocused`. This

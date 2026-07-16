@@ -151,6 +151,102 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Tab cycles within Menu items instead of escaping to sibling controls.</summary>
+    [Fact]
+    public async Task Dispatch_WhenTabPressed_CyclesWithinMenuItemsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var menu = new Menu() { Orientation = Orientation.Vertical };
+            var a = new MenuItem() { Content = new ControlText("A") };
+            var b = new MenuItem() { Content = new ControlText("B") };
+            var c = new MenuItem() { Content = new ControlText("C") };
+            var outside = new ProbeControl() { CanFocus = true };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            root.Children.Add(menu);
+            root.Children.Add(outside);
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            focus.Focus(a).ShouldBeTrue();
+
+            Router.Route(a, Events.Key, Tab());
+            focus.Focused.ShouldBeSameAs(b);
+            Router.Route(b, Events.Key, Tab());
+            focus.Focused.ShouldBeSameAs(c);
+            Router.Route(c, Events.Key, Tab());
+            focus.Focused.ShouldBeSameAs(a);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Menu syncs SelectedIndex when a MenuItem receives focus externally.</summary>
+    [Fact]
+    public async Task Focus_WhenMenuItemReceivesExternalFocus_SyncsSelectedIndexAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu() { Orientation = Orientation.Vertical };
+            var a = new MenuItem() { Content = new ControlText("A") };
+            var b = new MenuItem() { Content = new ControlText("B") };
+            var c = new MenuItem() { Content = new ControlText("C") };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            menu.SelectedIndex.ShouldBe(0);
+
+            focus.Focus(c).ShouldBeTrue();
+
+            menu.SelectedIndex.ShouldBe(2);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies arrow navigation starts from the correct position after external Tab focus.</summary>
+    [Fact]
+    public async Task Dispatch_WhenArrowAfterExternalFocus_NavigatesFromFocusedItemAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu() { Orientation = Orientation.Vertical };
+            var a = new MenuItem() { Content = new ControlText("A") };
+            var b = new MenuItem() { Content = new ControlText("B") };
+            var c = new MenuItem() { Content = new ControlText("C") };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(c).ShouldBeTrue();
+            menu.SelectedIndex.ShouldBe(2);
+
+            Router.Route(c, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Down,
+                default,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+            menu.SelectedIndex.ShouldBe(0);
+            focus.Focused.ShouldBeSameAs(a);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    private static KeyEventArgs Tab() => new(new Stroke(
+        Code.Tab,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press));
+
     /// <summary>Verifies changing a checked item to command clears checked state before observers.</summary>
     [Fact]
     public void Kind_WhenCheckedItemBecomesCommand_StagesUncheckedStateBeforeNotification()

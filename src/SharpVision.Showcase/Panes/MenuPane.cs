@@ -5,7 +5,9 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents the Menu control with command, check, radio, separator, orientation, and disabled-item specimens.</summary>
+
+
+/// <summary>Documents the Menu control with practical application-style command, context, and menu bar specimens.</summary>
 internal sealed class MenuPane: CompositeControl
 {
 
@@ -16,139 +18,136 @@ internal sealed class MenuPane: CompositeControl
     /// <inheritdoc/>
     private static Dock CreateContent()
     {
-        Text status = new("Choose an action.");
-        Menu menu = new()
-        {
-            Orientation = Orientation.Vertical,
-            Spacing = 0,
-        };
-        menu.Items.Add(new MenuItem { Content = new Text("New project") });
-        menu.Items.Add(new MenuItem { Content = new Text("Open recent") });
-        menu.Items.Add(new MenuSeparator());
-        menu.Items.Add(new MenuItem { Content = new Text("Auto save"), Kind = MenuItemKind.Check, IsChecked = true });
-        menu.Items.Add(new MenuItem { Content = new Text("Compact mode"), Kind = MenuItemKind.Radio, GroupName = "density", IsChecked = true });
-        menu.Items.Add(new MenuItem { Content = new Text("Comfortable mode"), Kind = MenuItemKind.Radio, GroupName = "density" });
-        menu.ItemInvoked += (_, eventArgs) => status.Content = $"Invoked {Label(eventArgs.Item)}.";
+        var status = new Text("Right-click or use arrows, then press Enter to invoke.");
 
-        Dock framed = new()
+        var contextMenu = new Menu { Orientation = Orientation.Vertical };
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Cut") });
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Copy") });
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Paste") });
+        contextMenu.Items.Add(new MenuSeparator());
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Select all") });
+        contextMenu.Items.Add(new MenuSeparator());
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Auto save"), Kind = MenuItemKind.Check, IsChecked = true });
+        contextMenu.Items.Add(new MenuSeparator());
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Compact"), Kind = MenuItemKind.Radio, GroupName = "view", IsChecked = true });
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Comfortable"), Kind = MenuItemKind.Radio, GroupName = "view" });
+        contextMenu.Items.Add(new MenuItem { Content = new Text("Spacious"), Kind = MenuItemKind.Radio, GroupName = "view" });
+        contextMenu.ItemInvoked += (_, e) => status.Content = $"Invoked: {Label(e.Item)}";
+
+        var contextFrame = new Dock
         {
+            Width = Length.Cells(28),
             BorderThickness = new Thickness(1),
             BorderGlyphs = Glyphs.Rounded,
-            Children = { menu },
+            Children = { contextMenu },
         };
 
-        Text barStatus = new("Choose a top-level action.");
-        Menu bar = new()
+        var barStatus = new Text("Select a top-level entry with arrows or click.");
+
+        var menuBar = new Menu { Orientation = Orientation.Horizontal, Spacing = 2 };
+        menuBar.Items.Add(new MenuItem { Content = new Text("File") });
+        menuBar.Items.Add(new MenuItem { Content = new Text("Edit") });
+        menuBar.Items.Add(new MenuItem { Content = new Text("View") });
+        menuBar.Items.Add(new MenuItem { Content = new Text("Help") });
+        menuBar.ItemInvoked += (_, e) => barStatus.Content = $"Invoked: {Label(e.Item)}";
+
+        var barFrame = new Dock
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 2,
-        };
-        bar.Items.Add(new MenuItem { Content = new Text("File") });
-        bar.Items.Add(new MenuItem { Content = new Text("Edit") });
-        bar.Items.Add(new MenuItem { Content = new Text("View") });
-        bar.Items.Add(new MenuItem { Content = new Text("Help") });
-        bar.ItemInvoked += (_, eventArgs) => barStatus.Content = $"Invoked {Label(eventArgs.Item)}.";
-
-        Dock framedBar = new()
-        {
-            BorderThickness = new Thickness(1),
-            BorderGlyphs = Glyphs.Rounded,
-            Children = { bar },
+            Width = Length.Cells(40),
+            Background = ThemeColors.Surface,
+            FillMode = FillMode.Opaque,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderGlyphs = Glyphs.Light,
+            Padding = new Thickness(1, 0),
+            Children = { menuBar },
         };
 
-        Menu withDisabled = new()
-        {
-            Orientation = Orientation.Vertical,
-            Spacing = 0,
-        };
-        withDisabled.Items.Add(new MenuItem { Content = new Text("Available action") });
-        withDisabled.Items.Add(new MenuItem { Content = new Text("Unavailable action"), IsEnabled = false });
-        withDisabled.Items.Add(new MenuItem { Content = new Text("Another available action") });
-
-        Dock framedDisabled = new()
-        {
-            BorderThickness = new Thickness(1),
-            BorderGlyphs = Glyphs.Rounded,
-            Children = { withDisabled },
-        };
-
-        var flyoutTrigger = new Button { Content = new Text("Project actions") };
+        var flyoutStatus = new Text("Click the button to open the action menu.");
+        var flyoutTrigger = new Button { Content = new Text("Project actions ▼") };
         var flyoutMenu = new Menu { Orientation = Orientation.Vertical };
         flyoutMenu.Items.Add(new MenuItem { Content = new Text("Build") });
         flyoutMenu.Items.Add(new MenuItem { Content = new Text("Test") });
         flyoutMenu.Items.Add(new MenuItem { Content = new Text("Publish") });
+        flyoutMenu.ItemInvoked += (_, e) =>
+        {
+            flyoutStatus.Content = $"Action: {Label(e.Item)}";
+        };
         var flyout = new Popup
         {
             Anchor = flyoutTrigger,
             Content = flyoutMenu,
-            IsOpen = true,
             Placement = PopupPlacement.Below,
         };
-        var flyoutStage = new Overlay
+        flyoutTrigger.Click += (_, _) => flyout.IsOpen = !flyout.IsOpen;
+
+        var flyoutStage = new Canvas
         {
-            Width = Length.Cells(30),
+            Width = Length.Cells(40),
             Height = Length.Cells(8),
             ClipToBounds = false,
-            Children = { flyoutTrigger, flyout },
         };
+        Canvas.SetLeft(flyoutTrigger, Length.Cells(1));
+        Canvas.SetTop(flyoutTrigger, Length.Cells(1));
+        Canvas.SetLeft(flyoutStatus, Length.Cells(1));
+        Canvas.SetTop(flyoutStatus, Length.Cells(6));
+        flyoutStage.Children.Add(flyoutTrigger);
+        flyoutStage.Children.Add(flyout);
+        flyoutStage.Children.Add(flyoutStatus);
 
-        var selectionStatus = new Text("Selected index: -1; invoked: none");
+        var selectionStatus = new Text("Navigate with arrows, then press Enter.");
         var selectionMenu = new Menu { Orientation = Orientation.Vertical };
         selectionMenu.Items.Add(new MenuItem { Content = new Text("Inspect") });
         selectionMenu.Items.Add(new MenuItem { Content = new Text("Run") });
-        selectionMenu.ItemInvoked += (_, eventArgs) =>
-            selectionStatus.Content = $"Selected index: {selectionMenu.SelectedIndex}; invoked: {Label(eventArgs.Item)}";
+        selectionMenu.Items.Add(new MenuItem { Content = new Text("Debug") });
+        selectionMenu.Items.Add(new MenuItem { Content = new Text("Deploy"), IsEnabled = false });
+        selectionMenu.ItemInvoked += (_, e) =>
+            selectionStatus.Content = $"Selected: {selectionMenu.SelectedIndex}, invoked: {Label(e.Item)}";
 
-        var relaxed = new Menu { Orientation = Orientation.Horizontal, Spacing = 3 };
-        relaxed.Items.Add(new MenuItem { Content = new Text("Available") });
-        relaxed.Items.Add(new MenuItem { Content = new Text("Unavailable"), IsEnabled = false });
-        relaxed.Items.Add(new MenuItem { Content = new Text("Next") });
+        var selectionFrame = new Dock
+        {
+            Width = Length.Cells(28),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { selectionMenu },
+        };
 
         return Doc.Page(
             Title,
-            "Arranges typed command, check, radio, and separator items with semantic selected state and keyboard navigation.",
+            "Arranges command, check, radio, and separator items in a vertical or horizontal menu with keyboard navigation and selection tracking.",
             Doc.Section(
                 "📑",
                 "Command menu",
-                "Combine command, separator, check, and radio items in one typed ownership collection.",
+                "A vertical menu combines command items, separators, check toggles, and radio groups in a single navigable list.",
                 Doc.Example(
-                    "Commands with state",
-                    "Arrows skip separators; Enter, Space, or a click commits check/radio state before ItemInvoked reports the action.",
-                    Doc.Column(framed, status),
-                    "var menu = new Menu();\nmenu.Items.Add(new MenuItem { Content = new Text(\"Open\") });\nmenu.Items.Add(new MenuSeparator());")),
+                    "Context menu with commands, toggles, and radio groups",
+                    "Use arrow keys to navigate. Enter or Space activates the selected item. Check items toggle, radio items select within their group. Separators are skipped.",
+                    Doc.Column(contextFrame, status),
+                    "var menu = new Menu();\nmenu.Items.Add(new MenuItem { Content = new Text(\"Cut\") });\nmenu.Items.Add(new MenuSeparator());\nmenu.Items.Add(new MenuItem { Kind = MenuItemKind.Check });")),
             Doc.Section(
                 "📑",
                 "Menu bar",
-                "Horizontal orientation switches traversal to Left and Right while preserving the same item semantics.",
+                "Horizontal orientation switches arrow traversal to Left/Right while keeping the same item semantics and invocation contract.",
                 Doc.Example(
-                    "Top-level application menu",
-                    "Move across File, Edit, View, and Help, then activate the selected item through the same invocation event.",
-                    Doc.Column(framedBar, barStatus))),
+                    "Application menu bar",
+                    "Navigate across File, Edit, View, and Help with Left/Right arrows. Enter invokes the selected entry.",
+                    Doc.Column(barFrame, barStatus))),
             Doc.Section(
                 "📑",
                 "Popup composition",
-                "Menu remains an ordinary control; place it in Popup when an anchored flyout is required.",
+                "Place a Menu inside a Popup anchored to a trigger button for a flyout action list that opens and closes on demand.",
                 Doc.Example(
-                    "Anchored project actions",
-                    "The open Popup frames and promotes a vertical Menu above ordinary sibling content without inventing modal behavior.",
+                    "Button-triggered action menu",
+                    "Click the button to open the popup menu. Select an action with arrows and Enter. The popup closes after invocation.",
                     flyoutStage,
-                    "var popup = new Popup { Anchor = trigger, Content = menu, IsOpen = true };")),
+                    "var popup = new Popup\n{\n    Anchor = trigger,\n    Content = menu,\n    Placement = PopupPlacement.Below,\n};\ntrigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;")),
             Doc.Section(
                 "📑",
                 "Selection and invocation",
-                "Keyboard navigation changes SelectedIndex; activation separately raises ItemInvoked after item state commits.",
+                "SelectedIndex tracks the keyboard position independently of activation. Disabled items are visible but skipped by navigation and invocation.",
                 Doc.Example(
-                    "Two observable states",
-                    "Move without activating, then press Enter and compare the selected index with the invoked header.",
-                    Doc.Column(selectionMenu, selectionStatus))),
-            Doc.Section(
-                "📑",
-                "Spacing and unavailable items",
-                "Spacing changes geometry only; unavailable entries remain visible and are skipped by focus and activation.",
-                Doc.Example(
-                    "Relaxed command strip",
-                    "Move from Available to Next: the unavailable middle item never receives selection.",
-                    Doc.Column(framedDisabled, relaxed))));
+                    "Navigate, then invoke",
+                    "Arrow keys change the selected index. Enter activates and reports both the index and the invoked item. The Deploy entry is disabled and cannot be selected.",
+                    Doc.Column(selectionFrame, selectionStatus))));
     }
 
     private static string Label(MenuItem item) => ((Text) item.Content!).Content;

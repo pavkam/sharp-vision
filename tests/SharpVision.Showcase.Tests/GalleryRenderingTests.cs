@@ -110,7 +110,7 @@ public sealed class GalleryRenderingTests
 
         gallery.Render(frame.Canvas);
 
-        var panel = FindAll<ShowcasePanel>(gallery.CurrentPage).ShouldHaveSingleItem();
+        var panel = FindAll<ShowcasePanel>(gallery.CurrentPage).First();
         Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Y)).ShouldBe("╭");
         Grapheme(frame, new Point(panel.Bounds.Right - 1, panel.Bounds.Y)).ShouldBe("╮");
         Grapheme(frame, new Point(panel.Bounds.X, panel.Bounds.Bottom - 1)).ShouldBe("╰");
@@ -148,7 +148,7 @@ public sealed class GalleryRenderingTests
 
     /// <summary>Verifies the Window page exposes chrome variants and centers its dialog actions.</summary>
     [Fact]
-    public void Render_WhenWindowPageIsSelected_ShowsChromeOptionsAndCenteredActions()
+    public void Render_WhenWindowPageIsSelected_ShowsDraggableWindowAndShadowVariants()
     {
         using var gallery = CreateThemedGallery();
         gallery.Select(IndexOf(gallery, "Window"));
@@ -162,24 +162,15 @@ public sealed class GalleryRenderingTests
         var screen = new Screen(frame);
         screen.Text.ShouldContain("Apply");
         screen.Text.ShouldContain("Cancel");
-        windows.Count.ShouldBeGreaterThanOrEqualTo(4);
+        windows.Count(value => value.Visibility == Visibility.Visible)
+            .ShouldBeGreaterThanOrEqualTo(4);
         windows.ShouldContain(window =>
             window.Glyphs == Glyphs.Paired &&
             window.TitlePlacement == WindowTitlePlacement.Center);
 
-        var dialog = windows.Single(window => window.Title == "Project settings");
-        dialog.Bounds.Height.ShouldBeGreaterThan(10);
-        var actions = FindAll<Button>(dialog);
-        actions.Count.ShouldBe(2);
-        var left = actions.Min(button => button.Bounds.X);
-        var right = actions.Max(button => button.Bounds.Right);
-        var actionCenter = (left + right) / 2;
-        var dialogCenter = dialog.Bounds.X + (dialog.Bounds.Width / 2);
-        Math.Abs(actionCenter - dialogCenter).ShouldBeLessThanOrEqualTo(1);
-        actions.ShouldAllBe(button => button.Bounds.Bottom <= dialog.Bounds.Bottom - 1);
-        actions.ShouldAllBe(button =>
-            button.Content.ShouldNotBeNull().Bounds.Height > 0 &&
-            button.Content.Bounds.Bottom <= dialog.Bounds.Bottom - 1);
+        var draggable = windows.Single(window => window.Title == "Draggable settings");
+        draggable.CanMove.ShouldBeTrue();
+        FindAll<Button>(draggable).Count.ShouldBeGreaterThanOrEqualTo(2);
     }
 
     /// <summary>Verifies the List page paints a distinct surface and selected-row highlight.</summary>

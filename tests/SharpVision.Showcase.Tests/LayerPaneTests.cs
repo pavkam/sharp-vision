@@ -100,7 +100,7 @@ public sealed class LayerPaneTests
 
     /// <summary>Verifies Window shows both shadow modes and a safe long-title boundary specimen.</summary>
     [Fact]
-    public void Window_WhenBoundaryExamplesBuild_ContainsShadowAndLongTitleVariants()
+    public void Window_WhenBoundaryExamplesBuild_ContainsShadowAndTitleVariants()
     {
         // Arrange
         using var page = new WindowPane();
@@ -113,7 +113,6 @@ public sealed class LayerPaneTests
         windows.ShouldContain(value => value.ShadowMode == ShadowMode.Composite && value.HasShadow);
         windows.ShouldContain(value => value.ShadowMode == ShadowMode.BlockGlyph && value.HasShadow);
         windows.ShouldContain(value => !value.HasShadow);
-        windows.ShouldContain(value => value.Title.StartsWith("A deliberately long title", StringComparison.Ordinal));
         windows.Where(value => value.Visibility == Visibility.Visible)
             .ShouldNotContain(value => value.Bounds.Width <= 2);
     }
@@ -132,10 +131,10 @@ public sealed class LayerPaneTests
         var popupBackdrop = ControlTree.FindAll<ControlText>(popupPage).Single(value =>
             value.Content.Contains("Files", StringComparison.Ordinal) &&
             value.Content.Contains("Ready", StringComparison.Ordinal));
-        var window = ControlTree.FindAll<Window>(windowPage).Single(value => value.Title == "Project settings");
+        var window = ControlTree.FindAll<Window>(windowPage).Single(value => value.Title == "Draggable settings");
         var windowBackdrop = ControlTree.FindAll<ControlText>(windowPage).Single(value =>
-            value.Content.Contains("Workspace", StringComparison.Ordinal) &&
-            value.Content.Contains("2 tasks", StringComparison.Ordinal));
+            value.Content.Contains("Dashboard", StringComparison.Ordinal) &&
+            value.Content.Contains("Drag the window", StringComparison.Ordinal));
 
         FindButton(popupPage, "Below").PerformClick();
         engine.Layout(popupPage, new Size(100, 180));

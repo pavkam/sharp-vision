@@ -26,6 +26,26 @@ primary pointer click invoke through the shared
 [`Pressable`](../pressable.md#pressable-contract) contract. A `Menu` is
 composable inside `Popup` when an anchored flyout is needed.
 
+### Keyboard navigation
+
+The menu sets [`TabNavigation.Cycle`](../../concepts/focus.md#navigation-scopes)
+so that Tab wraps through `MenuItem` children instead of escaping to sibling
+controls. Separators and unavailable items are skipped because they are not
+focusable. When a `MenuItem` receives focus externally (for example through Tab
+or programmatic focus), the menu's `SelectedIndex` is synchronized
+automatically. This guarantees that subsequent arrow-key navigation starts from
+the correctly focused position, not from a stale selection.
+
+```
+  Tab    ┌─►  MenuItem "File"
+  ─────► │    MenuItem "Edit"
+         │    MenuSeparator       (skipped)
+         └──  MenuItem "Help"
+              ▲
+              │  Arrow keys: follow Orientation
+              │  Left/Right (horizontal) or Up/Down (vertical)
+```
+
 Selecting a radio item stages every matching sibling's checked field before the
 first property callback. Changed properties publish in item order. A reentrant
 selection invalidates the older versions and suppresses their remaining stale

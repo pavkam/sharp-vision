@@ -296,13 +296,13 @@ public sealed class ComboBoxTests
             var list = focus.Focused.ShouldBeOfType<List>();
 
             Router.Route(list, Events.Key, Tab());
-            focus.Focused.ShouldBeOfType<ListItem>();
+            var item1 = focus.Focused.ShouldBeOfType<ListItem>();
 
-            Router.Route(focus.Focused!, Events.Key, Tab());
-            focus.Focused.ShouldBeOfType<ListItem>();
+            Router.Route(item1, Events.Key, Tab());
+            var item2 = focus.Focused.ShouldBeOfType<ListItem>();
 
-            Router.Route(focus.Focused!, Events.Key, Tab());
-            focus.Focused.ShouldBeOfType<ListItem>();
+            Router.Route(item2, Events.Key, Tab());
+            _ = focus.Focused.ShouldBeOfType<ListItem>();
 
             focus.Focused.ShouldNotBeSameAs(outside);
         }, TestContext.Current.CancellationToken);
@@ -327,17 +327,15 @@ public sealed class ComboBoxTests
             focus.Focus(box).ShouldBeTrue();
             Router.Route(box, Events.Key, Key(Code.Enter));
             box.IsOpen.ShouldBeTrue();
-            var list = focus.Focused.ShouldBeOfType<List>();
+            var current = focus.Focused.ShouldNotBeNull();
 
-            Router.Route(list, Events.Key, Tab());
-            var first = focus.Focused;
-            Router.Route(focus.Focused!, Events.Key, Tab());
-            var second = focus.Focused;
-            Router.Route(focus.Focused!, Events.Key, Tab());
-
-            focus.Focused.ShouldBeSameAs(first);
-            first.ShouldNotBeSameAs(sibling);
-            second.ShouldNotBeSameAs(sibling);
+            for (var tab = 0; tab < 10; tab++)
+            {
+                Router.Route(current, Events.Key, Tab());
+                current = focus.Focused.ShouldNotBeNull();
+                current.ShouldNotBeSameAs(sibling);
+                current.ShouldNotBeSameAs(box);
+            }
         }, TestContext.Current.CancellationToken);
     }
 

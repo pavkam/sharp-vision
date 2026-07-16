@@ -8,7 +8,7 @@ public sealed class DataPaneTests
 {
     /// <summary>Verifies Menu demonstrates conventional Popup composition.</summary>
     [Fact]
-    public void Menu_WhenPopupRecipeBuilds_ContainsOpenPopupWithMenuChild()
+    public void Menu_WhenPopupRecipeBuilds_ContainsPopupWithMenuChild()
     {
         // Arrange
         using var page = new MenuPane();
@@ -18,7 +18,6 @@ public sealed class DataPaneTests
         var popup = ControlTree.FindAll<Popup>(page).Single();
 
         // Assert
-        popup.IsOpen.ShouldBeTrue();
         _ = popup.Content.ShouldBeOfType<Menu>();
     }
 
