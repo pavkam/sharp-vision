@@ -62,3 +62,5 @@ styles, content ownership, resize/tiny bounds, and exact mark/content cells.
 `CheckBoxSurfaceTests` mounts the control beneath a real application and proves
 normal, hovered, held, focused, checked, indeterminate, and disabled appearance;
 complete-Space and pointer causes; Unicode ownership; and tiny clipping.
+Resizing the same tiny surface proves complete content reveal without stale
+cells.

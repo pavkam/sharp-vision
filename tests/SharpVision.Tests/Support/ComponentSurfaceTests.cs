@@ -71,4 +71,32 @@ public sealed class ComponentSurfaceTests
         cause.ShouldBe(ActivationCause.Keyboard);
         surface.ShouldHaveState(checkBox, State.Focused);
     }
+
+    /// <summary>Verifies terminal resize commits new geometry before the settled frame is exposed.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenSurfaceChanges_ReflowsMountedTextAsync()
+    {
+        // Arrange
+        var text = new ControlText("abcd")
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Overflow = Overflow.WrapAnywhere,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            text,
+            new Size(2, 2),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("""
+            ab
+            cd
+            """);
+
+        // Act
+        await surface.ResizeAsync(new Size(4, 1));
+
+        // Assert
+        text.Bounds.ShouldBe(new Rect(0, 0, 4, 1));
+        surface.ShouldRender("abcd");
+    }
 }

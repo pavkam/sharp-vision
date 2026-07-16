@@ -59,7 +59,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
         var host = new Overlay { CanFocus = true };
         host.Children.Add(control);
         var terminal = new ComponentTerminal(size);
-        terminal.QueueResize(new Dimensions(size));
+        _ = terminal.QueueResize(new Dimensions(size));
         var application = new Application(host, terminal, terminal, TerminalOptions.Minimal);
 
         try
@@ -206,6 +206,48 @@ internal sealed class ComponentSurface: IAsyncDisposable
         {
             throw new TimeoutException(
                 $"Component action '{description}' did not settle. Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
+                exception);
+        }
+        finally
+        {
+            _application.Idle -= OnIdle;
+        }
+    }
+
+    /// <summary>Queues a positive terminal resize and waits for committed layout and rendering.</summary>
+    /// <param name="size">The new positive terminal cell size.</param>
+    /// <returns>A task completed after the resized frame reaches the modeled terminal.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">A dimension is not positive.</exception>
+    /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    internal async Task ResizeAsync(Size size)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size.Width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size.Height);
+        var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnIdle(object? sender, EventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+
+            if (_application.Size == size)
+            {
+                _ = idle.TrySetResult();
+            }
+        }
+
+        _application.Idle += OnIdle;
+
+        try
+        {
+            var consumed = _terminal.QueueResize(new Dimensions(size));
+            await consumed.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException(
+                $"Component resize to {size} did not settle. Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
                 exception);
         }
         finally

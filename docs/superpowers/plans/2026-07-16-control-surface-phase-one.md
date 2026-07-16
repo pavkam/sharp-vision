@@ -412,13 +412,13 @@ Commit the fixture, spec, and any demonstrated fixes as one radio-group slice.
 - Create: `tests/SharpVision.Showcase.Tests/ProgressBarPaneTests.cs`
 - Modify: `docs/testing/controls-integration.md`
 
-- [ ] **Step 1: Write failing showcase page and screen tests**
+- [x] **Step 1: Write failing showcase page and screen tests**
 
 Prove the Gallery catalog exposes both exact titles and each fresh page contains
 interactive or state-complete horizontal/vertical specimens. Render each page at
 the standard showcase test size and assert representative semantic cells.
 
-- [ ] **Step 2: Run showcase tests and verify RED**
+- [x] **Step 2: Run showcase tests and verify RED**
 
 ```bash
 dotnet test --project tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj \
@@ -427,24 +427,24 @@ dotnet test --project tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Test
 
 Expected: compilation or catalog assertions fail because the panes are absent.
 
-- [ ] **Step 3: Implement both focused showcase panes**
+- [x] **Step 3: Implement both focused showcase panes**
 
 Follow `CheckBoxPane`/`ScrollBarPane` retained composition. Separator shows both
 orientations and custom glyph/style. ProgressBar shows empty, partial, full,
 vertical, indeterminate, and a Button-driven value mutation without timers.
 
-- [ ] **Step 4: Verify showcase and all phase-one fixtures**
+- [x] **Step 4: Verify showcase and all phase-one fixtures**
 
 Run all six `*SurfaceTests` fixtures, existing matching unit fixtures, and all
 showcase tests. Expected: every discovered test passes without warnings.
 
-- [ ] **Step 5: Update the testing contract and self-audit phase coverage**
+- [x] **Step 5: Update the testing contract and self-audit phase coverage**
 
 Link the six fixtures from mounted-component documentation. Compare every phase
 one scenario card in the design against a named test and add any missing proof.
 Search the plan and changed docs for placeholders or unsupported claims.
 
-- [ ] **Step 6: Run repository gates**
+- [x] **Step 6: Run repository gates**
 
 ```bash
 make format
@@ -456,7 +456,7 @@ make test
 Expected: zero warnings, zero errors, documentation/link checks pass, test
 discovery meets the configured minimum, and package-consumer proof passes.
 
-- [ ] **Step 7: Commit the showcase and phase documentation**
+- [x] **Step 7: Commit the showcase and phase documentation**
 
 Stage only intentional phase-one files and commit
 `docs: complete first control surface coverage phase`.

@@ -44,8 +44,9 @@ var separator = new Separator
 
 ## Test obligations
 
-Cover horizontal and vertical rendering, zero bounds, orientation changes, style
-inheritance, invalid and ambiguous-width glyphs, non-interactive hit testing,
-and final cells. `SeparatorSurfaceTests` must drive pointer movement and
-dispatcher-affine mutation through a mounted application while asserting exact
-terminal-visible rows and representative styles.
+Cover horizontal and vertical rendering, zero bounds, orientation changes,
+resize, style inheritance, invalid and ambiguous-width glyphs, non-interactive
+hit testing, and final cells. `SeparatorSurfaceTests` must drive pointer
+movement, dispatcher-affine mutation, and terminal resize through a mounted
+application while asserting exact terminal-visible rows and representative
+styles.

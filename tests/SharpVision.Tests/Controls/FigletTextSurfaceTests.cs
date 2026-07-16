@@ -72,5 +72,17 @@ public sealed class FigletTextSurfaceTests
               /_
              / _
             """);
+
+        // Act
+        await surface.ResizeAsync(new Size(7, 5));
+
+        // Assert
+        surface.ShouldRender("""
+               _
+              /_\
+             / _ \
+            /_/ \_\
+
+            """);
     }
 }

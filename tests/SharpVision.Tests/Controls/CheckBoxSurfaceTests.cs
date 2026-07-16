@@ -151,8 +151,6 @@ public sealed class CheckBoxSurfaceTests
         var checkBox = new CheckBox
         {
             Content = new ControlText("Hidden"),
-            Width = Length.Cells(2),
-            Height = Length.Cells(1),
         };
 
         // Act
@@ -163,5 +161,9 @@ public sealed class CheckBoxSurfaceTests
 
         // Assert
         surface.ShouldRender("[ ");
+
+        // Act and assert expanded surface
+        await surface.ResizeAsync(new Size(10, 1));
+        surface.ShouldRender("[ ] Hidden");
     }
 }

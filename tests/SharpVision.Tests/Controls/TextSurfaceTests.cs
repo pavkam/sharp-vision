@@ -106,4 +106,33 @@ public sealed class TextSurfaceTests
         textBackground.Kind.ShouldBe(ColorKind.Indexed);
         textBackground.Red.ShouldBe((byte) 4);
     }
+
+    /// <summary>Verifies terminal resize reflows wrapping and removes the obsolete row.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenTextSurfaceWidens_ReflowsIntoOneCommittedRowAsync()
+    {
+        // Arrange
+        var text = new ControlText("A\u0301界x")
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Overflow = Overflow.WrapAnywhere,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            text,
+            new Size(3, 2),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("""
+            Á界
+            x
+            """);
+
+        // Act
+        await surface.ResizeAsync(new Size(4, 1));
+
+        // Assert
+        text.Bounds.ShouldBe(new Rect(0, 0, 4, 1));
+        surface.ShouldRender("Á界x");
+        surface.Cell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
+    }
 }

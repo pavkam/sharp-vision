@@ -29,13 +29,15 @@ public sealed class ProgressBarSurfaceTests
 
         // Act
         await surface.Pointer.MoveToAsync(bar);
+        await surface.ResizeAsync(new Size(5, 1));
+        surface.ShouldRender("██░░░");
         await surface.UpdateAsync(() => bar.Value = 125, "fill ProgressBar past its maximum");
 
         // Assert
         bar.Value.ShouldBe(100);
         bar.IsHovered.ShouldBeFalse();
         surface.ShouldHaveState(bar, State.Normal);
-        surface.ShouldRender("██████████");
+        surface.ShouldRender("█████");
     }
 
     /// <summary>Verifies vertical determinate fill starts at the bottom.</summary>

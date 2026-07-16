@@ -63,6 +63,16 @@ public sealed class SeparatorSurfaceTests
             !
             !
             """);
+
+        // Act and assert resized length
+        await surface.ResizeAsync(new Size(1, 5));
+        surface.ShouldRender("""
+            !
+            !
+            !
+            !
+            !
+            """);
     }
 
     /// <summary>Verifies zero arranged bounds emit no line cells.</summary>

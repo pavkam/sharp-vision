@@ -55,6 +55,7 @@ var bar = new ProgressBar
 Cover finite validation, range ordering, value clamping, endpoint notification
 visibility, horizontal and vertical fill direction, empty/partial/full values,
 deterministic indeterminate rendering, glyph validation and ambiguous fallback,
-zero/tiny bounds, mutation, style inheritance, non-interactive hit testing, and
-final cells. `ProgressBarSurfaceTests` must prove the terminal-visible
-determinate and indeterminate states through a mounted application.
+zero/tiny bounds, mutation, resize, style inheritance, non-interactive hit
+testing, and final cells. `ProgressBarSurfaceTests` must prove the
+terminal-visible determinate and indeterminate states through a mounted
+application.

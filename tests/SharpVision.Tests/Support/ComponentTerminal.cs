@@ -12,16 +12,18 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
 {
     private readonly Channel<(byte[] Bytes, TaskCompletionSource Consumed)> _input =
         Channel.CreateUnbounded<(byte[] Bytes, TaskCompletionSource Consumed)>();
-    private readonly Channel<Dimensions> _resize = Channel.CreateUnbounded<Dimensions>();
+    private readonly Channel<(Dimensions Value, TaskCompletionSource Consumed)> _resize =
+        Channel.CreateUnbounded<(Dimensions Value, TaskCompletionSource Consumed)>();
+    private ComponentScreen _screen;
     private int _disposed;
 
     /// <summary>Initializes a terminal whose screen uses the positive fixed size.</summary>
     /// <param name="size">The positive screen dimensions.</param>
     /// <exception cref="ArgumentOutOfRangeException">A dimension is not positive.</exception>
-    internal ComponentTerminal(Size size) => Screen = new ComponentScreen(size);
+    internal ComponentTerminal(Size size) => _screen = new ComponentScreen(size);
 
     /// <summary>Gets the independently modeled terminal screen.</summary>
-    internal ComponentScreen Screen { get; }
+    internal ComponentScreen Screen => Volatile.Read(ref _screen);
 
     /// <summary>Queues immutable terminal input and returns a signal completed when transport reads it.</summary>
     /// <param name="value">The non-empty terminal input bytes.</param>
@@ -42,9 +44,20 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
     }
 
     /// <summary>Queues one immutable resize record.</summary>
-    /// <param name="value">The terminal dimensions.</param>
-    internal void QueueResize(Dimensions value) =>
-        _resize.Writer.TryWrite(value).ShouldBeTrue();
+    /// <param name="value">The positive terminal dimensions.</param>
+    /// <returns>A task completed when the session consumes the immutable resize record.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">A cell dimension is not positive.</exception>
+    /// <exception cref="ObjectDisposedException">The terminal is disposed.</exception>
+    internal Task QueueResize(Dimensions value)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Cells.Width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Cells.Height);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        var consumed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = Interlocked.Exchange(ref _screen, new ComponentScreen(value.Cells));
+        _resize.Writer.TryWrite((value, consumed)).ShouldBeTrue();
+        return consumed.Task;
+    }
 
     /// <inheritdoc/>
     public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken)
@@ -87,8 +100,12 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
     }
 
     /// <inheritdoc/>
-    public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken) =>
-        await _resize.Reader.ReadAsync(cancellationToken);
+    public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken)
+    {
+        var (value, consumed) = await _resize.Reader.ReadAsync(cancellationToken);
+        _ = consumed.TrySetResult();
+        return value;
+    }
 
     /// <inheritdoc/>
     public ValueTask DisposeAsync()
@@ -99,6 +116,11 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
             _ = _resize.Writer.TryComplete();
 
             while (_input.Reader.TryRead(out var value))
+            {
+                _ = value.Consumed.TrySetCanceled();
+            }
+
+            while (_resize.Reader.TryRead(out var value))
             {
                 _ = value.Consumed.TrySetCanceled();
             }

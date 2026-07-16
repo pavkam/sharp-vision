@@ -79,6 +79,13 @@ Those helpers emit terminal bytes; they never call `Router.Route`, `SetHovered`,
 the transport consumes its bytes and the application reaches idle after routed
 work, layout, rendering, and output.
 
+`surface.UpdateAsync` runs an ordinary public mutation on the application
+dispatcher and settles the same layout/render/output path. `surface.ResizeAsync`
+replaces the modeled terminal surface, publishes a real `Dimensions` record
+through `IResizeSource`, and completes only after `Application.Size` and the
+final modeled frame match the positive requested cell geometry. Neither method
+calls layout or rendering internals directly.
+
 ```csharp
 await using var surface = await ComponentSurface.MountAsync(
     button,
@@ -115,6 +122,14 @@ shadow cells. This keeps the mounted path aligned with the
 Action timeouts report the action and latest screen. Snapshot mismatches retain
 row boundaries and cell differences. Tests isolate held-pointer scenarios or
 release capture before reuse, so state cannot leak between surfaces.
+
+`TextSurfaceTests`, `FigletTextSurfaceTests`, `SeparatorSurfaceTests`, and
+`ProgressBarSurfaceTests` use resize on the same mounted instance to prove
+reflow, clipping exposure, axis-length recomputation, and removal of obsolete
+cells. `CheckBoxSurfaceTests` proves tiny-to-full content reveal, while
+`RadioButtonSurfaceTests` proves real group selection, disabled skipping, and
+arrow wrapping. These fixtures supplement, rather than replace, exhaustive pure
+state, validation, and geometry tests.
 
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route

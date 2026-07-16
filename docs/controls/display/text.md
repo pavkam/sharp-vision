@@ -154,7 +154,8 @@ background preservation, ellipsis ownership, and multi-frame terminal output.
 `TextSurfaceTests` additionally mounts the control beneath a real application
 and proves combining and wide-grapheme ownership, terminal-visible markup
 styles, ellipsis-to-alignment mutation with stale-cell clearing, and transparent
-composition over an opaque parent surface. The showcase owns one merged `Text`
+composition over an opaque parent surface. A mounted resize proves Unicode-safe
+wrap reflow and removal of the obsolete row. The showcase owns one merged `Text`
 page with live markup, Unicode, overflow, hyperlink, and mutation specimens. A
 warmed unchanged 80-column Unicode measure/render loop must include a
 zero-allocation measured window.
