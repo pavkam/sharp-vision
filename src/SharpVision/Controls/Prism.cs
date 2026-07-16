@@ -6,20 +6,25 @@ namespace SharpVision.Controls;
 /// <summary>Applies a deterministic RGB color cycle to the foreground of one replaceable content control.</summary>
 /// <remarks>
 /// Prism participates in ordinary <see cref="ContentControl"/> ownership and layout. It renders its
-/// content first, then transforms only stored grapheme owners inside the intersection of that child's
-/// arranged bounds and the border-and-padding-deflated content box. Backgrounds, attributes, hyperlinks,
-/// underline semantics, wide-cell ownership, and Prism chrome remain unchanged. Effect properties are
-/// dispatcher-affine while attached and request render-only invalidation; callers advance
-/// <see cref="Phase"/> explicitly when animation is desired.
+/// content inside the intersection of that child's arranged bounds and the border-and-padding-deflated
+/// content box, then transforms only the stored grapheme owners actually written by that render pass.
+/// Backgrounds, attributes, hyperlinks, underline semantics, wide-cell ownership, pre-existing underlay,
+/// and Prism chrome remain unchanged. Effect properties are dispatcher-affine while attached and request
+/// render-only invalidation; callers advance <see cref="Phase"/> explicitly when animation is desired.
 /// </remarks>
 public sealed class Prism: ContentControl
 {
+    private readonly Action<TerminalCanvas> _draw;
     private readonly Func<Point, Color> _selector;
 
     #region Construction
 
     /// <summary>Initializes an empty Prism with a diagonal eighteen-cell cycle at phase zero.</summary>
-    public Prism() => _selector = SelectColor;
+    public Prism()
+    {
+        _draw = DrawContent;
+        _selector = SelectColor;
+    }
 
     #endregion
 
@@ -96,22 +101,28 @@ public sealed class Prism: ContentControl
     /// <summary>Renders ordinary content, then transforms its stored foregrounds in place.</summary>
     /// <param name="canvas">The frame-owned canvas clipped to this Prism's arranged bounds.</param>
     /// <remarks>
-    /// The cached selector is borrowed synchronously by the canvas. The effect is restricted to
-    /// the retained child's arranged bounds inside <see cref="Control.ContentBounds"/>, so empty
-    /// content, this control's own border and shadow, and cells outside the child are not recolored.
+    /// The cached draw callback and selector are borrowed synchronously by the canvas. Mutation
+    /// provenance restricts the effect to owners written by the retained child inside its arranged
+    /// bounds and <see cref="Control.ContentBounds"/>, so empty content, underlay, this control's own
+    /// border and shadow, and cells outside the child are not recolored.
     /// </remarks>
     internal override void RenderChildren(TerminalCanvas canvas)
     {
         var content = Content;
-        base.RenderChildren(canvas);
 
         if (content is null)
         {
+            base.RenderChildren(canvas);
             return;
         }
 
-        canvas.ApplyForeground(ContentBounds.Intersect(content.Bounds), _selector);
+        canvas.DrawWithForeground(
+            ContentBounds.Intersect(content.Bounds),
+            _draw,
+            _selector);
     }
+
+    private void DrawContent(TerminalCanvas canvas) => base.RenderChildren(canvas);
 
     private Color SelectColor(Point point)
     {

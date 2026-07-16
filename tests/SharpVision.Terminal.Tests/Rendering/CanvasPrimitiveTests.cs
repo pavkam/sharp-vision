@@ -9,6 +9,9 @@ namespace SharpVision.Terminal.Tests.Rendering;
 /// <summary>Verifies validated Rune, fill, and grapheme-preserving style primitives.</summary>
 public sealed class CanvasPrimitiveTests
 {
+    private static readonly Action<Canvas> _allocationDraw = DrawAllocationCell;
+    private static readonly Func<Point, Color> _allocationSelector = SelectAllocationForeground;
+
     #region Arbitrary geometry
 
     /// <summary>Verifies every line octant includes both caller-supplied endpoints.</summary>
@@ -386,7 +389,355 @@ public sealed class CanvasPrimitiveTests
         frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
     }
 
+    /// <summary>Verifies a write-scoped effect leaves untouched stored owners unchanged inside its region.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenDrawWritesSubset_PreservesUntouchedInRegionOwners()
+    {
+        using Frame frame = new(new Size(3, 1));
+        var original = new CellStyle(
+            Color.Indexed(1),
+            Color.Indexed(2),
+            Attributes.Bold,
+            "https://example.test/underlay",
+            Underline.Curly,
+            Color.Indexed(3));
+        _ = frame.Canvas.Draw("ZZZ", default, original);
+        var visited = new List<Point>();
+        var untouchedRevision = frame.GetCell(0).MutationRevision;
+
+        frame.Canvas.DrawWithForeground(
+            frame.Canvas.Bounds,
+            canvas => canvas.DrawRune(new Rune('A'), new Point(1, 0), original),
+            point =>
+            {
+                visited.Add(point);
+                return Color.Rgb(10, 20, 30);
+            });
+
+        visited.ShouldBe([new Point(1, 0)]);
+        FrameTests.GetText(frame, default).ShouldBe("Z");
+        frame.GetCell(default(Point)).Style.ShouldBe(original);
+        frame.GetCell(0).MutationRevision.ShouldBe(untouchedRevision);
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("A");
+        AssertPreserved(original, frame.GetCell(new Point(1, 0)).Style, Color.Rgb(10, 20, 30));
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("Z");
+        frame.GetCell(new Point(2, 0)).Style.ShouldBe(original);
+    }
+
+    /// <summary>Verifies an identical semantic overwrite remains observable as a write to the effect.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenDrawOverwritesIdentically_TransformsWrittenOwner()
+    {
+        using Frame frame = new(new Size(1, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        _ = frame.Canvas.Draw("A", default, original);
+        var selectorCalls = 0;
+
+        frame.Canvas.DrawWithForeground(
+            frame.Canvas.Bounds,
+            canvas => canvas.DrawRune(new Rune('A'), default, original),
+            _ =>
+            {
+                selectorCalls++;
+                return Color.Indexed(7);
+            });
+
+        selectorCalls.ShouldBe(1);
+        FrameTests.GetText(frame, default).ShouldBe("A");
+        AssertPreserved(original, frame.GetCell(default(Point)).Style, Color.Indexed(7));
+    }
+
+    /// <summary>Verifies written spaces transform while pre-existing stored owners remain unchanged.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenDrawWritesSpace_TransformsSpaceOnly()
+    {
+        using Frame frame = new(new Size(2, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        _ = frame.Canvas.Draw("Z", new Point(1, 0), original);
+        var visited = new List<Point>();
+
+        frame.Canvas.DrawWithForeground(
+            frame.Canvas.Bounds,
+            canvas => _ = canvas.Draw(" ", default, original),
+            point =>
+            {
+                visited.Add(point);
+                return Color.Indexed(7);
+            });
+
+        visited.ShouldBe([default]);
+        FrameTests.GetText(frame, default).ShouldBe(" ");
+        AssertPreserved(original, frame.GetCell(default(Point)).Style, Color.Indexed(7));
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("Z");
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(original);
+    }
+
+    /// <summary>Verifies write-scoped selection visits complete written owners once in row-major order.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenDrawWritesWideAndNarrowOwners_VisitsLeadsRowMajorAndKeepsWideAtomic()
+    {
+        using Frame frame = new(new Size(5, 2));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        var visited = new List<Point>();
+
+        frame.Canvas.DrawWithForeground(
+            frame.Canvas.Bounds,
+            canvas =>
+            {
+                _ = canvas.Draw("B", new Point(4, 1), original);
+                _ = canvas.Draw("A", new Point(3, 0), original);
+                _ = canvas.Draw("界", default, original);
+            },
+            point =>
+            {
+                visited.Add(point);
+                return Color.Rgb(point.X * 10, point.Y * 20, 30);
+            });
+
+        visited.ShouldBe([default, new Point(3, 0), new Point(4, 1)]);
+        var lead = frame.GetCell(default(Point));
+        var continuation = frame.GetCell(new Point(1, 0));
+        lead.Width.ShouldBe(2);
+        continuation.IsContinuation.ShouldBeTrue();
+        continuation.Lead.ShouldBe(default);
+        continuation.Style.ShouldBe(lead.Style);
+        lead.Style.Foreground.ShouldBe(Color.Rgb(0, 0, 30));
+    }
+
+    /// <summary>Verifies a drawing failure propagates without invoking the foreground selector.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenDrawThrows_PropagatesIdentityWithoutEffectPass()
+    {
+        using Frame frame = new(new Size(1, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        var failure = new InvalidOperationException("draw failed");
+        var selectorCalls = 0;
+
+        var thrown = Should.Throw<InvalidOperationException>(() =>
+            frame.Canvas.DrawWithForeground(
+                frame.Canvas.Bounds,
+                canvas =>
+                {
+                    canvas.DrawRune(new Rune('A'), default, original);
+                    throw failure;
+                },
+                _ =>
+                {
+                    selectorCalls++;
+                    return Color.Indexed(7);
+                }));
+
+        thrown.ShouldBeSameAs(failure);
+        selectorCalls.ShouldBe(0);
+        FrameTests.GetText(frame, default).ShouldBe("A");
+        frame.GetCell(default(Point)).Style.ShouldBe(original);
+    }
+
+    /// <summary>Verifies selector failure preserves a transformed prefix and unchanged remaining writes.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenSelectorThrows_PropagatesIdentityWithPartialProgress()
+    {
+        using Frame frame = new(new Size(3, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        var failure = new InvalidOperationException("selector failed");
+
+        var thrown = Should.Throw<InvalidOperationException>(() =>
+            frame.Canvas.DrawWithForeground(
+                frame.Canvas.Bounds,
+                canvas => _ = canvas.Draw("ABC", default, original),
+                point => point.X == 1 ? throw failure : Color.Indexed(7)));
+
+        thrown.ShouldBeSameAs(failure);
+        AssertPreserved(original, frame.GetCell(default(Point)).Style, Color.Indexed(7));
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(original);
+        frame.GetCell(new Point(2, 0)).Style.ShouldBe(original);
+    }
+
+    /// <summary>Verifies selector-side writes occur after the closed draw provenance window.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenSelectorMutatesLaterOwner_DoesNotTransformSelectorWrite()
+    {
+        using Frame frame = new(new Size(3, 1));
+        var canvas = frame.Canvas;
+        var drawn = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        var selectorWrite = new CellStyle(
+            Color.Indexed(9),
+            Color.Indexed(4),
+            Attributes.Italic,
+            "https://example.test/selector-write",
+            Underline.Curly,
+            Color.Indexed(5));
+        var visited = new List<Point>();
+
+        canvas.DrawWithForeground(
+            canvas.Bounds,
+            draw => _ = draw.Draw("ABC", default, drawn),
+            point =>
+            {
+                visited.Add(point);
+
+                if (point == default)
+                {
+                    _ = canvas.Draw("X", new Point(1, 0), selectorWrite);
+                }
+
+                return Color.Indexed(7);
+            });
+
+        visited.ShouldBe([default, new Point(2, 0)]);
+        AssertPreserved(drawn, frame.GetCell(default(Point)).Style, Color.Indexed(7));
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe("X");
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(selectorWrite);
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("C");
+        AssertPreserved(drawn, frame.GetCell(new Point(2, 0)).Style, Color.Indexed(7));
+    }
+
+    /// <summary>Verifies a selector overwrite of its current owner remains outside the draw window.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenSelectorOverwritesCurrentOwner_PreservesSelectorWrite()
+    {
+        using Frame frame = new(new Size(1, 1));
+        var canvas = frame.Canvas;
+        var drawn = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        var selectorWrite = new CellStyle(Color.Indexed(9), Color.Indexed(4), Attributes.Italic);
+        var selectorCalls = 0;
+
+        canvas.DrawWithForeground(
+            canvas.Bounds,
+            draw => _ = draw.Draw("A", default, drawn),
+            point =>
+            {
+                selectorCalls++;
+                _ = canvas.Draw("A", default, selectorWrite);
+                return Color.Indexed(7);
+            });
+
+        selectorCalls.ShouldBe(1);
+        FrameTests.GetText(frame, default).ShouldBe("A");
+        frame.GetCell(default(Point)).Style.ShouldBe(selectorWrite);
+    }
+
+    /// <summary>Verifies null callbacks win validation and never draw or change stored state.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenCallbackIsNull_ThrowsBeforeStateOrDisposalAccess()
+    {
+        var frame = new Frame(new Size(1, 1));
+        var canvas = frame.Canvas;
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        _ = canvas.Draw("Z", default, original);
+        var drawCalls = 0;
+
+        void Draw(Canvas _) => drawCalls++;
+
+        static Color Select(Point _) => Color.Indexed(7);
+
+        _ = Should.Throw<ArgumentNullException>(() =>
+            canvas.DrawWithForeground(canvas.Bounds, null!, Select));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            canvas.DrawWithForeground(canvas.Bounds, Draw, null!));
+
+        drawCalls.ShouldBe(0);
+        FrameTests.GetText(frame, default).ShouldBe("Z");
+        frame.GetCell(default(Point)).Style.ShouldBe(original);
+
+        frame.Dispose();
+
+        _ = Should.Throw<ArgumentNullException>(() =>
+            canvas.DrawWithForeground(default, null!, Select));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            canvas.DrawWithForeground(default, Draw, null!));
+        _ = Should.Throw<ObjectDisposedException>(() =>
+            canvas.DrawWithForeground(default, Draw, Select));
+        drawCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies nested effects expose inner writes to the outer write scope without leaking regions.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenNested_OuterEffectSeesInnerWritesInsideOuterRegion()
+    {
+        using Frame frame = new(new Size(3, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        var innerVisited = new List<Point>();
+        var outerVisited = new List<Point>();
+
+        frame.Canvas.DrawWithForeground(
+            new Rect(0, 0, 2, 1),
+            outer => outer.DrawWithForeground(
+                frame.Canvas.Bounds,
+                inner => _ = inner.Draw("ABC", default, original),
+                point =>
+                {
+                    innerVisited.Add(point);
+                    return Color.Indexed(2);
+                }),
+            point =>
+            {
+                outerVisited.Add(point);
+                return Color.Indexed(3);
+            });
+
+        innerVisited.ShouldBe([default, new Point(1, 0), new Point(2, 0)]);
+        outerVisited.ShouldBe([default, new Point(1, 0)]);
+        frame.GetCell(default(Point)).Style.Foreground.ShouldBe(Color.Indexed(3));
+        frame.GetCell(new Point(1, 0)).Style.Foreground.ShouldBe(Color.Indexed(3));
+        frame.GetCell(new Point(2, 0)).Style.Foreground.ShouldBe(Color.Indexed(2));
+    }
+
+    /// <summary>Verifies write-revision metadata cannot create semantic frame damage.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenOverwriteIsSemanticallyIdentical_ProducesNoDamage()
+    {
+        using Frame front = new(new Size(1, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        _ = front.Canvas.Draw("A", default, original);
+        using var back = front.Clone();
+
+        back.GetCell(0).MutationRevision.ShouldBe(front.GetCell(0).MutationRevision);
+
+        back.Canvas.DrawWithForeground(
+            back.Canvas.Bounds,
+            canvas => _ = canvas.Draw("A", default, original),
+            _ => original.Foreground);
+
+        DamageTests.GetSpans(front, back).ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies warmed write-scoped foreground drawing allocates no managed memory per render.</summary>
+    [Fact]
+    public void DrawWithForeground_WhenCallbacksAreCached_AllocatesNoManagedMemory()
+    {
+        using Frame frame = new(new Size(1, 1));
+        var canvas = frame.Canvas;
+
+        for (var index = 0; index < 32; index++)
+        {
+            Render();
+        }
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var index = 0; index < 128; index++)
+        {
+            Render();
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        allocated.ShouldBe(0);
+
+        void Render()
+        {
+            frame.Clear();
+            canvas.DrawWithForeground(canvas.Bounds, _allocationDraw, _allocationSelector);
+        }
+    }
+
     #endregion
+
+    private static void DrawAllocationCell(Canvas canvas) =>
+        canvas.DrawRune(new Rune('A'), default);
+
+    private static Color SelectAllocationForeground(Point _) => Color.Indexed(7);
 
     private static void AssertPreserved(CellStyle original, CellStyle actual, Color foreground)
     {

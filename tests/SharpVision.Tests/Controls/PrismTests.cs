@@ -203,14 +203,11 @@ public sealed class PrismTests
         AssertStoredCellUnchanged(frame, new Point(1, 0), "Z", original);
     }
 
-    /// <summary>Verifies a narrow retained child does not transform stored cells in the owner's wider content box.</summary>
+    /// <summary>Verifies a child transforms only cells it writes within its complete arranged bounds.</summary>
     [Fact]
-    public void Render_WhenChildOwnsNarrowerBounds_PreservesStoredCellsOutsideChildBounds()
+    public void Render_WhenChildWritesSubsetOfArrangedBounds_PreservesUnwrittenStoredCells()
     {
-        var content = new ControlText("A")
-        {
-            Margin = new Thickness(left: 0, top: 0, right: 4, bottom: 0),
-        };
+        var content = new ControlText("A");
         var prism = new Prism
         {
             Content = content,
@@ -230,7 +227,7 @@ public sealed class PrismTests
 
         prism.Render(frame.Canvas);
 
-        content.Bounds.ShouldBe(new Rect(0, 0, 1, 1));
+        content.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
         FrameOracle.Get(frame, default).ShouldBe("A");
         frame.GetCell(default).Style.Foreground.ShouldBe(Color.Rgb(255, 0, 0));
 

@@ -15,6 +15,8 @@ namespace SharpVision.Terminal.Rendering;
 public sealed class Frame: IDisposable
 {
     private Cell[]? _cells;
+    private int _mutationCaptureDepth;
+    private ulong _mutationRevision;
     private byte[]? _text;
 
     /// <summary>Initializes a blank frame with finite text storage.</summary>
@@ -192,6 +194,7 @@ public sealed class Frame: IDisposable
 
         _cells = null;
         _text = null;
+        _mutationRevision = 0;
         TextLength = 0;
         ArrayPool<Cell>.Shared.Return(cells, clearArray: true);
         ArrayPool<byte>.Shared.Return(text, clearArray: true);
@@ -222,6 +225,18 @@ public sealed class Frame: IDisposable
 
     /// <summary>Gets the active UTF-8 arena byte count.</summary>
     internal int TextLength { get; private set; }
+
+    /// <summary>Gets the latest frame-local semantic mutation revision.</summary>
+    /// <remarks>Active captures prevent this value from wrapping through a successful callback.</remarks>
+    /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
+    internal ulong CurrentMutationRevision
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _mutationRevision;
+        }
+    }
 
     /// <summary>Creates an independent pooled copy of this active frame.</summary>
     /// <returns>A frame whose semantic state equals this frame.</returns>
@@ -256,12 +271,15 @@ public sealed class Frame: IDisposable
     internal void CopyFrom(Frame source)
     {
         ValidateCopySource(source);
+        Debug.Assert(_mutationCaptureDepth == 0, "A destination capture cannot replace its revision history.");
+        Debug.Assert(source._mutationCaptureDepth == 0, "An active source capture cannot be copied.");
         Debug.Assert(
             source.TextLength <= Text.Length,
             "Copy storage must be prepared before terminal output is committed.");
         Text[..TextLength].Clear();
         source.Text[..source.TextLength].CopyTo(Text);
         source.Cells.CopyTo(Cells);
+        _mutationRevision = source._mutationRevision;
         TextLength = source.TextLength;
         Cursor = source.Cursor;
     }
@@ -366,11 +384,12 @@ public sealed class Frame: IDisposable
         Debug.Assert(width is 1 or 2, "Only printable narrow and wide cells are stored.");
         var index = GetIndex(point);
         Debug.Assert(index + width <= Cells.Length, "Canvas edge handling guarantees cell capacity.");
-        Repair(index);
+        var revision = NextMutationRevision();
+        Repair(index, revision);
 
         if (width == 2)
         {
-            Repair(index + 1);
+            Repair(index + 1, revision);
         }
 
         var offset = TextLength;
@@ -385,17 +404,24 @@ public sealed class Frame: IDisposable
             Width = (byte) width,
             LeadIndex = -1,
             Style = style,
+            MutationRevision = revision,
         };
 
         if (width == 2)
         {
-            Cells[index + 1] = Cell.Continuation(index, style);
+            Cells[index + 1] = Cell.Continuation(index, style, revision);
         }
     }
 
     /// <summary>Repairs the complete glyph owning an absolute cell index.</summary>
     /// <param name="index">The validated absolute index.</param>
     internal void Repair(int index)
+    {
+        Debug.Assert((uint) index < (uint) Cells.Length, "Repair indexes are validated by the canvas.");
+        Repair(index, NextMutationRevision());
+    }
+
+    private void Repair(int index, ulong revision)
     {
         Debug.Assert((uint) index < (uint) Cells.Length, "Repair indexes are validated by the canvas.");
         var cell = Cells[index];
@@ -406,7 +432,7 @@ public sealed class Frame: IDisposable
 
         for (var offset = 0; offset < width && leadIndex + offset < Cells.Length; offset++)
         {
-            Cells[leadIndex + offset] = Cell.Blank(style);
+            Cells[leadIndex + offset] = Cell.Blank(style, revision);
         }
     }
 
@@ -416,7 +442,7 @@ public sealed class Frame: IDisposable
     internal void SetBlank(int index, CellStyle style)
     {
         Debug.Assert((uint) index < (uint) Cells.Length, "Blank indexes are validated by the canvas.");
-        Cells[index] = Cell.Blank(style);
+        Cells[index] = Cell.Blank(style, NextMutationRevision());
     }
 
     /// <summary>Styles a complete cell owner when every occupied cell is inside a clip.</summary>
@@ -440,10 +466,13 @@ public sealed class Frame: IDisposable
             }
         }
 
+        var revision = NextMutationRevision();
+
         for (var offset = 0; offset < width; offset++)
         {
             var cell = Cells[leadIndex + offset];
             cell.Style = style;
+            cell.MutationRevision = revision;
             Cells[leadIndex + offset] = cell;
         }
 
@@ -477,6 +506,37 @@ public sealed class Frame: IDisposable
 
     /// <summary>Throws when pooled frame ownership has ended.</summary>
     internal void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_cells is null, this);
+
+    /// <summary>Begins one nested synchronous mutation capture and returns its exclusive checkpoint.</summary>
+    /// <returns>The revision before the drawing callback can mutate this frame.</returns>
+    /// <exception cref="InvalidOperationException">The nesting depth is exhausted.</exception>
+    /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
+    internal ulong BeginMutationCapture()
+    {
+        ThrowIfDisposed();
+
+        if (_mutationCaptureDepth == int.MaxValue)
+        {
+            throw new InvalidOperationException("The synchronous frame mutation capture nesting limit was exceeded.");
+        }
+
+        // Normal captures preserve the monotonic history and remain O(1). Rebase only at the
+        // unreachable-in-practice wrap boundary, before a checkpoint can observe wrapped values.
+        if (_mutationCaptureDepth == 0 && _mutationRevision == ulong.MaxValue)
+        {
+            RebaseMutationRevisions();
+        }
+
+        _mutationCaptureDepth++;
+        return _mutationRevision;
+    }
+
+    /// <summary>Ends the innermost synchronous mutation capture.</summary>
+    internal void EndMutationCapture()
+    {
+        Debug.Assert(_mutationCaptureDepth > 0, "Only an active mutation capture can end.");
+        _mutationCaptureDepth--;
+    }
 
     private int Append(ReadOnlySpan<char> value)
     {
@@ -546,11 +606,45 @@ public sealed class Frame: IDisposable
     private void FillBlank(CellStyle style)
     {
         var cells = Cells;
+        var revision = NextMutationRevision();
 
         for (var index = 0; index < cells.Length; index++)
         {
-            cells[index] = Cell.Blank(style);
+            cells[index] = Cell.Blank(style, revision);
         }
+    }
+
+    private ulong NextMutationRevision()
+    {
+        if (_mutationRevision == ulong.MaxValue)
+        {
+            if (_mutationCaptureDepth != 0)
+            {
+                throw new InvalidOperationException(
+                    "A synchronous drawing callback exceeded the frame mutation revision capacity.");
+            }
+
+            RebaseMutationRevisions();
+        }
+
+        _mutationRevision++;
+        return _mutationRevision;
+    }
+
+    private void RebaseMutationRevisions()
+    {
+        Debug.Assert(_mutationCaptureDepth == 0, "Active mutation checkpoints cannot be rebased.");
+
+        var cells = Cells;
+
+        for (var index = 0; index < cells.Length; index++)
+        {
+            var cell = cells[index];
+            cell.MutationRevision = 0;
+            cells[index] = cell;
+        }
+
+        _mutationRevision = 0;
     }
 
     private int ResolveLead(int index)

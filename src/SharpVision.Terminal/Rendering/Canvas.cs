@@ -306,6 +306,67 @@ public readonly struct Canvas
     {
         ArgumentNullException.ThrowIfNull(selector);
         _frame.ThrowIfDisposed();
+        ApplyForegroundCore(region, selector, writtenOnly: false, checkpoint: 0, drawEnd: 0);
+    }
+
+    /// <summary>Draws synchronously and transforms only stored owners mutated by that callback.</summary>
+    /// <param name="region">The requested half-open foreground-effect region.</param>
+    /// <param name="draw">
+    /// The synchronous drawing callback. It receives this clipped canvas and is not retained.
+    /// </param>
+    /// <param name="selector">
+    /// The synchronous foreground selector receiving each written complete owner's absolute lead coordinate.
+    /// It is invoked row-major after drawing completes and is not retained.
+    /// </param>
+    /// <remarks>
+    /// Both callbacks are validated before frame lifetime and before drawing begins.
+    /// Mutation provenance, rather than semantic inequality, selects owners: writing an identical glyph
+    /// still participates. The closed provenance window ends when drawing returns, so mutations performed
+    /// by the foreground selector are never selected by this effect. Nested effects retain inner writes as
+    /// mutations visible to an enclosing effect. Stored spaces participate, untouched blanks and
+    /// pre-existing owners do not, and wide owners remain atomic. A drawing exception skips the foreground
+    /// pass. A selector exception preserves the already transformed prefix and leaves the failing and later
+    /// owners unchanged. Foreground is the only transformed semantic field.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="draw"/> or <paramref name="selector"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Nested mutation capture or one bounded synchronous callback exhausts its revision capacity.
+    /// </exception>
+    /// <exception cref="Exception">
+    /// <paramref name="draw"/> or <paramref name="selector"/> throws; the same exception instance propagates.
+    /// </exception>
+    public void DrawWithForeground(
+        Rect region,
+        Action<Canvas> draw,
+        Func<Point, Color> selector)
+    {
+        ArgumentNullException.ThrowIfNull(draw);
+        ArgumentNullException.ThrowIfNull(selector);
+        _frame.ThrowIfDisposed();
+        var checkpoint = _frame.BeginMutationCapture();
+
+        try
+        {
+            draw(this);
+            var drawEnd = _frame.CurrentMutationRevision;
+            ApplyForegroundCore(region, selector, writtenOnly: true, checkpoint, drawEnd);
+        }
+        finally
+        {
+            _frame.EndMutationCapture();
+        }
+    }
+
+    private void ApplyForegroundCore(
+        Rect region,
+        Func<Point, Color> selector,
+        bool writtenOnly,
+        ulong checkpoint,
+        ulong drawEnd)
+    {
         var target = _clip.Intersect(region).Intersect(_frame.Bounds);
 
         for (var y = target.Y; y < target.Bottom; y++)
@@ -331,6 +392,13 @@ public readonly struct Canvas
                     continue;
                 }
 
+                // Active captures forbid revision wrap, so ordinary unsigned ordering is exact.
+                if (writtenOnly &&
+                    (lead.MutationRevision <= checkpoint || lead.MutationRevision > drawEnd))
+                {
+                    continue;
+                }
+
                 var leadPoint = new Point(leadIndex % _frame.Size.Width, leadIndex / _frame.Size.Width);
                 var width = Math.Max(1, (int) lead.Width);
                 var complete = true;
@@ -346,8 +414,18 @@ public readonly struct Canvas
                 }
 
                 var style = lead.Style;
+                var foreground = selector(leadPoint);
+                var current = _frame.GetCell(leadIndex);
+
+                // A selector may mutate the owner it is selecting. That write lies after the
+                // closed draw window and must retain the selector's exact semantic result.
+                if (writtenOnly && current.MutationRevision > drawEnd)
+                {
+                    continue;
+                }
+
                 var replacement = new CellStyle(
-                    selector(leadPoint),
+                    foreground,
                     style.Background,
                     style.Attributes,
                     style.Hyperlink,

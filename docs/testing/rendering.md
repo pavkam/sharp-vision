@@ -37,6 +37,19 @@ lead/continuation styles. Callback-failure tests prove unchanged exception
 identity, a valid transformed prefix, an unchanged failing owner, and intact
 wide-cell ownership links.
 
+Write-scoped foreground tests prepaint rich underlay inside the effect region
+and require only callback-mutated owners to change. They cover identical
+overwrites, written spaces, untouched stored owners and blanks, mixed narrow and
+wide owners, row-major selector order, nested inner/outer regions, null callback
+validation before drawing or disposed-frame access, drawing failure with no
+selector pass, selector failure with deterministic partial progress, and
+selector-side writes to later or current owners excluded by the closed draw
+revision window. A semantic no-op overwrite followed by an identical selected
+foreground must produce no damage span, proving mutation revisions never enter
+semantic frame comparison. Normal capture also preserves untouched cell
+revisions, preventing an accidental full-frame metadata rebase on the rendering
+hot path.
+
 Cell hashes may reject unequal graphemes quickly, but hash equality never proves
 semantic equality: complete UTF-8 bytes and renderer metadata are compared. This
 keeps collision behavior correct.
