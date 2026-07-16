@@ -171,7 +171,7 @@ public sealed class SnakeScreen: Screen
         var diffName = _selectedDifficulty switch { 0 => "Easy", 1 => "Medium", _ => "Hard" };
         _difficultyLabel.Content = $"<accent>1/2/3</accent> Difficulty: <b>{diffName}</b>";
 
-        var sb = new System.Text.StringBuilder();
+        var sb = new StringBuilder();
 
         for (var i = 0; i < _highScores.Entries.Count; i++)
         {

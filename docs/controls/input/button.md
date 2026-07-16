@@ -33,10 +33,12 @@ Hover and focus appearance apply to the complete Button face, including its
 physical border, while the detached shadow retains normal dim styling. During a
 held pointer or Space press, a shadowed Button translates its face and owned
 content by `ShadowOffset`; that face covers the shadow footprint and makes the
-control read as physically pressed. Immediate press handling and the next layout
-pass commit the same translated content rectangle; this corrects the former
-double border-and-padding inset on the immediate path. Releasing restores the
-original face before raising `Click`.
+control read as physically pressed. The held face suppresses shadow emission; it
+must not create a second detached shadow another offset beyond the translated
+face. Immediate press handling and the next layout pass commit the same
+translated content rectangle; this corrects the former double border-and-padding
+inset on the immediate path. Releasing restores the original face and detached
+shadow before raising `Click`.
 
 When `HasShadow` is false, the Button remains in its arranged box throughout a
 press: there is no absent shadow to cover. It still resolves the full
@@ -82,4 +84,8 @@ Cover Space/Enter/pointer parity, capture movement, cancellation,
 hover-frame-versus-normal-shadow styling, pressed face translation and shadow
 occlusion, default/cancel routing, command ordering/failure, disabled/hidden
 state, focus, content ownership, combined visual states, Unicode/tiny layout,
-and final cells/events.
+and final cells/events. The
+[mounted component surface](../../testing/controls-integration.md#mounted-component-surfaces)
+must prove normal, hovered, held, focused, and released-click states through
+real terminal input. It also covers all four border/shadow combinations with
+exact surface text and representative face, border, content, and shadow styles.

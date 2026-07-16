@@ -153,6 +153,15 @@ read-only/password/max length, events/cancellation, paste limits, clipboard
 fallback, mouse/pixel hit testing, horizontal/vertical scrolling, resize,
 focus/disabled state, and final cursor/cells.
 
+Mounted cross-layer coverage in
+[`TextInputSurfaceTests`](../../../tests/SharpVision.Tests/Controls/TextInputSurfaceTests.cs)
+drives terminal bytes through the live application and proves placeholder,
+focus, Unicode typing and deletion, atomic paste, wide-cell selection, submit
+policy, password masking, read-only and disabled refusal, automatic offsets,
+resize repair, and the committed terminal cursor. The component harness does not
+consider input consumed until the terminal session requests its next read, so an
+earlier dispatcher idle cannot expose a partially routed action.
+
 The pure model additionally replays 10,000 operations with seed `0x00ED175A`
 over ASCII, CJK, combining sequences, emoji ZWJ sequences, flags, and invalid
 UTF-16. Every step independently validates both endpoints, maximum grapheme

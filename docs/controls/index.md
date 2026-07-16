@@ -59,5 +59,6 @@ neither path when it needs a visible frame or shadow. See the
 - [TabControl and TabItem](collections/tab-control.md#tabcontrol-contract)
 - [Menu](menus/menu.md#menu-contract)
 - [MenuItem and MenuSeparator](menus/menu-item.md#menuitem-contract)
+- [NavigationView](menus/navigation-view.md#navigationview-contract)
 - [Popup](windows/popup.md#popup-contract)
 - [Window](windows/window.md#window-contract)

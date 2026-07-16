@@ -36,6 +36,13 @@ margin, and desired size therefore retain their normal meaning. An intrinsic
 Button or CheckBox stays at its measured size and aligned position inside a
 larger track; a cell explicitly set to Stretch consumes the available slot.
 
+Arrangement reuses the column and row measurement committed for its current
+width basis. A pure scroll-origin, focus, or pointer-state arrangement does not
+repeat the unbounded and constrained cell probes; doing so would let child
+measurement re-invalidate the presenter during its own arrange pass and create
+an unbounded frame loop. A genuinely different final width, such as resize,
+earns exactly one final constrained measurement pass.
+
 `Table` uses the intrinsic
 [`Container` scrolling contract](../../concepts/scrolling.md#scrolling-contract).
 The translated content rectangle is the single origin for headers, grid lines,
@@ -75,3 +82,11 @@ resolution, intrinsic and stretched cell alignment, header and grid cells, cell
 padding, rich/wide cells, tiny bounds, headerless tables, both-axis scrolling
 with aligned chrome and hit testing, resize, removal/reuse, and final
 continuation ownership.
+
+Mounted cross-layer coverage in
+[`TableSurfaceTests`](../../../tests/SharpVision.Tests/Controls/TableSurfaceTests.cs)
+proves all four column kinds with exact header/grid/Unicode cells, clickable row
+removal and ownership reuse without stale cells, both-axis wheel scrolling, and
+resize-driven offset repair. A direct layout regression additionally proves a
+pure scroll-origin arrangement neither remeasures cells nor leaves arrange
+invalidation pending.

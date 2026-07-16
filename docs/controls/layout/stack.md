@@ -43,3 +43,9 @@ Cover every orientation, spacing, reverse, fixed/percent/auto/proportional mix,
 collapsed children, alignment, zero/tiny sizes, overflow, resize, ownership,
 navigation order, reversed popup drawing/hit priority, Unicode measurement, and
 exact bounds/cells.
+
+Mounted cross-layer coverage in
+[`StackSurfaceTests`](../../../tests/SharpVision.Tests/Controls/StackSurfaceTests.cs)
+proves exact mixed-track cells and resize reflow, reverse/collapsed visual order
+with a real pointer target, and intrinsic wheel scrolling with Unicode
+continuation ownership and offset repair.

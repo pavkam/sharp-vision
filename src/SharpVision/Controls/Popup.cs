@@ -13,8 +13,14 @@ public sealed class Popup: ContentControl
 
     #region Construction and ownership
 
+    private IDisposable? _lightDismissRegistration;
+
     /// <summary>Initializes a closed popup below its eventual anchor.</summary>
-    public Popup() => HorizontalAlignment = HorizontalAlignment.Stretch;
+    public Popup()
+    {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        CanFocus = false;
+    }
 
     /// <inheritdoc/>
     protected override void OnContentChanged(Control? previous, Control? current)
@@ -123,6 +129,7 @@ public sealed class Popup: ContentControl
 
                 if (value)
                 {
+                    CaptureFailure(() => CloseOtherPopups(this), ref failure);
                     CaptureFailure(
                         () =>
                         {
@@ -141,9 +148,11 @@ public sealed class Popup: ContentControl
                             }
                         },
                         ref failure);
+                    CaptureFailure(RegisterLightDismiss, ref failure);
                 }
                 else
                 {
+                    UnregisterLightDismiss();
                     CaptureFailure(
                         () => Closing?.Invoke(this, EventArgs.Empty),
                         ref failure);
@@ -429,6 +438,94 @@ public sealed class Popup: ContentControl
         }
 
         return null;
+    }
+
+    private void RegisterLightDismiss()
+    {
+        UnregisterLightDismiss();
+        Control root = this;
+
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        _lightDismissRegistration = root.AddHandler(Events.Pointer, OnLightDismissPointer);
+    }
+
+    private void UnregisterLightDismiss()
+    {
+        _lightDismissRegistration?.Dispose();
+        _lightDismissRegistration = null;
+    }
+
+    private void OnLightDismissPointer(object? sender, PointerEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.Phase != Phase.Preview || eventArgs.Pointer.Action != PointerAction.Press || !IsOpen)
+        {
+            return;
+        }
+
+        if (eventArgs.Pointer.Cells is not { } cells)
+        {
+            return;
+        }
+
+        if (SurfaceBounds.Contains(cells))
+        {
+            return;
+        }
+
+        if (Anchor is not null && Anchor.Bounds.Contains(cells))
+        {
+            return;
+        }
+
+        IsOpen = false;
+    }
+
+    private static void CloseOtherPopups(Popup opening)
+    {
+        Control root = opening;
+
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        CloseDescendantPopups(root, opening);
+    }
+
+    private static void CloseDescendantPopups(Control control, Popup except)
+    {
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            var child = control.OwnedControlAt(index);
+
+            if (child is Popup { IsOpen: true } popup && !ReferenceEquals(popup, except) && !IsAncestorOf(popup, except))
+            {
+                popup.IsOpen = false;
+            }
+
+            CloseDescendantPopups(child, except);
+        }
+    }
+
+    private static bool IsAncestorOf(Control candidate, Control descendant)
+    {
+        for (var current = descendant.Parent; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, candidate))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     #endregion

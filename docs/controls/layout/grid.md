@@ -73,3 +73,9 @@ under ancestor scrolling, and exact bounds/cells. Seed `0x051A475A` runs 10,000
 mixed valid grids twice and proves determinism, containment, non-negative
 geometry, ordered shared edges, and exact axis consumption when an uncapped
 proportional track absorbs the remainder.
+
+Mounted cross-layer coverage in
+[`GridSurfaceTests`](../../../tests/SharpVision.Tests/Controls/GridSurfaceTests.cs)
+proves mixed fixed/percentage/automatic/proportional tracks, deterministic
+resize remainder, wide-cell ownership, padding, spanning, collapsed exclusion,
+exact bounds and cells, and pointer routing to a final arranged slot.

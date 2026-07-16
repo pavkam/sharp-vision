@@ -14,9 +14,7 @@ public sealed class RadioButton: Pressable
     private int _checkedVersion;
 
     /// <summary>Initializes an unselected RadioButton.</summary>
-    public RadioButton()
-    {
-    }
+    public RadioButton() => PropertyChanged += OnRadioButtonPropertyChanged;
 
     /// <summary>Raised after this member becomes selected.</summary>
     public event EventHandler<SelectionChangedEventArgs>? Checked;
@@ -189,13 +187,14 @@ public sealed class RadioButton: Pressable
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
+        SyncContentForeground();
+    }
 
-        if (Content is { } content)
-        {
-            var state = GetVisualState();
-            var highlight = (state & (State.Focused | State.Checked)) != 0;
-            content.Foreground = highlight ? ResolveProperty(ForegroundProperty, state) : null;
-        }
+    /// <inheritdoc/>
+    protected override void OnAttached()
+    {
+        base.OnAttached();
+        SyncContentForeground();
     }
 
     /// <inheritdoc/>
@@ -226,6 +225,7 @@ public sealed class RadioButton: Pressable
         _isChecked = value;
         _checkedVersion++;
         InvalidateVisualState();
+        SyncContentForeground();
         return _checkedVersion;
     }
 
@@ -259,6 +259,36 @@ public sealed class RadioButton: Pressable
     /// <summary>Raises Unchecked after a complete group commit.</summary>
     internal void RaiseUnchecked(SelectionChangedEventArgs eventArgs) =>
         Unchecked?.Invoke(this, eventArgs);
+
+    private void SyncContentForeground()
+    {
+        if (Content is not { } content)
+        {
+            return;
+        }
+
+        if (!EffectiveIsEnabled || !EffectiveIsVisible)
+        {
+            content.Foreground = null;
+            return;
+        }
+
+        var state = GetVisualState();
+        var highlight = (state & (State.Focused | State.Checked)) != 0;
+        content.Foreground = highlight ? ResolveProperty(ForegroundProperty, state) : null;
+    }
+
+    private void OnRadioButtonPropertyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName is nameof(IsEnabled) or nameof(Visibility))
+        {
+            SyncContentForeground();
+        }
+    }
 
     private static int Add(int left, int right)
     {

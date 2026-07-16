@@ -14,6 +14,8 @@ using SharpVision.Terminal.Rendering;
 internal sealed class TablePresenter: Container
 {
     private readonly Table _owner;
+    private int? _measuredWidth;
+    private bool _hasMeasuredWidth;
 
     /// <summary>Initializes a private presenter for one non-null table owner.</summary>
     /// <param name="owner">The table whose row and column definitions drive this presenter.</param>
@@ -60,7 +62,18 @@ internal sealed class TablePresenter: Container
     protected override void ArrangeOverride(Rect bounds)
     {
         ContentSlot = bounds;
-        MeasureCells(bounds.Width);
+
+        // A scroll or focus transition invalidates arrangement without
+        // invalidating measurement. Repeating the unbounded/bounded cell probes
+        // in that path would make each child measurement re-invalidate this
+        // presenter while it is arranging, producing an endless frame loop.
+        // Resize can supply a genuinely different final width, so only that
+        // width transition earns one final constrained measurement pass.
+        if (!_hasMeasuredWidth || _measuredWidth != bounds.Width)
+        {
+            MeasureCells(bounds.Width);
+        }
+
         var y = bounds.Y;
 
         if (_owner.ShowHeader && _owner.Columns.Count > 0)
@@ -186,6 +199,9 @@ internal sealed class TablePresenter: Container
 
     private void MeasureCells(int? availableWidth)
     {
+        _measuredWidth = availableWidth;
+        _hasMeasuredWidth = true;
+
         if (_owner.Columns.Count == 0)
         {
             ColumnWidths = [];

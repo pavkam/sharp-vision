@@ -68,3 +68,11 @@ orientation, focus/pressed styling, glyph validation, tiny tracks, event order,
 and exact semantic cells. The shared
 [geometry proof](../../concepts/scrolling.md#test-contract) supplies 20,000 more
 fixed-seed containment and inversion cases.
+
+Mounted cross-layer coverage in
+[`ScrollBarSurfaceTests`](../../../tests/SharpVision.Tests/Controls/ScrollBarSurfaceTests.cs)
+drives decoded terminal key and SGR pointer reports through a live application.
+It proves exact horizontal, vertical, resized, and tiny rail cells; resolved
+hover, focus, pressed, and disabled appearance; typed keyboard, button, track,
+wheel, and drag causes; endpoint no-ops; and capture cancellation without a
+spurious value commit.

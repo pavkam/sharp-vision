@@ -41,3 +41,8 @@ shell.Children.Add(main);
 Cover all sides, ordering, fill on/off, spacing, fixed/percent/auto sizes,
 over-consumption, collapsed children, zero/tiny bounds, resize, ownership,
 navigation order, clipping, and exact bounds/cells.
+
+Mounted cross-layer coverage in
+[`DockSurfaceTests`](../../../tests/SharpVision.Tests/Controls/DockSurfaceTests.cs)
+proves all four edge consumptions, final fill, exact region cells, a real fill
+hit target, same-instance resize reflow, and removal of obsolete cells.

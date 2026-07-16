@@ -151,6 +151,11 @@ Rendering proof includes exact semantic foreground/background/attributes, typed
 underline and underline color, theme-role resolution, OSC 8 metadata, mutually
 exclusive blink precedence, markup boundaries inside graphemes, transparent
 background preservation, ellipsis ownership, and multi-frame terminal output.
-The showcase owns one merged `Text` page with live markup, Unicode, overflow,
-hyperlink, and mutation specimens. A warmed unchanged 80-column Unicode
-measure/render loop must include a zero-allocation measured window.
+`TextSurfaceTests` additionally mounts the control beneath a real application
+and proves combining and wide-grapheme ownership, terminal-visible markup
+styles, ellipsis-to-alignment mutation with stale-cell clearing, and transparent
+composition over an opaque parent surface. A mounted resize proves Unicode-safe
+wrap reflow and removal of the obsolete row. The showcase owns one merged `Text`
+page with live markup, Unicode, overflow, hyperlink, and mutation specimens. A
+warmed unchanged 80-column Unicode measure/render loop must include a
+zero-allocation measured window.

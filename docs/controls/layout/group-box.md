@@ -10,13 +10,20 @@ border frame with an optional header label in the top edge, like a
 
 ## API
 
-- `Header` is a non-null string rendered in the top border edge. Default is
-  empty.
-- `Glyphs` controls the terminal-safe glyph family for the border frame.
-  Default is `Glyphs.Rounded`.
+- `Header` is a non-null single-line string containing no terminal controls.
+  Default is empty. A non-empty header renders as one leading and trailing space
+  inside the preserved top corners and clips only within that interior.
+- `Glyphs` controls the terminal-safe glyph family for the border frame. Default
+  is `Glyphs.Rounded`.
 - `Content` is the single owned child, arranged inside the one-cell border
-  inset. Use a [`Stack`](stack.md), [`Grid`](grid.md), or other layout
-  container as content for multiple children.
+  inset. Use a [`Stack`](stack.md), [`Grid`](grid.md), or other layout container
+  as content for multiple children.
+
+The frame uses the intrinsic `Control` border properties rather than a wrapper
+control. Header cell width participates in measurement, including combining and
+wide graphemes. `GroupBox` is an `IStyleScope`, so its themed and per-instance
+style resources contribute to descendant resolution while an explicit child
+style remains authoritative.
 
 ## Example
 
@@ -37,6 +44,14 @@ var group = new GroupBox
 
 ## Test obligations
 
-Cover header rendering, empty header, content arrangement inside border,
-measure width expansion for wide headers, zero bounds, glyph families, style
-states, and final cells.
+Cover header rendering, empty header, content arrangement inside border, measure
+width expansion for wide headers, zero bounds, glyph families, style states, and
+final cells.
+
+Mounted cross-layer coverage in
+[`GroupBoxSurfaceTests`](../../../tests/SharpVision.Tests/Controls/GroupBoxSurfaceTests.cs)
+proves continuous and interrupted frames, wide-header continuation ownership,
+tiny clipping, resize reveal, once-inset content, and scoped style inheritance.
+The [`GroupBoxPane`](../../../src/SharpVision.Showcase/Panes/GroupBoxPane.cs)
+demonstrates empty, titled, Unicode, styled, ASCII, nested-content, and tiny
+specimens in the gallery.

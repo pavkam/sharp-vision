@@ -28,4 +28,7 @@ var title = new FigletText(FigletCatalog.Default.Load("Standard"))
 
 Cover null validation, cache invalidation, every catalog font, scalar fallback,
 hardblanks, direction, fitting, smushing, clipping, resize, style inheritance,
-wide output Runes, and exact cells.
+wide output Runes, and exact cells. `FigletTextSurfaceTests` mounts the audited
+`Small` font beneath a real application and proves exact terminal-visible art,
+style projection, clipping, resize exposure, content mutation, and stale-cell
+clearing.

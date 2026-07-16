@@ -45,7 +45,10 @@ detached members are skipped.
 Left/Up and Right/Down traverse eligible members in stable group tree order with
 wrapping, then focus and select through the same transaction. Layout reserves a
 one-cell semantic radio mark and an optional separator before capacity-one
-Unicode content.
+Unicode content. Checked and focused foreground synchronizes to optional content
+after attachment and every selection, focus, or local availability transition.
+Disabled foreground always resolves to the muted role, including a retained
+selected value.
 
 ## Example
 
@@ -63,3 +66,7 @@ Cover group exclusivity, no-initial selection, programmatic changes, regrouping,
 detach/reparent, event order/reentrancy, arrow navigation, disabled skipping,
 exact-slot unnamed scope, named groups across non-container roles and popup
 layers, Space/pointer parity, focus/styles, Unicode content, and final cells.
+`RadioButtonSurfaceTests` mounts a real group and proves empty initial state,
+Space and pointer causes, exclusivity, disabled-member skipping, arrow wrapping,
+preselected content styling, disabled precedence, availability restoration,
+Unicode ownership, and exact terminal-visible rows.

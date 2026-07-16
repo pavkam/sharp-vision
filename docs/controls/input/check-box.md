@@ -34,7 +34,10 @@ style reserves one; content receives one further separator cell when present, so
 state changes never move its label. A mark that becomes wide under the inherited
 policy presents as the state-equivalent ASCII `o`, `x`, or `-`; its configured
 Rune remains unchanged. A true value adds `State.Checked` to the inherited
-visual-state flags.
+visual-state flags. Disabled foreground always resolves to the muted role,
+including checked and indeterminate retained values. The optional content
+foreground synchronizes after attachment, value/focus changes, and local
+availability changes so the mark and label present one state.
 
 ## Interaction
 
@@ -56,3 +59,8 @@ var option = new CheckBox
 Cover both cycles, programmatic changes, event order, invalid null assignment,
 Space/pointer parity, capture cancellation, disabled state, focus, combined
 styles, content ownership, resize/tiny bounds, and exact mark/content cells.
+`CheckBoxSurfaceTests` mounts the control beneath a real application and proves
+normal, hovered, held, focused, checked, indeterminate, and disabled appearance;
+complete-Space and pointer causes; Unicode ownership; and tiny clipping.
+Resizing the same tiny surface proves complete content reveal without stale
+cells.
