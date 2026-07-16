@@ -186,12 +186,15 @@ internal sealed class ComponentSurface: IAsyncDisposable
 
         ArgumentException.ThrowIfNullOrEmpty(description);
         Task? consumed = null;
+        var frames = 0;
+        var idles = 0;
         var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         void OnIdle(object? sender, EventArgs eventArgs)
         {
             _ = sender;
             _ = eventArgs;
+            _ = Interlocked.Increment(ref idles);
 
             if (consumed?.IsCompletedSuccessfully == true)
             {
@@ -199,7 +202,15 @@ internal sealed class ComponentSurface: IAsyncDisposable
             }
         }
 
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = Interlocked.Increment(ref frames);
+        }
+
         _application.Idle += OnIdle;
+        _application.FrameRendered += OnFrameRendered;
 
         try
         {
@@ -210,13 +221,18 @@ internal sealed class ComponentSurface: IAsyncDisposable
         }
         catch (TimeoutException exception)
         {
+            var state = await _application.Dispatcher.InvokeAsync(
+                () => $"root={_application.Root.Pending}, mounted={_mounted.Pending}",
+                _cancellationToken);
             throw new TimeoutException(
-                $"Component action '{description}' did not settle. Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
+                $"Component action '{description}' did not settle after {frames} frames and {idles} idle notifications " +
+                $"({state}). Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
                 exception);
         }
         finally
         {
             _application.Idle -= OnIdle;
+            _application.FrameRendered -= OnFrameRendered;
         }
     }
 
