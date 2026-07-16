@@ -46,31 +46,31 @@ the SharpVision showcase/gallery contract.
 - Modify: `docs/controls/layout/stack.md`
 - Modify: `docs/controls/layout/grid.md`
 
-- [ ] **Step 1: Write Stack intended-behavior scenarios**
+- [x] **Step 1: Write Stack intended-behavior scenarios**
 
 Mount vertical and horizontal stacks with text and button leaves. Prove spacing,
 fixed/automatic/proportional allocation, exact child bounds and cells, Unicode
 width, pointer hit targets, overflow clipping, intrinsic `AutoScroll`, and
 resize reflow with stale-cell removal.
 
-- [ ] **Step 2: Verify Stack RED and make only demonstrated corrections**
+- [x] **Step 2: Verify Stack RED and make only demonstrated corrections**
 
 Run `*StackSurfaceTests`. Keep every regression that exposes allocation,
 scrolling, clipping, hit-testing, or invalidation behavior. Do not change a sane
 expected layout merely to preserve existing unit output.
 
-- [ ] **Step 3: Write Grid intended-behavior scenarios**
+- [x] **Step 3: Write Grid intended-behavior scenarios**
 
 Mount fixed, automatic, and proportional rows/columns with a spanning child.
 Prove deterministic remainder assignment, padding, exact bounds/cells, resize,
 overflow clipping, and real pointer routing to the final arranged cells.
 
-- [ ] **Step 4: Verify Grid RED and make only demonstrated corrections**
+- [x] **Step 4: Verify Grid RED and make only demonstrated corrections**
 
 Run `*GridSurfaceTests`, `*GridTests`, `*GridPrimitiveTests`, and
 `*RandomizedGridTests`. Preserve fixed-seed geometry invariants.
 
-- [ ] **Step 5: Link proofs and commit**
+- [x] **Step 5: Link proofs and commit**
 
 Update both control test obligations and commit as
 `test: cover stack and grid on mounted surfaces`.
