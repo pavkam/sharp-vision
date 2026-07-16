@@ -11,9 +11,7 @@ public sealed class CheckBox: Pressable
     private bool? _isChecked = false;
 
     /// <summary>Initializes an unchecked two-state CheckBox.</summary>
-    public CheckBox()
-    {
-    }
+    public CheckBox() => PropertyChanged += OnCheckBoxPropertyChanged;
 
     /// <summary>Raised after a true state commits.</summary>
     public event EventHandler<CheckChangedEventArgs>? Checked;
@@ -191,6 +189,13 @@ public sealed class CheckBox: Pressable
     }
 
     /// <inheritdoc/>
+    protected override void OnAttached()
+    {
+        base.OnAttached();
+        SyncContentForeground();
+    }
+
+    /// <inheritdoc/>
     protected override bool IsCheckedState => _isChecked == true;
 
     /// <inheritdoc/>
@@ -278,9 +283,27 @@ public sealed class CheckBox: Pressable
             return;
         }
 
+        if (!EffectiveIsEnabled || !EffectiveIsVisible)
+        {
+            content.Foreground = null;
+            return;
+        }
+
         var state = GetVisualState();
         var hasFocusOrCheck = (state & (State.Focused | State.Checked | State.Indeterminate)) != 0;
         content.Foreground = hasFocusOrCheck ? ResolveProperty(ForegroundProperty, state) : null;
+    }
+
+    private void OnCheckBoxPropertyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName is nameof(IsEnabled) or nameof(Visibility))
+        {
+            SyncContentForeground();
+        }
     }
 
     private static int? Subtract(int? value, int extent)

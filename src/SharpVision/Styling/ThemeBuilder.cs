@@ -142,6 +142,7 @@ internal static class ThemeBuilder
 
         style.Set(Control.ForegroundProperty, State.Focused, ThemeColors.Accent);
         style.Set(Control.ForegroundProperty, State.Checked, ThemeColors.Accent);
+        style.Set(Control.ForegroundProperty, State.Disabled, ThemeColors.Muted);
 
         return style;
     }

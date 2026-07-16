@@ -35,7 +35,9 @@ state changes never move its label. A mark that becomes wide under the inherited
 policy presents as the state-equivalent ASCII `o`, `x`, or `-`; its configured
 Rune remains unchanged. A true value adds `State.Checked` to the inherited
 visual-state flags. Disabled foreground always resolves to the muted role,
-including checked and indeterminate retained values.
+including checked and indeterminate retained values. The optional content
+foreground synchronizes after attachment, value/focus changes, and local
+availability changes so the mark and label present one state.
 
 ## Interaction
 

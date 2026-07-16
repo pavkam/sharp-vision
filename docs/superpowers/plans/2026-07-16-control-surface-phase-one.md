@@ -367,7 +367,7 @@ verified fixes/spec changes.
 - Create: `tests/SharpVision.Tests/Controls/RadioButtonSurfaceTests.cs`
 - Modify: `docs/controls/input/radio-button.md`
 
-- [ ] **Step 1: Write group selection and appearance scenarios**
+- [x] **Step 1: Write group selection and appearance scenarios**
 
 Mount a vertical `Stack` containing three named-group radios, with the middle
 member disabled. Prove no initial selection, Space and pointer selection,
@@ -387,17 +387,17 @@ surface.ShouldRender("○ One\n○ Skip\n◉ 界");
 The exact default mark spacing comes from the RadioButton contract and existing
 semantic-cell tests; do not copy a current malformed snapshot.
 
-- [ ] **Step 2: Run `*RadioButtonSurfaceTests` and verify RED**
+- [x] **Step 2: Run `*RadioButtonSurfaceTests` and verify RED**
 
 Expected: each failing assertion identifies a routing, grouping, focus, style,
 or rendering disagreement.
 
-- [ ] **Step 3: Apply minimal fixes and verify focused suites GREEN**
+- [x] **Step 3: Apply minimal fixes and verify focused suites GREEN**
 
 Run `*RadioButtonSurfaceTests`, `*RadioButtonTests`, `*FocusTests`, and
 `*PressableTests` after corrections.
 
-- [ ] **Step 4: Link the mounted proof and commit**
+- [x] **Step 4: Link the mounted proof and commit**
 
 Commit the fixture, spec, and any demonstrated fixes as one radio-group slice.
 

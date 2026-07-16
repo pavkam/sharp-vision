@@ -28,6 +28,8 @@ internal sealed class ComponentKeyboard
             ? throw new ArgumentOutOfRangeException(nameof(code), code, "The keyboard code is undefined.")
             : code == Code.Tab
                 ? _surface.SendAsync("\t"u8.ToArray(), "press Tab")
+                : code == Code.Down
+                    ? _surface.SendAsync("\u001b[B"u8.ToArray(), "press Down")
                 : throw new NotSupportedException($"Component keyboard encoding for {code} is not supported.");
     }
 

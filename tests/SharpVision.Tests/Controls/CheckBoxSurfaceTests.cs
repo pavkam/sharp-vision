@@ -108,7 +108,6 @@ public sealed class CheckBoxSurfaceTests
         {
             Content = new ControlText("Disabled"),
             IsChecked = true,
-            IsEnabled = false,
         };
         checkBox.StateChanged += (_, _) => changes++;
         await using var surface = await ComponentSurface.MountAsync(
@@ -116,7 +115,12 @@ public sealed class CheckBoxSurfaceTests
             new Size(12, 1),
             TestContext.Current.CancellationToken);
 
+        var selectedContent = surface.Cell(new Point(4, 0)).Style.Foreground;
+        selectedContent.Kind.ShouldBe(ColorKind.Indexed);
+        selectedContent.Red.ShouldBe((byte) 14);
+
         // Act
+        await surface.UpdateAsync(() => checkBox.IsEnabled = false, "disable checked CheckBox");
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Pointer.ClickAsync(checkBox);
 
@@ -129,6 +133,14 @@ public sealed class CheckBoxSurfaceTests
         var foreground = surface.Cell(default).Style.Foreground;
         foreground.Kind.ShouldBe(ColorKind.Indexed);
         foreground.Red.ShouldBe((byte) 8);
+        var contentForeground = surface.Cell(new Point(4, 0)).Style.Foreground;
+        contentForeground.Kind.ShouldBe(ColorKind.Indexed);
+        contentForeground.Red.ShouldBe((byte) 8);
+
+        // Act and assert restored availability
+        await surface.UpdateAsync(() => checkBox.IsEnabled = true, "re-enable checked CheckBox");
+        surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(14));
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Color.Indexed(14));
     }
 
     /// <summary>Verifies tiny bounds clip the mark without emitting content outside the control.</summary>
