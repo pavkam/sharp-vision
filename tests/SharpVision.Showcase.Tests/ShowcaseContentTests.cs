@@ -27,6 +27,7 @@ public sealed class ShowcaseContentTests
             ["ScrollBar"] = ["Range anatomy", "Input parity", "Live range", "Tiny rails"],
             ["Separator"] = ["Orientation", "Glyph and style"],
             ["Stack"] = ["Orientation", "Mixed sizing", "Visibility", "Constrained space"],
+            ["TabControl"] = ["Selection and content", "Unicode and overflow", "Ownership and repair"],
             ["Table"] = ["Column sizing", "Interactive cells", "Dynamic rows", "Boundary states"],
             ["Text"] = ["Safe content", "Markup", "Overflow", "Unicode"],
             ["TextInput"] = ["Editing and submission", "Selection", "Clipboard and history", "Multiline"],

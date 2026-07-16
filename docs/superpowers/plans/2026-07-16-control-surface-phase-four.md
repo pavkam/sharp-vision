@@ -69,13 +69,13 @@ showcase fixtures. Commit as `test: cover list component surfaces`.
 - Create: `tests/SharpVision.Tests/Controls/TabControlTests.cs`
 - Create: `tests/SharpVision.Tests/Controls/TabItemTests.cs`
 
-- [ ] **Step 1: Specify typed collection ownership and validation**
+- [x] **Step 1: Specify typed collection ownership and validation**
 
 Prove Add/Insert/replace/Remove/Clear, null/duplicate/attached/disposed/cycle
 rejection before mutation, one parent per tab, caller content ownership, and
 detachment without accidental disposal.
 
-- [ ] **Step 2: Specify deterministic selection and repair**
+- [x] **Step 2: Specify deterministic selection and repair**
 
 The first eligible tab auto-selects. `SelectedIndex` validates `-1` or a
 contained eligible tab. Removing/replacing/disabling/hiding the selected tab
@@ -83,14 +83,14 @@ chooses the nearest eligible successor, then predecessor, or `-1`. Insertion
 before the selected identity preserves identity. `SelectionChanged` fires once
 after committed header/content state and includes no speculative transitions.
 
-- [ ] **Step 3: Specify retained composition and geometry**
+- [x] **Step 3: Specify retained composition and geometry**
 
 Each item owns one retained pressable header framework part and its ordinary
 caller content. The private header strip occupies one row, a separator occupies
 one row when height permits, and only selected content participates below it.
 Headers use terminal-cell measurement and never rebuild on selection or resize.
 
-- [ ] **Step 4: Watch focused tests fail for missing types**
+- [x] **Step 4: Watch focused tests fail for missing types**
 
 Run `*TabControlTests` and `*TabItemTests`; record the expected compilation
 failure before implementation.
@@ -102,28 +102,28 @@ failure before implementation.
 - Modify the Tab files from Task 2.
 - Create: `tests/SharpVision.Tests/Controls/TabControlSurfaceTests.cs`
 
-- [ ] **Step 1: Implement the smallest retained typed control**
+- [x] **Step 1: Implement the smallest retained typed control**
 
 Use `ItemsControl` semantic helpers and a private retained presentation host.
 Keep public pages as the owned item controls, route header activation back to
 their owner, and make selected content layout/render/hit-test/navigation
 participation atomic. Validate public arguments before observable mutation.
 
-- [ ] **Step 2: Prove pointer and keyboard parity**
+- [x] **Step 2: Prove pointer and keyboard parity**
 
 Drive pointer clicks plus Left/Right/Home/End navigation with disabled skipping
 and wrapping. Assert selected identity, focus, event order, combined visual
 state, exact header/divider/separator/content cells, and Unicode continuation
 ownership.
 
-- [ ] **Step 3: Prove removal, replacement, overflow, and resize**
+- [x] **Step 3: Prove removal, replacement, overflow, and resize**
 
 Remove and replace the selected page, replace selected content, resize tiny and
 wide surfaces, and navigate an overflowing header strip. Assert deterministic
 repair, header offset/reveal, clipped complete graphemes, and clearing of the
 previous page and obsolete headers.
 
-- [ ] **Step 4: Run focused control and infrastructure checks**
+- [x] **Step 4: Run focused control and infrastructure checks**
 
 Run Tab unit/surface tests plus `ItemsControlTests`, `ContentControlTests`,
 focus, capture, input-routing, layout, rendering, and Unicode geometry fixtures.
@@ -139,23 +139,23 @@ focus, capture, input-routing, layout, rendering, and Unicode geometry fixtures.
 - Modify: `docs/controls/collections/tab-control.md`
 - Modify: `docs/testing/controls-integration.md`
 
-- [ ] **Step 1: Add representative showcase specimens**
+- [x] **Step 1: Add representative showcase specimens**
 
 Show basic selection, disabled tabs, Unicode headers, content replacement,
 overflow, and tiny/resized geometry using ordinary public API.
 
-- [ ] **Step 2: Add representative showcase screen proof**
+- [x] **Step 2: Add representative showcase screen proof**
 
 Assert catalog registration, exact selected/unselected headers, separator,
 selected content, wide continuation, and disabled availability.
 
-- [ ] **Step 3: Link named evidence and audit the collections card**
+- [x] **Step 3: Link named evidence and audit the collections card**
 
 Update the normative contract and mounted-testing guide with named surface and
 unit responsibilities. Add any missing selection, focus, mutation, tiny,
 Unicode, overflow, resize, or stale-cell regression found by the audit.
 
-- [ ] **Step 4: Run repository quality gates**
+- [x] **Step 4: Run repository quality gates**
 
 ```bash
 make format
@@ -167,6 +167,6 @@ make test
 Expected: zero warnings/errors, all discovered tests pass, documentation and
 links pass, and isolated package consumption succeeds.
 
-- [ ] **Step 5: Commit phase four**
+- [x] **Step 5: Commit phase four**
 
 Commit as `feat: add tab control and complete collection surfaces`.

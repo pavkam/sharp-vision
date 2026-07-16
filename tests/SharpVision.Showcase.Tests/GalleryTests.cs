@@ -27,6 +27,7 @@ public sealed class GalleryTests
         "ScrollBar",
         "Separator",
         "Stack",
+        "TabControl",
         "Table",
         "Text",
         "TextInput",

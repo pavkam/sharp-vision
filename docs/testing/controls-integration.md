@@ -211,6 +211,15 @@ selection/active repair after replacement, and complete stale-row clearing.
 cancellation/reentrancy, selection-mode normalization, and common scrollbar
 policy responsibilities.
 
+`TabControlSurfaceTests` proves exact retained headers, dividers, separator and
+selected content; pointer/keyboard parity; focus; selected-state styling;
+disabled skipping and wrap; deterministic removal/content-replacement repair;
+Unicode continuation ownership; header overflow/reveal; tiny clipping; resize;
+and stale-cell clearing. `TabControlTests` and `TabItemTests` retain typed
+collection validation, ownership transfer without disposal, stable-identity
+insertion, nearest eligible repair, invalid selection, event order, retained
+header identity, and selected-content layout responsibilities.
+
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route
 payloads, pixel-to-cell inference, owned paste bytes, repeat action, control

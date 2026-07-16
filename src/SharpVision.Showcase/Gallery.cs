@@ -30,6 +30,7 @@ public sealed class Gallery: Screen
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
         (SeparatorPane.Title, static () => new SeparatorPane()),
         (StackPane.Title, static () => new StackPane()),
+        (TabControlPane.Title, static () => new TabControlPane()),
         (TablePane.Title, static () => new TablePane()),
         (TextPane.Title, static () => new TextPane()),
         (TextInputPane.Title, static () => new TextInputPane()),
