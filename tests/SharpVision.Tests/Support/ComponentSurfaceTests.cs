@@ -156,4 +156,72 @@ public sealed class ComponentSurfaceTests
         input.SelectedText.ShouldBe("界");
         surface.ShouldHaveCursor(new Point(1, 0), visible: true);
     }
+
+    /// <summary>Verifies relative click, wheel, and captured drag actions traverse real pointer decoding.</summary>
+    [Fact]
+    public async Task Pointer_WhenRelativeActionsDriveScrollBar_CommitsCausesAndReleasesDragAsync()
+    {
+        // Arrange
+        var causes = new List<Cause>();
+        var bar = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Chrome = ScrollBarChrome.Full,
+            Maximum = 100,
+            Width = Length.Cells(12),
+            Height = Length.Cells(1),
+        };
+        bar.ValueChanged += (_, eventArgs) => causes.Add(eventArgs.Cause);
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(12, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(bar, new Point(11, 0));
+        bar.Value.ShouldBe(1);
+        await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: -1);
+        bar.Value.ShouldBe(2);
+        await surface.Pointer.DragAsync(bar, new Point(1, 0), new Point(10, 0));
+
+        // Assert
+        bar.Value.ShouldBe(100);
+        bar.IsPressed.ShouldBeFalse();
+        causes.ShouldBe([Cause.Pointer, Cause.Wheel, Cause.Pointer]);
+        surface.ShouldHaveState(bar, State.Focused | State.Hovered);
+    }
+
+    /// <summary>Verifies invalid relative pointer requests fail before any terminal action is emitted.</summary>
+    [Fact]
+    public async Task Pointer_WhenRelativeActionIsInvalid_RejectsTheRequestBeforeInputAsync()
+    {
+        // Arrange
+        var bar = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Width = Length.Cells(4),
+            Height = Length.Cells(1),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act and assert
+        _ = await Should.ThrowAsync<ArgumentException>(
+            () => surface.Pointer.MoveToAsync(new Button(), default));
+        _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(
+            () => surface.Pointer.MoveToAsync(bar, new Point(-1, 0)));
+        _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(
+            () => surface.Pointer.MoveToAsync(bar, new Point(4, 0)));
+        _ = await Should.ThrowAsync<ArgumentException>(
+            () => surface.Pointer.WheelAsync(bar, default));
+        _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(
+            () => surface.Pointer.WheelAsync(bar, default, wheelY: 2));
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => surface.Pointer.MovePressedToAsync(bar, default));
+
+        bar.Value.ShouldBe(0);
+        surface.ShouldHaveState(bar, State.Normal);
+    }
 }

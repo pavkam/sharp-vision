@@ -139,6 +139,38 @@ internal sealed class ComponentSurface: IAsyncDisposable
         }, _cancellationToken);
     }
 
+    /// <summary>Resolves one validated control-relative cell on the UI dispatcher.</summary>
+    /// <param name="control">The mounted control or one of its owned descendants.</param>
+    /// <param name="relative">The zero-based cell inside the control's arranged bounds.</param>
+    /// <returns>The corresponding zero-based absolute surface cell.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by this surface.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="relative"/> lies outside the arranged bounds.</exception>
+    internal async Task<Point> ResolvePointAsync(Control control, Point relative)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        return await _application.Dispatcher.InvokeAsync(() =>
+        {
+            if (!IsOwned(control))
+            {
+                throw new ArgumentException("The pointer target is not owned by this component surface.", nameof(control));
+            }
+
+            var bounds = control.Bounds;
+
+            return bounds.Width <= 0 || bounds.Height <= 0
+                ? throw new InvalidOperationException("The pointer target has empty arranged bounds.")
+                : relative.X < 0 || relative.Y < 0 ||
+                relative.X >= bounds.Width || relative.Y >= bounds.Height
+                ? throw new ArgumentOutOfRangeException(
+                    nameof(relative),
+                    relative,
+                    "The relative pointer cell must lie inside the target's arranged bounds.")
+                : new Point(bounds.X + relative.X, bounds.Y + relative.Y);
+        }, _cancellationToken);
+    }
+
     /// <summary>Validates and emits one complete terminal input action, then waits for application idle.</summary>
     /// <param name="value">The non-empty complete terminal input sequence.</param>
     /// <param name="description">The non-empty diagnostic action description.</param>

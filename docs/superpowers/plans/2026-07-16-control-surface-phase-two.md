@@ -175,7 +175,7 @@ production fixes as `test: cover text input on mounted surfaces`.
 - Modify: `tests/SharpVision.Tests/Support/ComponentSurface.cs`
 - Modify: `tests/SharpVision.Tests/Support/ComponentSurfaceTests.cs`
 
-- [ ] **Step 1: Write failing pointer helper tests**
+- [x] **Step 1: Write failing pointer helper tests**
 
 Mount a horizontal ScrollBar and demand target-relative click, wheel, and drag
 APIs. The test clicks the increment button, wheels toward the range, then drags
@@ -190,30 +190,30 @@ await surface.Pointer.DragAsync(
     new Point(10, 0));
 ```
 
-- [ ] **Step 2: Run helper fixture and verify RED**
+- [x] **Step 2: Run helper fixture and verify RED**
 
 Expected: compilation fails because relative points, wheel, and drag do not
 exist.
 
-- [ ] **Step 3: Resolve validated relative points**
+- [x] **Step 3: Resolve validated relative points**
 
 Add a dispatcher-side resolver that verifies ownership, non-empty bounds, and
 relative containment before converting to an absolute surface cell. Foreign,
 negative, and right/bottom-edge offsets fail before input is queued.
 
-- [ ] **Step 4: Encode wheel and held-primary motion**
+- [x] **Step 4: Encode wheel and held-primary motion**
 
 Wheel up/down uses SGR buttons 64/65. Drag emits a normal move to the start,
 primary press, button-32 motion to the end, and primary release at the end. Each
 record settles separately so capture, value, pressed state, and final frame are
 observable at every checkpoint.
 
-- [ ] **Step 5: Verify helper and existing pointer fixtures GREEN**
+- [x] **Step 5: Verify helper and existing pointer fixtures GREEN**
 
 Run `*ComponentSurfaceTests`, `*ButtonSurfaceTests`, and
 `*InteractiveControlTests`.
 
-- [ ] **Step 6: Commit the pointer harness slice**
+- [x] **Step 6: Commit the pointer harness slice**
 
 Commit only helper/test files as
 `test: drive wheel and drag on component surfaces`.
