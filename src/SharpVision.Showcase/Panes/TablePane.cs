@@ -130,6 +130,7 @@ internal sealed class TablePane: CompositeControl
             Height = Length.Cells(8),
             CellPadding = new Thickness(1, 0),
             ShowGridLines = true,
+            ScrollBars = ScrollBars.Both,
             HeaderForeground = ThemeColors.Accent,
             GridLineColor = ThemeColors.Border,
         };

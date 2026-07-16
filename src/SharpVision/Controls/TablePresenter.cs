@@ -25,7 +25,7 @@ internal sealed class TablePresenter: Container
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
         AutoScroll = true;
-        ScrollBars = ScrollBars.Both;
+        ScrollBars = ScrollBars.Vertical;
     }
 
     /// <summary>Gets the currently resolved cell width for each semantic column.</summary>

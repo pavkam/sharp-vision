@@ -121,7 +121,7 @@ public sealed class TableTests
     public void Render_WhenHorizontallyScrolled_TranslatesCompleteTableContent()
     {
         var first = new ControlText("12345678");
-        var table = new Table();
+        var table = new Table { ScrollBars = ScrollBars.Both };
         table.Columns.Add(TableColumn.Fixed("ABCDEFGH", 8));
         table.Columns.Add(TableColumn.Fixed("IJKLMNOP", 8));
         table.Rows.Add(new TableRow([first, new ControlText("abcdefgh")]));
@@ -145,7 +145,7 @@ public sealed class TableTests
     [Fact]
     public void Layout_WhenBothAxesScroll_AllowsSignedContentOrigin()
     {
-        var table = new Table();
+        var table = new Table { ScrollBars = ScrollBars.Both };
         table.Columns.Add(TableColumn.Fixed("First", 8));
         table.Columns.Add(TableColumn.Fixed("Second", 8));
 
