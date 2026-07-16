@@ -10,6 +10,9 @@ public readonly record struct Color
     /// <summary>Gets the terminal default color.</summary>
     public static Color Default { get; } = new(ColorKind.Default, 0, 0, 0);
 
+    /// <summary>Gets a transparent color that prevents background painting.</summary>
+    public static Color Transparent { get; } = new(ColorKind.Transparent, 0, 0, 0);
+
     private Color(ColorKind kind, byte red, byte green, byte blue)
     {
         Kind = kind;

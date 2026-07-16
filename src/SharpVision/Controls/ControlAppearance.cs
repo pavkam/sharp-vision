@@ -31,9 +31,12 @@ internal static class ControlAppearance
             resolvedAttributes,
             underline: resolvedUnderline,
             underlineColor: resolvedUnderlineColor);
-        var hasOpaqueFill = fillMode == FillMode.Opaque ||
+        var isTransparent = background is { Kind: ColorKind.Transparent } ||
+            (control.TryGetLocalValue(Control.BackgroundProperty, out var localBg) && localBg is { Kind: ColorKind.Transparent });
+        var hasOpaqueFill = !isTransparent &&
+            (fillMode == FillMode.Opaque ||
             (control.TryGetLocalValue(Control.BackgroundProperty, out var local) && local.HasValue) ||
-            background.HasValue;
+            background.HasValue);
 
         return new ResolvedAppearance
         {

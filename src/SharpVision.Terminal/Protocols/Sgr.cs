@@ -178,6 +178,10 @@ public static class Sgr
                 throw new InvalidOperationException(
                     "A role color must be resolved to a concrete color before it can be SGR-encoded.");
 
+            case ColorKind.Transparent:
+                length += Append(reset, parameters);
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException(
                     nameof(color), color.Kind, "The color representation is unknown.");

@@ -17,4 +17,7 @@ public enum ColorKind
 
     /// <summary>A theme-resolved semantic color slot; must be resolved to a concrete color before encoding.</summary>
     Role,
+
+    /// <summary>Explicitly transparent — the control does not paint its background.</summary>
+    Transparent,
 }
