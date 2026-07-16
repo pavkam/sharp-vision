@@ -26,6 +26,25 @@ outer notifications.
 The item's own `Invoked` subscribers complete before `Menu.ItemInvoked` is
 forwarded. Both callbacks observe committed check/radio state.
 
+## Shortcut text
+
+`ShortcutText` is an optional string rendered right-aligned with dim attributes
+after the item's content. It describes the keyboard accelerator without binding
+it — shortcut handling is the application's responsibility.
+
+```csharp
+new MenuItem
+{
+    Content = new Text("Save"),
+    ShortcutText = "Ctrl+S",
+};
+```
+
+When set, the item's desired width includes the shortcut length plus two cells
+of spacing. The shortcut text is drawn at the trailing edge of the item's
+arranged bounds using the resolved style with `Attributes.Dim` added. Setting
+`ShortcutText` to null removes it.
+
 ## MenuSeparator contract
 
 `MenuSeparator : Control` is the distinct non-interactive entry role. It is

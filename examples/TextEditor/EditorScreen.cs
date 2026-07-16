@@ -213,6 +213,14 @@ public sealed class EditorScreen: Screen
             return;
         }
 
+        if (e.Stroke.Code == Code.Escape && _findReplace.IsOpen)
+        {
+            _findReplace.Close();
+            _ = Application?.Focus.Focus(_editor);
+            e.Handled = true;
+            return;
+        }
+
         if ((e.Stroke.Modifiers & Modifiers.Control) == 0)
         {
             return;
