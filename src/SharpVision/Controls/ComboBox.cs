@@ -192,6 +192,15 @@ public sealed class ComboBox: Control
         }
     }
 
+    /// <summary>Gets or sets whether the field accepts typed text in addition to list selection.</summary>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public bool IsEditable
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
+    }
+
     /// <summary>Gets or sets whether the private drop-down is arranged, rendered, and hit-testable.</summary>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>

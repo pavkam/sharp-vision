@@ -21,9 +21,6 @@ internal sealed class RecordingControl: Container
         _order = order;
     }
 
-    /// <summary>Gets the stable test name.</summary>
-    internal string Name { get; }
-
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {

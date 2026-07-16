@@ -47,12 +47,12 @@ becomes unavailable.
 
 ### Keyboard navigation inside the popup
 
-The popup sets [`TabNavigation.Contained`](../../concepts/focus.md#navigation-scopes)
-to trap Tab within its scope. The inner List sets `IsTabStop = false` so that
-Tab cycles through the realized `ListItem` controls and cannot escape to
-controls outside the open drop-down. Arrow keys (Up/Down/Left/Right),
-Home, End, Page Up, and Page Down navigate between items through the List's
-own keyboard handler.
+The popup sets
+[`TabNavigation.Contained`](../../concepts/focus.md#navigation-scopes) to trap
+Tab within its scope. The inner List sets `IsTabStop = false` so that Tab cycles
+through the realized `ListItem` controls and cannot escape to controls outside
+the open drop-down. Arrow keys (Up/Down/Left/Right), Home, End, Page Up, and
+Page Down navigate between items through the List's own keyboard handler.
 
 ## Example
 

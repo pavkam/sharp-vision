@@ -21,6 +21,8 @@ All controls derive from the
 
 - [Text](display/text.md#text-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
+- [Separator](display/separator.md#separator-contract)
+- [ProgressBar](display/progress-bar.md#progressbar-contract)
 
 Border and shadow are intrinsic `Control` chrome configured through
 `BorderThickness`, `BorderGlyphs`, `HasShadow`, `ShadowMode`, and the related
@@ -48,10 +50,13 @@ neither path when it needs a visible frame or shadow. See the
 - [Canvas](layout/canvas.md#canvas-contract)
 - [Table](layout/table.md#table-contract)
 - [ScrollBar](layout/scroll-bar.md#scrollbar-contract)
+- [GroupBox](layout/group-box.md#groupbox-contract)
+- [Expander](layout/expander.md#expander-contract)
 
 ### Collections, menus, and windows
 
 - [List](collections/list.md#list-contract)
+- [TabControl and TabItem](collections/tab-control.md#tabcontrol-contract)
 - [Menu](menus/menu.md#menu-contract)
 - [MenuItem and MenuSeparator](menus/menu-item.md#menuitem-contract)
 - [Popup](windows/popup.md#popup-contract)

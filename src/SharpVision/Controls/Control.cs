@@ -410,6 +410,24 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
+    /// <summary>Gets or sets an optional debugging or accessibility identifier.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string? Name
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
+    }
+
+    /// <summary>Gets or sets arbitrary user data associated with this control.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public object? Tag
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
+    }
+
     /// <summary>Gets whether this control currently owns keyboard focus.</summary>
     public bool IsFocused { get; private set; }
 

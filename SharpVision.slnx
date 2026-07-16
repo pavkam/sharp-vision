@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/examples/">
     <Project Path="examples/Snake/Snake.csproj" />
+    <Project Path="examples/TextEditor/TextEditor.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SharpVision.Consumer.Tests/SharpVision.Consumer.Tests.csproj" />

@@ -90,6 +90,15 @@ public sealed class TextInput: Control
         }
     }
 
+    /// <summary>Gets or sets optional placeholder text shown when the input is empty.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string? Placeholder
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
+    }
+
     /// <summary>Gets or sets whether user input may mutate text.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -424,6 +433,35 @@ public sealed class TextInput: Control
         // An editor owns its complete visible surface so configured backgrounds
         // remain continuous beyond short text, selection, and the caret.
         canvas.Clear(bounds, ResolvedStyle);
+
+        if (Text.Length == 0 && !IsFocused && Placeholder is { Length: > 0 } placeholder)
+        {
+            var placeholderStyle = PlaceholderStyle();
+            var px = 0;
+
+            foreach (var grapheme in Graphemes.Enumerate(placeholder))
+            {
+                var cluster = placeholder.AsSpan(grapheme.Offset, grapheme.Length);
+
+                if (IsLineBreak(cluster))
+                {
+                    break;
+                }
+
+                var width = UnicodeWidth.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
+                var point = new Point(bounds.X + px, bounds.Y);
+
+                if (point.X + width > bounds.X + bounds.Width)
+                {
+                    break;
+                }
+
+                _ = canvas.Draw(cluster, point, placeholderStyle);
+                px += width;
+            }
+
+            return;
+        }
 
         var x = 0;
         var y = 0;
@@ -1032,6 +1070,18 @@ public sealed class TextInput: Control
             style.Foreground,
             style.Background,
             style.Attributes | TerminalAttributes.Reverse,
+            style.Hyperlink,
+            style.Underline,
+            style.UnderlineColor);
+    }
+
+    private TerminalStyle PlaceholderStyle()
+    {
+        var style = ResolvedStyle;
+        return new TerminalStyle(
+            style.Foreground,
+            style.Background,
+            style.Attributes | TerminalAttributes.Dim,
             style.Hyperlink,
             style.Underline,
             style.UnderlineColor);

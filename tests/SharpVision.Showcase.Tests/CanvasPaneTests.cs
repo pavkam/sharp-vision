@@ -38,6 +38,10 @@ public sealed class CanvasPaneTests
             new CanvasUnicodeSample(),
             new CanvasChartSample(),
             new CanvasPointerSample(),
+            new CanvasSparklineSample(),
+            new CanvasDashboardSample(),
+            new CanvasMazeSample(),
+            new CanvasColorGridSample(),
         ];
 
         try
@@ -57,12 +61,17 @@ public sealed class CanvasPaneTests
             }
 
             // Assert
-            rendered.ToString().ShouldContain("Light");
-            rendered.ToString().ShouldContain("░▒▓");
-            rendered.ToString().ShouldContain("geometry");
-            rendered.ToString().ShouldContain("你好");
-            rendered.ToString().ShouldContain("CPU");
-            rendered.ToString().ShouldContain("Move or click");
+            var text = rendered.ToString();
+            text.ShouldContain("Light");
+            text.ShouldContain("░▒▓");
+            text.ShouldContain("geometry");
+            text.ShouldContain("你好");
+            text.ShouldContain("CPU");
+            text.ShouldContain("Move or click");
+            text.ShouldContain("Sparkline");
+            text.ShouldContain("System Monitor");
+            text.ShouldContain("Topology merge");
+            text.ShouldContain("Grayscale");
         }
         finally
         {
@@ -88,6 +97,55 @@ public sealed class CanvasPaneTests
         Get(frame, new Point(sample.Bounds.X, sample.Bounds.Bottom - 1)).ShouldBe("╰");
         Get(frame, new Point(sample.Bounds.Right - 1, sample.Bounds.Bottom - 1)).ShouldBe("╯");
         Get(frame, new Point(sample.Bounds.Right - 1, sample.Bounds.Y + 3)).ShouldBe("│");
+    }
+
+    /// <summary>Verifies the sparkline sample renders sub-cell block elements.</summary>
+    [Fact]
+    public void CanvasSparklineSample_WhenRendered_DrawsBlockElements()
+    {
+        using var sample = new CanvasSparklineSample();
+        new Engine().Layout(sample, new Size(48, 10));
+        using Frame frame = new(new Size(48, 10));
+
+        sample.Render(frame.Canvas);
+
+        var screen = new Screen(frame);
+        screen.ValidateContinuations();
+        screen.Text.ShouldContain("Sparkline");
+    }
+
+    /// <summary>Verifies the dashboard sample renders gauge labels and dividers.</summary>
+    [Fact]
+    public void CanvasDashboardSample_WhenRendered_DrawsGaugesAndDividers()
+    {
+        using var sample = new CanvasDashboardSample();
+        new Engine().Layout(sample, new Size(48, 14));
+        using Frame frame = new(new Size(48, 14));
+
+        sample.Render(frame.Canvas);
+
+        var screen = new Screen(frame);
+        screen.ValidateContinuations();
+        screen.Text.ShouldContain("CPU");
+        screen.Text.ShouldContain("MEM");
+        screen.Text.ShouldContain("DSK");
+        screen.Text.ShouldContain("Uptime");
+    }
+
+    /// <summary>Verifies the maze sample renders topology-merged junctions.</summary>
+    [Fact]
+    public void CanvasMazeSample_WhenRendered_ProducesValidTopology()
+    {
+        using var sample = new CanvasMazeSample();
+        new Engine().Layout(sample, new Size(48, 12));
+        using Frame frame = new(new Size(48, 12));
+
+        sample.Render(frame.Canvas);
+
+        var screen = new Screen(frame);
+        screen.ValidateContinuations();
+        screen.Text.ShouldContain("S");
+        screen.Text.ShouldContain("E");
     }
 
     /// <summary>Verifies the geometry specimen exposes exact line and circle cardinal cells.</summary>

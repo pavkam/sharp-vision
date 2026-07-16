@@ -27,6 +27,9 @@ public sealed partial class Window: ContentControl
     {
     }
 
+    /// <summary>Raised when the close glyph is activated by a pointer press or programmatic invocation.</summary>
+    public event EventHandler? Closing;
+
     /// <summary>Gets or sets whether the window can be dragged by its title bar.</summary>
     /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
@@ -35,6 +38,15 @@ public sealed partial class Window: ContentControl
         get;
         set => _ = SetProperty(ref field, value, ChangeImpact.None);
     } = true;
+
+    /// <summary>Gets or sets whether the window renders a close glyph in the top-right corner of the border.</summary>
+    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
+    public bool CanClose
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
+    }
 
     /// <summary>Gets or sets the non-null title written into the top edge.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -158,6 +170,15 @@ public sealed partial class Window: ContentControl
                 background: background);
         }
 
+        if (CanClose && Bounds.Width > 3)
+        {
+            _ = canvas.Draw(
+                "✕".AsSpan(),
+                new Point(Bounds.Right - 2, Bounds.Y),
+                border,
+                background: background);
+        }
+
         if (HasShadow)
         {
             ControlChrome.DrawShadow(canvas, this, Bounds, Bounds, background, ResolvedStyle);
@@ -193,7 +214,12 @@ public sealed partial class Window: ContentControl
 
         if (eventArgs is PointerEventArgs pointer)
         {
-            HandlePointerDrag(pointer);
+            HandlePointerClose(pointer);
+
+            if (!pointer.Handled)
+            {
+                HandlePointerDrag(pointer);
+            }
         }
     }
 
@@ -204,9 +230,38 @@ public sealed partial class Window: ContentControl
         _dragging = false;
     }
 
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            Closing = null;
+        }
+    }
+
     #endregion
 
-    #region Drag interaction
+    #region Close and drag interaction
+
+    private void HandlePointerClose(PointerEventArgs eventArgs)
+    {
+        Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
+
+        if (eventArgs.Pointer.Cells is not { } cells)
+        {
+            return;
+        }
+
+        if (eventArgs.Pointer.Action == PointerAction.Press &&
+            eventArgs.Pointer.Buttons == Buttons.Primary &&
+            IsCloseGlyph(cells))
+        {
+            Closing?.Invoke(this, EventArgs.Empty);
+            eventArgs.Handled = true;
+        }
+    }
 
     private void HandlePointerDrag(PointerEventArgs eventArgs)
     {
@@ -248,6 +303,9 @@ public sealed partial class Window: ContentControl
 
     private bool IsTitleBar(Point cells) =>
         cells.Y == Bounds.Y && cells.X >= Bounds.X && cells.X < Bounds.Right;
+
+    private bool IsCloseGlyph(Point cells) =>
+        CanClose && Bounds.Width > 3 && cells.Y == Bounds.Y && cells.X == Bounds.Right - 2;
 
     #endregion
 

@@ -44,6 +44,10 @@ direction.
 - `Text` is non-null. Direct assignment validates return/tab policy,
   `MaxLength`, and complete Unicode boundaries before mutation, moves the caret
   to the new end, and participates in cancellable events and undo history.
+- `Placeholder` is an optional nullable string drawn with dim attributes when
+  `Text` is empty and the control is not focused. Only the first line of the
+  placeholder is rendered, clipped to the content width. Setting it invalidates
+  the render pass.
 - `IsReadOnly`, `AcceptsReturn`, `AcceptsTab`, `PasswordCharacter`, and
   `MaxLength` define editing policy. Max length counts grapheme clusters.
 - `CaretIndex`, `SelectionStart`, and `SelectionLength` never clamp direct
@@ -137,6 +141,7 @@ swallowing nested scrolling.
 var name = new TextInput
 {
     MaxLength = 80,
+    Placeholder = "Enter your name",
     Width = Length.Percent(100),
 };
 ```

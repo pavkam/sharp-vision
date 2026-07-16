@@ -19,6 +19,16 @@ public sealed class MenuItem: Pressable
     /// <summary>Raised after an eligible item commits its optional check state and activation.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? Invoked;
 
+    /// <summary>Gets or sets the optional keyboard shortcut hint displayed right-aligned after the label.</summary>
+    /// <remarks>When non-null, the text renders with dim attributes and accounts for two extra spacing cells.</remarks>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public string? ShortcutText
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
+    }
+
     /// <summary>Gets or sets the command, check, or radio behavior.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
@@ -190,10 +200,13 @@ public sealed class MenuItem: Pressable
     protected override Size MeasureOverride(Constraint constraint)
     {
         var content = Content;
+        var shortcutExtra = ShortcutText is { Length: > 0 }
+            ? ShortcutText.Length + 2
+            : 0;
 
         if (content is null)
         {
-            return new Size(PrefixWidth, 1);
+            return new Size(Add(PrefixWidth, shortcutExtra), 1);
         }
 
         var desired = MeasureChild(
@@ -201,9 +214,9 @@ public sealed class MenuItem: Pressable
             new Constraint(Subtract(constraint.Width, PrefixWidth), constraint.Height));
 
         return content.Visibility == Visibility.Collapsed
-            ? new Size(PrefixWidth, 1)
+            ? new Size(Add(PrefixWidth, shortcutExtra), 1)
             : new Size(
-                Add(PrefixWidth, Add(desired.Width, content.Margin.Horizontal)),
+                Add(PrefixWidth, Add(Add(desired.Width, content.Margin.Horizontal), shortcutExtra)),
                 Math.Max(1, Add(desired.Height, content.Margin.Vertical)));
     }
 
@@ -247,6 +260,27 @@ public sealed class MenuItem: Pressable
             new Point(Bounds.X, Bounds.Y),
             style,
             background: BackgroundMode.Transparent);
+
+        if (ShortcutText is { Length: > 0 })
+        {
+            var dimStyle = new TerminalStyle(
+                style.Foreground,
+                style.Background,
+                style.Attributes | TerminalAttributes.Dim,
+                style.Hyperlink,
+                style.Underline,
+                style.UnderlineColor);
+            var shortcutX = Bounds.Right - ShortcutText.Length;
+
+            if (shortcutX > Bounds.X)
+            {
+                _ = canvas.Draw(
+                    ShortcutText.AsSpan(),
+                    new Point(shortcutX, Bounds.Y),
+                    dimStyle,
+                    background: BackgroundMode.Transparent);
+            }
+        }
     }
 
     /// <inheritdoc/>

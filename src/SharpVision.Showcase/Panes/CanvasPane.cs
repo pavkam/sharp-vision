@@ -212,7 +212,43 @@ internal sealed class CanvasPane: CompositeControl
                 Doc.Example(
                     "Live coordinate marker",
                     "Move or click inside the box. The control redraws a marker and reports the exact coordinates supplied by the terminal input path.",
-                    new CanvasPointerSample())));
+                    new CanvasPointerSample())),
+            Doc.Section(
+                "📈",
+                "Sparkline chart",
+                "Sub-cell vertical resolution using Unicode block elements ▁▂▃▄▅▆▇█. Each column encodes value in eighths of a cell, doubling effective vertical precision.",
+                Doc.Example(
+                    "Trend data with eighth-cell bars",
+                    "Twenty-eight deterministic samples rendered with eight granularity levels per cell row.",
+                    new CanvasSparklineSample(),
+                    "var blocks = [\" \", \"▁\", \"▂\", \"▃\", \"▄\", \"▅\", \"▆\", \"▇\", \"█\"];\nvar eighths = (int)(ratio * height * 8);\ncanvas.Draw(blocks[eighths % 8], point, style);")),
+            Doc.Section(
+                "📊",
+                "Dashboard composition",
+                "A single custom control combines lines, fills, shades, labels, and topology into a compact information panel.",
+                Doc.Example(
+                    "System monitor panel",
+                    "Three gauges using solid and light shade fills, a vertical divider, and stat labels—all deterministic cell drawing inside one OnRender.",
+                    new CanvasDashboardSample(),
+                    "canvas.FillShade(barBounds, Shade.Solid, style);\ncanvas.FillShade(emptyBounds, Shade.Light, style);\ncanvas.DrawVerticalLine(divider, length, LineStyle.Light, style);")),
+            Doc.Section(
+                "🧩",
+                "Topology merging",
+                "Lines auto-join at shared cells: horizontal and vertical segments produce ┼ ├ ┤ ┬ ┴ and corner glyphs without per-junction code.",
+                Doc.Example(
+                    "Maze with merged junctions",
+                    "Overlapping DrawHorizontalLine and DrawVerticalLine calls produce a maze where every intersection merges deterministically.",
+                    new CanvasMazeSample(),
+                    "canvas.DrawBox(outer, LineStyle.Light, style);\ncanvas.DrawVerticalLine(wall, height, LineStyle.Light, style);\ncanvas.DrawHorizontalLine(floor, width, LineStyle.Light, style);")),
+            Doc.Section(
+                "🎨",
+                "Color palette",
+                "Indexed terminal colors rendered as solid blocks. Sixteen standard, 216-cube sample, and 24-level grayscale ramp.",
+                Doc.Example(
+                    "Terminal color grid",
+                    "Color.Indexed(n) maps directly to the terminal's 256-color palette for controls and custom drawing alike.",
+                    new CanvasColorGridSample(),
+                    "var color = Color.Indexed(index);\ncanvas.Fill(region, new Rune('█'), new CellStyle(color, Color.Default));")));
     }
 
     private static Canvas Stage() => new()
