@@ -330,7 +330,7 @@ Commit the spec, production type, and both fixtures as
 - Create: `tests/SharpVision.Tests/Controls/CheckBoxSurfaceTests.cs`
 - Modify: `docs/controls/input/check-box.md`
 
-- [ ] **Step 1: Write intended-behavior scenarios and verify RED**
+- [x] **Step 1: Write intended-behavior scenarios and verify RED**
 
 Use isolated surfaces for unchecked, hover, held pointer, focus, checked,
 indeterminate, and disabled combinations. Add a parity fact that records
@@ -350,12 +350,12 @@ surface.ShouldRender("[x] 界");
 Expected RED: any mismatch must concern routed state, final cells, or event
 cause—not an unsupported helper.
 
-- [ ] **Step 2: Fix demonstrated behavior and verify focused suites**
+- [x] **Step 2: Fix demonstrated behavior and verify focused suites**
 
 Retain a separate regression per defect. Run `*CheckBoxSurfaceTests`,
 `*CheckBoxTests`, and `*PressableTests` after every production correction.
 
-- [ ] **Step 3: Link the mounted proof and commit**
+- [x] **Step 3: Link the mounted proof and commit**
 
 Update the test-obligations paragraph and commit the surface fixture plus only
 verified fixes/spec changes.
