@@ -604,9 +604,20 @@ public sealed class SnakeScreen: Screen
     {
         _ = sender;
 
-        if (_phase == GamePhase.Playing)
+        if (_phase != GamePhase.Playing)
         {
-            _state.ChangeDirection(direction);
+            return;
+        }
+
+        _state.ChangeDirection(direction);
+
+        var result = _state.Tick();
+        UpdateTopBar();
+        _board.RequestRedraw();
+
+        if (result == TickResult.Died)
+        {
+            TriggerDeathAnimation();
         }
     }
 

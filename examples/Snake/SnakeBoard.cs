@@ -160,7 +160,8 @@ public sealed class SnakeBoard: Control
     {
         _ = sender;
 
-        if (eventArgs.Phase != Phase.Bubble || eventArgs.Stroke.Action != KeyAction.Press)
+        if (eventArgs.Phase != Phase.Bubble ||
+            (eventArgs.Stroke.Action != KeyAction.Press && eventArgs.Stroke.Action != KeyAction.Repeat))
         {
             return;
         }
