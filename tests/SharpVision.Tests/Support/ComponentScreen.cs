@@ -98,7 +98,7 @@ internal sealed class ComponentScreen: ISequenceSink
         foreach (var segment in Graphemes.Enumerate(text.AsSpan()))
         {
             var cluster = text.AsSpan(segment.Offset, segment.Length);
-            var width = SharpVision.Terminal.Unicode.Width.Measure(cluster, Ambiguous.Narrow).Cells;
+            var width = Width.Measure(cluster, Ambiguous.Narrow).Cells;
 
             if (width > 0)
             {
@@ -318,7 +318,7 @@ internal sealed class ComponentScreen: ISequenceSink
             Repair(_position.X + 1, _position.Y);
         }
 
-        var style = new CellStyle(
+        var style = new TerminalStyle(
             _foreground,
             _background,
             _attributes,

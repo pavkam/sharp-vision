@@ -6,6 +6,8 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies Button appearance and interaction through a mounted terminal surface.</summary>
 public sealed class ButtonSurfaceTests
 {
+    #region Interaction surfaces
+
     /// <summary>Verifies initial layout, normal styling, and the detached composite shadow.</summary>
     [Fact]
     public async Task Render_WhenButtonIsMounted_ShowsNormalFaceAndCompositeShadowAsync()
@@ -248,6 +250,10 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(Attributes.None);
     }
 
+    #endregion
+
+    #region Snapshot fixtures
+
     private static string ReleasedSnapshot(bool hasBorder, bool hasShadow) =>
         (hasBorder, hasShadow) switch
         {
@@ -313,4 +319,6 @@ public sealed class ButtonSurfaceTests
 
                 """,
         };
+
+    #endregion
 }

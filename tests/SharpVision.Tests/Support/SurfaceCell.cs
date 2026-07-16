@@ -19,7 +19,7 @@ internal readonly record struct SurfaceCell
     /// <exception cref="ArgumentException">
     /// <paramref name="isContinuation"/> disagrees with <paramref name="width"/>.
     /// </exception>
-    internal SurfaceCell(string text, CellStyle style, int width, bool isContinuation, int leadX)
+    internal SurfaceCell(string text, TerminalStyle style, int width, bool isContinuation, int leadX)
     {
         ArgumentNullException.ThrowIfNull(text);
 
@@ -42,13 +42,13 @@ internal readonly record struct SurfaceCell
     }
 
     /// <summary>Gets the default blank terminal cell.</summary>
-    internal static SurfaceCell Blank { get; } = new(" ", CellStyle.Default, 1, false, 0);
+    internal static SurfaceCell Blank { get; } = new(" ", TerminalStyle.Default, 1, false, 0);
 
     /// <summary>Gets the complete grapheme text, or one space for a blank cell.</summary>
     internal string Text { get; init; }
 
     /// <summary>Gets the resolved terminal cell style.</summary>
-    internal CellStyle Style { get; init; }
+    internal TerminalStyle Style { get; init; }
 
     /// <summary>Gets the grapheme width in terminal cells.</summary>
     internal int Width { get; }
