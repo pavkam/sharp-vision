@@ -225,7 +225,10 @@ public sealed class MenuItem: Pressable
     {
         if (_submenuPopup is not null)
         {
-            _submenuPopup.IsOpen = !_submenuPopup.IsOpen;
+            var opening = !_submenuPopup.IsOpen;
+
+            CloseSiblingSubmenus();
+            _submenuPopup.IsOpen = opening;
             return;
         }
 
@@ -471,6 +474,22 @@ public sealed class MenuItem: Pressable
         return value.HasValue
             ? Math.Max(0, value.Value - extent)
             : null;
+    }
+
+    private void CloseSiblingSubmenus()
+    {
+        if (FindMenu() is not { } ownerMenu)
+        {
+            return;
+        }
+
+        foreach (var sibling in ownerMenu.Items)
+        {
+            if (sibling is MenuItem { _submenuPopup.IsOpen: true } other && !ReferenceEquals(other, this))
+            {
+                other._submenuPopup.IsOpen = false;
+            }
+        }
     }
 
     private Rect RootBounds(Rect fallback)
