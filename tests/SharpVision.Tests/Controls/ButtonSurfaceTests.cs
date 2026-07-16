@@ -41,6 +41,42 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
+    /// <summary>Verifies snapshots and cells preserve a wide Button content grapheme.</summary>
+    [Fact]
+    public async Task Render_WhenButtonContentIsWide_PreservesSurfaceCellGeometryAsync()
+    {
+        // Arrange
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Content = new ControlText("界"),
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(8, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+            ╭────╮
+            │界  │
+            ╰────╯
+
+
+            """);
+        var lead = surface.Cell(new Point(1, 1));
+        lead.Text.ShouldBe("界");
+        lead.Width.ShouldBe(2);
+        var continuation = surface.Cell(new Point(2, 1));
+        continuation.IsContinuation.ShouldBeTrue();
+        continuation.LeadX.ShouldBe(1);
+    }
+
     /// <summary>Verifies decoded pointer movement updates hover state, face styling, and final cells.</summary>
     [Fact]
     public async Task Pointer_WhenMovedOverButton_ShowsHoveredAppearanceAsync()

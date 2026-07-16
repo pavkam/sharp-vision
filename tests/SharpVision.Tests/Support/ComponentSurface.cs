@@ -245,14 +245,20 @@ internal sealed class ComponentSurface: IAsyncDisposable
             }
 
             var row = y < rows.Length ? rows[y] : string.Empty;
+            var measurement = Width.Measure(row, Ambiguous.Narrow);
 
-            if (row.Length > _terminal.Screen.Size.Width)
+            if (measurement.Controls > 0)
+            {
+                throw new ArgumentException($"Expected row {y} contains a terminal control.", nameof(expected));
+            }
+
+            if (measurement.Cells > _terminal.Screen.Size.Width)
             {
                 throw new ArgumentException($"Expected row {y} is wider than the component surface.", nameof(expected));
             }
 
             _ = value.Append(row);
-            _ = value.Append(' ', _terminal.Screen.Size.Width - row.Length);
+            _ = value.Append(' ', _terminal.Screen.Size.Width - measurement.Cells);
         }
 
         _terminal.Screen.CopyText().ShouldBe(value.ToString());
