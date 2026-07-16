@@ -342,6 +342,24 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set => _ = SetProperty(ref field, value, ChangeImpact.None);
     } = true;
 
+    /// <summary>Gets or sets how Tab traversal treats this control's subtree.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public TabNavigation TabNavigation
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The tab navigation mode is unknown.");
+            }
+
+            _ = SetProperty(ref field, value, ChangeImpact.None);
+        }
+    }
+
     /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
     /// <exception cref="ArgumentException">
     /// The style targets a type this control does not derive from or reports an unknown change impact.

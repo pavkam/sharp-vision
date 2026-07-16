@@ -23,6 +23,7 @@ public sealed class ComboBox: Control
         _list = new List
         {
             SelectionMode = SelectionMode.Single,
+            IsTabStop = false,
         };
         _list.ItemInvoked += OnItemInvoked;
         _list.SelectionChanged += OnSelectionChanged;
@@ -30,6 +31,7 @@ public sealed class ComboBox: Control
         {
             Anchor = this,
             Content = _list,
+            TabNavigation = TabNavigation.Contained,
         };
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;

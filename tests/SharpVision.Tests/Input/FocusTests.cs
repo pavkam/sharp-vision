@@ -324,6 +324,166 @@ public sealed class FocusTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies MoveNext wraps within a Cycle scope instead of traversing globally.</summary>
+    [Fact]
+    public async Task MoveNext_WhenScopeIsCycle_WrapsWithinScopeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var outside = new ProbeControl() { CanFocus = true };
+            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var inner1 = new ProbeControl() { CanFocus = true };
+            var inner2 = new ProbeControl() { CanFocus = true };
+            scope.Children.Add(inner1);
+            scope.Children.Add(inner2);
+            root.Children.Add(outside);
+            root.Children.Add(scope);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(inner1).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner2);
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner1);
+            manager.MoveNext(reverse: true).ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner2);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies MoveNext traps focus within a Contained scope.</summary>
+    [Fact]
+    public async Task MoveNext_WhenScopeIsContained_TrapsFocusAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var outside = new ProbeControl() { CanFocus = true };
+            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
+            var inner1 = new ProbeControl() { CanFocus = true };
+            var inner2 = new ProbeControl() { CanFocus = true };
+            scope.Children.Add(inner1);
+            scope.Children.Add(inner2);
+            root.Children.Add(outside);
+            root.Children.Add(scope);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(inner1).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner2);
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(inner1);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies MoveNext returns false for an empty scope.</summary>
+    [Fact]
+    public async Task MoveNext_WhenScopeIsEmpty_ReturnsFalseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var scope = new ProbeContainer() { CanFocus = true, TabNavigation = TabNavigation.Cycle };
+            root.Children.Add(scope);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(scope).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies MoveNext wraps to the same control when the scope has one tab stop.</summary>
+    [Fact]
+    public async Task MoveNext_WhenScopeHasSingleTabStop_WrapsToSelfAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var only = new ProbeControl() { CanFocus = true };
+            scope.Children.Add(only);
+            root.Children.Add(scope);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(only).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(only);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies nested scopes use the innermost scope for Tab traversal.</summary>
+    [Fact]
+    public async Task MoveNext_WhenScopesAreNested_UsesInnermostAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var outer = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var outerChild = new ProbeControl() { CanFocus = true };
+            var inner = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
+            var innerA = new ProbeControl() { CanFocus = true };
+            var innerB = new ProbeControl() { CanFocus = true };
+            inner.Children.Add(innerA);
+            inner.Children.Add(innerB);
+            outer.Children.Add(outerChild);
+            outer.Children.Add(inner);
+            root.Children.Add(outer);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(innerA).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(innerB);
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(innerA);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the scope root is excluded from its own scope's tab-stop candidates.</summary>
+    [Fact]
+    public async Task MoveNext_WhenScopeRootIsTabStop_ExcludesRootFromOwnScopeAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var scope = new ProbeContainer()
+            {
+                CanFocus = true,
+                IsTabStop = true,
+                TabNavigation = TabNavigation.Cycle,
+            };
+            var child1 = new ProbeControl() { CanFocus = true };
+            var child2 = new ProbeControl() { CanFocus = true };
+            scope.Children.Add(child1);
+            scope.Children.Add(child2);
+            root.Children.Add(scope);
+            root.Attach(dispatcher);
+            using var manager = new FocusManager(root);
+            manager.Focus(child1).ShouldBeTrue();
+
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(child2);
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(child1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies disable, hide, detach, and preview mutation clear or reject safely.</summary>
     [Fact]
     public async Task Focus_WhenTreeMutates_ReleasesInvalidReferencesAsync()

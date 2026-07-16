@@ -160,12 +160,12 @@ internal sealed class TextPane: CompositeControl
                 Doc.Example(
                     "Five policies over identical Unicode",
                     "Compare Visible, Wrap, WrapAnywhere, Clip, and Ellipsis. None splits the CJK or emoji grapheme ownership.",
-                    Doc.Column(
-                        Doc.Row(new Text("Visible"), OverflowCard(visible)),
-                        Doc.Row(new Text("Wrap"), OverflowCard(wrap)),
-                        Doc.Row(new Text("Anywhere"), OverflowCard(anywhere)),
-                        Doc.Row(new Text("Clip"), OverflowCard(clip)),
-                        Doc.Row(new Text("Ellipsis"), OverflowCard(ellipsis))))),
+                    Doc.Row(
+                        Doc.Column(new Text("<b>Visible</b>"), OverflowCard(visible)),
+                        Doc.Column(new Text("<b>Wrap</b>"), OverflowCard(wrap)),
+                        Doc.Column(new Text("<b>Anywhere</b>"), OverflowCard(anywhere)),
+                        Doc.Column(new Text("<b>Clip</b>"), OverflowCard(clip)),
+                        Doc.Column(new Text("<b>Ellipsis</b>"), OverflowCard(ellipsis))))),
             Doc.Section(
                 "✍️",
                 "Alignment and lines",

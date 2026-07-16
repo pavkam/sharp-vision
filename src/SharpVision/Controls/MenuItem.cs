@@ -253,6 +253,17 @@ public sealed class MenuItem: Pressable
     protected override bool IsCheckedState => _isChecked;
 
     /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (focused)
+        {
+            FindMenu()?.NotifyItemFocused(this);
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);

@@ -23,6 +23,7 @@ public sealed class Menu: ItemsControl
         };
         InitializeItemsHost(_stack);
         Items = new MenuItems(this);
+        TabNavigation = TabNavigation.Cycle;
     }
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
@@ -244,6 +245,19 @@ public sealed class Menu: ItemsControl
         if (reason == ReleaseReason.Disposed)
         {
             ItemInvoked = null;
+        }
+    }
+
+    /// <summary>Updates the selected index when a child item receives focus externally.</summary>
+    /// <param name="item">The non-null owned item that received focus.</param>
+    internal void NotifyItemFocused(MenuItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var index = IndexOfItemControl(item);
+
+        if (index >= 0 && index != _selectedIndex)
+        {
+            Select(index, focus: false);
         }
     }
 

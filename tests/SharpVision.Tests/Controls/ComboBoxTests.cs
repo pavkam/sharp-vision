@@ -273,6 +273,81 @@ public sealed class ComboBoxTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Tab stays inside the open popup by cycling through ListItems.</summary>
+    [Fact]
+    public async Task Dispatch_WhenTabPressedInOpenPopup_CyclesThroughListItemsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var box = new ComboBox() { Items = ["A", "B", "C"], SelectedIndex = 0 };
+            var outside = new ProbeControl() { CanFocus = true };
+            root.Children.Add(box);
+            root.Children.Add(outside);
+            new Engine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            focus.Focus(box).ShouldBeTrue();
+
+            Router.Route(box, Events.Key, Key(Code.Enter));
+            box.IsOpen.ShouldBeTrue();
+            var list = focus.Focused.ShouldBeOfType<List>();
+
+            Router.Route(list, Events.Key, Tab());
+            focus.Focused.ShouldBeOfType<ListItem>();
+
+            Router.Route(focus.Focused!, Events.Key, Tab());
+            focus.Focused.ShouldBeOfType<ListItem>();
+
+            Router.Route(focus.Focused!, Events.Key, Tab());
+            focus.Focused.ShouldBeOfType<ListItem>();
+
+            focus.Focused.ShouldNotBeSameAs(outside);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Tab does not escape an open popup to reach sibling controls.</summary>
+    [Fact]
+    public async Task Dispatch_WhenTabPressedInOpenPopup_DoesNotEscapeToSiblingControlsAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var box = new ComboBox() { Items = ["X", "Y"], SelectedIndex = 0 };
+            var sibling = new ProbeControl() { CanFocus = true };
+            root.Children.Add(box);
+            root.Children.Add(sibling);
+            new Engine().Layout(root, new Size(20, 10));
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            focus.Focus(box).ShouldBeTrue();
+            Router.Route(box, Events.Key, Key(Code.Enter));
+            box.IsOpen.ShouldBeTrue();
+            var list = focus.Focused.ShouldBeOfType<List>();
+
+            Router.Route(list, Events.Key, Tab());
+            var first = focus.Focused;
+            Router.Route(focus.Focused!, Events.Key, Tab());
+            var second = focus.Focused;
+            Router.Route(focus.Focused!, Events.Key, Tab());
+
+            focus.Focused.ShouldBeSameAs(first);
+            first.ShouldNotBeSameAs(sibling);
+            second.ShouldNotBeSameAs(sibling);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    private static KeyEventArgs Tab() => new(new Stroke(
+        Code.Tab,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press));
+
     private static KeyEventArgs Key(Code code) => new(new Stroke(
         code,
         default,

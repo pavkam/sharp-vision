@@ -85,12 +85,11 @@ public sealed class FocusManager: IDisposable
     public bool MoveNext(bool reverse = false)
     {
         VerifyAccess();
+        var scope = FindScope(Focused);
         var candidates = new List<(Control Control, int Order)>();
         var order = 0;
 
-        // Snapshot the current eligible tree before invoking Focus, because the
-        // cancellable focus transaction may mutate or reparent controls.
-        Collect(Root, candidates, ref order);
+        Collect(scope, candidates, ref order, scope);
         candidates.Sort(static (left, right) =>
         {
             var tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
@@ -295,25 +294,44 @@ public sealed class FocusManager: IDisposable
     private void Collect(
         Control control,
         List<(Control Control, int Order)> candidates,
-        ref int order)
+        ref int order,
+        Control scope)
     {
         Debug.Assert(control is not null, "Focus traversal visits a concrete control.");
         Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
         Debug.Assert(order >= 0, "Focus traversal order is non-negative.");
 
-        if (IsEligible(control) && control.IsTabStop)
+        if (!ReferenceEquals(control, scope) && IsEligible(control) && control.IsTabStop)
         {
             candidates.Add((control, order));
         }
 
         order++;
 
+        if (!ReferenceEquals(control, scope) && control.TabNavigation != TabNavigation.Continue)
+        {
+            return;
+        }
+
         var count = control.NavigationCount;
 
         for (var index = 0; index < count; index++)
         {
-            Collect(control.NavigationAt(index), candidates, ref order);
+            Collect(control.NavigationAt(index), candidates, ref order, scope);
         }
+    }
+
+    private Control FindScope(Control? focused)
+    {
+        for (var current = focused; current is not null; current = current.Parent)
+        {
+            if (current.TabNavigation != TabNavigation.Continue)
+            {
+                return current;
+            }
+        }
+
+        return Root;
     }
 
     private bool IsEligible(Control control) =>

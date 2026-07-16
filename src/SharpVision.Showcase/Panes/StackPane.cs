@@ -3,6 +3,8 @@
 
 namespace SharpVision.Showcase.Panes;
 
+using SharpVision.Text;
+
 using Text = SharpVision.Controls.Text;
 
 /// <summary>Documents the Stack control with orientation, spacing, and reverse-order specimens.</summary>
@@ -32,15 +34,62 @@ internal sealed class StackPane: CompositeControl
         reversed.Children.Add(Card("Second", Glyphs.Heavy));
         reversed.Children.Add(Card("Third", Glyphs.Paired));
 
-        Stack vertical = new() { Spacing = 1 };
-        vertical.Children.Add(Card("Top", Glyphs.Rounded));
-        vertical.Children.Add(Card("Spacing = 1", Glyphs.Light));
-        vertical.Children.Add(Card("Bottom", Glyphs.Heavy));
+        Stack vertical = new() { Spacing = 1, Width = Length.Cells(50) };
+        var vHeader = new Dock
+        {
+            Background = ThemeColors.Surface,
+            FillMode = FillMode.Opaque,
+            Height = Length.Cells(3),
+            Padding = new Thickness(1, 0),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            Children = { new Text("Header region (3 rows)") },
+        };
+        var vContent = new Dock
+        {
+            Height = Length.Cells(5),
+            Padding = new Thickness(1, 0),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Light,
+            Children = { new Text("Content region (5 rows)\nSpacing = 1 between children") { Overflow = Overflow.Wrap } },
+        };
+        var vFooter = new Dock
+        {
+            Background = ThemeColors.Surface,
+            FillMode = FillMode.Opaque,
+            Height = Length.Cells(2),
+            Padding = new Thickness(1, 0),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Heavy,
+            Children = { new Text("Footer (2 rows)") },
+        };
+        vertical.Children.Add(vHeader);
+        vertical.Children.Add(vContent);
+        vertical.Children.Add(vFooter);
 
-        var horizontalOrientation = new Stack { Orientation = Orientation.Horizontal, Spacing = 1 };
-        horizontalOrientation.Children.Add(Card("Left", Glyphs.Light));
-        horizontalOrientation.Children.Add(Card("Center", Glyphs.Rounded));
-        horizontalOrientation.Children.Add(Card("Right", Glyphs.Heavy));
+        var horizontalOrientation = new Stack { Orientation = Orientation.Horizontal, Spacing = 1, Width = Length.Cells(50) };
+        var hNav = new Dock
+        {
+            Width = Length.Cells(12),
+            Height = Length.Cells(6),
+            Background = ThemeColors.Surface,
+            FillMode = FillMode.Opaque,
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            Padding = new Thickness(1, 0),
+            Children = { new Text("Sidebar\n12 cells") { Overflow = Overflow.Wrap } },
+        };
+        var hMain = new Dock
+        {
+            Width = Length.Star(1),
+            Height = Length.Cells(6),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Light,
+            Padding = new Thickness(1, 0),
+            Children = { new Text("Main area\nFills remaining width") { Overflow = Overflow.Wrap } },
+        };
+        horizontalOrientation.Children.Add(hNav);
+        horizontalOrientation.Children.Add(hMain);
 
         var margins = new Stack { Orientation = Orientation.Horizontal, Spacing = 1 };
         var marginCard = Card("Margin 2", Glyphs.Light);
