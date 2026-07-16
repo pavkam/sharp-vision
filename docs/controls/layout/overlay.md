@@ -47,3 +47,8 @@ Cover z-order ties/changes, hit testing, pointer-transparent children, clipping,
 alignment/percent sizing, collapsed children, zero/tiny bounds, resize,
 ownership, focus order independence, popup z-order, viewport clipping, scrollbar
 render/hit precedence, damage after removal, and exact cells.
+
+Mounted cross-layer coverage in
+[`OverlaySurfaceTests`](../../../tests/SharpVision.Tests/Controls/OverlaySurfaceTests.cs)
+proves z-order visual and pointer precedence, reordering, removal damage and
+lower-layer reveal, plus percentage sizing and trailing-alignment resize.

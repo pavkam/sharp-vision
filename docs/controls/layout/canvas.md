@@ -69,3 +69,9 @@ canvas.Children.Add(badge);
 Cover every offset combination, stretch rules, percentages, intrinsic union,
 negative/off-screen placement, clipping/hit testing, z-order, zero/tiny bounds,
 resize, ownership, Unicode child width, and exact bounds/cells.
+
+Mounted cross-layer coverage in
+[`CanvasSurfaceTests`](../../../tests/SharpVision.Tests/Controls/CanvasSurfaceTests.cs)
+proves percentage repositioning with a real wide-cell pointer target, stale
+continuation repair after resize, negative trailing placement, clipping, and
+later content reveal.

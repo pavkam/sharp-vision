@@ -86,29 +86,29 @@ Update both control test obligations and commit as
 - Modify: `docs/controls/layout/overlay.md`
 - Modify: `docs/controls/layout/canvas.md`
 
-- [ ] **Step 1: Write Dock edge/fill scenarios**
+- [x] **Step 1: Write Dock edge/fill scenarios**
 
 Prove stable top/bottom/left/right consumption, fill behavior, exact remaining
 space, tiny bounds, resize, clipping, and pointer activation at each committed
 edge.
 
-- [ ] **Step 2: Write Overlay precedence scenarios**
+- [x] **Step 2: Write Overlay precedence scenarios**
 
 Prove common-slot arrangement, later-child visual and hit-test precedence,
 hidden-child reveal after public mutation, clipping, resize, and removal of old
 top-layer cells.
 
-- [ ] **Step 3: Write Canvas coordinate scenarios**
+- [x] **Step 3: Write Canvas coordinate scenarios**
 
 Prove cell and percentage positions, negative/overflow clipping, z-order, resize
 repositioning, Unicode cells, and pointer routing using final arranged bounds.
 
-- [ ] **Step 4: Run focused suites and correct only observable defects**
+- [x] **Step 4: Run focused suites and correct only observable defects**
 
 Run the three new surface fixtures with `*DockTests`, `*OverlayTests`, and
 `*CanvasTests`. Retain one mounted regression for every production correction.
 
-- [ ] **Step 5: Link proofs and commit**
+- [x] **Step 5: Link proofs and commit**
 
 Update the three specifications and commit as
 `test: cover ordered layout controls on mounted surfaces`.
