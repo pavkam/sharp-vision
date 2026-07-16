@@ -174,6 +174,32 @@ pointer drag selection, wheel-driven owned rails, and resize offset repair.
 geometry; combined state appearance; keyboard/button/track/wheel causes;
 endpoint no-ops; captured thumb motion; and disable cleanup.
 
+The layout-control surface audit is split by responsibility instead of hiding
+everything behind snapshots. `StackSurfaceTests`, `GridSurfaceTests`, and
+`DockSurfaceTests` prove mixed track allocation, ordering, collapsed-child
+exclusion, intrinsic scrolling, span/padding hit targets, every dock edge,
+resize, clipping, Unicode cells, and exact committed bounds. Their corresponding
+`StackTests`, `GridTests`, and `DockTests` retain exhaustive automatic sizing,
+deterministic remainder, unbounded measure, overflow, tiny-bound, and mutation
+algorithms.
+
+`OverlaySurfaceTests` and `CanvasSurfaceTests` prove visual and hit-test
+precedence, visibility/removal repair, common-slot alignment, percentage
+repositioning, negative/oversized clipping, and resize exposure. Exhaustive
+transparent-child, popup-layer, scroll-gutter, and signed-origin rules remain in
+`OverlayTests` and `CanvasTests`. `TableSurfaceTests` proves mixed columns,
+headers, Unicode, clickable row reuse/removal, both-axis scrolling, resize
+clamping, and stale-cell clearing; `TableTests` retains exhaustive column,
+wrapping, viewport, mutation, and scroll-origin cache invariants.
+
+`GroupBoxSurfaceTests` proves exact empty and wide-header frames, content
+insets, tiny clipping, resize reveal, style inheritance, and continuation
+ownership. `ExpanderSurfaceTests` proves exact expanded/collapsed appearance,
+stale-content clearing, pointer/Space/Enter parity, focus, disabled refusal,
+replacement, Unicode, tiny clipping, and resize reflow. `GroupBoxTests` and
+`ExpanderTests` retain validation-before-mutation, ownership transfer,
+desired-size, event order, and retained framework-part responsibilities.
+
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route
 payloads, pixel-to-cell inference, owned paste bytes, repeat action, control

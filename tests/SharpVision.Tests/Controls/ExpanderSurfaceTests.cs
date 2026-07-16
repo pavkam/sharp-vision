@@ -153,4 +153,32 @@ public sealed class ExpanderSurfaceTests
         surface.Cell(new Point(2, 0)).Text.ShouldBe("界");
         surface.Cell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
     }
+
+    /// <summary>Verifies a one-cell collapsed header clips safely and resize reveals the retained label.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenCollapsedHeaderStartsTiny_RevealsLabelWithoutExpandingAsync()
+    {
+        // Arrange
+        var expander = new Expander
+        {
+            Header = "Details",
+            IsExpanded = false,
+            Content = new ControlText("Hidden"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            expander,
+            new Size(1, 1),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("▶");
+
+        // Act
+        await surface.ResizeAsync(new Size(9, 1));
+
+        // Assert
+        expander.IsExpanded.ShouldBeFalse();
+        expander.Content.Bounds.ShouldBe(default);
+        surface.ShouldRender("▶ Details");
+    }
 }

@@ -221,7 +221,7 @@ Add one gallery pane with expanded, collapsed, nested, disabled, Unicode, and
 content-replacement examples plus a representative screen test. Update catalog
 registration and the control specification.
 
-- [ ] **Step 5: Commit Expander slice**
+- [x] **Step 5: Commit Expander slice**
 
 Commit as `feat: add expander control`.
 
@@ -232,13 +232,13 @@ Commit as `feat: add expander control`.
 - Modify: `docs/testing/controls-integration.md`
 - Modify: this plan.
 
-- [ ] **Step 1: Audit every layout scenario against named evidence**
+- [x] **Step 1: Audit every layout scenario against named evidence**
 
 Map the umbrella design to named mounted or retained unit responsibilities. Add
 any missing geometry, clipping, hit-test, resize, Unicode, disabled, tiny,
 mutation, or stale-cell proof.
 
-- [ ] **Step 2: Run repository quality gates**
+- [x] **Step 2: Run repository quality gates**
 
 ```bash
 make format
@@ -250,6 +250,6 @@ make test
 Expected: zero warnings/errors, docs and links pass, every discovered test
 passes, and isolated package consumption succeeds.
 
-- [ ] **Step 3: Commit phase documentation**
+- [x] **Step 3: Commit phase documentation**
 
 Commit as `docs: complete third control surface coverage phase`.
