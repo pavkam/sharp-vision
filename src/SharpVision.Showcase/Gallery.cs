@@ -23,6 +23,7 @@ public sealed class Gallery: Screen
         (MenuPane.Title, static () => new MenuPane()),
         (OverlayPane.Title, static () => new OverlayPane()),
         (PopupPane.Title, static () => new PopupPane()),
+        (PrismPane.Title, static () => new PrismPane()),
         (RadioButtonPane.Title, static () => new RadioButtonPane()),
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
         (StackPane.Title, static () => new StackPane()),

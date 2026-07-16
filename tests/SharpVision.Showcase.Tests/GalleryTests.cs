@@ -20,6 +20,7 @@ public sealed class GalleryTests
         "Menu",
         "Overlay",
         "Popup",
+        "Prism",
         "RadioButton",
         "ScrollBar",
         "Stack",

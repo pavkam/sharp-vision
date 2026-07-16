@@ -20,6 +20,7 @@ public sealed class ShowcaseContentTests
             ["Menu"] = ["Command menu", "Menu bar", "Popup composition", "Selection and invocation"],
             ["Overlay"] = ["Layering", "Stable ties", "Pointer transparency", "Clipping"],
             ["Popup"] = ["Anchored menu", "Placement", "Fallback and clamp", "Lifecycle"],
+            ["Prism"] = ["Directions", "Caller-driven animation", "Style preservation", "FIGlet title"],
             ["RadioButton"] = ["Named group", "Arrow traversal", "Unnamed scope", "Events"],
             ["ScrollBar"] = ["Range anatomy", "Input parity", "Live range", "Tiny rails"],
             ["Stack"] = ["Orientation", "Mixed sizing", "Visibility", "Constrained space"],

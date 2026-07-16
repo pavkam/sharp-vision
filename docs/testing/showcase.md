@@ -2,7 +2,7 @@
 
 ## Showcase testing
 
-The showcase catalog test fixes the exact 19-page inventory and requires Button
+The showcase catalog test fixes the exact 20-page inventory and requires Button
 to be the initial page and Canvas to occupy index 1. Every page contains wrapped
 marked-Text Overview documentation and builds a fresh, detached, independently
 owned live tree. Each entry's tree contains the control named by that sidebar
@@ -26,7 +26,7 @@ The same runtime suite targets an SGR wheel report at the overflowing multiline
 offset remains unchanged, protecting leaf-first wheel routing from future
 regressions.
 
-Virtual-screen assertions render all 19 pages at 30 by 8, 80 by 24, and 140 by
+Virtual-screen assertions render all 20 pages at 30 by 8, 80 by 24, and 140 by
 40 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
 component navigation, non-default cell colors, page headings, automatic
 overflow, semantic text, and every wide-cell continuation relationship. The
@@ -55,6 +55,12 @@ block-glyph shadow properties through their live specimens. The Theming page
 also proves that an unprivileged showcase-authored derivative with a custom
 render override calls `RenderChrome` before custom content (its caption and
 body), preserving its intrinsic rounded frame.
+
+The Prism page test activates its explicit phase-step Button and renders before
+and after the mutation. The live diagonal FIGlet control and its content retain
+identical bounds, the Prism-only virtual-screen text stays identical, one stored
+content cell changes foreground, and the deterministic phase status advances
+from zero to one of sixty.
 
 The TextInput rendering suite additionally requires a configured background to
 fill every arranged cell, including the empty cells following short text. The
