@@ -52,6 +52,7 @@ public sealed class EditorScreen: Screen
                 .Item("Find", shortcut: "Ctrl+F", onInvoke: () => _findReplace.OpenFind())
                 .Item("Replace", shortcut: "Ctrl+H", onInvoke: () => _findReplace.OpenReplace()))
             .Build();
+        appMenu.IsTabStop = false;
 
         var menuBar = new Dock
         {

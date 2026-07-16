@@ -8,15 +8,23 @@ using System.Runtime.ExceptionServices;
 /// <summary>Defines one focusable command, check, or radio entry in a <see cref="Menu"/>.</summary>
 public sealed class MenuItem: Pressable
 {
+    private readonly OwnedControlSlot _submenuSlot;
     private bool _isChecked;
     private int _checkedVersion;
-
-    /// <summary>Initializes an ordinary command item with no content.</summary>
     private Popup? _submenuPopup;
 
     /// <summary>Initializes an ordinary command item with no content.</summary>
     public MenuItem()
     {
+        _submenuSlot = RegisterOwnedSlot(
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Popup,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: "submenu",
+                ChangeImpact.None),
+            capacity: 1);
     }
 
     /// <summary>Raised after an eligible item commits its optional check state and activation.</summary>
@@ -42,24 +50,31 @@ public sealed class MenuItem: Pressable
                 return;
             }
 
-            _submenuPopup?.Dispose();
-            _submenuPopup = null;
+            if (_submenuPopup is not null)
+            {
+                _submenuPopup.IsOpen = false;
+                _ = _submenuSlot.Remove(_submenuPopup);
+                _submenuPopup.Dispose();
+                _submenuPopup = null;
+            }
+
+            if (Submenu is { } previous)
+            {
+                previous.ItemInvoked -= OnSubmenuItemInvoked;
+            }
 
             field = value;
 
             if (value is not null)
             {
-                _submenuPopup ??= new Popup
+                _submenuPopup = new Popup
                 {
                     Anchor = this,
                     Placement = PopupPlacement.Below,
+                    Content = value,
                 };
-                _submenuPopup.Content = value;
+                _submenuSlot.Add(_submenuPopup);
                 value.ItemInvoked += OnSubmenuItemInvoked;
-            }
-            else
-            {
-                _submenuPopup = null;
             }
 
             NotifyPropertyChanged(nameof(Submenu), ChangeImpact.None);
