@@ -275,14 +275,14 @@ Commit the spec, production type, and both fixtures as
 - Create: `tests/SharpVision.Tests/Controls/ProgressBarTests.cs`
 - Create: `tests/SharpVision.Tests/Controls/ProgressBarSurfaceTests.cs`
 
-- [ ] **Step 1: Clarify the normative ProgressBar contract**
+- [x] **Step 1: Clarify the normative ProgressBar contract**
 
 Specify finite `double` values, `Minimum < Maximum`, clamp-on-assignment and
 range mutation, horizontal left-to-right and vertical bottom-to-top fill,
 floor-based complete-cell fill, `█` fill and `░` track glyphs, deterministic
 indeterminate `▒`, transparent semantic drawing, and no focus or hit testing.
 
-- [ ] **Step 2: Write range and validation tests, then verify RED**
+- [x] **Step 2: Write range and validation tests, then verify RED**
 
 ```csharp
 var bar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 125 };
@@ -294,7 +294,7 @@ Should.Throw<ArgumentException>(() => bar.Maximum = bar.Minimum);
 Run `*ProgressBarTests`. Expected: compilation fails because `ProgressBar` is
 missing.
 
-- [ ] **Step 3: Write determinate and indeterminate surface tests**
+- [x] **Step 3: Write determinate and indeterminate surface tests**
 
 Assert exact 0%, 40%, and 100% horizontal rows, bottom-up vertical cells,
 deterministic indeterminate glyphs, range mutation through `UpdateAsync`, style,
@@ -306,19 +306,19 @@ surface.Cell(new Point(3, 0)).Text.ShouldBe("█");
 surface.Cell(new Point(4, 0)).Text.ShouldBe("░");
 ```
 
-- [ ] **Step 4: Implement minimal validated properties and rendering**
+- [x] **Step 4: Implement minimal validated properties and rendering**
 
 Use `SetProperty` with render impact for value/range/indeterminate/glyph
 changes, measure impact for orientation, and calculate fill from normalized
 range in `double` before a checked cell-count conversion. Draw only within
 `ContentBounds` through `TerminalCanvas`.
 
-- [ ] **Step 5: Verify both ProgressBar fixtures GREEN**
+- [x] **Step 5: Verify both ProgressBar fixtures GREEN**
 
 Run `*ProgressBarTests` and `*ProgressBarSurfaceTests`. Expected: all cases pass
 without warnings.
 
-- [ ] **Step 6: Commit the ProgressBar control slice**
+- [x] **Step 6: Commit the ProgressBar control slice**
 
 Commit the spec, production type, and both fixtures as
 `feat: add progress bar control`.
