@@ -211,19 +211,21 @@ only the two fixtures, verified production fixes, and two specs.
 - Create: `tests/SharpVision.Tests/Controls/SeparatorTests.cs`
 - Create: `tests/SharpVision.Tests/Controls/SeparatorSurfaceTests.cs`
 
-- [ ] **Step 1: Clarify the normative Separator contract**
+- [x] **Step 1: Clarify the normative Separator contract**
 
-Specify horizontal `─` and vertical `│` defaults, printable one-cell custom
-glyph validation, default horizontal orientation, one-cell intrinsic thickness,
-stretch along the line axis, transparent drawing with `ResolvedStyle`, no focus,
-and no hit-test participation.
+Specify horizontal `─` and vertical `│` defaults through explicit
+`HorizontalGlyph` and `VerticalGlyph` properties, printable one-cell validation,
+default horizontal orientation, one-cell intrinsic size, parent-controlled
+stretch along the line axis, resolved-style drawing, no focus, and no hit-test
+participation.
 
-- [ ] **Step 2: Write unit tests for defaults and validation, then verify RED**
+- [x] **Step 2: Write unit tests for defaults and validation, then verify RED**
 
 ```csharp
 var separator = new Separator();
 separator.Orientation.ShouldBe(Orientation.Horizontal);
-separator.Glyph.ShouldBe(new Rune('─'));
+separator.HorizontalGlyph.ShouldBe(new Rune('─'));
+separator.VerticalGlyph.ShouldBe(new Rune('│'));
 separator.CanFocus.ShouldBeFalse();
 separator.IsHitTestVisible.ShouldBeFalse();
 ```
@@ -231,33 +233,35 @@ separator.IsHitTestVisible.ShouldBeFalse();
 Run `*SeparatorTests`. Expected: compilation fails because `Separator` is
 missing.
 
-- [ ] **Step 3: Write horizontal, vertical, mutation, and tiny surface tests**
+- [x] **Step 3: Write horizontal, vertical, mutation, and tiny surface tests**
 
 Assert a 5×1 horizontal row, a 1×4 vertical column, inherited foreground,
 orientation mutation through `UpdateAsync`, and zero effective content after a
 parent clips it to no cells.
 
-- [ ] **Step 4: Implement the smallest complete Separator**
+- [x] **Step 4: Implement the smallest complete Separator**
 
-Create one sealed `Control` with validated `Orientation` and `Glyph`,
-orientation-dependent measure, and clipped cell drawing in `OnRender`.
+Create one sealed `Control` with validated `Orientation`, `HorizontalGlyph`, and
+`VerticalGlyph`, one-cell intrinsic measure, and clipped cell drawing in
+`OnRender`.
 
 ```csharp
-protected override Size MeasureOverride(Constraint constraint) =>
-    Orientation == Orientation.Horizontal
-        ? new Size(constraint.Width ?? 1, 1)
-        : new Size(1, constraint.Height ?? 1);
+protected override Size MeasureOverride(Constraint constraint)
+{
+    _ = constraint;
+    return new Size(1, 1);
+}
 ```
 
 Use the shared orientation validator and terminal Unicode width API. Do not add
 animation, labels, children, or an independent styling system.
 
-- [ ] **Step 5: Run both Separator fixtures and verify GREEN**
+- [x] **Step 5: Run both Separator fixtures and verify GREEN**
 
 Expected: defaults, invalid glyphs, both orientations, style, mutation, and tiny
 bounds pass.
 
-- [ ] **Step 6: Commit the Separator control slice**
+- [x] **Step 6: Commit the Separator control slice**
 
 Commit the spec, production type, and both fixtures as
 `feat: add separator control`.
