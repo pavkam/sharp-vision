@@ -155,55 +155,27 @@ public sealed class EditorScreen: Screen
         return wrapper;
     }
 
-    private Menu BuildFileMenu()
-    {
-        var menu = new Menu { Orientation = Orientation.Vertical };
-        var fileNew = new MenuItem { Content = new Text("New"), ShortcutText = "Ctrl+N" };
-        fileNew.Invoked += (_, _) => NewFile();
-        var fileQuit = new MenuItem { Content = new Text("Quit"), ShortcutText = "Ctrl+Q" };
-        fileQuit.Invoked += (_, _) => Application?.Closed();
-        menu.Items.Add(fileNew);
-        menu.Items.Add(new MenuSeparator());
-        menu.Items.Add(fileQuit);
-        return menu;
-    }
+    private Menu BuildFileMenu() => MenuBuilder.Vertical()
+        .Item("New", shortcut: "Ctrl+N", onInvoke: NewFile)
+        .Separator()
+        .Item("Quit", shortcut: "Ctrl+Q", onInvoke: () => Application?.Closed())
+        .Build();
 
-    private Menu BuildEditMenu()
-    {
-        var menu = new Menu { Orientation = Orientation.Vertical };
-        var undo = new MenuItem { Content = new Text("Undo"), ShortcutText = "Ctrl+Z" };
-        undo.Invoked += (_, _) => _editor.Undo();
-        var redo = new MenuItem { Content = new Text("Redo"), ShortcutText = "Ctrl+Y" };
-        redo.Invoked += (_, _) => _editor.Redo();
-        var cut = new MenuItem { Content = new Text("Cut"), ShortcutText = "Ctrl+X" };
-        cut.Invoked += (_, _) => _editor.CutSelection();
-        var copy = new MenuItem { Content = new Text("Copy"), ShortcutText = "Ctrl+C" };
-        copy.Invoked += (_, _) => _editor.CopySelection();
-        var paste = new MenuItem { Content = new Text("Paste"), ShortcutText = "Ctrl+V" };
-        var selectAll = new MenuItem { Content = new Text("Select All"), ShortcutText = "Ctrl+A" };
-        selectAll.Invoked += (_, _) => _editor.Select(0, _editor.Text.Length);
-        menu.Items.Add(undo);
-        menu.Items.Add(redo);
-        menu.Items.Add(new MenuSeparator());
-        menu.Items.Add(cut);
-        menu.Items.Add(copy);
-        menu.Items.Add(paste);
-        menu.Items.Add(new MenuSeparator());
-        menu.Items.Add(selectAll);
-        return menu;
-    }
+    private Menu BuildEditMenu() => MenuBuilder.Vertical()
+        .Item("Undo", shortcut: "Ctrl+Z", onInvoke: () => _editor.Undo())
+        .Item("Redo", shortcut: "Ctrl+Y", onInvoke: () => _editor.Redo())
+        .Separator()
+        .Item("Cut", shortcut: "Ctrl+X", onInvoke: () => _editor.CutSelection())
+        .Item("Copy", shortcut: "Ctrl+C", onInvoke: () => _editor.CopySelection())
+        .Item("Paste", shortcut: "Ctrl+V")
+        .Separator()
+        .Item("Select All", shortcut: "Ctrl+A", onInvoke: () => _editor.Select(0, _editor.Text.Length))
+        .Build();
 
-    private Menu BuildSearchMenu()
-    {
-        var menu = new Menu { Orientation = Orientation.Vertical };
-        var find = new MenuItem { Content = new Text("Find"), ShortcutText = "Ctrl+F" };
-        find.Invoked += (_, _) => _findReplace.OpenFind();
-        var replace = new MenuItem { Content = new Text("Replace"), ShortcutText = "Ctrl+H" };
-        replace.Invoked += (_, _) => _findReplace.OpenReplace();
-        menu.Items.Add(find);
-        menu.Items.Add(replace);
-        return menu;
-    }
+    private Menu BuildSearchMenu() => MenuBuilder.Vertical()
+        .Item("Find", shortcut: "Ctrl+F", onInvoke: () => _findReplace.OpenFind())
+        .Item("Replace", shortcut: "Ctrl+H", onInvoke: () => _findReplace.OpenReplace())
+        .Build();
 
     #endregion
 
@@ -211,15 +183,16 @@ public sealed class EditorScreen: Screen
 
     private Menu BuildContextMenu()
     {
-        var menu = new Menu { Orientation = Orientation.Vertical };
-        menu.Items.Add(new MenuItem { Content = new Text("Cut") });
-        menu.Items.Add(new MenuItem { Content = new Text("Copy") });
-        menu.Items.Add(new MenuItem { Content = new Text("Paste") });
-        menu.Items.Add(new MenuSeparator());
-        menu.Items.Add(new MenuItem { Content = new Text("Select All") });
-        menu.Items.Add(new MenuSeparator());
-        menu.Items.Add(new MenuItem { Content = new Text("Find") });
-        menu.Items.Add(new MenuItem { Content = new Text("Replace") });
+        var menu = MenuBuilder.Vertical()
+            .Item("Cut", onInvoke: () => _editor.CutSelection())
+            .Item("Copy", onInvoke: () => _editor.CopySelection())
+            .Item("Paste")
+            .Separator()
+            .Item("Select All", onInvoke: () => _editor.Select(0, _editor.Text.Length))
+            .Separator()
+            .Item("Find", onInvoke: () => _findReplace.OpenFind())
+            .Item("Replace", onInvoke: () => _findReplace.OpenReplace())
+            .Build();
         menu.ItemInvoked += OnContextMenuInvoked;
         return menu;
     }
