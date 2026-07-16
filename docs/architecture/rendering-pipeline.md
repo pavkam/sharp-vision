@@ -38,6 +38,17 @@ and partial-glyph controls use it whenever they do not own an explicit surface
 background. This keeps controls visually aligned with painted panels instead of
 resetting isolated cells to the terminal default.
 
+`Canvas.ApplyForeground` transforms only the foreground of stored grapheme
+owners. It visits complete owners once in row-major order and supplies each
+owner's absolute lead-cell coordinate to the synchronous selector. Stored spaces
+participate, while untouched blank cells are skipped. Background, attributes,
+hyperlink, typed underline, and underline color remain unchanged. A wide owner
+is transformed only when its complete cell range is inside the effective canvas
+clip. Selector callbacks are borrowed for the call and never retained. A
+callback exception propagates unchanged and fails the current render; owners
+completed earlier in traversal remain transformed, while the failing and later
+owners remain unchanged.
+
 Wide leads own exactly one continuation in the current implementation.
 Overwriting or clearing either cell first repairs the complete previous owner.
 `Edge.Clip`, `Edge.Wrap`, and `Edge.Replace` skip, move, or replace the whole

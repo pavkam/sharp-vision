@@ -267,7 +267,136 @@ public sealed class CanvasPrimitiveTests
         frame.GetCell(new Point(1, 0)).Style.ShouldBe(CellStyle.Default);
     }
 
+    /// <summary>Verifies foreground transforms preserve rich owner semantics and visit leads row-major.</summary>
+    [Fact]
+    public void ApplyForeground_WhenStoredOwnersAreRich_PreservesSemanticContentAndVisitsLeadsOnce()
+    {
+        using Frame frame = new(new Size(4, 1));
+        var original = new CellStyle(
+            Color.Indexed(1),
+            Color.Indexed(2),
+            Attributes.Bold,
+            "https://example.test/prism",
+            Underline.Curly,
+            Color.Indexed(3));
+        _ = frame.Canvas.Draw("A 界", default, original);
+        var visited = new List<Point>();
+
+        frame.Canvas.ApplyForeground(
+            frame.Canvas.Bounds,
+            point =>
+            {
+                visited.Add(point);
+                return Color.Rgb(point.X * 20, 40, 60);
+            });
+
+        visited.ShouldBe([new Point(0, 0), new Point(1, 0), new Point(2, 0)]);
+        AssertPreserved(original, frame.GetCell(new Point(0, 0)).Style, Color.Rgb(0, 40, 60));
+        AssertPreserved(original, frame.GetCell(new Point(1, 0)).Style, Color.Rgb(20, 40, 60));
+        AssertPreserved(original, frame.GetCell(new Point(2, 0)).Style, Color.Rgb(40, 40, 60));
+        AssertPreserved(original, frame.GetCell(new Point(3, 0)).Style, Color.Rgb(40, 40, 60));
+        FrameTests.GetText(frame, new Point(0, 0)).ShouldBe("A");
+        FrameTests.GetText(frame, new Point(1, 0)).ShouldBe(" ");
+        FrameTests.GetText(frame, new Point(2, 0)).ShouldBe("界");
+        var continuation = frame.GetCell(new Point(3, 0));
+        continuation.IsContinuation.ShouldBeTrue();
+        continuation.Lead.ShouldBe(new Point(2, 0));
+    }
+
+    /// <summary>Verifies a clipped wide owner remains unchanged without invoking the selector.</summary>
+    [Fact]
+    public void ApplyForeground_WhenClipExcludesWideLead_SkipsOwnerAndSelector()
+    {
+        using Frame frame = new(new Size(2, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        _ = frame.Canvas.Draw("界", default, original);
+        var calls = 0;
+
+        frame.Canvas.Clip(new Rect(1, 0, 1, 1)).ApplyForeground(
+            frame.Canvas.Bounds,
+            _ =>
+            {
+                calls++;
+                return Color.Indexed(9);
+            });
+
+        calls.ShouldBe(0);
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(original);
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(original);
+        frame.GetCell(new Point(1, 0)).Lead.ShouldBe(new Point(0, 0));
+    }
+
+    /// <summary>Verifies a null foreground selector fails before any stored cell changes.</summary>
+    [Fact]
+    public void ApplyForeground_WhenSelectorIsNull_ThrowsBeforeMutation()
+    {
+        using Frame frame = new(new Size(1, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        frame.Canvas.DrawRune(new Rune('A'), default, original);
+
+        _ = Should.Throw<ArgumentNullException>(() =>
+            frame.Canvas.ApplyForeground(frame.Canvas.Bounds, null!));
+
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(original);
+        FrameTests.GetText(frame, default).ShouldBe("A");
+    }
+
+    /// <summary>Verifies selector failures preserve the failing owner and wide-cell links.</summary>
+    [Fact]
+    public void ApplyForeground_WhenSelectorThrows_PropagatesIdentityAndPreservesRemainingOwners()
+    {
+        using Frame frame = new(new Size(3, 1));
+        var original = new CellStyle(Color.Indexed(1), Color.Indexed(2));
+        _ = frame.Canvas.Draw("A界", default, original);
+        var failure = new InvalidOperationException("selector failed");
+
+        var thrown = Should.Throw<InvalidOperationException>(() =>
+            frame.Canvas.ApplyForeground(
+                frame.Canvas.Bounds,
+                point => point.X == 1 ? throw failure : Color.Indexed(9)));
+
+        thrown.ShouldBeSameAs(failure);
+        frame.GetCell(new Point(0, 0)).Style.ShouldBe(
+            new CellStyle(Color.Indexed(9), original.Background));
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(original);
+        var continuation = frame.GetCell(new Point(2, 0));
+        continuation.Style.ShouldBe(original);
+        continuation.IsContinuation.ShouldBeTrue();
+        continuation.Lead.ShouldBe(new Point(1, 0));
+    }
+
+    /// <summary>Verifies stored spaces transform while untouched blanks do not invoke the selector.</summary>
+    [Fact]
+    public void ApplyForeground_WhenRegionContainsStoredSpaceAndBlank_TransformsOnlyStoredSpace()
+    {
+        using Frame frame = new(new Size(2, 1));
+        _ = frame.Canvas.Draw(" ", default, new CellStyle(Color.Indexed(1)));
+        var visited = new List<Point>();
+
+        frame.Canvas.ApplyForeground(
+            frame.Canvas.Bounds,
+            point =>
+            {
+                visited.Add(point);
+                return Color.Indexed(7);
+            });
+
+        visited.ShouldBe([default]);
+        frame.GetCell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.Indexed(7));
+        frame.GetCell(new Point(1, 0)).ShouldBe(CellInfo.Blank);
+    }
+
     #endregion
+
+    private static void AssertPreserved(CellStyle original, CellStyle actual, Color foreground)
+    {
+        actual.Foreground.ShouldBe(foreground);
+        actual.Background.ShouldBe(original.Background);
+        actual.Attributes.ShouldBe(original.Attributes);
+        actual.Hyperlink.ShouldBe(original.Hyperlink);
+        actual.Underline.ShouldBe(original.Underline);
+        actual.UnderlineColor.ShouldBe(original.UnderlineColor);
+    }
 
     private static void AssertRows(Frame frame, params string[] expected)
     {

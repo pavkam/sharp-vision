@@ -29,6 +29,14 @@ change, but the destination background must remain identical; this catches
 isolated table dividers, borders, shadows, and indicator glyphs that
 accidentally fall back to the terminal default.
 
+Foreground-transformation tests require row-major selector callbacks at absolute
+lead-cell coordinates, exactly once per complete stored owner. They cover stored
+spaces versus untouched blank cells, preservation of every non-foreground
+semantic field, clipped wide owners with no callback, and equal
+lead/continuation styles. Callback-failure tests prove unchanged exception
+identity, a valid transformed prefix, an unchanged failing owner, and intact
+wide-cell ownership links.
+
 Cell hashes may reject unequal graphemes quickly, but hash equality never proves
 semantic equality: complete UTF-8 bytes and renderer metadata are compared. This
 keeps collision behavior correct.
