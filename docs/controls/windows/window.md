@@ -33,6 +33,11 @@ the content's ordinary box-model or input routing.
 
 ## Lifecycle and interaction
 
+When a Window becomes visible, it automatically focuses the first focusable
+descendant control. This mirrors the behavior of Delphi VCL and WinForms
+dialogs where showing a form transfers focus to its content. If no focusable
+descendant exists, the Window itself receives focus.
+
 Content remains in the surrounding control tree and receives normal focus,
 keyboard, pointer, resize, and clipping behavior. This makes `Window` useful as
 a composable visual surface inside an `Overlay` or `Canvas`. If an unhandled

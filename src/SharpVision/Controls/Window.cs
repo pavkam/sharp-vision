@@ -23,9 +23,7 @@ public sealed partial class Window: ContentControl
     }
 
     /// <summary>Initializes an empty window with a rounded border and composite shadow.</summary>
-    public Window()
-    {
-    }
+    public Window() => PropertyChanged += OnWindowPropertyChanged;
 
     /// <summary>Raised when the close glyph is activated by a pointer press or programmatic invocation.</summary>
     public event EventHandler? Closing;
@@ -237,6 +235,7 @@ public sealed partial class Window: ContentControl
 
         if (reason == ReleaseReason.Disposed)
         {
+            PropertyChanged -= OnWindowPropertyChanged;
             Closing = null;
         }
     }
@@ -310,6 +309,41 @@ public sealed partial class Window: ContentControl
     #endregion
 
     #region Implementation
+
+    private void OnWindowPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName != nameof(Visibility) || Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        var first = FindFirstFocusable(this);
+        _ = first is not null ? FocusOwner?.Focus(first) : FocusOwner?.Focus(this);
+    }
+
+    private static Control? FindFirstFocusable(Control root)
+    {
+        var count = root.OwnedControlCount;
+
+        for (var i = 0; i < count; i++)
+        {
+            var child = root.OwnedControlAt(i);
+
+            if (child.CanFocus && child.EffectiveIsVisible && child.EffectiveIsEnabled)
+            {
+                return child;
+            }
+
+            if (FindFirstFocusable(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
 
     private static int Add(int left, int right)
     {

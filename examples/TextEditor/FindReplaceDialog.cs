@@ -109,6 +109,7 @@ internal sealed class FindReplaceDialog: IDisposable
         }
 
         _statusText.Content = "<d>Enter a search term</d>";
+        // Window auto-focuses the first focusable child when becoming visible.
     }
 
     /// <summary>Opens the dialog in find-and-replace mode.</summary>
@@ -125,6 +126,7 @@ internal sealed class FindReplaceDialog: IDisposable
         }
 
         _statusText.Content = "<d>Enter a search term</d>";
+        // Window auto-focuses the first focusable child when becoming visible.
     }
 
     /// <summary>Closes and hides the dialog.</summary>
