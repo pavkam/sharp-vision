@@ -196,6 +196,14 @@ internal sealed class WindowPane: CompositeControl
                     overlayComposition)),
             Doc.Section(
                 "🪟",
+                "Modal dialog",
+                "Open a window from a button and close it with an explicit close action. The window appears on a Canvas and can be dragged by its title bar.",
+                Doc.Example(
+                    "Open and close",
+                    "Click the button to open the dialog. Click Close inside the dialog or press Escape to dismiss it.",
+                    DialogStage())),
+            Doc.Section(
+                "🪟",
                 "Boundaries",
                 "Long titles clip before corners and tiny boxes saturate safely without drawing outside their committed bounds.",
                 Doc.Example(
@@ -239,6 +247,56 @@ internal sealed class WindowPane: CompositeControl
         VerticalAlignment = VerticalAlignment.Stretch,
         Children = { new Text(content) },
     };
+
+    private static Canvas DialogStage()
+    {
+        var status = new Text("Dialog: closed");
+        var dialog = new Window
+        {
+            Width = Length.Cells(32),
+            Height = Length.Auto,
+            Title = "Confirm action",
+            Visibility = Visibility.Collapsed,
+        };
+        var closeButton = new Button { Content = new Text("Close"), IsCancel = true };
+        var dialogContent = Doc.Column(
+            new Text("Proceed with the operation?") { Overflow = Overflow.Wrap },
+            closeButton);
+        dialog.Content = dialogContent;
+
+        var openButton = new Button { Content = new Text("Open dialog") };
+        openButton.Click += (_, _) =>
+        {
+            dialog.Visibility = Visibility.Visible;
+            status.Content = "Dialog: open";
+        };
+        closeButton.Click += (_, _) =>
+        {
+            dialog.Visibility = Visibility.Collapsed;
+            status.Content = "Dialog: closed";
+        };
+        Canvas.SetLeft(dialog, Length.Cells(16));
+        Canvas.SetTop(dialog, Length.Cells(2));
+
+        var stage = new Canvas
+        {
+            Width = Length.Cells(56),
+            Height = Length.Cells(12),
+            ClipToBounds = true,
+        };
+        var surface = ApplicationSurface("Application workspace\n\nReady");
+        surface.Width = Length.Cells(56);
+        surface.Height = Length.Cells(12);
+        Canvas.SetLeft(openButton, Length.Cells(2));
+        Canvas.SetTop(openButton, Length.Cells(2));
+        Canvas.SetLeft(status, Length.Cells(2));
+        Canvas.SetTop(status, Length.Cells(5));
+        stage.Children.Add(surface);
+        stage.Children.Add(openButton);
+        stage.Children.Add(status);
+        stage.Children.Add(dialog);
+        return stage;
+    }
 
     private static Canvas DraggableStage()
     {

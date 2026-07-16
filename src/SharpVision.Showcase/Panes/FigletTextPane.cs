@@ -98,6 +98,8 @@ internal sealed class FigletTextPane: CompositeControl
 
         var fallback = new FigletText(catalog.Load("Standard")) { Content = "café 你好" };
 
+        var multiLine = new FigletText(catalog.Load("Standard")) { Content = "Multi\nLine" };
+
         return Doc.Page(
             Title,
             "Renders text through a bounded immutable FIGfont while preserving the ordinary control box model.",
@@ -146,6 +148,15 @@ internal sealed class FigletTextPane: CompositeControl
                     "Scrollable Banner output",
                     "Use the thin rails to inspect output larger than the forty-by-eight viewport.",
                     viewport)),
+            Doc.Section(
+                "🔤",
+                "Multi-line output",
+                "Newline characters in the source produce vertically stacked FIGlet rows, each rendered independently.",
+                Doc.Example(
+                    "Two-line banner",
+                    "Each source line generates a full FIGlet row. Vertical smushing applies within each row but lines stack vertically.",
+                    multiLine,
+                    "var banner = new FigletText(font) { Content = \"Multi\\nLine\" };")),
             Doc.Section(
                 "🔤",
                 "Fallback",

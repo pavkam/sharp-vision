@@ -144,10 +144,16 @@ internal sealed class PressInteraction
             return;
         }
 
-        if (stroke.Code == Code.Enter && stroke.Action == KeyAction.Press)
+        if (stroke.Code == Code.Enter)
         {
             eventArgs.Handled = true;
-            _activate(ActivationCause.Keyboard);
+
+            if (stroke.Action == KeyAction.Press)
+            {
+                _setPressed(true);
+                _activate(ActivationCause.Keyboard);
+                _setPressed(false);
+            }
         }
     }
 
