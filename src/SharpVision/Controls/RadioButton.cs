@@ -186,6 +186,19 @@ public sealed class RadioButton: Pressable
     protected override bool IsCheckedState => IsChecked;
 
     /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (Content is { } content)
+        {
+            var state = GetVisualState();
+            var highlight = (state & (State.Focused | State.Checked)) != 0;
+            content.Foreground = highlight ? ResolveProperty(ForegroundProperty, state) : null;
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);

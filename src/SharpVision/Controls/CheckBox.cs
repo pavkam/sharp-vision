@@ -184,6 +184,13 @@ public sealed class CheckBox: Pressable
     }
 
     /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+        SyncContentForeground();
+    }
+
+    /// <inheritdoc/>
     protected override bool IsCheckedState => _isChecked == true;
 
     /// <inheritdoc/>
@@ -249,6 +256,7 @@ public sealed class CheckBox: Pressable
         }
 
         StateChanged?.Invoke(this, eventArgs);
+        SyncContentForeground();
     }
 
     private static void CaptureFailure(Action action, ref ExceptionDispatchInfo? failure)
@@ -261,6 +269,18 @@ public sealed class CheckBox: Pressable
         {
             failure ??= ExceptionDispatchInfo.Capture(exception);
         }
+    }
+
+    private void SyncContentForeground()
+    {
+        if (Content is not { } content)
+        {
+            return;
+        }
+
+        var state = GetVisualState();
+        var hasFocusOrCheck = (state & (State.Focused | State.Checked | State.Indeterminate)) != 0;
+        content.Foreground = hasFocusOrCheck ? ResolveProperty(ForegroundProperty, state) : null;
     }
 
     private static int? Subtract(int? value, int extent)

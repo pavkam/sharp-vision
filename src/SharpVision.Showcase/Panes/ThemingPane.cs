@@ -29,9 +29,15 @@ internal sealed class ThemingPane: CompositeControl
         above.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Above;
         below.Click += (_, _) => panel.LabelPlacement = LabelPlacement.Below;
 
+        ShowcasePanel placementPreview = new();
+        left.Click += (_, _) => placementPreview.LabelPlacement = LabelPlacement.Left;
+        right.Click += (_, _) => placementPreview.LabelPlacement = LabelPlacement.Right;
+        above.Click += (_, _) => placementPreview.LabelPlacement = LabelPlacement.Above;
+        below.Click += (_, _) => placementPreview.LabelPlacement = LabelPlacement.Below;
         var placement = Doc.Column(
             new Text("Label placement"),
-            Doc.Row(left, right, above, below));
+            Doc.Row(left, right, above, below),
+            placementPreview);
 
         // A scratch theme, never installed as the application theme, holds one semantic style keyed
         // to Button. The preview borrows that style locally so it can be compared with a baseline.
