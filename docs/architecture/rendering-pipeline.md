@@ -53,14 +53,18 @@ owners remain unchanged.
 It validates both callbacks before frame lifetime, captures the frame's current
 mutation revision, invokes the borrowed drawing callback exactly once with the
 current clipped canvas, and captures the upper revision immediately when that
-callback returns. It then visits only complete stored owners whose latest
-revision is inside that closed draw window, after the checkpoint and at or
-before the captured upper bound, inside the requested region and canvas clip. A
-semantic overwrite counts as a mutation even when glyph and style values are
-identical; stored spaces written by the callback participate, while pre-existing
-owners, untouched blanks, and selector-side-effect writes do not. The foreground
-selector retains the same row-major, once-per-lead, wide-owner, and
-non-foreground preservation contract as `ApplyForeground`.
+callback returns. Traversal considers cells in the requested region intersected
+with the current canvas clip, and any intersecting cell resolves to its complete
+stored owner. The closed draw-window revision, after the checkpoint and at or
+before the captured upper bound, decides whether that discovered owner is
+eligible. A selected owner's complete span may cross the requested-region
+boundary, but it must remain fully inside the effective canvas clip; the
+selector receives its absolute lead-cell coordinate. A semantic overwrite counts
+as a mutation even when glyph and style values are identical; stored spaces
+written by the callback participate, while pre-existing owners, untouched
+blanks, and selector-side-effect writes do not. The foreground selector retains
+the same row-major, once-per-lead, wide-owner, and non-foreground preservation
+contract as `ApplyForeground`.
 
 Each internal cell carries its latest frame-local mutation revision, and the
 frame advances one unsigned revision for every owner write, repair, blank, fill,
@@ -75,10 +79,11 @@ itself exhausts the range.
 
 Write-scoped effects nest. An inner effect advances the same frame revision, so
 its writes and foreground replacements remain visible to an outer checkpoint;
-each effect still applies only inside its own requested region. Neither callback
-is retained. If drawing throws, no foreground pass begins and the same exception
-propagates after capture cleanup. If selection throws, the already transformed
-prefix remains valid and the failing and later owners remain unchanged.
+each effect's requested region independently discovers owners without clipping a
+selected owner's atomic span. Neither callback is retained. If drawing throws,
+no foreground pass begins and the same exception propagates after capture
+cleanup. If selection throws, the already transformed prefix remains valid and
+the failing and later owners remain unchanged.
 
 Wide leads own exactly one continuation in the current implementation.
 Overwriting or clearing either cell first repairs the complete previous owner.

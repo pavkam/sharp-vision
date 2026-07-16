@@ -40,9 +40,11 @@ wide-cell ownership links.
 Write-scoped foreground tests prepaint rich underlay inside the effect region
 and require only callback-mutated owners to change. They cover identical
 overwrites, written spaces, untouched stored owners and blanks, mixed narrow and
-wide owners, row-major selector order, nested inner/outer regions, null callback
-validation before drawing or disposed-frame access, drawing failure with no
-selector pass, selector failure with deterministic partial progress, and
+wide owners, a provenance-eligible wide owner transformed across a
+requested-region boundary, full-owner exclusion when the effective canvas clip
+cuts that owner, row-major selector order, nested inner/outer regions, null
+callback validation before drawing or disposed-frame access, drawing failure
+with no selector pass, selector failure with deterministic partial progress, and
 selector-side writes to later or current owners excluded by the closed draw
 revision window. A semantic no-op overwrite followed by an identical selected
 foreground must produce no damage span, proving mutation revisions never enter
