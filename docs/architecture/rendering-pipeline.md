@@ -38,6 +38,53 @@ and partial-glyph controls use it whenever they do not own an explicit surface
 background. This keeps controls visually aligned with painted panels instead of
 resetting isolated cells to the terminal default.
 
+`Canvas.ApplyForeground` transforms only the foreground of stored grapheme
+owners. It visits complete owners once in row-major order and supplies each
+owner's absolute lead-cell coordinate to the synchronous selector. Stored spaces
+participate, while untouched blank cells are skipped. Background, attributes,
+hyperlink, typed underline, and underline color remain unchanged. A wide owner
+is transformed only when its complete cell range is inside the effective canvas
+clip. Selector callbacks are borrowed for the call and never retained. A
+callback exception propagates unchanged and fails the current render; owners
+completed earlier in traversal remain transformed, while the failing and later
+owners remain unchanged.
+
+`Canvas.DrawWithForeground` adds write provenance to that same transformation.
+It validates both callbacks before frame lifetime, captures the frame's current
+mutation revision, invokes the borrowed drawing callback exactly once with the
+current clipped canvas, and captures the upper revision immediately when that
+callback returns. Traversal considers cells in the requested region intersected
+with the current canvas clip, and any intersecting cell resolves to its complete
+stored owner. The closed draw-window revision, after the checkpoint and at or
+before the captured upper bound, decides whether that discovered owner is
+eligible. A selected owner's complete span may cross the requested-region
+boundary, but it must remain fully inside the effective canvas clip; the
+selector receives its absolute lead-cell coordinate. A semantic overwrite counts
+as a mutation even when glyph and style values are identical; stored spaces
+written by the callback participate, while pre-existing owners, untouched
+blanks, and selector-side-effect writes do not. The foreground selector retains
+the same row-major, once-per-lead, wide-owner, and non-foreground preservation
+contract as `ApplyForeground`.
+
+Each internal cell carries its latest frame-local mutation revision, and the
+frame advances one unsigned revision for every owner write, repair, blank, fill,
+or successful style replacement. Copy and clone operations preserve both cell
+and frame revision state. These revisions are provenance metadata only: public
+cell values, semantic equality, damage, hashing, encoding, and terminal bytes
+ignore them. Normal capture begins and ends in constant time and allocates no
+managed memory. Revisions are never allowed to wrap through an active capture:
+the frame rebases metadata only at unsigned exhaustion while no capture is
+active, or throws before the next mutation when a bounded synchronous callback
+itself exhausts the range.
+
+Write-scoped effects nest. An inner effect advances the same frame revision, so
+its writes and foreground replacements remain visible to an outer checkpoint;
+each effect's requested region independently discovers owners without clipping a
+selected owner's atomic span. Neither callback is retained. If drawing throws,
+no foreground pass begins and the same exception propagates after capture
+cleanup. If selection throws, the already transformed prefix remains valid and
+the failing and later owners remain unchanged.
+
 Wide leads own exactly one continuation in the current implementation.
 Overwriting or clearing either cell first repairs the complete previous owner.
 `Edge.Clip`, `Edge.Wrap`, and `Edge.Replace` skip, move, or replace the whole

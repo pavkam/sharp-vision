@@ -26,6 +26,7 @@ public sealed class Gallery: Screen
         (NavigationViewPane.Title, static () => new NavigationViewPane()),
         (OverlayPane.Title, static () => new OverlayPane()),
         (PopupPane.Title, static () => new PopupPane()),
+        (PrismPane.Title, static () => new PrismPane()),
         (ProgressBarPane.Title, static () => new ProgressBarPane()),
         (RadioButtonPane.Title, static () => new RadioButtonPane()),
         (ScrollBarPane.Title, static () => new ScrollBarPane()),

@@ -3,114 +3,36 @@
 
 namespace Snake;
 
-using System.Globalization;
-
-using SharpVision.Fonts;
-using SharpVision.Text;
-
-/// <summary>Root screen managing title, gameplay, death animation, and high-score entry.</summary>
+/// <summary>Owns the retained Snake presentation, game phases, input, and animation loops.</summary>
 public sealed class SnakeScreen: Screen
 {
-    private static readonly FigletFont _titleFont = FigletCatalog.Default.Load("Small");
-    private static readonly FigletFont _deathFont = FigletCatalog.Default.Load("Standard");
+    private static readonly TimeSpan _visualInterval = TimeSpan.FromMilliseconds(80);
 
+    private readonly SnakeAnimationState _animation = new();
     private readonly SnakeBoard _board;
     private readonly HighScoreTable _highScores = new();
-    private readonly Text _topBar;
-    private readonly FigletText _figlet;
-    private readonly Text _difficultyLabel;
-    private readonly Text _scoresText;
-    private readonly Text _initialsText;
-    private readonly Stack _titleOverlay;
-    private readonly Dock _menuBox;
-    private readonly Dock _scoresBox;
-    private readonly Dock _topBarDock;
+    private readonly SnakeHud _hud;
+    private readonly List<Rune> _initials = [];
+    private readonly SnakeTitlePanel _titlePanel;
+    private CancellationTokenSource? _gameLoopCts;
+    private Task? _gameLoopTask;
+    private CancellationTokenSource? _visualLoopCts;
+    private Task? _visualLoopTask;
     private GameState _state;
-    private CancellationTokenSource? _cts;
-    private GamePhase _phase = GamePhase.Title;
-    private string _initials = "";
+    private GamePhase _phase;
+    private int _gameTickQueued;
     private int _selectedDifficulty;
+    private int _visualPulseQueued;
 
-    /// <summary>Initializes the full game layout.</summary>
+    /// <summary>Initializes the full retained game layout.</summary>
     public SnakeScreen()
     {
         _state = new GameState(width: 40, height: 20, difficulty: 0);
 
         _board = new SnakeBoard { State = _state };
         _board.DirectionChanged += OnDirectionChanged;
-
-        _figlet = new FigletText(_titleFont)
-        {
-            Content = "SNAKE",
-            Foreground = Color.Rgb(0, 255, 100),
-            Attributes = TerminalAttributes.Bold,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-
-        _difficultyLabel = new Text("<accent>1/2/3</accent> Difficulty: <b>Easy</b>");
-        _menuBox = new Dock
-        {
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Width = Length.Cells(30),
-            BorderThickness = new Thickness(1),
-            BorderGlyphs = Glyphs.Rounded,
-            BorderColor = ThemeColors.Border,
-            Padding = new Thickness(1, 0),
-            Children =
-            {
-                new Stack
-                {
-                    Spacing = 0,
-                    Children =
-                    {
-                        new Text("<accent>ENTER</accent> Start game"),
-                        _difficultyLabel,
-                        new Text("<accent>  Q  </accent> Quit"),
-                    },
-                },
-            },
-        };
-
-        _scoresText = new Text("") { Overflow = Overflow.Wrap };
-        _initialsText = new Text("") { HorizontalAlignment = HorizontalAlignment.Center };
-        _scoresBox = new Dock
-        {
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Width = Length.Cells(30),
-            BorderThickness = new Thickness(1),
-            BorderGlyphs = Glyphs.Light,
-            BorderColor = ThemeColors.Border,
-            Padding = new Thickness(1, 0),
-            Children =
-            {
-                new Stack
-                {
-                    Children =
-                    {
-                        new Text("<b>HIGH SCORES</b>") { HorizontalAlignment = HorizontalAlignment.Center },
-                        _scoresText,
-                    },
-                },
-            },
-        };
-
-        _titleOverlay = new Stack
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Center,
-            Spacing = 1,
-            Children = { _figlet, _menuBox, _scoresBox },
-        };
-
-        _topBar = new Text("") { Overflow = Overflow.Clip };
-        _topBarDock = new Dock
-        {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
-            Height = Length.Cells(1),
-            Padding = new Thickness(1, 0),
-            Children = { _topBar },
-        };
+        _titlePanel = new SnakeTitlePanel();
+        _hud = new SnakeHud();
 
         var gameArea = new Overlay
         {
@@ -118,23 +40,24 @@ public sealed class SnakeScreen: Screen
             VerticalAlignment = VerticalAlignment.Stretch,
         };
         gameArea.Children.Add(_board);
-        Overlay.SetZIndex(_titleOverlay, 10);
-        gameArea.Children.Add(_titleOverlay);
+        Overlay.SetZIndex(_titlePanel, 10);
+        gameArea.Children.Add(_titlePanel);
 
         var layout = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
-
-        Dock.SetSide(_topBarDock, Side.Top);
-        layout.Children.Add(_topBarDock);
+        Dock.SetSide(_hud, Side.Top);
+        layout.Children.Add(_hud);
         layout.Children.Add(gameArea);
         InitializeContent(layout);
 
         _ = AddHandler(Events.Key, OnKey);
-        UpdateTitleScreen();
+        TransitionTo(GamePhase.Title);
     }
+
+    #region Lifecycle
 
     /// <inheritdoc/>
     protected override void OnAttach(Application application)
@@ -148,285 +71,379 @@ public sealed class SnakeScreen: Screen
     {
         ArgumentNullException.ThrowIfNull(application);
         _ = application.Focus.Focus(_board);
+        StartVisualLoop();
     }
 
     /// <inheritdoc/>
     protected override void OnDispose()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
+        StopGameLoop();
+        StopVisualLoop();
         _board.DirectionChanged -= OnDirectionChanged;
     }
 
+    #endregion
+
     #region Phase transitions
 
-    private void UpdateTitleScreen()
+    /// <summary>
+    /// Applies one validated game phase to the retained board, title panel, and HUD.
+    /// </summary>
+    /// <param name="phase">The defined phase to make current.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="phase"/> is undefined.</exception>
+    /// <exception cref="InvalidOperationException">The attached screen is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The screen or an owned control is disposed.</exception>
+    internal void TransitionTo(GamePhase phase)
     {
-        _phase = GamePhase.Title;
-        _board.ShowBoard = false;
-        _titleOverlay.Visibility = Visibility.Visible;
-
-        _topBar.Content = "<accent><b>🐍 SNAKE</b></accent>  <d>A SharpVision showcase game</d>";
-
-        var diffName = _selectedDifficulty switch { 0 => "Easy", 1 => "Medium", _ => "Hard" };
-        _difficultyLabel.Content = $"<accent>1/2/3</accent> Difficulty: <b>{diffName}</b>";
-
-        var sb = new StringBuilder();
-
-        for (var i = 0; i < _highScores.Entries.Count; i++)
+        if (!Enum.IsDefined(phase))
         {
-            var (name, score) = _highScores.Entries[i];
-            var rank = (i + 1).ToString(CultureInfo.InvariantCulture);
-
-            if (i > 0)
-            {
-                _ = sb.Append('\n');
-            }
-
-            _ = sb.Append(CultureInfo.InvariantCulture, $"<d>{rank,2}.</d> <accent>{name}</accent> {score.ToString(CultureInfo.InvariantCulture),5}");
+            throw new ArgumentOutOfRangeException(nameof(phase), phase, "The game phase is unknown.");
         }
 
-        _scoresText.Content = sb.ToString();
-        _board.RequestRedraw();
+        var difficulty = SelectedDifficultyName();
+        var bestScore = BestScore();
+
+        switch (phase)
+        {
+            case GamePhase.Title:
+                _board.ShowBoard = false;
+                _board.ShowAttractMode = true;
+                _board.ShowPaused = false;
+                _titlePanel.Visibility = Visibility.Visible;
+                _titlePanel.ShowTitle(difficulty, _highScores.Entries);
+                _hud.UpdateTitle(difficulty);
+                break;
+            case GamePhase.Playing:
+                _board.ShowBoard = true;
+                _board.ShowAttractMode = false;
+                _board.ShowPaused = false;
+                _titlePanel.Visibility = Visibility.Collapsed;
+                _hud.UpdateGame(_state, bestScore);
+                break;
+            case GamePhase.DeathAnimation:
+                _board.ShowBoard = true;
+                _board.ShowAttractMode = false;
+                _board.ShowPaused = false;
+                _titlePanel.Visibility = Visibility.Collapsed;
+                _hud.UpdateGame(_state, bestScore);
+                break;
+            case GamePhase.HighScoreEntry:
+                _board.ShowBoard = false;
+                _board.ShowAttractMode = true;
+                _board.ShowPaused = false;
+                _titlePanel.Visibility = Visibility.Visible;
+                _titlePanel.ShowRecord(_state.Score, InitialsText());
+                _hud.UpdateTitle(difficulty);
+                break;
+            case GamePhase.GameOver:
+                _board.ShowBoard = false;
+                _board.ShowAttractMode = true;
+                _board.ShowPaused = false;
+                _titlePanel.Visibility = Visibility.Visible;
+                _titlePanel.ShowGameOver(_state.Score);
+                _hud.UpdateTitle(difficulty);
+                break;
+            case GamePhase.Paused:
+                _board.ShowBoard = true;
+                _board.ShowAttractMode = false;
+                _board.ShowPaused = true;
+                _titlePanel.Visibility = Visibility.Collapsed;
+                _hud.UpdatePaused(_state, bestScore);
+                break;
+            default:
+                throw new UnreachableException();
+        }
+
+        _phase = phase;
     }
 
     private void StartGame()
     {
-        _phase = GamePhase.Playing;
         var playWidth = Math.Max(10, _board.Bounds.Width - 2);
         var playHeight = Math.Max(6, _board.Bounds.Height - 2);
-        _state = new GameState(width: playWidth, height: playHeight, difficulty: _selectedDifficulty);
+        _state = new GameState(playWidth, playHeight, _selectedDifficulty);
         _board.State = _state;
-        _board.ShowBoard = true;
-        _titleOverlay.Visibility = Visibility.Collapsed;
-        UpdateTopBar();
-        _board.RequestRedraw();
+        _board.DeathPulse = -1;
+        _board.DeathVisibleSegments = 0;
+        TransitionTo(GamePhase.Playing);
         StartGameLoop();
     }
 
     private void TriggerDeathAnimation()
     {
-        _phase = GamePhase.DeathAnimation;
         StopGameLoop();
-
-        _board.DeathFlashActive = true;
-        _board.RequestRedraw();
-
-        var cts = new CancellationTokenSource();
-        _cts = cts;
-        _ = Task.Run(async () =>
-        {
-            for (var frame = 0; frame < 6; frame++)
-            {
-                try { await Task.Delay(120, cts.Token); }
-                catch (OperationCanceledException) { return; }
-
-                Application?.Dispatcher.Post(() =>
-                {
-                    if (IsDisposed)
-                    {
-                        return;
-                    }
-                    _board.DeathFlashFrame = frame;
-                    _board.RequestRedraw();
-                });
-            }
-
-            try { await Task.Delay(400, cts.Token); }
-            catch (OperationCanceledException) { return; }
-
-            Application?.Dispatcher.Post(() =>
-            {
-                if (IsDisposed)
-                {
-                    return;
-                }
-
-                _board.DeathFlashActive = false;
-                OnDeathAnimationComplete();
-            });
-        }, cts.Token);
+        _animation.BeginDeath();
+        _board.DeathPulse = _animation.DeathPulse;
+        _board.DeathVisibleSegments = _animation.VisibleDeathSegments(_state.Body.Count);
+        TransitionTo(GamePhase.DeathAnimation);
     }
 
     private void OnDeathAnimationComplete()
     {
+        _board.DeathPulse = -1;
+        _board.DeathVisibleSegments = 0;
+
         if (_state.IsGameOver)
         {
             if (_highScores.Qualifies(_state.Score))
             {
-                EnterHighScorePhase();
+                _initials.Clear();
+                TransitionTo(GamePhase.HighScoreEntry);
             }
             else
             {
-                ShowGameOverPhase();
+                TransitionTo(GamePhase.GameOver);
             }
+
+            return;
         }
-        else
-        {
-            _phase = GamePhase.Playing;
-            UpdateTopBar();
-            _board.RequestRedraw();
-            StartGameLoop();
-        }
+
+        TransitionTo(GamePhase.Playing);
+        StartGameLoop();
     }
 
-    private void EnterHighScorePhase()
+    private string SelectedDifficultyName() => _selectedDifficulty switch
     {
-        _phase = GamePhase.HighScoreEntry;
-        _initials = "";
-        _board.ShowBoard = false;
-        _titleOverlay.Visibility = Visibility.Visible;
+        0 => "Easy",
+        1 => "Medium",
+        _ => "Hard",
+    };
 
-        _figlet.Content = "NEW RECORD";
-        _figlet.Foreground = Color.Rgb(255, 215, 0);
-        _figlet.Font = _deathFont;
-
-        UpdateInitialsDisplay();
-        _titleOverlay.Children.Clear();
-        _titleOverlay.Children.Add(_figlet);
-        _titleOverlay.Children.Add(BuildInitialsBox());
-        _board.RequestRedraw();
-    }
-
-    private Dock BuildInitialsBox()
+    private int BestScore()
     {
-        var display = _initials.PadRight(3, '_');
-        _initialsText.Content =
-            $"<b>Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>\n\n" +
-            $"Enter your initials: <b><accent>{display[0]} {display[1]} {display[2]}</accent></b>\n\n" +
-            "<d>Type 3 letters, then press ENTER</d>";
-        return new Dock
-        {
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Width = Length.Cells(36),
-            BorderThickness = new Thickness(1),
-            BorderGlyphs = Glyphs.Rounded,
-            BorderColor = Color.Rgb(255, 215, 0),
-            Padding = new Thickness(1, 0),
-            Children = { _initialsText },
-        };
-    }
-
-    private void UpdateInitialsDisplay()
-    {
-        var display = _initials.PadRight(3, '_');
-        _initialsText.Content =
-            $"<b>Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>\n\n" +
-            $"Enter your initials: <b><accent>{display[0]} {display[1]} {display[2]}</accent></b>\n\n" +
-            "<d>Type 3 letters, then press ENTER</d>";
-    }
-
-    private void ShowGameOverPhase()
-    {
-        _phase = GamePhase.GameOver;
-        _board.ShowBoard = false;
-        _titleOverlay.Visibility = Visibility.Visible;
-
-        _figlet.Content = "GAME OVER";
-        _figlet.Foreground = Color.Rgb(255, 60, 60);
-        _figlet.Font = _deathFont;
-
-        var gameOverBox = new Dock
-        {
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Width = Length.Cells(30),
-            BorderThickness = new Thickness(1),
-            BorderGlyphs = Glyphs.Rounded,
-            BorderColor = Color.Rgb(255, 60, 60),
-            Padding = new Thickness(1, 0),
-            Children =
-            {
-                new Stack
-                {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Children =
-                    {
-                        new Text($"<b>Final Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>")
-                        {
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                        },
-                        new Text("<d>Press ENTER to continue</d>")
-                        {
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                        },
-                    },
-                },
-            },
-        };
-
-        _titleOverlay.Children.Clear();
-        _titleOverlay.Children.Add(_figlet);
-        _titleOverlay.Children.Add(gameOverBox);
-        _board.RequestRedraw();
+        var tableBest = _highScores.Entries.Count == 0 ? 0 : _highScores.Entries[0].Score;
+        return Math.Max(_state.Score, tableBest);
     }
 
     #endregion
 
-    #region Game loop
+    #region Animation loops
 
     private void StartGameLoop()
     {
         StopGameLoop();
+
         var cts = new CancellationTokenSource();
-        _cts = cts;
-        _ = Task.Run(async () => await GameLoopAsync(cts.Token), cts.Token);
+        _gameLoopCts = cts;
+        _gameLoopTask = Task.Run(() => GameLoopAsync(cts.Token));
     }
 
     private void StopGameLoop()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
-    }
+        var cts = _gameLoopCts;
+        var task = _gameLoopTask;
+        _gameLoopCts = null;
+        _gameLoopTask = null;
 
-    private async Task GameLoopAsync(CancellationToken ct)
-    {
-        while (!ct.IsCancellationRequested)
+        if (cts is null)
         {
-            try { await Task.Delay(_state.CurrentTickMs, ct); }
-            catch (OperationCanceledException) { return; }
+            Debug.Assert(task is null, "A game-loop task must have an owning cancellation source.");
+            return;
+        }
 
-            Application?.Dispatcher.Post(() =>
+        Debug.Assert(task is not null, "A game-loop cancellation source must have an observed task.");
+
+        try
+        {
+            cts.Cancel();
+
+            try
             {
-                if (IsDisposed || _phase != GamePhase.Playing)
-                {
-                    return;
-                }
-
-                var result = _state.Tick();
-                UpdateTopBar();
-                _board.RequestRedraw();
-
-                if (result == TickResult.Died)
-                {
-                    TriggerDeathAnimation();
-                }
-            });
+                task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+            {
+            }
         }
-    }
-
-    private void UpdateTopBar()
-    {
-        var lives = new string('♥', Math.Max(0, _state.Lives));
-        var speed = _state.IsSpeedBoosted ? " <cyan><b>⚡BOOST</b></cyan>" : "";
-        _topBar.Content =
-            $"<b>SCORE</b> <accent>{_state.Score.ToString(CultureInfo.InvariantCulture),-6}</accent> " +
-            $"<b>LIVES</b> <red>{lives}</red> " +
-            $"<b>LEVEL</b> {_state.DifficultyName,-6} " +
-            $"<b>BEST</b> {BestScore().ToString(CultureInfo.InvariantCulture)}" +
-            speed;
-    }
-
-    private int BestScore()
-    {
-        var best = _state.Score;
-
-        if (_highScores.Entries.Count > 0 && _highScores.Entries[0].Score > best)
+        finally
         {
-            best = _highScores.Entries[0].Score;
+            cts.Dispose();
+        }
+    }
+
+    private async Task GameLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(_state.CurrentTickMs, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var application = Application;
+
+            if (application is null || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (Interlocked.CompareExchange(ref _gameTickQueued, 1, 0) != 0)
+            {
+                continue;
+            }
+
+            try
+            {
+                application.Dispatcher.Post(() =>
+                {
+                    try
+                    {
+                        if (cancellationToken.IsCancellationRequested || IsDisposed || _phase != GamePhase.Playing)
+                        {
+                            return;
+                        }
+
+                        TickGame();
+                    }
+                    finally
+                    {
+                        Volatile.Write(ref _gameTickQueued, 0);
+                    }
+                });
+            }
+            catch (ObjectDisposedException)
+            {
+                Volatile.Write(ref _gameTickQueued, 0);
+                return;
+            }
+            catch (InvalidOperationException)
+            {
+                Volatile.Write(ref _gameTickQueued, 0);
+            }
+        }
+    }
+
+    private void StartVisualLoop()
+    {
+        if (_visualLoopCts is not null)
+        {
+            return;
         }
 
-        return best;
+        var cts = new CancellationTokenSource();
+        _visualLoopCts = cts;
+        _visualLoopTask = Task.Run(() => VisualLoopAsync(cts.Token));
+    }
+
+    private void StopVisualLoop()
+    {
+        var cts = _visualLoopCts;
+        var task = _visualLoopTask;
+        _visualLoopCts = null;
+        _visualLoopTask = null;
+
+        if (cts is null)
+        {
+            Debug.Assert(task is null, "A visual-loop task must have an owning cancellation source.");
+            return;
+        }
+
+        Debug.Assert(task is not null, "A visual-loop cancellation source must have an observed task.");
+
+        try
+        {
+            cts.Cancel();
+
+            try
+            {
+                task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+            {
+            }
+        }
+        finally
+        {
+            cts.Dispose();
+        }
+    }
+
+    private async Task VisualLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(_visualInterval, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var application = Application;
+
+            if (application is null || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (Interlocked.CompareExchange(ref _visualPulseQueued, 1, 0) != 0)
+            {
+                continue;
+            }
+
+            try
+            {
+                application.Dispatcher.Post(() =>
+                {
+                    try
+                    {
+                        if (!cancellationToken.IsCancellationRequested && !IsDisposed)
+                        {
+                            AdvanceVisuals();
+                        }
+                    }
+                    finally
+                    {
+                        Volatile.Write(ref _visualPulseQueued, 0);
+                    }
+                });
+            }
+            catch (ObjectDisposedException)
+            {
+                Volatile.Write(ref _visualPulseQueued, 0);
+                return;
+            }
+            catch (InvalidOperationException)
+            {
+                Volatile.Write(ref _visualPulseQueued, 0);
+            }
+        }
+    }
+
+    /// <summary>Advances presentation state once without advancing the game simulation.</summary>
+    /// <remarks>This method must run on the application dispatcher while the screen is attached.</remarks>
+    /// <exception cref="InvalidOperationException">The attached screen is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The screen or an owned control is disposed.</exception>
+    internal void AdvanceVisuals()
+    {
+        var deathComplete = _animation.Advance();
+        _titlePanel.Phase = _animation.PrismPhase;
+        _board.AnimationFrame = _animation.Frame;
+        _board.DeathPulse = _animation.DeathPulse;
+        _board.DeathVisibleSegments = _animation.VisibleDeathSegments(_state.Body.Count);
+
+        if (deathComplete && _phase == GamePhase.DeathAnimation)
+        {
+            OnDeathAnimationComplete();
+        }
+    }
+
+    private void TickGame()
+    {
+        var result = _state.Tick();
+        TransitionTo(GamePhase.Playing);
+        _board.RequestRedraw();
+
+        if (result == TickResult.Died)
+        {
+            TriggerDeathAnimation();
+        }
     }
 
     #endregion
@@ -439,6 +456,16 @@ public sealed class SnakeScreen: Screen
 
         if (e.Handled || e.Stroke.Action != KeyAction.Press)
         {
+            return;
+        }
+
+        if ((e.Stroke.Modifiers & Modifiers.Control) != 0 &&
+            e.Stroke.Code == Code.Character &&
+            e.Stroke.Character is { } character &&
+            Rune.ToLowerInvariant(character) == new Rune('q'))
+        {
+            Application?.Closed();
+            e.Handled = true;
             return;
         }
 
@@ -473,113 +500,90 @@ public sealed class SnakeScreen: Screen
         {
             StartGame();
             e.Handled = true;
+            return;
         }
-        else if (e.Stroke.Code == Code.Character)
-        {
-            var ch = e.Stroke.Character;
 
-            if (ch == new Rune('q') || ch == new Rune('Q'))
-            {
-                Application?.Closed();
-                e.Handled = true;
-            }
-            else if (ch == new Rune('1'))
-            {
-                _selectedDifficulty = 0;
-                UpdateTitleScreen();
-                e.Handled = true;
-            }
-            else if (ch == new Rune('2'))
-            {
-                _selectedDifficulty = 1;
-                UpdateTitleScreen();
-                e.Handled = true;
-            }
-            else if (ch == new Rune('3'))
-            {
-                _selectedDifficulty = 2;
-                UpdateTitleScreen();
-                e.Handled = true;
-            }
+        if (e.Stroke.Code != Code.Character || e.Stroke.Character is not { } character)
+        {
+            return;
+        }
+
+        var lower = Rune.ToLowerInvariant(character);
+
+        if (lower == new Rune('q'))
+        {
+            Application?.Closed();
+            e.Handled = true;
+            return;
+        }
+
+        var selectedDifficulty = character.Value switch
+        {
+            '1' => 0,
+            '2' => 1,
+            '3' => 2,
+            _ => -1,
+        };
+
+        if (selectedDifficulty >= 0)
+        {
+            _selectedDifficulty = selectedDifficulty;
+            TransitionTo(GamePhase.Title);
+            e.Handled = true;
         }
     }
 
     private void HandlePlayingInput(KeyEventArgs e)
     {
-        if (e.Stroke.Code == Code.Character)
+        if (e.Stroke.Code == Code.Character &&
+            e.Stroke.Character is { } character &&
+            Rune.ToLowerInvariant(character) == new Rune('p'))
         {
-            var ch = e.Stroke.Character;
-
-            if (ch == new Rune('p') || ch == new Rune('P'))
-            {
-                _phase = GamePhase.Paused;
-                _state.IsPaused = true;
-                StopGameLoop();
-                _board.ShowPaused = true;
-                _board.RequestRedraw();
-                e.Handled = true;
-                return;
-            }
-        }
-
-        if ((e.Stroke.Modifiers & Modifiers.Control) != 0 &&
-            e.Stroke.Code == Code.Character &&
-            e.Stroke.Character is { } c &&
-            Rune.ToLowerInvariant(c) == new Rune('q'))
-        {
-            Application?.Closed();
+            _state.IsPaused = true;
+            StopGameLoop();
+            TransitionTo(GamePhase.Paused);
             e.Handled = true;
         }
     }
 
     private void HandlePausedInput(KeyEventArgs e)
     {
-        if (e.Stroke.Code == Code.Character)
+        if (e.Stroke.Code == Code.Character &&
+            e.Stroke.Character is { } character &&
+            Rune.ToLowerInvariant(character) == new Rune('p'))
         {
-            var ch = e.Stroke.Character;
-
-            if (ch == new Rune('p') || ch == new Rune('P'))
-            {
-                _phase = GamePhase.Playing;
-                _state.IsPaused = false;
-                _board.ShowPaused = false;
-                _board.RequestRedraw();
-                StartGameLoop();
-                e.Handled = true;
-            }
+            _state.IsPaused = false;
+            TransitionTo(GamePhase.Playing);
+            StartGameLoop();
+            e.Handled = true;
         }
     }
 
     private void HandleHighScoreInput(KeyEventArgs e)
     {
-        if (e.Stroke.Code == Code.Character && e.Stroke.Character is { } ch)
+        if (e.Stroke.Code == Code.Character &&
+            e.Stroke.Character is { } character &&
+            Rune.IsLetter(character) &&
+            _initials.Count < 3)
         {
-            if (Rune.IsLetter(ch) && _initials.Length < 3)
-            {
-                _initials += Rune.ToUpperInvariant(ch).ToString();
-                UpdateInitialsDisplay();
-                _board.RequestRedraw();
-                e.Handled = true;
-            }
-        }
-        else if (e.Stroke.Code == Code.Backspace && _initials.Length > 0)
-        {
-            _initials = _initials[..^1];
-            UpdateInitialsDisplay();
-            _board.RequestRedraw();
+            _initials.Add(Rune.ToUpperInvariant(character));
+            _titlePanel.ShowRecord(_state.Score, InitialsText());
             e.Handled = true;
+            return;
         }
-        else if (e.Stroke.Code == Code.Enter && _initials.Length > 0)
+
+        if (e.Stroke.Code == Code.Backspace && _initials.Count > 0)
         {
-            _ = _highScores.Insert(_initials, _state.Score);
-            _figlet.Font = _titleFont;
-            _figlet.Content = "SNAKE";
-            _figlet.Foreground = Color.Rgb(0, 255, 100);
-            _titleOverlay.Children.Clear();
-            _titleOverlay.Children.Add(_figlet);
-            _titleOverlay.Children.Add(_menuBox);
-            _titleOverlay.Children.Add(_scoresBox);
-            UpdateTitleScreen();
+            _initials.RemoveAt(_initials.Count - 1);
+            _titlePanel.ShowRecord(_state.Score, InitialsText());
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Stroke.Code == Code.Enter && _initials.Count == 3)
+        {
+            _ = _highScores.Insert(InitialsText(), _state.Score);
+            TransitionTo(GamePhase.Title);
             e.Handled = true;
         }
     }
@@ -588,14 +592,7 @@ public sealed class SnakeScreen: Screen
     {
         if (e.Stroke.Code == Code.Enter)
         {
-            _figlet.Font = _titleFont;
-            _figlet.Content = "SNAKE";
-            _figlet.Foreground = Color.Rgb(0, 255, 100);
-            _titleOverlay.Children.Clear();
-            _titleOverlay.Children.Add(_figlet);
-            _titleOverlay.Children.Add(_menuBox);
-            _titleOverlay.Children.Add(_scoresBox);
-            UpdateTitleScreen();
+            TransitionTo(GamePhase.Title);
             e.Handled = true;
         }
     }
@@ -610,15 +607,19 @@ public sealed class SnakeScreen: Screen
         }
 
         _state.ChangeDirection(direction);
+        TickGame();
+    }
 
-        var result = _state.Tick();
-        UpdateTopBar();
-        _board.RequestRedraw();
+    private string InitialsText()
+    {
+        var initials = new StringBuilder();
 
-        if (result == TickResult.Died)
+        foreach (var initial in _initials)
         {
-            TriggerDeathAnimation();
+            _ = initials.Append(initial);
         }
+
+        return initials.ToString();
     }
 
     #endregion

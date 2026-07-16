@@ -21,6 +21,7 @@ All controls derive from the
 
 - [Text](display/text.md#text-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
+- [Prism](display/prism.md#prism-contract)
 - [Separator](display/separator.md#separator-contract)
 - [ProgressBar](display/progress-bar.md#progressbar-contract)
 
