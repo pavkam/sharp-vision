@@ -220,6 +220,16 @@ collection validation, ownership transfer without disposal, stable-identity
 insertion, nearest eligible repair, invalid selection, event order, retained
 header identity, and selected-content layout responsibilities.
 
+`NavigationViewSurfaceTests` proves exact header/main/group/separator/footer
+composition, border and Unicode cells, roving Tab entry, pointer and
+Up/Down/Home/End parity, disabled skipping, main-to-footer traversal, combined
+selected/focus styling, group pointer/keyboard expansion, collapse repair,
+intrinsic main scrolling, pinned footer geometry, removal repair, resize offset
+clamping, and stale-cell clearing. `NavigationViewTests` retains typed ownership
+validation, label validation-before-mutation, focus publication, tab-stop
+invariants, group ownership, availability repair, and separator
+non-interactivity.
+
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route
 payloads, pixel-to-cell inference, owned paste bytes, repeat action, control

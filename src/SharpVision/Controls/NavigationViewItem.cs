@@ -16,6 +16,7 @@ public sealed class NavigationViewItem: Pressable
 
     /// <summary>Gets or sets the non-null label text.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string Header
@@ -24,17 +25,23 @@ public sealed class NavigationViewItem: Pressable
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            ValidateText(value, nameof(value));
             _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 
     /// <summary>Gets or sets an optional glyph prefix shown before the header.</summary>
+    /// <exception cref="ArgumentException">The value contains a terminal control.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string? Glyph
     {
         get;
-        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        set
+        {
+            ValidateText(value, nameof(value));
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
     }
 
     /// <summary>Gets whether this entry is the navigation view's selected item.</summary>
@@ -118,6 +125,14 @@ public sealed class NavigationViewItem: Pressable
         if (reason == ReleaseReason.Disposed)
         {
             Invoked = null;
+        }
+    }
+
+    private static void ValidateText(string? value, string name)
+    {
+        if (value is not null && Terminal.Unicode.Width.Measure(value).Controls > 0)
+        {
+            throw new ArgumentException("Navigation item text cannot contain terminal controls.", name);
         }
     }
 }

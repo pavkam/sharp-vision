@@ -11,6 +11,9 @@ public sealed class NavigationView: CompositeControl
     private readonly Stack _footerStack;
     private readonly Text _headerText;
     private readonly Stack _itemsStack;
+    private readonly HashSet<NavigationViewGroup> _subscribedGroups = [];
+    private readonly HashSet<NavigationViewItem> _subscribedItems = [];
+    private int _pendingSelectionIndex = -1;
 
     /// <summary>Initializes a navigation view with empty main and footer collections.</summary>
     public NavigationView()
@@ -46,6 +49,7 @@ public sealed class NavigationView: CompositeControl
     public event EventHandler? SelectionChanged;
 
     /// <summary>Gets or sets an optional header title hidden when null or empty.</summary>
+    /// <exception cref="ArgumentException">The value contains a terminal control.</exception>
     /// <exception cref="InvalidOperationException">The attached view is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The view is disposed.</exception>
     public string? Header
@@ -53,6 +57,8 @@ public sealed class NavigationView: CompositeControl
         get;
         set
         {
+            ValidateText(value, nameof(value));
+
             if (SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 _headerText.Content = value ?? string.Empty;
@@ -92,12 +98,8 @@ public sealed class NavigationView: CompositeControl
             "Navigation view entries are constrained by typed collection overloads.");
         var stack = isFooter ? _footerStack : _itemsStack;
         stack.Children.Add(entry);
-
-        if (entry is NavigationViewItem item)
-        {
-            item.IsTabStop = false;
-            item.Invoked += OnItemInvoked;
-        }
+        SynchronizeEntries();
+        EnsureRovingTabStop();
     }
 
     /// <summary>Removes one identical typed entry from a section without disposing it.</summary>
@@ -105,21 +107,20 @@ public sealed class NavigationView: CompositeControl
     {
         var stack = isFooter ? _footerStack : _itemsStack;
 
+        if (!stack.Children.Contains(entry))
+        {
+            return false;
+        }
+
+        CaptureSelectionIndex();
+
         if (!stack.Children.Remove(entry))
         {
             return false;
         }
 
-        if (entry is NavigationViewItem item)
-        {
-            item.Invoked -= OnItemInvoked;
-
-            if (ReferenceEquals(SelectedItem, item))
-            {
-                Select(null);
-            }
-        }
-
+        SynchronizeEntries();
+        RepairSelection();
         return true;
     }
 
@@ -128,16 +129,16 @@ public sealed class NavigationView: CompositeControl
     {
         var stack = isFooter ? _footerStack : _itemsStack;
 
-        foreach (var child in stack.Children)
+        if (stack.Children.Count == 0)
         {
-            if (child is NavigationViewItem item)
-            {
-                item.Invoked -= OnItemInvoked;
-            }
+            VerifyMutable();
+            return;
         }
 
+        CaptureSelectionIndex();
         stack.Children.Clear();
-        Select(null);
+        SynchronizeEntries();
+        RepairSelection();
     }
 
     /// <summary>Updates selection when an owned item receives focus externally.</summary>
@@ -154,6 +155,21 @@ public sealed class NavigationView: CompositeControl
 
         if (reason == ReleaseReason.Disposed)
         {
+            foreach (var item in _subscribedItems)
+            {
+                item.Invoked -= OnItemInvoked;
+                item.PropertyChanged -= OnItemPropertyChanged;
+            }
+
+            foreach (var group in _subscribedGroups)
+            {
+                group.ExpandedChanged -= OnGroupChanged;
+                group.StructureChanging -= OnGroupChanging;
+                group.StructureChanged -= OnGroupChanged;
+            }
+
+            _subscribedItems.Clear();
+            _subscribedGroups.Clear();
             SelectionChanged = null;
         }
     }
@@ -189,6 +205,32 @@ public sealed class NavigationView: CompositeControl
         return result;
     }
 
+    private List<NavigationViewItem> CollectAllItems()
+    {
+        List<NavigationViewItem> result = [];
+        CollectAllFrom(_itemsStack, result);
+        CollectAllFrom(_footerStack, result);
+        return result;
+    }
+
+    private static void CollectAllFrom(Stack stack, List<NavigationViewItem> result)
+    {
+        foreach (var child in stack.Children)
+        {
+            if (child is NavigationViewItem item)
+            {
+                result.Add(item);
+            }
+            else if (child is NavigationViewGroup group)
+            {
+                for (var index = 0; index < group.ItemCount; index++)
+                {
+                    result.Add(group.ItemAt(index));
+                }
+            }
+        }
+    }
+
     private void OnItemInvoked(object? sender, ActivationEventArgs eventArgs)
     {
         _ = eventArgs;
@@ -208,20 +250,23 @@ public sealed class NavigationView: CompositeControl
             return;
         }
 
-        var direction = eventArgs.Stroke.Code == Code.Up
-            ? -1
-            : eventArgs.Stroke.Code == Code.Down
-                ? 1
-                : 0;
+        var all = CollectSelectableItems();
 
-        if (direction == 0)
+        if (all.Count == 0)
         {
             return;
         }
 
-        var all = CollectSelectableItems();
         var current = SelectedItem is { } selected ? all.IndexOf(selected) : -1;
-        var next = current + direction;
+        var next = eventArgs.Stroke.Code == Code.Up
+            ? current - 1
+            : eventArgs.Stroke.Code == Code.Down
+                ? current + 1
+                : eventArgs.Stroke.Code == Code.Home
+                    ? 0
+                    : eventArgs.Stroke.Code == Code.End
+                        ? all.Count - 1
+                        : -1;
 
         if (next >= 0 && next < all.Count)
         {
@@ -248,6 +293,157 @@ public sealed class NavigationView: CompositeControl
         return false;
     }
 
+    private static void ValidateText(string? value, string name)
+    {
+        if (value is not null && Terminal.Unicode.Width.Measure(value).Controls > 0)
+        {
+            throw new ArgumentException("A navigation view header cannot contain terminal controls.", name);
+        }
+    }
+
+    private void CaptureSelectionIndex()
+    {
+        _pendingSelectionIndex = SelectedItem is null
+            ? -1
+            : CollectSelectableItems().IndexOf(SelectedItem);
+    }
+
+    private void EnsureRovingTabStop()
+    {
+        var eligible = CollectSelectableItems();
+        var target = SelectedItem is not null && eligible.Contains(SelectedItem)
+            ? SelectedItem
+            : eligible.FirstOrDefault();
+
+        foreach (var item in CollectAllItems())
+        {
+            item.IsTabStop = ReferenceEquals(item, target);
+        }
+    }
+
+    private void OnGroupChanging(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        CaptureSelectionIndex();
+    }
+
+    private void OnGroupChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        SynchronizeEntries();
+        RepairSelection();
+    }
+
+    private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName is not nameof(IsEnabled) and not nameof(Visibility))
+        {
+            return;
+        }
+
+        _pendingSelectionIndex = sender is NavigationViewItem item
+            ? CollectAllItems().IndexOf(item)
+            : -1;
+        RepairSelection();
+    }
+
+    private void RepairSelection()
+    {
+        if (SelectedItem is null)
+        {
+            EnsureRovingTabStop();
+            _pendingSelectionIndex = -1;
+            return;
+        }
+
+        var eligible = CollectSelectableItems();
+
+        if (eligible.Contains(SelectedItem))
+        {
+            EnsureRovingTabStop();
+            _pendingSelectionIndex = -1;
+            return;
+        }
+
+        var focused = SelectedItem.IsFocused;
+        NavigationViewItem? replacement = null;
+        var all = CollectAllItems();
+        var position = all.IndexOf(SelectedItem);
+
+        if (position >= 0)
+        {
+            for (var index = position + 1; index < all.Count && replacement is null; index++)
+            {
+                replacement = eligible.Contains(all[index]) ? all[index] : null;
+            }
+
+            for (var index = position - 1; index >= 0 && replacement is null; index--)
+            {
+                replacement = eligible.Contains(all[index]) ? all[index] : null;
+            }
+        }
+        else if (eligible.Count > 0)
+        {
+            replacement = eligible[Math.Clamp(_pendingSelectionIndex, 0, eligible.Count - 1)];
+        }
+
+        Select(replacement);
+
+        if (focused && replacement is not null)
+        {
+            _ = FocusOwner?.Focus(replacement);
+        }
+
+        _pendingSelectionIndex = -1;
+    }
+
+    private void SynchronizeEntries()
+    {
+        var items = CollectAllItems();
+        var currentItems = new HashSet<NavigationViewItem>(items, ReferenceEqualityComparer.Instance);
+        var groups = new HashSet<NavigationViewGroup>(ReferenceEqualityComparer.Instance);
+
+        foreach (var child in _itemsStack.Children.Concat(_footerStack.Children))
+        {
+            if (child is NavigationViewGroup group)
+            {
+                _ = groups.Add(group);
+            }
+        }
+
+        foreach (var item in _subscribedItems.Except(currentItems).ToArray())
+        {
+            item.Invoked -= OnItemInvoked;
+            item.PropertyChanged -= OnItemPropertyChanged;
+            _ = _subscribedItems.Remove(item);
+        }
+
+        foreach (var item in currentItems.Except(_subscribedItems))
+        {
+            item.Invoked += OnItemInvoked;
+            item.PropertyChanged += OnItemPropertyChanged;
+            _ = _subscribedItems.Add(item);
+        }
+
+        foreach (var group in _subscribedGroups.Except(groups).ToArray())
+        {
+            group.ExpandedChanged -= OnGroupChanged;
+            group.StructureChanging -= OnGroupChanging;
+            group.StructureChanged -= OnGroupChanged;
+            _ = _subscribedGroups.Remove(group);
+        }
+
+        foreach (var group in groups.Except(_subscribedGroups))
+        {
+            group.ExpandedChanged += OnGroupChanged;
+            group.StructureChanging += OnGroupChanging;
+            group.StructureChanged += OnGroupChanged;
+            _ = _subscribedGroups.Add(group);
+        }
+    }
+
     private void Select(NavigationViewItem? item)
     {
         if (ReferenceEquals(SelectedItem, item))
@@ -263,12 +459,9 @@ public sealed class NavigationView: CompositeControl
 
         SelectedItem = item;
 
-        if (item is not null)
-        {
-            item.CommitSelection(true);
-            item.IsTabStop = true;
-        }
+        item?.CommitSelection(true);
 
+        EnsureRovingTabStop();
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 }

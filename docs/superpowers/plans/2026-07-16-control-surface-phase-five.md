@@ -53,25 +53,25 @@ Stack, and scrolling fixtures. Fix only demonstrated compatibility defects.
 - Create: `tests/SharpVision.Tests/Controls/NavigationViewSurfaceTests.cs`
 - Modify production files only after a visible red scenario.
 
-- [ ] **Step 1: Prove header, main, footer, and exact cells**
+- [x] **Step 1: Prove header, main, footer, and exact cells**
 
 Mount a bordered view with Unicode header/glyphs, main items, groups,
 separators, and pinned footer. Assert committed bounds, exact rows, continuation
 ownership, initial focus policy, and separator non-interactivity.
 
-- [ ] **Step 2: Prove pointer and keyboard selection**
+- [x] **Step 2: Prove pointer and keyboard selection**
 
 Drive Tab, pointer click, Up/Down/Home/End, Enter/Space, wrapping policy,
 disabled/hidden skipping, main-to-footer traversal, focus, event order, selected
 style, and correct bring-into-view owner.
 
-- [ ] **Step 3: Prove group expansion and repair**
+- [x] **Step 3: Prove group expansion and repair**
 
 Toggle groups by pointer and keyboard. Collapse, remove, disable, hide, and
 clear the selected item or its containing group; require deterministic nearest
 eligible selection/focus repair without stale tab stops or capture.
 
-- [ ] **Step 4: Prove scrolling, mutation, and resize**
+- [x] **Step 4: Prove scrolling, mutation, and resize**
 
 Overflow the main viewport, navigate and wheel it, mutate entries, resize tiny
 and wide surfaces, and assert offset clamping, footer pinning, Unicode geometry,
@@ -87,18 +87,18 @@ reflow, and complete stale-cell clearing.
 - Modify: umbrella coverage design status if its old uncommitted-work note is
   stale.
 
-- [ ] **Step 1: Add representative showcase screen proof**
+- [x] **Step 1: Add representative showcase screen proof**
 
 Cover basic selection, groups, disabled items, pinned footer, Unicode, overflow,
 and mutation with exact representative cells.
 
-- [ ] **Step 2: Audit the navigation scenario card**
+- [x] **Step 2: Audit the navigation scenario card**
 
 Map every behavior to a named mounted or unit responsibility and add any missing
 validation, ownership, event, tiny, Unicode, mutation, scrolling, or stale-cell
 regression.
 
-- [ ] **Step 3: Run repository quality gates**
+- [x] **Step 3: Run repository quality gates**
 
 ```bash
 make format
@@ -110,6 +110,6 @@ make test
 Expected: zero warnings/errors, all discovered tests pass, documentation and
 links pass, and isolated package consumption succeeds.
 
-- [ ] **Step 4: Commit the reconciled phase**
+- [x] **Step 4: Commit the reconciled phase**
 
 Commit as `feat: reconcile and cover navigation view`.

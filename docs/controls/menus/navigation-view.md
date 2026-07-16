@@ -31,9 +31,17 @@ commit `d0bc8e8`; its retained composite shape and public names are preserved.
 
 Tab navigation cycles within the sidebar. Up and Down navigate selectable items
 in main, expanded-group, then footer order while skipping effectively hidden or
-disabled entries. Focus or eligible pointer/keyboard activation selects an item.
-Main items use the main scrolling host's `BringIntoView`; footer items remain
-pinned and never change the main offset.
+disabled entries. Home and End select the first or last eligible item. The first
+eligible item is the initial roving tab stop; focusing it commits selection.
+Focus or eligible pointer/keyboard activation selects an item. Main items use
+the main scrolling host's `BringIntoView`; footer items remain pinned and never
+change the main offset.
+
+Disabling, hiding, collapsing, removing, or clearing the selected item repairs
+selection to the next eligible identity, then the previous identity, or null.
+The repaired item becomes the sole item tab stop. A collapsed descendant retains
+ownership but is excluded from rendering, hit testing, focus, and flat arrow
+navigation.
 
 ## NavigationViewItem
 
@@ -49,6 +57,9 @@ completes.
 the non-null label, rendered with `▼` while expanded or `▶` while collapsed.
 `IsExpanded` defaults true. `AddItem`, `RemoveItem`, and `ClearItems` manage
 retained `NavigationViewItem` descendants. Enter toggles a focused group.
+Primary pointer activation and Space use the same Pressable transition. Group
+content is indented by the private presentation Stack; caller item padding is
+never rewritten.
 
 ## NavigationViewSeparator
 

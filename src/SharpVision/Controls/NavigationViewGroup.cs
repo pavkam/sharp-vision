@@ -3,10 +3,8 @@
 
 namespace SharpVision.Controls;
 
-using SharpVision.Terminal.Input;
-
 /// <summary>Defines a collapsible labeled group of retained navigation items.</summary>
-public sealed class NavigationViewGroup: Control
+public sealed class NavigationViewGroup: Pressable
 {
     private readonly OwnedControlSlot _childrenSlot;
     private readonly Stack _stack;
@@ -14,7 +12,7 @@ public sealed class NavigationViewGroup: Control
     /// <summary>Initializes an expanded navigation group with no header.</summary>
     public NavigationViewGroup()
     {
-        _stack = new Stack();
+        _stack = new Stack { Padding = new Thickness(2, 0, 0, 0) };
         _childrenSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,
@@ -28,8 +26,18 @@ public sealed class NavigationViewGroup: Control
         CanFocus = true;
     }
 
+    /// <summary>Raised after a changed expansion state commits.</summary>
+    public event EventHandler? ExpandedChanged;
+
+    /// <summary>Raised before expansion or item structure changes for owner repair bookkeeping.</summary>
+    internal event EventHandler? StructureChanging;
+
+    /// <summary>Raised after item structure changes commit.</summary>
+    internal event EventHandler? StructureChanged;
+
     /// <summary>Gets or sets the non-null group label.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The value contains a terminal control.</exception>
     /// <exception cref="InvalidOperationException">The attached group is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The group is disposed.</exception>
     public string Header
@@ -38,6 +46,12 @@ public sealed class NavigationViewGroup: Control
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+
+            if (Terminal.Unicode.Width.Measure(value).Controls > 0)
+            {
+                throw new ArgumentException("A navigation group header cannot contain terminal controls.", nameof(value));
+            }
+
             _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
@@ -50,10 +64,17 @@ public sealed class NavigationViewGroup: Control
         get;
         set
         {
-            if (SetProperty(ref field, value, ChangeImpact.Measure))
+            VerifyMutable();
+
+            if (field == value)
             {
-                _stack.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+                return;
             }
+
+            StructureChanging?.Invoke(this, EventArgs.Empty);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+            _stack.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+            ExpandedChanged?.Invoke(this, EventArgs.Empty);
         }
     } = true;
 
@@ -69,8 +90,9 @@ public sealed class NavigationViewGroup: Control
     public void AddItem(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        item.Padding = new Thickness(2, 0, 0, 0);
+        StructureChanging?.Invoke(this, EventArgs.Empty);
         _stack.Children.Add(item);
+        StructureChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Removes one identical sub-item without disposing it.</summary>
@@ -78,14 +100,39 @@ public sealed class NavigationViewGroup: Control
     public bool RemoveItem(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        return _stack.Children.Remove(item);
+
+        if (!_stack.Children.Contains(item))
+        {
+            return false;
+        }
+
+        StructureChanging?.Invoke(this, EventArgs.Empty);
+        var removed = _stack.Children.Remove(item);
+        Debug.Assert(removed, "A contained navigation group item must remove successfully.");
+        StructureChanged?.Invoke(this, EventArgs.Empty);
+        return true;
     }
 
     /// <summary>Removes every retained sub-item without disposing it.</summary>
-    public void ClearItems() => _stack.Children.Clear();
+    public void ClearItems()
+    {
+        if (_stack.Children.Count == 0)
+        {
+            VerifyMutable();
+            return;
+        }
+
+        StructureChanging?.Invoke(this, EventArgs.Empty);
+        _stack.Children.Clear();
+        StructureChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <inheritdoc/>
-    protected override bool OwnsPointerState => true;
+    protected override void Activate(ActivationCause cause)
+    {
+        _ = cause;
+        IsExpanded = !IsExpanded;
+    }
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -124,15 +171,15 @@ public sealed class NavigationViewGroup: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
+    protected override void OnUnavailable(ReleaseReason reason)
     {
-        ArgumentNullException.ThrowIfNull(eventArgs);
+        base.OnUnavailable(reason);
 
-        if (!eventArgs.Handled &&
-            eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press, Code: Code.Enter } })
+        if (reason == ReleaseReason.Disposed)
         {
-            IsExpanded = !IsExpanded;
-            eventArgs.Handled = true;
+            ExpandedChanged = null;
+            StructureChanging = null;
+            StructureChanged = null;
         }
     }
 }

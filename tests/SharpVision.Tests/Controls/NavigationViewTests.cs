@@ -17,6 +17,47 @@ public sealed class NavigationViewTests
         nav.Items.Count.ShouldBe(2);
     }
 
+    /// <summary>Verifies public labels reject terminal controls before observable state changes.</summary>
+    [Fact]
+    public void Labels_WhenAssignedInvalidText_PreserveCommittedValues()
+    {
+        var view = new NavigationView { Header = "View" };
+        var item = new NavigationViewItem { Header = "Item", Glyph = "◆" };
+        var group = new NavigationViewGroup { Header = "Group" };
+
+        _ = Should.Throw<ArgumentException>(() => view.Header = "bad\nview");
+        _ = Should.Throw<ArgumentNullException>(() => item.Header = null!);
+        _ = Should.Throw<ArgumentException>(() => item.Header = "bad\nitem");
+        _ = Should.Throw<ArgumentException>(() => item.Glyph = "bad\tglyph");
+        _ = Should.Throw<ArgumentNullException>(() => group.Header = null!);
+        _ = Should.Throw<ArgumentException>(() => group.Header = "bad\rgroup");
+
+        view.Header.ShouldBe("View");
+        item.Header.ShouldBe("Item");
+        item.Glyph.ShouldBe("◆");
+        group.Header.ShouldBe("Group");
+    }
+
+    /// <summary>Verifies invalid typed ownership candidates preserve collections and caller properties.</summary>
+    [Fact]
+    public void Items_WhenCandidateIsOwnedOrDuplicated_PreserveStateBeforeThrowing()
+    {
+        var view = new NavigationView();
+        var item = new NavigationViewItem { Header = "Item", Padding = new Thickness(1) };
+        view.Items.Add(item);
+        var group = new NavigationViewGroup();
+        var attached = new NavigationViewItem { Header = "Attached", Padding = new Thickness(3) };
+        view.FooterItems.Add(attached);
+
+        _ = Should.Throw<ArgumentException>(() => view.Items.Add(item));
+        _ = Should.Throw<ArgumentException>(() => group.AddItem(attached));
+
+        view.Items.ShouldBe([item]);
+        view.FooterItems.ShouldBe([attached]);
+        item.Padding.ShouldBe(new Thickness(1));
+        attached.Padding.ShouldBe(new Thickness(3));
+    }
+
     /// <summary>Verifies focusing an item selects it and raises SelectionChanged.</summary>
     [Fact]
     public async Task Focus_WhenItemReceivesFocus_SelectsItemAsync()
@@ -185,6 +226,39 @@ public sealed class NavigationViewTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies unavailable, collapsed, and removed selected items choose the next then previous eligible identity.</summary>
+    [Fact]
+    public async Task Selection_WhenSelectedEntryBecomesUnavailable_RepairsDeterministicallyAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var view = new NavigationView();
+            var first = new NavigationViewItem { Header = "First" };
+            var child = new NavigationViewItem { Header = "Child" };
+            var group = new NavigationViewGroup { Header = "Group" };
+            group.AddItem(child);
+            var last = new NavigationViewItem { Header = "Last" };
+            view.Items.Add(first);
+            view.Items.Add(group);
+            view.Items.Add(last);
+            view.Attach(dispatcher);
+            using FocusManager focus = new(view);
+            focus.Focus(first).ShouldBeTrue();
+
+            first.IsEnabled = false;
+            view.SelectedItem.ShouldBeSameAs(child);
+
+            group.IsExpanded = false;
+            view.SelectedItem.ShouldBeSameAs(last);
+
+            _ = view.Items.Remove(last);
+            view.SelectedItem.ShouldBeNull();
+            first.IsTabStop.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies only the selected item is a tab stop.</summary>
     [Fact]
     public async Task Selection_WhenChanged_OnlySelectedItemIsTabStopAsync()
@@ -203,7 +277,7 @@ public sealed class NavigationViewTests
             nav.Attach(dispatcher);
             using FocusManager focus = new(nav);
 
-            first.IsTabStop.ShouldBeFalse();
+            first.IsTabStop.ShouldBeTrue();
             second.IsTabStop.ShouldBeFalse();
             third.IsTabStop.ShouldBeFalse();
             focus.Focus(first).ShouldBeTrue();

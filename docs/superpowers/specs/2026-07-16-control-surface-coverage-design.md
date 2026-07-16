@@ -40,9 +40,10 @@ contracts, with XML documentation and showcase coverage.
   internal item wrappers are tested through their concrete public owner.
 - `Screen` and application hosting types are not mountable controls.
 
-The uncommitted `NavigationView` work already present in the user worktree is
-user-owned. Its phase comes last and must reconcile with, rather than overwrite,
-that work.
+The user-owned `NavigationView` work was later committed on `codex/testing` in
+the mixed commit `d0bc8e8`. Its eight-file control slice is reconciled last
+without importing or overwriting unrelated work from that commit or the dirty
+main checkout.
 
 ## Evidence model
 
@@ -172,7 +173,7 @@ complete clearing of old content.
 initial and changed selection; pointer and arrow navigation; group expansion;
 disabled-item skipping; viewport scrolling; item removal repair; Unicode cells;
 and resize. These expectations are reconciled with the normative NavigationView
-contract after the existing uncommitted implementation stabilizes.
+contract and the committed user-owned retained implementation.
 
 ## Harness extensions
 
