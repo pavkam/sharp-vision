@@ -36,7 +36,7 @@ or programmatic focus), the menu's `SelectedIndex` is synchronized
 automatically. This guarantees that subsequent arrow-key navigation starts from
 the correctly focused position, not from a stale selection.
 
-```
+```text
   Tab    ┌─►  MenuItem "File"
   ─────► │    MenuItem "Edit"
          │    MenuSeparator       (skipped)

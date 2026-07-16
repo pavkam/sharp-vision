@@ -49,7 +49,7 @@ focus deterministically.
 `Control.TabNavigation` governs how Tab traversal treats one control's subtree.
 Three modes are available:
 
-```
+```text
 TabNavigation.Continue    (default — no boundary, global flat traversal)
 TabNavigation.Cycle       (Tab wraps within this control's children)
 TabNavigation.Contained   (Tab is trapped; focus cannot exit via Tab/Shift+Tab)
@@ -65,7 +65,7 @@ part of the enclosing scope (or the tree root for the default global traversal).
 The scope resolution walk, the scope-bounded collection, and the per-mode
 wrapping behavior form the complete scope algorithm:
 
-```
+```text
                         ┌────────────────────────────────────────┐
    Tab pressed          │  FocusManager.MoveNext                 │
   ─────────────────►    │                                        │
@@ -92,7 +92,7 @@ wrapping behavior form the complete scope algorithm:
 becomes a closed navigation scope: Tab cycles through the realized `ListItem`
 controls and cannot escape to controls outside the popup.
 
-```
+```text
 ComboBox
 ├─ [Popup]  TabNavigation = Contained
 │  └─ List  IsTabStop = false
@@ -108,7 +108,7 @@ children, skipping separators. `MenuItem.OnFocusChanged` synchronizes
 through Tab), so subsequent arrow-key navigation starts from the correct
 position.
 
-```
+```text
 Menu  TabNavigation = Cycle
 ├─ MenuItem  "File"
 ├─ MenuItem  "Edit"        ◄── Tab cycles File → Edit → Help → File

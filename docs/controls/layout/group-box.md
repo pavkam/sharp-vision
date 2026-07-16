@@ -12,11 +12,11 @@ border frame with an optional header label in the top edge, like a
 
 - `Header` is a non-null string rendered in the top border edge. Default is
   empty.
-- `Glyphs` controls the terminal-safe glyph family for the border frame.
-  Default is `Glyphs.Rounded`.
+- `Glyphs` controls the terminal-safe glyph family for the border frame. Default
+  is `Glyphs.Rounded`.
 - `Content` is the single owned child, arranged inside the one-cell border
-  inset. Use a [`Stack`](stack.md), [`Grid`](grid.md), or other layout
-  container as content for multiple children.
+  inset. Use a [`Stack`](stack.md), [`Grid`](grid.md), or other layout container
+  as content for multiple children.
 
 ## Example
 
@@ -37,6 +37,6 @@ var group = new GroupBox
 
 ## Test obligations
 
-Cover header rendering, empty header, content arrangement inside border,
-measure width expansion for wide headers, zero bounds, glyph families, style
-states, and final cells.
+Cover header rendering, empty header, content arrangement inside border, measure
+width expansion for wide headers, zero bounds, glyph families, style states, and
+final cells.

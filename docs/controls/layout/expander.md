@@ -6,8 +6,8 @@
 optional content. It extends
 [`ContentControl`](../content-control.md#contentcontrol-contract). Enter, Space,
 or a primary pointer click on the header toggles visibility of the content
-region below. The header always renders a directional glyph (`▼` expanded,
-`▶` collapsed) followed by the header text.
+region below. The header always renders a directional glyph (`▼` expanded, `▶`
+collapsed) followed by the header text.
 
 ## API
 
@@ -39,6 +39,6 @@ var details = new Expander
 
 ## Test obligations
 
-Cover expanded and collapsed measurement, toggle event, header glyph
-rendering, keyboard and pointer activation, content arrangement, zero bounds,
-style states, and final cells.
+Cover expanded and collapsed measurement, toggle event, header glyph rendering,
+keyboard and pointer activation, content arrangement, zero bounds, style states,
+and final cells.

@@ -39,21 +39,21 @@ rendering, derive a custom `Control` and override `OnRender(TerminalCanvas)`.
 The TerminalCanvas provides deterministic drawing primitives that operate on
 semantic cells without terminal escape knowledge:
 
-| Primitive | Purpose |
-|-----------|---------|
-| `DrawLine` | Bresenham line between two cells |
-| `DrawCircle` / `DrawEllipse` | Midpoint rasterized outlines |
-| `DrawBox` | Complete box with topology-merged corners |
+| Primitive                                 | Purpose                                        |
+| ----------------------------------------- | ---------------------------------------------- |
+| `DrawLine`                                | Bresenham line between two cells               |
+| `DrawCircle` / `DrawEllipse`              | Midpoint rasterized outlines                   |
+| `DrawBox`                                 | Complete box with topology-merged corners      |
 | `DrawHorizontalLine` / `DrawVerticalLine` | Axis-aligned lines with auto-merging junctions |
-| `FillShade` | Light/Medium/Dark/Solid shade fills |
-| `DrawQuadrants` | Quarter-cell block elements |
-| `Fill` / `Clear` / `ApplyStyle` | Region fill, clear, restyle |
-| `Draw` | Full grapheme-cluster text |
+| `FillShade`                               | Light/Medium/Dark/Solid shade fills            |
+| `DrawQuadrants`                           | Quarter-cell block elements                    |
+| `Fill` / `Clear` / `ApplyStyle`           | Region fill, clear, restyle                    |
+| `Draw`                                    | Full grapheme-cluster text                     |
 
 Line primitives share a topology table: horizontal and vertical segments that
 cross the same cell auto-merge to `┼` `├` `┤` `┬` `┴` and corner junctions
-without per-intersection code. Block elements ▁▂▃▄▅▆▇█ provide sub-cell
-vertical resolution for sparklines and gauges.
+without per-intersection code. Block elements ▁▂▃▄▅▆▇█ provide sub-cell vertical
+resolution for sparklines and gauges.
 
 ## Example
 
