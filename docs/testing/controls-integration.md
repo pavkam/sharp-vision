@@ -63,6 +63,58 @@ layout, cell drawing, frame diff, encoder, and captured output bytes. Assertions
 cover intermediate typed boundaries only when they are public contracts; final
 bytes and virtual screen are mandatory.
 
+### Mounted component surfaces
+
+Focused control regression tests use `ComponentSurface` when behavior crosses
+input, layout, styling, and rendering boundaries. `MountAsync` places one
+detached control in a fixed-size host, starts a real `Application`, and returns
+only after the first renderer write is applied to an independent semantic
+screen. The host begins as a neutral focus anchor so a real Tab byte can move
+focus into the mounted component without calling `FocusManager` directly.
+
+Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
+or `ClickAsync`, and drive `surface.Keyboard` with supported typed key codes.
+Those helpers emit terminal bytes; they never call `Router.Route`, `SetHovered`,
+`SetPressed`, or `FocusManager.Focus` on the component. Each action waits until
+the transport consumes its bytes and the application reaches idle after routed
+work, layout, rendering, and output.
+
+```csharp
+await using var surface = await ComponentSurface.MountAsync(
+    button,
+    new Size(10, 5),
+    TestContext.Current.CancellationToken);
+
+await surface.Pointer.MoveToAsync(button);
+await surface.Pointer.PressAsync();
+
+surface.ShouldHaveState(
+    button,
+    State.Hovered | State.Focused | State.Pressed);
+surface.ShouldRender("""
+
+     ╭──────╮
+     │Save  │
+     ╰──────╯
+
+    """);
+```
+
+`ShouldRender` compares every final surface row and right-pads omitted trailing
+blank cells. Whole-surface text is a reviewable appearance oracle, not
+sufficient proof by itself. Every scenario also asserts public control state and
+representative semantic cells, including resolved colors, attributes,
+continuation ownership, border cells, and shadow cells. This keeps the mounted
+path aligned with the
+[input-routing](../concepts/input-routing.md#input-routing),
+[focus](../concepts/focus.md#focus-contract),
+[visual-state](../concepts/styling.md#visual-states), and
+[rendering-equivalence](rendering.md#rendering-equivalence-testing) contracts.
+
+Action timeouts report the action and latest screen. Snapshot mismatches retain
+row boundaries and cell differences. Tests isolate held-pointer scenarios or
+release capture before reuse, so state cannot leak between surfaces.
+
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route
 payloads, pixel-to-cell inference, owned paste bytes, repeat action, control

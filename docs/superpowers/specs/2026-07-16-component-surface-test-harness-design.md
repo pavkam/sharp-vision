@@ -67,7 +67,10 @@ frame has been applied to the virtual screen.
 
 The host provides empty space around explicitly sized controls so shadows and
 pointer movement outside the target remain observable. Mounting follows ordinary
-SharpVision ownership and disposal rules; no production test seam is added.
+SharpVision ownership and disposal rules; no production test seam is added. The
+host is also a neutral initial focus anchor. A Tab action can therefore enter
+the mounted control through ordinary key routing without directly mutating the
+focus manager.
 
 Every action completes only after its input bytes have been decoded and the
 resulting dispatcher work and frame write have settled. A bounded timeout
@@ -154,6 +157,10 @@ screen text, and representative face, border, and shadow cell styles. The
 focused case proves keyboard decoding and focus independently from hover. The
 pressed cases release the pointer or dispose their isolated surface so capture
 cannot leak between scenarios.
+
+A held shadowed Button translates its face into the released shadow footprint
+and suppresses further shadow emission. Rendering another shadow one offset past
+the held face violates the pressed-depth contract.
 
 ## Failure behavior
 
