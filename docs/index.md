@@ -25,7 +25,9 @@ The
 [rendering pipeline contract](architecture/rendering-pipeline.md#rendering-pipeline-contract)
 defines Unicode drawing and visual overflow, while the
 [FigletText contract](controls/display/figlet-text.md#figlettext-contract)
-defines large-text rendering and the audited compressed font library. The
+defines large-text rendering and the audited compressed font library, and the
+[Prism contract](controls/display/prism.md#prism-contract) defines a
+write-scoped foreground color effect for retained content. The
 [showcase contract](architecture/showcase.md#showcase-contract) defines the
 runnable documentation gallery, executable interaction evidence, and
 external-resource boundary.
