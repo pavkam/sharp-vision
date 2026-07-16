@@ -162,30 +162,30 @@ var title = new Prism
 title.Phase = (title.Phase + (1d / 60d)) % 1d;
 ```
 
-## Test obligations
+## Automated proof
 
-Tests cover:
+Automated proof is split across focused Prism, canvas-primitive, and shared
+base-control suites:
 
-- constructor defaults; finite/range, positive-length, and enum validation;
-  rejected-state preservation; dispatcher and disposal failures; equivalent
-  assignments; invalidation-before-notification ordering; and exact property
-  notification order;
-- exact RGB values at sector boundaries and rounded interior values, phase and
-  coordinate wrap, and horizontal, vertical, and checked diagonal coordinates;
-- render-only invalidation, unchanged measure/arrange counts and geometry, null
-  content, empty bounds, border-consumed bounds, and tiny clips;
-- foreground-only transformation with glyph, background, attributes, hyperlink,
-  underline, underline color, and lead/continuation preservation;
-- prepainted overlap, untouched underlay and blanks, identical overwrites,
-  stored spaces, selector-side writes, nested ordinary effects, and nested
-  ordinary child rendering;
-- row-major once-per-lead selection, mixed narrow and wide owners, a
-  boundary-straddling wide owner selected through either intersecting cell,
-  complete-span transformation across the requested region boundary, partial
-  wide clipping by the active canvas, lead-coordinate hue wrap, and intact
-  ownership after transformation or failure;
-- child-drawing failure, selector failure with deterministic partial progress,
-  bounded capture cleanup, and no per-frame delegate allocation;
-- ordinary `ContentControl` assignment, replacement, clearing, parentage,
-  layout, direct-child disposal, owner disposal, and callback ordering; and
-- elevated popup and promoted-popup exclusion from the ordinary Prism effect.
+- The twelve `PrismTests` prove defaults; rejected non-finite, out-of-range,
+  non-positive, and unknown-enum values without state or notification changes;
+  ordered effect-property notifications, render-only invalidation, and stable
+  layout; exact sector colors, phase wrap, and all three directions; rich
+  foreground-only preservation with Prism chrome and outside-cell isolation;
+  null-content and child-subset underlay preservation; wide-owner atomicity;
+  stored-space versus untouched-blank behavior; empty, tiny, and border-consumed
+  bounds; and ordinary `ContentControl` replacement, clearing, and parentage.
+- `CanvasPrimitiveTests` prove row-major once-per-lead selection, non-foreground
+  preservation, clipped-wide-owner exclusion, null-callback and selector-failure
+  behavior, stored spaces versus blanks, and actual-write provenance for
+  identical overwrites, underlay, selector-side writes to later or current
+  owners, nesting, and mixed narrow and wide owners. They also prove
+  drawing-failure behavior, exclusion of provenance metadata from semantic
+  damage, and cached-callback allocation behavior.
+- Shared base-control suites prove general dispatcher affinity, disposal,
+  `ContentControl` lifecycle, and popup-layer routing. Those are infrastructure
+  contracts, not focused Prism-specific assertions.
+
+There is no focused Prism test attributed here for property dispatcher or
+disposal paths, interior interpolation rounding, requested-region
+boundary-straddling owners, promoted-popup exclusion, or disposal ordering.
