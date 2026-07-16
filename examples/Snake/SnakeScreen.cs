@@ -18,10 +18,12 @@ public sealed class SnakeScreen: Screen
     private readonly HighScoreTable _highScores = new();
     private readonly Text _topBar;
     private readonly FigletText _figlet;
-    private readonly Text _menuText;
+    private readonly Text _difficultyLabel;
     private readonly Text _scoresText;
     private readonly Text _initialsText;
     private readonly Stack _titleOverlay;
+    private readonly Dock _menuBox;
+    private readonly Dock _scoresBox;
     private readonly Dock _topBarDock;
     private GameState _state;
     private CancellationTokenSource? _cts;
@@ -45,16 +47,59 @@ public sealed class SnakeScreen: Screen
             HorizontalAlignment = HorizontalAlignment.Center,
         };
 
-        _menuText = new Text("") { HorizontalAlignment = HorizontalAlignment.Center };
-        _scoresText = new Text("") { HorizontalAlignment = HorizontalAlignment.Center };
+        _difficultyLabel = new Text("<accent>1/2/3</accent> Difficulty: <b>Easy</b>");
+        _menuBox = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Width = Length.Cells(30),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            BorderColor = ThemeColors.Border,
+            Padding = new Thickness(1, 0),
+            Children =
+            {
+                new Stack
+                {
+                    Spacing = 0,
+                    Children =
+                    {
+                        new Text("<accent>ENTER</accent> Start game"),
+                        _difficultyLabel,
+                        new Text("<accent>  Q  </accent> Quit"),
+                    },
+                },
+            },
+        };
+
+        _scoresText = new Text("") { Overflow = Overflow.Wrap };
         _initialsText = new Text("") { HorizontalAlignment = HorizontalAlignment.Center };
+        _scoresBox = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Width = Length.Cells(30),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Light,
+            BorderColor = ThemeColors.Border,
+            Padding = new Thickness(1, 0),
+            Children =
+            {
+                new Stack
+                {
+                    Children =
+                    {
+                        new Text("<b>HIGH SCORES</b>") { HorizontalAlignment = HorizontalAlignment.Center },
+                        _scoresText,
+                    },
+                },
+            },
+        };
 
         _titleOverlay = new Stack
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
             Spacing = 1,
-            Children = { _figlet, _menuText, _scoresText },
+            Children = { _figlet, _menuBox, _scoresBox },
         };
 
         _topBar = new Text("") { Overflow = Overflow.Clip };
@@ -124,21 +169,21 @@ public sealed class SnakeScreen: Screen
         _topBar.Content = "<accent><b>🐍 SNAKE</b></accent>  <d>A SharpVision showcase game</d>";
 
         var diffName = _selectedDifficulty switch { 0 => "Easy", 1 => "Medium", _ => "Hard" };
-        _menuText.Content =
-            $"\n<b>┌─────────────────────────┐</b>\n" +
-            $"<b>│</b>  <accent>ENTER</accent> Start game        <b>│</b>\n" +
-            $"<b>│</b>  <accent>1/2/3</accent> Difficulty: <b>{diffName,-6}</b> <b>│</b>\n" +
-            $"<b>│</b>  <accent>  Q  </accent> Quit              <b>│</b>\n" +
-            $"<b>└─────────────────────────┘</b>";
+        _difficultyLabel.Content = $"<accent>1/2/3</accent> Difficulty: <b>{diffName}</b>";
 
         var sb = new System.Text.StringBuilder();
-        _ = sb.Append("\n<b>── HIGH SCORES ──</b>\n");
 
         for (var i = 0; i < _highScores.Entries.Count; i++)
         {
             var (name, score) = _highScores.Entries[i];
             var rank = (i + 1).ToString(CultureInfo.InvariantCulture);
-            _ = sb.Append(CultureInfo.InvariantCulture, $" <d>{rank,2}.</d> <accent>{name}</accent>  {score.ToString(CultureInfo.InvariantCulture),6}\n");
+
+            if (i > 0)
+            {
+                _ = sb.Append('\n');
+            }
+
+            _ = sb.Append(CultureInfo.InvariantCulture, $"<d>{rank,2}.</d> <accent>{name}</accent> {score.ToString(CultureInfo.InvariantCulture),5}");
         }
 
         _scoresText.Content = sb.ToString();
@@ -237,16 +282,34 @@ public sealed class SnakeScreen: Screen
         UpdateInitialsDisplay();
         _titleOverlay.Children.Clear();
         _titleOverlay.Children.Add(_figlet);
-        _titleOverlay.Children.Add(_initialsText);
-
+        _titleOverlay.Children.Add(BuildInitialsBox());
         _board.RequestRedraw();
+    }
+
+    private Dock BuildInitialsBox()
+    {
+        var display = _initials.PadRight(3, '_');
+        _initialsText.Content =
+            $"<b>Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>\n\n" +
+            $"Enter your initials: <b><accent>{display[0]} {display[1]} {display[2]}</accent></b>\n\n" +
+            "<d>Type 3 letters, then press ENTER</d>";
+        return new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Width = Length.Cells(36),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            BorderColor = Color.Rgb(255, 215, 0),
+            Padding = new Thickness(1, 0),
+            Children = { _initialsText },
+        };
     }
 
     private void UpdateInitialsDisplay()
     {
         var display = _initials.PadRight(3, '_');
         _initialsText.Content =
-            $"\n<b>Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>\n\n" +
+            $"<b>Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>\n\n" +
             $"Enter your initials: <b><accent>{display[0]} {display[1]} {display[2]}</accent></b>\n\n" +
             "<d>Type 3 letters, then press ENTER</d>";
     }
@@ -261,15 +324,37 @@ public sealed class SnakeScreen: Screen
         _figlet.Foreground = Color.Rgb(255, 60, 60);
         _figlet.Font = _deathFont;
 
-        _menuText.Content =
-            $"\n<b>Final Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>\n\n" +
-            "<d>Press ENTER to continue</d>";
-        _scoresText.Content = "";
+        var gameOverBox = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Width = Length.Cells(30),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.Rounded,
+            BorderColor = Color.Rgb(255, 60, 60),
+            Padding = new Thickness(1, 0),
+            Children =
+            {
+                new Stack
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Children =
+                    {
+                        new Text($"<b>Final Score: <accent>{_state.Score.ToString(CultureInfo.InvariantCulture)}</accent></b>")
+                        {
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                        },
+                        new Text("<d>Press ENTER to continue</d>")
+                        {
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                        },
+                    },
+                },
+            },
+        };
 
         _titleOverlay.Children.Clear();
         _titleOverlay.Children.Add(_figlet);
-        _titleOverlay.Children.Add(_menuText);
-
+        _titleOverlay.Children.Add(gameOverBox);
         _board.RequestRedraw();
     }
 
@@ -490,8 +575,8 @@ public sealed class SnakeScreen: Screen
             _figlet.Foreground = Color.Rgb(0, 255, 100);
             _titleOverlay.Children.Clear();
             _titleOverlay.Children.Add(_figlet);
-            _titleOverlay.Children.Add(_menuText);
-            _titleOverlay.Children.Add(_scoresText);
+            _titleOverlay.Children.Add(_menuBox);
+            _titleOverlay.Children.Add(_scoresBox);
             UpdateTitleScreen();
             e.Handled = true;
         }
@@ -506,8 +591,8 @@ public sealed class SnakeScreen: Screen
             _figlet.Foreground = Color.Rgb(0, 255, 100);
             _titleOverlay.Children.Clear();
             _titleOverlay.Children.Add(_figlet);
-            _titleOverlay.Children.Add(_menuText);
-            _titleOverlay.Children.Add(_scoresText);
+            _titleOverlay.Children.Add(_menuBox);
+            _titleOverlay.Children.Add(_scoresBox);
             UpdateTitleScreen();
             e.Handled = true;
         }
