@@ -37,11 +37,8 @@ public sealed class SnakeBoard: Control
     /// <summary>Gets or sets the game state to render.</summary>
     public GameState? State { get; set; }
 
-    /// <summary>Gets or sets whether the title overlay is shown.</summary>
-    public bool ShowTitle { get; set; } = true;
-
-    /// <summary>Gets or sets title-mode child controls to render centered.</summary>
-    public Control? TitleControls { get; set; }
+    /// <summary>Gets or sets whether the board should render game content or clear for title screen.</summary>
+    public bool ShowBoard { get; set; }
 
     /// <summary>Gets or sets whether the paused overlay is shown.</summary>
     public bool ShowPaused { get; set; }
@@ -56,31 +53,15 @@ public sealed class SnakeBoard: Control
     public void RequestRedraw() => Invalidate(ChangeImpact.Render);
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        if (TitleControls is { } overlay)
-        {
-            _ = MeasureChild(overlay, constraint);
-        }
-
-        return new(constraint.Width ?? 60, constraint.Height ?? 24);
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        if (TitleControls is { } overlay)
-        {
-            ArrangeChild(overlay, bounds, ResolvedAxes.Both);
-        }
-    }
+    protected override Size MeasureOverride(Constraint constraint) =>
+        new(constraint.Width ?? 60, constraint.Height ?? 24);
 
     /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
         canvas.Clear(Bounds, new TerminalStyle(Color.Default, Color.Indexed(0)));
 
-        if (ShowTitle)
+        if (!ShowBoard)
         {
             return;
         }

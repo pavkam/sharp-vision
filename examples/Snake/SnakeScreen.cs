@@ -67,6 +67,15 @@ public sealed class SnakeScreen: Screen
             Children = { _topBar },
         };
 
+        var gameArea = new Overlay
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        gameArea.Children.Add(_board);
+        Overlay.SetZIndex(_titleOverlay, 10);
+        gameArea.Children.Add(_titleOverlay);
+
         var layout = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -75,7 +84,7 @@ public sealed class SnakeScreen: Screen
 
         Dock.SetSide(_topBarDock, Side.Top);
         layout.Children.Add(_topBarDock);
-        layout.Children.Add(_board);
+        layout.Children.Add(gameArea);
         InitializeContent(layout);
 
         _ = AddHandler(Events.Key, OnKey);
@@ -109,8 +118,8 @@ public sealed class SnakeScreen: Screen
     private void UpdateTitleScreen()
     {
         _phase = GamePhase.Title;
-        _board.ShowTitle = true;
-        _board.TitleControls = _titleOverlay;
+        _board.ShowBoard = false;
+        _titleOverlay.Visibility = Visibility.Visible;
 
         _topBar.Content = "<accent><b>🐍 SNAKE</b></accent>  <d>A SharpVision showcase game</d>";
 
@@ -141,8 +150,8 @@ public sealed class SnakeScreen: Screen
         _phase = GamePhase.Playing;
         _state = new GameState(width: 60, height: 22, difficulty: _selectedDifficulty);
         _board.State = _state;
-        _board.ShowTitle = false;
-        _board.TitleControls = null;
+        _board.ShowBoard = true;
+        _titleOverlay.Visibility = Visibility.Collapsed;
         UpdateTopBar();
         _board.RequestRedraw();
         StartGameLoop();
@@ -218,7 +227,8 @@ public sealed class SnakeScreen: Screen
     {
         _phase = GamePhase.HighScoreEntry;
         _initials = "";
-        _board.ShowTitle = true;
+        _board.ShowBoard = false;
+        _titleOverlay.Visibility = Visibility.Visible;
 
         _figlet.Content = "NEW RECORD";
         _figlet.Foreground = Color.Rgb(255, 215, 0);
@@ -228,7 +238,7 @@ public sealed class SnakeScreen: Screen
         _titleOverlay.Children.Clear();
         _titleOverlay.Children.Add(_figlet);
         _titleOverlay.Children.Add(_initialsText);
-        _board.TitleControls = _titleOverlay;
+
         _board.RequestRedraw();
     }
 
@@ -244,7 +254,8 @@ public sealed class SnakeScreen: Screen
     private void ShowGameOverPhase()
     {
         _phase = GamePhase.GameOver;
-        _board.ShowTitle = true;
+        _board.ShowBoard = false;
+        _titleOverlay.Visibility = Visibility.Visible;
 
         _figlet.Content = "GAME OVER";
         _figlet.Foreground = Color.Rgb(255, 60, 60);
@@ -258,7 +269,7 @@ public sealed class SnakeScreen: Screen
         _titleOverlay.Children.Clear();
         _titleOverlay.Children.Add(_figlet);
         _titleOverlay.Children.Add(_menuText);
-        _board.TitleControls = _titleOverlay;
+
         _board.RequestRedraw();
     }
 
