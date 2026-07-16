@@ -60,6 +60,8 @@ public sealed class TextInputSurfaceTests
         // Act
         await surface.Keyboard.PressAsync(Code.Left);
         await surface.Keyboard.PressAsync(Code.Backspace);
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Left);
         await surface.Keyboard.PressAsync(Code.Delete);
 
         // Assert
@@ -68,6 +70,39 @@ public sealed class TextInputSurfaceTests
         surface.ShouldRender("A\u0301");
         surface.Cell(default).Text.ShouldBe("A\u0301");
         surface.ShouldHaveCursor(new Point(1, 0), visible: true);
+    }
+
+    /// <summary>Verifies Home and End remain on complete boundaries of the active logical line.</summary>
+    [Fact]
+    public async Task Keyboard_WhenHomeAndEndArePressed_MovesAcrossTheCurrentUnicodeLineAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            AcceptsReturn = true,
+            Text = "A\u0301界\nXYZ",
+            Width = Length.Cells(5),
+            Height = Length.Cells(2),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(5, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act Home
+        await surface.Keyboard.PressAsync(Code.Home);
+
+        // Assert Home
+        input.CaretIndex.ShouldBe(4);
+        surface.ShouldHaveCursor(new Point(0, 1), visible: true);
+
+        // Act End
+        await surface.Keyboard.PressAsync(Code.End);
+
+        // Assert End
+        input.CaretIndex.ShouldBe(7);
+        surface.ShouldHaveCursor(new Point(3, 1), visible: true);
     }
 
     /// <summary>Verifies bracketed paste commits once and Shift selects both cells of a wide grapheme.</summary>
@@ -231,6 +266,70 @@ public sealed class TextInputSurfaceTests
         input.HorizontalOffset.ShouldBe(1);
         surface.ShouldRender("ead");
         surface.ShouldHaveCursor(new Point(2, 0), visible: true);
+    }
+
+    /// <summary>Verifies a real cell drag selects complete graphemes including both cells of a wide rune.</summary>
+    [Fact]
+    public async Task Pointer_WhenUnicodeTextIsDragged_SelectsOnlyCompleteRenderedClustersAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            Text = "A界e\u0301Z",
+            Width = Length.Cells(8),
+            Height = Length.Cells(1),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(8, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.DragAsync(input, default, new Point(4, 0));
+
+        // Assert
+        input.SelectionStart.ShouldBe(0);
+        input.SelectionLength.ShouldBe(4);
+        input.SelectedText.ShouldBe("A界e\u0301");
+        surface.ShouldHaveState(input, State.Hovered | State.Focused);
+        (surface.Cell(default).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
+        (surface.Cell(new Point(1, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
+        (surface.Cell(new Point(2, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
+        (surface.Cell(new Point(3, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
+        surface.ShouldHaveCursor(new Point(4, 0), visible: true);
+    }
+
+    /// <summary>Verifies horizontal and vertical wheel reports scroll the rendered editor viewport.</summary>
+    [Fact]
+    public async Task Pointer_WhenOverflowingEditorIsWheeled_UpdatesOffsetsAndVisibleCellsAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            AcceptsReturn = true,
+            Text = "abcdef\none\ntwo\nthree",
+            CaretIndex = 0,
+            Width = Length.Cells(4),
+            Height = Length.Cells(2),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.WheelAsync(input, default, wheelY: -1);
+        await surface.Pointer.WheelAsync(input, default, wheelX: -1);
+
+        // Assert
+        input.HorizontalOffset.ShouldBe(1);
+        input.VerticalOffset.ShouldBe(1);
+        surface.ShouldRender("""
+            ne ┃
+            ━──
+            """);
+        surface.ShouldHaveState(input, State.Hovered);
+        surface.ShouldHaveCursor(default, visible: false);
     }
 
     /// <summary>Verifies resize clamps automatic editor offsets and exposes complete content.</summary>

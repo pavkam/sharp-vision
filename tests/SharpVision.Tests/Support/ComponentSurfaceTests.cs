@@ -224,4 +224,28 @@ public sealed class ComponentSurfaceTests
         bar.Value.ShouldBe(0);
         surface.ShouldHaveState(bar, State.Normal);
     }
+
+    /// <summary>Verifies input that changes no control state still crosses the routed dispatcher fence.</summary>
+    [Fact]
+    public async Task Pointer_WhenDisabledControlIgnoresRelease_SettlesWithoutInvalidationAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox
+        {
+            Content = new ControlText("Disabled"),
+            IsEnabled = false,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(12, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(checkBox);
+
+        // Assert
+        checkBox.IsChecked.ShouldBe(false);
+        surface.ShouldHaveState(checkBox, State.Disabled);
+        surface.ShouldRender("[ ] Disabled");
+    }
 }

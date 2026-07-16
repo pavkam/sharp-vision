@@ -72,12 +72,44 @@ only after the first renderer write is applied to an independent semantic
 screen. The host begins as a neutral focus anchor so a real Tab byte can move
 focus into the mounted component without calling `FocusManager` directly.
 
-Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
-or `ClickAsync`, and drive `surface.Keyboard` with supported typed key codes.
+Tests drive `surface.Pointer` with center- or cell-relative `MoveToAsync` and
+`ClickAsync`, stateful `PressAsync`/`MovePressedToAsync`/`ReleaseAsync`, unit
+`WheelAsync`, or complete `DragAsync`. Relative cells are validated against the
+target's current arranged bounds on the UI dispatcher; foreign, empty, negative,
+and right/bottom-edge targets fail before input is queued. A wheel action
+accepts exactly one horizontal or vertical unit delta. Complete drag notation is
+concise, while the stateful form exposes capture and pressed-state checkpoints:
+
+```csharp
+await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: -1);
+await surface.Pointer.DragAsync(
+    bar,
+    new Point(1, 0),
+    new Point(10, 0));
+
+await surface.Pointer.MoveToAsync(bar, new Point(1, 0));
+await surface.Pointer.PressAsync();
+surface.ShouldHaveState(bar, State.Hovered | State.Focused | State.Pressed);
+await surface.Pointer.MovePressedToAsync(bar, new Point(10, 0));
+await surface.Pointer.ReleaseAsync();
+```
+
+`surface.Keyboard.PressAsync` encodes supported navigation, editing, and Kitty
+key actions, with a modifier overload for supported combinations. `TypeAsync`
+emits one owned UTF-8 text action, `PasteAsync` emits one complete bracketed
+paste transaction, and `CompleteCharacterAsync` emits distinct Kitty press and
+release transitions. Typed text must be non-empty and contain no terminal
+controls; unsupported key/modifier pairs fail before bytes are queued.
+
 Those helpers emit terminal bytes; they never call `Router.Route`, `SetHovered`,
-`SetPressed`, or `FocusManager.Focus` on the component. Each action waits until
-the transport consumes its bytes and the application reaches idle after routed
-work, layout, rendering, and output.
+`SetPressed`, or `FocusManager.Focus` on the component. Input consumption is
+acknowledged only when the terminal session requests its next read, after it has
+synchronously decoded and routed the preceding bytes. The action then waits for
+a dispatcher fence and application idle after routed work, layout, rendering,
+and output. The fence causes a fresh idle transition even when disabled or
+otherwise ignored input produces no invalidation. An idle notification from
+before the current decode therefore cannot expose a partial action or strand a
+no-op action.
 
 `surface.UpdateAsync` runs an ordinary public mutation on the application
 dispatcher and settles the same layout/render/output path. `surface.ResizeAsync`
@@ -118,6 +150,9 @@ shadow cells. This keeps the mounted path aligned with the
 [focus](../concepts/focus.md#focus-contract),
 [visual-state](../concepts/styling.md#visual-states), and
 [rendering-equivalence](rendering.md#rendering-equivalence-testing) contracts.
+`ShouldHaveCursor` additionally compares the final semantic terminal cursor
+position and DEC visibility state, validating its point against the current
+resized surface.
 
 Action timeouts report the action and latest screen. Snapshot mismatches retain
 row boundaries and cell differences. Tests isolate held-pointer scenarios or
@@ -130,6 +165,14 @@ cells. `CheckBoxSurfaceTests` proves tiny-to-full content reveal, while
 `RadioButtonSurfaceTests` proves real group selection, disabled skipping, and
 arrow wrapping. These fixtures supplement, rather than replace, exhaustive pure
 state, validation, and geometry tests.
+
+`TextInputSurfaceTests` proves placeholder and password appearance, focus and
+semantic cursor, Unicode typing and cluster-safe navigation/deletion, Home/End,
+wide selection, atomic paste, submit policy, read-only and disabled refusal,
+pointer drag selection, wheel-driven owned rails, and resize offset repair.
+`ScrollBarSurfaceTests` proves exact horizontal, vertical, resized, and tiny
+geometry; combined state appearance; keyboard/button/track/wheel causes;
+endpoint no-ops; captured thumb motion; and disable cleanup.
 
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route

@@ -266,19 +266,34 @@ Update its test obligations and commit as
 - Modify: `docs/testing/controls-integration.md`
 - Modify: `docs/superpowers/plans/2026-07-16-control-surface-phase-two.md`
 
-- [ ] **Step 1: Audit scenario coverage**
+- [x] **Step 1: Audit scenario coverage**
 
 Map every TextInput and ScrollBar scenario in the umbrella design to a named
 surface or unit test. Add missing cursor, Unicode, tiny, disabled, resize,
 endpoint, or cleanup evidence before proceeding.
 
-- [ ] **Step 2: Update mounted-action documentation**
+Audit result:
+
+- `TextInputSurfaceTests` maps focus/cursor, placeholder/password, Unicode
+  typing, Left/Right/Home/End, Backspace/Delete, selection, paste,
+  submit/multiline Enter, read-only/disabled policy, pointer drag, wheel rails,
+  and resize offset repair to ten named mounted scenarios.
+- `ScrollBarSurfaceTests` maps horizontal/vertical and minimum-thumb geometry,
+  keyboard, buttons, track, wheel, endpoint no-op, captured drag, disabled
+  cleanup, style states, resize, and zero/tiny bounds to six named mounted
+  scenarios.
+- Mutable range validation, live range mutation during drag, inferred-pixel
+  input, terminal-focus/detach cancellation, and routed endpoint bubbling stay
+  named unit/integration responsibilities in `ScrollBarTests` and
+  `ScrollingTests`; they are not duplicated as weaker surface assertions.
+
+- [x] **Step 2: Update mounted-action documentation**
 
 Document exact typing, paste, navigation, cursor, relative-cell, wheel, and drag
 notation plus validation/settling rules. Keep raw terminal bytes as the only
 input path.
 
-- [ ] **Step 3: Run repository gates**
+- [x] **Step 3: Run repository gates**
 
 ```bash
 make format
@@ -290,7 +305,7 @@ make test
 Expected: zero warnings/errors, docs and links pass, all discovered tests pass,
 and isolated package consumption succeeds.
 
-- [ ] **Step 4: Commit phase documentation**
+- [x] **Step 4: Commit phase documentation**
 
 Commit only intentional phase-two files as
 `docs: complete second control surface coverage phase`.

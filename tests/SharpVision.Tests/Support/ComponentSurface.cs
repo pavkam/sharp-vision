@@ -205,6 +205,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
         {
             consumed = _terminal.QueueInput(value.Span);
             await consumed.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+            await _application.Dispatcher.InvokeAsync(static () => { }, _cancellationToken);
             await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
         }
         catch (TimeoutException exception)
