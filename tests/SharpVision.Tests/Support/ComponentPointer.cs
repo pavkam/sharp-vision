@@ -8,6 +8,7 @@ internal sealed class ComponentPointer
 {
     private readonly ComponentSurface _surface;
     private Point? _lastPoint;
+    private Modifiers _primaryModifiers;
     private bool _primaryPressed;
 
     /// <summary>Initializes a pointer driver for one non-null mounted surface.</summary>
@@ -61,6 +62,7 @@ internal sealed class ComponentPointer
         var point = _lastPoint ?? throw new InvalidOperationException(
             "Move the component pointer before pressing a button.");
         await _surface.SendAsync(Encode(button: 0, point, final: 'M'), $"press primary pointer at {point}");
+        _primaryModifiers = Modifiers.None;
         _primaryPressed = true;
     }
 
@@ -76,7 +78,10 @@ internal sealed class ComponentPointer
 
         var point = _lastPoint ?? throw new InvalidOperationException(
             "Move the component pointer before releasing a button.");
-        await _surface.SendAsync(Encode(button: 0, point, final: 'm'), $"release primary pointer at {point}");
+        await _surface.SendAsync(
+            Encode(button: ModifierBits(_primaryModifiers), point, final: 'm'),
+            $"release primary pointer at {point}");
+        _primaryModifiers = Modifiers.None;
         _primaryPressed = false;
     }
 
@@ -105,6 +110,32 @@ internal sealed class ComponentPointer
     {
         await MoveToAsync(control, relative);
         await PressAsync();
+        await ReleaseAsync();
+    }
+
+    /// <summary>Clicks a control's current arranged center with supported terminal pointer modifiers.</summary>
+    /// <param name="control">The mounted control or one of its owned descendants.</param>
+    /// <param name="modifiers">The Shift, Alt, and Control flags carried by both pointer transitions.</param>
+    /// <returns>A task completed after move, modified press/release, activation, and rendering settle.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by the surface.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="modifiers"/> contains an undefined flag.</exception>
+    /// <exception cref="NotSupportedException"><paramref name="modifiers"/> contains a defined non-pointer modifier.</exception>
+    /// <exception cref="InvalidOperationException">The control is empty or the primary pointer is already pressed.</exception>
+    internal async Task ClickAsync(Control control, Modifiers modifiers)
+    {
+        var bits = ModifierBits(modifiers);
+        await MoveToAsync(control);
+
+        if (_primaryPressed)
+        {
+            throw new InvalidOperationException("The primary pointer button is already pressed.");
+        }
+
+        var point = _lastPoint!.Value;
+        await _surface.SendAsync(Encode(button: bits, point, final: 'M'), $"press modified primary pointer at {point}");
+        _primaryModifiers = modifiers;
+        _primaryPressed = true;
         await ReleaseAsync();
     }
 
@@ -161,7 +192,9 @@ internal sealed class ComponentPointer
         }
 
         var point = await _surface.ResolvePointAsync(control, relative);
-        await _surface.SendAsync(Encode(button: 32, point, final: 'M'), $"drag primary pointer to {point}");
+        await _surface.SendAsync(
+            Encode(button: 32 + ModifierBits(_primaryModifiers), point, final: 'M'),
+            $"drag primary pointer to {point}");
         _lastPoint = point;
     }
 
@@ -185,4 +218,23 @@ internal sealed class ComponentPointer
     private static byte[] Encode(int button, Point point, char final) =>
         Encoding.ASCII.GetBytes(
             FormattableString.Invariant($"\u001b[<{button};{point.X + 1};{point.Y + 1}{final}"));
+
+    private static int ModifierBits(Modifiers modifiers)
+    {
+        const Modifiers known = Modifiers.Shift | Modifiers.Alt | Modifiers.Control |
+            Modifiers.Super | Modifiers.Hyper | Modifiers.Meta | Modifiers.CapsLock | Modifiers.NumLock;
+
+        if ((modifiers & ~known) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(modifiers), modifiers, "The pointer modifiers are undefined.");
+        }
+
+        const Modifiers supported = Modifiers.Shift | Modifiers.Alt | Modifiers.Control;
+
+        return (modifiers & ~supported) != 0
+            ? throw new NotSupportedException($"Component pointer encoding for {modifiers} is not supported.")
+            : ((modifiers & Modifiers.Shift) != 0 ? 4 : 0) |
+                ((modifiers & Modifiers.Alt) != 0 ? 8 : 0) |
+                ((modifiers & Modifiers.Control) != 0 ? 16 : 0);
+    }
 }

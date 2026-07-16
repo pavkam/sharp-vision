@@ -25,7 +25,7 @@ surfaces.
 
 ---
 
-### Task 1: Prove List through mounted user paths
+## Task 1: Prove List through mounted user paths
 
 **Files:**
 
@@ -33,32 +33,32 @@ surfaces.
 - Modify only when a red test demonstrates a responsible defect:
   `src/SharpVision/Controls/List.cs` or shared control infrastructure.
 
-- [ ] **Step 1: Specify exact initial, pointer, and keyboard selection**
+- [x] **Step 1: Specify exact initial, pointer, and keyboard selection**
 
 Mount Unicode rows with selected-state styles. Prove initial empty selection,
 Tab focus entry, Down/Up/Home/End movement, Space selection, Enter invocation,
 primary-click parity, exact selected cells, event cause/order, and wide-cell
 continuation ownership.
 
-- [ ] **Step 2: Specify modifiers and disabled skipping**
+- [x] **Step 2: Specify modifiers and disabled skipping**
 
 Prove Multiple-mode Control toggle and Shift range selection, disabled/hidden
 template skipping, focus movement, and no-op input without direct router or
 focus calls. Add only the missing encoded key notation needed by these
 scenarios.
 
-- [ ] **Step 3: Specify scrolling, resize, and replacement repair**
+- [x] **Step 3: Specify scrolling, resize, and replacement repair**
 
 Prove Page keys and wheel/bring-into-view offsets, resize clamping, item removal
 selection/active repair, template/content mutation, variable-height clipping,
 and complete stale-row clearing.
 
-- [ ] **Step 4: Verify List slice and commit**
+- [x] **Step 4: Verify List slice and commit**
 
 Run `*ListTests`, `*ListSurfaceTests`, focus, routing, scrolling, and List
 showcase fixtures. Commit as `test: cover list component surfaces`.
 
-### Task 2: Clarify TabControl retained behavior with RED unit tests
+## Task 2: Clarify TabControl retained behavior with RED unit tests
 
 **Files:**
 
@@ -95,7 +95,7 @@ Headers use terminal-cell measurement and never rebuild on selection or resize.
 Run `*TabControlTests` and `*TabItemTests`; record the expected compilation
 failure before implementation.
 
-### Task 3: Implement TabControl and mounted behavior
+## Task 3: Implement TabControl and mounted behavior
 
 **Files:**
 
@@ -128,7 +128,7 @@ previous page and obsolete headers.
 Run Tab unit/surface tests plus `ItemsControlTests`, `ContentControlTests`,
 focus, capture, input-routing, layout, rendering, and Unicode geometry fixtures.
 
-### Task 4: Add Tab showcase and normative proof
+## Task 4: Add Tab showcase and normative proof
 
 **Files:**
 

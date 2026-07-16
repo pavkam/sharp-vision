@@ -74,11 +74,13 @@ focus into the mounted component without calling `FocusManager` directly.
 
 Tests drive `surface.Pointer` with center- or cell-relative `MoveToAsync` and
 `ClickAsync`, stateful `PressAsync`/`MovePressedToAsync`/`ReleaseAsync`, unit
-`WheelAsync`, or complete `DragAsync`. Relative cells are validated against the
-target's current arranged bounds on the UI dispatcher; foreign, empty, negative,
-and right/bottom-edge targets fail before input is queued. A wheel action
-accepts exactly one horizontal or vertical unit delta. Complete drag notation is
-concise, while the stateful form exposes capture and pressed-state checkpoints:
+`WheelAsync`, or complete `DragAsync`. Center clicks may carry Shift, Alt, and
+Control terminal modifiers for selection-policy tests. Relative cells are
+validated against the target's current arranged bounds on the UI dispatcher;
+foreign, empty, negative, and right/bottom-edge targets fail before input is
+queued. A wheel action accepts exactly one horizontal or vertical unit delta.
+Complete drag notation is concise, while the stateful form exposes capture and
+pressed-state checkpoints:
 
 ```csharp
 await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: -1);
@@ -199,6 +201,15 @@ stale-content clearing, pointer/Space/Enter parity, focus, disabled refusal,
 replacement, Unicode, tiny clipping, and resize reflow. `GroupBoxTests` and
 `ExpanderTests` retain validation-before-mutation, ownership transfer,
 desired-size, event order, and retained framework-part responsibilities.
+
+`ListSurfaceTests` proves neutral-host focus entry, pointer and keyboard
+selection/invocation parity, changed-event order, Up/End/Page navigation,
+Control toggling, Shift ranges, disabled-item skipping, selected-state styling,
+Unicode continuation ownership, bring-into-view offsets, resize clamping,
+selection/active repair after replacement, and complete stale-row clearing.
+`ListTests` retains snapshot/template atomicity, validation, ownership/disposal,
+cancellation/reentrancy, selection-mode normalization, and common scrollbar
+policy responsibilities.
 
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route

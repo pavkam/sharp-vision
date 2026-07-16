@@ -49,6 +49,7 @@ internal sealed class ComponentKeyboard
             : (code, modifiers) switch
             {
                 (Code.Tab, Modifiers.None) => _surface.SendAsync("\t"u8.ToArray(), "press Tab"),
+                (Code.Up, Modifiers.None) => _surface.SendAsync("\u001b[A"u8.ToArray(), "press Up"),
                 (Code.Down, Modifiers.None) => _surface.SendAsync("\u001b[B"u8.ToArray(), "press Down"),
                 (Code.Left, Modifiers.None) => _surface.SendAsync("\u001b[D"u8.ToArray(), "press Left"),
                 (Code.Right, Modifiers.None) => _surface.SendAsync("\u001b[C"u8.ToArray(), "press Right"),
