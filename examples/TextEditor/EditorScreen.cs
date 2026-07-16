@@ -115,22 +115,10 @@ public sealed class EditorScreen: Screen
 
     private Dock BuildMenuBar()
     {
-        var bar = new Stack { Orientation = Orientation.Horizontal, Spacing = 2 };
-
-        bar.Children.Add(new Text("<b>File</b>"));
-        bar.Children.Add(Item("New", (_, _) => NewFile()));
-        bar.Children.Add(Item("Quit", (_, _) => Application?.Closed()));
-        bar.Children.Add(new Text("<d>│</d>"));
-        bar.Children.Add(new Text("<b>Edit</b>"));
-        bar.Children.Add(Item("Undo", (_, _) => _editor.Undo()));
-        bar.Children.Add(Item("Redo", (_, _) => _editor.Redo()));
-        bar.Children.Add(Item("Cut", (_, _) => _editor.CutSelection()));
-        bar.Children.Add(Item("Copy", (_, _) => _editor.CopySelection()));
-        bar.Children.Add(Item("SelAll", (_, _) => _editor.Select(0, _editor.Text.Length)));
-        bar.Children.Add(new Text("<d>│</d>"));
-        bar.Children.Add(new Text("<b>Search</b>"));
-        bar.Children.Add(Item("Find", (_, _) => _findReplace.OpenFind()));
-        bar.Children.Add(Item("Replace", (_, _) => _findReplace.OpenReplace()));
+        var bar = new Stack { Orientation = Orientation.Horizontal, Spacing = 1 };
+        bar.Children.Add(DropdownEntry("File", BuildFileMenu()));
+        bar.Children.Add(DropdownEntry("Edit", BuildEditMenu()));
+        bar.Children.Add(DropdownEntry("Search", BuildSearchMenu()));
 
         return new Dock
         {
@@ -142,11 +130,79 @@ public sealed class EditorScreen: Screen
         };
     }
 
-    private static MenuItem Item(string label, EventHandler<MenuItemInvokedEventArgs> handler)
+    private static Overlay DropdownEntry(string label, Menu submenu)
     {
-        var item = new MenuItem { Content = new Text($"<accent>{Text.Escape(label)}</accent>") };
-        item.Invoked += handler;
-        return item;
+        var trigger = new Button
+        {
+            Content = new Text($"<b>{Text.Escape(label)}</b>"),
+            HasShadow = false,
+            BorderThickness = default,
+        };
+
+        var popup = new Popup
+        {
+            Anchor = trigger,
+            Content = submenu,
+            Placement = PopupPlacement.Below,
+        };
+
+        trigger.Click += (_, _) => popup.IsOpen = !popup.IsOpen;
+        submenu.ItemInvoked += (_, _) => popup.IsOpen = false;
+
+        var wrapper = new Overlay { Width = Length.Auto, Height = Length.Cells(1) };
+        wrapper.Children.Add(trigger);
+        wrapper.Children.Add(popup);
+        return wrapper;
+    }
+
+    private Menu BuildFileMenu()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        var fileNew = new MenuItem { Content = new Text("New"), ShortcutText = "Ctrl+N" };
+        fileNew.Invoked += (_, _) => NewFile();
+        var fileQuit = new MenuItem { Content = new Text("Quit"), ShortcutText = "Ctrl+Q" };
+        fileQuit.Invoked += (_, _) => Application?.Closed();
+        menu.Items.Add(fileNew);
+        menu.Items.Add(new MenuSeparator());
+        menu.Items.Add(fileQuit);
+        return menu;
+    }
+
+    private Menu BuildEditMenu()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        var undo = new MenuItem { Content = new Text("Undo"), ShortcutText = "Ctrl+Z" };
+        undo.Invoked += (_, _) => _editor.Undo();
+        var redo = new MenuItem { Content = new Text("Redo"), ShortcutText = "Ctrl+Y" };
+        redo.Invoked += (_, _) => _editor.Redo();
+        var cut = new MenuItem { Content = new Text("Cut"), ShortcutText = "Ctrl+X" };
+        cut.Invoked += (_, _) => _editor.CutSelection();
+        var copy = new MenuItem { Content = new Text("Copy"), ShortcutText = "Ctrl+C" };
+        copy.Invoked += (_, _) => _editor.CopySelection();
+        var paste = new MenuItem { Content = new Text("Paste"), ShortcutText = "Ctrl+V" };
+        var selectAll = new MenuItem { Content = new Text("Select All"), ShortcutText = "Ctrl+A" };
+        selectAll.Invoked += (_, _) => _editor.Select(0, _editor.Text.Length);
+        menu.Items.Add(undo);
+        menu.Items.Add(redo);
+        menu.Items.Add(new MenuSeparator());
+        menu.Items.Add(cut);
+        menu.Items.Add(copy);
+        menu.Items.Add(paste);
+        menu.Items.Add(new MenuSeparator());
+        menu.Items.Add(selectAll);
+        return menu;
+    }
+
+    private Menu BuildSearchMenu()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        var find = new MenuItem { Content = new Text("Find"), ShortcutText = "Ctrl+F" };
+        find.Invoked += (_, _) => _findReplace.OpenFind();
+        var replace = new MenuItem { Content = new Text("Replace"), ShortcutText = "Ctrl+H" };
+        replace.Invoked += (_, _) => _findReplace.OpenReplace();
+        menu.Items.Add(find);
+        menu.Items.Add(replace);
+        return menu;
     }
 
     #endregion

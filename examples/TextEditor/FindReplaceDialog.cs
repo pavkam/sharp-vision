@@ -79,6 +79,8 @@ internal sealed class FindReplaceDialog: IDisposable
             ShadowOffset = new Point(1, 1),
             Width = Length.Cells(50),
             Height = Length.Auto,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
             Visibility = Visibility.Collapsed,
             Content = content,
         };
