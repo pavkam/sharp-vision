@@ -10,7 +10,8 @@ using SharpVision.Terminal.Transport;
 /// <summary>Provides deterministic terminal input, resize, and modeled output for component tests.</summary>
 internal sealed class ComponentTerminal: ITransport, IResizeSource
 {
-    private readonly Channel<byte[]> _input = Channel.CreateUnbounded<byte[]>();
+    private readonly Channel<(byte[] Bytes, TaskCompletionSource Consumed)> _input =
+        Channel.CreateUnbounded<(byte[] Bytes, TaskCompletionSource Consumed)>();
     private readonly Channel<Dimensions> _resize = Channel.CreateUnbounded<Dimensions>();
     private int _disposed;
 
@@ -22,6 +23,24 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
     /// <summary>Gets the independently modeled terminal screen.</summary>
     internal ComponentScreen Screen { get; }
 
+    /// <summary>Queues immutable terminal input and returns a signal completed when transport reads it.</summary>
+    /// <param name="value">The non-empty terminal input bytes.</param>
+    /// <returns>A task completed after the bytes are copied into the session read buffer.</returns>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is empty.</exception>
+    /// <exception cref="ObjectDisposedException">The terminal is disposed.</exception>
+    internal Task QueueInput(ReadOnlySpan<byte> value)
+    {
+        if (value.IsEmpty)
+        {
+            throw new ArgumentException("Terminal input cannot be empty.", nameof(value));
+        }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        var consumed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _input.Writer.TryWrite((value.ToArray(), consumed)).ShouldBeTrue();
+        return consumed.Task;
+    }
+
     /// <summary>Queues one immutable resize record.</summary>
     /// <param name="value">The terminal dimensions.</param>
     internal void QueueResize(Dimensions value) =>
@@ -32,9 +51,19 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
     {
         try
         {
-            var value = await _input.Reader.ReadAsync(cancellationToken);
-            value.AsSpan().CopyTo(destination.Span);
-            return value.Length;
+            var (bytes, consumed) = await _input.Reader.ReadAsync(cancellationToken);
+
+            try
+            {
+                bytes.AsSpan().CopyTo(destination.Span);
+                _ = consumed.TrySetResult();
+                return bytes.Length;
+            }
+            catch (Exception exception)
+            {
+                _ = consumed.TrySetException(exception);
+                throw;
+            }
         }
         catch (ChannelClosedException)
         {
@@ -68,6 +97,11 @@ internal sealed class ComponentTerminal: ITransport, IResizeSource
         {
             _ = _input.Writer.TryComplete();
             _ = _resize.Writer.TryComplete();
+
+            while (_input.Reader.TryRead(out var value))
+            {
+                _ = value.Consumed.TrySetCanceled();
+            }
         }
 
         return ValueTask.CompletedTask;

@@ -8,15 +8,29 @@ internal sealed class ComponentSurface: IAsyncDisposable
 {
     private const State _observableStates = State.Hovered | State.Focused | State.Pressed | State.Disabled;
     private readonly Application _application;
+    private readonly CancellationToken _cancellationToken;
     private readonly Control _mounted;
     private readonly ComponentTerminal _terminal;
 
-    private ComponentSurface(Application application, Control mounted, ComponentTerminal terminal)
+    private ComponentSurface(
+        Application application,
+        Control mounted,
+        ComponentTerminal terminal,
+        CancellationToken cancellationToken)
     {
         _application = application;
+        _cancellationToken = cancellationToken;
         _mounted = mounted;
         _terminal = terminal;
+        Pointer = new ComponentPointer(this);
+        Keyboard = new ComponentKeyboard(this);
     }
+
+    /// <summary>Gets the pointer driver that emits real terminal mouse reports.</summary>
+    internal ComponentPointer Pointer { get; }
+
+    /// <summary>Gets the keyboard driver that emits real terminal key sequences.</summary>
+    internal ComponentKeyboard Keyboard { get; }
 
     /// <summary>Mounts one detached control in a positive fixed-size terminal surface.</summary>
     /// <param name="control">The non-null detached control to mount.</param>
@@ -42,7 +56,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
             throw new ArgumentException("The mounted control must be detached and unowned.", nameof(control));
         }
 
-        var host = new Overlay();
+        var host = new Overlay { CanFocus = true };
         host.Children.Add(control);
         var terminal = new ComponentTerminal(size);
         terminal.QueueResize(new Dimensions(size));
@@ -51,7 +65,30 @@ internal sealed class ComponentSurface: IAsyncDisposable
         try
         {
             await application.StartAsync(cancellationToken);
-            return new ComponentSurface(application, control, terminal);
+            var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            void OnIdle(object? sender, EventArgs eventArgs)
+            {
+                _ = sender;
+                _ = eventArgs;
+                _ = idle.TrySetResult();
+            }
+
+            application.Idle += OnIdle;
+
+            try
+            {
+                await application.Dispatcher.InvokeAsync(
+                    () => application.Focus.Focus(host).ShouldBeTrue(),
+                    cancellationToken);
+                await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+            }
+            finally
+            {
+                application.Idle -= OnIdle;
+            }
+
+            return new ComponentSurface(application, control, terminal, cancellationToken);
         }
         catch
         {
@@ -65,6 +102,78 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <returns>The copied semantic terminal cell.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="point"/> is outside the surface.</exception>
     internal SurfaceCell Cell(Point point) => _terminal.Screen.Cell(point);
+
+    /// <summary>Resolves a mounted control's deterministic interior point on the UI dispatcher.</summary>
+    /// <param name="control">The mounted control or one of its owned descendants.</param>
+    /// <returns>The zero-based center point of its non-empty arranged bounds.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="control"/> is not owned by this surface.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="control"/> has empty arranged bounds.</exception>
+    internal async Task<Point> ResolvePointAsync(Control control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        return await _application.Dispatcher.InvokeAsync(() =>
+        {
+            if (!IsOwned(control))
+            {
+                throw new ArgumentException("The pointer target is not owned by this component surface.", nameof(control));
+            }
+
+            var bounds = control.Bounds;
+
+            return bounds.Width > 0 && bounds.Height > 0
+                ? new Point(bounds.X + (bounds.Width / 2), bounds.Y + (bounds.Height / 2))
+                : throw new InvalidOperationException("The pointer target has empty arranged bounds.");
+        }, _cancellationToken);
+    }
+
+    /// <summary>Validates and emits one complete terminal input action, then waits for application idle.</summary>
+    /// <param name="value">The non-empty complete terminal input sequence.</param>
+    /// <param name="description">The non-empty diagnostic action description.</param>
+    /// <returns>A task completed after input, routed work, layout, and rendering settle.</returns>
+    /// <exception cref="ArgumentException">An input or description is empty.</exception>
+    /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    internal async Task SendAsync(ReadOnlyMemory<byte> value, string description)
+    {
+        if (value.IsEmpty)
+        {
+            throw new ArgumentException("Terminal input cannot be empty.", nameof(value));
+        }
+
+        ArgumentException.ThrowIfNullOrEmpty(description);
+        Task? consumed = null;
+        var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnIdle(object? sender, EventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+
+            if (consumed?.IsCompletedSuccessfully == true)
+            {
+                _ = idle.TrySetResult();
+            }
+        }
+
+        _application.Idle += OnIdle;
+
+        try
+        {
+            consumed = _terminal.QueueInput(value.Span);
+            await consumed.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException(
+                $"Component action '{description}' did not settle. Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
+                exception);
+        }
+        finally
+        {
+            _application.Idle -= OnIdle;
+        }
+    }
 
     /// <summary>Asserts the mounted control has exactly the observable expected visual-state flags.</summary>
     /// <param name="control">The mounted control.</param>
@@ -151,4 +260,17 @@ internal sealed class ComponentSurface: IAsyncDisposable
 
     /// <summary>Stops the application and releases its mounted tree and terminal resources.</summary>
     public ValueTask DisposeAsync() => _application.DisposeAsync();
+
+    private bool IsOwned(Control control)
+    {
+        for (var current = control; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, _mounted))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

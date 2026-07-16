@@ -168,6 +168,7 @@ public sealed partial class Button: Pressable
                 ShadowAppearanceSource = NormalStyle,
                 PreserveButtonShadowGap = true,
                 ClearBodyWhenPressedWithShadow = true,
+                SkipShadow = IsPressed,
             });
     }
 
