@@ -271,6 +271,10 @@ public sealed class Popup: ContentControl
     }
 
     /// <inheritdoc/>
+    /// <inheritdoc/>
+    protected override State GetVisualState() => State.Normal;
+
+    /// <inheritdoc/>
     protected override void OnRender(TerminalCanvas canvas)
     {
         if (!IsOpen || SurfaceBounds.Width == 0 || SurfaceBounds.Height == 0)
@@ -278,9 +282,9 @@ public sealed class Popup: ContentControl
             return;
         }
 
-        var inherited = ResolvedStyle;
-        canvas.Clear(SurfaceBounds, inherited);
-        DrawFrame(canvas, ControlAppearance.ResolveBorderStyle(this, GetVisualState()));
+        var style = GetResolvedStyle(State.Normal);
+        canvas.Clear(SurfaceBounds, style);
+        DrawFrame(canvas, ControlAppearance.ResolveBorderStyle(this, State.Normal));
     }
 
     /// <inheritdoc/>

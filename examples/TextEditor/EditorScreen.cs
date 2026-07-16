@@ -22,6 +22,8 @@ public sealed class EditorScreen: Screen
             AcceptsTab = true,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
+            ScrollBarChrome = ScrollBarChrome.Full,
+            ScrollBarFill = ScrollBarFill.Block,
         };
         _editor.SelectionChanged += OnSelectionChanged;
 
@@ -53,6 +55,8 @@ public sealed class EditorScreen: Screen
                 .Item("Replace", shortcut: "Ctrl+H", onInvoke: () => _findReplace.OpenReplace()))
             .Build();
         appMenu.IsTabStop = false;
+        appMenu.FillMode = FillMode.Transparent;
+        appMenu.Background = null;
 
         var menuBar = new Dock
         {
