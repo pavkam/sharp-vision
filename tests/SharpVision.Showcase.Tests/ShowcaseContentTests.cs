@@ -16,6 +16,7 @@ public sealed class ShowcaseContentTests
             ["Dock"] = ["Application shell", "Order and spacing", "Sizing from the remainder", "Constrained space"],
             ["FigletText"] = ["Live editor", "Font comparison", "Layout options", "Large output"],
             ["Grid"] = ["Track fundamentals", "Percentage and limits", "Responsive form", "Constrained space"],
+            ["GroupBox"] = ["Frame and header", "Unicode and style scope", "Glyphs and constrained space"],
             ["List"] = ["Single selection", "Selection modes", "Templates", "Long data"],
             ["Menu"] = ["Command menu", "Menu bar", "Popup composition", "Selection and invocation"],
             ["Overlay"] = ["Layering", "Stable ties", "Pointer transparency", "Clipping"],

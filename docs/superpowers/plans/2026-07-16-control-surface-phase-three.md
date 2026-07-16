@@ -155,32 +155,32 @@ Update the Table test obligations and commit as
 - Modify: `docs/controls/layout/group-box.md`
 - Modify: gallery/catalog registration and showcase section expectations.
 
-- [ ] **Step 1: Write public contract and mounted RED tests**
+- [x] **Step 1: Write public contract and mounted RED tests**
 
 Specify non-null `Header`, one `Glyphs` family, caller-replaceable `Content`,
 one-cell frame reservation, header interruption, content style inheritance,
 wide-header measurement, replacement, and zero/tiny clipping. Watch tests fail
 because `GroupBox` does not exist.
 
-- [ ] **Step 2: Implement the smallest retained ContentControl**
+- [x] **Step 2: Implement the smallest retained ContentControl**
 
 Derive directly from `ContentControl`. Measure header cells plus frame insets,
 arrange content inside the frame, render intrinsic terminal-safe border lines
 with a clipped header interruption, validate public assignments before state
 changes, and preserve Unicode cell ownership.
 
-- [ ] **Step 3: Verify unit and mounted behavior GREEN**
+- [x] **Step 3: Verify unit and mounted behavior GREEN**
 
 Run `*GroupBoxTests`, `*GroupBoxSurfaceTests`, content ownership fixtures, and
 ambiguous-width control tests.
 
-- [ ] **Step 4: Add showcase and normative proof**
+- [x] **Step 4: Add showcase and normative proof**
 
 Add one gallery pane demonstrating empty, Unicode-header, styled, nested, and
 tiny GroupBoxes. Add a representative showcase screen test and update the
 catalog and control spec.
 
-- [ ] **Step 5: Commit GroupBox slice**
+- [x] **Step 5: Commit GroupBox slice**
 
 Commit as `feat: add group box control`.
 

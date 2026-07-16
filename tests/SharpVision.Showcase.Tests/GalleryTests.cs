@@ -16,6 +16,7 @@ public sealed class GalleryTests
         "Dock",
         "FigletText",
         "Grid",
+        "GroupBox",
         "List",
         "Menu",
         "Overlay",

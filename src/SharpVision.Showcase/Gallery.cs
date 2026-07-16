@@ -19,6 +19,7 @@ public sealed class Gallery: Screen
         (DockPane.Title, static () => new DockPane()),
         (FigletTextPane.Title, static () => new FigletTextPane()),
         (GridPane.Title, static () => new GridPane()),
+        (GroupBoxPane.Title, static () => new GroupBoxPane()),
         (ListPane.Title, static () => new ListPane()),
         (MenuPane.Title, static () => new MenuPane()),
         (OverlayPane.Title, static () => new OverlayPane()),
