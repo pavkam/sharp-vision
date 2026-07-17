@@ -29,8 +29,9 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private readonly ITransport _transport;
     private readonly TerminalOptions _options;
     private readonly IAsyncDisposable? _hostLease;
+    private readonly TimeProvider _timeProvider;
     private readonly Session _session;
-    private readonly Renderer _renderer = new();
+    private readonly Renderer _renderer;
     private readonly Engine _engine = new();
     private readonly CancellationTokenSource _lifetime = new();
     private readonly TaskCompletionSource _started =
@@ -70,6 +71,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
     /// <param name="resize">The non-null terminal resize source.</param>
     /// <param name="options">Validated terminal options, or null for defaults.</param>
     /// <param name="hostLease">An optional host resource disposed last after cleanup, or null.</param>
+    /// <param name="timeProvider">The optional shared clock for application-owned timed services.</param>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="root"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="root"/> is disposed.</exception>
@@ -78,7 +80,8 @@ public sealed partial class Application: ISink, IAsyncDisposable
         ITransport transport,
         IResizeSource resize,
         TerminalOptions? options = null,
-        IAsyncDisposable? hostLease = null)
+        IAsyncDisposable? hostLease = null,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(transport);
@@ -98,12 +101,14 @@ public sealed partial class Application: ISink, IAsyncDisposable
         _transport = transport;
         _options = options ?? new TerminalOptions();
         _hostLease = hostLease;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _renderer = new Renderer(timeProvider: _timeProvider);
         Capabilities = _options.Capabilities;
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
-        Dispatcher = Dispatcher.Start(name: "SharpVision.UI");
+        Dispatcher = Dispatcher.Start(name: "SharpVision.UI", timeProvider: _timeProvider);
         Pointer = new PointerDevice(() => CaptureValue);
         Terminal = new TerminalServices(this);
-        _session = new Session(transport, resize, this, _options);
+        _session = new Session(transport, resize, this, _options, _timeProvider);
         Dispatcher.Idle += OnIdle;
         Dispatcher.UnhandledException += OnDispatcherUnhandled;
     }
@@ -717,7 +722,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
                 () =>
                 {
                     FocusValue = new FocusManager(Root);
-                    CaptureValue = new PointerManager(Root);
+                    CaptureValue = new PointerManager(Root, _timeProvider);
                 });
             _clipboardShortcutRegistration = Root.AddHandler(Events.Key, OnClipboardShortcut);
             _initialized = true;

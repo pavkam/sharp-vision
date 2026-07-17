@@ -3,12 +3,50 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using SharpVision.Tests.Input;
 
 
 
 /// <summary>Verifies application startup, frame completion, suspension, and shutdown.</summary>
 public sealed class ApplicationTests
 {
+    /// <summary>Verifies one supplied clock drives dispatcher-owned application timers.</summary>
+    [Fact]
+    public async Task Constructor_WhenTimeProviderIsSupplied_PropagatesClockToDispatcherAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            timeProvider: clock);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var timer = await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(
+                    application.Dispatcher,
+                    TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => _ = completed.TrySetResult();
+                value.Start();
+                return value;
+            },
+            TestContext.Current.CancellationToken);
+
+        // Act
+        clock.Advance(TimeSpan.FromMilliseconds(200));
+
+        // Assert
+        await completed.Task.WaitAsync(TestContext.Current.CancellationToken);
+        timer.Dispose();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies starting precedes modes and started follows layout, resize, and frame.</summary>
     [Fact]
     public async Task StartAsync_WhenFirstResizeArrives_UsesDocumentedOrderingAsync()

@@ -26,9 +26,10 @@ public sealed class Dispatcher: IAsyncDisposable
     private int _pending;
     private bool _stopping;
 
-    private Dispatcher(int capacity, string name)
+    private Dispatcher(int capacity, string name, TimeProvider timeProvider)
     {
         _capacity = capacity;
+        TimeProvider = timeProvider;
         using ManualResetEventSlim started = new();
         _thread = new Thread(() => Run(started))
         {
@@ -56,10 +57,14 @@ public sealed class Dispatcher: IAsyncDisposable
     /// <summary>Starts one bounded dispatcher on a dedicated background thread.</summary>
     /// <param name="capacity">The positive maximum queued callback count.</param>
     /// <param name="name">The optional non-blank thread name.</param>
+    /// <param name="timeProvider">The optional clock used by dispatcher-owned timers.</param>
     /// <returns>The running dispatcher.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
     /// <exception cref="ArgumentException"><paramref name="name"/> is blank.</exception>
-    public static Dispatcher Start(int capacity = 4096, string? name = null)
+    public static Dispatcher Start(
+        int capacity = 4096,
+        string? name = null,
+        TimeProvider? timeProvider = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
 
@@ -70,8 +75,11 @@ public sealed class Dispatcher: IAsyncDisposable
                 : throw new ArgumentException(
                     "The dispatcher thread name cannot be blank.",
                     nameof(name));
-        return new Dispatcher(capacity, threadName);
+        return new Dispatcher(capacity, threadName, timeProvider ?? TimeProvider.System);
     }
+
+    /// <summary>Gets the shared clock used by timers associated with this dispatcher.</summary>
+    internal TimeProvider TimeProvider { get; }
 
     /// <summary>Gets whether the current thread owns this dispatcher.</summary>
     /// <returns>True only on the dedicated dispatcher thread.</returns>
