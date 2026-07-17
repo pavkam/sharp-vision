@@ -14,9 +14,9 @@ internal sealed class NavigationViewPane: CompositeControl
     {
         var status = new Text("Selected: Dashboard");
         var basic = new NavigationView { Header = "MY APP", Width = Length.Cells(24), Height = Length.Cells(12), BorderThickness = new Thickness(1), BorderGlyphs = Glyphs.Rounded };
-        basic.Items.Add(new NavigationViewItem { Header = "Dashboard", Glyph = "📊" });
+        basic.Items.Add(new NavigationViewItem { Header = "界 Dashboard" });
         basic.Items.Add(new NavigationViewItem { Header = "Reports", Glyph = "📈" });
-        basic.Items.Add(new NavigationViewItem { Header = "Settings", Glyph = "⚙" });
+        basic.Items.Add(new NavigationViewItem { Header = "Settings", Glyph = "⚙", IsEnabled = false });
         basic.SelectionChanged += (_, _) => status.Content = $"Selected: {basic.SelectedItem?.Header ?? "none"}";
 
         var grouped = new NavigationView { Header = "PROJECT", Width = Length.Cells(24), Height = Length.Cells(16), BorderThickness = new Thickness(1), BorderGlyphs = Glyphs.Rounded };
@@ -36,9 +36,16 @@ internal sealed class NavigationViewPane: CompositeControl
         footer.FooterItems.Add(new NavigationViewSeparator());
         footer.FooterItems.Add(new NavigationViewItem { Header = "About" });
 
+        var overflow = new NavigationView { Header = "LONG", Width = Length.Cells(24), Height = Length.Cells(8), BorderThickness = new Thickness(1), BorderGlyphs = Glyphs.Rounded };
+        for (var index = 1; index <= 8; index++)
+        {
+            overflow.Items.Add(new NavigationViewItem { Header = $"Destination {index}" });
+        }
+
         return Doc.Page(Title, "Provides a sidebar navigation control with typed items, collapsible groups, and pinned footer.",
             Doc.Section("🧭", "Basic sidebar", "Up/Down arrows navigate. Focus selects.",
-                Doc.Example("App sidebar with glyphs", "Optional glyph prefix per item.", Doc.Column(basic, status), "nav.Items.Add(new NavigationViewItem { Header = \"Dashboard\", Glyph = \"📊\" });")),
+                Doc.Example("App sidebar with glyphs", "Unicode labels, optional glyph prefixes, and unavailable entries share one route.", Doc.Column(basic, status), "nav.Items.Add(new NavigationViewItem { Header = \"界 Dashboard\" });"),
+                Doc.Example("Overflow navigation", "Eight destinations exercise the intrinsic scrolling stack.", overflow)),
             Doc.Section("🧭", "Groups and separators", "Groups create collapsible sections.",
                 Doc.Example("Project browser", "Two groups with separator. Enter toggles.", grouped)),
             Doc.Section("🧭", "Footer items", "FooterItems pinned to bottom.",

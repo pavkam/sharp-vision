@@ -188,17 +188,6 @@ public sealed class NavigationView: CompositeControl
         Select(remaining.Count == 0 ? null : remaining[0]);
     }
 
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (focused && SelectedItem is null)
-        {
-            Select(CollectSelectableItems().FirstOrDefault());
-        }
-    }
-
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
     {
         _ = sender;

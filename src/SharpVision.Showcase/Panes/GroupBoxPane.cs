@@ -98,6 +98,24 @@ internal sealed class GroupBoxPane: CompositeControl
                 Children = { new Text("Thick line borders"), new Text("for strong emphasis.") { Attributes = TerminalAttributes.Dim } },
             },
         };
+        var emptyGroup = new GroupBox { Content = new Text("Untitled content") };
+        var unicodeGroup = new GroupBox
+        {
+            Header = "界 Tools",
+            Content = new Text("Wide header geometry"),
+        };
+        var asciiGroup = new GroupBox
+        {
+            Header = "ASCII",
+            Glyphs = Glyphs.Ascii,
+            Content = new Text("Fallback frame"),
+        };
+        var tinyGroup = new GroupBox
+        {
+            Header = "T",
+            Width = Length.Cells(5),
+            Height = Length.Cells(2),
+        };
 
         return Doc.Page(
             Title,
@@ -135,6 +153,10 @@ internal sealed class GroupBoxPane: CompositeControl
                     "Rounded, light, and heavy",
                     "Each GroupBox uses a different glyph family while sharing the same layout and header placement.",
                     Doc.Row(roundedGroup, lightGroup, heavyGroup),
-                    "group.Glyphs = Glyphs.Heavy;")));
+                    "group.Glyphs = Glyphs.Heavy;"),
+                Doc.Example(
+                    "Empty, Unicode, ASCII, and tiny",
+                    "Edge specimens prove omitted titles, wide header cells, fallback glyphs, and clipped frames.",
+                    Doc.Row(emptyGroup, unicodeGroup, asciiGroup, tinyGroup))));
     }
 }

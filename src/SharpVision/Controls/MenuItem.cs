@@ -16,6 +16,8 @@ public sealed class MenuItem: Pressable
     /// <summary>Initializes an ordinary command item with no content.</summary>
     public MenuItem()
     {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        Height = Length.Cells(1);
         _submenuSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,
@@ -32,9 +34,10 @@ public sealed class MenuItem: Pressable
 
     /// <summary>Gets or sets an optional submenu that opens as a popup when this item is activated.</summary>
     /// <remarks>
-    /// When a submenu is assigned, activating this item opens a popup anchored below instead of
-    /// raising <see cref="Invoked"/>. The submenu closes on Escape or when one of its items is invoked.
-    /// Items invoked in the submenu propagate through the owning <see cref="Menu.ItemInvoked"/> event.
+    /// When a submenu is assigned, activating this item opens a popup below a horizontal-menu item
+    /// or right of a vertical-menu item instead of raising <see cref="Invoked"/>. The submenu closes
+    /// on Escape or when one of its items is invoked. Items invoked in the submenu propagate through
+    /// the owning <see cref="Menu.ItemInvoked"/> event.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
@@ -70,9 +73,13 @@ public sealed class MenuItem: Pressable
                 _submenuPopup = new Popup
                 {
                     Anchor = this,
+                    Background = ColorRole.Surface,
+                    ConstrainToRoot = false,
+                    Glyphs = Glyphs.Light,
                     Placement = PopupPlacement.Below,
                     Content = value,
                 };
+                _submenuPopup.Closing += OnSubmenuClosing;
                 _submenuSlot.Add(_submenuPopup);
                 value.ItemInvoked += OnSubmenuItemInvoked;
             }
@@ -225,6 +232,7 @@ public sealed class MenuItem: Pressable
     {
         if (_submenuPopup is not null)
         {
+            ConfigureSubmenuPlacement();
             _submenuPopup.IsOpen = !_submenuPopup.IsOpen;
             return;
         }
@@ -274,7 +282,7 @@ public sealed class MenuItem: Pressable
 
         var content = Content;
         var shortcutExtra = ShortcutText is { Length: > 0 }
-            ? ShortcutText.Length + 2
+            ? Add(ShortcutWidth, 2)
             : 0;
 
         if (content is null)
@@ -348,7 +356,7 @@ public sealed class MenuItem: Pressable
                 style.Hyperlink,
                 style.Underline,
                 style.UnderlineColor);
-            var shortcutX = Bounds.Right - ShortcutText.Length;
+            var shortcutX = Bounds.Right - ShortcutWidth;
 
             if (shortcutX > Bounds.X)
             {
@@ -446,7 +454,54 @@ public sealed class MenuItem: Pressable
     /// <param name="value">Whether this item is the menu's selected item.</param>
     internal void CommitSelection(bool value) => SetSelectedState(value);
 
+    /// <summary>Activates this private face through its focus-owning menu.</summary>
+    /// <param name="cause">The validated input cause.</param>
+    internal void ActivateFromMenu(ActivationCause cause) => Activate(cause);
+
+    /// <summary>Gets whether this item currently exposes its retained submenu popup.</summary>
+    internal bool IsSubmenuOpen => _submenuPopup?.IsOpen == true;
+
+    /// <summary>Opens this item's submenu when one is assigned.</summary>
+    internal void OpenSubmenu()
+    {
+        if (_submenuPopup is null)
+        {
+            return;
+        }
+
+        ConfigureSubmenuPlacement();
+        _submenuPopup.IsOpen = true;
+    }
+
+    /// <summary>Closes this item's submenu when it is open.</summary>
+    internal void CloseSubmenu()
+    {
+        if (_submenuPopup?.IsOpen == true)
+        {
+            _submenuPopup.IsOpen = false;
+        }
+    }
+
     private int PrefixWidth => Kind == MenuItemKind.Check ? 4 : Kind == MenuItemKind.Radio ? 2 : 0;
+
+    private int ShortcutWidth => ShortcutText is { Length: > 0 } shortcut
+        ? Terminal.Unicode.Width.Measure(shortcut, CellPolicy.AmbiguousWidth).Cells
+        : 0;
+
+    private void ConfigureSubmenuPlacement()
+    {
+        Debug.Assert(_submenuPopup is not null, "Submenu placement requires a retained popup.");
+        _submenuPopup.Placement = FindMenu()?.Orientation == Orientation.Vertical
+            ? PopupPlacement.Right
+            : PopupPlacement.Below;
+    }
+
+    private void OnSubmenuClosing(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+        _ = FindMenu()?.Focus();
+    }
 
     private static int Add(int left, int right)
     {

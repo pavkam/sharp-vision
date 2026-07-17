@@ -35,7 +35,7 @@ public sealed class NavigationViewPaneTests
         frame.GetCell(new Point(home.Bounds.X + 4, home.Bounds.Y)).IsContinuation.ShouldBeTrue();
         disabled.EffectiveIsEnabled.ShouldBeFalse();
         Grapheme(frame, new Point(group.Bounds.X + 1, group.Bounds.Y)).ShouldBe("▼");
-        child.Bounds.X.ShouldBe(group.Bounds.X + 2);
+        child.ContentBounds.X.ShouldBe(group.Bounds.X + 2);
         about.Bounds.Bottom.ShouldBe(footer.Bounds.Bottom - 1);
         overflow.Items.Count.ShouldBe(8);
         new Screen(frame).ValidateContinuations();

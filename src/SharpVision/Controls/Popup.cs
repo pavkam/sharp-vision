@@ -73,6 +73,9 @@ public sealed class Popup: ContentControl
     /// <summary>Gets the committed visible surface rectangle, or an empty rectangle while closed.</summary>
     public Rect SurfaceBounds { get; private set; }
 
+    /// <summary>Gets or sets whether placement flips and clamps inside the owning root.</summary>
+    internal bool ConstrainToRoot { get; set; } = true;
+
     #endregion
 
     #region Visibility and interaction
@@ -262,7 +265,7 @@ public sealed class Popup: ContentControl
 
         var anchor = Anchor?.Bounds ?? bounds;
         var desired = SurfaceSize(child, anchor.Width, bounds.Width, bounds.Height);
-        var placement = ResolvePlacement(bounds, anchor, desired);
+        var placement = ConstrainToRoot ? ResolvePlacement(bounds, anchor, desired) : Placement;
         var x = placement is PopupPlacement.Left
             ? anchor.X - desired.Width
             : placement is PopupPlacement.Right
@@ -273,8 +276,11 @@ public sealed class Popup: ContentControl
             : placement is PopupPlacement.Below
                 ? anchor.Bottom
                 : anchor.Y;
-        x = Math.Clamp(x, bounds.X, Math.Max(bounds.X, bounds.Right - desired.Width));
-        y = Math.Clamp(y, bounds.Y, Math.Max(bounds.Y, bounds.Bottom - desired.Height));
+        if (ConstrainToRoot)
+        {
+            x = Math.Clamp(x, bounds.X, Math.Max(bounds.X, bounds.Right - desired.Width));
+            y = Math.Clamp(y, bounds.Y, Math.Max(bounds.Y, bounds.Bottom - desired.Height));
+        }
         SurfaceBounds = new Rect(x, y, desired.Width, desired.Height);
 
         // Content is constrained to the frame interior. This keeps lists and
@@ -493,12 +499,42 @@ public sealed class Popup: ContentControl
             return;
         }
 
+        // A nested popup is outside this surface by design but remains inside
+        // the same logical open chain. Let its press route complete before a
+        // menu or other owner decides whether invocation closes the chain.
+        if (ContainsOpenDescendantSurface(this, cells))
+        {
+            return;
+        }
+
         if (Anchor is not null && Anchor.Bounds.Contains(cells))
         {
             return;
         }
 
         IsOpen = false;
+    }
+
+    private static bool ContainsOpenDescendantSurface(Control owner, Point point)
+    {
+        var count = owner.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            var child = owner.OwnedControlAt(index);
+
+            if (child is Popup { IsOpen: true } popup && popup.SurfaceBounds.Contains(point))
+            {
+                return true;
+            }
+
+            if (ContainsOpenDescendantSurface(child, point))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void CloseOtherPopups(Popup opening)

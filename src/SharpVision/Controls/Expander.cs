@@ -28,7 +28,17 @@ public sealed class Expander: ContentControl
     public string Header
     {
         get;
-        set { ArgumentNullException.ThrowIfNull(value); _ = SetProperty(ref field, value, ChangeImpact.Measure); }
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (Terminal.Unicode.Width.Measure(value).Controls > 0)
+            {
+                throw new ArgumentException("An expander header cannot contain terminal controls.", nameof(value));
+            }
+
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
     } = string.Empty;
 
     /// <summary>Gets or sets whether the content is visible.</summary>

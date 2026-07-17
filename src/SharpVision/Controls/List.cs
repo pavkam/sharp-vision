@@ -130,6 +130,8 @@ public sealed class List: ItemsControl
             }
 
             _ = SetProperty(ref field, value, ChangeImpact.Render);
+            // Mode transitions invalidate pending proposals even when normalization leaves selection unchanged.
+            _selectionVersion++;
             _ = ApplySelection(normalized, cancellable: false);
         }
     } = SelectionMode.Single;

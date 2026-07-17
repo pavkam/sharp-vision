@@ -12,6 +12,7 @@ public sealed class Menu: ItemsControl
 {
     private int _selectedIndex = -1;
     private readonly Stack _stack;
+    private MenuItem? _spacePressedItem;
 
     /// <summary>Initializes an empty horizontal menu with typed managed items.</summary>
     public Menu()
@@ -19,7 +20,7 @@ public sealed class Menu: ItemsControl
         _stack = new Stack
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 1,
+            Spacing = 0,
         };
         InitializeItemsHost(_stack);
         Items = new MenuItems(this);
@@ -51,6 +52,7 @@ public sealed class Menu: ItemsControl
             if (SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 _stack.Orientation = value;
+                UpdateItemSizing();
             }
         }
     } = Orientation.Horizontal;
@@ -70,7 +72,7 @@ public sealed class Menu: ItemsControl
                 _stack.Spacing = value;
             }
         }
-    } = 1;
+    }
 
     /// <summary>Gets or selects the active non-separator item index, or -1 for no selection.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current item range.</exception>
@@ -101,23 +103,43 @@ public sealed class Menu: ItemsControl
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
+        if (eventArgs is PointerEventArgs pointer)
+        {
+            SelectPointerTarget(pointer);
+        }
+
         if (eventArgs.Handled || eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key)
         {
+            if (!eventArgs.Handled && eventArgs is KeyEventArgs releasedKey)
+            {
+                HandleSpace(releasedKey);
+            }
+
             return;
         }
 
         var previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
         var next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
         var target = key.Stroke.Code == previous ? FindAvailable(_selectedIndex, -1) :
-            key.Stroke.Code == next ? FindAvailable(_selectedIndex, 1) : -1;
+            key.Stroke.Code == next ? FindAvailable(_selectedIndex, 1) :
+            key.Stroke.Code == Code.Tab && (key.Stroke.Modifiers & ~Modifiers.Shift) == 0
+                ? FindAvailable(_selectedIndex, (key.Stroke.Modifiers & Modifiers.Shift) == 0 ? 1 : -1)
+                : -1;
 
-        if (target < 0)
+        if (target >= 0)
         {
+            SelectFromInput(target, focus: true);
+            eventArgs.Handled = true;
             return;
         }
 
-        Select(target, focus: true);
-        eventArgs.Handled = true;
+        if (key.Stroke.Code == Code.Enter && ActivateSelected())
+        {
+            eventArgs.Handled = true;
+            return;
+        }
+
+        HandleSpace(key);
     }
 
     /// <summary>Selects one radio item and clears matching siblings.</summary>
@@ -193,6 +215,7 @@ public sealed class Menu: ItemsControl
         }
 
         InsertItemControl(ItemControlCount, item);
+        ApplyItemSizing(item);
 
         if (_selectedIndex < 0 && item is MenuItem)
         {
@@ -248,6 +271,12 @@ public sealed class Menu: ItemsControl
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
+        if (_spacePressedItem is { } item)
+        {
+            item.SetPressed(false);
+            _spacePressedItem = null;
+        }
+
         base.OnUnavailable(reason);
 
         if (reason == ReleaseReason.Disposed)
@@ -334,6 +363,118 @@ public sealed class Menu: ItemsControl
         }
 
         return -1;
+    }
+
+    private bool ActivateSelected()
+    {
+        if (_selectedIndex < 0 || ItemAt(_selectedIndex) is not MenuItem item ||
+            !item.EffectiveIsEnabled || !item.EffectiveIsVisible)
+        {
+            return false;
+        }
+
+        item.ActivateFromMenu(ActivationCause.Keyboard);
+        return true;
+    }
+
+    private bool HasOpenSubmenu()
+    {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            if (ItemAt(index) is MenuItem { IsSubmenuOpen: true })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void HandleSpace(KeyEventArgs eventArgs)
+    {
+        var stroke = eventArgs.Stroke;
+
+        if (stroke.Code != Code.Character || stroke.Character != new Rune(' '))
+        {
+            return;
+        }
+
+        eventArgs.Handled = true;
+
+        if (stroke.Action == KeyAction.Press && _spacePressedItem is null &&
+            _selectedIndex >= 0 && ItemAt(_selectedIndex) is MenuItem selected &&
+            selected.EffectiveIsEnabled && selected.EffectiveIsVisible)
+        {
+            _spacePressedItem = selected;
+            selected.SetPressed(true);
+        }
+        else if (stroke.Action == KeyAction.Release && _spacePressedItem is { } held)
+        {
+            _spacePressedItem = null;
+            held.SetPressed(false);
+
+            if (held.EffectiveIsEnabled && held.EffectiveIsVisible &&
+                _selectedIndex >= 0 && ReferenceEquals(ItemAt(_selectedIndex), held))
+            {
+                held.ActivateFromMenu(ActivationCause.Keyboard);
+            }
+        }
+    }
+
+    private void SelectPointerTarget(PointerEventArgs eventArgs)
+    {
+        if (eventArgs.Pointer.Action is PointerAction.Leave or PointerAction.Wheel ||
+            eventArgs.Pointer.Cells is not { } cells)
+        {
+            return;
+        }
+
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            if (ItemAt(index) is MenuItem item && item.Bounds.Contains(cells) &&
+                item.EffectiveIsEnabled && item.EffectiveIsVisible)
+            {
+                SelectFromInput(index, focus: false);
+                return;
+            }
+        }
+    }
+
+    private void SelectFromInput(int index, bool focus)
+    {
+        var switchSubmenu = HasOpenSubmenu();
+        Select(index, focus);
+
+        if (!switchSubmenu)
+        {
+            return;
+        }
+
+        var selected = (MenuItem) ItemAt(index);
+
+        for (var siblingIndex = 0; siblingIndex < ItemControlCount; siblingIndex++)
+        {
+            if (ItemAt(siblingIndex) is MenuItem sibling && !ReferenceEquals(sibling, selected))
+            {
+                sibling.CloseSubmenu();
+            }
+        }
+
+        selected.OpenSubmenu();
+    }
+
+    private void UpdateItemSizing()
+    {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            ApplyItemSizing(ItemAt(index));
+        }
+    }
+
+    private void ApplyItemSizing(Control item)
+    {
+        item.Width = Orientation == Orientation.Vertical ? Length.Percent(100) : Length.Auto;
+        item.Height = Length.Cells(1);
     }
 
     private static Control RequireEntry(Control child)

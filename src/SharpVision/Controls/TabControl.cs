@@ -3,12 +3,16 @@
 
 namespace SharpVision.Controls;
 
+using System.ComponentModel;
+
 using SharpVision.Terminal.Input;
 
 /// <summary>Arranges typed tab pages and coordinates header rendering and keyboard selection.</summary>
 public sealed class TabControl: ItemsControl
 {
+    private readonly Dictionary<TabItem, Visibility> _requestedVisibilities = [];
     private readonly Stack _stack;
+    private bool _updatingPresentation;
     private int _pressedHeaderIndex = -1;
     private int _selectedIndex = -1;
 
@@ -47,11 +51,7 @@ public sealed class TabControl: ItemsControl
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        for (var i = 0; i < ItemControlCount; i++)
-        {
-            ((TabItem) GetItemControl(i)).Visibility = i == _selectedIndex ? Visibility.Visible : Visibility.Collapsed;
-        }
-
+        ApplyPresentation();
         var contentConstraint = new Constraint(constraint.Width, constraint.Height.HasValue ? Math.Max(0, constraint.Height.Value - 2) : null);
         var content = base.MeasureOverride(contentConstraint);
 
@@ -69,10 +69,7 @@ public sealed class TabControl: ItemsControl
     {
         if (bounds.Height < 2) { return; }
 
-        for (var i = 0; i < ItemControlCount; i++)
-        {
-            ((TabItem) GetItemControl(i)).Visibility = i == _selectedIndex ? Visibility.Visible : Visibility.Collapsed;
-        }
+        ApplyPresentation();
 
         base.ArrangeOverride(new Rect(bounds.X, bounds.Y + 2, bounds.Width, bounds.Height - 2));
     }
@@ -129,20 +126,68 @@ public sealed class TabControl: ItemsControl
 
     internal int ItemCount => ItemControlCount;
     internal TabItem ItemAt(int index) => (TabItem) GetItemControl(index);
-    internal void AddItem(TabItem item) { ArgumentNullException.ThrowIfNull(item); InsertItemControl(ItemControlCount, item); if (_selectedIndex < 0) { Select(ItemControlCount - 1); } }
+    internal void AddItem(TabItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var requestedVisibility = item.Visibility;
+        InsertItemControl(ItemControlCount, item);
+        _requestedVisibilities.Add(item, requestedVisibility);
+        item.PropertyChanged += OnItemPropertyChanged;
+        item.Width = Length.Percent(100);
+        item.Height = Length.Percent(100);
+
+        if (_selectedIndex < 0 && FindEligible(0, 1) is var first && first >= 0)
+        {
+            Select(first);
+        }
+        else
+        {
+            ApplyPresentation();
+        }
+    }
 
     internal bool RemoveItem(TabItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
         var idx = IndexOfItemControl(item);
         if (idx < 0) { return false; }
+        var wasSelected = idx == _selectedIndex;
+        item.PropertyChanged -= OnItemPropertyChanged;
+        _ = _requestedVisibilities.Remove(item);
+        item.CommitSelection(false);
         _ = RemoveItemControl(item);
-        if (_selectedIndex >= ItemControlCount) { Select(ItemControlCount - 1); }
-        else if (_selectedIndex == idx) { Select(Math.Min(idx, ItemControlCount - 1)); }
+
+        if (wasSelected)
+        {
+            _selectedIndex = -1;
+            SelectNearest(Math.Min(idx, ItemControlCount - 1));
+        }
+        else
+        {
+            if (idx < _selectedIndex)
+            {
+                _selectedIndex--;
+            }
+
+            ApplyPresentation();
+        }
+
         return true;
     }
 
-    internal void ClearItems() { ClearItemControls(); Select(-1); }
+    internal void ClearItems()
+    {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            var item = ItemAt(index);
+            item.PropertyChanged -= OnItemPropertyChanged;
+            item.CommitSelection(false);
+        }
+
+        ClearItemControls();
+        _requestedVisibilities.Clear();
+        Select(-1);
+    }
 
     /// <inheritdoc/>
     protected override void OnFocusChanged(bool focused)
@@ -288,9 +333,126 @@ public sealed class TabControl: ItemsControl
     private void Select(int index)
     {
         VerifyMutable();
+
+        if (index >= 0 && !IsEligible(index))
+        {
+            throw new InvalidOperationException("An unavailable tab page cannot be selected.");
+        }
+
         if (_selectedIndex == index) { return; }
+        if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount)
+        {
+            ItemAt(_selectedIndex).CommitSelection(false);
+        }
+
         _selectedIndex = index;
+
+        if (_selectedIndex >= 0)
+        {
+            ItemAt(_selectedIndex).CommitSelection(true);
+        }
+
+        ApplyPresentation();
         NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Measure);
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    private void ApplyPresentation()
+    {
+        if (_updatingPresentation)
+        {
+            return;
+        }
+
+        _updatingPresentation = true;
+
+        try
+        {
+            for (var index = 0; index < ItemControlCount; index++)
+            {
+                var item = ItemAt(index);
+                var visibility = index == _selectedIndex && RequestedVisibility(item) == Visibility.Visible
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+                if (visibility == Visibility.Collapsed)
+                {
+                    item.ClearPresentedContent();
+                }
+
+                item.Visibility = visibility;
+            }
+        }
+        finally
+        {
+            _updatingPresentation = false;
+        }
+    }
+
+    private int FindEligible(int start, int direction)
+    {
+        for (var index = start; index >= 0 && index < ItemControlCount; index += direction)
+        {
+            if (IsEligible(index))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private bool IsEligible(int index)
+    {
+        var item = ItemAt(index);
+        return item.IsEnabled && RequestedVisibility(item) == Visibility.Visible;
+    }
+
+    private Visibility RequestedVisibility(TabItem item) =>
+        _requestedVisibilities.TryGetValue(item, out var visibility) ? visibility : item.Visibility;
+
+    private void SelectNearest(int index)
+    {
+        var successor = FindEligible(Math.Max(0, index), 1);
+        var target = successor >= 0 ? successor : FindEligible(Math.Min(index - 1, ItemControlCount - 1), -1);
+        Select(target);
+    }
+
+    private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (sender is not TabItem item)
+        {
+            return;
+        }
+
+        if (eventArgs.PropertyName == nameof(Visibility) && !_updatingPresentation)
+        {
+            _requestedVisibilities[item] = item.Visibility;
+        }
+
+        else if (eventArgs.PropertyName == nameof(Visibility))
+        {
+            return;
+        }
+
+        if (eventArgs.PropertyName is not nameof(Visibility) and not nameof(IsEnabled))
+        {
+            return;
+        }
+
+        var index = IndexOfItemControl(item);
+
+        if (index == _selectedIndex && !IsEligible(index))
+        {
+            SelectNearest(index);
+        }
+        else if (_selectedIndex < 0)
+        {
+            var first = FindEligible(0, 1);
+            if (first >= 0) { Select(first); }
+        }
+
+        ApplyPresentation();
+    }
+
 }

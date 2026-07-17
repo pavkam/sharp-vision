@@ -35,6 +35,17 @@ internal sealed class ProgressBarPane: CompositeControl
             Maximum = 100,
             Value = 100,
         };
+        var partial = new ProgressBar
+        {
+            Width = Length.Cells(30),
+            Maximum = 100,
+            Value = 42,
+        };
+        var indeterminate = new ProgressBar
+        {
+            Width = Length.Cells(30),
+            IsIndeterminate = true,
+        };
 
         var rangeBar = new ProgressBar
         {
@@ -62,21 +73,21 @@ internal sealed class ProgressBarPane: CompositeControl
         var interactiveBar = new ProgressBar
         {
             Width = Length.Cells(30),
-            Maximum = 100,
-            Value = 30,
+            Maximum = 10,
+            Value = 3,
         };
-        var interactiveStatus = new Text($"Progress: {interactiveBar.Value:0}%");
-        var increase = new Button { Content = new Text("Increase +10%") };
+        var interactiveStatus = new Text($"Live progress: {interactiveBar.Value:0} / 10");
+        var increase = new Button { Content = new Text("Advance progress") };
         var reset = new Button { Content = new Text("Reset") };
         increase.Click += (_, _) =>
         {
-            interactiveBar.Value = Math.Min(100, interactiveBar.Value + 10);
-            interactiveStatus.Content = $"Progress: {interactiveBar.Value:0}%";
+            interactiveBar.Value = Math.Min(10, interactiveBar.Value + 1);
+            interactiveStatus.Content = $"Live progress: {interactiveBar.Value:0} / 10";
         };
         reset.Click += (_, _) =>
         {
             interactiveBar.Value = 0;
-            interactiveStatus.Content = $"Progress: {interactiveBar.Value:0}%";
+            interactiveStatus.Content = $"Live progress: {interactiveBar.Value:0} / 10";
         };
 
         return Doc.Page(
@@ -91,8 +102,10 @@ internal sealed class ProgressBarPane: CompositeControl
                     "Each bar uses the default 0..100 range with a different Value.",
                     Doc.Column(
                         Doc.Row(new Text("  0%") { Attributes = TerminalAttributes.Dim }, empty),
+                        Doc.Row(new Text(" 42%") { Attributes = TerminalAttributes.Dim }, partial),
                         Doc.Row(new Text(" 50%") { Attributes = TerminalAttributes.Dim }, half),
-                        Doc.Row(new Text("100%") { Attributes = TerminalAttributes.Dim }, full)),
+                        Doc.Row(new Text("100%") { Attributes = TerminalAttributes.Dim }, full),
+                        Doc.Row(new Text("  ??") { Attributes = TerminalAttributes.Dim }, indeterminate)),
                     "var bar = new ProgressBar { Value = 50 };")),
             Doc.Section(
                 "📊",
