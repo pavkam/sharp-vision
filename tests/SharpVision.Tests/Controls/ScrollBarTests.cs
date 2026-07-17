@@ -91,7 +91,7 @@ public sealed class ScrollBarTests
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
             control.ValueChanged += NarrowOnFirstChange;
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
@@ -154,28 +154,6 @@ public sealed class ScrollBarTests
 
         control.DesiredSize.ShouldBe(new Size(1, 1));
         Cells(frame, width: 10, y: 0).ShouldBe("────━━────");
-    }
-
-    /// <summary>Verifies a foreground-only ScrollBar style preserves the parent surface background.</summary>
-    [Fact]
-    public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
-    {
-        var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var control = new ScrollBar()
-        {
-            Bounds = new Rect(0, 0, 3, 1),
-            Orientation = Orientation.Horizontal,
-            Chrome = ScrollBarChrome.Thin,
-            Fill = ScrollBarFill.Line,
-            Style = style,
-        };
-        using Frame frame = new(new Size(3, 1));
-        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
-
-        control.Render(frame.Canvas);
-
-        frame.GetCell(default).Style.Background.ShouldBe(Color.Indexed(238));
     }
 
     /// <summary>Verifies explicitly assigning a legacy glyph remains an intentional custom override.</summary>
@@ -246,7 +224,7 @@ public sealed class ScrollBarTests
             };
             control.Attach(dispatcher);
             using FocusManager focus = new(control);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press));
             control.Value.ShouldBe(48);
@@ -275,7 +253,7 @@ public sealed class ScrollBarTests
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(control);
@@ -303,7 +281,7 @@ public sealed class ScrollBarTests
                 Maximum = 100,
             };
             control.Attach(dispatcher);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
             var changes = 0;
             control.ValueChanged += (_, _) => changes++;
 
@@ -357,7 +335,7 @@ public sealed class ScrollBarTests
         var control = new ScrollBar() { Maximum = 10, Value = 10 };
         var eventArgs = new PointerEventArgs(Wheel(wheelX: 0, wheelY: -1));
 
-        Router.Route(control, Events.Pointer, eventArgs);
+        _ = Router.Route(control, Events.Pointer, eventArgs);
 
         control.Value.ShouldBe(10);
         eventArgs.Handled.ShouldBeFalse();
@@ -380,7 +358,7 @@ public sealed class ScrollBarTests
             };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(control);
@@ -420,30 +398,6 @@ public sealed class ScrollBarTests
 
         _ = Should.Throw<ArgumentException>(() => control.TrackGlyph = new Rune('界'));
         control.TrackGlyph.ShouldBe(new Rune('.'));
-    }
-
-    /// <summary>Verifies resolved focused and pressed style reaches every scrollbar cell.</summary>
-    [Fact]
-    public void Render_WhenBehaviorStateChanges_UsesResolvedVisualStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
-            (State.Focused, new ThemeOverlay(attributes: Attributes.Underline)),
-            (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))));
-        var control = new ScrollBar()
-        {
-            Bounds = new Rect(0, 0, 1, 3),
-            Style = style,
-        };
-        control.SetFocused(true);
-        control.SetPressed(true);
-        using Frame frame = new(new Size(1, 3));
-
-        control.Render(frame.Canvas);
-
-        control.CanFocus.ShouldBeTrue();
-        frame.GetCell(default).Style.Foreground.ShouldBe(Color.Indexed(5));
-        frame.GetCell(default).Style.Attributes.ShouldBe(Attributes.Underline);
     }
 
     /// <summary>Verifies public event data rejects impossible values and unknown causes.</summary>

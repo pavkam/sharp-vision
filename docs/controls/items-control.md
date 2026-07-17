@@ -4,8 +4,8 @@
 
 `ItemsControl : Control` is the base role for semantic controls that realize an
 ordered set of controls inside one private presentation container. It implements
-`IStyleScope`, so a semantic owner's themed and instance style resources cascade
-through its private host to realized items.
+an ordinary semantic owner; its direct appearance does not create a style scope
+or cascade through its private host to realized items.
 
 A concrete constructor calls `InitializeItemsHost(Container)` exactly once. A
 rejected candidate does not consume initialization. Once a host commits, it

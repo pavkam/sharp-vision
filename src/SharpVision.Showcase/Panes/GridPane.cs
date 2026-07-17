@@ -43,9 +43,9 @@ internal sealed class GridPane: CompositeControl
         proportionalTracks.Rows.Add(Track.Star(2));
         proportionalTracks.Rows.Add(Track.Star(1));
         proportionalTracks.Columns.Add(Track.Star(1));
-        AddTrackRegion(proportionalTracks, "Auto = intrinsic 3 rows", 0, ThemeColors.Surface);
-        AddTrackRegion(proportionalTracks, "2* = 6 rows", 1, ThemeColors.Accent);
-        AddTrackRegion(proportionalTracks, "1* = 3 rows", 2, ThemeColors.Info);
+        AddTrackRegion(proportionalTracks, "Auto = intrinsic 3 rows", 0, ColorRole.Surface);
+        AddTrackRegion(proportionalTracks, "2* = 6 rows", 1, ColorRole.Accent);
+        AddTrackRegion(proportionalTracks, "1* = 3 rows", 2, ColorRole.Info);
 
         Grid spans = new()
         {
@@ -201,11 +201,10 @@ internal sealed class GridPane: CompositeControl
         grid.Children.Add(control);
     }
 
-    private static void AddTrackRegion(Grid grid, string text, int row, Color background)
+    private static void AddTrackRegion(Grid grid, string text, int row, ThemeColor background)
     {
         var region = Card(text);
         region.Background = background;
-        region.FillMode = FillMode.Opaque;
         Grid.SetRow(region, row);
         grid.Children.Add(region);
     }

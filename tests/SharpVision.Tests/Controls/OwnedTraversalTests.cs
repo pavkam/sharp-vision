@@ -15,10 +15,10 @@ public sealed class OwnedTraversalTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new TraversalOwner();
-            var first = new ProbeControl { CanFocus = true };
-            var firstSlotSecond = new ProbeControl { CanFocus = true };
-            var excluded = new ProbeControl { CanFocus = true };
-            var second = new ProbeControl { CanFocus = true };
+            var first = new ProbeControl { Focusable = true };
+            var firstSlotSecond = new ProbeControl { Focusable = true };
+            var excluded = new ProbeControl { Focusable = true };
+            var second = new ProbeControl { Focusable = true };
             root.AddNormal(first);
             root.AddNormal(firstSlotSecond);
             root.AddExcluded(excluded);

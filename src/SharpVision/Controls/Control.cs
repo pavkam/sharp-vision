@@ -273,7 +273,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set => _ = SetProperty(ref field, value, ChangeImpact.None);
     } = true;
 
-    /// <summary>Gets or sets whether the control may receive keyboard focus.</summary>
+    /// <summary>Gets or sets whether this control is configured to accept keyboard focus.</summary>
     /// <remarks>
     /// Setting this property to false releases focus before the property-change
     /// notification. During an active focus callback, both cleanup and notification
@@ -281,7 +281,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool CanFocus
+    public bool Focusable
     {
         get;
         set
@@ -296,12 +296,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             field = value;
             Invalidate(Invalidation.Render);
 
-            if (CanFocusNotificationPending)
+            if (FocusableNotificationPending)
             {
                 return;
             }
 
-            CanFocusNotificationPending = true;
+            FocusableNotificationPending = true;
 
             try
             {
@@ -310,15 +310,19 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                     return;
                 }
 
-                PublishDeferredCanFocusChange();
+                PublishDeferredFocusableChange();
             }
             catch
             {
-                CanFocusNotificationPending = false;
+                FocusableNotificationPending = false;
                 throw;
             }
         }
     }
+
+    /// <summary>Gets whether the control can currently receive keyboard focus.</summary>
+    /// <remarks>This effective value includes <see cref="Focusable"/>, visibility, enabled state, and disposal.</remarks>
+    public bool CanFocus => Focusable && EffectiveIsVisible && EffectiveIsEnabled && !IsDisposed;
 
     /// <summary>Gets or sets the deterministic tab-order key.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -336,11 +340,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool IsTabStop
+    public bool TabStop
     {
         get;
         set => _ = SetProperty(ref field, value, ChangeImpact.None);
     } = true;
+
+    /// <summary>Gets whether this control currently participates in Tab traversal.</summary>
+    public virtual bool IsTabStop => CanFocus && TabStop;
 
     /// <summary>Gets or sets how Tab traversal treats this control's subtree.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -360,53 +367,59 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>Gets or sets the direct style resource, or null to inherit.</summary>
-    /// <exception cref="ArgumentException">
-    /// The style targets a type this control does not derive from or reports an unknown change impact.
-    /// </exception>
+    /// <summary>Gets or sets the optional leading horizontal position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public IControlStyle? Style
+    public Length? Left
     {
-        get => InstanceStyle;
+        get;
         set
         {
-            VerifyMutable();
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
 
-            if (value is not null && !value.TargetType.IsAssignableFrom(GetType()))
-            {
-                throw new ArgumentException(
-                    $"A style targeting {value.TargetType.Name} cannot be applied to {GetType().Name}.",
-                    nameof(value));
-            }
+    /// <summary>Gets or sets the optional leading vertical position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? Top
+    {
+        get;
+        set
+        {
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
 
-            if (ReferenceEquals(InstanceStyle, value))
-            {
-                return;
-            }
+    /// <summary>Gets or sets the optional trailing horizontal position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? Right
+    {
+        get;
+        set
+        {
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+        }
+    }
 
-            var replacementImpact = value?.AggregateImpact ?? ChangeImpact.None;
-
-            if (!Enum.IsDefined(replacementImpact))
-            {
-                throw new ArgumentException(
-                    "The style reports an unknown change impact.",
-                    nameof(value));
-            }
-
-            var previous = InstanceStyle;
-            var impact = MaximumImpact(
-                previous?.AggregateImpact ?? ChangeImpact.None,
-                replacementImpact);
-            var invalidation = InvalidationFor(impact);
-            UnsubscribeInstanceStyle(previous);
-            InstanceStyle = value;
-            SubscribeInstanceStyle(value);
-            InvalidateResolvedStyleCache();
-            Invalidate(invalidation);
-            CascadeStyleScopeInvalidation(invalidation);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Style)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+    /// <summary>Gets or sets the optional trailing vertical position offset.</summary>
+    /// <exception cref="ArgumentException">The value is automatic or proportional.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length? Bottom
+    {
+        get;
+        set
+        {
+            ValidatePositionOffset(value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     }
 
@@ -428,24 +441,55 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         set => _ = SetProperty(ref field, value, ChangeImpact.None);
     }
 
-    /// <summary>Gets whether this control currently owns keyboard focus.</summary>
-    public bool IsFocused { get; private set; }
+    private readonly ControlInteractionState _interactionState = new();
 
-    /// <summary>Gets whether the pointer currently hovers this control; only interactive (focusable) controls are marked hovered.</summary>
-    public bool IsHovered { get; private set; }
+    /// <summary>Gets whether this control currently owns keyboard focus.</summary>
+    public bool IsFocused => _interactionState.IsFocused;
+
+    /// <summary>Raised after this control loses direct keyboard focus.</summary>
+    public event EventHandler? LostFocus;
+
+    /// <summary>Raised after this control gains direct keyboard focus.</summary>
+    public event EventHandler? GotFocus;
+
+    /// <summary>Raised after keyboard focus enters this control's subtree.</summary>
+    public event EventHandler? FocusEntered;
+
+    /// <summary>Raised after keyboard focus leaves this control's subtree.</summary>
+    public event EventHandler? FocusLeft;
+
+    /// <summary>Gets whether this control or a descendant owns keyboard focus.</summary>
+    public bool ContainsFocus
+    {
+        get
+        {
+            for (var focused = FocusOwner?.Focused; focused is not null; focused = focused.Parent)
+            {
+                if (ReferenceEquals(focused, this))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>Gets whether the pointer is over this control or one of its descendants.</summary>
+    public bool IsPointerOver => _interactionState.IsPointerOver;
+
+    /// <summary>Gets whether the pointer directly targets this control.</summary>
+    public bool IsPointerDirectlyOver => _interactionState.IsPointerDirectlyOver;
+
+    /// <summary>Raised after the physical pointer enters this control's subtree.</summary>
+    public event EventHandler? PointerEntered;
+
+    /// <summary>Raised after the physical pointer exits this control's subtree.</summary>
+    public event EventHandler? PointerExited;
 
     /// <summary>Gets whether an active pointer press began on this control.</summary>
-    public bool IsPressed { get; private set; }
+    public bool IsPressed => _interactionState.IsPressed;
 
-    /// <summary>Gets whether this control owns pointer-derived hover and pressed appearance.</summary>
-    /// <remarks>
-    /// The default is false. Interactive controls opt in independently of keyboard focus and tab
-    /// traversal, allowing a non-focusable composite to own one pointer state for its content.
-    /// </remarks>
-    protected virtual bool OwnsPointerState => false;
-
-    /// <summary>Gets whether this control owns hover during routed pointer dispatch.</summary>
-    internal virtual bool OwnsHover => OwnsPointerState;
 
     /// <summary>Gets the desired border-box size from the last successful measure.</summary>
     public Size DesiredSize { get; internal set; }
@@ -483,9 +527,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private bool OwnedDisposalRequested { get; set; }
 
-    private bool CanFocusNotificationPending { get; set; }
-
-    private bool HasSelectedState { get; set; }
+    private bool FocusableNotificationPending { get; set; }
 
     private List<IHandler>? Handlers { get; set; }
 
@@ -496,7 +538,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     internal FocusManager? FocusOwner { get; private set; }
 
     /// <summary>Gets the inherited capture manager while one owns this subtree.</summary>
-    internal CaptureManager? CaptureOwner { get; private set; }
+    internal PointerManager? CaptureOwner { get; private set; }
 
     /// <summary>Gets whether this control clips owned descendants to its bounds.</summary>
     /// <remarks>
@@ -507,10 +549,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     protected virtual bool ClipsChildren => true;
 
     /// <summary>Gets the complete terminal style for the resolved appearance.</summary>
-    protected internal TerminalStyle ResolvedStyle => GetResolvedStyle(GetVisualState());
+    protected internal TerminalStyle ResolvedStyle => GetResolvedStyle(GetAppearanceState());
 
     /// <summary>Gets the inherited normal-state terminal style for passive visual overflow.</summary>
-    protected internal TerminalStyle NormalStyle => GetResolvedStyle(State.Normal);
+    protected internal TerminalStyle NormalStyle => GetResolvedStyle(VisualState.Normal);
 
     /// <summary>Adds one typed routed-event handler to this control.</summary>
     /// <typeparam name="TArgs">The exact event-argument type.</typeparam>
@@ -589,14 +631,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             cellPolicy,
             FocusOwner,
             CaptureOwner,
-            ThemeContext,
+            InheritedTheme,
             configure: null);
     }
 
     /// <summary>Stages application-root context and publishes lifecycle only after managers are configured.</summary>
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
     /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>
-    /// <param name="themeContext">The non-null initial theme context.</param>
+    /// <param name="theme">The non-null initial immutable theme.</param>
     /// <param name="configure">Framework setup that installs focus and capture managers before publication.</param>
     /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     /// <exception cref="ArgumentException">Any descendant is already attached.</exception>
@@ -605,12 +647,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     internal void Attach(
         Dispatcher dispatcher,
         Policy cellPolicy,
-        ThemeContext themeContext,
+        Theme theme,
         System.Action configure)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(cellPolicy);
-        ArgumentNullException.ThrowIfNull(themeContext);
+        ArgumentNullException.ThrowIfNull(theme);
         ArgumentNullException.ThrowIfNull(configure);
         VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
@@ -620,7 +662,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             cellPolicy,
             FocusOwner,
             CaptureOwner,
-            themeContext,
+            theme,
             configure);
     }
 
@@ -917,8 +959,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             // while their own drawing always remains inside their bounds.
             var visual = canvas.Clip(VisualBounds);
             var clipped = canvas.Clip(Bounds);
-            OnRender(visual);
+            var appearanceState = GetAppearanceState();
+            var chrome = GetChromeRenderOptions();
+            ControlChrome.RenderUnderlay(this, visual, appearanceState, chrome);
+            OnRenderContent(visual);
             RenderChildren(ClipsChildren ? clipped : canvas);
+            ControlChrome.RenderBorder(this, visual, appearanceState, chrome);
 
             if (Parent is null)
             {
@@ -980,11 +1026,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// The attached control is accessed off-dispatcher or focus is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    protected bool RequestFocus()
+    public bool Focus()
     {
         VerifyMutable();
         return FocusOwner?.Focus(this) ?? false;
     }
+
+    /// <summary>Requests keyboard focus for derived controls that need a named protected seam.</summary>
+    protected bool RequestFocus() => Focus();
 
     /// <summary>Requests exclusive pointer capture from the manager inherited by this control.</summary>
     /// <returns>True when capture is acquired or already owned; false when detached or ineligible.</returns>
@@ -997,7 +1046,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Gets whether this control is the current exclusive pointer-capture target.</summary>
-    protected bool HasPointerCapture => ReferenceEquals(CaptureOwner?.Captured, this);
+    public bool HasPointerCapture => ReferenceEquals(CaptureOwner?.Captured, this);
+
+    /// <summary>Raised after this control loses exclusive pointer capture.</summary>
+    public event EventHandler<PointerCaptureLostEventArgs>? LostPointerCapture;
 
     /// <summary>Releases pointer capture only when this control currently owns it.</summary>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
@@ -1095,9 +1147,6 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
             CaptureFailure(OwnedControls.DisposeAll, ref failure);
             CaptureFailure(ClearHandlers, ref failure);
-            CaptureFailure(
-                () => UnsubscribeInstanceStyle(InstanceStyle),
-                ref failure);
         }
         finally
         {
@@ -1272,10 +1321,11 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                     Modifiers: var modifiers,
                 },
             } &&
-            (modifiers & ~Modifiers.Shift) == 0 &&
-            FocusOwner?.MoveNext((modifiers & Modifiers.Shift) != 0) == true)
+            (modifiers & ~Modifiers.Shift) == 0)
         {
             eventArgs.Handled = true;
+            eventArgs.RequestPostRouteCommand(
+                (modifiers & Modifiers.Shift) != 0 ? PostRouteCommand.TabPrevious : PostRouteCommand.TabNext);
         }
     }
 
@@ -1299,7 +1349,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>Assigns inherited capture-manager ownership recursively.</summary>
-    internal void SetCaptureOwner(CaptureManager? value)
+    internal void SetCaptureOwner(PointerManager? value)
     {
         CaptureOwner = value;
         VisitChildren(child => child.SetCaptureOwner(value));
@@ -1310,12 +1360,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         VerifyMutable();
 
-        if (IsFocused == value)
+        if (!_interactionState.SetFocused(value))
         {
             return;
         }
-
-        IsFocused = value;
 
         InvalidateResolvedStyleCache();
         Invalidate(VisualStateInvalidation());
@@ -1323,29 +1371,50 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         OnFocusChanged(value);
     }
 
+    /// <summary>Publishes one already-committed direct focus loss.</summary>
+    internal void PublishLostFocus() => LostFocus?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Publishes one already-committed direct focus gain.</summary>
+    internal void PublishGotFocus() => GotFocus?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Publishes one already-committed focus-within entry.</summary>
+    internal void PublishFocusEntered() => FocusEntered?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Publishes one already-committed focus-within exit.</summary>
+    internal void PublishFocusLeft() => FocusLeft?.Invoke(this, EventArgs.Empty);
+
     /// <summary>Publishes a focus-eligibility change after deferred manager cleanup commits.</summary>
-    internal void PublishDeferredCanFocusChange()
+    internal void PublishDeferredFocusableChange()
     {
-        Debug.Assert(CanFocusNotificationPending, "Only a deferred eligibility change is published.");
-        CanFocusNotificationPending = false;
+        Debug.Assert(FocusableNotificationPending, "Only a deferred eligibility change is published.");
+        FocusableNotificationPending = false;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Focusable)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanFocus)));
     }
 
     /// <summary>Updates hover visual state on the owning dispatcher.</summary>
-    internal void SetHovered(bool value)
+    internal void SetPointerOver(bool value, bool directlyOver)
     {
         VerifyMutable();
 
-        if (IsHovered == value)
+        if (!_interactionState.SetPointerOver(value, directlyOver, out var wasOver))
         {
             return;
         }
 
-        IsHovered = value;
-
         InvalidateResolvedStyleCache();
         Invalidate(VisualStateInvalidation());
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsHovered)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerOver)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerDirectlyOver)));
+
+        if (value && !wasOver)
+        {
+            PointerEntered?.Invoke(this, EventArgs.Empty);
+        }
+        else if (!value && wasOver)
+        {
+            PointerExited?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     /// <summary>Updates pressed visual state on the owning dispatcher.</summary>
@@ -1353,12 +1422,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         VerifyMutable();
 
-        if (IsPressed == value)
+        if (!_interactionState.SetPressed(value))
         {
             return;
         }
-
-        IsPressed = value;
         InvalidateResolvedStyleCache();
         Invalidate(VisualStateInvalidation());
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed)));
@@ -1371,15 +1438,24 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         VerifyMutable();
 
-        if (HasSelectedState == value)
+        if (!_interactionState.SetSelected(value))
         {
             return;
         }
-
-        HasSelectedState = value;
         InvalidateResolvedStyleCache();
         Invalidate(VisualStateInvalidation());
-        VisitChildren(child => child.SetSelectedState(value));
+    }
+
+    /// <summary>Propagates collection-current visual state through one realized item subtree.</summary>
+    internal void SetCurrentState(bool value)
+    {
+        VerifyMutable();
+
+        if (!_interactionState.SetCurrent(value))
+        {
+            return;
+        }
+        InvalidateVisualState();
     }
 
     /// <summary>Validates that the complete subtree may receive a dispatcher.</summary>
@@ -1467,10 +1543,10 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     protected virtual void OnDisposing() =>
         Debug.Assert(!IsDisposed, "The disposing hook runs before disposal commits.");
 
-    /// <summary>Responds after implicit pointer-capture cancellation clears all pointer state.</summary>
-    /// <param name="reason">The defined reason capture was cancelled.</param>
-    protected virtual void OnPointerCaptureCancelled(ReleaseReason reason) =>
-        Debug.Assert(Enum.IsDefined(reason), "Capture cancellation reasons are validated internally.");
+    /// <summary>Responds after this control loses pointer capture or its associated press transaction.</summary>
+    /// <param name="reason">The defined reason exclusive pointer ownership ended.</param>
+    protected virtual void OnLostPointerCapture(PointerCaptureLossReason reason) =>
+        Debug.Assert(Enum.IsDefined(reason), "Capture-loss reasons are validated internally.");
 
     /// <summary>Responds after this control's direct ownership changes.</summary>
     /// <param name="previous">The previous owner, or null.</param>
@@ -1487,23 +1563,17 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     protected virtual void OnUnavailable(ReleaseReason reason) =>
         Debug.Assert(Enum.IsDefined(reason), "Unavailable reasons are validated internally.");
 
+    /// <summary>Configures the framework-owned chrome surrounding this control's content.</summary>
+    /// <returns>The narrow set of chrome adjustments required by a specialized frame.</returns>
+    protected virtual ChromeRenderOptions GetChromeRenderOptions() => default;
+
     /// <summary>Draws this control's own content into its clipped visual bounds.</summary>
     /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
-    protected virtual void OnRender(TerminalCanvas canvas)
+    protected virtual void OnRenderContent(TerminalCanvas canvas)
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render content.");
-        RenderChrome(canvas);
     }
-
-    /// <summary>Draws the shared border, shadow, and body-fill chrome for the current visual state.</summary>
-    /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
-    /// <remarks>
-    /// Derived controls that fully override <see cref="OnRender"/> can call this to draw the
-    /// standard chrome consistently with the built-in controls before rendering custom content.
-    /// </remarks>
-    protected void RenderChrome(TerminalCanvas canvas) =>
-        ControlChrome.Render(this, canvas, GetVisualState());
 
     /// <summary>Gets the own-content drawing bounds, including deliberate visual overflow.</summary>
     /// <remarks>
@@ -1534,45 +1604,54 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
         (!requireContainment || Bounds.Contains(point));
 
-    /// <summary>Gets behavior-derived flags for appearance resolution.</summary>
-    /// <returns>The current defined visual-state flags.</returns>
-    protected virtual State GetVisualState()
+    /// <summary>Gets the local state used by the direct appearance model.</summary>
+    internal VisualState GetAppearanceState()
     {
-        var result = State.Normal;
+        var result = VisualState.Normal;
 
-        if (IsHovered)
+        if (IsPointerOver)
         {
-            result |= State.Hovered;
+            result |= VisualState.PointerOver;
+        }
+
+        if (ContainsFocus)
+        {
+            result |= VisualState.FocusWithin;
         }
 
         if (IsFocused)
         {
-            result |= State.Focused;
+            result |= VisualState.Focused;
         }
 
         if (IsPressed)
         {
-            result |= State.Pressed;
+            result |= VisualState.Pressed;
         }
 
         if (!EffectiveIsEnabled)
         {
-            result |= State.Disabled;
+            result |= VisualState.Disabled;
         }
 
         if (IsSelectedState)
         {
-            result |= State.Selected;
+            result |= VisualState.Selected;
+        }
+
+        if (IsCurrentState)
+        {
+            result |= VisualState.Current;
         }
 
         if (IsCheckedState)
         {
-            result |= State.Checked;
+            result |= VisualState.Checked;
         }
 
         if (IsIndeterminateState)
         {
-            result |= State.Indeterminate;
+            result |= VisualState.Indeterminate;
         }
 
         return result;
@@ -1581,22 +1660,25 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <summary>Gets whether the control currently holds a checked value.</summary>
     /// <remarks>
     /// Overridden by checkable controls (checkbox, radio, menu item) to drive
-    /// <see cref="State.Checked"/>.
+    /// <see cref="VisualState.Checked"/>.
     /// This is the supported seam for participating in checked styling without overriding
-    /// <see cref="GetVisualState"/>.
+    /// <see cref="GetAppearanceState"/>.
     /// </remarks>
     protected virtual bool IsCheckedState => false;
 
     /// <summary>Gets whether the control is the selected member of an owning collection.</summary>
     /// <remarks>
     /// Defaults to inherited collection selection propagated by an owning list; a control with its
-    /// own selection concept overrides this to drive <see cref="State.Selected"/>.
+    /// own selection concept overrides this to drive <see cref="VisualState.Selected"/>.
     /// </remarks>
-    protected virtual bool IsSelectedState => HasSelectedState;
+    protected virtual bool IsSelectedState => _interactionState.IsSelected;
+
+    /// <summary>Gets whether this control is the current member of an owning navigator.</summary>
+    protected virtual bool IsCurrentState => _interactionState.IsCurrent;
 
     /// <summary>Gets whether the control holds a mixed or indeterminate value.</summary>
     /// <remarks>
-    /// Overridden by tri-state controls to drive <see cref="State.Indeterminate"/>.
+    /// Overridden by tri-state controls to drive <see cref="VisualState.Indeterminate"/>.
     /// </remarks>
     protected virtual bool IsIndeterminateState => false;
 
@@ -1605,45 +1687,26 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// A change is render-only unless an applicable style contains an arrange- or measure-impact
     /// property, in which case the corresponding layout work also reruns.
     /// </remarks>
-    private Invalidation VisualStateInvalidation()
-    {
-        var impact = MaximumImpact(
-            ChangeImpact.Render,
-            InstanceStyle?.AggregateImpact ?? ChangeImpact.None);
-
-        if (ThemeContext is { } context)
-        {
-            foreach (var style in context.GetStyleChain(GetType()))
-            {
-                impact = MaximumImpact(impact, style.AggregateImpact);
-            }
-        }
-
-        for (var current = Parent; current is not null; current = current.Parent)
-        {
-            if (current is not IStyleScope)
-            {
-                continue;
-            }
-
-            if (ThemeContext is { } scopeContext)
-            {
-                foreach (var style in scopeContext.GetStyleChain(current.GetType()))
-                {
-                    impact = MaximumImpact(impact, style.AggregateImpact);
-                }
-            }
-
-            impact = MaximumImpact(
-                impact,
-                current.InstanceStyle?.AggregateImpact ?? ChangeImpact.None);
-        }
-
-        return InvalidationFor(impact);
-    }
+    private static Invalidation VisualStateInvalidation() => Invalidation.Render;
 
     /// <summary>Gets the committed content rectangle after border and padding deflation.</summary>
-    protected Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
+    /// <summary>Gets the committed content area after border and padding deflation.</summary>
+    public Rect ContentBounds => Padding.Deflate(BorderThickness.Deflate(Bounds));
+
+    /// <summary>Gets the committed bounds relative to the parent's content area.</summary>
+    public Rect LocalBounds
+    {
+        get
+        {
+            if (Parent is not { } parent)
+            {
+                return Bounds;
+            }
+
+            var origin = parent.ContentBounds;
+            return new Rect(Bounds.X - origin.X, Bounds.Y - origin.Y, Bounds.Width, Bounds.Height);
+        }
+    }
 
     /// <summary>Returns the earlier and therefore stronger of two validated change impacts.</summary>
     /// <param name="left">The first validated impact.</param>
@@ -1792,6 +1855,15 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
+    private static void ValidatePositionOffset(Length? value)
+    {
+        if (value is { Kind: Kind.Auto or Kind.Star })
+        {
+            throw new ArgumentException("Position offsets must use cells or percentage values.", nameof(value));
+        }
+    }
+
+
     /// <summary>Commits one derived or base property and requests its earliest phase.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
@@ -1832,7 +1904,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
     /// <returns>Whether a changed value was committed.</returns>
     /// <remarks>
-    /// Use this seam when a CLR property changes <see cref="GetVisualState"/>. The helper clears
+    /// Use this seam when a CLR property changes <see cref="GetAppearanceState"/>. The helper clears
     /// resolved values before calculating the strongest impact declared by the newly active state.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
@@ -1906,31 +1978,6 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             child.InvalidateDescendants(value);
         });
 
-    private void OnInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs)
-    {
-        var dispatcher = Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            dispatcher.Post(() => ApplyInstanceStyleChanged(sender, eventArgs)); return;
-        }
-        ApplyInstanceStyleChanged(sender, eventArgs);
-    }
-
-    private void ApplyInstanceStyleChanged(object? sender, ThemeChangedEventArgs eventArgs)
-    {
-        if (IsDisposed || !ReferenceEquals(sender, InstanceStyle))
-        {
-            return;
-        }
-
-        InvalidateResolvedStyleCache();
-
-        var invalidation = InvalidationFor(eventArgs.Impact);
-        Invalidate(invalidation);
-        CascadeStyleScopeInvalidation(invalidation);
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
-    }
-
     private void ClearHandlers()
     {
         if (Handlers is not { } handlers)
@@ -1994,13 +2041,18 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>Invokes the derived capture-cancellation hook after manager state is clear.</summary>
-    /// <param name="reason">The defined implicit cancellation reason.</param>
-    internal void NotifyPointerCaptureCancelled(ReleaseReason reason)
+    /// <summary>Invokes the derived pointer-capture-loss hook after manager state is clear.</summary>
+    /// <param name="reason">The defined capture-loss reason.</param>
+    internal void NotifyLostPointerCapture(PointerCaptureLossReason reason)
     {
-        Debug.Assert(Enum.IsDefined(reason), "Capture cancellation reasons are validated internally.");
-        OnPointerCaptureCancelled(reason);
+        Debug.Assert(Enum.IsDefined(reason), "Capture-loss reasons are validated internally.");
+        OnLostPointerCapture(reason);
     }
+
+    /// <summary>Publishes one already-committed direct pointer-capture loss.</summary>
+    /// <param name="reason">The defined capture-loss reason.</param>
+    internal void PublishLostPointerCapture(PointerCaptureLossReason reason) =>
+        LostPointerCapture?.Invoke(this, new PointerCaptureLostEventArgs(reason));
 
     private Constraint CreateContentConstraint(Constraint constraint)
     {
@@ -2039,7 +2091,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>
     /// <param name="focusOwner">The inherited focus manager, or null.</param>
     /// <param name="captureOwner">The inherited pointer manager, or null.</param>
-    /// <param name="themeContext">The inherited theme context, or null.</param>
+    /// <param name="theme">The inherited immutable theme, or null.</param>
     /// <param name="themeChanged">Collects controls whose theme identity changed.</param>
     /// <param name="attached">Collects controls that became attached.</param>
     /// <param name="detached">Collects controls that became detached.</param>
@@ -2047,8 +2099,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Dispatcher? dispatcher,
         Policy cellPolicy,
         FocusManager? focusOwner,
-        CaptureManager? captureOwner,
-        ThemeContext? themeContext,
+        PointerManager? captureOwner,
+        Theme? theme,
         List<Control> themeChanged,
         List<Control> attached,
         List<Control> detached)
@@ -2061,16 +2113,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
         if (!ReferenceEquals(previous, dispatcher))
         {
-            UnsubscribeInstanceStyle(InstanceStyle);
             Dispatcher = dispatcher;
-            SubscribeInstanceStyle(InstanceStyle);
         }
 
         CellPolicy = cellPolicy;
         FocusOwner = focusOwner;
         CaptureOwner = captureOwner;
 
-        if (CommitThemeContext(themeContext))
+        if (CommitTheme(theme))
         {
             themeChanged.Add(this);
         }
@@ -2089,14 +2139,14 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             cellPolicy,
             focusOwner,
             captureOwner,
-            themeContext,
+            theme,
             themeChanged,
             attached,
             detached));
     }
 
     /// <summary>Publishes this control's committed theme-context change.</summary>
-    internal void PublishThemeContextChanged() =>
+    internal void PublishThemeChanged() =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
 
     /// <summary>Publishes this control's already committed attachment.</summary>
@@ -2109,8 +2159,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
         Dispatcher? dispatcher,
         Policy cellPolicy,
         FocusManager? focusOwner,
-        CaptureManager? captureOwner,
-        ThemeContext? themeContext,
+        PointerManager? captureOwner,
+        Theme? theme,
         System.Action? configure)
     {
         OwnedControlRegistry.VerifyMutationAllowed(this);
@@ -2127,7 +2177,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
                 cellPolicy,
                 focusOwner,
                 captureOwner,
-                themeContext,
+                theme,
                 themeChanged,
                 attached,
                 detached);
@@ -2150,7 +2200,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         foreach (var control in themeChanged)
         {
-            CaptureFailure(control.PublishThemeContextChanged, ref failure);
+            CaptureFailure(control.PublishThemeChanged, ref failure);
         }
 
         foreach (var control in detached)
@@ -2163,16 +2213,6 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             CaptureFailure(control.PublishAttached, ref failure);
         }
     }
-
-    private void SubscribeInstanceStyle(IControlStyle? style)
-    {
-        if (Dispatcher is not null && style is not null)
-        {
-            style.Changed += OnInstanceStyleChanged;
-        }
-    }
-
-    private void UnsubscribeInstanceStyle(IControlStyle? style) => style?.Changed -= OnInstanceStyleChanged;
 
     private void VerifyAccess() => Dispatcher?.VerifyAccess();
 

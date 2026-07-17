@@ -3,318 +3,85 @@
 
 namespace SharpVision.Styling;
 
-
-/// <summary>Owns one style per control type and publishes immutable style-chain snapshots.</summary>
+/// <summary>Represents an immutable semantic UI palette and its provenance.</summary>
 public sealed class Theme
 {
-    private readonly Lock _gate = new();
-    private readonly Dictionary<Type, IControlStyle> _styles = [];
-    private readonly Dictionary<Type, IReadOnlyList<IControlStyle>> _styleChains = [];
     private readonly Dictionary<ColorRole, Color> _colors = [];
-    private readonly List<(IControlStyle Style, EventHandler<ThemeChangedEventArgs> Handler)> _subscriptions = [];
 
-    /// <summary>Raised after one committed theme mutation publishes a new version.</summary>
-    public event EventHandler<ThemeChangedEventArgs>? Changed;
+    /// <summary>Initializes theme metadata.</summary>
+    public Theme(
+        int version = 1,
+        string name = "Custom",
+        string slug = "custom",
+        ColorScheme colorScheme = ColorScheme.Dark,
+        string author = "SharpVision contributors",
+        string license = "MIT",
+        string source = "https://github.com/sharpvision/sharpvision")
+    {
+        SchemaVersion = version;
+        Name = name;
+        Slug = slug;
+        ColorScheme = colorScheme;
+        Author = author;
+        License = license;
+        Source = source;
+    }
 
-    /// <summary>Gets whether this theme rejects further mutation.</summary>
+    /// <summary>Gets the document schema version.</summary>
+    public int SchemaVersion { get; }
+
+    /// <summary>Gets the display name.</summary>
+    public string Name { get; }
+
+    /// <summary>Gets the stable slug.</summary>
+    public string Slug { get; }
+
+    /// <summary>Gets the intended colour scheme.</summary>
+    public ColorScheme ColorScheme { get; }
+
+    /// <summary>Gets author attribution.</summary>
+    public string Author { get; }
+
+    /// <summary>Gets the license identifier.</summary>
+    public string License { get; }
+
+    /// <summary>Gets the source URL.</summary>
+    public string Source { get; }
+
+    /// <summary>Gets whether the palette is immutable.</summary>
     public bool IsFrozen { get; private set; }
 
-    /// <summary>Gets the monotonically increasing published version.</summary>
+    /// <summary>Gets the palette revision.</summary>
     public int Version { get; private set; }
 
-    /// <summary>Adds or replaces the style for one control type.</summary>
-    /// <typeparam name="TControl">The targeted control type.</typeparam>
-    /// <param name="style">The non-null style instance.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="style"/> is null.</exception>
-    /// <exception cref="ArgumentException">
-    /// <paramref name="style"/> targets a different control type.
-    /// </exception>
-    /// <exception cref="InvalidOperationException">The theme is frozen.</exception>
-    public void SetStyle<TControl>(ControlStyle<TControl> style)
-        where TControl : Control
-    {
-        ArgumentNullException.ThrowIfNull(style);
+    /// <summary>Gets a complete immutable palette snapshot.</summary>
+    public ThemePalette Palette => new(_colors);
 
-        if (style.TargetType != typeof(TControl))
-        {
-            throw new ArgumentException(
-                "The supplied style targets a different control type.",
-                nameof(style));
-        }
-
-        var impact = SetStyleCore(style);
-
-        RaiseChanged(impact, typeof(TControl));
-    }
-
-    /// <summary>Removes the style for one control type when present.</summary>
-    /// <typeparam name="TControl">The targeted control type.</typeparam>
-    /// <returns>Whether a style was removed.</returns>
-    /// <exception cref="InvalidOperationException">The theme is frozen.</exception>
-    public bool RemoveStyle<TControl>()
-        where TControl : Control
-    {
-        var (removed, impact) = RemoveStyleCore(typeof(TControl));
-
-        if (!removed)
-        {
-            return false;
-        }
-
-        RaiseChanged(impact, typeof(TControl));
-        return true;
-    }
-
-    /// <summary>Gets the style for one control type when defined.</summary>
-    /// <typeparam name="TControl">The targeted control type.</typeparam>
-    /// <returns>The style instance or null.</returns>
-    public ControlStyle<TControl>? GetStyle<TControl>()
-        where TControl : Control
-    {
-        lock (_gate)
-        {
-            return _styles.TryGetValue(typeof(TControl), out var style) ? (ControlStyle<TControl>) style : null;
-        }
-    }
-
-    /// <summary>Gets whether a style exists for one control type.</summary>
-    /// <typeparam name="TControl">The targeted control type.</typeparam>
-    /// <returns>Whether a style is defined.</returns>
-    public bool HasStyle<TControl>()
-        where TControl : Control => HasStyle(typeof(TControl));
-
-    /// <summary>Gets whether a style exists for one control type.</summary>
-    /// <param name="controlType">The concrete control type.</param>
-    /// <returns>Whether a style is defined.</returns>
-    public bool HasStyle(Type controlType)
-    {
-        ArgumentNullException.ThrowIfNull(controlType);
-
-        lock (_gate)
-        {
-            return _styles.ContainsKey(controlType);
-        }
-    }
-
-    /// <summary>Assigns one semantic color role.</summary>
-    /// <param name="role">The semantic role.</param>
-    /// <param name="color">The color for the role.</param>
-    /// <exception cref="ArgumentException"><paramref name="color"/> is a deferred role color.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="role"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The theme is frozen.</exception>
+    /// <summary>Sets one concrete colour role before the theme freezes.</summary>
     public void SetColor(ColorRole role, Color color)
-    {
-        if (!Enum.IsDefined(role))
-        {
-            throw new ArgumentOutOfRangeException(nameof(role), role, "The color role is unknown.");
-        }
-
-        if (color.Kind == ColorKind.Role)
-        {
-            throw new ArgumentException(
-                "A theme palette role must be assigned a concrete color.",
-                nameof(color));
-        }
-
-        lock (_gate)
-        {
-            EnsureMutable();
-
-            if (_colors.TryGetValue(role, out var current) && current == color)
-            {
-                return;
-            }
-
-            _colors[role] = color;
-            Version++;
-        }
-
-        RaiseChanged(ChangeImpact.Render, typeof(Control));
-    }
-
-    /// <summary>Gets one semantic color role when defined.</summary>
-    /// <param name="role">The semantic role.</param>
-    /// <param name="color">The resolved color when present.</param>
-    /// <returns>Whether the role is defined by this theme.</returns>
-    public bool TryGetColor(ColorRole role, out Color color)
-    {
-        lock (_gate)
-        {
-            return _colors.TryGetValue(role, out color);
-        }
-    }
-
-    /// <summary>Creates an independent unfrozen copy containing cloned styles.</summary>
-    /// <returns>A mutable theme copy.</returns>
-    public Theme Clone()
-    {
-        lock (_gate)
-        {
-            var clone = new Theme();
-
-            foreach (var entry in _styles)
-            {
-                var cloned = CloneStyle(entry.Value);
-                clone._styles[entry.Key] = cloned;
-                clone.Subscribe(cloned);
-            }
-
-            foreach (var entry in _colors)
-            {
-                clone._colors[entry.Key] = entry.Value;
-            }
-
-            clone.Version = Version;
-            return clone;
-        }
-    }
-
-    /// <summary>Freezes this theme and every referenced style snapshot.</summary>
-    /// <exception cref="InvalidOperationException">The theme is already frozen.</exception>
-    public void Freeze()
-    {
-        EnsureMutable();
-
-        lock (_gate)
-        {
-            foreach (var entry in _styles.ToArray())
-            {
-                Unsubscribe(entry.Value);
-                _styles[entry.Key] = FreezeStyle(entry.Value);
-            }
-
-            IsFrozen = true;
-            InvalidateCaches();
-            Version++;
-        }
-    }
-
-    internal ThemeSnapshot CreateSnapshot()
-    {
-        lock (_gate)
-        {
-            return new ThemeSnapshot(
-                Version,
-                new Dictionary<Type, IControlStyle>(_styles),
-                new Dictionary<ColorRole, Color>(_colors));
-        }
-    }
-
-    internal IReadOnlyList<IControlStyle> GetStyleChain(Type controlType)
-    {
-        lock (_gate)
-        {
-            if (_styleChains.TryGetValue(controlType, out var cached))
-            {
-                return cached;
-            }
-
-            var chain = BuildChain(controlType);
-            _styleChains[controlType] = chain;
-            return chain;
-        }
-    }
-
-    private List<IControlStyle> BuildChain(Type controlType)
-    {
-        List<IControlStyle> chain = [];
-
-        foreach (var type in ControlHierarchy.BaseToDerived(controlType))
-        {
-            if (_styles.TryGetValue(type, out var style))
-            {
-                chain.Add(style);
-            }
-        }
-
-        return chain;
-    }
-
-    private void EnsureMutable()
     {
         if (IsFrozen)
         {
-            throw new InvalidOperationException("A frozen theme cannot be changed.");
+            throw new InvalidOperationException("Theme is frozen.");
         }
+
+        _colors[role] = color;
+        Version++;
     }
 
-    private void Subscribe(IControlStyle style)
+    /// <summary>Attempts to resolve a semantic role.</summary>
+    public bool TryGetColor(ColorRole role, out Color color) => _colors.TryGetValue(role, out color);
+
+    /// <summary>Resolves a UI colour token to its concrete terminal colour.</summary>
+    public Color Resolve(ThemeColor color)
     {
-        void handler(object? _, ThemeChangedEventArgs args)
-        {
-            lock (_gate)
-            {
-                InvalidateCaches();
-                Version++;
-            }
-
-            RaiseChanged(args.Impact, args.TargetType);
-        }
-
-        style.Changed += handler;
-        _subscriptions.Add((style, handler));
+        return color.TryGetColor(out var concrete)
+            ? concrete
+            : color.TryGetRole(out var role) && TryGetColor(role, out var resolved)
+            ? resolved
+            : Color.Default;
     }
 
-    private void Unsubscribe(IControlStyle style)
-    {
-        for (var index = _subscriptions.Count - 1; index >= 0; index--)
-        {
-            if (ReferenceEquals(_subscriptions[index].Style, style))
-            {
-                style.Changed -= _subscriptions[index].Handler;
-                _subscriptions.RemoveAt(index);
-            }
-        }
-    }
-
-    private void InvalidateCaches() => _styleChains.Clear();
-
-    private ChangeImpact SetStyleCore<TControl>(ControlStyle<TControl> style)
-        where TControl : Control
-    {
-        lock (_gate)
-        {
-            EnsureMutable();
-            var impact = ChangeImpact.None;
-
-            if (_styles.TryGetValue(typeof(TControl), out var existing))
-            {
-                impact = existing.AggregateImpact;
-                Unsubscribe(existing);
-            }
-
-            _styles[typeof(TControl)] = style;
-            Subscribe(style);
-            impact = Control.MaximumImpact(impact, style.AggregateImpact);
-            InvalidateCaches();
-            Version++;
-            return impact;
-        }
-    }
-
-    private (bool Removed, ChangeImpact Impact) RemoveStyleCore(Type targetType)
-    {
-        lock (_gate)
-        {
-            EnsureMutable();
-
-            if (!_styles.Remove(targetType, out var existing))
-            {
-                return (false, ChangeImpact.None);
-            }
-
-            var impact = existing.AggregateImpact;
-            Unsubscribe(existing);
-            InvalidateCaches();
-            Version++;
-            return (true, impact);
-        }
-    }
-
-    private void RaiseChanged(ChangeImpact impact, Type targetType) =>
-        Changed?.Invoke(this, new ThemeChangedEventArgs(targetType, impact));
-
-    private static IControlStyle CloneStyle(IControlStyle style) => ((IStyleLifecycle) style).CloneForTheme();
-
-    private static IControlStyle FreezeStyle(IControlStyle style) => ((IStyleLifecycle) style).FreezeForTheme();
+    /// <summary>Prevents further palette mutation.</summary>
+    public void Freeze() => IsFrozen = true;
 }

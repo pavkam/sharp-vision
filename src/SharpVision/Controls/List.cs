@@ -39,7 +39,9 @@ public sealed class List: ItemsControl
         };
         InitializeItemsHost(_stack);
         _ = AddHandler(Events.Key, OnKeyRouted);
-        CanFocus = true;
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.None;
     }
 
     /// <summary>Raised before a changed selection commits and may cancel user or programmatic changes.</summary>
@@ -157,7 +159,7 @@ public sealed class List: ItemsControl
 
             if (value >= 0 && _selection.Contains(value))
             {
-                ActiveIndex = value;
+                SetActiveIndex(value);
                 _selectionAnchor = value;
             }
         }
@@ -171,6 +173,9 @@ public sealed class List: ItemsControl
 
     /// <summary>Gets the active navigation index, or -1 when no item is active.</summary>
     public int ActiveIndex { get; private set; } = -1;
+
+    /// <summary>Gets the current navigation index, or -1 when no item is current.</summary>
+    public int CurrentIndex => ActiveIndex;
 
     /// <summary>Gets the composed vertical scroll offset.</summary>
     public int VerticalOffset => _stack.VerticalOffset;
@@ -296,7 +301,7 @@ public sealed class List: ItemsControl
 
         if (changed && selected)
         {
-            ActiveIndex = index;
+            SetActiveIndex(index);
             _selectionAnchor = index;
         }
 
@@ -307,9 +312,9 @@ public sealed class List: ItemsControl
     protected override Size MeasureOverride(Constraint constraint) => MeasureChild(_stack, constraint);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             return;
         }
@@ -450,7 +455,7 @@ public sealed class List: ItemsControl
         }
 
         _ = ApplySelection(normalized, cancellable: false);
-        ActiveIndex = ActiveIndex >= Items.Count ? Items.Count - 1 : ActiveIndex;
+        SetActiveIndex(ActiveIndex >= Items.Count ? Items.Count - 1 : ActiveIndex);
         _selectionAnchor = _selectionAnchor >= Items.Count ? ActiveIndex : _selectionAnchor;
         RefreshSelectedItems();
         NotifyPropertyChanged(nameof(Items), ChangeImpact.Measure);
@@ -509,10 +514,63 @@ public sealed class List: ItemsControl
         }
     }
 
+    /// <summary>Tracks the item that received focus without mutating selection.</summary>
+    internal void NotifyItemFocused(ListItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var index = IndexOfItemControl(item);
+        Debug.Assert(index >= 0, "A focused ListItem is a realized child of this List.");
+
+        SetActiveIndex(index);
+        _ = _stack.BringIntoView(item);
+    }
+
+    /// <summary>Moves the owned current item for a selector-level navigation key.</summary>
+    /// <param name="code">The navigation key.</param>
+    /// <returns><see langword="true"/> when the key moved current item; otherwise, <see langword="false"/>.</returns>
+    internal bool MoveCurrent(Code code)
+    {
+        var current = ItemAt(ActiveIndex) ?? FindEligible(0, 1);
+
+        if (current is null)
+        {
+            return false;
+        }
+
+        var target = ResolveNavigation(current, code);
+
+        if (target is null)
+        {
+            return false;
+        }
+
+        SetActiveIndex(target.Index);
+        _ = _stack.BringIntoView(target);
+        return true;
+    }
+
+    /// <summary>Activates the owned current item without transferring focus to that item.</summary>
+    /// <param name="cause">The semantic activation source.</param>
+    /// <param name="key">The activating key, or null for non-key activation.</param>
+    /// <param name="modifiers">The modifiers captured with <paramref name="key"/>.</param>
+    /// <returns><see langword="true"/> when an available current item was activated; otherwise, <see langword="false"/>.</returns>
+    internal bool ActivateCurrent(ActivationCause cause, Code? key, Modifiers modifiers)
+    {
+        var current = ItemAt(ActiveIndex) ?? FindEligible(0, 1);
+
+        if (current is not { IsAvailable: true })
+        {
+            return false;
+        }
+
+        current.ActivateFromOwner(cause, key, modifiers);
+        return true;
+    }
+
     private void OnActivated(object? sender, ActivationEventArgs eventArgs)
     {
         var item = (ListItem) sender!;
-        ActiveIndex = item.Index;
+        SetActiveIndex(item.Index);
 
         if (item.LastKey == Code.Enter)
         {
@@ -520,7 +578,12 @@ public sealed class List: ItemsControl
             return;
         }
 
-        ApplyInputSelection(item.Index, item.LastModifiers);
+        var modifiers = item.LastModifiers;
+        var isSpaceToggle = SelectionMode == SelectionMode.Multiple &&
+            eventArgs.Cause == ActivationCause.Keyboard &&
+            (modifiers & (Modifiers.Control | Modifiers.Shift)) == 0;
+
+        ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
         if (eventArgs.Cause == ActivationCause.Pointer)
         {
@@ -578,24 +641,22 @@ public sealed class List: ItemsControl
             return;
         }
 
-        var current = FindItem(eventArgs.OriginalSource) ?? ItemAt(ActiveIndex);
+        if (eventArgs.Stroke.Code == Code.Enter ||
+            (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
+        {
+            eventArgs.Handled = ActivateCurrent(
+                ActivationCause.Keyboard,
+                eventArgs.Stroke.Code,
+                eventArgs.Stroke.Modifiers);
+            return;
+        }
 
-        if (current is null)
+        if (FindItem(eventArgs.OriginalSource) is null && eventArgs.OriginalSource != this)
         {
             return;
         }
 
-        var target = ResolveNavigation(current, eventArgs.Stroke.Code);
-
-        if (target is null)
-        {
-            return;
-        }
-
-        ActiveIndex = target.Index;
-        _ = FocusOwner?.Focus(target);
-        _ = _stack.BringIntoView(target);
-        eventArgs.Handled = true;
+        eventArgs.Handled = MoveCurrent(eventArgs.Stroke.Code);
     }
 
     private ListItem? ResolveNavigation(ListItem current, Code code)
@@ -644,6 +705,19 @@ public sealed class List: ItemsControl
         }
 
         return null;
+    }
+
+    private void SetActiveIndex(int value)
+    {
+        if (ActiveIndex == value)
+        {
+            return;
+        }
+
+        ItemAt(ActiveIndex)?.SetCurrentState(false);
+        ActiveIndex = value;
+        ItemAt(ActiveIndex)?.SetCurrentState(true);
+        NotifyPropertyChanged(nameof(ActiveIndex), ChangeImpact.Render);
     }
 
     private ListItem? ItemAt(int index) => index < 0 || index >= ItemControlCount ? null : (ListItem) GetItemControl(index);

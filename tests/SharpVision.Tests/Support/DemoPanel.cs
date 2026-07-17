@@ -9,13 +9,6 @@ using TerminalCanvas = Terminal.Rendering.Canvas;
 /// <summary>Provides a third-party-style control with one custom style property.</summary>
 internal sealed class DemoPanel: Control
 {
-    /// <summary>Registers the label-placement style property.</summary>
-    internal static StyleProperty<DemoLabelPlacement> LabelPlacementProperty { get; } =
-        StyleProperty<DemoLabelPlacement>.Register<DemoPanel>(
-            "label-placement",
-            DemoLabelPlacement.Left,
-            ChangeImpact.Measure);
-
     /// <summary>Initializes a compact panel specimen for theme extensibility tests.</summary>
     internal DemoPanel()
     {
@@ -24,11 +17,11 @@ internal sealed class DemoPanel: Control
         Caption = "Demo";
     }
 
-    /// <summary>Gets or sets the caption placement resolved through the theme cascade.</summary>
+    /// <summary>Gets or sets the caption placement.</summary>
     internal DemoLabelPlacement LabelPlacement
     {
-        get => GetValue(LabelPlacementProperty);
-        set => SetValue(LabelPlacementProperty, value);
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets the readable caption drawn according to <see cref="LabelPlacement"/>.</summary>
@@ -47,7 +40,7 @@ internal sealed class DemoPanel: Control
     protected override Size MeasureOverride(Constraint constraint) => new(12, 3);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

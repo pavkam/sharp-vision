@@ -15,7 +15,7 @@ public sealed class DataPaneTests
         new Engine().Layout(page, new Size(100, 120));
 
         // Act
-        var popup = ControlTree.FindAll<Popup>(page).Single();
+        var popup = ControlTree.FindAll<Popup>(page).First(value => value.Content is Menu);
 
         // Assert
         _ = popup.Content.ShouldBeOfType<Menu>();

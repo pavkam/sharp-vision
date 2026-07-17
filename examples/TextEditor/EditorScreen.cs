@@ -22,6 +22,8 @@ public sealed class EditorScreen: Screen
             AcceptsTab = true,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
+            ScrollBarChrome = ScrollBarChrome.Full,
+            ScrollBarFill = ScrollBarFill.Block,
         };
         _editor.SelectionChanged += OnSelectionChanged;
 
@@ -52,12 +54,13 @@ public sealed class EditorScreen: Screen
                 .Item("Find", shortcut: "Ctrl+F", onInvoke: () => _findReplace.OpenFind())
                 .Item("Replace", shortcut: "Ctrl+H", onInvoke: () => _findReplace.OpenReplace()))
             .Build();
-        appMenu.IsTabStop = false;
+        appMenu.TabStop = false;
+        appMenu.Background = null;
 
         var menuBar = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Background = ColorRole.Surface,
             Height = Length.Cells(1),
             Padding = new Thickness(1, 0),
             Children = { appMenu },
@@ -68,8 +71,7 @@ public sealed class EditorScreen: Screen
 
         var statusBar = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             Height = Length.Cells(1),
             Padding = new Thickness(1, 0),
         };

@@ -113,7 +113,7 @@ public sealed class OwnedControlRegistryTests
     {
         await using var dispatcher = Dispatcher.Start();
         var owner = new ProbeOwnedControl(primaryCapacity: 1);
-        var previous = new OwnershipObserverControl { CanFocus = true };
+        var previous = new OwnershipObserverControl { Focusable = true };
         var replacement = new OwnershipObserverControl();
         owner.AddPrimary(previous);
 
@@ -121,7 +121,7 @@ public sealed class OwnedControlRegistryTests
         {
             owner.Attach(dispatcher);
             using FocusManager focus = new(owner);
-            using CaptureManager capture = new(owner);
+            using PointerManager capture = new(owner);
             focus.Focus(previous).ShouldBeTrue();
             capture.Capture(previous).ShouldBeTrue();
             focus.Lost += (_, _) =>
@@ -130,9 +130,9 @@ public sealed class OwnedControlRegistryTests
                 owner.PrimaryAt(0).ShouldBeSameAs(previous);
                 previous.Dispatcher.ShouldBeSameAs(dispatcher);
             };
-            capture.Cancelled += (_, eventArgs) =>
+            previous.LostPointerCapture += (_, eventArgs) =>
             {
-                eventArgs.Control.ShouldBeSameAs(previous);
+                eventArgs.Reason.ShouldBe(PointerCaptureLossReason.Unavailable);
                 previous.Parent.ShouldBeSameAs(owner);
                 owner.PrimaryAt(0).ShouldBeSameAs(previous);
             };
@@ -176,14 +176,14 @@ public sealed class OwnedControlRegistryTests
         var second = new OwnershipObserverControl();
         branch.AddPrimary(first);
         branch.AddSecondary(second);
-        var context = ThemeContext.Create(new Theme());
+        var context = new Theme();
 
         await dispatcher.InvokeAsync(() =>
         {
             root.Attach(dispatcher, policy);
-            root.PropagateThemeContext(context);
+            root.PropagateTheme(context);
             using FocusManager focus = new(root);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
 
             first.Attaching = _ => AssertAttachedSubtree();
             second.Attaching = _ => AssertAttachedSubtree();
@@ -198,7 +198,7 @@ public sealed class OwnedControlRegistryTests
                 foreach (var control in new[] { first, second })
                 {
                     control.Dispatcher.ShouldBeSameAs(dispatcher);
-                    control.InheritedThemeContext.ShouldBeSameAs(context);
+                    control.InheritedThemeValue.ShouldBeSameAs(context);
                     control.InheritedCellPolicy.ShouldBeSameAs(policy);
                     control.InheritedFocusOwner.ShouldBeSameAs(focus);
                     control.InheritedCaptureOwner.ShouldBeSameAs(capture);
@@ -210,7 +210,7 @@ public sealed class OwnedControlRegistryTests
                 foreach (var control in new[] { first, second })
                 {
                     control.Dispatcher.ShouldBeNull();
-                    control.InheritedThemeContext.ShouldBeNull();
+                    control.InheritedThemeValue.ShouldBeNull();
                     control.InheritedCellPolicy.ShouldBeSameAs(Policy.Default);
                     control.InheritedFocusOwner.ShouldBeNull();
                     control.InheritedCaptureOwner.ShouldBeNull();
@@ -258,20 +258,20 @@ public sealed class OwnedControlRegistryTests
     {
         await using var dispatcher = Dispatcher.Start();
         var owner = new ProbeOwnedControl();
-        var child = new OwnershipObserverControl { CanFocus = true };
+        var child = new OwnershipObserverControl { Focusable = true };
         owner.AddPrimary(child);
 
         await dispatcher.InvokeAsync(() =>
         {
             owner.Attach(dispatcher);
             using FocusManager focus = new(owner);
-            using CaptureManager capture = new(owner);
+            using PointerManager capture = new(owner);
             focus.Focus(child).ShouldBeTrue();
             capture.Capture(child).ShouldBeTrue();
             var cancelled = 0;
-            capture.Cancelled += (_, eventArgs) =>
+            child.LostPointerCapture += (_, eventArgs) =>
             {
-                eventArgs.Reason.ShouldBe(ReleaseReason.Disposed);
+                eventArgs.Reason.ShouldBe(PointerCaptureLossReason.Unavailable);
                 cancelled++;
             };
 

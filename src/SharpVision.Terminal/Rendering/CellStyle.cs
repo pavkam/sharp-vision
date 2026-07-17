@@ -82,14 +82,6 @@ public readonly record struct CellStyle
                 nameof(underlineColor));
         }
 
-        if (foreground.Kind == ColorKind.Role ||
-            background.Kind == ColorKind.Role ||
-            underlineColor.Kind == ColorKind.Role)
-        {
-            throw new ArgumentException(
-                "A role color must be resolved against a theme before it can be rendered.");
-        }
-
         if (hyperlink is not null)
         {
             if (hyperlink.Length == 0)

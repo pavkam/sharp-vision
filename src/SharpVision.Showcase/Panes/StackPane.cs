@@ -37,8 +37,7 @@ internal sealed class StackPane: CompositeControl
         Stack vertical = new() { Spacing = 1, Width = Length.Cells(50) };
         var vHeader = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             Height = Length.Cells(3),
             Padding = new Thickness(1, 0),
             BorderThickness = new Thickness(1),
@@ -55,8 +54,7 @@ internal sealed class StackPane: CompositeControl
         };
         var vFooter = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             Height = Length.Cells(2),
             Padding = new Thickness(1, 0),
             BorderThickness = new Thickness(1),
@@ -72,8 +70,7 @@ internal sealed class StackPane: CompositeControl
         {
             Width = Length.Cells(12),
             Height = Length.Cells(6),
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             BorderThickness = new Thickness(1),
             BorderGlyphs = Glyphs.Rounded,
             Padding = new Thickness(1, 0),

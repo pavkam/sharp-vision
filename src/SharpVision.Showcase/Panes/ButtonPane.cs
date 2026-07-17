@@ -50,7 +50,7 @@ internal sealed class ButtonPane: CompositeControl
         var roleStatus = new Text("Window action: waiting");
         var dialogFocusTarget = new Dock
         {
-            CanFocus = true,
+            Focusable = true,
             Children = { new Text("Focus here, then use Enter or Escape") },
         };
         var dialogDefault = new Button() { Content = new Text("Apply"), IsDefault = true };
@@ -80,8 +80,7 @@ internal sealed class ButtonPane: CompositeControl
         var disabled = new Button() { Content = new Text("Disabled"), IsEnabled = false };
         var shadowBackdrop = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             Children =
@@ -93,7 +92,7 @@ internal sealed class ButtonPane: CompositeControl
                     " · · · · · · · · · · · · · · · · · · · · · · · ·\n" +
                     "· · · · · · · · · · · · · · · · · · · · · · · ·")
                 {
-                    Foreground = ThemeColors.Muted,
+                    Foreground = ColorRole.Muted,
                     Overflow = Overflow.Clip,
                 },
             },

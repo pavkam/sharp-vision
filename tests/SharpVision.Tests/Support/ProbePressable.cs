@@ -16,7 +16,7 @@ internal sealed class ProbePressable: Pressable
     internal List<ActivationCause> Activations { get; } = [];
 
     /// <summary>Gets implicit capture-cancellation reasons after the shared behavior has reset.</summary>
-    internal List<ReleaseReason> CaptureCancellations { get; } = [];
+    internal List<PointerCaptureLossReason> CaptureCancellations { get; } = [];
 
     /// <summary>Gets whether capture was still reported inside the latest cancellation callback.</summary>
     internal bool HadCaptureDuringCancellation { get; private set; }
@@ -28,9 +28,9 @@ internal sealed class ProbePressable: Pressable
     protected override void Activate(ActivationCause cause) => Activations.Add(cause);
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
-        base.OnPointerCaptureCancelled(reason);
+        base.OnLostPointerCapture(reason);
         HadCaptureDuringCancellation = HasPointerCapture;
         WasPressedDuringCancellation = IsPressed;
         CaptureCancellations.Add(reason);

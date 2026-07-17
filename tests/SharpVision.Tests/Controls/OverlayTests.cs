@@ -320,8 +320,8 @@ public sealed class OverlayTests
     {
         await using var dispatcher = Dispatcher.Start();
         var layer = new Layer();
-        var first = new ProbeControl() { CanFocus = true };
-        var second = new ProbeControl() { CanFocus = true };
+        var first = new ProbeControl() { Focusable = true };
+        var second = new ProbeControl() { Focusable = true };
         Layer.SetZIndex(first, 20);
         layer.Children.Add(first);
         layer.Children.Add(second);

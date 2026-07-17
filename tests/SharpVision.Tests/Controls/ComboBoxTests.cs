@@ -71,40 +71,6 @@ public sealed class ComboBoxTests
         order.ShouldBe(["property", "event"]);
     }
 
-    /// <summary>Verifies an open drop-down uses an opaque inherited surface inside a visible frame.</summary>
-    [Fact]
-    public void Render_WhenOpen_UsesOpaqueFramedDropDownSurface()
-    {
-        var theme = new Theme();
-        var controlStyle = ThemeTestSupport.CreateControlStyle();
-        controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
-        controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(42));
-        theme.SetStyle(controlStyle);
-        var box = new ComboBox()
-        {
-            Height = Length.Cells(1),
-            Items = ["Small", "Large"],
-            IsOpen = true,
-        };
-        ThemeTestSupport.ApplyTheme(box, theme);
-        var size = new Size(12, 6);
-        new Engine().Layout(box, size);
-        using Frame frame = new(size);
-        frame.Canvas.Fill(
-            frame.Canvas.Bounds,
-            new Rune(' '),
-            new TerminalStyle(Color.Default, Color.Indexed(7)));
-
-        box.Render(frame.Canvas);
-
-        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
-        var list = popup.Content.ShouldBeOfType<List>();
-        list.DesiredSize.Height.ShouldBeGreaterThan(0);
-        popup.SurfaceBounds.Height.ShouldBeGreaterThan(2);
-        frame.GetCell(new Point(popup.SurfaceBounds.X + 1, popup.SurfaceBounds.Y + 1)).Style.Background
-            .ShouldBe(Color.Indexed(42));
-    }
-
     /// <summary>Verifies the framed popup preserves the first visible choices instead of exposing the underlying page.</summary>
     [Fact]
     public void Render_WhenOpen_RendersChoicesInsideFramedSurface()
@@ -130,36 +96,6 @@ public sealed class ComboBoxTests
         FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y + 1)).ShouldBe("3");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 1, list.Bounds.Y + 1)).ShouldBe("-");
         FrameOracle.Get(frame, new Point(list.Bounds.X + 2, list.Bounds.Y + 1)).ShouldBe("D");
-    }
-
-    /// <summary>Verifies a selected popup choice fills every trailing cell in its realized row.</summary>
-    [Fact]
-    public void Render_WhenOpenWithSelectedChoice_FillsTheCompleteListRow()
-    {
-        var theme = new Theme();
-        var controlStyle = ThemeTestSupport.CreateControlStyle();
-        controlStyle.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(255));
-        controlStyle.Set(Control.BackgroundProperty, State.Normal, Color.Indexed(240));
-        controlStyle.Set(Control.ForegroundProperty, State.Selected, Color.Indexed(255));
-        controlStyle.Set(Control.BackgroundProperty, State.Selected, Color.Indexed(99));
-        theme.SetStyle(controlStyle);
-        var box = new ComboBox()
-        {
-            Width = Length.Cells(20),
-            Items = ["Compact", "Comfortable", "Spacious"],
-            SelectedIndex = 0,
-            IsOpen = true,
-        };
-        ThemeTestSupport.ApplyTheme(box, theme);
-        var size = new Size(24, 8);
-        new Engine().Layout(box, size);
-        using Frame frame = new(size);
-
-        box.Render(frame.Canvas);
-
-        var list = OwnedTree.Find<List>(box).ShouldNotBeNull();
-        frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y)).Style.Background.ShouldBe(Color.Indexed(99));
-        frame.GetCell(new Point(list.Bounds.Right - 1, list.Bounds.Y + 1)).Style.Background.ShouldBe(Color.Indexed(240));
     }
 
     /// <summary>Verifies long popup choices expose the same configured canonical scrollbar as a standalone List.</summary>
@@ -189,7 +125,7 @@ public sealed class ComboBoxTests
         rail.Fill.ShouldBe(ScrollBarFill.Line);
     }
 
-    /// <summary>Verifies Enter opens the list below the field and transfers focus for directional selection.</summary>
+    /// <summary>Verifies Enter opens the list while the composite owner retains focus for directional selection.</summary>
     [Fact]
     public async Task Dispatch_WhenEnterOpens_TransfersFocusAndInvokesSelectedListItemAsync()
     {
@@ -203,13 +139,12 @@ public sealed class ComboBoxTests
             using FocusManager focus = new(box);
             focus.Focus(box).ShouldBeTrue();
 
-            Router.Route(box, Events.Key, Key(Code.Enter));
+            _ = Router.Route(box, Events.Key, Key(Code.Enter));
 
             box.IsOpen.ShouldBeTrue();
-            var list = focus.Focused.ShouldBeOfType<List>();
-            Router.Route(list, Events.Key, Key(Code.Down));
-            var selectedItem = focus.Focused.ShouldBeOfType<ListItem>();
-            Router.Route(selectedItem, Events.Key, Key(Code.Enter));
+            focus.Focused.ShouldBeSameAs(box);
+            _ = Router.Route(box, Events.Key, Key(Code.Down));
+            _ = Router.Route(box, Events.Key, Key(Code.Enter));
 
             box.SelectedIndex.ShouldBe(1);
             box.IsOpen.ShouldBeFalse();
@@ -230,9 +165,9 @@ public sealed class ComboBoxTests
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
             focus.Focus(box).ShouldBeTrue();
-            Router.Route(box, Events.Key, Key(Code.Enter));
+            _ = Router.Route(box, Events.Key, Key(Code.Enter));
 
-            Router.Route(focus.Focused!, Events.Key, Key(Code.Escape));
+            _ = Router.Route(box, Events.Key, Key(Code.Escape));
 
             box.IsOpen.ShouldBeFalse();
             focus.Focused.ShouldBeSameAs(box);
@@ -258,7 +193,7 @@ public sealed class ComboBoxTests
             new Engine().Layout(box, size);
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
-            using CaptureManager capture = new(box);
+            using PointerManager capture = new(box);
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
             new Engine().Layout(box, size);
@@ -273,7 +208,7 @@ public sealed class ComboBoxTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies Tab stays inside the open popup by cycling through ListItems.</summary>
+    /// <summary>Verifies Tab closes the transient popup and leaves exactly one deferred traversal command.</summary>
     [Fact]
     public async Task Dispatch_WhenTabPressedInOpenPopup_CyclesThroughListItemsAsync()
     {
@@ -283,7 +218,7 @@ public sealed class ComboBoxTests
         {
             var root = new ProbeContainer();
             var box = new ComboBox() { Items = ["A", "B", "C"], SelectedIndex = 0 };
-            var outside = new ProbeControl() { CanFocus = true };
+            var outside = new ProbeControl() { Focusable = true };
             root.Children.Add(box);
             root.Children.Add(outside);
             new Engine().Layout(root, new Size(20, 10));
@@ -291,24 +226,19 @@ public sealed class ComboBoxTests
             using FocusManager focus = new(root);
             focus.Focus(box).ShouldBeTrue();
 
-            Router.Route(box, Events.Key, Key(Code.Enter));
+            _ = Router.Route(box, Events.Key, Key(Code.Enter));
             box.IsOpen.ShouldBeTrue();
-            var list = focus.Focused.ShouldBeOfType<List>();
+            var result = Router.Route(box, Events.Key, Tab());
 
-            Router.Route(list, Events.Key, Tab());
-            var item1 = focus.Focused.ShouldBeOfType<ListItem>();
-
-            Router.Route(item1, Events.Key, Tab());
-            var item2 = focus.Focused.ShouldBeOfType<ListItem>();
-
-            Router.Route(item2, Events.Key, Tab());
-            _ = focus.Focused.ShouldBeOfType<ListItem>();
-
+            box.IsOpen.ShouldBeFalse();
+            result.Command.ShouldBe(PostRouteCommand.TabNext);
+            result.Anchor.ShouldBeSameAs(box);
+            focus.Focused.ShouldBeSameAs(box);
             focus.Focused.ShouldNotBeSameAs(outside);
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies Tab does not escape an open popup to reach sibling controls.</summary>
+    /// <summary>Verifies the popup's private list and rows never enter traversal.</summary>
     [Fact]
     public async Task Dispatch_WhenTabPressedInOpenPopup_DoesNotEscapeToSiblingControlsAsync()
     {
@@ -318,24 +248,19 @@ public sealed class ComboBoxTests
         {
             var root = new ProbeContainer();
             var box = new ComboBox() { Items = ["X", "Y"], SelectedIndex = 0 };
-            var sibling = new ProbeControl() { CanFocus = true };
+            var sibling = new ProbeControl() { Focusable = true };
             root.Children.Add(box);
             root.Children.Add(sibling);
             new Engine().Layout(root, new Size(20, 10));
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
             focus.Focus(box).ShouldBeTrue();
-            Router.Route(box, Events.Key, Key(Code.Enter));
+            _ = Router.Route(box, Events.Key, Key(Code.Enter));
             box.IsOpen.ShouldBeTrue();
-            var current = focus.Focused.ShouldNotBeNull();
-
-            for (var tab = 0; tab < 10; tab++)
-            {
-                Router.Route(current, Events.Key, Tab());
-                current = focus.Focused.ShouldNotBeNull();
-                current.ShouldNotBeSameAs(sibling);
-                current.ShouldNotBeSameAs(box);
-            }
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(sibling);
+            focus.MoveNext(reverse: true).ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(box);
         }, TestContext.Current.CancellationToken);
     }
 

@@ -3,133 +3,59 @@
 
 namespace SharpVision.Controls;
 
-using UnicodeWidth = Width;
-
-/// <summary>Displays determinate or indeterminate progress as semantic terminal cells.</summary>
+/// <summary>Displays a visual progress indicator using block characters with optional sub-cell resolution.</summary>
 public sealed class ProgressBar: Control
 {
-    private double _value;
+    private static readonly string[] _horizontalBlocks = [" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"];
+    private static readonly string[] _verticalBlocks = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
 
-    #region Construction and properties
+    /// <summary>Initializes a non-focusable horizontal progress bar at zero progress.</summary>
+    public ProgressBar() => IsHitTestVisible = false;
 
-    /// <summary>Initializes a horizontal zero-to-one bar excluded from focus and hit testing.</summary>
-    public ProgressBar()
-    {
-        HorizontalAlignment = HorizontalAlignment.Stretch;
-        VerticalAlignment = VerticalAlignment.Stretch;
-        CanFocus = false;
-        IsHitTestVisible = false;
-    }
-
-    /// <summary>Gets or sets the finite inclusive lower endpoint, strictly below Maximum.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not finite.</exception>
-    /// <exception cref="ArgumentException">The value is greater than or equal to Maximum.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <summary>Gets or sets the minimum value.</summary>
+    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
     public double Minimum
     {
         get;
-        set
-        {
-            ValidateFinite(value, nameof(value));
-
-            if (value >= Maximum)
-            {
-                throw new ArgumentException("Minimum must be less than Maximum.", nameof(value));
-            }
-
-            VerifyMutable();
-
-            if (field.Equals(value))
-            {
-                return;
-            }
-
-            field = value;
-            var clamped = _value < value;
-
-            if (clamped)
-            {
-                _value = value;
-            }
-
-            NotifyPropertyChanged(nameof(Minimum), ChangeImpact.Render);
-
-            if (clamped)
-            {
-                NotifyPropertyChanged(nameof(Value), ChangeImpact.Render);
-            }
-        }
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
-    /// <summary>Gets or sets the finite inclusive upper endpoint, strictly above Minimum.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not finite.</exception>
-    /// <exception cref="ArgumentException">The value is less than or equal to Minimum.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <summary>Gets or sets the maximum value.</summary>
+    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
     public double Maximum
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
+    } = 1.0;
+
+    /// <summary>Gets or sets the current value, clamped between Minimum and Maximum.</summary>
+    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
+    public double Value
     {
         get;
         set
         {
-            ValidateFinite(value, nameof(value));
-
-            if (value <= Minimum)
-            {
-                throw new ArgumentException("Maximum must be greater than Minimum.", nameof(value));
-            }
-
-            VerifyMutable();
-
-            if (field.Equals(value))
-            {
-                return;
-            }
-
-            field = value;
-            var clamped = _value > value;
-
-            if (clamped)
-            {
-                _value = value;
-            }
-
-            NotifyPropertyChanged(nameof(Maximum), ChangeImpact.Render);
-
-            if (clamped)
-            {
-                NotifyPropertyChanged(nameof(Value), ChangeImpact.Render);
-            }
-        }
-    } = 1;
-
-    /// <summary>Gets or sets a finite value clamped into the inclusive range.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not finite.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public double Value
-    {
-        get => _value;
-        set
-        {
-            ValidateFinite(value, nameof(value));
-            _ = SetProperty(ref _value, Math.Clamp(value, Minimum, Maximum), ChangeImpact.Render);
+            var clamped = Math.Clamp(value, Minimum, Maximum);
+            _ = SetProperty(ref field, clamped, ChangeImpact.Render);
         }
     }
 
-    /// <summary>Gets or sets whether the range is unknown and uses deterministic indeterminate cells.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <summary>Gets or sets whether the bar shows an indeterminate state.</summary>
+    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
     public bool IsIndeterminate
     {
         get;
         set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
-    /// <summary>Gets or sets whether fill advances left-to-right or bottom-to-top.</summary>
+    /// <summary>Gets or sets horizontal or vertical bar layout.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
     public Orientation Orientation
     {
         get;
@@ -137,179 +63,116 @@ public sealed class ProgressBar: Control
         {
             if (!Enum.IsDefined(value))
             {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "The progress orientation is unknown.");
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The progress bar orientation is unknown.");
             }
 
-            _ = SetProperty(ref field, value, ChangeImpact.Render);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = Orientation.Horizontal;
 
-    /// <summary>Gets or sets the printable one-cell glyph used for filled determinate cells.</summary>
-    /// <exception cref="ArgumentException">The value is a control or not one cell under the narrow policy.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Rune FillGlyph
+    /// <summary>Gets or sets whether to use fractional block characters for sub-cell resolution.</summary>
+    /// <remarks>
+    /// When true, horizontal bars use ▏▎▍▌▋▊▉█ (8 levels per cell) and vertical bars use
+    /// ▁▂▃▄▅▆▇█ (8 levels per cell), providing 8x the effective resolution.
+    /// When false, each cell is either fully filled (█) or empty (░).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
+    public bool UseSubCellResolution
     {
         get;
-        set => _ = SetProperty(ref field, ValidateGlyph(value, nameof(value)), ChangeImpact.Render);
-    } = new('█');
-
-    /// <summary>Gets or sets the printable one-cell glyph used for unfilled determinate cells.</summary>
-    /// <exception cref="ArgumentException">The value is a control or not one cell under the narrow policy.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Rune TrackGlyph
-    {
-        get;
-        set => _ = SetProperty(ref field, ValidateGlyph(value, nameof(value)), ChangeImpact.Render);
-    } = new('░');
-
-    /// <summary>Gets or sets the printable one-cell glyph used while progress is indeterminate.</summary>
-    /// <exception cref="ArgumentException">The value is a control or not one cell under the narrow policy.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Rune IndeterminateGlyph
-    {
-        get;
-        set => _ = SetProperty(ref field, ValidateGlyph(value, nameof(value)), ChangeImpact.Render);
-    } = new('▒');
-
-    #endregion
-
-    #region Layout and rendering
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
+    }
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        return new Size(1, 1);
+        return Orientation == Orientation.Horizontal ? new Size(10, 1) : new Size(1, 10);
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        RenderChrome(canvas);
-        var bounds = ContentBounds;
-
-        if (bounds.Width == 0 || bounds.Height == 0)
+        if (Bounds.Width == 0 || Bounds.Height == 0)
         {
             return;
         }
 
         var style = ResolvedStyle;
-
-        if (IsIndeterminate)
-        {
-            canvas.Fill(bounds, RenderGlyph(IndeterminateGlyph, new Rune('?')), style);
-            return;
-        }
-
-        var cells = Orientation == Orientation.Horizontal ? bounds.Width : bounds.Height;
-        var filled = FilledCells(cells);
-        var fill = RenderGlyph(FillGlyph, new Rune('#'));
-        var track = RenderGlyph(TrackGlyph, new Rune('.'));
+        var range = Maximum - Minimum;
+        var ratio = range > 0 ? Math.Clamp((Value - Minimum) / range, 0, 1) : 0;
 
         if (Orientation == Orientation.Horizontal)
         {
-            DrawHorizontal(canvas, bounds, filled, fill, track, style);
+            RenderHorizontal(canvas, style, ratio);
         }
         else
         {
-            DrawVertical(canvas, bounds, filled, fill, track, style);
+            RenderVertical(canvas, style, ratio);
         }
     }
 
-    #endregion
-
-    private static void DrawHorizontal(
-        TerminalCanvas canvas,
-        Rect bounds,
-        int filled,
-        Rune fill,
-        Rune track,
-        TerminalStyle style)
+    private void RenderHorizontal(TerminalCanvas canvas, TerminalStyle style, double ratio)
     {
-        if (filled > 0)
+        if (UseSubCellResolution)
         {
-            canvas.Fill(new Rect(bounds.X, bounds.Y, filled, bounds.Height), fill, style);
+            var totalEighths = (int) (ratio * Bounds.Width * 8);
+            var fullCells = totalEighths / 8;
+            var remainder = totalEighths % 8;
+
+            for (var x = Bounds.X; x < Bounds.Right; x++)
+            {
+                var cellIndex = x - Bounds.X;
+                var glyph = cellIndex < fullCells
+                    ? _horizontalBlocks[8]
+                    : cellIndex == fullCells && remainder > 0
+                        ? _horizontalBlocks[remainder]
+                        : " ";
+                _ = canvas.Draw(glyph.AsSpan(), new Point(x, Bounds.Y), style, background: BackgroundMode.Transparent);
+            }
         }
-
-        if (filled < bounds.Width)
+        else
         {
-            canvas.Fill(
-                new Rect(bounds.X + filled, bounds.Y, bounds.Width - filled, bounds.Height),
-                track,
-                style);
-        }
-    }
+            var filled = (int) (Bounds.Width * ratio);
 
-    private static void DrawVertical(
-        TerminalCanvas canvas,
-        Rect bounds,
-        int filled,
-        Rune fill,
-        Rune track,
-        TerminalStyle style)
-    {
-        var trackHeight = bounds.Height - filled;
-
-        if (trackHeight > 0)
-        {
-            canvas.Fill(new Rect(bounds.X, bounds.Y, bounds.Width, trackHeight), track, style);
-        }
-
-        if (filled > 0)
-        {
-            canvas.Fill(
-                new Rect(bounds.X, bounds.Y + trackHeight, bounds.Width, filled),
-                fill,
-                style);
+            for (var x = Bounds.X; x < Bounds.Right; x++)
+            {
+                var glyph = x - Bounds.X < filled ? "█" : "░";
+                _ = canvas.Draw(glyph.AsSpan(), new Point(x, Bounds.Y), style, background: BackgroundMode.Transparent);
+            }
         }
     }
 
-    private int FilledCells(int cells)
+    private void RenderVertical(TerminalCanvas canvas, TerminalStyle style, double ratio)
     {
-        if (_value <= Minimum)
+        if (UseSubCellResolution)
         {
-            return 0;
+            var totalEighths = (int) (ratio * Bounds.Height * 8);
+            var fullCells = totalEighths / 8;
+            var remainder = totalEighths % 8;
+
+            for (var y = Bounds.Y; y < Bounds.Bottom; y++)
+            {
+                var cellFromBottom = Bounds.Bottom - 1 - y;
+                var glyph = cellFromBottom < fullCells
+                    ? _verticalBlocks[8]
+                    : cellFromBottom == fullCells && remainder > 0
+                        ? _verticalBlocks[remainder]
+                        : " ";
+                _ = canvas.Draw(glyph.AsSpan(), new Point(Bounds.X, y), style, background: BackgroundMode.Transparent);
+            }
         }
-
-        if (_value >= Maximum)
+        else
         {
-            return cells;
-        }
+            var filled = (int) (Bounds.Height * ratio);
+            var emptyEnd = Bounds.Bottom - filled;
 
-        var normalized = (_value - Minimum) / (Maximum - Minimum);
-        return (int) Math.Floor(normalized * cells);
-    }
-
-    private Rune RenderGlyph(Rune value, Rune fallback)
-    {
-        Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
-        return UnicodeWidth.Measure(buffer[..length], CellPolicy.AmbiguousWidth).Cells == 1
-            ? value
-            : fallback;
-    }
-
-    private static Rune ValidateGlyph(Rune value, string name)
-    {
-        Span<char> buffer = stackalloc char[2];
-        var length = value.EncodeToUtf16(buffer);
-        var measurement = UnicodeWidth.Measure(buffer[..length], Ambiguous.Narrow);
-
-        return measurement.Cells == 1 && measurement.Controls == 0
-            ? value
-            : throw new ArgumentException(
-                "A progress glyph must be printable and one cell wide under the narrow policy.",
-                name);
-    }
-
-    private static void ValidateFinite(double value, string name)
-    {
-        if (!double.IsFinite(value))
-        {
-            throw new ArgumentOutOfRangeException(name, value, "A progress range value must be finite.");
+            for (var y = Bounds.Y; y < Bounds.Bottom; y++)
+            {
+                var glyph = y >= emptyEnd ? "█" : "░";
+                _ = canvas.Draw(glyph.AsSpan(), new Point(Bounds.X, y), style, background: BackgroundMode.Transparent);
+            }
         }
     }
 }

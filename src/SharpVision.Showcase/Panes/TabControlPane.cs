@@ -5,95 +5,34 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents selection, availability, Unicode, overflow, and replacement TabControl specimens.</summary>
 internal sealed class TabControlPane: CompositeControl
 {
-    /// <summary>The exact catalog/page name.</summary>
-    internal const string Title = "TabControl";
-
-    /// <summary>Initializes the retained TabControl documentation page.</summary>
     internal TabControlPane() => InitializeContent(CreateContent());
+    internal const string Title = "TabControl";
 
     private static Dock CreateContent()
     {
-        var basic = CreateTabs(48, ("General", "General settings"), ("Advanced", "Advanced settings"));
-        var disabled = CreateTabs(48, ("Available", "Selected page"), ("Unavailable", "Cannot select"));
-        disabled.Items[1].IsEnabled = false;
-        var unicode = CreateTabs(32, ("界 Tools", "Wide headers preserve complete cells."), ("Emoji", "Ordinary text follows."));
-        var overflow = CreateTabs(
-            14,
-            ("Overview", "First"),
-            ("Long settings", "Middle"),
-            ("界", "Selected overflow page"));
-        overflow.SelectedIndex = 2;
-        var overflowStage = new Stack
-        {
-            Orientation = Orientation.Horizontal,
-            Children =
-            {
-                overflow,
-                new Text { Width = Length.Star(1) },
-            },
-        };
-        var replacement = CreateTabs(48, ("Replacement", "First"), ("Other", "Other page"));
-        replacement.Items[0].Content = new Text("Caller content was replaced without rebuilding the header.");
+        var status = new Text("Selected: General");
+        var tabs = new TabControl { Width = Length.Cells(50), Height = Length.Cells(8) };
+        tabs.Items.Add(new TabItem { Header = "General", Content = new Stack { Padding = new Thickness(1), Children = { new Text("General settings."), new CheckBox { Content = new Text("Notifications") } } } });
+        tabs.Items.Add(new TabItem { Header = "Advanced", Content = new Stack { Padding = new Thickness(1), Children = { new CheckBox { Content = new Text("Debug mode") } } } });
+        tabs.Items.Add(new TabItem { Header = "About", Content = new Text("SharpVision v1.0") { Padding = new Thickness(1) } });
+        tabs.SelectionChanged += (_, _) => status.Content = $"Selected: {(tabs.SelectedIndex >= 0 ? tabs.Items[tabs.SelectedIndex].Header : "none")}";
 
-        return Doc.Page(
-            Title,
-            "Coordinates typed retained pages through one focusable header strip and one selected content region.",
-            Doc.Section(
-                "▤",
-                "Selection and content",
-                "Pointer and keyboard selection commit header state before swapping the participating page content.",
-                Doc.Example(
-                    "Basic pages",
-                    "Use typed TabItem pages; the first eligible page selects automatically.",
-                    Doc.Card(basic),
-                    "tabs.Items.Add(new TabItem { Header = \"General\", Content = body });"),
-                Doc.Example(
-                    "Disabled page",
-                    "Navigation skips unavailable headers without stealing the current selection.",
-                    Doc.Card(disabled))),
-            Doc.Section(
-                "界",
-                "Unicode and overflow",
-                "Header measurement uses terminal cells and keeps the selected label visible in constrained strips.",
-                Doc.Example(
-                    "Wide header",
-                    "The CJK grapheme owns its continuation cell inside the retained button.",
-                    Doc.Card(unicode)),
-                Doc.Example(
-                    "Overflow reveal",
-                    "Selecting the final page scrolls only the clipped header origin, not page content.",
-                    Doc.Card(overflowStage))),
-            Doc.Section(
-                "↻",
-                "Ownership and repair",
-                "Content replacement preserves header identity, while page removal chooses the nearest eligible peer.",
-                Doc.Example(
-                    "Replaced content",
-                    "Caller content transfers through ContentControl ownership without reconstructing the page.",
-                    Doc.Card(replacement),
-                    "page.Content = replacement;")));
-    }
+        var dynStatus = new Text("Tabs: 2");
+        var dyn = new TabControl { Width = Length.Cells(50), Height = Length.Cells(6) };
+        dyn.Items.Add(new TabItem { Header = "Tab 1", Content = new Text("First") { Padding = new Thickness(1) } });
+        dyn.Items.Add(new TabItem { Header = "Tab 2", Content = new Text("Second") { Padding = new Thickness(1) } });
+        var addBtn = new Button { Content = new Text("Add tab") };
+        var rmBtn = new Button { Content = new Text("Remove last") };
+        var counter = 2;
+        addBtn.Click += (_, _) => { counter++; dyn.Items.Add(new TabItem { Header = $"Tab {counter}", Content = new Text($"Content {counter}") { Padding = new Thickness(1) } }); dynStatus.Content = $"Tabs: {dyn.Items.Count}"; };
+        rmBtn.Click += (_, _) => { if (dyn.Items.Count > 0) { _ = dyn.Items.Remove(dyn.Items[^1]); dynStatus.Content = $"Tabs: {dyn.Items.Count}"; } };
 
-    private static TabControl CreateTabs(int width, params (string Header, string Content)[] pages)
-    {
-        var tabs = new TabControl
-        {
-            Width = Length.Cells(width),
-            Height = Length.Cells(4),
-        };
-
-        foreach (var page in pages)
-        {
-            tabs.Items.Add(new TabItem
-            {
-                Header = page.Header,
-                Content = new Text(page.Content),
-            });
-        }
-
-        return tabs;
+        return Doc.Page(Title, "Arranges typed tab pages with a header bar and keyboard-driven page switching.",
+            Doc.Section("📑", "Basic tabs", "Left/Right arrows switch tabs.",
+                Doc.Example("Settings panel", "Click a tab or use arrows.", Doc.Column(tabs, status), "tabs.Items.Add(new TabItem { Header = \"General\" });")),
+            Doc.Section("📑", "Dynamic tabs", "Add and remove tabs at runtime.",
+                Doc.Example("Add and remove", "Buttons modify the tab set.", Doc.Column(dyn, Doc.Row(addBtn, rmBtn), dynStatus))));
     }
 }

@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Protocols;
 
 
-/// <summary>Represents a validated default, indexed, RGB, or deferred role terminal color.</summary>
+/// <summary>Represents a validated concrete terminal color.</summary>
 public readonly record struct Color
 {
     /// <summary>Gets the terminal default color.</summary>
@@ -29,6 +29,14 @@ public readonly record struct Color
 
     /// <summary>Gets the RGB blue component.</summary>
     public byte Blue { get; }
+
+    /// <summary>Gets the first encoded component, which is the palette index for indexed colors.</summary>
+    /// <remarks>
+    /// This value exists for efficient palette emission and diagnostics. Callers that require an
+    /// indexed representation must inspect <see cref="Kind"/> first; RGB colors expose their red
+    /// component and the terminal default exposes zero.
+    /// </remarks>
+    public int Index => Red;
 
     /// <summary>Creates a 256-color palette reference.</summary>
     /// <param name="index">The palette index from 0 through 255.</param>
@@ -58,27 +66,6 @@ public readonly record struct Color
         ValidateComponent(blue, nameof(blue));
         return new Color(ColorKind.Rgb, (byte) red, (byte) green, (byte) blue);
     }
-
-    /// <summary>Creates a deferred semantic color resolved by the active theme before rendering.</summary>
-    /// <param name="id">The opaque role id from 0 through 255.</param>
-    /// <returns>A role color carrying <paramref name="id"/>.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="id"/> is outside 0 through 255.</exception>
-    /// <remarks>
-    /// The terminal layer does not interpret the id; a higher layer (the styling theme) maps it to a
-    /// concrete color during property resolution. A role color must never reach the SGR encoder.
-    /// </remarks>
-    public static Color Role(int id)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(id);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(id, byte.MaxValue);
-        return new Color(ColorKind.Role, (byte) id, 0, 0);
-    }
-
-    /// <summary>Gets the opaque role id when this is a role color.</summary>
-    /// <exception cref="InvalidOperationException">This color is not a role color.</exception>
-    public int RoleId => Kind == ColorKind.Role
-        ? Red
-        : throw new InvalidOperationException("RoleId is only defined for a role color.");
 
     /// <summary>Parses a hex RGB color string (<c>#rgb</c> or <c>#rrggbb</c>, case-insensitive, leading <c>#</c> optional).</summary>
     /// <param name="value">The hex color string.</param>

@@ -20,7 +20,6 @@ public sealed class ScrollBar: Control
     private int _dragThumbStart;
     private int _dragTrackLength;
     private ScrollRange _dragRange;
-    private CaptureManager? _subscribedCapture;
     private bool _hasDecrementGlyph;
     private bool _hasIncrementGlyph;
     private bool _hasTrackGlyph;
@@ -31,10 +30,14 @@ public sealed class ScrollBar: Control
     private Rune DefaultThumbGlyph { get; set; } = new('#');
 
     /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
-    public ScrollBar() => CanFocus = true;
+    public ScrollBar()
+    {
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.None;
+    }
 
     /// <inheritdoc/>
-    protected override bool OwnsPointerState => true;
 
     /// <summary>Raised after a changed value commits.</summary>
     public event EventHandler<ScrollEventArgs>? ValueChanged;
@@ -162,33 +165,19 @@ public sealed class ScrollBar: Control
         }
     }
 
-    /// <summary>Identifies the themeable compact-or-full chrome style property.</summary>
-    public static StyleProperty<ScrollBarChrome> ChromeProperty { get; } =
-        StyleProperty<ScrollBarChrome>.Register<ScrollBar>(
-            "chrome",
-            ScrollBarChrome.Full,
-            ChangeImpact.Measure);
-
     /// <summary>Gets or sets compact or full scrollbar chrome.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBarChrome Chrome
     {
-        get => GetValue(ChromeProperty);
+        get;
         set
         {
             Validate(value);
-            SetValue(ChromeProperty, value);
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
-    }
-
-    /// <summary>Identifies the themeable line-or-block fill style property.</summary>
-    public static StyleProperty<ScrollBarFill> FillProperty { get; } =
-        StyleProperty<ScrollBarFill>.Register<ScrollBar>(
-            "fill",
-            ScrollBarFill.Block,
-            ChangeImpact.Render);
+    } = ScrollBarChrome.Full;
 
     /// <summary>Gets or sets the generated line or block glyph treatment.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -196,13 +185,13 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBarFill Fill
     {
-        get => GetValue(FillProperty);
+        get;
         set
         {
             Validate(value);
-            SetValue(FillProperty, value);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
         }
-    }
+    } = ScrollBarFill.Block;
 
     /// <summary>Gets or sets the printable narrow decrement-button glyph.</summary>
     /// <exception cref="ArgumentException">The value is a control or not one cell wide.</exception>
@@ -388,7 +377,14 @@ public sealed class ScrollBar: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
+        base.OnLostPointerCapture(reason);
+        CancelDrag(releaseCapture: false);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var bounds = ContentBounds;
         var length = AxisLength(bounds);
@@ -403,7 +399,7 @@ public sealed class ScrollBar: Control
         var thumb = Thumb.Resolve(CurrentRange(), trackLength);
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             canvas.Clear(bounds, style);
         }
@@ -581,7 +577,6 @@ public sealed class ScrollBar: Control
         _dragThumbStart = thumb.Start;
         _dragTrackLength = trackLength;
         _dragRange = range;
-        SubscribeCapture(capture);
         SetPressed(true);
     }
 
@@ -625,41 +620,15 @@ public sealed class ScrollBar: Control
         }
     }
 
-    private void OnCaptureCancelled(object? sender, CaptureCancelledEventArgs eventArgs)
-    {
-        if (ReferenceEquals(eventArgs.Control, this))
-        {
-            Debug.Assert(ReferenceEquals(sender, _subscribedCapture), "Cancellation owner is stable.");
-            CancelDrag(releaseCapture: false);
-        }
-    }
-
     private void CancelDrag(bool releaseCapture)
     {
         _dragging = false;
         _dragPixelStart = null;
-        UnsubscribeCapture();
         SetPressed(false);
 
         if (releaseCapture && CaptureOwner?.Captured is { } captured && ReferenceEquals(captured, this))
         {
             CaptureOwner.Release();
-        }
-    }
-
-    private void SubscribeCapture(CaptureManager value)
-    {
-        UnsubscribeCapture();
-        _subscribedCapture = value;
-        value.Cancelled += OnCaptureCancelled;
-    }
-
-    private void UnsubscribeCapture()
-    {
-        if (_subscribedCapture is { } capture)
-        {
-            capture.Cancelled -= OnCaptureCancelled;
-            _subscribedCapture = null;
         }
     }
 

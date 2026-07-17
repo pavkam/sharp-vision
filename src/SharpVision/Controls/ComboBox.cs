@@ -13,7 +13,7 @@ public sealed class ComboBox: Control
     private readonly List _list;
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
-    private readonly PressInteraction _interaction;
+    private readonly PressBehavior _interaction;
 
     #region Construction and properties
 
@@ -23,7 +23,7 @@ public sealed class ComboBox: Control
         _list = new List
         {
             SelectionMode = SelectionMode.Single,
-            IsTabStop = false,
+            TabStop = false,
         };
         _list.ItemInvoked += OnItemInvoked;
         _list.SelectionChanged += OnSelectionChanged;
@@ -31,7 +31,8 @@ public sealed class ComboBox: Control
         {
             Anchor = this,
             Content = _list,
-            TabNavigation = TabNavigation.Contained,
+            FocusOnOpen = false,
+            TabNavigation = TabNavigation.None,
         };
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
@@ -45,7 +46,7 @@ public sealed class ComboBox: Control
                 ChangeImpact.Measure),
             capacity: 1);
         _popupSlot.Add(_popup);
-        _interaction = new PressInteraction(
+        _interaction = new PressBehavior(
             () => Bounds,
             () => EffectiveIsEnabled && EffectiveIsVisible,
             () => FocusOwner is null || IsFocused,
@@ -55,7 +56,9 @@ public sealed class ComboBox: Control
             ReleasePointerCapture,
             SetPressed,
             Activate);
-        CanFocus = true;
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.None;
     }
 
     /// <summary>Raised after a selected index commits through direct assignment or the drop-down list.</summary>
@@ -223,7 +226,6 @@ public sealed class ComboBox: Control
     #region Input, layout, and rendering
 
     /// <inheritdoc/>
-    protected override bool OwnsPointerState => true;
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -238,14 +240,12 @@ public sealed class ComboBox: Control
         ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
             return;
         }
-
-        RenderChrome(canvas);
 
         var content = ContentBounds;
         var style = ResolvedStyle;
@@ -266,17 +266,41 @@ public sealed class ComboBox: Control
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         base.OnEvent(eventArgs);
-        _interaction.Handle(eventArgs);
 
-        if (eventArgs.Handled ||
-            !IsOpen ||
-            eventArgs is not KeyEventArgs { Stroke: { Code: Code.Escape, Action: KeyAction.Press } })
+        if (eventArgs.Handled)
         {
             return;
         }
 
-        IsOpen = false;
-        eventArgs.Handled = true;
+        if (IsOpen && eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press } stroke })
+        {
+            if (stroke.Code == Code.Escape)
+            {
+                IsOpen = false;
+                eventArgs.Handled = true;
+                return;
+            }
+
+            if (stroke.Code == Code.Enter)
+            {
+                eventArgs.Handled = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, Modifiers.None);
+                return;
+            }
+
+            if (stroke.Code != Code.Tab && _list.MoveCurrent(stroke.Code))
+            {
+                eventArgs.Handled = true;
+                return;
+            }
+
+            if (stroke.Code == Code.Tab)
+            {
+                IsOpen = false;
+                return;
+            }
+        }
+
+        _interaction.Handle(eventArgs);
     }
 
     /// <inheritdoc/>
@@ -287,10 +311,10 @@ public sealed class ComboBox: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
-        base.OnPointerCaptureCancelled(reason);
-        _interaction.CaptureCancelled();
+        base.OnLostPointerCapture(reason);
+        _interaction.CaptureLost();
     }
 
     /// <inheritdoc/>

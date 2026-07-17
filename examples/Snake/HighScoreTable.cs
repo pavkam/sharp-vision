@@ -21,15 +21,54 @@ public sealed class HighScoreTable
     /// <summary>Gets the top entries.</summary>
     public IReadOnlyList<(string Name, int Score)> Entries => _entries;
 
-    /// <summary>Returns whether the score qualifies for the table.</summary>
-    public bool Qualifies(int score) => _entries.Count < 10 || score > _entries[^1].Score;
+    /// <summary>Returns whether a non-negative score qualifies for the table.</summary>
+    /// <param name="score">The non-negative score to compare.</param>
+    /// <returns><see langword="true"/> when the score has a place in the table; otherwise, false.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="score"/> is negative.</exception>
+    public bool Qualifies(int score)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(score);
+        return _entries.Count < 10 || score > _entries[^1].Score;
+    }
 
-    /// <summary>Inserts a score and returns the rank (1-based).</summary>
+    /// <summary>Inserts a score with up to three Unicode initials and returns the rank (1-based).</summary>
+    /// <param name="name">The non-blank initials; only the first three Unicode scalars are stored.</param>
+    /// <param name="score">The non-negative score.</param>
+    /// <returns>The inserted entry's one-based rank.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="name"/> is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="name"/> is empty, whitespace, or contains a non-letter Unicode scalar.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="score"/> is negative.</exception>
     public int Insert(string name, int score)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentOutOfRangeException.ThrowIfNegative(score);
 
-        var entry = (name.ToUpperInvariant()[..Math.Min(3, name.Length)].PadRight(3), score);
+        var initials = new StringBuilder();
+        var runeCount = 0;
+
+        foreach (var rune in name.EnumerateRunes())
+        {
+            if (!Rune.IsLetter(rune))
+            {
+                throw new ArgumentException("Initials may contain Unicode letters only.", nameof(name));
+            }
+
+            if (runeCount < 3)
+            {
+                _ = initials.Append(Rune.ToUpperInvariant(rune));
+                runeCount++;
+            }
+        }
+
+        while (runeCount < 3)
+        {
+            _ = initials.Append(' ');
+            runeCount++;
+        }
+
+        var entry = (initials.ToString(), score);
         var index = 0;
 
         while (index < _entries.Count && _entries[index].Score >= score)

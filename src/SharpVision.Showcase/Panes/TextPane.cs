@@ -200,7 +200,7 @@ internal sealed class TextPane: CompositeControl
     {
         BorderThickness = new Thickness(1),
         BorderGlyphs = Glyphs.Light,
-        BorderColor = ThemeColors.Border,
+        BorderColor = ColorRole.Border,
         Width = Length.Cells(20),
         Children = { text },
     };

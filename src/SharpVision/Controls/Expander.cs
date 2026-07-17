@@ -3,216 +3,78 @@
 
 namespace SharpVision.Controls;
 
-/// <summary>Owns one retained focusable header that expands or collapses caller-replaceable content.</summary>
-public sealed class Expander: ContentControl, IStyleScope
+/// <summary>Displays a collapsible section with a focusable header toggle and optional content.</summary>
+public sealed class Expander: ContentControl
 {
-    private readonly Text _headerText;
-    private readonly OwnedControlSlot _headerSlot;
+    private readonly PressBehavior _interaction;
 
-    /// <summary>Initializes an expanded Expander with one retained borderless header button.</summary>
+    /// <summary>Initializes an expanded section with an empty header.</summary>
     public Expander()
     {
-        _headerText = new Text();
-        HeaderPart = new Button
-        {
-            Content = _headerText,
-            BorderThickness = default,
-            HasShadow = false,
-            Padding = default,
-            Height = Length.Cells(1),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Top,
-        };
-        HeaderPart.Click += OnHeaderClick;
-        _headerSlot = RegisterOwnedSlot(
-            new OwnedControlOptions(
-                OwnedControlRole.FrameworkPart,
-                OwnedControlLayer.Normal,
-                participatesInHitTesting: true,
-                participatesInNavigation: true,
-                partKey: "header",
-                ChangeImpact.Measure),
-            capacity: 1);
-        _headerSlot.Add(HeaderPart);
-        UpdateHeader();
+        _interaction = new PressBehavior(
+            () => new Rect(Bounds.X, Bounds.Y, Bounds.Width, Math.Min(1, Bounds.Height)),
+            () => EffectiveIsEnabled && EffectiveIsVisible,
+            () => FocusOwner is null || IsFocused, RequestFocus, CapturePointer,
+            () => HasPointerCapture, ReleasePointerCapture, SetPressed,
+            _ => IsExpanded = !IsExpanded);
+        Focusable = true;
+        TabStop = true;
     }
 
-    /// <summary>Raised after a changed expansion state and retained header text commit.</summary>
+    /// <summary>Raised after the expanded state changes.</summary>
     public event EventHandler? ExpandedChanged;
 
-    /// <summary>Gets or sets the non-null single-line text rendered after the directional glyph.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The value contains a terminal control.</exception>
-    /// <exception cref="InvalidOperationException">The attached Expander is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Expander is disposed.</exception>
+    /// <summary>Gets or sets the non-null header label.</summary>
     public string Header
     {
         get;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-
-            if (Terminal.Unicode.Width.Measure(value).Controls > 0)
-            {
-                throw new ArgumentException("An Expander header cannot contain terminal controls.", nameof(value));
-            }
-
-            if (SetProperty(ref field, value, ChangeImpact.Measure))
-            {
-                UpdateHeader();
-            }
-        }
+        set { ArgumentNullException.ThrowIfNull(value); _ = SetProperty(ref field, value, ChangeImpact.Measure); }
     } = string.Empty;
 
-    /// <summary>Gets or sets whether caller content participates below the retained header.</summary>
-    /// <exception cref="InvalidOperationException">The attached Expander is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Expander is disposed.</exception>
+    /// <summary>Gets or sets whether the content is visible.</summary>
     public bool IsExpanded
     {
         get;
-        set
-        {
-            if (!SetProperty(ref field, value, ChangeImpact.Measure))
-            {
-                return;
-            }
-
-            UpdateHeader();
-            ExpandedChanged?.Invoke(this, EventArgs.Empty);
-        }
+        set { if (SetProperty(ref field, value, ChangeImpact.Measure)) { ExpandedChanged?.Invoke(this, EventArgs.Empty); } }
     } = true;
 
-    /// <summary>Gets the retained focusable header framework part for internal proof and composition.</summary>
-    internal Button HeaderPart { get; }
-
     /// <inheritdoc/>
-    public override Control? HitTest(Point point)
-    {
-        var contains = Bounds.Contains(point);
-
-        return !CanHitTestSelf(point, requireContainment: false)
-            ? null
-            : HitTestPopup(point) ??
-                (contains ? HeaderPart.HitTest(point) : null) ??
-                (IsExpanded && contains ? Content?.HitTest(point) : null) ??
-                (contains ? this : null);
-    }
-
-    /// <inheritdoc/>
-    internal override int NavigationCount => IsExpanded && Content is not null ? 2 : 1;
-
-    /// <inheritdoc/>
-    internal override Control NavigationAt(int index) => index switch
-    {
-        0 => HeaderPart,
-        1 when IsExpanded && Content is not null => Content,
-        _ => throw new ArgumentOutOfRangeException(nameof(index), index, "The navigation index is outside the Expander."),
-    };
-
-    /// <inheritdoc/>
-    internal override Control? HitTestPopupCore(Point point) =>
-        HeaderPart.HitTestPopupBranch(point, OwnedControlLayer.Normal) ??
-        (IsExpanded ? Content?.HitTestPopupBranch(point, OwnedControlLayer.Normal) : null);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var header = MeasureChild(HeaderPart, new Constraint(constraint.Width, height: 1));
-        var content = Content;
-
-        if (!IsExpanded || content is null || content.Visibility == Visibility.Collapsed)
-        {
-            return header;
-        }
-
-        var desired = MeasureChild(
-            content,
-            new Constraint(constraint.Width, Subtract(constraint.Height, header.Height)));
-        return new Size(
-            Math.Max(header.Width, Add(desired.Width, content.Margin.Horizontal)),
-            Add(header.Height, Add(desired.Height, content.Margin.Vertical)));
+        var hw = (int) Math.Min(int.MaxValue, 2L + Terminal.Unicode.Width.Measure(Header).Cells);
+        if (!IsExpanded || Content is not { } child) { return new Size(hw, 1); }
+        var d = MeasureChild(child, new Constraint(constraint.Width, constraint.Height.HasValue ? Math.Max(0, constraint.Height.Value - 1) : null));
+        var cw = child.Visibility == Visibility.Collapsed ? 0 : (int) Math.Min(int.MaxValue, (long) d.Width + child.Margin.Horizontal);
+        var ch = child.Visibility == Visibility.Collapsed ? 0 : (int) Math.Min(int.MaxValue, (long) d.Height + child.Margin.Vertical);
+        return new Size(Math.Max(hw, cw), (int) Math.Min(int.MaxValue, 1L + ch));
     }
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        var headerHeight = Math.Min(1, bounds.Height);
-        ArrangeChild(
-            HeaderPart,
-            new Rect(bounds.X, bounds.Y, bounds.Width, headerHeight),
-            ResolvedAxes.Both);
-
-        if (Content is not { } content)
-        {
-            return;
-        }
-
-        var slot = IsExpanded
-            ? new Rect(bounds.X, Add(bounds.Y, headerHeight), bounds.Width, Math.Max(0, bounds.Height - headerHeight))
-            : default;
-        ArrangeChild(content, slot, ResolvedAxes.Both);
+        if (IsExpanded && Content is { } c && bounds.Height > 1) { ArrangeChild(c, new Rect(bounds.X, bounds.Y + 1, bounds.Width, bounds.Height - 1), ResolvedAxes.Both); }
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (HeaderPart.RendersInNormalLayer)
-        {
-            HeaderPart.Render(canvas);
-        }
-
-        if (IsExpanded && Content is { RendersInNormalLayer: true } content)
-        {
-            content.Render(canvas);
-        }
+        if (Bounds.Width == 0 || Bounds.Height == 0) { return; }
+        var s = ResolvedStyle;
+        _ = canvas.Draw((IsExpanded ? "▼ " : "▶ ").AsSpan(), new Point(Bounds.X, Bounds.Y), s, background: BackgroundMode.Transparent);
+        if (Header.Length > 0 && Bounds.Width > 2) { _ = canvas.Clip(new Rect(Bounds.X + 2, Bounds.Y, Bounds.Width - 2, 1)).Draw(Header.AsSpan(), new Point(Bounds.X + 2, Bounds.Y), s, background: BackgroundMode.Transparent); }
     }
 
     /// <inheritdoc/>
-    internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
-    {
-        HeaderPart.RenderPopupBranch(canvas, OwnedControlLayer.Normal);
-
-        if (IsExpanded && Content is { } content)
-        {
-            content.RenderPopupBranch(canvas, OwnedControlLayer.Normal);
-        }
-    }
+    protected override void OnEvent(RoutedEventArgs eventArgs) { base.OnEvent(eventArgs); _interaction.Handle(eventArgs); }
 
     /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason)
-    {
-        base.OnUnavailable(reason);
+    protected override void OnFocusChanged(bool focused) { base.OnFocusChanged(focused); _interaction.FocusChanged(focused); }
 
-        if (reason == ReleaseReason.Disposed)
-        {
-            HeaderPart.Click -= OnHeaderClick;
-            ExpandedChanged = null;
-        }
-    }
+    /// <inheritdoc/>
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason) { base.OnLostPointerCapture(reason); _interaction.CaptureLost(); }
 
-    private void OnHeaderClick(object? sender, ActivationEventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        IsExpanded = !IsExpanded;
-    }
-
-    private void UpdateHeader()
-    {
-        var glyph = IsExpanded ? "▼" : "▶";
-        _headerText.Content = Header.Length == 0 ? glyph : $"{glyph} {Header}";
-    }
-
-    private static int Add(int left, int right)
-    {
-        Debug.Assert(right >= 0, "Expander layout adds non-negative extents.");
-        var result = (long) left + right;
-        return result >= int.MaxValue ? int.MaxValue : (int) result;
-    }
-
-    private static int? Subtract(int? value, int amount)
-    {
-        Debug.Assert(amount >= 0, "Expander constraints subtract non-negative header height.");
-        return value.HasValue ? Math.Max(0, value.Value - amount) : null;
-    }
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason) { base.OnUnavailable(reason); _interaction.Unavailable(); if (reason == ReleaseReason.Disposed) { ExpandedChanged = null; } }
 }

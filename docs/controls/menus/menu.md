@@ -28,8 +28,9 @@ composable inside `Popup` when an anchored flyout is needed.
 
 ### Keyboard navigation
 
-The menu sets [`TabNavigation.Cycle`](../../concepts/focus.md#navigation-scopes)
-so that Tab wraps through `MenuItem` children instead of escaping to sibling
+The menu sets
+[`TabNavigation.Cycle`](../../concepts/focus.md#hierarchical-tab-navigation) so
+that Tab wraps through `MenuItem` children instead of escaping to sibling
 controls. Separators and unavailable items are skipped because they are not
 focusable. When a `MenuItem` receives focus externally (for example through Tab
 or programmatic focus), the menu's `SelectedIndex` is synchronized

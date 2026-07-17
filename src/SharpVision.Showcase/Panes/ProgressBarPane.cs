@@ -5,113 +5,131 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents determinate, vertical, indeterminate, and mutable ProgressBar states.</summary>
+
+/// <summary>Documents the ProgressBar control with static, ranged, oriented, and interactive specimens.</summary>
 internal sealed class ProgressBarPane: CompositeControl
 {
+
+    internal ProgressBarPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "ProgressBar";
 
-    /// <summary>Initializes the retained ProgressBar documentation page.</summary>
-    internal ProgressBarPane() => InitializeContent(CreateContent());
-
+    /// <inheritdoc/>
     private static Dock CreateContent()
     {
-        var partial = new ProgressBar
-        {
-            Width = Length.Cells(28),
-            Height = Length.Cells(1),
-            Maximum = 100,
-            Value = 42,
-        };
         var empty = new ProgressBar
         {
-            Width = Length.Cells(28),
-            Height = Length.Cells(1),
+            Width = Length.Cells(30),
+            Maximum = 100,
+            Value = 0,
+        };
+        var half = new ProgressBar
+        {
+            Width = Length.Cells(30),
+            Maximum = 100,
+            Value = 50,
         };
         var full = new ProgressBar
         {
-            Width = Length.Cells(28),
-            Height = Length.Cells(1),
+            Width = Length.Cells(30),
             Maximum = 100,
             Value = 100,
         };
-        var vertical = new ProgressBar
+
+        var rangeBar = new ProgressBar
         {
-            Width = Length.Cells(1),
-            Height = Length.Cells(6),
-            Maximum = 100,
-            Value = 50,
+            Width = Length.Cells(30),
+            Minimum = 0,
+            Maximum = 200,
+            Value = 150,
+        };
+        var rangeStatus = new Text($"Minimum: 0, Maximum: 200, Value: {rangeBar.Value:0}");
+
+        var verticalBar = new ProgressBar
+        {
             Orientation = Orientation.Vertical,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top,
+            Height = Length.Cells(8),
+            Maximum = 100,
+            Value = 65,
         };
-        var verticalStage = new Stack
+        var horizontalComparison = new ProgressBar
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 2,
-            Children =
-            {
-                vertical,
-                new Text("Vertical progress fills from the bottom."),
-            },
+            Width = Length.Cells(20),
+            Maximum = 100,
+            Value = 65,
         };
-        var indeterminate = new ProgressBar
+
+        var interactiveBar = new ProgressBar
         {
-            Width = Length.Cells(28),
-            Height = Length.Cells(1),
-            IsIndeterminate = true,
+            Width = Length.Cells(30),
+            Maximum = 100,
+            Value = 30,
         };
-        var live = new ProgressBar
+        var interactiveStatus = new Text($"Progress: {interactiveBar.Value:0}%");
+        var increase = new Button { Content = new Text("Increase +10%") };
+        var reset = new Button { Content = new Text("Reset") };
+        increase.Click += (_, _) =>
         {
-            Width = Length.Cells(28),
-            Height = Length.Cells(1),
-            Maximum = 10,
-            Value = 3,
+            interactiveBar.Value = Math.Min(100, interactiveBar.Value + 10);
+            interactiveStatus.Content = $"Progress: {interactiveBar.Value:0}%";
         };
-        var status = new Text("Live progress: 3 / 10");
-        var advance = new Button { Content = new Text("Advance progress") };
-        advance.Click += (_, _) =>
+        reset.Click += (_, _) =>
         {
-            live.Value = Math.Min(live.Maximum, live.Value + 1);
-            status.Content = $"Live progress: {live.Value:0} / {live.Maximum:0}";
+            interactiveBar.Value = 0;
+            interactiveStatus.Content = $"Progress: {interactiveBar.Value:0}%";
         };
 
         return Doc.Page(
             Title,
-            "Presents finite determinate progress or a deterministic unknown-duration state without accepting input.",
+            "Displays a non-interactive visual progress indicator using filled and empty block characters.",
             Doc.Section(
-                "▰",
-                "Determinate range",
-                "Whole terminal cells fill left-to-right from the normalized finite range.",
+                "📊",
+                "Basic progress",
+                "Three bars at fixed percentages show the visual range from empty through full.",
                 Doc.Example(
-                    "Partial progress",
-                    "Forty-two percent fills floor(0.42 × 28) complete cells.",
-                    Doc.Card(partial),
-                    "var progress = new ProgressBar { Maximum = 100, Value = 42 };"),
-                Doc.Example(
-                    "Endpoints",
-                    "Minimum draws only track cells; maximum fills every cell.",
-                    Doc.Column(Doc.Card(empty), Doc.Card(full)))),
+                    "Zero, half, and full",
+                    "Each bar uses the default 0..100 range with a different Value.",
+                    Doc.Column(
+                        Doc.Row(new Text("  0%") { Attributes = TerminalAttributes.Dim }, empty),
+                        Doc.Row(new Text(" 50%") { Attributes = TerminalAttributes.Dim }, half),
+                        Doc.Row(new Text("100%") { Attributes = TerminalAttributes.Dim }, full)),
+                    "var bar = new ProgressBar { Value = 50 };")),
             Doc.Section(
-                "▥",
-                "Orientation and uncertainty",
-                "Vertical and indeterminate states remain deterministic under resize.",
+                "📊",
+                "Custom range",
+                "Override the default Minimum and Maximum to map progress onto any integer domain.",
                 Doc.Example(
-                    "Vertical fill",
-                    "The filled half begins at the bottom edge.",
-                    Doc.Card(verticalStage)),
-                Doc.Example(
-                    "Indeterminate",
-                    "A distinct static glyph communicates unknown duration without claiming animation.",
-                    Doc.Card(indeterminate))),
+                    "Extended range",
+                    "A bar spanning 0..200 with a current value of 150 fills three quarters of its track.",
+                    Doc.Column(rangeBar, rangeStatus),
+                    "var bar = new ProgressBar\n{\n    Minimum = 0,\n    Maximum = 200,\n    Value = 150,\n};")),
             Doc.Section(
-                "＋",
-                "Live mutation",
-                "Changing Value redraws the same retained control and clamps at Maximum.",
+                "📊",
+                "Vertical orientation",
+                "Set Orientation to Vertical for a column-shaped indicator that fills from bottom to top.",
                 Doc.Example(
-                    "Advance a retained bar",
-                    "Activate the button and compare the exact committed value with the updated cells.",
-                    Doc.Column(live, advance, status),
-                    "progress.Value = Math.Min(progress.Maximum, progress.Value + 1);")));
+                    "Side-by-side comparison",
+                    "The same Value renders vertically and horizontally for layout flexibility.",
+                    Doc.Row(verticalBar, horizontalComparison))),
+            Doc.Section(
+                "📊",
+                "Interactive",
+                "Wire buttons to the Value property and observe the bar update in real time.",
+                Doc.Example(
+                    "Increment and reset",
+                    "Increase adds ten percent on each click. Reset returns the bar to zero.",
+                    Doc.Column(interactiveBar, Doc.Row(increase, reset), interactiveStatus),
+                    "increase.Click += (_, _) =>\n{\n    bar.Value = Math.Min(100, bar.Value + 10);\n};")),
+            Doc.Section(
+                "📊",
+                "Sub-cell resolution",
+                "UseSubCellResolution renders with fractional block characters (▏▎▍▌▋▊▉█ horizontal, ▁▂▃▄▅▆▇█ vertical), providing 8 levels per cell for smoother progress indication.",
+                Doc.Example(
+                    "Standard versus sub-cell",
+                    "Both bars show the same 33% value. The sub-cell bar renders a partial fill in the fourth cell instead of rounding to whole cells.",
+                    Doc.Column(
+                        Doc.Row(new Text("Standard ") { Attributes = TerminalAttributes.Dim }, new ProgressBar { Width = Length.Cells(20), Maximum = 100, Value = 33 }),
+                        Doc.Row(new Text("Sub-cell ") { Attributes = TerminalAttributes.Dim }, new ProgressBar { Width = Length.Cells(20), Maximum = 100, Value = 33, UseSubCellResolution = true })),
+                    "bar.UseSubCellResolution = true;")));
     }
 }

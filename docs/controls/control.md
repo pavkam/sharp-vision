@@ -10,24 +10,23 @@ dispatcher.
 
 ## Core properties
 
-| Property                                   | Default           | Contract                                                                                                                                     |
-| ------------------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Width`, `Height`                          | `Length.Auto`     | Fixed, percentage, automatic, or proportional `Length`.                                                                                      |
-| `MinWidth`, `MinHeight`                    | `0`               | Non-negative cell minimums.                                                                                                                  |
-| `MaxWidth`, `MaxHeight`                    | `int.MaxValue`    | Cell maximums not below the corresponding minimum.                                                                                           |
-| `Margin`                                   | Zero edges        | External non-negative `Thickness`.                                                                                                           |
-| `BorderThickness`                          | Zero edges        | Physical zero-or-one-cell edges reserved inside the border box before padding; a `Measure`-impact style property.                            |
-| `BorderGlyphs`                             | `Glyphs.Default`  | Validated printable one-cell glyph family used by standard chrome; render-only.                                                              |
-| `Padding`                                  | Zero edges        | Internal non-negative `Thickness`.                                                                                                           |
-| `HorizontalAlignment`, `VerticalAlignment` | `Left`, `Stretch` | Placement within the arranged slot.                                                                                                          |
-| `Visibility`                               | `Visible`         | Visible, hidden, or collapsed.                                                                                                               |
-| `IsEnabled`                                | `true`            | Inherited effective input state.                                                                                                             |
-| `IsHitTestVisible`                         | `true`            | Whether pointer hit testing may target the control.                                                                                          |
-| `CanFocus`, `TabIndex`                     | `false`, `0`      | Focus participation and deterministic order.                                                                                                 |
-| `IsFocused`, `IsHovered`, `IsPressed`      | `false`           | Read-only committed interaction state; only interactive (focusable) controls are hovered, and composite hover belongs to its semantic owner. |
-| `Style`                                    | `null`            | Optional per-instance `IControlStyle` overlay; null uses only the theme chain.                                                               |
-| `DesiredSize`                              | Empty             | Read-only result of the last successful measure.                                                                                             |
-| `Bounds`                                   | Empty             | Read-only committed arranged rectangle.                                                                                                      |
+| Property                                                                            | Default                         | Contract                                                                        |
+| ----------------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| `Width`, `Height`                                                                   | `Length.Auto`                   | Fixed, percentage, automatic, or proportional `Length`.                         |
+| `MinWidth`, `MinHeight`                                                             | `0`                             | Non-negative cell minimums.                                                     |
+| `MaxWidth`, `MaxHeight`                                                             | `int.MaxValue`                  | Cell maximums not below the corresponding minimum.                              |
+| `Margin`                                                                            | Zero edges                      | External non-negative `Thickness`.                                              |
+| `BorderThickness`                                                                   | Zero edges                      | Physical zero-or-one-cell edges reserved inside the border box before padding.  |
+| `BorderGlyphs`                                                                      | `Glyphs.Default`                | Validated printable one-cell glyph family used by standard chrome; render-only. |
+| `Padding`                                                                           | Zero edges                      | Internal non-negative `Thickness`.                                              |
+| `HorizontalAlignment`, `VerticalAlignment`                                          | `Left`, `Stretch`               | Placement within the arranged slot.                                             |
+| `Visibility`                                                                        | `Visible`                       | Visible, hidden, or collapsed.                                                  |
+| `IsEnabled`                                                                         | `true`                          | Inherited effective input state.                                                |
+| `IsHitTestVisible`                                                                  | `true`                          | Whether pointer hit testing may target the control.                             |
+| `Focusable`, `CanFocus`, `TabStop`, `TabIndex`                                      | `false`, effective, `true`, `0` | Configured and effective focus/tab participation with deterministic order.      |
+| `IsFocused`, `ContainsFocus`, `IsPointerOver`, `IsPointerDirectlyOver`, `IsPressed` | `false`                         | Read-only committed interaction state.                                          |
+| `DesiredSize`                                                                       | Empty                           | Read-only result of the last successful measure.                                |
+| `Bounds`                                                                            | Empty                           | Read-only committed arranged rectangle.                                         |
 
 Setters validate before mutation, verify dispatcher access while attached, and
 raise `PropertyChanged` once after the changed value is committed. Invalid
@@ -48,23 +47,22 @@ visibility, enabled state, or explicit focus.
 Border, shadow, and body fill are properties of every `Control`; there are no
 Border or Shadow wrapper controls. `BorderThickness` always participates in the
 base box model. Visual chrome is automatic only for a render path that calls
-`RenderChrome` or a specialized `ControlChrome` equivalent.
+framework-owned chrome around content.
 
-| Property group                                             | Base default                | Impact  | Validation and contract                                                                        |
-| ---------------------------------------------------------- | --------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
-| `Background`, `FillMode`                                   | `null`, transparent         | Render  | A background resolved from any cascade layer or opaque fill mode makes the body own its cells. |
-| `BorderThickness`                                          | Zero edges                  | Measure | Every physical edge is zero or one cell and is reserved before padding.                        |
-| `BorderGlyphs`                                             | `Glyphs.Default`            | Render  | Every Rune is printable and one cell under the narrow policy; invalid default rejected.        |
-| `BorderColor`, `BorderAttributes`                          | `null`, `null`              | Render  | Optional appearance overlays; attributes reject unknown flags or conflicts.                    |
-| `HasShadow`, `ShadowMode`, `ShadowOffset`                  | `false`, composite, `(0,0)` | Render  | Mode is defined; offset is signed visual overflow and never reserves layout.                   |
-| `ShadowGlyph`                                              | `▓`                         | Render  | Printable one-cell Rune; used only by block-glyph mode.                                        |
-| `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `null`, `null`, `null`      | Render  | Optional overlays; attributes reject unknown flags or conflicts.                               |
+| Property group                                             | Base default                | Impact  | Validation and contract                                                                 |
+| ---------------------------------------------------------- | --------------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `Background`                                               | `null`                      | Render  | Null preserves destination cells; any concrete or semantic background paints the body.  |
+| `BorderThickness`                                          | Zero edges                  | Measure | Every physical edge is zero or one cell and is reserved before padding.                 |
+| `BorderGlyphs`                                             | `Glyphs.Default`            | Render  | Every Rune is printable and one cell under the narrow policy; invalid default rejected. |
+| `BorderColor`, `BorderAttributes`                          | `null`, `null`              | Render  | Optional appearance overlays; attributes reject unknown flags or conflicts.             |
+| `HasShadow`, `ShadowMode`, `ShadowOffset`                  | `false`, composite, `(0,0)` | Render  | Mode is defined; offset is signed visual overflow and never reserves layout.            |
+| `ShadowGlyph`                                              | `▓`                         | Render  | Printable one-cell Rune; used only by block-glyph mode.                                 |
+| `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `null`, `null`, `null`      | Render  | Optional overlays; attributes reject unknown flags or conflicts.                        |
 
-These are registered base defaults. Effective values resolve through class
-defaults, style scopes, the active standard theme, instance style, visual state,
-and local values. Standard themes resolve a body background, border color, and
-shadow foreground from semantic roles, so their effective values differ from the
-nullable base metadata without changing property defaults.
+Controls expose ordinary CLR configuration. `ThemeColor` may hold a concrete
+terminal colour or a `ColorRole`; roles resolve only at the appearance boundary.
+Text appearance inherits from an ancestor's normal appearance unless an
+`AppearanceBoundary` stops it. Background, border, and shadow never inherit.
 
 All validation occurs before observable mutation for local and theme values. At
 render time, a glyph that becomes wide only under the active ambiguous-width
@@ -72,35 +70,32 @@ policy is repaired to a portable ASCII edge (`+`, `-`, or `|`) or block (`#`),
 so chrome never writes half of a wide cell. Partial borders draw only enabled
 edges; a corner glyph appears only when both adjoining edges are active.
 
-Base `RenderChrome` draws shadow first, then clears the body when `FillMode` is
-opaque or a background resolves from any cascade layer, then draws the border
-last. Composite shadow restyles the translated cells it covers; block-glyph
-shadow replaces those cells with `ShadowGlyph`. The body rectangle is excluded
-from either shadow. `HasShadow = true` with the base `(0,0)` offset therefore
-has no visible footprint. On the base render/layout path, shadow expands
-`VisualBounds` for drawing but reserves no desired size, arranged bounds, child
-space, or hit target. Button is intentionally different while pressed: it
-translates its face and owned content by `ShadowOffset` without changing its
-arranged border box.
+The render pipeline draws shadow first, then the body when `Background` is set,
+then content and normal-layer children, and finally the border overlay.
+Composite shadow restyles the translated cells it covers; block-glyph shadow
+replaces those cells with `ShadowGlyph`. The body rectangle is excluded from
+either shadow. `HasShadow = true` with the base `(0,0)` offset therefore has no
+visible footprint. On the base render/layout path, shadow expands `VisualBounds`
+for drawing but reserves no desired size, arranged bounds, child space, or hit
+target. Button is intentionally different while pressed: it translates its face
+and owned content by `ShadowOffset` without changing its arranged border box.
 
 These are base defaults, not universal control appearance. `Button` publishes a
 one-cell rounded border, composite shadow, `(1,1)` offset, and dim shadow while
 retaining zero padding. It invokes `ControlChrome` with specialized pressed-face
 and shadow-gap options. `Window` keeps its bespoke one-cell titled frame, uses a
 composite `(2,1)` dim shadow by default, and draws that frame/title/shadow
-through its specialized renderer rather than base `RenderChrome`.
+through its specialized chrome seam.
 
 Sealed bespoke content renderers such as `Text`, `FigletText`, and `TextInput`
-do not call base `RenderChrome`. Setting `BorderThickness` on them still
-reserves the base layout inset but does not automatically paint a frame or
-shadow. Wrap one in an ordinary chrome-rendering container such as `Dock` when
-callers need a distinct visible frame or shadow.
+draw content only. Setting `BorderThickness` on them reserves the base layout
+inset and framework-owned chrome paints the configured frame or shadow.
 
 Intrinsic chrome adds no ownership edge. Use an ordinary container such as
 `Dock` when the chrome needs distinct bounds, margin, style, ancestry, or
-lifetime. A custom `OnRender` that opts into intrinsic chrome calls
-`RenderChrome` before custom content and draws that content through
-`ContentBounds` without repeating border or padding deflation.
+lifetime. A custom `OnRenderContent` draws content through `ContentBounds`
+without repeating border or padding deflation; framework-owned chrome surrounds
+the normal-layer content and children.
 
 ## Children and ownership
 
@@ -186,10 +181,10 @@ Debug.Assert(control.Parent == container);
 ## Invalidation
 
 Dirty phases form a dependency closure: measure implies arrange and render,
-arrange implies render, and render stands alone. Property setters request the
-earliest affected phase and coalesce repeated requests while they bubble to the
-root. Public style-property metadata expresses that phase as ordered
-`ChangeImpact.None`, `Render`, `Arrange`, or `Measure` values.
+arrange implies render, and render stands alone. Ordinary CLR property setters
+request the earliest affected phase and coalesce repeated requests while they
+bubble to the root. `ChangeImpact.None`, `Render`, `Arrange`, and `Measure`
+express that impact.
 
 | Change                                                              | Dirty phases                 |
 | ------------------------------------------------------------------- | ---------------------------- |
@@ -197,13 +192,12 @@ root. Public style-property metadata expresses that phase as ordered
 | Horizontal or vertical alignment                                    | Arrange and render           |
 | Enabled state or visible/hidden transition                          | Render                       |
 | Hit-test visibility                                                 | No layout or render phase    |
-| Style replacement                                                   | Maximum old/new style impact |
+| Direct appearance or visual-state change                            | Render                       |
 
 The `Arrange` impact always requests arrange plus render, while `Measure`
-requests all three phases. Assigning an equivalent value through `SetValue` is a
-no-op. Replacing either `Control.Style` or a type style in `Theme` uses the
-maximum aggregate impact of the removed and new styles, so removing geometric
-values still invalidates their previous layout.
+requests all three phases. Assigning an equivalent direct property value is a
+no-op. Semantic visual state changes are render-only; structural properties
+declare their own measure or arrange impact.
 
 Third-party controls use the same phase vocabulary for ordinary CLR state. The
 public setter validates its domain value before calling
@@ -215,12 +209,12 @@ coordinated mutation that has already committed all of its fields uses
 access, and lifetime validation. `Invalidate(impact)` validates the impact and
 requests work without a property notification, while `InvalidateVisualState()`
 clears resolved appearance caches and requests the strongest phase required by
-active styles. A CLR property that changes `GetVisualState()` uses
-`SetVisualStateProperty(ref field, value)`: it performs access and lifetime
-validation before equivalence, commits the state, clears resolved caches,
-calculates the dynamic aggregate style impact, and publishes exactly one
-property notification. None of these seams exposes the framework's pending phase
-flags.
+active render-only visual states. A CLR property that changes
+`GetAppearanceState()` uses `SetVisualStateProperty(ref field, value)`: it
+performs access and lifetime validation before equivalence, commits the state,
+clears resolved caches, calculates the dynamic aggregate style impact, and
+publishes exactly one property notification. None of these seams exposes the
+framework's pending phase flags.
 
 ## Lifecycle and events
 
@@ -280,7 +274,7 @@ primitive, does not use these seams directly; derive from
 [`CompositeControl`](composite-control.md#compositecontrol-contract), construct
 the private tree once, and transfer its root through `InitializeContent`.
 
-`OnRender` receives a canvas clipped to the control's `VisualBounds`, so
+`OnRenderContent` receives a canvas clipped to the control's `VisualBounds`, so
 deliberate own-content overflow such as shadow can extend beyond arranged
 `Bounds` while remaining inside ancestor clips. Ordinary descendants render
 through the owner's `Bounds` clip; intrinsic scrolling uses its committed
@@ -292,30 +286,27 @@ the owner itself remains a target only inside that box. Enabling intrinsic
 `AutoScroll` restores viewport and owner-bounds clipping regardless of the
 override.
 
-## Styling extension point
+## Appearance extension point
 
-Style properties, themes, and visual-state resolution are defined in
-[Styling and visual states](../concepts/styling.md#styling-contract). This
-control exposes its registered properties through `GetValue`, `SetValue`, and
-`ClearValue`; each operation validates applicability before observable mutation.
+Controls expose ordinary validated CLR properties for foreground, background,
+underline, border, shadow, and layout configuration. UI colors are ThemeColor
+values: either a concrete terminal Color or a semantic ColorRole resolved by the
+inherited immutable Theme while rendering.
 
-`GetVisualState()` derives normal, hovered, focused, pressed, and disabled flags
-from behavior. Controls with semantic selection override it to add checked
-state. Only interactive (focusable) controls are ever marked hovered, so the
-hovered flag never appears on static content such as text or tables.
-`GetResolvedStyle` converts the active theme cascade into the complete terminal
-cell style used by rendering.
+Appearance is local and render-only. Appearance holds a normal overlay, and
+SetAppearance assigns an overlay for one VisualState. The resolver applies the
+fixed state order PointerOver, FocusWithin, Focused, Current, Selected, Checked,
+Indeterminate, Pressed, then Disabled. Text-only ambient values can flow through
+normal parentage; background, border, shadow, and visual states never cascade.
 
-The default `OnRender` calls `RenderChrome`, which draws configured body fill,
-per-side border, and shadow. A control that fully overrides `OnRender` and wants
-those intrinsic visuals must call `RenderChrome` itself before custom content.
-Layout still reserves a non-zero `BorderThickness` even when a custom renderer
-deliberately omits the visual, so rendering and reservation cannot silently
-invent different geometry.
+GetAppearanceState derives the local flags from physical pointer membership,
+focus, press behavior, availability, and a control's explicit current,
+selection, checked, or indeterminate facts. A derived control uses
+SetVisualStateProperty when a CLR state property changes one of those facts.
 
-Primitive controls also read the protected inherited `CellPolicy` during
-measurement and drawing. This keeps grapheme width decisions identical to the
-application and frame without exposing policy mutation to derived code.
+Intrinsic body, border, and shadow rendering is framework-owned. Custom
+OnRenderContent implementations draw semantic content with ResolvedStyle; they
+do not emit escape bytes or manually invoke a chrome helper.
 
 ## Example
 

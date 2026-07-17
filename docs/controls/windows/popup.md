@@ -32,8 +32,11 @@ same behavior through the Popup's intrinsic promotion.
   its foreground. `Background` optionally overrides the opaque surface,
   otherwise the resolved inherited background fills it.
 - `SurfaceBounds` reports the committed rectangle including its one-cell frame.
-- `IsOpen` controls surface and content arranging, rendering, hit testing, and
-  focus transfer to the first focusable descendant across every ownership slot.
+- `IsOpen` controls surface and content arranging, rendering, and hit testing.
+  `FocusOnOpen` defaults to true and transfers focus to the first focusable
+  descendant across every ownership slot; composite controls can set it false
+  when their popup is an implementation detail and the public owner retains
+  focus.
 - `CloseOnEscape` defaults to true and closes an open popup when Escape bubbles
   from its content.
 - `Closing` occurs before content is collapsed, allowing a composite owner to

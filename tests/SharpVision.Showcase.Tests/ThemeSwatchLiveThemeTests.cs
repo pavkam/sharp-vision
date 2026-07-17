@@ -7,13 +7,13 @@ namespace SharpVision.Showcase.Tests;
 
 /// <summary>
 /// Verifies the v2 role-color swatch mechanism (a plain control with <c>Background</c> set to a
-/// <see cref="ThemeColors"/> value, as used by the Theming page) tracks the live application theme
+/// <see cref="ColorRole"/> value, as used by the Theming page) tracks the live application theme
 /// instead of a snapshot, with no custom theme-reading control involved.
 /// </summary>
 public sealed class ThemeSwatchLiveThemeTests
 {
     /// <summary>
-    /// Verifies an intrinsic control-surface chip with <c>Background = ThemeColors.Accent</c> paints
+    /// Verifies an intrinsic control-surface chip with <c>Background = ColorRole.Accent</c> paints
     /// the active theme's accent color and repaints the same instance with the new color after
     /// <c>Application.Theme</c> changes, proving resolution alone (no <c>OnRender</c> theme lookup)
     /// keeps it live.
@@ -26,13 +26,12 @@ public sealed class ThemeSwatchLiveThemeTests
         terminal.QueueResize(new Dimensions(size));
 
         // The same kind of chip ThemingPane.BuildRoleSwatches builds: a plain Dock whose Background is
-        // a deferred role color. It never reads ThemeContext itself; resolution paints it live.
+        // a deferred role color. It never reads Theme itself; resolution paints it live.
         var chip = new Dock()
         {
             Width = Length.Cells(6),
             Height = Length.Cells(1),
-            FillMode = FillMode.Opaque,
-            Background = ThemeColors.Accent,
+            Background = ColorRole.Accent,
         };
 
         await using Application application = new(

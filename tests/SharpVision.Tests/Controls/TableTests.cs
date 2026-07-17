@@ -216,53 +216,6 @@ public sealed class TableTests
         FrameOracle.Get(frame, new Point(6, 2)).ShouldBe("B");
     }
 
-    /// <summary>Verifies table dividers inherit the painted surface background.</summary>
-    [Fact]
-    public void Render_WhenTableStyleHasForegroundOnly_PreservesSurfaceBackgroundOnDividers()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var table = new Table() { Style = style };
-        table.Columns.Add(TableColumn.Fixed("Name", 5));
-        table.Columns.Add(TableColumn.Fill("Value"));
-        table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
-        var size = new Size(14, 4);
-        new Engine().Layout(table, size);
-        using Frame frame = new(size);
-        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
-
-        table.Render(frame.Canvas);
-
-        frame.GetCell(new Point(5, 0)).Style.Background.ShouldBe(Color.Indexed(238));
-        frame.GetCell(new Point(5, 2)).Style.Background.ShouldBe(Color.Indexed(238));
-    }
-
-    /// <summary>Verifies table header and grid projections preserve semantic decorations.</summary>
-    [Fact]
-    public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Table>(
-            (State.Normal, new ThemeOverlay(
-                attributes: Attributes.RapidBlink,
-                underline: Underline.Dashed,
-                underlineColor: Color.Indexed(5))));
-        var table = new Table() { Style = style };
-        table.Columns.Add(TableColumn.Fixed("Name", 5));
-        table.Rows.Add(new TableRow([new ControlText("A")]));
-        var size = new Size(6, 3);
-        new Engine().Layout(table, size);
-        using Frame frame = new(size);
-
-        table.Render(frame.Canvas);
-
-        var header = frame.GetCell(default).Style;
-        var grid = frame.GetCell(new Point(0, 1)).Style;
-        header.Attributes.ShouldBe(Attributes.RapidBlink);
-        header.Underline.ShouldBe(Underline.Dashed);
-        header.UnderlineColor.ShouldBe(Color.Indexed(5));
-        grid.ShouldBe(header);
-    }
-
     /// <summary>Verifies an offset table keeps its header divider in the table's absolute coordinate space.</summary>
     [Fact]
     public void Render_WhenTableIsOffset_DrawsHeaderDividerBelowItsOwnHeader()

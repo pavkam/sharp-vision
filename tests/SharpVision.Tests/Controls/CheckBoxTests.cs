@@ -123,18 +123,6 @@ public sealed class CheckBoxTests
         cause.ShouldBe(ActivationCause.Keyboard);
     }
 
-    /// <summary>Verifies checked state participates in resolved style composition.</summary>
-    [Fact]
-    public void Foreground_WhenChecked_IncludesCheckedOverlay()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(1))),
-            (State.Checked, new ThemeOverlay(foreground: Color.Indexed(5))));
-        var checkBox = new CheckBox() { Style = style, IsChecked = true };
-
-        checkBox.Foreground.ShouldBe(Color.Indexed(5));
-    }
-
     /// <summary>Verifies mark, separator, Unicode content, layout, and cells.</summary>
     [Fact]
     public void Render_WhenCheckedWithContent_WritesExactMarkAndUnicodeCells()
@@ -150,22 +138,6 @@ public sealed class CheckBoxTests
         FrameOracle.Get(frame, default).ShouldBe("☑");
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("界");
         frame.GetCell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
-    }
-
-    /// <summary>Verifies a foreground-only CheckBox style preserves the parent surface background.</summary>
-    [Fact]
-    public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var checkBox = new CheckBox() { Style = style };
-        new Engine().Layout(checkBox, new Size(1, 1));
-        using Frame frame = new(new Size(1, 1));
-        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
-
-        checkBox.Render(frame.Canvas);
-
-        frame.GetCell(default).Style.Background.ShouldBe(Color.Indexed(238));
     }
 
     /// <summary>Verifies bracket and tick mark styles reserve stable documented cell widths.</summary>

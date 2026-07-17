@@ -19,6 +19,9 @@ public abstract class RoutedEventArgs: EventArgs
     /// <summary>Gets or sets whether ordinary handling and default behavior should stop.</summary>
     public bool Handled { get; set; }
 
+    /// <summary>Gets the command to apply after the route, if any.</summary>
+    public PostRouteCommand PostRouteCommand { get; private set; }
+
     private bool IsRouting { get; set; }
 
     /// <summary>Retargets the logical source without changing the original source.</summary>
@@ -37,6 +40,28 @@ public abstract class RoutedEventArgs: EventArgs
         Source = source;
     }
 
+    /// <summary>Requests one command to be applied after this route completes.</summary>
+    /// <param name="command">The requested non-none command.</param>
+    public void RequestPostRouteCommand(PostRouteCommand command)
+    {
+        if (!IsRouting)
+        {
+            throw new InvalidOperationException("A post-route command can be requested only during routing.");
+        }
+
+        if (command == PostRouteCommand.None || !Enum.IsDefined(command))
+        {
+            throw new ArgumentOutOfRangeException(nameof(command), command, "A defined non-none post-route command is required.");
+        }
+
+        if (PostRouteCommand != PostRouteCommand.None && PostRouteCommand != command)
+        {
+            throw new InvalidOperationException("A route can request only one post-route command.");
+        }
+
+        PostRouteCommand = command;
+    }
+
     /// <summary>Begins one route and resets per-route mutable state.</summary>
     internal void Begin(Control source)
     {
@@ -52,6 +77,7 @@ public abstract class RoutedEventArgs: EventArgs
         Source = source;
         Phase = Phase.Preview;
         Handled = false;
+        PostRouteCommand = PostRouteCommand.None;
     }
 
     /// <summary>Ends the active route while preserving observable final values.</summary>

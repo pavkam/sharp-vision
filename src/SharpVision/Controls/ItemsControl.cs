@@ -11,7 +11,7 @@ namespace SharpVision.Controls;
 /// Item controls participate in normal ownership, layout, rendering, hit testing, navigation,
 /// inherited context, style-scope resolution, and disposal.
 /// </remarks>
-public abstract class ItemsControl: Control, IStyleScope
+public abstract class ItemsControl: Control
 {
     private readonly OwnedControlSlot _itemsHostSlot;
     private Container? _itemsHost;

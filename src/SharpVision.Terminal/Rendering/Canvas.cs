@@ -282,6 +282,160 @@ public readonly struct Canvas
         }
     }
 
+    /// <summary>Transforms foreground colors while preserving complete stored graphemes.</summary>
+    /// <param name="region">The requested half-open frame region.</param>
+    /// <param name="selector">
+    /// The synchronous selector receiving each complete stored owner's absolute lead-cell coordinate.
+    /// The canvas does not retain the callback.
+    /// </param>
+    /// <remarks>
+    /// Stored spaces participate, while untouched blank cells do not. The selector is invoked once
+    /// per complete owner in row-major order. A wide owner is transformed only when all of its cells
+    /// are inside this canvas clip, so lead and continuation styles remain equal. Foreground is the
+    /// only replaced field; background, attributes, hyperlink, underline, and underline color are
+    /// preserved. If the callback throws, its exception propagates and the current render operation
+    /// fails; owners transformed by earlier callbacks remain changed while the failing and later
+    /// owners remain unchanged.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    /// <exception cref="Exception">
+    /// <paramref name="selector"/> throws; the same exception instance is propagated.
+    /// </exception>
+    public void ApplyForeground(Rect region, Func<Point, Color> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        _frame.ThrowIfDisposed();
+        ApplyForegroundCore(region, selector, writtenOnly: false, checkpoint: 0, drawEnd: 0);
+    }
+
+    /// <summary>Draws synchronously and transforms only stored owners mutated by that callback.</summary>
+    /// <param name="region">The requested half-open foreground-effect region.</param>
+    /// <param name="draw">
+    /// The synchronous drawing callback. It receives this clipped canvas and is not retained.
+    /// </param>
+    /// <param name="selector">
+    /// The synchronous foreground selector receiving each written complete owner's absolute lead coordinate.
+    /// It is invoked row-major after drawing completes and is not retained.
+    /// </param>
+    /// <remarks>
+    /// Both callbacks are validated before frame lifetime and before drawing begins.
+    /// Mutation provenance, rather than semantic inequality, selects owners: writing an identical glyph
+    /// still participates. The closed provenance window ends when drawing returns, so mutations performed
+    /// by the foreground selector are never selected by this effect. Nested effects retain inner writes as
+    /// mutations visible to an enclosing effect. Stored spaces participate, untouched blanks and
+    /// pre-existing owners do not, and wide owners remain atomic. A drawing exception skips the foreground
+    /// pass. A selector exception preserves the already transformed prefix and leaves the failing and later
+    /// owners unchanged. Foreground is the only transformed semantic field.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="draw"/> or <paramref name="selector"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Nested mutation capture or one bounded synchronous callback exhausts its revision capacity.
+    /// </exception>
+    /// <exception cref="Exception">
+    /// <paramref name="draw"/> or <paramref name="selector"/> throws; the same exception instance propagates.
+    /// </exception>
+    public void DrawWithForeground(
+        Rect region,
+        Action<Canvas> draw,
+        Func<Point, Color> selector)
+    {
+        ArgumentNullException.ThrowIfNull(draw);
+        ArgumentNullException.ThrowIfNull(selector);
+        _frame.ThrowIfDisposed();
+        var checkpoint = _frame.BeginMutationCapture();
+
+        try
+        {
+            draw(this);
+            var drawEnd = _frame.CurrentMutationRevision;
+            ApplyForegroundCore(region, selector, writtenOnly: true, checkpoint, drawEnd);
+        }
+        finally
+        {
+            _frame.EndMutationCapture();
+        }
+    }
+
+    private void ApplyForegroundCore(
+        Rect region,
+        Func<Point, Color> selector,
+        bool writtenOnly,
+        ulong checkpoint,
+        ulong drawEnd)
+    {
+        var target = _clip.Intersect(region).Intersect(_frame.Bounds);
+
+        for (var y = target.Y; y < target.Bottom; y++)
+        {
+            var previousLead = -1;
+
+            for (var x = target.X; x < target.Right; x++)
+            {
+                var index = _frame.GetIndex(new Point(x, y));
+                var cell = _frame.GetCell(index);
+                var leadIndex = cell.IsContinuation ? cell.LeadIndex : index;
+
+                if (leadIndex == previousLead)
+                {
+                    continue;
+                }
+
+                previousLead = leadIndex;
+                var lead = _frame.GetCell(leadIndex);
+
+                if (lead.Length == 0)
+                {
+                    continue;
+                }
+
+                // Active captures forbid revision wrap, so ordinary unsigned ordering is exact.
+                if (writtenOnly &&
+                    (lead.MutationRevision <= checkpoint || lead.MutationRevision > drawEnd))
+                {
+                    continue;
+                }
+
+                var leadPoint = new Point(leadIndex % _frame.Size.Width, leadIndex / _frame.Size.Width);
+                var width = Math.Max(1, (int) lead.Width);
+                var complete = true;
+
+                for (var offset = 0; offset < width; offset++)
+                {
+                    complete &= _clip.Contains(new Point(leadPoint.X + offset, leadPoint.Y));
+                }
+
+                if (!complete)
+                {
+                    continue;
+                }
+
+                var style = lead.Style;
+                var foreground = selector(leadPoint);
+                var current = _frame.GetCell(leadIndex);
+
+                // A selector may mutate the owner it is selecting. That write lies after the
+                // closed draw window and must retain the selector's exact semantic result.
+                if (writtenOnly && current.MutationRevision > drawEnd)
+                {
+                    continue;
+                }
+
+                var replacement = new CellStyle(
+                    foreground,
+                    style.Background,
+                    style.Attributes,
+                    style.Hyperlink,
+                    style.Underline,
+                    style.UnderlineColor);
+                _ = _frame.TrySetOwnerStyle(leadIndex, _clip, replacement);
+            }
+        }
+    }
+
     /// <summary>Draws a clipped horizontal line and merges crossing topology.</summary>
     /// <param name="origin">The absolute first cell.</param>
     /// <param name="length">The non-negative cell count.</param>

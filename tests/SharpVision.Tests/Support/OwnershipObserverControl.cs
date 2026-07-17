@@ -46,7 +46,7 @@ internal sealed class OwnershipObserverControl: Control
     internal bool ThrowOnDisposing { get; set; }
 
     /// <summary>Gets the inherited theme identity.</summary>
-    internal ThemeContext? InheritedThemeContext => ThemeContext;
+    internal Theme? InheritedThemeValue => Theme;
 
     /// <summary>Gets the inherited cell-width policy.</summary>
     internal Policy InheritedCellPolicy => CellPolicy;
@@ -55,7 +55,7 @@ internal sealed class OwnershipObserverControl: Control
     internal FocusManager? InheritedFocusOwner => FocusOwner;
 
     /// <summary>Gets the inherited capture manager.</summary>
-    internal CaptureManager? InheritedCaptureOwner => CaptureOwner;
+    internal PointerManager? InheritedCaptureOwner => CaptureOwner;
 
     /// <summary>Requests keyboard focus through the protected consumer seam.</summary>
     /// <returns>Whether focus was acquired or already owned.</returns>

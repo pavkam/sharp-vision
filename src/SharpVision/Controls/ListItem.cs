@@ -16,6 +16,8 @@ internal sealed class ListItem: Pressable
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
         HorizontalAlignment = HorizontalAlignment.Stretch;
+        Focusable = false;
+        TabStop = false;
         Index = index;
         Content = content;
     }
@@ -43,6 +45,17 @@ internal sealed class ListItem: Pressable
     internal void CommitSelection(bool value) =>
         Commit(value);
 
+    /// <summary>Invokes this available item on behalf of its owning selector.</summary>
+    /// <param name="cause">The semantic activation source.</param>
+    /// <param name="key">The activating key, or null when activation is not key driven.</param>
+    /// <param name="modifiers">The modifiers captured with <paramref name="key"/>.</param>
+    internal void ActivateFromOwner(ActivationCause cause, Code? key, Modifiers modifiers)
+    {
+        LastKey = key;
+        LastModifiers = modifiers;
+        Activate(cause);
+    }
+
     /// <inheritdoc/>
     public override Control? HitTest(Point point) =>
         !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
@@ -56,6 +69,19 @@ internal sealed class ListItem: Pressable
         if (IsAvailable)
         {
             Activated?.Invoke(this, new ActivationEventArgs(cause));
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (focused)
+        {
+            var list = FindList();
+            Debug.Assert(list is not null, "A focused ListItem belongs to a List.");
+            list.NotifyItemFocused(this);
         }
     }
 
@@ -91,9 +117,9 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             return;
         }
@@ -118,6 +144,20 @@ internal sealed class ListItem: Pressable
         {
             Activated = null;
         }
+    }
+
+    private List? FindList()
+    {
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (current is List list)
+            {
+                return list;
+            }
+        }
+
+        Debug.Assert(false, "A ListItem always has a List ancestor while attached.");
+        return null;
     }
 
     private static int Add(int left, int right)

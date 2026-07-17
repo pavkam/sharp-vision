@@ -5,7 +5,23 @@ namespace SharpVision.Controls;
 
 internal readonly struct ResolvedAppearance
 {
-    internal TerminalStyle Style { get; init; }
+    internal ResolvedAppearance(
+        TerminalStyle style,
+        BackgroundMode backgroundMode,
+        TerminalStyle borderStyle,
+        TerminalStyle shadowStyle)
+    {
+        Style = style;
+        BackgroundMode = backgroundMode;
+        BorderStyle = borderStyle;
+        ShadowStyle = shadowStyle;
+    }
 
-    internal bool HasOpaqueFill { get; init; }
+    internal TerminalStyle Style { get; }
+
+    internal BackgroundMode BackgroundMode { get; }
+
+    internal TerminalStyle BorderStyle { get; }
+
+    internal TerminalStyle ShadowStyle { get; }
 }

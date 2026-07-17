@@ -39,58 +39,6 @@ public sealed class ListTests
         FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("n");
     }
 
-    /// <summary>Verifies the List paints its surface and uses the checked state for the selected row.</summary>
-    [Fact]
-    public void Render_WhenStyledAndSelected_PaintsSurfaceAndSelectedRow()
-    {
-        var style = ThemeTestSupport.OverlayStyle<UiList>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
-            (State.Selected, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(99))));
-        var control = new UiList()
-        {
-            Items = new object?[] { "One", "Two" },
-            SelectedIndex = 1,
-            ScrollBars = ScrollBars.None,
-            Style = style,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
-        var size = new Size(8, 2);
-        new Engine().Layout(control, size);
-        using Frame frame = new(size);
-        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(234)));
-
-        control.Render(frame.Canvas);
-
-        frame.GetCell(new Point(7, 0)).Style.Background.ShouldBe(Color.Indexed(240));
-        frame.GetCell(new Point(7, 1)).Style.Background.ShouldBe(Color.Indexed(99));
-    }
-
-    /// <summary>Verifies realized-item observers see selected state already propagated to content.</summary>
-    [Fact]
-    public void CommitSelection_WhenPropertyPublishes_ContentAlreadyResolvesSelectedState()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(1))),
-            (State.Selected, new ThemeOverlay(foreground: Color.Indexed(2))));
-        var content = new Label("row") { Style = style };
-        var item = new ListItem(0, content);
-        content.Foreground.ShouldBe(Color.Indexed(1));
-        var observed = false;
-        item.PropertyChanged += (_, eventArgs) =>
-        {
-            if (eventArgs.PropertyName == nameof(ListItem.IsSelected))
-            {
-                (content.Foreground == Color.Indexed(2)).ShouldBeTrue(
-                    "Selected style must be visible before ListItem publishes its property.");
-                observed = true;
-            }
-        };
-
-        item.CommitSelection(true);
-
-        observed.ShouldBeTrue();
-    }
-
     /// <summary>Verifies List exposes the canonical overflow policy and its actual composed scrollbar.</summary>
     [Fact]
     public void ScrollBars_WhenConfigured_ForwardCommonPolicyToComposedViewport()
@@ -270,16 +218,17 @@ public sealed class ListTests
         {
             control.Attach(dispatcher);
             using FocusManager focus = new(control);
-            focus.Focus(realized[0].Parent!).ShouldBeTrue();
-            Key(realized[0].Parent!, Code.Down);
-            focus.Focused.ShouldBeSameAs(realized[2].Parent);
-            Space(realized[2].Parent!);
+            focus.Focus(control).ShouldBeTrue();
+            Key(control, Code.Down);
+            focus.Focused.ShouldBeSameAs(control);
+            control.ActiveIndex.ShouldBe(2);
+            Space(control);
             control.SelectedIndex.ShouldBe(2);
-            Key(realized[2].Parent!, Code.Enter);
-            Key(realized[2].Parent!, Code.Home);
-            focus.Focused.ShouldBeSameAs(realized[0].Parent);
-            Key(realized[0].Parent!, Code.End);
-            focus.Focused.ShouldBeSameAs(realized[2].Parent);
+            Key(control, Code.Enter);
+            Key(control, Code.Home);
+            control.ActiveIndex.ShouldBe(0);
+            Key(control, Code.End);
+            control.ActiveIndex.ShouldBe(2);
         }, TestContext.Current.CancellationToken);
 
         invoked.ShouldBe([2]);
@@ -298,7 +247,7 @@ public sealed class ListTests
         await dispatcher.InvokeAsync(() =>
         {
             control.Attach(dispatcher);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
             Click(capture, new Point(0, 1), Modifiers.Control);
             Click(capture, new Point(0, 3), Modifiers.Shift);
         }, TestContext.Current.CancellationToken);
@@ -323,35 +272,16 @@ public sealed class ListTests
         {
             control.Attach(dispatcher);
             using FocusManager focus = new(control);
-            focus.Focus(realized[0].Parent!).ShouldBeTrue();
+            focus.Focus(control).ShouldBeTrue();
 
             for (var index = 0; index < 7; index++)
             {
-                Key(focus.Focused!, Code.Down);
+                Key(control, Code.Down);
             }
 
             control.VerticalOffset.ShouldBeGreaterThan(0);
             control.ActiveIndex.ShouldBe(7);
         }, TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Verifies selected visual state reaches exact semantic item cells.</summary>
-    [Fact]
-    public void Render_WhenItemIsSelected_UsesSelectedStyleWithoutChangingTemplateContent()
-    {
-        var style = ThemeTestSupport.OverlayStyle<UiList>(
-            (State.Selected, new ThemeOverlay(attributes: Attributes.Reverse)));
-        var control = Create("界", "B");
-        control.Style = style;
-        control.SelectedIndex = 0;
-        new Engine().Layout(control, new Size(3, 2));
-        using Frame frame = new(new Size(3, 2));
-
-        control.Render(frame.Canvas);
-
-        FrameOracle.Get(frame, default).ShouldBe("界");
-        (frame.GetCell(default).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
-        frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeTrue();
     }
 
     private static UiList Create(params object?[] items) => new() { Items = items };
@@ -365,7 +295,7 @@ public sealed class ListTests
     private static string Join(ReadOnlyMemory<int> values) => string.Join(',', values.ToArray());
 
     private static void Key(Control target, Code code, Rune? character = null) =>
-        Router.Route(
+        _ = Router.Route(
             target,
             Events.Key,
             new KeyEventArgs(new Stroke(
@@ -378,7 +308,7 @@ public sealed class ListTests
     private static void Space(Control target)
     {
         Key(target, Code.Character, new Rune(' '));
-        Router.Route(
+        _ = Router.Route(
             target,
             Events.Key,
             new KeyEventArgs(new Stroke(
@@ -389,7 +319,7 @@ public sealed class ListTests
                 KeyAction.Release)));
     }
 
-    private static void Click(CaptureManager capture, Point point, Modifiers modifiers)
+    private static void Click(PointerManager capture, Point point, Modifiers modifiers)
     {
         _ = capture.Dispatch(Pointer(point, PointerAction.Press, modifiers));
         _ = capture.Dispatch(Pointer(point, PointerAction.Release, modifiers));

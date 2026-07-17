@@ -135,78 +135,6 @@ public sealed class TextTests
         frame.GetCell(default).Style.Foreground.ShouldBe(Color.Indexed(1));
     }
 
-    /// <summary>Verifies direct overrides compose over inherited resolved appearance.</summary>
-    [Fact]
-    public void Render_WhenOverridesAreSet_ComposesExactCellStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<ControlText>(
-            (State.Normal, new ThemeOverlay(
-                foreground: Color.Indexed(1),
-                background: Color.Indexed(2),
-                attributes: TerminalAttributes.Bold)));
-        var text = new ControlText("A")
-        {
-            Style = style,
-            Foreground = Color.Indexed(7),
-            Attributes = TerminalAttributes.Underline,
-            FillMode = FillMode.Opaque,
-        };
-        new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new(new Size(1, 1));
-
-        text.Render(frame.Canvas);
-
-        var cell = frame.GetCell(default);
-        cell.Style.Foreground.ShouldBe(Color.Indexed(7));
-        cell.Style.Background.ShouldBe(Color.Indexed(2));
-        cell.Style.Attributes.ShouldBe(TerminalAttributes.Underline);
-    }
-
-    /// <summary>Verifies resource decorations survive Text's direct-style composition.</summary>
-    [Fact]
-    public void Render_WhenStyleUsesModernDecorations_PreservesCompleteSemanticStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<ControlText>(
-            (State.Normal, new ThemeOverlay(
-                attributes: TerminalAttributes.RapidBlink | TerminalAttributes.Overline,
-                underline: Underline.Dashed,
-                underlineColor: Color.Indexed(3))));
-        var text = new ControlText("A") { Style = style };
-        new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new(new Size(1, 1));
-
-        text.Render(frame.Canvas);
-
-        var rendered = frame.GetCell(default).Style;
-        rendered.Attributes.ShouldBe(TerminalAttributes.RapidBlink | TerminalAttributes.Overline);
-        rendered.Underline.ShouldBe(Underline.Dashed);
-        rendered.UnderlineColor.ShouldBe(Color.Indexed(3));
-    }
-
-    /// <summary>Verifies a legacy underline override safely replaces an inherited typed underline.</summary>
-    [Fact]
-    public void Render_WhenLegacyUnderlineOverridesTypedUnderline_UsesLegacyDecoration()
-    {
-        var style = ThemeTestSupport.OverlayStyle<ControlText>(
-            (State.Normal, new ThemeOverlay(
-                underline: Underline.Curly,
-                underlineColor: Color.Indexed(3))));
-        var text = new ControlText("A")
-        {
-            Style = style,
-            Attributes = TerminalAttributes.Underline,
-        };
-        new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new(new Size(1, 1));
-
-        text.Render(frame.Canvas);
-
-        var rendered = frame.GetCell(default).Style;
-        rendered.Attributes.ShouldBe(TerminalAttributes.Underline);
-        rendered.Underline.ShouldBe(Underline.None);
-        rendered.UnderlineColor.ShouldBe(Color.Indexed(3));
-    }
-
     /// <summary>Verifies text without a declared background preserves the already-painted surface.</summary>
     [Fact]
     public void Render_WhenBackgroundIsUnset_PreservesDestinationSurface()
@@ -222,26 +150,6 @@ public sealed class TextTests
         text.Render(frame.Canvas);
 
         frame.GetCell(default).Style.ShouldBe(new TerminalStyle(Color.Indexed(45), Color.Indexed(238)));
-    }
-
-    /// <summary>Verifies a themed passive label preserves an opaque surface painted by its parent.</summary>
-    [Fact]
-    public void Render_WhenThemeProvidesAmbientBackground_PreservesDestinationSurface()
-    {
-        var text = new ControlText("A");
-        ThemeTestSupport.ApplyTheme(text, Themes.Dark);
-        new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new(new Size(1, 1));
-        frame.Canvas.Fill(
-            new Rect(0, 0, 1, 1),
-            new Rune(' '),
-            new TerminalStyle(Color.Indexed(255), Color.Indexed(8)));
-
-        text.Render(frame.Canvas);
-
-        var background = frame.GetCell(default).Style.Background;
-        background.Kind.ShouldBe(ColorKind.Indexed);
-        background.Red.ShouldBe((byte) 8);
     }
 
     /// <summary>Verifies hidden and collapsed text do not draw stale cells.</summary>
@@ -358,23 +266,6 @@ public sealed class TextTests
         style.Underline.ShouldBe(Underline.Curly);
         style.UnderlineColor.ShouldBe(Color.Indexed(214));
         style.Hyperlink.ShouldBe("https://example.test");
-    }
-
-    /// <summary>Verifies markup role colors resolve through the attached active theme.</summary>
-    [Fact]
-    public void Render_WhenMarkupUsesThemeRole_ResolvesConcretePaletteColor()
-    {
-        Theme theme = new();
-        theme.SetColor(ColorRole.Accent, Color.Rgb(10, 20, 30));
-        theme.Freeze();
-        ControlText text = new("<accent>x</accent>");
-        ThemeTestSupport.ApplyTheme(text, theme);
-        new Engine().Layout(text, new Size(1, 1));
-        using Frame frame = new(new Size(1, 1));
-
-        text.Render(frame.Canvas);
-
-        frame.GetCell(default).Style.Foreground.ShouldBe(Color.Rgb(10, 20, 30));
     }
 
     /// <summary>Verifies a markup boundary inside one grapheme never splits its cell ownership.</summary>

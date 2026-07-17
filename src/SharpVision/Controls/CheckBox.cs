@@ -11,7 +11,9 @@ public sealed class CheckBox: Pressable
     private bool? _isChecked = false;
 
     /// <summary>Initializes an unchecked two-state CheckBox.</summary>
-    public CheckBox() => PropertyChanged += OnCheckBoxPropertyChanged;
+    public CheckBox()
+    {
+    }
 
     /// <summary>Raised after a true state commits.</summary>
     public event EventHandler<CheckChangedEventArgs>? Checked;
@@ -160,7 +162,7 @@ public sealed class CheckBox: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
@@ -169,7 +171,7 @@ public sealed class CheckBox: Pressable
 
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }
@@ -185,13 +187,6 @@ public sealed class CheckBox: Pressable
     protected override void OnFocusChanged(bool focused)
     {
         base.OnFocusChanged(focused);
-        SyncContentForeground();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnAttached()
-    {
-        base.OnAttached();
         SyncContentForeground();
     }
 
@@ -283,27 +278,9 @@ public sealed class CheckBox: Pressable
             return;
         }
 
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            content.Foreground = null;
-            return;
-        }
-
-        var state = GetVisualState();
-        var hasFocusOrCheck = (state & (State.Focused | State.Checked | State.Indeterminate)) != 0;
-        content.Foreground = hasFocusOrCheck ? ResolveProperty(ForegroundProperty, state) : null;
-    }
-
-    private void OnCheckBoxPropertyChanged(
-        object? sender,
-        System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.PropertyName is nameof(IsEnabled) or nameof(Visibility))
-        {
-            SyncContentForeground();
-        }
+        var state = GetAppearanceState();
+        var hasFocusOrCheck = (state & (VisualState.Focused | VisualState.Checked | VisualState.Indeterminate)) != 0;
+        content.Foreground = hasFocusOrCheck ? Foreground : null;
     }
 
     private static int? Subtract(int? value, int extent)

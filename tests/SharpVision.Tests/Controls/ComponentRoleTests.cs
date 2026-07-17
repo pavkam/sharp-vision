@@ -30,7 +30,7 @@ public sealed class ComponentRoleTests
         pressable.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
             .ShouldAllBe(constructor => constructor.GetParameters().Length == 0);
         pressable.GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-            .ShouldNotContain(field => field.FieldType == typeof(CaptureManager));
+            .ShouldNotContain(field => field.FieldType == typeof(PointerManager));
 
         foreach (var type in concrete)
         {

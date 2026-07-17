@@ -103,11 +103,11 @@ internal sealed class TablePresenter: Container
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         // Table.OnRender draws headers and grid lines on the table canvas first.
         // The presenter must not clear the body with an opaque fill, which would
-        // overwrite that chrome. Skip RenderChrome entirely; scrollbar framework
+        // overwrite that chrome. Skip the base chrome entirely; scrollbar framework
         // parts render independently as owned children.
     }
 
@@ -123,14 +123,14 @@ internal sealed class TablePresenter: Container
         var inherited = _owner.ResolvedStyle;
         (var attributes, var underline, var underlineColor) = Decoration.Resolve(inherited);
         var header = new TerminalStyle(
-            _owner.HeaderForeground ?? inherited.Foreground,
-            _owner.HeaderBackground ?? inherited.Background,
+            _owner.HeaderForeground is { } headerForeground ? _owner.ResolveThemeColor(headerForeground) : inherited.Foreground,
+            _owner.HeaderBackground is { } headerBackground ? _owner.ResolveThemeColor(headerBackground) : inherited.Background,
             attributes,
             inherited.Hyperlink,
             underline,
             underlineColor);
         var grid = new TerminalStyle(
-            _owner.GridLineColor ?? inherited.Foreground,
+            _owner.GridLineColor is { } gridLineColor ? _owner.ResolveThemeColor(gridLineColor) : inherited.Foreground,
             inherited.Background,
             attributes,
             inherited.Hyperlink,

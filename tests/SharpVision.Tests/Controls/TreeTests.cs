@@ -167,7 +167,7 @@ public sealed class TreeTests
         await using var dispatcher = Dispatcher.Start();
         var parent = new ProbeContainer(capacity: 1);
         var other = new ProbeContainer();
-        var first = new ProbeControl() { CanFocus = true };
+        var first = new ProbeControl() { Focusable = true };
         var invalid = new ProbeControl();
         parent.Children.SetOnly(first);
         other.Children.Add(invalid);
@@ -176,7 +176,7 @@ public sealed class TreeTests
         {
             parent.Attach(dispatcher);
             using FocusManager focus = new(parent);
-            using CaptureManager capture = new(parent);
+            using PointerManager capture = new(parent);
             focus.Focus(first).ShouldBeTrue();
             capture.Capture(first).ShouldBeTrue();
 

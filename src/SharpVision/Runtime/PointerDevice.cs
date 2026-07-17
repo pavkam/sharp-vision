@@ -14,9 +14,9 @@ using SharpVision.Terminal.Input;
 /// </remarks>
 public sealed class PointerDevice
 {
-    private readonly Func<CaptureManager?> _capture;
+    private readonly Func<PointerManager?> _capture;
 
-    internal PointerDevice(Func<CaptureManager?> capture)
+    internal PointerDevice(Func<PointerManager?> capture)
     {
         Debug.Assert(capture is not null, "The capture accessor must be provided.");
         _capture = capture;
@@ -40,8 +40,8 @@ public sealed class PointerDevice
     /// <summary>Gets the current interactive hover target, or null when the pointer is over non-interactive content.</summary>
     public Control? Hovered => _capture()?.Hovered;
 
-    /// <summary>Gets the control where the active press began, or null.</summary>
-    public Control? Pressed => _capture()?.Pressed;
+    /// <summary>Gets the control where the raw active pointer press began, or null.</summary>
+    public Control? PressOrigin => _capture()?.PressOrigin;
 
     /// <summary>Gets the exclusive capture target, or null.</summary>
     public Control? Captured => _capture()?.Captured;

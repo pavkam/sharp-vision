@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Support;
 /// <summary>Mounts one control in a real application and exposes its modeled terminal surface.</summary>
 internal sealed class ComponentSurface: IAsyncDisposable
 {
-    private const State _observableStates = State.Hovered | State.Focused | State.Pressed | State.Disabled;
+    private const VisualState _observableStates = VisualState.PointerOver | VisualState.Focused | VisualState.Pressed | VisualState.Disabled;
     private readonly Application _application;
     private readonly CancellationToken _cancellationToken;
     private readonly Control _mounted;
@@ -56,7 +56,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
             throw new ArgumentException("The mounted control must be detached and unowned.", nameof(control));
         }
 
-        var host = new Overlay { CanFocus = true };
+        var host = new Overlay { Focusable = true };
         host.Children.Add(control);
         var terminal = new ComponentTerminal(size);
         _ = terminal.QueueResize(new Dimensions(size));
@@ -323,7 +323,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is not mounted by this surface.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="expected"/> contains unsupported flags.</exception>
-    internal void ShouldHaveState(Control control, State expected)
+    internal void ShouldHaveState(Control control, VisualState expected)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -337,26 +337,26 @@ internal sealed class ComponentSurface: IAsyncDisposable
             throw new ArgumentOutOfRangeException(nameof(expected), expected, "The expected state contains unobservable flags.");
         }
 
-        var actual = State.Normal;
+        var actual = VisualState.Normal;
 
-        if (control.IsHovered)
+        if (control.IsPointerOver)
         {
-            actual |= State.Hovered;
+            actual |= VisualState.PointerOver;
         }
 
         if (control.IsFocused)
         {
-            actual |= State.Focused;
+            actual |= VisualState.Focused;
         }
 
         if (control.IsPressed)
         {
-            actual |= State.Pressed;
+            actual |= VisualState.Pressed;
         }
 
         if (!control.EffectiveIsEnabled)
         {
-            actual |= State.Disabled;
+            actual |= VisualState.Disabled;
         }
 
         actual.ShouldBe(expected);

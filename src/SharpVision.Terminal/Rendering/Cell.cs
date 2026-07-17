@@ -26,26 +26,34 @@ internal struct Cell
     /// <summary>Gets or sets the semantic style.</summary>
     internal CellStyle Style { readonly get; set; }
 
+    /// <summary>Gets or sets the frame-local revision of the latest semantic mutation.</summary>
+    /// <remarks>This provenance metadata is excluded from semantic equality and terminal damage.</remarks>
+    internal ulong MutationRevision { readonly get; set; }
+
     /// <summary>Gets whether this cell continues a preceding lead.</summary>
     internal readonly bool IsContinuation => LeadIndex >= 0;
 
     /// <summary>Creates a blank one-cell value.</summary>
     /// <param name="style">The blank background style.</param>
+    /// <param name="mutationRevision">The frame-local semantic mutation revision.</param>
     /// <returns>The blank cell.</returns>
-    internal static Cell Blank(CellStyle style) => new()
+    internal static Cell Blank(CellStyle style, ulong mutationRevision) => new()
     {
         Width = 1,
         LeadIndex = -1,
         Style = style,
+        MutationRevision = mutationRevision,
     };
 
     /// <summary>Creates a continuation referring to an absolute lead index.</summary>
     /// <param name="leadIndex">The non-negative lead index.</param>
     /// <param name="style">The lead's semantic style.</param>
+    /// <param name="mutationRevision">The frame-local semantic mutation revision.</param>
     /// <returns>The continuation cell.</returns>
-    internal static Cell Continuation(int leadIndex, CellStyle style) => new()
+    internal static Cell Continuation(int leadIndex, CellStyle style, ulong mutationRevision) => new()
     {
         LeadIndex = leadIndex,
         Style = style,
+        MutationRevision = mutationRevision,
     };
 }

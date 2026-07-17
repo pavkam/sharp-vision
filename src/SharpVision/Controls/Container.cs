@@ -45,11 +45,11 @@ public abstract class Container: Control
 
         if (AutoScroll)
         {
-            var bar = _bars is not null
-                ? _vertical!.HitTest(point) ?? _horizontal!.HitTest(point)
+            var bar = _scroll.Bars is not null
+                ? _scroll.Vertical!.HitTest(point) ?? _scroll.Horizontal!.HitTest(point)
                 : null;
 
-            return bar ?? (_viewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? this;
+            return bar ?? (_scroll.ViewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? this;
         }
 
         return HitTestChildren(point) ?? (contains ? this : null);
@@ -77,9 +77,9 @@ public abstract class Container: Control
             return;
         }
 
-        RenderContent(canvas.Clip(_viewportBounds));
-        _horizontal?.Render(canvas);
-        _vertical?.Render(canvas);
+        RenderContent(canvas.Clip(_scroll.ViewportBounds));
+        _scroll.Horizontal?.Render(canvas);
+        _scroll.Vertical?.Render(canvas);
     }
 
     /// <inheritdoc/>
@@ -156,21 +156,42 @@ public abstract class Container: Control
     }
 
     /// <inheritdoc/>
-    internal override Size OnMeasuredDesired(Size desired) => !AutoSize
-        ? desired
-        : new Size(
-            AutoSizeAxis(
-                ContentExtent.Width,
-                Add(Padding.Horizontal, BorderThickness.Horizontal),
-                Width,
-                MinWidth,
-                MaxWidth),
-            AutoSizeAxis(
-                ContentExtent.Height,
-                Add(Padding.Vertical, BorderThickness.Vertical),
-                Height,
-                MinHeight,
-                MaxHeight));
+    internal override Size OnMeasuredDesired(Size desired)
+    {
+        var result = !AutoSize
+            ? desired
+            : new Size(
+                AutoSizeAxis(
+                    ContentExtent.Width,
+                    Add(Padding.Horizontal, BorderThickness.Horizontal),
+                    Width,
+                    MinWidth,
+                    MaxWidth),
+                AutoSizeAxis(
+                    ContentExtent.Height,
+                    Add(Padding.Vertical, BorderThickness.Vertical),
+                    Height,
+                    MinHeight,
+                    MaxHeight));
+
+        if (!AutoScroll)
+        {
+            return result;
+        }
+
+        var needsVertical = Width.Kind == Kind.Auto &&
+            (ScrollBars & ScrollBars.Vertical) != 0 &&
+            (VerticalBarVisibility == ScrollBarVisibility.Always ||
+             (VerticalBarVisibility == ScrollBarVisibility.Auto && ContentExtent.Height > result.Height));
+        var needsHorizontal = Height.Kind == Kind.Auto &&
+            (ScrollBars & ScrollBars.Horizontal) != 0 &&
+            (HorizontalBarVisibility == ScrollBarVisibility.Always ||
+             (HorizontalBarVisibility == ScrollBarVisibility.Auto && ContentExtent.Width > result.Width));
+
+        return new Size(
+            needsVertical ? Add(result.Width, 1) : result.Width,
+            needsHorizontal ? Add(result.Height, 1) : result.Height);
+    }
 
     // GrowAndShrink fits content exactly; GrowOnly never shrinks below an explicit
     // fixed-cell size. Both honor Min/Max.
@@ -191,17 +212,13 @@ public abstract class Container: Control
 
     #region Scrolling
 
-    private Size _extent;
-    private Size _viewport;
-    private int _horizontalOffset;
-    private int _verticalOffset;
-    private protected Rect _viewportBounds;
-    private bool _reserveHorizontal;
-    private bool _reserveVertical;
-    private protected Children? _bars;
-    private ScrollBar? _horizontal;
-    private ScrollBar? _vertical;
-    private bool _syncing;
+    private readonly ContainerScrollController _scroll = new();
+
+    /// <summary>Gets the private generated scrollbar parts for specialized container layout.</summary>
+    private protected Children? _bars => _scroll.Bars;
+
+    /// <summary>Gets the committed viewport bounds for specialized container clipping.</summary>
+    private protected Rect _viewportBounds => _scroll.ViewportBounds;
 
     /// <summary>Raised after one or both offsets commit.</summary>
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
@@ -230,13 +247,13 @@ public abstract class Container: Control
             }
             else
             {
-                _horizontalOffset = 0;
-                _verticalOffset = 0;
+                _scroll.HorizontalOffset = 0;
+                _scroll.VerticalOffset = 0;
 
-                if (_bars is not null)
+                if (_scroll.Bars is not null)
                 {
-                    SetVisibility(_horizontal!, visible: false);
-                    SetVisibility(_vertical!, visible: false);
+                    SetVisibility(_scroll.Horizontal!, visible: false);
+                    SetVisibility(_scroll.Vertical!, visible: false);
                 }
             }
         }
@@ -316,35 +333,21 @@ public abstract class Container: Control
         }
     } = ScrollBarVisibility.Auto;
 
-    /// <summary>Identifies the themeable shared chrome form used by owned bars.</summary>
-    public static StyleProperty<ScrollBarChrome> ScrollBarChromeProperty { get; } =
-        StyleProperty<ScrollBarChrome>.Register<Container>(
-            "scroll-bar-chrome",
-            ScrollBarChrome.Full,
-            ChangeImpact.Measure);
-
     /// <summary>Gets or sets the shared chrome form used by both owned bars.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public ScrollBarChrome ScrollBarChrome
     {
-        get => GetValue(ScrollBarChromeProperty);
+        get;
         set
         {
             Validate(value);
-            SetValue(ScrollBarChromeProperty, value);
-            _ = _horizontal?.Chrome = ScrollBarChrome;
-            _ = _vertical?.Chrome = ScrollBarChrome;
+            _ = SetProperty(ref field, value, ChangeImpact.Measure);
+            _ = _scroll.Horizontal?.Chrome = ScrollBarChrome;
+            _ = _scroll.Vertical?.Chrome = ScrollBarChrome;
         }
-    }
-
-    /// <summary>Identifies the themeable generated glyph treatment used by owned bars.</summary>
-    public static StyleProperty<ScrollBarFill> ScrollBarFillProperty { get; } =
-        StyleProperty<ScrollBarFill>.Register<Container>(
-            "scroll-bar-fill",
-            ScrollBarFill.Block,
-            ChangeImpact.Render);
+    } = ScrollBarChrome.Full;
 
     /// <summary>Gets or sets the shared generated glyph treatment used by both owned bars.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -352,15 +355,15 @@ public abstract class Container: Control
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public ScrollBarFill ScrollBarFill
     {
-        get => GetValue(ScrollBarFillProperty);
+        get;
         set
         {
             Validate(value);
-            SetValue(ScrollBarFillProperty, value);
-            _ = _horizontal?.Fill = ScrollBarFill;
-            _ = _vertical?.Fill = ScrollBarFill;
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
+            _ = _scroll.Horizontal?.Fill = ScrollBarFill;
+            _ = _scroll.Vertical?.Fill = ScrollBarFill;
         }
-    }
+    } = ScrollBarFill.Block;
 
     /// <summary>Gets or sets the non-negative arrow and wheel change in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -391,10 +394,10 @@ public abstract class Container: Control
     }
 
     /// <summary>Gets the committed non-negative content extent.</summary>
-    public Size Extent => _extent;
+    public Size Extent => _scroll.Extent;
 
     /// <summary>Gets the committed non-negative visible extent.</summary>
-    public Size Viewport => _viewport;
+    public Size Viewport => _scroll.Viewport;
 
     /// <summary>Gets or sets the valid horizontal content offset.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
@@ -402,7 +405,7 @@ public abstract class Container: Control
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public int HorizontalOffset
     {
-        get => _horizontalOffset;
+        get => _scroll.HorizontalOffset;
         set
         {
             ValidateOffset(value, MaximumX(), nameof(value));
@@ -416,7 +419,7 @@ public abstract class Container: Control
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
     public int VerticalOffset
     {
-        get => _verticalOffset;
+        get => _scroll.VerticalOffset;
         set
         {
             ValidateOffset(value, MaximumY(), nameof(value));
@@ -456,8 +459,8 @@ public abstract class Container: Control
             throw new ArgumentException("The control must be a descendant of this container.", nameof(descendant));
         }
 
-        var logicalX = Add(Difference(descendant.Bounds.X, _viewportBounds.X), HorizontalOffset);
-        var logicalY = Add(Difference(descendant.Bounds.Y, _viewportBounds.Y), VerticalOffset);
+        var logicalX = Add(Difference(descendant.Bounds.X, _scroll.ViewportBounds.X), HorizontalOffset);
+        var logicalY = Add(Difference(descendant.Bounds.Y, _scroll.ViewportBounds.Y), VerticalOffset);
         var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
         var y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
         return Apply(x, y, Cause.BringIntoView);
@@ -598,11 +601,11 @@ public abstract class Container: Control
         if (!AutoScroll)
         {
             var box = new Size(padded.Width, padded.Height);
-            _ = SetProperty(ref _extent, box, ChangeImpact.None, nameof(Extent));
-            _ = SetProperty(ref _viewport, box, ChangeImpact.None, nameof(Viewport));
-            _viewportBounds = padded;
-            _horizontalOffset = 0;
-            _verticalOffset = 0;
+            _ = SetProperty(ref _scroll.Extent, box, ChangeImpact.None, nameof(Extent));
+            _ = SetProperty(ref _scroll.Viewport, box, ChangeImpact.None, nameof(Viewport));
+            _scroll.ViewportBounds = padded;
+            _scroll.HorizontalOffset = 0;
+            _scroll.VerticalOffset = 0;
             return padded;
         }
 
@@ -612,12 +615,12 @@ public abstract class Container: Control
         }
 
         Resolve(new Size(padded.Width, padded.Height), ContentExtent, out var horizontal, out var vertical, out var viewport);
-        _viewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
-        var extentChanged = _extent != ContentExtent;
-        _ = SetProperty(ref _extent, ContentExtent, ChangeImpact.None, nameof(Extent));
-        _ = SetProperty(ref _viewport, viewport, ChangeImpact.None, nameof(Viewport));
-        _reserveHorizontal = horizontal;
-        _reserveVertical = vertical;
+        _scroll.ViewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);
+        var extentChanged = _scroll.Extent != ContentExtent;
+        _ = SetProperty(ref _scroll.Extent, ContentExtent, ChangeImpact.None, nameof(Extent));
+        _ = SetProperty(ref _scroll.Viewport, viewport, ChangeImpact.None, nameof(Viewport));
+        _scroll.ReserveHorizontal = horizontal;
+        _scroll.ReserveVertical = vertical;
         _ = Apply(
             Math.Min(HorizontalOffset, MaximumX()),
             Math.Min(VerticalOffset, MaximumY()),
@@ -633,22 +636,22 @@ public abstract class Container: Control
     /// <inheritdoc/>
     internal override void ArrangeOverlays(Rect padded)
     {
-        if (!AutoScroll || _bars is null)
+        if (!AutoScroll || _scroll.Bars is null)
         {
             return;
         }
 
-        Debug.Assert(_horizontal is not null && _vertical is not null, "Created scrollbar chrome owns both axes.");
+        Debug.Assert(_scroll.Horizontal is not null && _scroll.Vertical is not null, "Created scrollbar chrome owns both axes.");
 
         SynchronizeBarAppearance();
-        SetVisibility(_horizontal, _reserveHorizontal);
-        SetVisibility(_vertical, _reserveVertical);
-        _horizontal.Arrange(
-            new Rect(padded.X, padded.Y + _viewportBounds.Height, _viewportBounds.Width, _reserveHorizontal ? 1 : 0),
+        SetVisibility(_scroll.Horizontal, _scroll.ReserveHorizontal);
+        SetVisibility(_scroll.Vertical, _scroll.ReserveVertical);
+        _scroll.Horizontal.Arrange(
+            new Rect(padded.X, padded.Y + _scroll.ViewportBounds.Height, _scroll.ViewportBounds.Width, _scroll.ReserveHorizontal ? 1 : 0),
             widthResolved: true,
             heightResolved: true);
-        _vertical.Arrange(
-            new Rect(padded.X + _viewportBounds.Width, padded.Y, _reserveVertical ? 1 : 0, _viewportBounds.Height),
+        _scroll.Vertical.Arrange(
+            new Rect(padded.X + _scroll.ViewportBounds.Width, padded.Y, _scroll.ReserveVertical ? 1 : 0, _scroll.ViewportBounds.Height),
             widthResolved: true,
             heightResolved: true);
         Synchronize();
@@ -656,46 +659,50 @@ public abstract class Container: Control
 
     private void EnsureBars()
     {
-        if (_bars is not null)
+        if (_scroll.Bars is not null)
         {
             return;
         }
 
-        _horizontal = new ScrollBar
+        _scroll.Horizontal = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
             Chrome = ScrollBarChrome,
             Fill = ScrollBarFill,
+            Focusable = false,
+            TabStop = false,
         };
-        _vertical = new ScrollBar
+        _scroll.Vertical = new ScrollBar
         {
             Orientation = Orientation.Vertical,
             Chrome = ScrollBarChrome,
             Fill = ScrollBarFill,
+            Focusable = false,
+            TabStop = false,
         };
-        _horizontal.ValueChanged += OnHorizontalChanged;
-        _vertical.ValueChanged += OnVerticalChanged;
-        _bars = new Children(
+        _scroll.Horizontal.ValueChanged += OnHorizontalChanged;
+        _scroll.Vertical.ValueChanged += OnVerticalChanged;
+        _scroll.Bars = new Children(
             this,
             capacity: 2,
             new OwnedControlOptions(
                 OwnedControlRole.FrameworkPart,
                 OwnedControlLayer.Normal,
                 participatesInHitTesting: true,
-                participatesInNavigation: true,
+                participatesInNavigation: false,
                 partKey: "scroll-bars",
                 ChangeImpact.Measure))
         {
-            _horizontal,
-            _vertical,
+            _scroll.Horizontal,
+            _scroll.Vertical,
         };
 
-        Debug.Assert(_bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
+        Debug.Assert(_scroll.Bars.Count == 2, "Scrollbar chrome owns exactly one control per axis.");
     }
 
     private void SynchronizeBarAppearance()
     {
-        if (_horizontal is null || _vertical is null)
+        if (_scroll.Horizontal is null || _scroll.Vertical is null)
         {
             return;
         }
@@ -703,46 +710,46 @@ public abstract class Container: Control
         var chrome = ScrollBarChrome;
         var fill = ScrollBarFill;
 
-        if (_horizontal.Chrome != chrome)
+        if (_scroll.Horizontal.Chrome != chrome)
         {
-            _horizontal.Chrome = chrome;
+            _scroll.Horizontal.Chrome = chrome;
         }
 
-        if (_vertical.Chrome != chrome)
+        if (_scroll.Vertical.Chrome != chrome)
         {
-            _vertical.Chrome = chrome;
+            _scroll.Vertical.Chrome = chrome;
         }
 
-        if (_horizontal.Fill != fill)
+        if (_scroll.Horizontal.Fill != fill)
         {
-            _horizontal.Fill = fill;
+            _scroll.Horizontal.Fill = fill;
         }
 
-        if (_vertical.Fill != fill)
+        if (_scroll.Vertical.Fill != fill)
         {
-            _vertical.Fill = fill;
+            _scroll.Vertical.Fill = fill;
         }
     }
 
     private void Synchronize()
     {
-        if (_syncing || _bars is null)
+        if (_scroll.IsSynchronizing || _scroll.Bars is null)
         {
             return;
         }
 
-        Debug.Assert(_horizontal is not null && _vertical is not null, "Scrollbar synchronization requires both axes.");
+        Debug.Assert(_scroll.Horizontal is not null && _scroll.Vertical is not null, "Scrollbar synchronization requires both axes.");
 
-        _syncing = true;
+        _scroll.IsSynchronizing = true;
 
         try
         {
-            Configure(_horizontal, MaximumX(), Viewport.Width, HorizontalOffset);
-            Configure(_vertical, MaximumY(), Viewport.Height, VerticalOffset);
+            Configure(_scroll.Horizontal, MaximumX(), Viewport.Width, HorizontalOffset);
+            Configure(_scroll.Vertical, MaximumY(), Viewport.Height, VerticalOffset);
         }
         finally
         {
-            _syncing = false;
+            _scroll.IsSynchronizing = false;
         }
     }
 
@@ -767,7 +774,7 @@ public abstract class Container: Control
     {
         _ = sender;
 
-        if (!_syncing)
+        if (!_scroll.IsSynchronizing)
         {
             _ = Apply(eventArgs.Value, VerticalOffset, eventArgs.Cause);
         }
@@ -777,7 +784,7 @@ public abstract class Container: Control
     {
         _ = sender;
 
-        if (!_syncing)
+        if (!_scroll.IsSynchronizing)
         {
             _ = Apply(HorizontalOffset, eventArgs.Value, eventArgs.Cause);
         }
@@ -793,8 +800,8 @@ public abstract class Container: Control
         x = Math.Clamp(x, 0, MaximumX());
         y = Math.Clamp(y, 0, MaximumY());
         var previous = new Point(HorizontalOffset, VerticalOffset);
-        var changedX = SetProperty(ref _horizontalOffset, x, ChangeImpact.Arrange, nameof(HorizontalOffset));
-        var changedY = SetProperty(ref _verticalOffset, y, ChangeImpact.Arrange, nameof(VerticalOffset));
+        var changedX = SetProperty(ref _scroll.HorizontalOffset, x, ChangeImpact.Arrange, nameof(HorizontalOffset));
+        var changedY = SetProperty(ref _scroll.VerticalOffset, y, ChangeImpact.Arrange, nameof(VerticalOffset));
 
         if (!changedX && !changedY)
         {

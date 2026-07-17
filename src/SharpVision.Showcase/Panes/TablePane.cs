@@ -26,8 +26,8 @@ internal sealed class TablePane: CompositeControl
             ShowHeader = true,
             CellPadding = new Thickness(1, 0),
             RowSpacing = 1,
-            HeaderForeground = ThemeColors.Accent,
-            GridLineColor = ThemeColors.Border,
+            HeaderForeground = ColorRole.Accent,
+            GridLineColor = ColorRole.Border,
         };
         primary.Columns.Add(TableColumn.Fixed("Name", 12));
         primary.Columns.Add(TableColumn.Percent("Status", 25));
@@ -68,8 +68,8 @@ internal sealed class TablePane: CompositeControl
             Width = Length.Cells(48),
             ShowGridLines = true,
             CellPadding = new Thickness(1, 0),
-            HeaderForeground = ThemeColors.Accent,
-            GridLineColor = ThemeColors.Border,
+            HeaderForeground = ColorRole.Accent,
+            GridLineColor = ColorRole.Border,
         };
         interactive.Columns.Add(TableColumn.Fixed("Action", 16));
         interactive.Columns.Add(TableColumn.Fill("Configuration"));
@@ -122,8 +122,8 @@ internal sealed class TablePane: CompositeControl
             Width = Length.Cells(44),
             ShowHeader = true,
             CellPadding = new Thickness(1, 0),
-            HeaderForeground = ThemeColors.Accent,
-            GridLineColor = ThemeColors.Border,
+            HeaderForeground = ColorRole.Accent,
+            GridLineColor = ColorRole.Border,
         };
         headerOnly.Columns.Add(TableColumn.Fixed("Environment", 14));
         headerOnly.Columns.Add(TableColumn.Fill("Status"));
@@ -132,7 +132,7 @@ internal sealed class TablePane: CompositeControl
             Width = Length.Cells(44),
             ShowGridLines = true,
             CellPadding = new Thickness(1, 0),
-            GridLineColor = ThemeColors.Border,
+            GridLineColor = ColorRole.Border,
         };
         constrained.Columns.Add(TableColumn.Fixed("Shortcut", 12));
         constrained.Columns.Add(TableColumn.Fill("Description"));
@@ -147,8 +147,8 @@ internal sealed class TablePane: CompositeControl
             CellPadding = new Thickness(1, 0),
             ShowGridLines = true,
             ScrollBars = ScrollBars.Both,
-            HeaderForeground = ThemeColors.Accent,
-            GridLineColor = ThemeColors.Border,
+            HeaderForeground = ColorRole.Accent,
+            GridLineColor = ColorRole.Border,
         };
         scrolling.Columns.Add(TableColumn.Fixed("Service", 12));
         scrolling.Columns.Add(TableColumn.Fixed("State", 12));

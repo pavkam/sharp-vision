@@ -18,7 +18,7 @@ public static class Router
     /// The attached target is accessed off-dispatcher or arguments are already routing.
     /// </exception>
     /// <exception cref="ObjectDisposedException"><paramref name="target"/> is disposed.</exception>
-    public static void Route<TArgs>(
+    public static RouteResult Route<TArgs>(
         Control target,
         Event<TArgs> routedEvent,
         TArgs eventArgs) where TArgs : RoutedEventArgs
@@ -46,6 +46,8 @@ public static class Router
         var sequence = Sequence.Current;
         var began = false;
 
+        var result = default(RouteResult);
+
         try
         {
             eventArgs.Begin(target);
@@ -65,18 +67,21 @@ public static class Router
 
             var bubbleCount = routedEvent.Strategy == Strategy.Direct ? 1 : depth;
 
-            for (index = 0; index < bubbleCount; index++)
-            {
-                route[index].InvokeHandlers(routedEvent, eventArgs, sequence);
-            }
-
-            // Default behaviors follow the completed bubble from the semantic
-            // leaf toward its owning controls. This lets composite controls
-            // remain interactive when hit testing selects their child content.
             for (index = 0; index < bubbleCount && !eventArgs.Handled; index++)
             {
-                route[index].InvokeDefault(eventArgs);
+                var current = route[index];
+                current.InvokeHandlers(routedEvent, eventArgs, sequence);
+
+                if (!eventArgs.Handled)
+                {
+                    // A node's own default runs immediately after its bubble
+                    // handlers. This prevents an ancestor widget default from
+                    // stealing navigation keys from a focused nested editor.
+                    current.InvokeDefault(eventArgs);
+                }
             }
+
+            result = new RouteResult(eventArgs.Handled, eventArgs.PostRouteCommand, eventArgs.OriginalSource);
         }
         finally
         {
@@ -88,5 +93,7 @@ public static class Router
             Array.Clear(route, 0, depth);
             ArrayPool<Control>.Shared.Return(route);
         }
+
+        return result;
     }
 }

@@ -5,81 +5,28 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents expanded, collapsed, nested, disabled, Unicode, and replaced-content Expander specimens.</summary>
 internal sealed class ExpanderPane: CompositeControl
 {
-    /// <summary>The exact catalog/page name.</summary>
-    internal const string Title = "Expander";
-
-    /// <summary>Initializes the retained Expander documentation page.</summary>
     internal ExpanderPane() => InitializeContent(CreateContent());
+    internal const string Title = "Expander";
 
     private static Dock CreateContent()
     {
-        var expanded = Create("Details", "The content participates below the retained header.", isExpanded: true);
-        var collapsed = Create("Advanced", "Activate the header to reveal this content.", isExpanded: false);
-        var nested = new Expander
-        {
-            Header = "Outer",
-            Content = Create("Inner", "Nested sections keep independent expansion state.", isExpanded: true),
-            Width = Length.Cells(48),
-            Height = Length.Cells(4),
-        };
-        var disabled = Create("Unavailable", "Disabled headers refuse pointer and keyboard activation.", isExpanded: false);
-        disabled.IsEnabled = false;
-        var unicode = Create("界 Tools", "Wide header graphemes preserve complete terminal cells.", isExpanded: true);
-        var replaced = Create("Replacement", "First", isExpanded: false);
-        replaced.Content = new Text("The replacement remains owned while collapsed and appears on activation.");
+        var status = new Text("Expanded: True");
+        var basic = new Expander { Header = "Advanced settings", Content = new Stack { Spacing = 1, Children = { new CheckBox { Content = new Text("Debug mode") }, new CheckBox { Content = new Text("Verbose logging") } } } };
+        basic.ExpandedChanged += (_, _) => status.Content = $"Expanded: {basic.IsExpanded}";
+        var collapsed = new Expander { Header = "Collapsed by default", IsExpanded = false, Content = new Text("Hidden until you expand.") };
+        var nested = new Expander { Header = "Outer section", Content = new Stack { Spacing = 1, Children = { new Text("Outer content."), new Expander { Header = "Inner section", Content = new Text("Nested content.") } } } };
+        var faq1 = new Expander { Header = "What is SharpVision?", IsExpanded = false, Content = new Text("A .NET terminal UI framework.") };
+        var faq2 = new Expander { Header = "How to create controls?", IsExpanded = false, Content = new Text("Derive from Control or CompositeControl.") };
 
-        return Doc.Page(
-            Title,
-            "Reveals one caller-owned content control beneath a retained, focusable header without rebuilding either child.",
-            Doc.Section(
-                "▼",
-                "Expansion state",
-                "The directional glyph, content geometry, and changed event commit as one observable state transition.",
-                Doc.Example(
-                    "Expanded",
-                    "Content participates in measure, arrangement, rendering, hit testing, and navigation.",
-                    Doc.Card(expanded),
-                    "var details = new Expander { Header = \"Details\", Content = body };"),
-                Doc.Example(
-                    "Collapsed",
-                    "The content remains owned but contributes no geometry until the header is activated.",
-                    Doc.Card(collapsed))),
-            Doc.Section(
-                "↳",
-                "Composition and availability",
-                "Retained headers support nesting and inherited disabled state without virtual trees or rebuilt content.",
-                Doc.Example(
-                    "Nested sections",
-                    "Each Expander owns an independent header and one caller-replaceable content child.",
-                    Doc.Card(nested)),
-                Doc.Example(
-                    "Disabled",
-                    "Unavailable headers remain visible but reject pointer, Space, and Enter activation.",
-                    Doc.Card(disabled))),
-            Doc.Section(
-                "界",
-                "Unicode and replacement",
-                "Header measurement uses terminal cells, while replacing collapsed content transfers ownership immediately.",
-                Doc.Example(
-                    "Wide header",
-                    "The wide glyph occupies one grapheme and two physical cells.",
-                    Doc.Card(unicode)),
-                Doc.Example(
-                    "Replaced while collapsed",
-                    "Activate the header to reveal the replacement rather than the released first child.",
-                    Doc.Card(replaced),
-                    "details.Content = replacement;")));
+        return Doc.Page(Title, "Displays a collapsible section with a focusable header toggle and optional content.",
+            Doc.Section("📂", "Basic expander", "Click header or Enter/Space to toggle.",
+                Doc.Example("Settings section", "Toggle to show or hide.", Doc.Column(basic, status), "var exp = new Expander { Header = \"Settings\" };"),
+                Doc.Example("Initially collapsed", "Set IsExpanded = false.", collapsed)),
+            Doc.Section("📂", "Nested expanders", "Expanders inside expanders.",
+                Doc.Example("Two-level nesting", "Both toggle independently.", nested)),
+            Doc.Section("📂", "FAQ pattern", "Collapsed expanders create an accordion.",
+                Doc.Example("Stacked questions", "Click any header.", Doc.Column(faq1, faq2))));
     }
-
-    private static Expander Create(string header, string content, bool isExpanded) => new()
-    {
-        Header = header,
-        Content = new Text(content),
-        IsExpanded = isExpanded,
-        Width = Length.Cells(64),
-        Height = Length.Cells(isExpanded ? 3 : 1),
-    };
 }

@@ -27,11 +27,12 @@ pairing prose with a live specimen; `Doc.Card`, `Doc.Row`, and `Doc.Column` are
 composition shorthands for framing and arranging specimens.
 
 `Gallery` owns the stable catalog of pane titles and factories
-(`(string Name, Func<CompositeControl> Create)[]`). The sidebar contains 19
-entries: Button, Canvas, CheckBox, ComboBox, Dock, FigletText, Grid, List, Menu,
-Overlay, Popup, RadioButton, ScrollBar, Stack, Table, Text, TextInput, Window,
-and Theming. Foundation types, intrinsic chrome such as border and shadow, and
-unimplemented specifications are not navigation entries.
+(`(string Name, Func<CompositeControl> Create)[]`). The sidebar contains 26
+entries: Button, Canvas, CheckBox, ComboBox, Dock, Expander, FigletText, Grid,
+GroupBox, List, Menu, NavigationView, Overlay, Popup, Prism, ProgressBar,
+RadioButton, ScrollBar, Separator, Stack, TabControl, Table, Text, TextInput,
+Window, and Theming. Foundation types, intrinsic chrome such as border and
+shadow, and unimplemented specifications are not navigation entries.
 
 Each pane installs one `Doc.Page` composed of one or more `Doc.Example` blocks:
 an Overview paragraph stating the control's purpose, followed by labeled, live
@@ -100,6 +101,13 @@ Every showcase `TextInput` inherits the active theme, and the control paints its
 resolved background across its entire committed box. Empty space is therefore
 visibly part of the input rather than blending into its card.
 
+The Prism page compares horizontal, vertical, and diagonal hue coordinates, then
+advances a diagonal FIGlet specimen one explicit phase step at a time. Its
+rich-text specimen makes the foreground-only boundary visible by retaining the
+original background, bold attribute, typed underline, underline color, and
+hyperlink metadata. The page uses no hidden timer; the caller owns every phase
+mutation.
+
 On Unix, `ConsoleApplication.RunAsync` reads directly from `/dev/tty` through a
 one-byte asynchronous stream after acquiring its raw-input lease. This avoids
 the line-buffered standard-input behavior that can otherwise defer
@@ -113,7 +121,7 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 ## Test contract
 
-Showcase tests assert the exact 19-page inventory, Button as the initial page,
+Showcase tests assert the exact 26-page inventory, Button as the initial page,
 marked `Text` documentation coverage, fresh detached composite ownership, stable
 composition-root identity across first layout, no pane inheriting `Container`,
 and matching runtime control type. They render every page at 30 by 8, 80 by 24,

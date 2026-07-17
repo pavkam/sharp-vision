@@ -3,7 +3,7 @@
 
 namespace SharpVision.Controls;
 
-/// <summary>Defines one focusable, selectable entry in a NavigationView.</summary>
+/// <summary>Defines one focusable, selectable entry in a <see cref="NavigationView"/>.</summary>
 public sealed class NavigationViewItem: Pressable
 {
     private bool _isSelected;
@@ -16,7 +16,6 @@ public sealed class NavigationViewItem: Pressable
 
     /// <summary>Gets or sets the non-null label text.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The value contains a terminal control.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string Header
@@ -25,46 +24,25 @@ public sealed class NavigationViewItem: Pressable
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            ValidateText(value, nameof(value));
             _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = string.Empty;
 
     /// <summary>Gets or sets an optional glyph prefix shown before the header.</summary>
-    /// <exception cref="ArgumentException">The value contains a terminal control.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string? Glyph
     {
         get;
-        set
-        {
-            ValidateText(value, nameof(value));
-            _ = SetProperty(ref field, value, ChangeImpact.Measure);
-        }
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets whether this entry is the navigation view's selected item.</summary>
     public bool IsSelected => _isSelected;
 
     /// <summary>Commits the visual selected state from the containing navigation view.</summary>
-    /// <param name="value">Whether this entry is selected.</param>
     internal void CommitSelection(bool value) =>
         _ = SetVisualStateProperty(ref _isSelected, value, nameof(IsSelected));
-
-    /// <summary>Finds the retained NavigationView ancestor, or null while detached.</summary>
-    internal NavigationView? FindNavigationView()
-    {
-        for (var current = Parent; current is not null; current = current.Parent)
-        {
-            if (current is NavigationView view)
-            {
-                return view;
-            }
-        }
-
-        return null;
-    }
 
     /// <inheritdoc/>
     protected override bool IsSelectedState => _isSelected;
@@ -82,14 +60,14 @@ public sealed class NavigationViewItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) => _ = bounds;
+    protected override void ArrangeOverride(Rect bounds) { }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }
@@ -99,7 +77,7 @@ public sealed class NavigationViewItem: Pressable
             return;
         }
 
-        var marker = _isSelected || IsHovered ? "›" : "·";
+        var marker = _isSelected || IsPointerOver ? "›" : "·";
         var prefix = Glyph is not null ? $"{Glyph} " : string.Empty;
         _ = canvas.Draw($" {marker} {prefix}{Header}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
@@ -128,11 +106,16 @@ public sealed class NavigationViewItem: Pressable
         }
     }
 
-    private static void ValidateText(string? value, string name)
+    internal NavigationView? FindNavigationView()
     {
-        if (value is not null && Terminal.Unicode.Width.Measure(value).Controls > 0)
+        for (var current = Parent; current is not null; current = current.Parent)
         {
-            throw new ArgumentException("Navigation item text cannot contain terminal controls.", name);
+            if (current is NavigationView view)
+            {
+                return view;
+            }
         }
+
+        return null;
     }
 }

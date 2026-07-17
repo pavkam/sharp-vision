@@ -18,6 +18,9 @@ public enum ReleaseReason
     /// <summary>The terminal reported focus loss.</summary>
     TerminalFocusLost,
 
+    /// <summary>Another control replaced the active capture owner.</summary>
+    Transferred,
+
     /// <summary>The owned subtree was disposed.</summary>
     Disposed,
 }

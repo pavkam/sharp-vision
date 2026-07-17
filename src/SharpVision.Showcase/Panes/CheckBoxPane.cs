@@ -43,8 +43,7 @@ internal sealed class CheckBoxPane: CompositeControl
         };
         var stateStage = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             Padding = new Thickness(1, 0),
             Children = { Doc.Column(unchecked_, checked_, indeterminate) },
         };

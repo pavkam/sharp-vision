@@ -62,7 +62,6 @@ internal sealed class ListPane: CompositeControl
 
         var templated = new List
         {
-            Width = Length.Cells(30),
             Height = Length.Cells(7),
             Items = new object?[] { "Renderer", "Input", "Layout" },
             ItemTemplate = item => Doc.Card(Doc.Column(
@@ -118,7 +117,7 @@ internal sealed class ListPane: CompositeControl
                 "None permits navigation only, Single retains at most one row, and Multiple owns a sorted selected set.",
                 Doc.Example(
                     "Multiple selection",
-                    "Use Control to toggle and Shift for a range, or activate the programmatic recipe to select Alpha and Gamma.",
+                    "Space toggles individual items. Activate the programmatic recipe to select Alpha and Gamma.",
                     Doc.Column(multiple, selectMultiple, multipleStatus),
                     "list.SelectionMode = SelectionMode.Multiple;\nlist.SetSelected(0, true);")),
             Doc.Section(

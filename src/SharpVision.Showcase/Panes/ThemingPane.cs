@@ -7,7 +7,7 @@ using SharpVision.Text;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents application theming, type-keyed styles, local overrides, and third-party style properties.</summary>
+/// <summary>Documents immutable application palettes, direct appearances, and ordinary CLR properties.</summary>
 internal sealed class ThemingPane: CompositeControl
 {
 
@@ -39,29 +39,18 @@ internal sealed class ThemingPane: CompositeControl
             Doc.Row(left, right, above, below),
             placementPreview);
 
-        // A scratch theme, never installed as the application theme, holds one semantic style keyed
-        // to Button. The preview borrows that style locally so it can be compared with a baseline.
-        ControlStyle<Button> typedStyle = new();
-        typedStyle.Set(BackgroundProperty, State.Normal, ThemeColors.Accent);
-        typedStyle.Set(ForegroundProperty, State.Normal, ThemeColors.Background);
-        typedStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Heavy);
-        typedStyle.Set(HasShadowProperty, State.Normal, false);
-        Theme spotlight = new();
-        spotlight.SetStyle(typedStyle);
-
         Button baseline = new() { Content = new Text("Baseline theme"), HasShadow = false };
         Button typedPreview = new()
         {
             Content = new Text("Semantic accent"),
-            Style = spotlight.GetStyle<Button>(),
+            Background = ColorRole.Accent,
+            Foreground = ColorRole.Background,
+            BorderGlyphs = Glyphs.Heavy,
+            HasShadow = false,
         };
         Text typedReadout = new("Background: Accent · Border: Heavy · Shadow: Off");
 
-        // A local override attaches a ControlStyle directly to one instance, skipping any theme.
-        ControlStyle<Button> localStyle = new();
-        localStyle.Set(ForegroundProperty, State.Normal, Color.Indexed(3));
-        localStyle.Set(BorderGlyphsProperty, State.Normal, Glyphs.Ascii);
-        Button overridden = new() { Content = new Text("Only me"), Style = localStyle };
+        Button overridden = new() { Content = new Text("Only me"), Foreground = Color.Indexed(3), BorderGlyphs = Glyphs.Ascii };
         Button plain = new() { Content = new Text("Themed sibling") };
 
         var roleSwatches = BuildRoleSwatches();
@@ -94,7 +83,7 @@ internal sealed class ThemingPane: CompositeControl
 
         return Doc.Page(
             Title,
-            "Demonstrates application themes, type-keyed styles, local overrides, and third-party style properties.",
+            "Demonstrates immutable application palettes, direct appearances, and ordinary control properties.",
             Doc.Section(
                 "🎭",
                 "Application theme",
@@ -114,13 +103,13 @@ internal sealed class ThemingPane: CompositeControl
                     catalog)),
             Doc.Section(
                 "🎭",
-                "Type and local styles",
-                "Type-keyed theme recipes apply broadly; a Control.Style override resolves later and affects only that instance.",
+                "Direct appearance",
+                "Controls own small deterministic appearance policies; direct values override only that instance.",
                 Doc.Example(
-                    "Type-keyed Button style",
+                    "Semantic Button appearance",
                     "Compare the ordinary baseline with a semantic Accent surface, heavy border, and deliberately flat face. No indexed color or raw glyph record leaks into the UI.",
                     Doc.Column(Doc.Row(baseline, typedPreview), typedReadout),
-                    "style.Set(Control.BackgroundProperty, State.Normal, ThemeColors.Accent);\nstyle.Set(Control.BorderGlyphsProperty, State.Normal, Glyphs.Heavy);"),
+                    "button.Background = ColorRole.Accent;\nbutton.BorderGlyphs = Glyphs.Heavy;"),
                 Doc.Example(
                     "Per-instance override",
                     "Only me owns the ASCII/yellow override; the sibling continues following the application theme.",
@@ -144,12 +133,12 @@ internal sealed class ThemingPane: CompositeControl
             Doc.Section(
                 "🎭",
                 "Third-party controls",
-                "Custom controls register StyleProperty metadata and resolve it through the same theme/local cascade as built-in chrome.",
+                "Custom controls expose ordinary validated CLR properties and use the same palette and protected render seams as built-in controls.",
                 Doc.Example(
                     "ShowcasePanel label placement",
-                    "Choose all four placements; LabelPlacement is a custom style property, not a private theme mechanism.",
+                    "Choose all four placements; LabelPlacement is an ordinary validated control property, not a private theme mechanism.",
                     placement,
-                    "var property = StyleProperty<LabelPlacement>.Register<ShowcasePanel>(\n    \"label-placement\",\n    LabelPlacement.Left,\n    Impact.Measure);")));
+                    "panel.LabelPlacement = LabelPlacement.Left;")));
     }
 
     private static Stack BuildRoleSwatches()
@@ -164,7 +153,6 @@ internal sealed class ThemingPane: CompositeControl
             {
                 Width = Length.Cells(6),
                 Height = Length.Cells(1),
-                FillMode = FillMode.Opaque,
                 Background = RoleColor(role),
             };
             rows[index] = Doc.Row(chip, new Text(role.ToString()));
@@ -173,20 +161,5 @@ internal sealed class ThemingPane: CompositeControl
         return Doc.Column(rows);
     }
 
-    private static Color RoleColor(ColorRole role) => role switch
-    {
-        ColorRole.Foreground => ThemeColors.Foreground,
-        ColorRole.Background => ThemeColors.Background,
-        ColorRole.Surface => ThemeColors.Surface,
-        ColorRole.Border => ThemeColors.Border,
-        ColorRole.Accent => ThemeColors.Accent,
-        ColorRole.Muted => ThemeColors.Muted,
-        ColorRole.SelectionBackground => ThemeColors.SelectionBackground,
-        ColorRole.SelectionForeground => ThemeColors.SelectionForeground,
-        ColorRole.Error => ThemeColors.Error,
-        ColorRole.Warning => ThemeColors.Warning,
-        ColorRole.Success => ThemeColors.Success,
-        ColorRole.Info => ThemeColors.Info,
-        _ => throw new ArgumentOutOfRangeException(nameof(role), role, "The color role is unknown."),
-    };
+    private static ThemeColor RoleColor(ColorRole role) => ThemeColor.From(role);
 }

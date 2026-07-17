@@ -44,9 +44,10 @@ observation without tree internals. `ExternalToggleChip` proves an unfriended
 third party can derive from `Pressable`, assign inherited `Content`, and
 activate checked styling without internal access. The external `FlowPanel`
 proves that setting `BorderThickness` insets owned leaves without third-party
-box-model plumbing; `Gauge.OnRender` calls `RenderChrome` before custom content
-drawn through `ContentBounds`. A reflection guard fails if the product friends
-either the consumer project or the production showcase.
+box-model plumbing; `Gauge.OnRenderContent` draws custom content through
+`ContentBounds` while the sealed base pipeline supplies its configured chrome. A
+reflection guard fails if the product friends either the consumer project or the
+production showcase.
 
 `SharpVision.Tests` deliberately retains friend access for internal invariant
 tests and therefore cannot serve as third-party API proof. The unfriended
@@ -72,53 +73,12 @@ only after the first renderer write is applied to an independent semantic
 screen. The host begins as a neutral focus anchor so a real Tab byte can move
 focus into the mounted component without calling `FocusManager` directly.
 
-Tests drive `surface.Pointer` with center- or cell-relative `MoveToAsync` and
-`ClickAsync`, stateful `PressAsync`/`MovePressedToAsync`/`ReleaseAsync`, unit
-`WheelAsync`, or complete `DragAsync`. Center clicks may carry Shift, Alt, and
-Control terminal modifiers for selection-policy tests. Relative cells are
-validated against the target's current arranged bounds on the UI dispatcher;
-foreign, empty, negative, and right/bottom-edge targets fail before input is
-queued. A wheel action accepts exactly one horizontal or vertical unit delta.
-Complete drag notation is concise, while the stateful form exposes capture and
-pressed-state checkpoints:
-
-```csharp
-await surface.Pointer.WheelAsync(bar, new Point(6, 0), wheelX: -1);
-await surface.Pointer.DragAsync(
-    bar,
-    new Point(1, 0),
-    new Point(10, 0));
-
-await surface.Pointer.MoveToAsync(bar, new Point(1, 0));
-await surface.Pointer.PressAsync();
-surface.ShouldHaveState(bar, State.Hovered | State.Focused | State.Pressed);
-await surface.Pointer.MovePressedToAsync(bar, new Point(10, 0));
-await surface.Pointer.ReleaseAsync();
-```
-
-`surface.Keyboard.PressAsync` encodes supported navigation, editing, and Kitty
-key actions, with a modifier overload for supported combinations. `TypeAsync`
-emits one owned UTF-8 text action, `PasteAsync` emits one complete bracketed
-paste transaction, and `CompleteCharacterAsync` emits distinct Kitty press and
-release transitions. Typed text must be non-empty and contain no terminal
-controls; unsupported key/modifier pairs fail before bytes are queued.
-
-Those helpers emit terminal bytes; they never call `Router.Route`, `SetHovered`,
-`SetPressed`, or `FocusManager.Focus` on the component. Input consumption is
-acknowledged only when the terminal session requests its next read, after it has
-synchronously decoded and routed the preceding bytes. The action then waits for
-a dispatcher fence and application idle after routed work, layout, rendering,
-and output. The fence causes a fresh idle transition even when disabled or
-otherwise ignored input produces no invalidation. An idle notification from
-before the current decode therefore cannot expose a partial action or strand a
-no-op action.
-
-`surface.UpdateAsync` runs an ordinary public mutation on the application
-dispatcher and settles the same layout/render/output path. `surface.ResizeAsync`
-replaces the modeled terminal surface, publishes a real `Dimensions` record
-through `IResizeSource`, and completes only after `Application.Size` and the
-final modeled frame match the positive requested cell geometry. Neither method
-calls layout or rendering internals directly.
+Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
+or `ClickAsync`, and drive `surface.Keyboard` with supported typed key codes.
+Those helpers emit terminal bytes; they never call `Router.Route`, direct hover
+mutation, `SetPressed`, or `FocusManager.Focus` on the component. Each action
+waits until the transport consumes its bytes and the application reaches idle
+after routed work, layout, rendering, and output.
 
 ```csharp
 await using var surface = await ComponentSurface.MountAsync(
@@ -131,7 +91,7 @@ await surface.Pointer.PressAsync();
 
 surface.ShouldHaveState(
     button,
-    State.Hovered | State.Focused | State.Pressed);
+    VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
 surface.ShouldRender("""
 
      ╭──────╮
@@ -152,118 +112,10 @@ shadow cells. This keeps the mounted path aligned with the
 [focus](../concepts/focus.md#focus-contract),
 [visual-state](../concepts/styling.md#visual-states), and
 [rendering-equivalence](rendering.md#rendering-equivalence-testing) contracts.
-`ShouldHaveCursor` additionally compares the final semantic terminal cursor
-position and DEC visibility state, validating its point against the current
-resized surface.
 
 Action timeouts report the action and latest screen. Snapshot mismatches retain
 row boundaries and cell differences. Tests isolate held-pointer scenarios or
 release capture before reuse, so state cannot leak between surfaces.
-
-`TextSurfaceTests`, `FigletTextSurfaceTests`, `SeparatorSurfaceTests`, and
-`ProgressBarSurfaceTests` use resize on the same mounted instance to prove
-reflow, clipping exposure, axis-length recomputation, and removal of obsolete
-cells. `CheckBoxSurfaceTests` proves tiny-to-full content reveal, while
-`RadioButtonSurfaceTests` proves real group selection, disabled skipping, and
-arrow wrapping. These fixtures supplement, rather than replace, exhaustive pure
-state, validation, and geometry tests.
-
-`TextInputSurfaceTests` proves placeholder and password appearance, focus and
-semantic cursor, Unicode typing and cluster-safe navigation/deletion, Home/End,
-wide selection, atomic paste, submit policy, read-only and disabled refusal,
-pointer drag selection, wheel-driven owned rails, and resize offset repair.
-`ScrollBarSurfaceTests` proves exact horizontal, vertical, resized, and tiny
-geometry; combined state appearance; keyboard/button/track/wheel causes;
-endpoint no-ops; captured thumb motion; and disable cleanup.
-
-The layout-control surface audit is split by responsibility instead of hiding
-everything behind snapshots. `StackSurfaceTests`, `GridSurfaceTests`, and
-`DockSurfaceTests` prove mixed track allocation, ordering, collapsed-child
-exclusion, intrinsic scrolling, span/padding hit targets, every dock edge,
-resize, clipping, Unicode cells, and exact committed bounds. Their corresponding
-`StackTests`, `GridTests`, and `DockTests` retain exhaustive automatic sizing,
-deterministic remainder, unbounded measure, overflow, tiny-bound, and mutation
-algorithms.
-
-`OverlaySurfaceTests` and `CanvasSurfaceTests` prove visual and hit-test
-precedence, visibility/removal repair, common-slot alignment, percentage
-repositioning, negative/oversized clipping, and resize exposure. Exhaustive
-transparent-child, popup-layer, scroll-gutter, and signed-origin rules remain in
-`OverlayTests` and `CanvasTests`. `TableSurfaceTests` proves mixed columns,
-headers, Unicode, clickable row reuse/removal, both-axis scrolling, resize
-clamping, and stale-cell clearing; `TableTests` retains exhaustive column,
-wrapping, viewport, mutation, and scroll-origin cache invariants.
-
-`GroupBoxSurfaceTests` proves exact empty and wide-header frames, content
-insets, tiny clipping, resize reveal, style inheritance, and continuation
-ownership. `ExpanderSurfaceTests` proves exact expanded/collapsed appearance,
-stale-content clearing, pointer/Space/Enter parity, focus, disabled refusal,
-replacement, Unicode, tiny clipping, and resize reflow. `GroupBoxTests` and
-`ExpanderTests` retain validation-before-mutation, ownership transfer,
-desired-size, event order, and retained framework-part responsibilities.
-
-`ListSurfaceTests` proves neutral-host focus entry, pointer and keyboard
-selection/invocation parity, changed-event order, Up/End/Page navigation,
-Control toggling, Shift ranges, disabled-item skipping, selected-state styling,
-Unicode continuation ownership, bring-into-view offsets, resize clamping,
-selection/active repair after replacement, and complete stale-row clearing.
-`ListTests` retains snapshot/template atomicity, validation, ownership/disposal,
-cancellation/reentrancy, selection-mode normalization, and common scrollbar
-policy responsibilities.
-
-`TabControlSurfaceTests` proves exact retained headers, dividers, separator and
-selected content; pointer/keyboard parity; focus; selected-state styling;
-disabled skipping and wrap; deterministic removal/content-replacement repair;
-Unicode continuation ownership; header overflow/reveal; tiny clipping; resize;
-and stale-cell clearing. `TabControlTests` and `TabItemTests` retain typed
-collection validation, ownership transfer without disposal, stable-identity
-insertion, nearest eligible repair, invalid selection, event order, retained
-header identity, and selected-content layout responsibilities.
-
-`NavigationViewSurfaceTests` proves exact header/main/group/separator/footer
-composition, border and Unicode cells, roving Tab entry, pointer and
-Up/Down/Home/End parity, disabled skipping, main-to-footer traversal, combined
-selected/focus styling, group pointer/keyboard expansion, collapse repair,
-intrinsic main scrolling, pinned footer geometry, removal repair, resize offset
-clamping, and stale-cell clearing. `NavigationViewTests` retains typed ownership
-validation, label validation-before-mutation, focus publication, tab-stop
-invariants, group ownership, availability repair, and separator
-non-interactivity.
-
-### Mounted coverage catalog
-
-`ComponentSurfaceCoverageTests` reflects the exported production assembly and
-fails when a new concrete `Control` lacks either named mounted evidence or an
-explicit deferred-family decision. Composed semantic controls map to the owner
-fixture that actually mounts them; private presenters and collection objects are
-not controls and do not enter this catalog.
-
-| Public control                                                                           | Mounted evidence             |
-| ---------------------------------------------------------------------------------------- | ---------------------------- |
-| `Button`                                                                                 | `ButtonSurfaceTests`         |
-| `Text`                                                                                   | `TextSurfaceTests`           |
-| `FigletText`                                                                             | `FigletTextSurfaceTests`     |
-| `Separator`                                                                              | `SeparatorSurfaceTests`      |
-| `ProgressBar`                                                                            | `ProgressBarSurfaceTests`    |
-| `CheckBox`                                                                               | `CheckBoxSurfaceTests`       |
-| `RadioButton`                                                                            | `RadioButtonSurfaceTests`    |
-| `TextInput`                                                                              | `TextInputSurfaceTests`      |
-| `Stack`                                                                                  | `StackSurfaceTests`          |
-| `Grid`                                                                                   | `GridSurfaceTests`           |
-| `Dock`                                                                                   | `DockSurfaceTests`           |
-| `Overlay`                                                                                | `OverlaySurfaceTests`        |
-| `Canvas`                                                                                 | `CanvasSurfaceTests`         |
-| `Table`                                                                                  | `TableSurfaceTests`          |
-| `ScrollBar`                                                                              | `ScrollBarSurfaceTests`      |
-| `GroupBox`                                                                               | `GroupBoxSurfaceTests`       |
-| `Expander`                                                                               | `ExpanderSurfaceTests`       |
-| `List`                                                                                   | `ListSurfaceTests`           |
-| `TabControl`, `TabItem`                                                                  | `TabControlSurfaceTests`     |
-| `NavigationView`, `NavigationViewItem`, `NavigationViewGroup`, `NavigationViewSeparator` | `NavigationViewSurfaceTests` |
-
-`ComboBox`, `Menu`, `MenuItem`, `MenuSeparator`, `Popup`, and `Window` are the
-explicitly deferred transient-layer families. The guard names those exact types;
-“similar enough” does not silently exempt future controls.
 
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route

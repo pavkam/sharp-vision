@@ -72,11 +72,11 @@ internal static class Doc
         };
         var header = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Background = ColorRole.Surface,
             BorderThickness = new Thickness(0, 1, 0, 1),
             BorderGlyphs = Glyphs.Light,
-            BorderColor = ThemeColors.Border,
+            BorderColor = ColorRole.Border,
             Padding = new Thickness(1, 0),
             Children = { heading },
         };
@@ -97,7 +97,12 @@ internal static class Doc
         }
 
         Dock.SetSide(header, Side.Top);
-        return new Dock { Children = { header, body } };
+        return new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { header, body },
+        };
     }
 
     /// <summary>Builds one example block: a bold heading and dim description above a live specimen.</summary>
@@ -141,6 +146,8 @@ internal static class Doc
             };
             block.Children.Add(new Dock
             {
+                HorizontalAlignment = HorizontalAlignment.Left,
+                AutoSize = true,
                 BorderThickness = new Thickness(1),
                 BorderGlyphs = Glyphs.Light,
                 Padding = new Thickness(1, 0),

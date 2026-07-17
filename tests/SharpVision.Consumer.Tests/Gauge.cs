@@ -46,9 +46,8 @@ public sealed class Gauge: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        RenderChrome(canvas);
         var content = string.Create(CultureInfo.InvariantCulture, $"· {Value}%");
         _ = canvas.Draw(content.AsSpan(), new Point(ContentBounds.X, ContentBounds.Y), ResolvedStyle);
         RenderCount++;

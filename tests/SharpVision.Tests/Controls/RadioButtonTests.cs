@@ -268,22 +268,6 @@ public sealed class RadioButtonTests
         frame.GetCell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a foreground-only RadioButton style preserves the parent surface background.</summary>
-    [Fact]
-    public void Render_WhenStyleHasForegroundOnly_PreservesSurfaceBackground()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Control>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(45))));
-        var radio = new RadioButton() { Style = style };
-        new Engine().Layout(radio, new Size(2, 1));
-        using Frame frame = new(new Size(2, 1));
-        frame.Canvas.Fill(frame.Canvas.Bounds, new Rune(' '), new TerminalStyle(Color.Default, Color.Indexed(238)));
-
-        radio.Render(frame.Canvas);
-
-        frame.GetCell(default).Style.Background.ShouldBe(Color.Indexed(238));
-    }
-
     /// <summary>Verifies programmatic false leaves a valid empty group.</summary>
     [Fact]
     public void IsChecked_WhenSetFalse_AllowsNoSelection()

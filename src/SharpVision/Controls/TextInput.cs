@@ -18,7 +18,6 @@ public sealed class TextInput: Control
     private Selection _selection;
     private bool _pointerSelecting;
     private int _pointerAnchor;
-    private CaptureManager? _subscribedCapture;
     private int _contentWidth;
     private int _contentHeight = 1;
     private readonly OwnedControlSlot _chrome;
@@ -44,11 +43,11 @@ public sealed class TextInput: Control
         _vertical.ValueChanged += OnVerticalChanged;
         _chrome.Add(_horizontal);
         _chrome.Add(_vertical);
-        CanFocus = true;
+        Focusable = true;
+        TabStop = true;
     }
 
     /// <inheritdoc/>
-    protected override bool OwnsPointerState => true;
 
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>
     public event EventHandler<TextChangingEventArgs>? TextChanging;
@@ -249,20 +248,13 @@ public sealed class TextInput: Control
         }
     } = ShowScrollBars.WhenNeeded;
 
-    /// <summary>Identifies the themeable compact-or-full editor rail chrome.</summary>
-    public static StyleProperty<ScrollBarChrome> ScrollBarChromeProperty { get; } =
-        StyleProperty<ScrollBarChrome>.Register<TextInput>(
-            "scroll-bar-chrome",
-            ScrollBarChrome.Full,
-            ChangeImpact.Arrange);
-
     /// <summary>Gets or sets the compact or full form requested for editor rails.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBarChrome ScrollBarChrome
     {
-        get => GetValue(ScrollBarChromeProperty);
+        get;
         set
         {
             if (!Enum.IsDefined(value))
@@ -270,18 +262,11 @@ public sealed class TextInput: Control
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar chrome is unknown.");
             }
 
-            SetValue(ScrollBarChromeProperty, value);
+            _ = SetProperty(ref field, value, ChangeImpact.Arrange);
             _horizontal.Chrome = ScrollBarChrome;
             _vertical.Chrome = ScrollBarChrome;
         }
     }
-
-    /// <summary>Identifies the themeable line-or-block editor rail fill.</summary>
-    public static StyleProperty<ScrollBarFill> ScrollBarFillProperty { get; } =
-        StyleProperty<ScrollBarFill>.Register<TextInput>(
-            "scroll-bar-fill",
-            ScrollBarFill.Block,
-            ChangeImpact.Render);
 
     /// <summary>Gets or sets the generated line or block glyph treatment requested for editor rails.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -289,7 +274,7 @@ public sealed class TextInput: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBarFill ScrollBarFill
     {
-        get => GetValue(ScrollBarFillProperty);
+        get;
         set
         {
             if (!Enum.IsDefined(value))
@@ -297,7 +282,7 @@ public sealed class TextInput: Control
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The scrollbar fill is unknown.");
             }
 
-            SetValue(ScrollBarFillProperty, value);
+            _ = SetProperty(ref field, value, ChangeImpact.Render);
             _horizontal.Fill = ScrollBarFill;
             _vertical.Fill = ScrollBarFill;
         }
@@ -421,7 +406,7 @@ public sealed class TextInput: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var bounds = _editorBounds;
 
@@ -563,6 +548,13 @@ public sealed class TextInput: Control
             _undo.Clear();
             _redo.Clear();
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
+        base.OnLostPointerCapture(reason);
+        CancelPointer(releaseCapture: false);
     }
 
     /// <inheritdoc/>
@@ -810,7 +802,6 @@ public sealed class TextInput: Control
 
             _pointerAnchor = IndexAt(pressedCells);
             _pointerSelecting = true;
-            SubscribeCapture(capture);
             SetSelection(new Selection(_pointerAnchor, _pointerAnchor));
             eventArgs.Handled = true;
             return;
@@ -1185,35 +1176,9 @@ public sealed class TextInput: Control
         }
     }
 
-    private void OnCaptureCancelled(object? sender, CaptureCancelledEventArgs eventArgs)
-    {
-        if (ReferenceEquals(eventArgs.Control, this))
-        {
-            Debug.Assert(ReferenceEquals(sender, _subscribedCapture), "Capture owner is stable.");
-            CancelPointer(releaseCapture: false);
-        }
-    }
-
-    private void SubscribeCapture(CaptureManager capture)
-    {
-        if (_subscribedCapture is { } previous)
-        {
-            previous.Cancelled -= OnCaptureCancelled;
-        }
-
-        _subscribedCapture = capture;
-        capture.Cancelled += OnCaptureCancelled;
-    }
-
     private void CancelPointer(bool releaseCapture)
     {
         _pointerSelecting = false;
-
-        if (_subscribedCapture is { } capture)
-        {
-            capture.Cancelled -= OnCaptureCancelled;
-            _subscribedCapture = null;
-        }
 
         if (releaseCapture && CaptureOwner?.Captured is { } captured && ReferenceEquals(captured, this))
         {

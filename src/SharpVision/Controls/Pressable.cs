@@ -6,12 +6,12 @@ namespace SharpVision.Controls;
 /// <summary>Defines a focusable single-content control with reusable press interaction.</summary>
 public abstract class Pressable: ContentControl
 {
-    private readonly PressInteraction _interaction;
+    private readonly PressBehavior _interaction;
 
     /// <summary>Initializes an empty focusable single-content control.</summary>
     protected Pressable()
     {
-        _interaction = new PressInteraction(
+        _interaction = new PressBehavior(
             () => Bounds,
             () => EffectiveIsEnabled && EffectiveIsVisible,
             () => FocusOwner is null || IsFocused,
@@ -20,12 +20,12 @@ public abstract class Pressable: ContentControl
             () => HasPointerCapture,
             ReleasePointerCapture,
             SetPressed,
-            Activate);
-        CanFocus = true;
+        Activate);
+        Focusable = true;
+        TabStop = true;
     }
 
     /// <inheritdoc/>
-    protected override bool OwnsPointerState => true;
 
     /// <summary>Completes one validated activation in a concrete control.</summary>
     /// <param name="cause">The input path that completed activation.</param>
@@ -46,10 +46,10 @@ public abstract class Pressable: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
-        base.OnPointerCaptureCancelled(reason);
-        _interaction.CaptureCancelled();
+        base.OnLostPointerCapture(reason);
+        _interaction.CaptureLost();
     }
 
     /// <inheritdoc/>

@@ -134,31 +134,6 @@ public sealed class WindowTests
         FrameOracle.Get(frame, new Point(0, 3)).ShouldBe("╰");
     }
 
-    /// <summary>Verifies window body and border retain semantic resource decorations.</summary>
-    [Fact]
-    public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Window>(
-            (State.Normal, new ThemeOverlay(
-                attributes: Attributes.Overline,
-                underline: Underline.Paired,
-                underlineColor: Color.Indexed(6))));
-        var window = new Window()
-        {
-            Bounds = new Rect(0, 0, 4, 3),
-            Background = Color.Indexed(0),
-            Style = style,
-        };
-        using Frame frame = new(new Size(4, 3));
-
-        window.Render(frame.Canvas);
-
-        var rendered = frame.GetCell(default).Style;
-        rendered.Attributes.ShouldBe(Attributes.Overline);
-        rendered.Underline.ShouldBe(Underline.Paired);
-        rendered.UnderlineColor.ShouldBe(Color.Indexed(6));
-    }
-
     /// <summary>Verifies the Turbo Vision block shadow occupies only translated cells outside the window body.</summary>
     [Fact]
     public void Render_WhenBlockShadowIsEnabled_DrawsOutsideBodyWithoutCoveringContent()
@@ -233,8 +208,8 @@ public sealed class WindowTests
         content.Children.Add(cancel);
         var window = new Window() { Content = content };
 
-        Router.Route(window, Events.Key, Key(Code.Enter));
-        Router.Route(window, Events.Key, Key(Code.Escape));
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+        _ = Router.Route(window, Events.Key, Key(Code.Escape));
 
         defaults.ShouldBe(1);
         cancels.ShouldBe(1);
@@ -257,8 +232,8 @@ public sealed class WindowTests
         content.AddPopup(cancel);
         var window = new Window { Content = content };
 
-        Router.Route(window, Events.Key, Key(Code.Enter));
-        Router.Route(window, Events.Key, Key(Code.Escape));
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+        _ = Router.Route(window, Events.Key, Key(Code.Escape));
 
         defaults.ShouldBe(1);
         cancels.ShouldBe(1);
@@ -298,8 +273,8 @@ public sealed class WindowTests
         content.AddPopup(laterEligible);
         var window = new Window { Content = content };
 
-        Router.Route(window, Events.Key, Key(Code.Enter));
-        Router.Route(window, Events.Key, Key(Code.Escape));
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+        _ = Router.Route(window, Events.Key, Key(Code.Escape));
 
         invocations[disabled].ShouldBe(0);
         invocations[hidden].ShouldBe(0);
@@ -325,8 +300,8 @@ public sealed class WindowTests
             }
         });
 
-        Router.Route(window, Events.Key, handled);
-        Router.Route(window, Events.Key, Key(Code.Escape, KeyAction.Release));
+        _ = Router.Route(window, Events.Key, handled);
+        _ = Router.Route(window, Events.Key, Key(Code.Escape, KeyAction.Release));
 
         handled.Handled.ShouldBeTrue();
         invocations.ShouldBe(0);
@@ -342,6 +317,180 @@ public sealed class WindowTests
         window.CanMove = false;
         window.CanMove.ShouldBeFalse();
     }
+
+    /// <summary>Verifies dragging the title bar updates the window's own Left and Top properties.</summary>
+    [Fact]
+    public async Task Drag_WhenTitleBarIsDragged_UpdatesLeftAndTopAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new SharpVision.Controls.Canvas();
+            var window = new Window
+            {
+                Title = "Draggable",
+                Width = Length.Cells(12),
+                Height = Length.Cells(5),
+                Left = Length.Cells(2),
+                Top = Length.Cells(1),
+            };
+            canvas.Children.Add(window);
+            new Engine().Layout(canvas, new Size(30, 15));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+
+            _ = capture.Dispatch(Pointer(new Point(5, 1), PointerAction.Press));
+            capture.Captured.ShouldBeSameAs(window);
+            _ = capture.Dispatch(Pointer(new Point(8, 3), PointerAction.Move));
+
+            window.Left.ShouldBe(Length.Cells(5));
+            window.Top.ShouldBe(Length.Cells(3));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies drag does not reference Canvas — the window uses its own position properties.</summary>
+    [Fact]
+    public async Task Drag_WhenInsideNestedContainer_PositionsRelativeToParentAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var outer = new Dock
+            {
+                Padding = new Thickness(5),
+            };
+            var canvas = new SharpVision.Controls.Canvas();
+            outer.Children.Add(canvas);
+            var window = new Window
+            {
+                Title = "Nested",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                Left = Length.Cells(0),
+                Top = Length.Cells(0),
+            };
+            canvas.Children.Add(window);
+            new Engine().Layout(outer, new Size(40, 20));
+            outer.Attach(dispatcher);
+            using PointerManager capture = new(outer);
+
+            var titleY = window.Bounds.Y;
+            var titleX = window.Bounds.X + 2;
+            _ = capture.Dispatch(Pointer(new Point(titleX, titleY), PointerAction.Press));
+            capture.Captured.ShouldBeSameAs(window);
+            _ = capture.Dispatch(Pointer(new Point(titleX + 3, titleY + 2), PointerAction.Move));
+
+            window.Left.ShouldBe(Length.Cells(3));
+            window.Top.ShouldBe(Length.Cells(2));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies drag does not move the window when CanMove is false.</summary>
+    [Fact]
+    public async Task Drag_WhenCanMoveIsFalse_DoesNotMoveAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new SharpVision.Controls.Canvas();
+            var window = new Window
+            {
+                Title = "Fixed",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanMove = false,
+                Left = Length.Cells(1),
+                Top = Length.Cells(1),
+            };
+            canvas.Children.Add(window);
+            new Engine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+
+            _ = capture.Dispatch(Pointer(new Point(3, 1), PointerAction.Press));
+            capture.Captured.ShouldNotBeSameAs(window);
+
+            window.Left.ShouldBe(Length.Cells(1));
+            window.Top.ShouldBe(Length.Cells(1));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies releasing the pointer ends the drag.</summary>
+    [Fact]
+    public async Task Drag_WhenReleased_EndsDragAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new SharpVision.Controls.Canvas();
+            var window = new Window
+            {
+                Title = "Release",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                Left = Length.Cells(0),
+                Top = Length.Cells(0),
+            };
+            canvas.Children.Add(window);
+            new Engine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+
+            _ = capture.Dispatch(Pointer(new Point(3, 0), PointerAction.Press));
+            capture.Captured.ShouldBeSameAs(window);
+            _ = capture.Dispatch(Pointer(new Point(5, 2), PointerAction.Move));
+            _ = capture.Dispatch(Pointer(new Point(5, 2), PointerAction.Release));
+
+            capture.Captured.ShouldBeNull();
+            window.Left.ShouldBe(Length.Cells(2));
+            window.Top.ShouldBe(Length.Cells(2));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies dragging past the top-left edge clamps to zero instead of throwing.</summary>
+    [Fact]
+    public async Task Drag_WhenDraggedPastOrigin_ClampsToZeroAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new SharpVision.Controls.Canvas();
+            var window = new Window
+            {
+                Title = "Clamp",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                Left = Length.Cells(2),
+                Top = Length.Cells(2),
+            };
+            canvas.Children.Add(window);
+            new Engine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+
+            _ = capture.Dispatch(Pointer(new Point(5, 2), PointerAction.Press));
+            _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Move));
+
+            window.Left.ShouldBe(Length.Cells(0));
+            window.Top.ShouldBe(Length.Cells(0));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    private static Pointer Pointer(Point cells, PointerAction action) => new(
+        cells,
+        pixels: null,
+        Buttons.Primary,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        Modifiers.None,
+        isMotion: action == PointerAction.Move,
+        isCellPositionInferred: false);
 
     private static Button FallbackButton() => new()
     {

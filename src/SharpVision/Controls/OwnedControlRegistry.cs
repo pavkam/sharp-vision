@@ -618,7 +618,7 @@ internal sealed class OwnedControlRegistry
                     Owner.CellPolicy,
                     Owner.FocusOwner,
                     Owner.CaptureOwner,
-                    Owner.ThemeContext,
+                    Owner.InheritedTheme,
                     themeChanged,
                     attached,
                     detached);
@@ -636,7 +636,7 @@ internal sealed class OwnedControlRegistry
 
             foreach (var control in themeChanged)
             {
-                CaptureFailure(control.PublishThemeContextChanged, ref failure);
+                CaptureFailure(control.PublishThemeChanged, ref failure);
             }
 
             foreach (var control in detached)

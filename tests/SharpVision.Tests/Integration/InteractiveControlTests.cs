@@ -210,7 +210,7 @@ public sealed class InteractiveControlTests
         var focusLost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await application.Dispatcher.InvokeAsync(() =>
         {
-            _ = input.AddHandler(Events.Focus, (_, eventArgs) =>
+            _ = input.AddHandler(Events.TerminalFocusChanged, (_, eventArgs) =>
             {
                 if (eventArgs.Phase == Phase.Bubble && !eventArgs.Focus.Gained)
                 {

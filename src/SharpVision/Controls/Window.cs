@@ -9,21 +9,18 @@ using SharpVision.Terminal.Input;
 public sealed partial class Window: ContentControl
 {
     private bool _dragging;
-    private Point _dragStart;
-    private int _dragLeftStart;
-    private int _dragTopStart;
+    private Point _dragPrevious;
 
     #region Construction and properties
 
-    static Window()
-    {
-        _ = HasShadowProperty.RegisterClassDefault<Window>(true);
-        _ = ShadowOffsetProperty.RegisterClassDefault<Window>(new Point(2, 1));
-        _ = ShadowAttributesProperty.RegisterClassDefault<Window>(TerminalAttributes.Dim);
-    }
-
     /// <summary>Initializes an empty window with a rounded border and composite shadow.</summary>
-    public Window() => PropertyChanged += OnWindowPropertyChanged;
+    public Window()
+    {
+        HasShadow = true;
+        ShadowOffset = new Point(2, 1);
+        ShadowAttributes = TerminalAttributes.Dim;
+        PropertyChanged += OnWindowPropertyChanged;
+    }
 
     /// <summary>Raised when the close glyph is activated by a pointer press or programmatic invocation.</summary>
     public event EventHandler? Closing;
@@ -130,9 +127,16 @@ public sealed partial class Window: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override ChromeRenderOptions GetChromeRenderOptions() => new()
     {
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+        SkipBodyFill = true,
+        SkipBorder = true,
+    };
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
+    {
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetAppearanceState());
 
         if (opaque)
         {
@@ -144,7 +148,7 @@ public sealed partial class Window: ContentControl
             return;
         }
 
-        var border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        var border = ControlAppearance.ResolveBorderStyle(this, GetAppearanceState());
         var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, background);
 
@@ -222,9 +226,9 @@ public sealed partial class Window: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
-        base.OnPointerCaptureCancelled(reason);
+        base.OnLostPointerCapture(reason);
         _dragging = false;
     }
 
@@ -279,17 +283,16 @@ public sealed partial class Window: ContentControl
             CapturePointer())
         {
             _dragging = true;
-            _dragStart = cells;
-            _dragLeftStart = Bounds.X;
-            _dragTopStart = Bounds.Y;
+            _dragPrevious = cells;
             eventArgs.Handled = true;
         }
         else if (action == PointerAction.Move && _dragging && HasPointerCapture)
         {
-            var deltaX = cells.X - _dragStart.X;
-            var deltaY = cells.Y - _dragStart.Y;
-            Canvas.SetLeft(this, Length.Cells(_dragLeftStart + deltaX));
-            Canvas.SetTop(this, Length.Cells(_dragTopStart + deltaY));
+            var deltaX = cells.X - _dragPrevious.X;
+            var deltaY = cells.Y - _dragPrevious.Y;
+            _dragPrevious = cells;
+            Left = Length.Cells(Math.Max(0, LocalBounds.X + deltaX));
+            Top = Length.Cells(Math.Max(0, LocalBounds.Y + deltaY));
             eventArgs.Handled = true;
         }
         else if (action == PointerAction.Release && _dragging)

@@ -44,7 +44,7 @@ public sealed class PressableTests
             root.Children.Add(control);
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(3, 3), PointerAction.Press));
             control.IsPressed.ShouldBeTrue();
@@ -70,7 +70,7 @@ public sealed class PressableTests
             var control = new ProbePressable() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(3, 3), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(15, 7), PointerAction.Move));
@@ -97,7 +97,7 @@ public sealed class PressableTests
             root.Children.Add(other);
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
             focus.Focus(control).ShouldBeTrue();
             Key(control, Code.Character, new Rune(' '), KeyAction.Press);
 
@@ -131,7 +131,7 @@ public sealed class PressableTests
             var control = new ProbePressable() { Bounds = new Rect(2, 2, 8, 3) };
             root.Children.Add(control);
             root.Attach(dispatcher);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(
                 new Point(3, 3),
@@ -156,16 +156,16 @@ public sealed class PressableTests
             new Engine().Layout(control, new Size(8, 3));
             control.Attach(dispatcher);
             using FocusManager focus = new(control);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
             var point = new Point(content.Bounds.X, content.Bounds.Y);
 
-            Router.Route(content, Events.Pointer, new PointerEventArgs(Pointer(point, PointerAction.Press)));
+            _ = Router.Route(content, Events.Pointer, new PointerEventArgs(Pointer(point, PointerAction.Press)));
 
             focus.Focused.ShouldBeSameAs(control);
             capture.Captured.ShouldBeSameAs(control);
             control.IsPressed.ShouldBeTrue();
 
-            Router.Route(content, Events.Pointer, new PointerEventArgs(Pointer(point, PointerAction.Release)));
+            _ = Router.Route(content, Events.Pointer, new PointerEventArgs(Pointer(point, PointerAction.Release)));
 
             capture.Captured.ShouldBeNull();
             control.IsPressed.ShouldBeFalse();
@@ -182,13 +182,13 @@ public sealed class PressableTests
         {
             var control = new ProbePressable() { Bounds = new Rect(0, 0, 8, 3) };
             control.Attach(dispatcher);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
             _ = capture.Dispatch(Pointer(new Point(1, 1), PointerAction.Press));
 
             capture.TerminalFocusLost();
             _ = capture.Dispatch(Pointer(new Point(1, 1), PointerAction.Release));
 
-            control.CaptureCancellations.ShouldBe([ReleaseReason.TerminalFocusLost]);
+            control.CaptureCancellations.ShouldBe([PointerCaptureLossReason.TerminalFocusLost]);
             control.HadCaptureDuringCancellation.ShouldBeFalse();
             control.WasPressedDuringCancellation.ShouldBeFalse();
             control.Activations.ShouldBeEmpty();

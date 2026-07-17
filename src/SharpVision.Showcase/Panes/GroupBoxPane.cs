@@ -5,111 +5,136 @@ namespace SharpVision.Showcase.Panes;
 
 using Text = SharpVision.Controls.Text;
 
-/// <summary>Documents titled, empty, Unicode, styled, nested, and compact GroupBox specimens.</summary>
+
+/// <summary>Documents the GroupBox control with titled-border framing specimens.</summary>
 internal sealed class GroupBoxPane: CompositeControl
 {
+
+    internal GroupBoxPane() => InitializeContent(CreateContent());
     /// <summary>The exact catalog/page name.</summary>
     internal const string Title = "GroupBox";
 
-    /// <summary>Initializes the retained GroupBox documentation page.</summary>
-    internal GroupBoxPane() => InitializeContent(CreateContent());
-
+    /// <inheritdoc/>
     private static Dock CreateContent()
     {
-        var empty = new GroupBox
-        {
-            Content = new Text("A continuous top edge groups content without a caption."),
-            Width = Length.Cells(56),
-            Height = Length.Cells(3),
-        };
-        var titled = new GroupBox
+        var settingsStatus = new Text("Settings: waiting");
+        var autoSave = new CheckBox { Content = new Text("Auto-save"), IsChecked = true };
+        var lineNumbers = new CheckBox { Content = new Text("Line numbers") };
+        var wordWrap = new CheckBox { Content = new Text("Word wrap"), IsChecked = true };
+        autoSave.StateChanged += (_, eventArgs) =>
+            settingsStatus.Content = $"Settings: Auto-save → {eventArgs.Current}";
+        lineNumbers.StateChanged += (_, eventArgs) =>
+            settingsStatus.Content = $"Settings: Line numbers → {eventArgs.Current}";
+        wordWrap.StateChanged += (_, eventArgs) =>
+            settingsStatus.Content = $"Settings: Word wrap → {eventArgs.Current}";
+        var settingsGroup = new GroupBox
         {
             Header = "Settings",
+            Content = Doc.Column(autoSave, lineNumbers, wordWrap, settingsStatus),
+        };
+
+        var personalGroup = new GroupBox
+        {
+            Header = "Personal",
+            Width = Length.Cells(28),
+            Content = Doc.Column(
+                new Text("Name") { Attributes = TerminalAttributes.Dim },
+                new TextInput { Text = "Jane", Width = Length.Cells(22) },
+                new Text("Email") { Attributes = TerminalAttributes.Dim },
+                new TextInput { Text = "jane@example.com", Width = Length.Cells(22) }),
+        };
+        var preferencesGroup = new GroupBox
+        {
+            Header = "Preferences",
+            Width = Length.Cells(28),
+            Content = Doc.Column(
+                new RadioButton { Content = new Text("Light theme"), GroupName = "theme" },
+                new RadioButton { Content = new Text("Dark theme"), GroupName = "theme", IsChecked = true },
+                new RadioButton { Content = new Text("System default"), GroupName = "theme" }),
+        };
+
+        var innerGroup = new GroupBox
+        {
+            Header = "Network",
+            Content = Doc.Column(
+                new CheckBox { Content = new Text("Use proxy"), IsChecked = true },
+                new CheckBox { Content = new Text("Verify certificates") }),
+        };
+        var outerGroup = new GroupBox
+        {
+            Header = "Connection",
+            Content = Doc.Column(
+                new Text("Timeout: 30s"),
+                innerGroup),
+        };
+
+        var roundedGroup = new GroupBox
+        {
+            Header = "Rounded",
+            Glyphs = Glyphs.Rounded,
             Content = new Stack
             {
-                Children =
-                {
-                    new CheckBox { Content = new Text("Auto save") },
-                    new CheckBox { Content = new Text("Line numbers") },
-                },
+                Padding = new Thickness(1, 0),
+                Children = { new Text("Default glyph family"), new Text("with smooth corners.") { Attributes = TerminalAttributes.Dim } },
             },
-            Width = Length.Cells(32),
-            Height = Length.Cells(6),
         };
-        var unicode = new GroupBox
+        var lightGroup = new GroupBox
         {
-            Header = "界 Tools",
-            Content = new Text("Wide header cells interrupt the frame without splitting a continuation."),
-            Width = Length.Cells(40),
-            Height = Length.Cells(4),
+            Header = "Light",
+            Glyphs = Glyphs.Light,
+            Content = new Stack
+            {
+                Padding = new Thickness(1, 0),
+                Children = { new Text("Thin line borders"), new Text("for subtle framing.") { Attributes = TerminalAttributes.Dim } },
+            },
         };
-        var accentStyle = new ControlStyle<GroupBox>();
-        accentStyle.Set(ForegroundProperty, State.Normal, ThemeColors.Accent);
-        accentStyle.Set(BorderColorProperty, State.Normal, ThemeColors.Accent);
-        var styled = new GroupBox
+        var heavyGroup = new GroupBox
         {
-            Header = "Scoped accent",
-            Content = new Text("The GroupBox style scope supplies its accent to ordinary content."),
-            Style = accentStyle,
-            Width = Length.Cells(48),
-            Height = Length.Cells(4),
-        };
-        var ascii = new GroupBox
-        {
-            Header = "ASCII",
-            Glyphs = Glyphs.Ascii,
-            Content = new Text("Portable frame"),
-            Width = Length.Cells(22),
-            Height = Length.Cells(3),
-        };
-        var tiny = new GroupBox
-        {
-            Header = "Long title",
-            Content = new Text("Clipped"),
-            Width = Length.Cells(5),
-            Height = Length.Cells(2),
+            Header = "Heavy",
+            Glyphs = Glyphs.Heavy,
+            Content = new Stack
+            {
+                Padding = new Thickness(1, 0),
+                Children = { new Text("Thick line borders"), new Text("for strong emphasis.") { Attributes = TerminalAttributes.Dim } },
+            },
         };
 
         return Doc.Page(
             Title,
-            "Frames one caller-owned content control with intrinsic border geometry and an optional cell-aware header.",
+            "Frames one content control with a titled border for visual grouping.",
             Doc.Section(
-                "▣",
-                "Frame and header",
-                "Empty headers preserve the top edge; titled frames reserve enough cells for the complete caption.",
+                "🗂️",
+                "Basic group",
+                "Use a GroupBox to frame related options with a descriptive header label.",
                 Doc.Example(
-                    "Continuous frame",
-                    "No header means no interruption in the top border.",
-                    Doc.Card(empty)),
-                Doc.Example(
-                    "Titled settings",
-                    "Use one Stack or Grid as content when the group owns several semantic fields.",
-                    Doc.Card(titled),
-                    "var group = new GroupBox { Header = \"Settings\", Content = fields };")),
+                    "Settings checkboxes",
+                    "Toggle any option and the status reflects the last changed setting.",
+                    settingsGroup,
+                    "var group = new GroupBox\n{\n    Header = \"Settings\",\n    Content = new Stack { ... },\n};")),
             Doc.Section(
-                "界",
-                "Unicode and style scope",
-                "Header measurement follows terminal cells, while the grouping boundary can cascade a style to descendants.",
+                "🗂️",
+                "Multiple groups",
+                "Place groups side by side for a form layout that separates distinct concerns.",
                 Doc.Example(
-                    "Wide header",
-                    "The wide glyph owns both physical cells in the interrupted top edge.",
-                    Doc.Card(unicode)),
-                Doc.Example(
-                    "Scoped accent",
-                    "A typed instance style applies to the frame and contributes to child style resolution.",
-                    Doc.Card(styled))),
+                    "Personal and preferences",
+                    "Personal contains text inputs for identity. Preferences uses radio buttons for theme selection.",
+                    Doc.Row(personalGroup, preferencesGroup))),
             Doc.Section(
-                "+",
-                "Glyphs and constrained space",
-                "Validated border families and strict clipping preserve corners even when no content row fits.",
+                "🗂️",
+                "Nested groups",
+                "GroupBoxes nest cleanly when one logical section owns a subordinate grouping.",
                 Doc.Example(
-                    "ASCII frame",
-                    "Swap the physical glyph family without changing ownership or layout.",
-                    Doc.Card(ascii),
-                    "group.Glyphs = Glyphs.Ascii;"),
+                    "Connection containing network",
+                    "The outer Connection group frames a timeout label alongside the nested Network group.",
+                    outerGroup)),
+            Doc.Section(
+                "🗂️",
+                "Glyph styles",
+                "The Glyphs property selects the Unicode box-drawing family for the border frame.",
                 Doc.Example(
-                    "Tiny frame",
-                    "The title clips between preserved corners and content disappears when the interior is empty.",
-                    Doc.Card(tiny))));
+                    "Rounded, light, and heavy",
+                    "Each GroupBox uses a different glyph family while sharing the same layout and header placement.",
+                    Doc.Row(roundedGroup, lightGroup, heavyGroup),
+                    "group.Glyphs = Glyphs.Heavy;")));
     }
 }

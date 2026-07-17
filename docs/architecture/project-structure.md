@@ -51,12 +51,11 @@ The current UI project ships the complete
 editing, selection and item controls, menus, popups, windows, intrinsic
 container scrolling, styling, focus, and routed input all remain on these
 boundaries. Border and shadow properties live on `Control`, and
-`BorderThickness` always participates in its base box model. A render path
-paints that chrome only when it calls `RenderChrome` or a specialized
-equivalent. A sealed bespoke renderer that calls neither path uses an ordinary
-chrome-rendering container when it needs a visible frame or shadow. Neither
-feature requires a dedicated wrapper type or moves terminal protocol or renderer
-behavior into the UI layer.
+`BorderThickness` always participates in its base box model. The sealed control
+render pipeline always paints configured intrinsic chrome around
+`OnRenderContent`; specialized controls select narrow chrome options rather than
+bypassing the pipeline. Neither feature requires a dedicated wrapper type or
+moves terminal protocol or renderer behavior into the UI layer.
 
 `SharpVision.Showcase` owns no library behavior. It composes public APIs into a
 responsive gallery. Production projects never reference the showcase or tests.

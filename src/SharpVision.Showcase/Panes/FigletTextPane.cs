@@ -79,7 +79,7 @@ internal sealed class FigletTextPane: CompositeControl
         var explicitStyle = new FigletText(catalog.Load("Small"))
         {
             Content = "Accent",
-            Foreground = ThemeColors.Accent,
+            Foreground = ColorRole.Accent,
             Attributes = TerminalAttributes.Bold,
         };
 

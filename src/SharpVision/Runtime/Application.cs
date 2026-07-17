@@ -59,11 +59,10 @@ public sealed partial class Application: ISink, IAsyncDisposable
     private int _hostLeaseDisposed;
 
     private Theme _theme = Themes.Dark;
-    private ThemeContext? _themeContext;
 
     private FocusManager? FocusValue { get; set; }
 
-    private CaptureManager? CaptureValue { get; set; }
+    private PointerManager? CaptureValue { get; set; }
 
     /// <summary>Initializes an application that owns all supplied terminal resources.</summary>
     /// <param name="root">The non-null detached root control.</param>
@@ -105,7 +104,6 @@ public sealed partial class Application: ISink, IAsyncDisposable
         Pointer = new PointerDevice(() => CaptureValue);
         Terminal = new TerminalServices(this);
         _session = new Session(transport, resize, this, _options);
-        SubscribeTheme(_theme);
         Dispatcher.Idle += OnIdle;
         Dispatcher.UnhandledException += OnDispatcherUnhandled;
     }
@@ -185,10 +183,8 @@ public sealed partial class Application: ISink, IAsyncDisposable
         }
 
         ObjectDisposedException.ThrowIf(_stopping, this);
-        UnsubscribeTheme(_theme);
         _theme = value;
-        SubscribeTheme(_theme);
-        PublishThemeContext();
+        PublishTheme();
 
         if (!_initialized)
         {
@@ -204,7 +200,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         throw new InvalidOperationException("Focus is available after the first resize.");
 
     /// <summary>Gets pointer ownership after the first resize attaches the tree.</summary>
-    public CaptureManager Capture => CaptureValue ??
+    public PointerManager Capture => CaptureValue ??
         throw new InvalidOperationException("Capture is available after the first resize.");
 
     /// <summary>Gets the latest committed terminal size.</summary>
@@ -514,16 +510,20 @@ public sealed partial class Application: ISink, IAsyncDisposable
         switch (record.Kind)
         {
             case RecordKind.Key:
-                if (Focus.Focused is { } keyTarget)
                 {
-                    Router.Route(keyTarget, Events.Key, new KeyEventArgs(record.Stroke));
+                    var keyTarget = Focus.Focused ?? Root;
+                    var result = Router.Route(keyTarget, Events.Key, new KeyEventArgs(record.Stroke));
+                    if (result.Command is PostRouteCommand.TabNext or PostRouteCommand.TabPrevious)
+                    {
+                        _ = Focus.MoveNext(result.Anchor, result.Command == PostRouteCommand.TabPrevious);
+                    }
                 }
 
                 break;
             case RecordKind.Text:
                 if (Focus.Focused is { } textTarget)
                 {
-                    Router.Route(textTarget, Events.Text, new TextEventArgs(record.Text));
+                    _ = Router.Route(textTarget, Events.Text, new TextEventArgs(record.Text));
                 }
 
                 break;
@@ -535,7 +535,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
                 if (Focus.Focused is { } pasteTarget)
                 {
                     Debug.Assert(record.Paste.HasValue, "A paste record must carry its payload.");
-                    Router.Route(
+                    _ = Router.Route(
                         pasteTarget,
                         Events.Paste,
                         new PasteEventArgs(record.Paste.GetValueOrDefault()));
@@ -550,10 +550,10 @@ public sealed partial class Application: ISink, IAsyncDisposable
                     Capture.TerminalFocusLost();
                 }
 
-                Router.Route(
+                _ = Router.Route(
                     Focus.Focused ?? Root,
-                    Events.Focus,
-                    new FocusEventArgs(record.Focus));
+                    Events.TerminalFocusChanged,
+                    new TerminalFocusEventArgs(record.Focus));
                 break;
             case RecordKind.Diagnostic:
                 Diagnostic?.Invoke(this, new DiagnosticEventArgs(record.Diagnostic));
@@ -709,15 +709,14 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
         if (!_initialized)
         {
-            _themeContext = ThemeContext.Create(_theme);
             Root.Attach(
                 Dispatcher,
                 CellPolicy,
-                _themeContext,
+                _theme,
                 () =>
                 {
                     FocusValue = new FocusManager(Root);
-                    CaptureValue = new CaptureManager(Root);
+                    CaptureValue = new PointerManager(Root);
                 });
             _clipboardShortcutRegistration = Root.AddHandler(Events.Key, OnClipboardShortcut);
             _initialized = true;
@@ -811,45 +810,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
         }
     }
 
-    private void SubscribeTheme(Theme theme) => theme.Changed += OnThemeChanged;
-
-    private void UnsubscribeTheme(Theme theme) => theme.Changed -= OnThemeChanged;
-
-    private void OnThemeChanged(object? sender, ThemeChangedEventArgs eventArgs)
-    {
-        var dispatcher = Dispatcher;
-
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            dispatcher.Post(() => OnThemeChanged(sender, eventArgs));
-            return;
-        }
-
-        if (_stopping || !ReferenceEquals(sender, _theme))
-        {
-            return;
-        }
-
-        PublishThemeContext();
-        Root.Invalidate(Control.InvalidationFor(eventArgs.Impact));
-        ProcessInvalidation();
-    }
-
-    private void PublishThemeContext()
-    {
-        _themeContext = ThemeContext.Create(_theme);
-        ApplyThemeContext();
-    }
-
-    private void ApplyThemeContext()
-    {
-        if (_themeContext is null)
-        {
-            return;
-        }
-
-        Root.PropagateThemeContext(_themeContext);
-    }
+    private void PublishTheme() => Root.PropagateTheme(_theme);
 
     private void FinalizeStopped()
     {
@@ -869,7 +830,6 @@ public sealed partial class Application: ISink, IAsyncDisposable
             FocusValue?.Dispose();
         }
 
-        UnsubscribeTheme(_theme);
         _renderer.Dispose();
         Root.Dispose();
         LastCleanupException = _session.LastCleanupException ?? _renderer.LastCleanupException;

@@ -65,11 +65,11 @@ internal sealed class NavigationItem: Pressable
     protected override void ArrangeOverride(Rect bounds) { }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;
         canvas.Clear(Bounds, style);
-        var marker = IsSelected || IsHovered ? "›" : "·";
+        var marker = IsSelected || IsPointerOver ? "›" : "·";
         _ = canvas.Draw($" {marker} {Label}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
 

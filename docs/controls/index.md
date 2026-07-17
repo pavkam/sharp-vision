@@ -21,17 +21,17 @@ All controls derive from the
 
 - [Text](display/text.md#text-contract)
 - [FigletText](display/figlet-text.md#figlettext-contract)
+- [Prism](display/prism.md#prism-contract)
 - [Separator](display/separator.md#separator-contract)
 - [ProgressBar](display/progress-bar.md#progressbar-contract)
 
 Border and shadow are intrinsic `Control` chrome configured through
 `BorderThickness`, `BorderGlyphs`, `HasShadow`, `ShadowMode`, and the related
 style properties; neither is a standalone control. `BorderThickness` always
-reserves layout through the base box model, while visible chrome requires a
-render path that calls `RenderChrome` or a specialized equivalent. Use an
-ordinary chrome-rendering container around a sealed bespoke renderer that calls
-neither path when it needs a visible frame or shadow. See the
-[shared chrome contract](../concepts/styling.md#shared-chrome).
+reserves layout through the base box model, and the sealed `Control` renderer
+paints configured chrome around every control's `OnRenderContent` callback.
+Specialized controls use narrow chrome options when their frame geometry is
+bespoke. See the [shared chrome contract](../concepts/styling.md#shared-chrome).
 
 ### Input
 

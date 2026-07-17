@@ -5,315 +5,137 @@ namespace SharpVision.Controls;
 
 using SharpVision.Terminal.Input;
 
-/// <summary>Coordinates typed retained tab pages, header activation, selection repair, and overflow reveal.</summary>
+/// <summary>Arranges typed tab pages and coordinates header rendering and keyboard selection.</summary>
 public sealed class TabControl: ItemsControl
 {
-    private readonly TabPresenter _presenter;
+    private readonly Stack _stack;
+    private int _selectedIndex = -1;
 
-    /// <summary>Initializes an empty TabControl with one private retained presenter.</summary>
+    /// <summary>Initializes an empty tab control with typed managed pages.</summary>
     public TabControl()
     {
+        _stack = new Stack { Orientation = Orientation.Vertical };
+        InitializeItemsHost(_stack);
         Items = new TabItems(this);
-        _presenter = new TabPresenter(this);
-        InitializeItemsHost(_presenter);
-        _ = AddHandler(Events.Key, OnKeyRouted);
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.Continue;
     }
 
-    /// <summary>Raised after the selected page identity and retained header state commit.</summary>
+    /// <summary>Raised after the selected tab index changes.</summary>
     public event EventHandler? SelectionChanged;
 
-    /// <summary>Gets the mutable typed semantic page collection.</summary>
+    /// <summary>Gets the typed managed tab pages.</summary>
     public TabItems Items { get; }
 
-    /// <summary>Gets or sets the selected eligible page index; -1 clears selection.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is less than -1 or outside Items.</exception>
-    /// <exception cref="InvalidOperationException">The target page is disabled or not visible.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <summary>Gets or selects the active page index, or -1 for no selection.</summary>
     public int SelectedIndex
     {
-        get => SelectedItem is null ? -1 : Items.IndexOf(SelectedItem);
+        get => _selectedIndex;
         set
         {
-            if (value < -1 || value >= Items.Count)
+            if (value < -1 || (value >= 0 && value >= ItemControlCount))
             {
-                throw new ArgumentOutOfRangeException(nameof(value), value, "SelectedIndex is outside Items.");
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The selected index is outside the tab control.");
             }
 
-            if (value >= 0 && !IsEligible(Items[value]))
-            {
-                throw new InvalidOperationException("A disabled or hidden tab cannot be selected.");
-            }
-
-            VerifyMutable();
-            CommitSelection(value < 0 ? null : Items[value], raiseEvent: true);
+            Select(value);
         }
-    }
-
-    /// <summary>Gets the selected page identity, or null when selection is cleared.</summary>
-    public TabItem? SelectedItem { get; private set; }
-
-    /// <summary>Gets the current non-negative clipped header-strip origin in terminal cells.</summary>
-    public int HeaderOffset => _presenter.HeaderOffset;
-
-    /// <summary>Inserts one validated page on behalf of the owned typed collection.</summary>
-    internal void InsertTab(TabItems sender, int index, TabItem item)
-    {
-        VerifyCollection(sender);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) Items.Count, nameof(index));
-        var previousIndex = SelectedIndex;
-        InsertItemControl(index, item);
-        Items.InsertAttached(index, item);
-        Subscribe(item);
-
-        if (SelectedItem is null)
-        {
-            CommitSelection(FindEligible(0, 1, wrap: false), raiseEvent: true);
-        }
-        else if (SelectedIndex != previousIndex)
-        {
-            NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Measure);
-        }
-    }
-
-    /// <summary>Removes one page on behalf of the owned typed collection without disposing it.</summary>
-    internal void RemoveTab(TabItems sender, int index)
-    {
-        VerifyCollection(sender);
-        var removed = Items[index];
-        var wasSelected = ReferenceEquals(removed, SelectedItem);
-        var previousIndex = SelectedIndex;
-        Unsubscribe(removed);
-        RemoveItemControlAt(index);
-        Items.RemoveAttached(index);
-
-        if (wasSelected)
-        {
-            CommitSelection(FindNearest(index), raiseEvent: true);
-        }
-        else if (SelectedItem is not null && SelectedIndex != previousIndex)
-        {
-            NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Measure);
-        }
-    }
-
-    /// <summary>Replaces one page on behalf of the owned typed collection without disposing the previous page.</summary>
-    internal void ReplaceTab(TabItems sender, int index, TabItem item)
-    {
-        VerifyCollection(sender);
-        var previous = Items[index];
-
-        if (ReferenceEquals(previous, item))
-        {
-            VerifyMutable();
-            return;
-        }
-
-        var wasSelected = ReferenceEquals(previous, SelectedItem);
-        Unsubscribe(previous);
-
-        try
-        {
-            ReplaceItemControl(index, item);
-        }
-        catch
-        {
-            Subscribe(previous);
-            throw;
-        }
-
-        Items.ReplaceAttached(index, item);
-        Subscribe(item);
-
-        if (wasSelected)
-        {
-            CommitSelection(IsEligible(item) ? item : FindNearest(index), raiseEvent: true);
-        }
-        else if (SelectedItem is null)
-        {
-            CommitSelection(FindEligible(0, 1, wrap: false), raiseEvent: true);
-        }
-    }
-
-    /// <summary>Clears every page on behalf of the owned typed collection without disposing them.</summary>
-    internal void ClearTabs(TabItems sender)
-    {
-        VerifyCollection(sender);
-
-        if (Items.Count == 0)
-        {
-            VerifyMutable();
-            return;
-        }
-
-        foreach (var item in Items)
-        {
-            Unsubscribe(item);
-        }
-
-        ClearItemControls();
-        Items.ClearAttached();
-        CommitSelection(null, raiseEvent: true);
     }
 
     /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason)
+    protected override Size MeasureOverride(Constraint constraint)
     {
-        base.OnUnavailable(reason);
-
-        if (reason == ReleaseReason.Disposed)
+        for (var i = 0; i < ItemControlCount; i++)
         {
-            SelectionChanged = null;
+            ((TabItem) GetItemControl(i)).Visibility = i == _selectedIndex ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        var contentConstraint = new Constraint(constraint.Width, constraint.Height.HasValue ? Math.Max(0, constraint.Height.Value - 2) : null);
+        var content = base.MeasureOverride(contentConstraint);
+
+        var headerWidth = 0;
+        for (var i = 0; i < ItemControlCount; i++)
+        {
+            headerWidth = (int) Math.Min(int.MaxValue, (long) headerWidth + Terminal.Unicode.Width.Measure(((TabItem) GetItemControl(i)).Header).Cells + 3);
+        }
+
+        return new Size(Math.Max(headerWidth, content.Width), (int) Math.Min(int.MaxValue, 2L + content.Height));
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        if (bounds.Height < 2) { return; }
+
+        for (var i = 0; i < ItemControlCount; i++)
+        {
+            ((TabItem) GetItemControl(i)).Visibility = i == _selectedIndex ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        base.ArrangeOverride(new Rect(bounds.X, bounds.Y + 2, bounds.Width, bounds.Height - 2));
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
+    {
+        if (Bounds.Width == 0 || Bounds.Height < 2) { return; }
+        var style = ResolvedStyle;
+        var x = Bounds.X;
+        for (var i = 0; i < ItemControlCount; i++)
+        {
+            var item = (TabItem) GetItemControl(i);
+            var sel = i == _selectedIndex;
+            var label = $" {item.Header} ";
+            var cells = Terminal.Unicode.Width.Measure(label).Cells;
+            if (x + cells > Bounds.Right) { break; }
+            if (sel) { canvas.Clear(new Rect(x, Bounds.Y, cells, 1), style); }
+            _ = canvas.Draw(label.AsSpan(), new Point(x, Bounds.Y), style, background: sel ? BackgroundMode.Opaque : BackgroundMode.Transparent);
+            if (i < ItemControlCount - 1) { _ = canvas.Draw("│".AsSpan(), new Point(x + cells, Bounds.Y), style, background: BackgroundMode.Transparent); x += cells + 1; }
+            else { x += cells; }
+        }
+
+        for (var lx = Bounds.X; lx < Bounds.Right; lx++)
+        {
+            _ = canvas.Draw("─".AsSpan(), new Point(lx, Bounds.Y + 1), style, background: BackgroundMode.Transparent);
         }
     }
 
-    private static bool IsEligible(TabItem item) => item.IsEnabled && item.Visibility == Visibility.Visible;
-
-    private void CommitSelection(TabItem? next, bool raiseEvent)
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
     {
-        if (ReferenceEquals(SelectedItem, next))
-        {
-            return;
-        }
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        if (eventArgs.Handled || eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key) { return; }
+        if (key.Stroke.Code == Code.Left && _selectedIndex > 0) { Select(_selectedIndex - 1); eventArgs.Handled = true; }
+        else if (key.Stroke.Code == Code.Right && _selectedIndex < ItemControlCount - 1) { Select(_selectedIndex + 1); eventArgs.Handled = true; }
+    }
 
-        var previous = SelectedItem;
-        previous?.CommitSelection(false);
-        SelectedItem = next;
-        next?.CommitSelection(true);
+    internal int ItemCount => ItemControlCount;
+    internal TabItem ItemAt(int index) => (TabItem) GetItemControl(index);
+    internal void AddItem(TabItem item) { ArgumentNullException.ThrowIfNull(item); InsertItemControl(ItemControlCount, item); if (_selectedIndex < 0) { Select(ItemControlCount - 1); } }
+
+    internal bool RemoveItem(TabItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var idx = IndexOfItemControl(item);
+        if (idx < 0) { return false; }
+        _ = RemoveItemControl(item);
+        if (_selectedIndex >= ItemControlCount) { Select(ItemControlCount - 1); }
+        else if (_selectedIndex == idx) { Select(Math.Min(idx, ItemControlCount - 1)); }
+        return true;
+    }
+
+    internal void ClearItems() { ClearItemControls(); Select(-1); }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason) { base.OnUnavailable(reason); if (reason == ReleaseReason.Disposed) { SelectionChanged = null; } }
+
+    private void Select(int index)
+    {
+        VerifyMutable();
+        if (_selectedIndex == index) { return; }
+        _selectedIndex = index;
         NotifyPropertyChanged(nameof(SelectedIndex), ChangeImpact.Measure);
-        NotifyPropertyChanged(nameof(SelectedItem), ChangeImpact.None);
-
-        if (raiseEvent)
-        {
-            SelectionChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
-    private TabItem? FindEligible(int start, int direction, bool wrap)
-    {
-        if (Items.Count == 0)
-        {
-            return null;
-        }
-
-        var index = start;
-
-        for (var visited = 0; visited < Items.Count; visited++)
-        {
-            if (wrap)
-            {
-                index = ((index % Items.Count) + Items.Count) % Items.Count;
-            }
-            else if (index < 0 || index >= Items.Count)
-            {
-                return null;
-            }
-
-            if (IsEligible(Items[index]))
-            {
-                return Items[index];
-            }
-
-            index += direction;
-        }
-
-        return null;
-    }
-
-    private TabItem? FindNearest(int index) =>
-        FindEligible(index, 1, wrap: false) ?? FindEligible(index - 1, -1, wrap: false);
-
-    private void OnHeaderActivated(object? sender, ActivationEventArgs eventArgs)
-    {
-        _ = eventArgs;
-        var item = (TabItem) sender!;
-
-        if (IsEligible(item))
-        {
-            CommitSelection(item, raiseEvent: true);
-        }
-    }
-
-    private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        if (eventArgs.PropertyName is not nameof(IsEnabled) and not nameof(Visibility))
-        {
-            return;
-        }
-
-        var item = (TabItem) sender!;
-
-        if (ReferenceEquals(item, SelectedItem) && !IsEligible(item))
-        {
-            CommitSelection(FindNearest(Items.IndexOf(item)), raiseEvent: true);
-        }
-        else if (SelectedItem is null && IsEligible(item))
-        {
-            CommitSelection(item, raiseEvent: true);
-        }
-    }
-
-    private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.Phase != Phase.Bubble || eventArgs.Stroke.Action != KeyAction.Press || Items.Count == 0)
-        {
-            return;
-        }
-
-        var current = FindItem(eventArgs.OriginalSource) ?? SelectedItem;
-        var currentIndex = current is null ? -1 : Items.IndexOf(current);
-        var target = eventArgs.Stroke.Code == Code.Left
-            ? FindEligible(currentIndex - 1, -1, wrap: true)
-            : eventArgs.Stroke.Code == Code.Right
-                ? FindEligible(currentIndex + 1, 1, wrap: true)
-                : eventArgs.Stroke.Code == Code.Home
-                    ? FindEligible(0, 1, wrap: false)
-                    : eventArgs.Stroke.Code == Code.End
-                        ? FindEligible(Items.Count - 1, -1, wrap: false)
-                        : null;
-
-        if (target is null)
-        {
-            return;
-        }
-
-        CommitSelection(target, raiseEvent: true);
-        _ = FocusOwner?.Focus(target.HeaderPart);
-        Invalidate(ChangeImpact.Arrange);
-        eventArgs.Handled = true;
-    }
-
-    private static TabItem? FindItem(Control? source)
-    {
-        for (var current = source; current is not null; current = current.Parent)
-        {
-            if (current is TabItem item)
-            {
-                return item;
-            }
-        }
-
-        return null;
-    }
-
-    private void Subscribe(TabItem item)
-    {
-        item.HeaderActivated += OnHeaderActivated;
-        item.PropertyChanged += OnItemPropertyChanged;
-    }
-
-    private void Unsubscribe(TabItem item)
-    {
-        item.HeaderActivated -= OnHeaderActivated;
-        item.PropertyChanged -= OnItemPropertyChanged;
-    }
-
-    private void VerifyCollection(TabItems sender)
-    {
-        if (!ReferenceEquals(sender, Items))
-        {
-            throw new InvalidOperationException("The tab collection does not belong to this control.");
-        }
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 }
