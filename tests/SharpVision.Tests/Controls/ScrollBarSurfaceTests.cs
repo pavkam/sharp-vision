@@ -98,6 +98,14 @@ public sealed class ScrollBarSurfaceTests
     }
 
     /// <summary>Verifies hover, focus, pressed, and disabled state commits and cleans up.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(ScrollBar),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.Focus |
+        ComponentBehavior.Tab |
+        ComponentBehavior.PressRelease |
+        ComponentBehavior.UnavailableCleanup)]
     [Fact]
     public async Task Pointer_WhenBehaviorStateChanges_CommitsStateAndCleanupAsync()
     {
@@ -131,10 +139,18 @@ public sealed class ScrollBarSurfaceTests
         await surface.UpdateAsync(() => bar.IsEnabled = false, "disable pressed ScrollBar");
 
         // Assert unavailable cleanup
+        bar.IsPressed.ShouldBeFalse();
+        bar.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+        surface.ShouldHaveFocus(null);
         surface.ShouldHaveState(bar, VisualState.Disabled);
     }
 
     /// <summary>Verifies arrows, pages, and endpoints decode through terminal bytes with typed causes.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(ScrollBar),
+        ComponentBehavior.Directional |
+        ComponentBehavior.Activation)]
     [Fact]
     public async Task Keyboard_WhenRangeCommandsArePressed_AppliesExactChangesAndCausesAsync()
     {

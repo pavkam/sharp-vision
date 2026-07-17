@@ -78,6 +78,7 @@ public sealed class ButtonSurfaceTests
     }
 
     /// <summary>Verifies decoded pointer movement updates hover state, face styling, and final cells.</summary>
+    [ComponentBehaviorEvidence(typeof(Button), ComponentBehavior.Mounted | ComponentBehavior.Hover)]
     [Fact]
     public async Task Pointer_WhenMovedOverButton_ShowsHoveredAppearanceAsync()
     {
@@ -116,6 +117,11 @@ public sealed class ButtonSurfaceTests
     }
 
     /// <summary>Verifies a held primary pointer translates the complete focused face into its shadow.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Button),
+        ComponentBehavior.Focus |
+        ComponentBehavior.PressRelease |
+        ComponentBehavior.UnavailableCleanup)]
     [Fact]
     public async Task Pointer_WhenPrimaryButtonIsHeld_ShowsPressedTranslatedFaceAsync()
     {
@@ -154,9 +160,23 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
         surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(Attributes.None);
         surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(Attributes.None);
+
+        // Act unavailable while held
+        await surface.UpdateAsync(() => button.IsEnabled = false, "disable held Button");
+
+        // Assert unavailable cleanup
+        button.IsPressed.ShouldBeFalse();
+        button.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+        surface.ShouldHaveFocus(null);
+        surface.ShouldHaveState(button, VisualState.Disabled);
     }
 
     /// <summary>Verifies a decoded Tab key focuses the sole mounted Button and updates its cells.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Button),
+        ComponentBehavior.Tab |
+        ComponentBehavior.DirectionalExcluded)]
     [Fact]
     public async Task Keyboard_WhenTabIsPressed_ShowsFocusedAppearanceAsync()
     {
@@ -169,6 +189,8 @@ public sealed class ButtonSurfaceTests
             Height = Length.Cells(3),
             Content = new ControlText("Save"),
         };
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
         await using var surface = await ComponentSurface.MountAsync(
             button,
             new Size(10, 5),
@@ -176,10 +198,12 @@ public sealed class ButtonSurfaceTests
 
         // Act
         await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Right);
 
         // Assert
         surface.ShouldHaveState(button, VisualState.Focused);
         button.IsFocused.ShouldBeTrue();
+        clicks.ShouldBe(0);
         surface.ShouldRender("""
             ╭──────╮
             │Save  │
@@ -188,11 +212,12 @@ public sealed class ButtonSurfaceTests
 
             """);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.Indexed(14));
-        surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(Color.Indexed(15));
+        surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(Color.Indexed(14));
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
     /// <summary>Verifies the click shorthand emits move, press, and release and settles activation.</summary>
+    [ComponentBehaviorEvidence(typeof(Button), ComponentBehavior.Activation)]
     [Fact]
     public async Task Pointer_WhenButtonIsClicked_ReleasesAndActivatesOnceAsync()
     {

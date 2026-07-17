@@ -96,7 +96,11 @@ public abstract partial class Control
         return appearance.Overlay(Appearance).Overlay(direct);
     }
 
-    internal Appearance GetNormalAmbientAppearance() => ApplyLocalAppearance(CreateDefaultAppearance(VisualState.Normal));
+    /// <summary>Gets unresolved text appearance contributed to retained descendants.</summary>
+    internal Appearance GetAmbientAppearance() => AppearanceResolver.ResolveAmbient(this, AmbientAppearanceState);
+
+    /// <summary>Gets local state allowed to contribute ambient text appearance to descendants.</summary>
+    internal virtual VisualState AmbientAppearanceState => VisualState.Normal;
 
     /// <inheritdoc/>
     protected internal TerminalStyle GetResolvedStyle(VisualState state) => GetResolvedAppearance(state).Style;

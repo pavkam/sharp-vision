@@ -39,6 +39,12 @@ public sealed class RadioButtonSurfaceTests
     }
 
     /// <summary>Verifies Space selection and arrows skip disabled members and wrap.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(RadioButton),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Tab |
+        ComponentBehavior.Directional |
+        ComponentBehavior.Activation)]
     [Fact]
     public async Task Keyboard_WhenRadioGroupNavigates_SelectsEligibleMembersAndWrapsAsync()
     {
@@ -88,6 +94,12 @@ public sealed class RadioButtonSurfaceTests
     }
 
     /// <summary>Verifies primary-click selection is exclusive and reports pointer cause.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(RadioButton),
+        ComponentBehavior.Hover |
+        ComponentBehavior.Focus |
+        ComponentBehavior.PressRelease |
+        ComponentBehavior.UnavailableCleanup)]
     [Fact]
     public async Task Pointer_WhenDifferentRadioIsClicked_MovesExclusiveSelectionAsync()
     {
@@ -108,8 +120,17 @@ public sealed class RadioButtonSurfaceTests
         initialContent.Kind.ShouldBe(ColorKind.Indexed);
         initialContent.Red.ShouldBe((byte) 14);
 
-        // Act
-        await surface.Pointer.ClickAsync(second);
+        // Act hover and held press
+        await surface.Pointer.MoveToAsync(second);
+        await surface.Pointer.PressAsync();
+
+        // Assert held state before semantic activation
+        second.IsChecked.ShouldBeFalse();
+        surface.ShouldHaveState(second, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
+        surface.ShouldHaveCapture(second);
+
+        // Act release
+        await surface.Pointer.ReleaseAsync();
 
         // Assert
         first.IsChecked.ShouldBeFalse();
@@ -120,6 +141,17 @@ public sealed class RadioButtonSurfaceTests
             ○ One
             ◉ Two
             """);
+
+        // Act unavailable while held again
+        await surface.Pointer.PressAsync();
+        await surface.UpdateAsync(() => second.IsEnabled = false, "disable held RadioButton");
+
+        // Assert cleanup preserves the completed selection
+        second.IsChecked.ShouldBeTrue();
+        second.IsPressed.ShouldBeFalse();
+        second.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+        surface.ShouldHaveFocus(null);
     }
 
     /// <summary>Verifies a retained selected value remains visible but wholly muted while disabled.</summary>

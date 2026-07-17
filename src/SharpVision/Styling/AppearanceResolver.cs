@@ -10,17 +10,7 @@ internal static class AppearanceResolver
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        var normal = control.CreateDefaultAppearance(VisualState.Normal);
-        normal = InheritAmbientText(control, normal);
-        normal = control.ApplyLocalAppearance(normal);
-
-        foreach (var overlay in VisualStateOrder.OrderedOverlays)
-        {
-            if ((visualState & overlay) != 0)
-            {
-                normal = normal.Overlay(control.CreateDefaultAppearance(overlay));
-            }
-        }
+        var normal = ResolveAmbient(control, visualState);
 
         var foreground = Resolve(control, normal.Foreground ?? ThemeColor.From(ColorRole.Foreground));
         var background = normal.Background is { } value
@@ -62,6 +52,29 @@ internal static class AppearanceResolver
             new TerminalStyle(shadowForeground, shadowBackground, shadowAttributes));
     }
 
+    /// <summary>Composes unresolved ambient text values for one control and visual state.</summary>
+    /// <param name="control">The non-null control whose ambient appearance is resolved.</param>
+    /// <param name="visualState">The exact local visual-state flags to overlay.</param>
+    /// <returns>The unresolved appearance available to the control and its descendants.</returns>
+    internal static Appearance ResolveAmbient(Control control, VisualState visualState)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+
+        var normal = control.CreateDefaultAppearance(VisualState.Normal);
+        normal = InheritAmbientText(control, normal);
+        normal = control.ApplyLocalAppearance(normal);
+
+        foreach (var overlay in VisualStateOrder.OrderedOverlays)
+        {
+            if ((visualState & overlay) != 0)
+            {
+                normal = normal.Overlay(control.CreateDefaultAppearance(overlay));
+            }
+        }
+
+        return normal;
+    }
+
     private static Appearance InheritAmbientText(Control control, Appearance normal)
     {
         if (control.AppearanceBoundary || control.Parent is null)
@@ -69,7 +82,7 @@ internal static class AppearanceResolver
             return normal;
         }
 
-        var parent = control.Parent.GetNormalAmbientAppearance();
+        var parent = control.Parent.GetAmbientAppearance();
         return new Appearance(
             parent.Foreground ?? normal.Foreground,
             normal.Background,

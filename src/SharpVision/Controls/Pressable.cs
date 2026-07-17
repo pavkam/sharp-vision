@@ -32,6 +32,9 @@ public abstract class Pressable: ContentControl
     protected abstract void Activate(ActivationCause cause);
 
     /// <inheritdoc/>
+    internal override VisualState AmbientAppearanceState => GetAppearanceState();
+
+    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         base.OnEvent(eventArgs);

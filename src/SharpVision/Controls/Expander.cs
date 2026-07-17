@@ -54,7 +54,15 @@ public sealed class Expander: ContentControl
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        if (IsExpanded && Content is { } c && bounds.Height > 1) { ArrangeChild(c, new Rect(bounds.X, bounds.Y + 1, bounds.Width, bounds.Height - 1), ResolvedAxes.Both); }
+        if (Content is not { } content)
+        {
+            return;
+        }
+
+        var slot = IsExpanded && bounds.Height > 1
+            ? new Rect(bounds.X, bounds.Y + 1, bounds.Width, bounds.Height - 1)
+            : default;
+        ArrangeChild(content, slot, ResolvedAxes.Both);
     }
 
     /// <inheritdoc/>

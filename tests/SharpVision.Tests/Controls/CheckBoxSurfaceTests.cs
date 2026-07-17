@@ -31,6 +31,14 @@ public sealed class CheckBoxSurfaceTests
     }
 
     /// <summary>Verifies hover, held press, release, focus, and pointer activation compose correctly.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(CheckBox),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.Focus |
+        ComponentBehavior.PressRelease |
+        ComponentBehavior.Activation |
+        ComponentBehavior.UnavailableCleanup)]
     [Fact]
     public async Task Pointer_WhenCheckBoxIsClicked_ComposesStatesAndTogglesWithPointerCauseAsync()
     {
@@ -61,9 +69,25 @@ public sealed class CheckBoxSurfaceTests
         surface.ShouldHaveState(checkBox, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("[✓] Choice");
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Color.Indexed(14));
+
+        // Act unavailable while another activation is held
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(checkBox);
+        await surface.UpdateAsync(() => checkBox.IsEnabled = false, "disable held CheckBox");
+
+        // Assert cleanup without another toggle
+        checkBox.IsChecked.ShouldBe(true);
+        checkBox.IsPressed.ShouldBeFalse();
+        checkBox.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+        surface.ShouldHaveFocus(null);
     }
 
     /// <summary>Verifies complete Space actions reach checked and indeterminate states with keyboard cause.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(CheckBox),
+        ComponentBehavior.Tab |
+        ComponentBehavior.DirectionalExcluded)]
     [Fact]
     public async Task Keyboard_WhenThreeStateCheckBoxCompletesSpace_CyclesThroughIntendedStatesAsync()
     {
@@ -84,6 +108,9 @@ public sealed class CheckBoxSurfaceTests
         await surface.Keyboard.PressAsync(Code.Tab);
         surface.ShouldHaveState(checkBox, VisualState.Focused);
         surface.ShouldRender("[ ] Option");
+
+        await surface.Keyboard.PressAsync(Code.Right);
+        checkBox.IsChecked.ShouldBe(false);
 
         // Act
         await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));

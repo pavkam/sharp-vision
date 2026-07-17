@@ -38,6 +38,15 @@ public sealed class ExpanderSurfaceTests
     }
 
     /// <summary>Verifies pointer, Space, and Enter activation share focus and changed-event behavior.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Expander),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.Focus |
+        ComponentBehavior.Tab |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressRelease |
+        ComponentBehavior.Activation)]
     [Fact]
     public async Task Input_WhenHeaderIsActivated_TogglesThroughEverySupportedPathAsync()
     {
@@ -56,8 +65,19 @@ public sealed class ExpanderSurfaceTests
             new Size(12, 2),
             TestContext.Current.CancellationToken);
 
-        // Act pointer
-        await surface.Pointer.ClickAsync(expander, new Point(1, 0));
+        // Act and assert keyboard focus without directional activation
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Right);
+        expander.IsExpanded.ShouldBeTrue();
+
+        // Act pointer hover and held press
+        await surface.Pointer.MoveToAsync(expander, new Point(1, 0));
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveState(expander, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
+        surface.ShouldHaveCapture(expander);
+
+        // Act release
+        await surface.Pointer.ReleaseAsync();
 
         // Assert pointer
         expander.IsExpanded.ShouldBeFalse();
@@ -76,6 +96,10 @@ public sealed class ExpanderSurfaceTests
     }
 
     /// <summary>Verifies disabled input refuses toggles and collapsed replacement appears only after expansion.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Expander),
+        ComponentBehavior.UnavailableCleanup |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task Input_WhenDisabledOrContentReplaced_PreservesAvailabilityAndOwnershipPolicyAsync()
     {
@@ -119,6 +143,19 @@ public sealed class ExpanderSurfaceTests
             ▼ Policy
             Second
             """);
+
+        // Act unavailable while held
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(expander);
+        await surface.UpdateAsync(() => expander.IsEnabled = false, "disable held Expander");
+
+        // Assert cleanup retains completed expansion and ownership
+        expander.IsExpanded.ShouldBeTrue();
+        expander.IsPressed.ShouldBeFalse();
+        expander.IsFocused.ShouldBeFalse();
+        second.Parent.ShouldBeSameAs(expander);
+        surface.ShouldHaveCapture(null);
+        surface.ShouldHaveFocus(null);
     }
 
     /// <summary>Verifies Unicode header geometry and content reflow remain correct after resize.</summary>
