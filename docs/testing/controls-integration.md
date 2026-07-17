@@ -74,7 +74,9 @@ screen. The host begins as a neutral focus anchor so a real Tab byte can move
 focus into the mounted component without calling `FocusManager` directly.
 
 Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
-or `ClickAsync`, and drive `surface.Keyboard` with supported typed key codes.
+`ClickAsync`, `LeaveAsync`, or captured drag operations, and drive
+`surface.Keyboard` with supported typed key codes, Shift+Tab, and distinct Kitty
+character press/release actions.
 Those helpers emit terminal bytes; they never call `Router.Route`, direct hover
 mutation, `SetPressed`, or `FocusManager.Focus` on the component. Each action
 waits until the transport consumes its bytes and the application reaches idle
@@ -116,6 +118,18 @@ shadow cells. This keeps the mounted path aligned with the
 Action timeouts report the action and latest screen. Snapshot mismatches retain
 row boundaries and cell differences. Tests isolate held-pointer scenarios or
 release capture before reuse, so state cannot leak between surfaces.
+
+`ComponentSurfaceCoverageTests` catalogs every exported concrete control and
+requires an exact attributed evidence set for mounted rendering, hover or its
+explicit exclusion, focus, Tab, directional keys, semantic press/release,
+activation, unavailable-state cleanup, transient layers, and retained
+composition. Adding a control or changing its behavior classification fails the
+catalog until its mounted fixture supplies matching evidence. The composition
+suite separately places heterogeneous controls on one root and drives forward
+and reverse Tab, local arrow behavior, hover transfer, and press activation. A
+deep Overlay to Window to GroupBox to Expander to CheckBox tree proves preview
+routing, handled bubble termination, pointer ancestry, focus-within, and
+transitive capture/focus cleanup.
 
 `TerminalInputTests` sends real UTF-8 plus focus, SGR pixel mouse, bracketed
 paste, and Kitty keyboard sequences through `Session`. It asserts focused route

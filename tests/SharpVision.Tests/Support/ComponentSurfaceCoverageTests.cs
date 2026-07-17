@@ -165,6 +165,41 @@ public sealed class ComponentSurfaceCoverageTests
                 ComponentBehavior.PressReleaseExcluded));
     }
 
+    /// <summary>Verifies every catalog requirement is backed by attributed mounted test evidence.</summary>
+    [Fact]
+    public void Evidence_WhenBehaviorRequirementsChange_RequiresExactMountedCoverage()
+    {
+        var evidence = new Dictionary<Type, ComponentBehavior>();
+
+        foreach (var fixture in _requirements.Values.Select(requirement => requirement.Fixture).Distinct())
+        {
+            foreach (var method in fixture.GetMethods())
+            {
+                foreach (var attribute in method
+                    .GetCustomAttributes(typeof(ComponentBehaviorEvidenceAttribute), inherit: false)
+                    .Cast<ComponentBehaviorEvidenceAttribute>())
+                {
+                    _requirements.ContainsKey(attribute.ControlType).ShouldBeTrue(
+                        $"{fixture.Name}.{method.Name} references an uncatalogued control.");
+                    _requirements[attribute.ControlType].Fixture.ShouldBe(
+                        fixture,
+                        $"{attribute.ControlType.Name} evidence belongs in its catalogued fixture.");
+                    _ = evidence.TryGetValue(attribute.ControlType, out var previous);
+                    evidence[attribute.ControlType] = previous | attribute.Behaviors;
+                }
+            }
+        }
+
+        evidence.Keys.ShouldBe(_requirements.Keys, ignoreOrder: true);
+
+        foreach (var (control, requirement) in _requirements)
+        {
+            evidence[control].ShouldBe(
+                requirement.Behaviors,
+                $"{control.Name} must have exact evidence for every required or excluded behavior.");
+        }
+    }
+
     private static ComponentBehaviorRequirement Requirement<TFixture>(ComponentBehavior behaviors) =>
         new(typeof(TFixture), behaviors);
 
