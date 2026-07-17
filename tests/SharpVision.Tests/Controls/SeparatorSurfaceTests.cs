@@ -7,6 +7,14 @@ namespace SharpVision.Tests.Controls;
 public sealed class SeparatorSurfaceTests
 {
     /// <summary>Verifies horizontal drawing, terminal-visible style, and excluded hit testing.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Separator),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.HoverExcluded |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Pointer_WhenMovedOverHorizontalSeparator_LeavesExactNonInteractiveLineAsync()
     {
@@ -14,6 +22,7 @@ public sealed class SeparatorSurfaceTests
         var separator = new Separator
         {
             Foreground = Color.Indexed(3),
+            Width = Length.Percent(100),
         };
         await using var surface = await ComponentSurface.MountAsync(
             separator,
@@ -26,6 +35,8 @@ public sealed class SeparatorSurfaceTests
         // Assert
         surface.ShouldHaveState(separator, VisualState.Normal);
         separator.IsPointerOver.ShouldBeFalse();
+        separator.IsFocused.ShouldBeFalse();
+        separator.IsPressed.ShouldBeFalse();
         surface.ShouldRender("─────");
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Color.Indexed(3));
     }
@@ -35,7 +46,11 @@ public sealed class SeparatorSurfaceTests
     public async Task UpdateAsync_WhenOrientationChanges_ReplacesHorizontalWithVerticalLineAsync()
     {
         // Arrange
-        var separator = new Separator();
+        var separator = new Separator
+        {
+            Width = Length.Percent(100),
+            Height = Length.Percent(100),
+        };
         await using var surface = await ComponentSurface.MountAsync(
             separator,
             new Size(5, 3),

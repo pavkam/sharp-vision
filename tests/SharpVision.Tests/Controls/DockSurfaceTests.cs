@@ -7,6 +7,15 @@ namespace SharpVision.Tests.Controls;
 public sealed class DockSurfaceTests
 {
     /// <summary>Verifies all four edges consume in order and leave one exact clickable fill rectangle.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Dock),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task ResizeAsync_WhenEverySideAndFillArePresent_ReflowsExactRegionsAsync()
     {
@@ -71,6 +80,10 @@ public sealed class DockSurfaceTests
         bottom.Bounds.ShouldBe(new Rect(2, 5, 6, 1));
         fill.Bounds.ShouldBe(new Rect(2, 1, 6, 4));
         clicked.ShouldBeTrue();
+        dock.IsPointerOver.ShouldBeTrue();
+        dock.IsPointerDirectlyOver.ShouldBeFalse();
+        dock.IsFocused.ShouldBeFalse();
+        dock.IsPressed.ShouldBeFalse();
         surface.ShouldHaveState(fill, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
             LLTTTTTTTT

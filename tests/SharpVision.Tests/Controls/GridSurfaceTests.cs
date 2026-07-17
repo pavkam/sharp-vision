@@ -66,6 +66,15 @@ public sealed class GridSurfaceTests
     }
 
     /// <summary>Verifies spanning, padding, collapsed exclusion, and pointer routing use final arranged slots.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Grid),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenGridUsesSpanPaddingAndCollapsedChild_HitsCommittedCellAsync()
     {
@@ -126,6 +135,10 @@ public sealed class GridSurfaceTests
         right.Bounds.ShouldBe(new Rect(6, 3, 3, 1));
         collapsed.Bounds.ShouldBe(default);
         activated.ShouldBeTrue();
+        grid.IsPointerOver.ShouldBeTrue();
+        grid.IsPointerDirectlyOver.ShouldBeFalse();
+        grid.IsFocused.ShouldBeFalse();
+        grid.IsPressed.ShouldBeFalse();
         surface.ShouldHaveState(right, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
 

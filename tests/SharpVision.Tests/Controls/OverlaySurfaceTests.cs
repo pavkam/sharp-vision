@@ -7,6 +7,15 @@ namespace SharpVision.Tests.Controls;
 public sealed class OverlaySurfaceTests
 {
     /// <summary>Verifies z-order changes visual and hit priority and removal clears the winning layer.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Overlay),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenZOrderChangesAndWinnerIsRemoved_UsesCurrentTopLayerAsync()
     {
@@ -68,6 +77,10 @@ public sealed class OverlaySurfaceTests
             "remove top Overlay child");
         await surface.Pointer.ClickAsync(high);
         clicked.ShouldBe("high");
+        overlay.IsPointerOver.ShouldBeTrue();
+        overlay.IsPointerDirectlyOver.ShouldBeFalse();
+        overlay.IsFocused.ShouldBeFalse();
+        overlay.IsPressed.ShouldBeFalse();
         surface.ShouldHaveState(high, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("HH");
     }

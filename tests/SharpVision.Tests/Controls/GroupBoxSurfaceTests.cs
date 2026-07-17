@@ -6,6 +6,47 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies GroupBox header, border, content, style, clipping, and resize through mounted surfaces.</summary>
 public sealed class GroupBoxSurfaceTests
 {
+    /// <summary>Verifies a mounted GroupBox observes descendant hover without taking focus or press state.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(GroupBox),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
+    [Fact]
+    public async Task Pointer_WhenContentIsHovered_TracksComposedAncestryWithoutInteractionAsync()
+    {
+        // Arrange
+        var content = new ControlText("Body");
+        var group = new GroupBox
+        {
+            Header = "Details",
+            Content = content,
+            Width = Length.Cells(12),
+            Height = Length.Cells(3),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            group,
+            new Size(12, 3),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(content);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        content.Parent.ShouldBeSameAs(group);
+        group.IsPointerOver.ShouldBeTrue();
+        group.IsPointerDirectlyOver.ShouldBeFalse();
+        content.IsPointerDirectlyOver.ShouldBeTrue();
+        group.IsFocused.ShouldBeFalse();
+        group.IsPressed.ShouldBeFalse();
+        content.IsFocused.ShouldBeFalse();
+    }
+
     /// <summary>Verifies empty and wide headers draw exact continuous or interrupted rounded frames.</summary>
     [Fact]
     public async Task Render_WhenHeaderIsEmptyOrWide_DrawsExactFrameAndContentAsync()
@@ -13,6 +54,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange empty header
         var empty = new GroupBox
         {
+            Glyphs = Glyphs.Rounded,
             Content = new ControlText("Hi"),
             Width = Length.Cells(8),
             Height = Length.Cells(3),
@@ -33,6 +75,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange wide header
         var wide = new GroupBox
         {
+            Glyphs = Glyphs.Rounded,
             Header = "界 Tools",
             Content = new ControlText("Body"),
             Width = Length.Cells(12),
@@ -60,6 +103,7 @@ public sealed class GroupBoxSurfaceTests
         // Arrange
         var group = new GroupBox
         {
+            Glyphs = Glyphs.Rounded,
             Header = "Long title",
             Content = new ControlText("Body"),
             HorizontalAlignment = HorizontalAlignment.Stretch,

@@ -71,11 +71,11 @@ internal static class AppearanceResolver
 
         var parent = control.Parent.GetNormalAmbientAppearance();
         return new Appearance(
-            normal.Foreground ?? parent.Foreground,
+            parent.Foreground ?? normal.Foreground,
             normal.Background,
-            normal.Attributes ?? parent.Attributes,
-            normal.Underline ?? parent.Underline,
-            normal.UnderlineColor ?? parent.UnderlineColor,
+            parent.Attributes ?? normal.Attributes,
+            parent.Underline ?? normal.Underline,
+            parent.UnderlineColor ?? normal.UnderlineColor,
             normal.BorderColor,
             normal.BorderAttributes,
             normal.ShadowForeground,

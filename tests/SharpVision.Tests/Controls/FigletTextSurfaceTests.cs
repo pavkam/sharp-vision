@@ -6,6 +6,41 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies FigletText art, mutation, style, and clipping through a mounted surface.</summary>
 public sealed class FigletTextSurfaceTests
 {
+    /// <summary>Verifies passive FIGlet art observes hover without entering focus or press state.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(FigletText),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded)]
+    [Fact]
+    public async Task Pointer_WhenFigletTextIsMounted_TracksHoverWithoutFocusOrPressAsync()
+    {
+        // Arrange
+        var title = new FigletText(FigletCatalog.Default.Load("Small"))
+        {
+            Content = "I",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            title,
+            new Size(5, 5),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(title);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        title.IsPointerDirectlyOver.ShouldBeTrue();
+        title.IsFocused.ShouldBeFalse();
+        title.IsPressed.ShouldBeFalse();
+        surface.Cell(default).Text.ShouldBe(" ");
+    }
+
     /// <summary>Verifies audited Small font output and mutation clear stale generated cells.</summary>
     [Fact]
     public async Task UpdateAsync_WhenFigletContentChanges_ReplacesExactAuditedArtAsync()

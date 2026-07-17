@@ -59,6 +59,15 @@ public sealed class StackSurfaceTests
     }
 
     /// <summary>Verifies reverse order excludes collapsed children and routes clicks to final arranged rows.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Stack),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task Pointer_WhenStackIsReversedAndChildCollapsed_UsesVisibleVisualOrderAsync()
     {
@@ -108,6 +117,10 @@ public sealed class StackSurfaceTests
         collapsed.Bounds.ShouldBe(default);
         first.Bounds.ShouldBe(new Rect(0, 2, 4, 1));
         activated.ShouldBe("B");
+        stack.IsPointerOver.ShouldBeTrue();
+        stack.IsPointerDirectlyOver.ShouldBeFalse();
+        stack.IsFocused.ShouldBeFalse();
+        stack.IsPressed.ShouldBeFalse();
         surface.ShouldHaveState(second, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
             B

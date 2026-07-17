@@ -9,6 +9,15 @@ using ControlCanvas = SharpVision.Controls.Canvas;
 public sealed class CanvasSurfaceTests
 {
     /// <summary>Verifies percentage offsets reposition a clickable child against each final surface size.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(ControlCanvas),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task ResizeAsync_WhenOffsetsArePercent_RepositionsCellsAndHitTargetAsync()
     {
@@ -50,6 +59,10 @@ public sealed class CanvasSurfaceTests
         // Assert resized geometry
         clicked.ShouldBe(2);
         child.Bounds.ShouldBe(new Rect(3, 3, 2, 1));
+        canvas.IsPointerOver.ShouldBeTrue();
+        canvas.IsPointerDirectlyOver.ShouldBeFalse();
+        canvas.IsFocused.ShouldBeFalse();
+        canvas.IsPressed.ShouldBeFalse();
         surface.ShouldHaveState(child, VisualState.PointerOver | VisualState.Focused);
         surface.Cell(new Point(3, 3)).Text.ShouldBe("界");
         surface.Cell(new Point(4, 3)).IsContinuation.ShouldBeTrue();

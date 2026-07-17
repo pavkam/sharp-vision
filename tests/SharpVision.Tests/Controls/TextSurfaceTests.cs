@@ -6,6 +6,36 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies Text formatting and semantic cells through a mounted terminal surface.</summary>
 public sealed class TextSurfaceTests
 {
+    /// <summary>Verifies passive text observes physical hover without entering focus or press state.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(ControlText),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded)]
+    [Fact]
+    public async Task Pointer_WhenTextIsMounted_TracksHoverWithoutFocusOrPressAsync()
+    {
+        // Arrange
+        var text = new ControlText("Text");
+        await using var surface = await ComponentSurface.MountAsync(
+            text,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(text);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        text.IsPointerDirectlyOver.ShouldBeTrue();
+        text.IsFocused.ShouldBeFalse();
+        text.IsPressed.ShouldBeFalse();
+        surface.ShouldRender("Text");
+    }
+
     /// <summary>Verifies markup styles apply to complete combining and wide grapheme cells.</summary>
     [Fact]
     public async Task Render_WhenMarkupContainsUnicode_PreservesStylesAndCellOwnershipAsync()

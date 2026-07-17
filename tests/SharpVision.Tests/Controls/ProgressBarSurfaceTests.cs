@@ -7,6 +7,14 @@ namespace SharpVision.Tests.Controls;
 public sealed class ProgressBarSurfaceTests
 {
     /// <summary>Verifies partial horizontal fill, style, pointer exclusion, and clamped mutation.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(ProgressBar),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.HoverExcluded |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task UpdateAsync_WhenHorizontalValueChanges_RendersPartialThenFullBarAsync()
     {
@@ -35,6 +43,8 @@ public sealed class ProgressBarSurfaceTests
         // Assert
         bar.Value.ShouldBe(100);
         bar.IsPointerOver.ShouldBeFalse();
+        bar.IsFocused.ShouldBeFalse();
+        bar.IsPressed.ShouldBeFalse();
         surface.ShouldHaveState(bar, VisualState.Normal);
         surface.ShouldRender("█████");
     }
