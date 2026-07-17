@@ -54,14 +54,13 @@ public sealed class EditorScreen: Screen
                 .Item("Find", shortcut: "Ctrl+F", onInvoke: () => _findReplace.OpenFind())
                 .Item("Replace", shortcut: "Ctrl+H", onInvoke: () => _findReplace.OpenReplace()))
             .Build();
-        appMenu.IsTabStop = false;
-        appMenu.Background = Color.Transparent;
+        appMenu.TabStop = false;
+        appMenu.Background = null;
 
         var menuBar = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             Height = Length.Cells(1),
             Padding = new Thickness(1, 0),
             Children = { appMenu },
@@ -72,8 +71,7 @@ public sealed class EditorScreen: Screen
 
         var statusBar = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             Height = Length.Cells(1),
             Padding = new Thickness(1, 0),
         };

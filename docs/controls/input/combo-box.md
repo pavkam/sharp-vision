@@ -8,9 +8,9 @@ containing a [List](../collections/list.md#list-contract) immediately below the
 field when open. The Popup clears and frames its surface before the list
 renders, so choices never show through content behind the drop-down. The list
 uses the same keyboard, pointer, selection, and scrolling semantics as a
-standalone list. When the active style supplies a `State.Selected` background,
-the selected choice fills the complete interior row, including trailing blank
-cells, under the
+standalone list. When the resolved appearance supplies a `VisualState.Selected`
+background, the selected choice fills the complete interior row, including
+trailing blank cells, under the
 [List row rendering contract](../collections/list.md#list-contract).
 
 The selected value is the field's face; `ComboBox` therefore exposes neither
@@ -28,16 +28,16 @@ claiming its single-content inheritance role.
 - `ScrollBars`, `ShowScrollBars`, `ScrollBarChrome`, and `ScrollBarFill` forward
   the common overflow policy to the owned List, so long choice popups use the
   same rails as standalone lists and viewports.
-- `IsOpen` controls Popup layout, rendering, hit testing, and focus transfer to
-  the list. The popup width is at least the field width, while `DropDownHeight`
-  limits only the list interior; the Popup adds its physical frame outside that
-  limit and keeps the open list above later page content as defined by the
-  [Popup contract](../windows/popup.md#popup-contract).
+- `IsOpen` controls Popup layout, rendering, and hit testing while ComboBox
+  remains the focus owner. The popup width is at least the field width, while
+  `DropDownHeight` limits only the list interior; the Popup adds its physical
+  frame outside that limit and keeps the open list above later page content as
+  defined by the [Popup contract](../windows/popup.md#popup-contract).
 
 ## Interaction
 
-Enter, Space, or a primary pointer click toggles the list. When opening, focus
-moves to the owned list: arrows navigate it, Enter chooses the active item and
+Enter, Space, or a primary pointer click toggles the list. ComboBox remains
+focused while arrows navigate the private current item, Enter chooses it and
 closes the list, and Escape closes without changing the selection. Pointer
 clicks route through the Popup frame to the realized List item, using the same
 semantic invocation path as Enter. Closed list cells neither render nor hit
@@ -47,12 +47,10 @@ becomes unavailable.
 
 ### Keyboard navigation inside the popup
 
-The popup sets
-[`TabNavigation.Contained`](../../concepts/focus.md#navigation-scopes) to trap
-Tab within its scope. The inner List sets `IsTabStop = false` so that Tab cycles
-through the realized `ListItem` controls and cannot escape to controls outside
-the open drop-down. Arrow keys (Up/Down/Left/Right), Home, End, Page Up, and
-Page Down navigate between items through the List's own keyboard handler.
+The popup and inner List never enter sequential traversal. Tab closes or commits
+the popup and then continues once through application traversal. Arrow keys
+(Up/Down/Left/Right), Home, End, Page Up, and Page Down navigate between items
+through the List's own keyboard handler.
 
 ## Example
 

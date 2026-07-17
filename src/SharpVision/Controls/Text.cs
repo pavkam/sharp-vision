@@ -145,7 +145,7 @@ public sealed class Text: Control
     protected override void ArrangeOverride(Rect bounds) => EnsureLayout(bounds.Width);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var bounds = ContentBounds;
         EnsureLayout(bounds.Width);
@@ -322,27 +322,23 @@ public sealed class Text: Control
             underline = span.Underline;
         }
 
-        Color? underlineColor = span.UnderlineColor is { } markedUnderlineColor
-            ? ResolveMarkupColor(markedUnderlineColor)
-            : null;
+        var underlineColor = span.UnderlineColor;
         var (resolvedAttributes, resolvedUnderline, resolvedUnderlineColor) = Decoration.Resolve(
             inherited,
             attributes,
             underline,
             underlineColor);
         return new TerminalStyle(
-            span.Foreground is { } foreground ? ResolveMarkupColor(foreground) : inherited.Foreground,
-            span.Background is { } background ? ResolveMarkupColor(background) : inherited.Background,
+            span.Foreground ?? inherited.Foreground,
+            span.Background ?? inherited.Background,
             resolvedAttributes,
             span.Link ?? inherited.Hyperlink,
             resolvedUnderline,
             resolvedUnderlineColor);
     }
 
-    private Color ResolveMarkupColor(Color color) => SemanticColor.Resolve(color, ThemeContext);
-
-    private BackgroundMode ResolveBackgroundMode(StyleSpan span) =>
-        span.Background.HasValue || FillMode == FillMode.Opaque
+    private static BackgroundMode ResolveBackgroundMode(StyleSpan span) =>
+        span.Background.HasValue
             ? BackgroundMode.Opaque
             : BackgroundMode.Transparent;
 

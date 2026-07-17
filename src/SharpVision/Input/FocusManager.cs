@@ -59,6 +59,8 @@ public sealed class FocusManager: IDisposable
 
     private List<Control>? EligibilityNotificationsPending { get; set; }
 
+    private Queue<Control?>? PendingRequests { get; set; }
+
     private bool IsDisposed { get; set; }
 
     #endregion
@@ -69,11 +71,18 @@ public sealed class FocusManager: IDisposable
     /// <param name="control">The requested member, or null.</param>
     /// <returns>True when focus is committed or already matches; false when ineligible or cancelled.</returns>
     /// <exception cref="ArgumentException">The control is not a member of this tree.</exception>
-    /// <exception cref="InvalidOperationException">The caller is off-dispatcher or focus is reentered.</exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
     public bool Focus(Control? control)
     {
         VerifyAccess();
+
+        if (IsChanging)
+        {
+            (PendingRequests ??= []).Enqueue(control);
+            return false;
+        }
+
         return ValidateTarget(control) && Change(control, cancellable: true);
     }
 
@@ -83,29 +92,34 @@ public sealed class FocusManager: IDisposable
     /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The manager is disposed.</exception>
     public bool MoveNext(bool reverse = false)
+        => MoveNext(Focused, reverse);
+
+    /// <summary>Moves focus from a stable member anchor after an input route has completed.</summary>
+    /// <param name="anchor">The member used to determine the traversal position, or null.</param>
+    /// <param name="reverse">Whether to traverse backward.</param>
+    /// <returns>True when an eligible target exists and accepts focus.</returns>
+    public bool MoveNext(Control? anchor, bool reverse = false)
     {
         VerifyAccess();
-        var scope = FindScope(Focused);
-        var candidates = new List<(Control Control, int Order)>();
-        var order = 0;
-
-        Collect(scope, candidates, ref order, scope);
-        candidates.Sort(static (left, right) =>
+        if (anchor is not null && !IsMember(anchor))
         {
-            var tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
-            return tab != 0 ? tab : left.Order.CompareTo(right.Order);
-        });
+            throw new ArgumentException("The traversal anchor does not belong to this tree.", nameof(anchor));
+        }
+
+        var scope = FindScope(anchor);
+        var candidates = new List<Control>();
+        CollectScope(scope, candidates, includeOwner: !ReferenceEquals(scope, Root));
 
         if (candidates.Count == 0)
         {
             return false;
         }
 
-        var current = candidates.FindIndex(item => ReferenceEquals(item.Control, Focused));
+        var current = candidates.FindIndex(item => ReferenceEquals(item, anchor));
         var next = reverse
             ? (current <= 0 ? candidates.Count - 1 : current - 1)
             : (current < 0 || current == candidates.Count - 1 ? 0 : current + 1);
-        return Focus(candidates[next].Control);
+        return Focus(candidates[next]);
     }
 
     #endregion
@@ -196,11 +210,6 @@ public sealed class FocusManager: IDisposable
     {
         Debug.Assert(control is null || IsMember(control), "Focus transactions target only owned controls.");
 
-        if (IsChanging)
-        {
-            throw new InvalidOperationException("Focus cannot be changed reentrantly.");
-        }
-
         if (ReferenceEquals(Focused, control))
         {
             return true;
@@ -225,6 +234,9 @@ public sealed class FocusManager: IDisposable
             }
 
             var previous = Focused;
+            var previousPath = GetPath(previous);
+            var currentPath = GetPath(control);
+            var commonLength = GetCommonLength(previousPath, currentPath);
             Focused = control;
             previous?.SetFocused(false);
             control?.SetFocused(true);
@@ -232,11 +244,24 @@ public sealed class FocusManager: IDisposable
 
             if (previous is not null)
             {
+                previous.PublishLostFocus();
+
+                for (var index = previousPath.Count - 1; index >= commonLength; index--)
+                {
+                    previousPath[index].PublishFocusLeft();
+                }
+
                 Lost?.Invoke(this, changed);
             }
 
             if (control is not null)
             {
+                for (var index = commonLength; index < currentPath.Count; index++)
+                {
+                    currentPath[index].PublishFocusEntered();
+                }
+
+                control.PublishGotFocus();
                 Gained?.Invoke(this, changed);
             }
 
@@ -259,7 +284,23 @@ public sealed class FocusManager: IDisposable
             }
 
             PublishEligibilityNotifications();
+            DrainPendingRequests();
         }
+    }
+
+    private void DrainPendingRequests()
+    {
+        while (PendingRequests is { Count: > 0 } pending)
+        {
+            var requested = pending.Dequeue();
+
+            if (ValidateTarget(requested))
+            {
+                _ = Change(requested, cancellable: true);
+            }
+        }
+
+        PendingRequests = null;
     }
 
     private void PublishEligibilityNotifications()
@@ -276,7 +317,7 @@ public sealed class FocusManager: IDisposable
         {
             try
             {
-                control.PublishDeferredCanFocusChange();
+                control.PublishDeferredFocusableChange();
             }
             catch (Exception exception)
             {
@@ -291,65 +332,84 @@ public sealed class FocusManager: IDisposable
 
     #region Target resolution
 
-    private void Collect(
-        Control control,
-        List<(Control Control, int Order)> candidates,
-        ref int order,
-        Control scope)
+    private void CollectScope(Control owner, List<Control> candidates, bool includeOwner)
     {
-        Debug.Assert(control is not null, "Focus traversal visits a concrete control.");
+        Debug.Assert(owner is not null, "Focus traversal visits a concrete control.");
         Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
-        Debug.Assert(order >= 0, "Focus traversal order is non-negative.");
 
-        if (!ReferenceEquals(control, scope) && IsEligible(control) && control.IsTabStop)
+        if (includeOwner)
         {
-            candidates.Add((control, order));
-        }
-
-        order++;
-
-        if (!ReferenceEquals(control, scope) && control.TabNavigation != TabNavigation.Continue)
-        {
-            CollectFirstEligible(control, candidates, order);
+            AppendParticipant(owner, candidates);
             return;
         }
 
-        var count = control.NavigationCount;
+        var participants = new List<(Control Control, int Order)>();
+        var count = owner.NavigationCount;
 
         for (var index = 0; index < count; index++)
         {
-            Collect(control.NavigationAt(index), candidates, ref order, scope);
-        }
-    }
-
-    private void CollectFirstEligible(Control childScope, List<(Control Control, int Order)> candidates, int order)
-    {
-        Debug.Assert(childScope is not null, "Child scope entry requires a concrete scope root.");
-        Debug.Assert(childScope.TabNavigation != TabNavigation.Continue, "Child scope entry targets a non-Continue scope.");
-
-        var inner = new List<(Control Control, int Order)>();
-        var innerOrder = 0;
-        Collect(childScope, inner, ref innerOrder, childScope);
-
-        if (inner.Count == 0)
-        {
-            return;
+            participants.Add((owner.NavigationAt(index), index));
         }
 
-        inner.Sort(static (left, right) =>
+        participants.Sort(static (left, right) =>
         {
             var tab = left.Control.TabIndex.CompareTo(right.Control.TabIndex);
             return tab != 0 ? tab : left.Order.CompareTo(right.Order);
         });
 
-        candidates.Add((inner[0].Control, order));
+        foreach (var participant in participants)
+        {
+            AppendParticipant(participant.Control, candidates);
+        }
+    }
+
+    private void AppendParticipant(Control control, List<Control> candidates)
+    {
+        Debug.Assert(control is not null, "Focus traversal visits a concrete control.");
+        Debug.Assert(candidates is not null, "Focus traversal accumulates into an owned candidate list.");
+
+        if (control.TabNavigation is TabNavigation.Continue or TabNavigation.Cycle)
+        {
+            if (IsEligible(control) && control.IsTabStop)
+            {
+                candidates.Add(control);
+            }
+
+            CollectScope(control, candidates, includeOwner: false);
+            return;
+        }
+
+        if (control.TabNavigation == TabNavigation.None)
+        {
+            if (IsEligible(control) && control.IsTabStop)
+            {
+                candidates.Add(control);
+            }
+
+            return;
+        }
+
+        // Once contributes exactly one entry: the owner when it is eligible,
+        // otherwise the first eligible descendant in its local order.
+        if (IsEligible(control) && control.IsTabStop)
+        {
+            candidates.Add(control);
+            return;
+        }
+
+        var descendants = new List<Control>();
+        CollectScope(control, descendants, includeOwner: false);
+        if (descendants.Count > 0)
+        {
+            candidates.Add(descendants[0]);
+        }
     }
 
     private Control FindScope(Control? focused)
     {
         for (var current = focused; current is not null; current = current.Parent)
         {
-            if (current.TabNavigation != TabNavigation.Continue)
+            if (current.TabNavigation is TabNavigation.Cycle or TabNavigation.Once)
             {
                 return current;
             }
@@ -371,6 +431,32 @@ public sealed class FocusManager: IDisposable
                 nameof(control)),
             _ => IsEligible(control),
         };
+
+    private static List<Control> GetPath(Control? control)
+    {
+        var path = new List<Control>();
+
+        for (var current = control; current is not null; current = current.Parent)
+        {
+            path.Add(current);
+        }
+
+        path.Reverse();
+        return path;
+    }
+
+    private static int GetCommonLength(List<Control> previous, List<Control> current)
+    {
+        var length = Math.Min(previous.Count, current.Count);
+        var index = 0;
+
+        while (index < length && ReferenceEquals(previous[index], current[index]))
+        {
+            index++;
+        }
+
+        return index;
+    }
 
     private bool IsMember(Control control)
     {

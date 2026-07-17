@@ -28,17 +28,17 @@ public sealed class RoutingTests
         AddRecorder(target, target, stroke, order);
 
         var eventArgs = new KeyEventArgs(stroke);
-        Router.Route(target, Events.Key, eventArgs);
+        _ = Router.Route(target, Events.Key, eventArgs);
 
         order.ShouldBe([
             "root-Preview",
             "middle-Preview",
             "target-Preview",
             "target-Bubble",
-            "middle-Bubble",
-            "root-Bubble",
             "target-default",
+            "middle-Bubble",
             "middle-default",
+            "root-Bubble",
             "root-default",
         ]);
         eventArgs.OriginalSource.ShouldBeSameAs(target);
@@ -59,7 +59,7 @@ public sealed class RoutingTests
         Record(middle, "middle");
         Record(target, "target");
 
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
 
         order.ShouldBe([
             "root-Preview",
@@ -83,8 +83,8 @@ public sealed class RoutingTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var first = new ProbeControl() { CanFocus = true };
-            var second = new ProbeControl() { CanFocus = true };
+            var first = new ProbeControl() { Focusable = true };
+            var second = new ProbeControl() { Focusable = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -97,7 +97,8 @@ public sealed class RoutingTests
                 Modifiers.Shift,
                 KeyAction.Press));
 
-            Router.Route(second, Events.Key, eventArgs);
+            var result = Router.Route(second, Events.Key, eventArgs);
+            focus.MoveNext(result.Anchor, reverse: true).ShouldBeTrue();
 
             focus.Focused.ShouldBeSameAs(first);
             eventArgs.Handled.ShouldBeTrue();
@@ -130,15 +131,13 @@ public sealed class RoutingTests
             (_, eventArgs) => order.Add($"target-always-{eventArgs.Phase}"),
             handledEventsToo: true);
 
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
 
         order.ShouldBe([
             "root-ordinary-Preview",
             "root-always-Preview",
             "target-handle-Preview",
             "target-always-Preview",
-            "target-always-Bubble",
-            "root-always-Bubble",
         ]);
     }
 
@@ -152,10 +151,10 @@ public sealed class RoutingTests
         var registration = target.AddHandler(Events.Key, Handle);
 
         _ = Should.Throw<ArgumentException>(() => target.AddHandler(Events.Key, Handle));
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
         registration.Dispose();
         registration.Dispose();
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
 
         calls.ShouldBe(2);
 
@@ -193,24 +192,24 @@ public sealed class RoutingTests
         _ = target.AddHandler(Events.Key, (_, eventArgs) =>
             order.Add($"target-{eventArgs.Phase}"));
 
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
         order.ShouldBe([
             "old-Preview",
             "target-Preview",
             "target-Bubble",
-            "old-Bubble",
             "target-default",
+            "old-Bubble",
             "old-default",
         ]);
         order.Clear();
 
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
         order.ShouldBe([
             "new-Preview",
             "target-Preview",
             "target-Bubble",
-            "new-Bubble",
             "target-default",
+            "new-Bubble",
             "new-default",
         ]);
     }
@@ -234,11 +233,11 @@ public sealed class RoutingTests
             }
         });
 
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
         order.ShouldBe(["first-Preview", "first-Bubble", "target-default"]);
         order.Clear();
 
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
         order.ShouldBe([
             "first-Preview",
             "later-Preview",
@@ -267,13 +266,13 @@ public sealed class RoutingTests
         _ = target.AddHandler(direct, (_, eventArgs) =>
             order.Add($"target-direct-{eventArgs.Phase}"));
 
-        Router.Route(target, bubble, new KeyEventArgs(CreateStroke()));
-        Router.Route(target, direct, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, bubble, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, direct, new KeyEventArgs(CreateStroke()));
 
         order.ShouldBe([
             "target-Bubble",
-            "root-Bubble",
             "target-default",
+            "root-Bubble",
             "root-default",
             "target-direct-Bubble",
             "target-default",
@@ -301,17 +300,15 @@ public sealed class RoutingTests
         new TextEventArgs(text).Text.ShouldBe(text);
         new PointerEventArgs(pointer).Pointer.ShouldBe(pointer);
         new PasteEventArgs(paste).Paste.Utf8.ShouldBe(paste.Utf8);
-        new FocusEventArgs(focus).Focus.ShouldBe(focus);
+        new TerminalFocusEventArgs(focus).Focus.ShouldBe(focus);
     }
 
     /// <summary>Verifies explicit interaction-event construction validates reference and enum arguments.</summary>
     [Fact]
     public void Constructor_WhenCancellationPayloadIsInvalid_ThrowsDocumentedException()
     {
-        _ = Should.Throw<ArgumentNullException>(() =>
-            new CaptureCancelledEventArgs(null!, ReleaseReason.Detached));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
-            new CaptureCancelledEventArgs(new ProbeControl(), (ReleaseReason) int.MaxValue));
+            new PointerCaptureLostEventArgs((PointerCaptureLossReason) int.MaxValue));
     }
 
     /// <summary>Verifies source retargeting is controlled while original source is immutable.</summary>
@@ -331,7 +328,7 @@ public sealed class RoutingTests
         });
         var eventArgs = new KeyEventArgs(CreateStroke());
 
-        Router.Route(target, Events.Key, eventArgs);
+        _ = Router.Route(target, Events.Key, eventArgs);
 
         eventArgs.OriginalSource.ShouldBeSameAs(target);
         eventArgs.Source.ShouldBeSameAs(root);
@@ -358,7 +355,7 @@ public sealed class RoutingTests
 
         Should.Throw<InvalidOperationException>(() =>
             Router.Route(target, Events.Key, eventArgs)).ShouldBeSameAs(failure);
-        Router.Route(target, Events.Key, eventArgs);
+        _ = Router.Route(target, Events.Key, eventArgs);
 
         order.ShouldBe(["target-default"]);
     }
@@ -443,7 +440,7 @@ public sealed class RoutingTests
         var listener = new Listener();
         root.Children.Add(target);
         var registration = target.AddHandler(Events.Key, listener.Handle);
-        Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
         registration.Dispose();
         _ = root.Children.Remove(target);
         return (new WeakReference(target), new WeakReference(listener));

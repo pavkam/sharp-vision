@@ -80,9 +80,9 @@ while exposing only `Rows`, `Columns`, and delegated scroll state.
 
 Border and shadow are intrinsic `Control` properties, not wrapper controls. Set
 `BorderThickness`, `BorderGlyphs`, `HasShadow`, and related style properties on
-the component that owns the chrome. A custom `OnRender` that opts into intrinsic
-chrome calls `RenderChrome` before drawing through `ContentBounds`; it must not
-repeat border or padding deflation.
+the component that owns the chrome. A custom `OnRenderContent` draws through
+`ContentBounds`; framework-owned chrome runs around it, so it must not repeat
+border or padding deflation.
 
 ## Tests
 

@@ -73,11 +73,10 @@ internal static class Doc
         var header = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             BorderThickness = new Thickness(0, 1, 0, 1),
             BorderGlyphs = Glyphs.Light,
-            BorderColor = ThemeColors.Border,
+            BorderColor = ColorRole.Border,
             Padding = new Thickness(1, 0),
             Children = { heading },
         };

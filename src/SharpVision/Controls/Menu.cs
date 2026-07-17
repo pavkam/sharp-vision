@@ -23,7 +23,9 @@ public sealed class Menu: ItemsControl
         };
         InitializeItemsHost(_stack);
         Items = new MenuItems(this);
-        TabNavigation = TabNavigation.Continue;
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.None;
     }
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
@@ -184,6 +186,12 @@ public sealed class Menu: ItemsControl
     private void AddEntry(Control item)
     {
         Debug.Assert(item is MenuItem or MenuSeparator, "Menu entries are constrained by typed collection overloads.");
+        if (item is MenuItem menuItem)
+        {
+            menuItem.Focusable = false;
+            menuItem.TabStop = false;
+        }
+
         InsertItemControl(ItemControlCount, item);
 
         if (_selectedIndex < 0 && item is MenuItem)
@@ -300,7 +308,7 @@ public sealed class Menu: ItemsControl
 
             if (focus)
             {
-                _ = item.RequestMenuFocus();
+                _ = Focus();
             }
         }
 

@@ -20,7 +20,7 @@ public sealed class GalleryRenderingTests
         using Frame frame = new(size);
         gallery.Render(frame.Canvas);
         var screen = new Screen(frame);
-        var view = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
+        var view = DocumentationBody(gallery);
 
         gallery.Bounds.ShouldBe(new Rect(0, 0, 80, 24));
         screen.Text.ShouldContain("SHARP VISION");
@@ -46,7 +46,7 @@ public sealed class GalleryRenderingTests
 
         var screen = new Screen(frame);
         screen.Text.ShouldContain("command paths.");
-        gallery.CurrentPage.Parent.ShouldBeOfType<Stack>()
+        DocumentationBody(gallery)
             .HorizontalBarVisibility.ShouldBe(ScrollBarVisibility.Hidden);
     }
 
@@ -186,7 +186,6 @@ public sealed class GalleryRenderingTests
         gallery.Render(frame.Canvas);
 
         var active = FindAll<List>(gallery.CurrentPage).First(list => list.IsEnabled);
-        active.Background.ShouldBe(Color.Indexed(0));
         frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
             .ShouldBe(Color.Indexed(4));
     }
@@ -299,6 +298,13 @@ public sealed class GalleryRenderingTests
         return index >= 0 ? index : throw new InvalidOperationException($"The {page} page is not registered.");
     }
 
+    private static Stack DocumentationBody(Gallery gallery)
+    {
+        ArgumentNullException.ThrowIfNull(gallery);
+        var page = gallery.CurrentPage.OwnedControlAt(0).ShouldBeOfType<Dock>();
+        return page.Children[1].ShouldBeOfType<Stack>();
+    }
+
     /// <summary>Verifies every page renders safely at tiny, typical, and large terminal sizes.</summary>
     [Theory]
     [InlineData(30, 8)]
@@ -340,13 +346,7 @@ public sealed class GalleryRenderingTests
 
     private static void ApplyTheme(Control control, Theme theme)
     {
-        var context = ThemeContext.Create(theme);
-        ApplyThemeContext(control, context);
-    }
-
-    private static void ApplyThemeContext(Control control, ThemeContext context)
-    {
-        control.SetThemeContext(context);
-        control.VisitChildren(child => ApplyThemeContext(child, context));
+        control.SetTheme(theme);
+        control.VisitChildren(child => ApplyTheme(child, theme));
     }
 }

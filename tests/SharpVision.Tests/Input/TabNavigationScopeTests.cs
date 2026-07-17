@@ -19,15 +19,15 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var a = new ProbeControl() { CanFocus = true };
+            var a = new ProbeControl() { Focusable = true };
             var menu = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var m1 = new ProbeControl() { CanFocus = true };
-            var m2 = new ProbeControl() { CanFocus = true };
-            var m3 = new ProbeControl() { CanFocus = true };
+            var m1 = new ProbeControl() { Focusable = true };
+            var m2 = new ProbeControl() { Focusable = true };
+            var m3 = new ProbeControl() { Focusable = true };
             menu.Children.Add(m1);
             menu.Children.Add(m2);
             menu.Children.Add(m3);
-            var b = new ProbeControl() { CanFocus = true };
+            var b = new ProbeControl() { Focusable = true };
             root.Children.Add(a);
             root.Children.Add(menu);
             root.Children.Add(b);
@@ -65,16 +65,16 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var a = new ProbeControl() { CanFocus = true };
+            var a = new ProbeControl() { Focusable = true };
             var sidebar = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var s1 = new ProbeControl() { CanFocus = true };
-            var s2 = new ProbeControl() { CanFocus = true };
+            var s1 = new ProbeControl() { Focusable = true };
+            var s2 = new ProbeControl() { Focusable = true };
             sidebar.Children.Add(s1);
             sidebar.Children.Add(s2);
-            var b = new ProbeControl() { CanFocus = true };
-            var popup = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
-            var p1 = new ProbeControl() { CanFocus = true };
-            var p2 = new ProbeControl() { CanFocus = true };
+            var b = new ProbeControl() { Focusable = true };
+            var popup = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var p1 = new ProbeControl() { Focusable = true };
+            var p2 = new ProbeControl() { Focusable = true };
             popup.Children.Add(p1);
             popup.Children.Add(p2);
             root.Children.Add(a);
@@ -113,13 +113,13 @@ public sealed class TabNavigationScopeTests
         {
             var root = new ProbeContainer();
             var outer = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var a = new ProbeControl() { CanFocus = true };
-            var inner = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
-            var x = new ProbeControl() { CanFocus = true };
-            var y = new ProbeControl() { CanFocus = true };
+            var a = new ProbeControl() { Focusable = true };
+            var inner = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var x = new ProbeControl() { Focusable = true };
+            var y = new ProbeControl() { Focusable = true };
             inner.Children.Add(x);
             inner.Children.Add(y);
-            var b = new ProbeControl() { CanFocus = true };
+            var b = new ProbeControl() { Focusable = true };
             outer.Children.Add(a);
             outer.Children.Add(inner);
             outer.Children.Add(b);
@@ -155,18 +155,18 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var a = new ProbeControl() { CanFocus = true };
+            var a = new ProbeControl() { Focusable = true };
             var scope1 = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var s1a = new ProbeControl() { CanFocus = true };
-            var s1b = new ProbeControl() { CanFocus = true };
+            var s1a = new ProbeControl() { Focusable = true };
+            var s1b = new ProbeControl() { Focusable = true };
             scope1.Children.Add(s1a);
             scope1.Children.Add(s1b);
             var scope2 = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var s2a = new ProbeControl() { CanFocus = true };
-            var s2b = new ProbeControl() { CanFocus = true };
+            var s2a = new ProbeControl() { Focusable = true };
+            var s2b = new ProbeControl() { Focusable = true };
             scope2.Children.Add(s2a);
             scope2.Children.Add(s2b);
-            var b = new ProbeControl() { CanFocus = true };
+            var b = new ProbeControl() { Focusable = true };
             root.Children.Add(a);
             root.Children.Add(scope1);
             root.Children.Add(scope2);
@@ -185,7 +185,7 @@ public sealed class TabNavigationScopeTests
 
             focus.Focus(b).ShouldBeTrue();
             focus.MoveNext(reverse: true).ShouldBeTrue();
-            focus.Focused.ShouldBeSameAs(s2a);
+            focus.Focused.ShouldBeSameAs(s2b);
         }, TestContext.Current.CancellationToken);
     }
 
@@ -207,14 +207,14 @@ public sealed class TabNavigationScopeTests
             Dock.SetSide(header, Side.Top);
             sidebarDock.Children.Add(header);
             var navScope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var i1 = new ProbeControl() { CanFocus = true };
-            var i2 = new ProbeControl() { CanFocus = true };
-            var i3 = new ProbeControl() { CanFocus = true };
+            var i1 = new ProbeControl() { Focusable = true };
+            var i2 = new ProbeControl() { Focusable = true };
+            var i3 = new ProbeControl() { Focusable = true };
             navScope.Children.Add(i1);
             navScope.Children.Add(i2);
             navScope.Children.Add(i3);
             sidebarDock.Children.Add(navScope);
-            var button = new ProbeControl() { CanFocus = true };
+            var button = new ProbeControl() { Focusable = true };
             root.Children.Add(sidebarDock);
             root.Children.Add(button);
             root.Attach(dispatcher);
@@ -249,11 +249,11 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var before = new ProbeControl() { CanFocus = true };
+            var before = new ProbeControl() { Focusable = true };
             var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var disabled = new ProbeControl() { CanFocus = true, IsEnabled = false };
-            var hidden = new ProbeControl() { CanFocus = true, Visibility = Visibility.Hidden };
-            var visible = new ProbeControl() { CanFocus = true };
+            var disabled = new ProbeControl() { Focusable = true, IsEnabled = false };
+            var hidden = new ProbeControl() { Focusable = true, Visibility = Visibility.Hidden };
+            var visible = new ProbeControl() { Focusable = true };
             scope.Children.Add(disabled);
             scope.Children.Add(hidden);
             scope.Children.Add(visible);
@@ -280,9 +280,9 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var a = new ProbeControl() { CanFocus = true };
+            var a = new ProbeControl() { Focusable = true };
             var empty = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var b = new ProbeControl() { CanFocus = true };
+            var b = new ProbeControl() { Focusable = true };
             root.Children.Add(a);
             root.Children.Add(empty);
             root.Children.Add(b);
@@ -310,11 +310,11 @@ public sealed class TabNavigationScopeTests
             var root = new ProbeContainer();
             var cycle = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
             var group = new ProbeContainer();
-            var d1 = new ProbeControl() { CanFocus = true };
-            var d2 = new ProbeControl() { CanFocus = true };
+            var d1 = new ProbeControl() { Focusable = true };
+            var d2 = new ProbeControl() { Focusable = true };
             group.Children.Add(d1);
             group.Children.Add(d2);
-            var e = new ProbeControl() { CanFocus = true };
+            var e = new ProbeControl() { Focusable = true };
             cycle.Children.Add(group);
             cycle.Children.Add(e);
             root.Children.Add(cycle);
@@ -344,15 +344,15 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var a = new ProbeControl() { CanFocus = true };
+            var a = new ProbeControl() { Focusable = true };
             var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var z = new ProbeControl() { CanFocus = true, TabIndex = 2 };
-            var y = new ProbeControl() { CanFocus = true, TabIndex = 1 };
-            var x = new ProbeControl() { CanFocus = true, TabIndex = 0 };
+            var z = new ProbeControl() { Focusable = true, TabIndex = 2 };
+            var y = new ProbeControl() { Focusable = true, TabIndex = 1 };
+            var x = new ProbeControl() { Focusable = true, TabIndex = 0 };
             scope.Children.Add(z);
             scope.Children.Add(y);
             scope.Children.Add(x);
-            var b = new ProbeControl() { CanFocus = true };
+            var b = new ProbeControl() { Focusable = true };
             root.Children.Add(a);
             root.Children.Add(scope);
             root.Children.Add(b);
@@ -385,12 +385,12 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var before = new ProbeControl() { CanFocus = true };
+            var before = new ProbeControl() { Focusable = true };
             var lvl1 = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
             var lvl2 = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var lvl3 = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
-            var x = new ProbeControl() { CanFocus = true };
-            var y = new ProbeControl() { CanFocus = true };
+            var lvl3 = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var x = new ProbeControl() { Focusable = true };
+            var y = new ProbeControl() { Focusable = true };
             lvl3.Children.Add(x);
             lvl3.Children.Add(y);
             lvl2.Children.Add(lvl3);
@@ -423,10 +423,10 @@ public sealed class TabNavigationScopeTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var panel = new ProbeContainer() { IsTabStop = false };
-            var a = new ProbeControl() { CanFocus = true };
-            var b = new ProbeControl() { CanFocus = true };
-            var c = new ProbeControl() { CanFocus = true };
+            var panel = new ProbeContainer() { TabStop = false };
+            var a = new ProbeControl() { Focusable = true };
+            var b = new ProbeControl() { Focusable = true };
+            var c = new ProbeControl() { Focusable = true };
             panel.Children.Add(a);
             panel.Children.Add(b);
             panel.Children.Add(c);

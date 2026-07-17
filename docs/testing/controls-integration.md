@@ -44,9 +44,10 @@ observation without tree internals. `ExternalToggleChip` proves an unfriended
 third party can derive from `Pressable`, assign inherited `Content`, and
 activate checked styling without internal access. The external `FlowPanel`
 proves that setting `BorderThickness` insets owned leaves without third-party
-box-model plumbing; `Gauge.OnRender` calls `RenderChrome` before custom content
-drawn through `ContentBounds`. A reflection guard fails if the product friends
-either the consumer project or the production showcase.
+box-model plumbing; `Gauge.OnRenderContent` draws custom content through
+`ContentBounds` while the sealed base pipeline supplies its configured chrome. A
+reflection guard fails if the product friends either the consumer project or the
+production showcase.
 
 `SharpVision.Tests` deliberately retains friend access for internal invariant
 tests and therefore cannot serve as third-party API proof. The unfriended
@@ -74,10 +75,10 @@ focus into the mounted component without calling `FocusManager` directly.
 
 Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
 or `ClickAsync`, and drive `surface.Keyboard` with supported typed key codes.
-Those helpers emit terminal bytes; they never call `Router.Route`, `SetHovered`,
-`SetPressed`, or `FocusManager.Focus` on the component. Each action waits until
-the transport consumes its bytes and the application reaches idle after routed
-work, layout, rendering, and output.
+Those helpers emit terminal bytes; they never call `Router.Route`, direct hover
+mutation, `SetPressed`, or `FocusManager.Focus` on the component. Each action
+waits until the transport consumes its bytes and the application reaches idle
+after routed work, layout, rendering, and output.
 
 ```csharp
 await using var surface = await ComponentSurface.MountAsync(
@@ -90,7 +91,7 @@ await surface.Pointer.PressAsync();
 
 surface.ShouldHaveState(
     button,
-    State.Hovered | State.Focused | State.Pressed);
+    VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
 surface.ShouldRender("""
 
      ╭──────╮

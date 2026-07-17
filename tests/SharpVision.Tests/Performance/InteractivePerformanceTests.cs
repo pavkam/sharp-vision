@@ -75,7 +75,7 @@ public sealed class InteractivePerformanceTests
                 Maximum = 10_000,
             };
             bar.Attach(dispatcher);
-            using CaptureManager capture = new(bar);
+            using PointerManager capture = new(bar);
             _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
             var position = 2;
             Drag();
@@ -139,7 +139,7 @@ public sealed class InteractivePerformanceTests
 
         void Dispatch()
         {
-            Router.Route(leaf, Events.Pointer, descending ? down : up);
+            _ = Router.Route(leaf, Events.Pointer, descending ? down : up);
             descending = !descending;
         }
     }

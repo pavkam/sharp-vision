@@ -10,13 +10,6 @@ namespace SharpVision.Showcase.Panes;
 /// </summary>
 public sealed class ShowcasePanel: Control
 {
-    /// <summary>Registers the label-placement style property.</summary>
-    public static StyleProperty<LabelPlacement> LabelPlacementProperty { get; } =
-        StyleProperty<LabelPlacement>.Register<ShowcasePanel>(
-            "label-placement",
-            LabelPlacement.Left,
-            ChangeImpact.Measure);
-
     /// <summary>Initializes a compact themed panel specimen.</summary>
     public ShowcasePanel()
     {
@@ -25,15 +18,15 @@ public sealed class ShowcasePanel: Control
         BorderThickness = new Thickness(1);
         BorderGlyphs = Glyphs.Rounded;
         Padding = new Thickness(1);
-        FillMode = FillMode.Opaque;
+        Background = ColorRole.Surface;
         Caption = "Showcase panel";
     }
 
-    /// <summary>Gets or sets the caption placement resolved through the theme cascade.</summary>
+    /// <summary>Gets or sets the caption placement.</summary>
     public LabelPlacement LabelPlacement
     {
-        get => GetValue(LabelPlacementProperty);
-        set => SetValue(LabelPlacementProperty, value);
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     }
 
     /// <summary>Gets or sets the readable caption drawn according to <see cref="LabelPlacement"/>.</summary>
@@ -52,9 +45,8 @@ public sealed class ShowcasePanel: Control
     protected override Size MeasureOverride(Constraint constraint) => new(26, 6);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        RenderChrome(canvas);
         var content = ContentBounds;
 
         if (content.Width == 0 || content.Height == 0)

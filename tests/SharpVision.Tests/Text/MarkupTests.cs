@@ -32,20 +32,19 @@ public sealed class MarkupTests
         spans.ShouldBeEmpty();
     }
 
-    /// <summary>Verifies bare and explicit foreground tags resolve indexed, RGB, and role colors.</summary>
+    /// <summary>Verifies bare and explicit foreground tags resolve indexed and RGB colors.</summary>
     [Fact]
     public void Parse_WhenColorsAreMarked_ResolvesEveryValueForm()
     {
         var spans = Markup.Parse(
-            "<red>a</red><fg=214>b</fg><fg=#f80>c</fg><accent>d</accent>",
+            "<red>a</red><fg=214>b</fg><fg=#f80>c</fg>",
             out var display);
 
-        display.ShouldBe("abcd");
-        spans.Length.ShouldBe(4);
+        display.ShouldBe("abc");
+        spans.Length.ShouldBe(3);
         spans[0].Foreground.ShouldBe(Color.Indexed(1));
         spans[1].Foreground.ShouldBe(Color.Indexed(214));
         spans[2].Foreground.ShouldBe(Color.Rgb(255, 136, 0));
-        spans[3].Foreground.ShouldBe(Color.Role((int) ColorRole.Accent));
     }
 
     /// <summary>Verifies every documented ANSI palette name resolves to its exact index.</summary>
@@ -133,10 +132,10 @@ public sealed class MarkupTests
     [Fact]
     public void Parse_WhenGenericCloseIsUsed_PopsMostRecentTag()
     {
-        var spans = Markup.Parse("<accent>a</>b", out var display);
+        var spans = Markup.Parse("<fg=red>a</>b", out var display);
 
         display.ShouldBe("ab");
-        spans[0].Foreground.ShouldBe(Color.Role((int) ColorRole.Accent));
+        spans[0].Foreground.ShouldBe(Color.Indexed(1));
         spans[1].Foreground.ShouldBeNull();
     }
 

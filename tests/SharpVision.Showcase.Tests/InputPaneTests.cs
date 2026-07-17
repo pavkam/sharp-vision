@@ -40,12 +40,9 @@ public sealed class InputPaneTests
         var flat = FindButton(page, "Flat: color only");
         var before = flat.Bounds;
 
-        Router.Route(flat, Events.Key, Key(Code.Character, new Rune(' ')));
+        _ = Router.Route(flat, Events.Key, Key(Code.Character, new Rune(' ')));
 
-        backdrop.TryGetLocalValue(Control.BackgroundProperty, out var background).ShouldBeTrue();
-        var surface = background.ShouldNotBeNull();
-        surface.Kind.ShouldBe(ColorKind.Role);
-        surface.RoleId.ShouldBe((int) ColorRole.Surface);
+        _ = backdrop.Background.ShouldNotBeNull();
         ControlTree.Text(backdrop).ShouldContain("·");
         flat.IsPressed.ShouldBeTrue();
         flat.Bounds.ShouldBe(before);
@@ -87,13 +84,13 @@ public sealed class InputPaneTests
                 child is ControlText { Content: "Focus here, then use Enter or Escape" }));
 
         // Act
-        Router.Route(focusTarget, Events.Key, Key(Code.Enter));
+        _ = Router.Route(focusTarget, Events.Key, Key(Code.Enter));
 
         // Assert
         ControlTree.Text(page).ShouldContain("Window action: Apply (Programmatic)");
 
         // Act
-        Router.Route(focusTarget, Events.Key, Key(Code.Escape));
+        _ = Router.Route(focusTarget, Events.Key, Key(Code.Escape));
 
         // Assert
         ControlTree.Text(page).ShouldContain("Window action: Cancel (Programmatic)");

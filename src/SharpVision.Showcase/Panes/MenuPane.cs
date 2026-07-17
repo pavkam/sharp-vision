@@ -85,8 +85,7 @@ internal sealed class MenuPane: CompositeControl
 
         var barFrame = new Dock
         {
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             BorderThickness = new Thickness(0, 0, 0, 1),
             BorderGlyphs = Glyphs.Light,
             Padding = new Thickness(1, 0),

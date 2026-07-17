@@ -69,12 +69,12 @@ public sealed class GalleryTests
     {
         using Gallery gallery = new();
         new Engine().Layout(gallery, new Size(80, 24));
-        var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
+        var main = DocumentationBody(gallery);
         main.ScrollBy(0, int.MaxValue).ShouldBeTrue();
 
         gallery.Select(1);
 
-        main.VerticalOffset.ShouldBe(0);
+        DocumentationBody(gallery).VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies every registered page includes responsive marked Text documentation.</summary>
@@ -197,6 +197,13 @@ public sealed class GalleryTests
         }
 
         return null;
+    }
+
+    private static Stack DocumentationBody(Gallery gallery)
+    {
+        ArgumentNullException.ThrowIfNull(gallery);
+        var page = gallery.CurrentPage.OwnedControlAt(0).ShouldBeOfType<Dock>();
+        return page.Children[1].ShouldBeOfType<Stack>();
     }
 
     private static bool ContainsType(Control control, string name)

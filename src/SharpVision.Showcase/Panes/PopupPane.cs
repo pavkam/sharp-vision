@@ -264,8 +264,7 @@ internal sealed class PopupPane: CompositeControl
 
     private static Dock ApplicationSurface(string content) => new()
     {
-        Background = ThemeColors.Surface,
-        FillMode = FillMode.Opaque,
+        Background = ColorRole.Surface,
         BorderThickness = new Thickness(1),
         BorderGlyphs = Glyphs.Light,
         Padding = new Thickness(1, 0),

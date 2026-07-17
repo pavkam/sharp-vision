@@ -25,7 +25,8 @@ public sealed class NavigationViewGroup: Control
                 ChangeImpact.Measure),
             capacity: 1);
         _childrenSlot.Add(_stack);
-        CanFocus = true;
+        Focusable = false;
+        TabStop = false;
     }
 
     /// <summary>Gets or sets the non-null group label.</summary>
@@ -68,6 +69,8 @@ public sealed class NavigationViewGroup: Control
     {
         ArgumentNullException.ThrowIfNull(item);
         item.Padding = new Thickness(2, 0, 0, 0);
+        item.Focusable = false;
+        item.TabStop = false;
         _stack.Children.Add(item);
     }
 
@@ -82,7 +85,6 @@ public sealed class NavigationViewGroup: Control
     public void ClearItems() => _stack.Children.Clear();
 
     /// <inheritdoc/>
-    protected override bool OwnsPointerState => true;
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -105,7 +107,7 @@ public sealed class NavigationViewGroup: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

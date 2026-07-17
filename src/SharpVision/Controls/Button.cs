@@ -8,15 +8,6 @@ using System.Windows.Input;
 /// <summary>Defines a focusable command control with one optional owned content child.</summary>
 public sealed partial class Button: Pressable
 {
-    static Button()
-    {
-        _ = BorderThicknessProperty.RegisterClassDefault<Button>(new Thickness(1));
-        _ = HasShadowProperty.RegisterClassDefault<Button>(true);
-        _ = ShadowOffsetProperty.RegisterClassDefault<Button>(new Point(1, 1));
-        _ = BorderGlyphsProperty.RegisterClassDefault<Button>(Glyphs.Rounded);
-        _ = ShadowAttributesProperty.RegisterClassDefault<Button>(TerminalAttributes.Dim);
-    }
-
     private ICommand? _command;
 
     #region Construction and command properties
@@ -24,6 +15,11 @@ public sealed partial class Button: Pressable
     /// <summary>Initializes an empty focusable Button with a rounded border and compact shadow.</summary>
     public Button()
     {
+        BorderThickness = new Thickness(1);
+        HasShadow = true;
+        ShadowOffset = new Point(1, 1);
+        BorderGlyphs = Glyphs.Rounded;
+        ShadowAttributes = TerminalAttributes.Dim;
     }
 
     /// <summary>Raised after released state commits and before command execution.</summary>
@@ -154,23 +150,15 @@ public sealed partial class Button: Pressable
         ControlChrome.ExpandVisualBounds(FaceBounds, HasShadow, ShadowOffset);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override ChromeRenderOptions GetChromeRenderOptions() => new()
     {
-        var face = FaceBounds;
-        ControlChrome.Render(
-            this,
-            canvas,
-            GetVisualState(),
-            new ChromeRenderOptions
-            {
-                BodyBounds = face,
-                ShadowExcludeBounds = face,
-                ShadowAppearanceSource = NormalStyle,
-                PreserveButtonShadowGap = true,
-                ClearBodyWhenPressedWithShadow = true,
-                SkipShadow = IsPressed,
-            });
-    }
+        BodyBounds = FaceBounds,
+        ShadowExcludeBounds = FaceBounds,
+        ShadowAppearanceSource = NormalStyle,
+        PreserveButtonShadowGap = true,
+        ClearBodyWhenPressedWithShadow = true,
+        SkipShadow = IsPressed,
+    };
 
     /// <inheritdoc/>
     protected override void OnPressedChanged(bool pressed)

@@ -81,43 +81,31 @@ public sealed class Table: ItemsControl
         set => _ = SetProperty(ref field, value, ChangeImpact.Measure);
     } = true;
 
-    /// <summary>Identifies the themeable header-text foreground style property.</summary>
-    public static StyleProperty<Color?> HeaderForegroundProperty { get; } =
-        StyleProperty<Color?>.Register<Table>("header-foreground", null, ChangeImpact.Render);
-
-    /// <summary>Identifies the themeable header-row background style property.</summary>
-    public static StyleProperty<Color?> HeaderBackgroundProperty { get; } =
-        StyleProperty<Color?>.Register<Table>("header-background", null, ChangeImpact.Render);
-
-    /// <summary>Identifies the themeable grid-line color style property.</summary>
-    public static StyleProperty<Color?> GridLineColorProperty { get; } =
-        StyleProperty<Color?>.Register<Table>("grid-line-color", null, ChangeImpact.Render);
-
     /// <summary>Gets or sets an optional foreground override for header text, resolved through the theme.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public Color? HeaderForeground
+    public ThemeColor? HeaderForeground
     {
-        get => GetValue(HeaderForegroundProperty);
-        set => SetValue(HeaderForegroundProperty, value);
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
     /// <summary>Gets or sets an optional background override for the header row, resolved through the theme.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public Color? HeaderBackground
+    public ThemeColor? HeaderBackground
     {
-        get => GetValue(HeaderBackgroundProperty);
-        set => SetValue(HeaderBackgroundProperty, value);
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
     /// <summary>Gets or sets an optional grid-line color, resolved through the theme.</summary>
     /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public Color? GridLineColor
+    public ThemeColor? GridLineColor
     {
-        get => GetValue(GridLineColorProperty);
-        set => SetValue(GridLineColorProperty, value);
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
     }
 
     /// <summary>Gets the committed non-negative scrolling content extent.</summary>
@@ -246,10 +234,10 @@ public sealed class Table: ItemsControl
         ArrangeChild(_presenter, bounds, ResolvedAxes.Both);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas) => _presenter.RenderTableChrome(canvas);
+    protected override void OnRenderContent(TerminalCanvas canvas) => _presenter.RenderTableChrome(canvas);
 
     /// <summary>Gets the current state snapshot for private table chrome resolution.</summary>
-    internal State CurrentVisualState => GetVisualState();
+    internal VisualState CurrentVisualState => GetAppearanceState();
 
     #endregion
 

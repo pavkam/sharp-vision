@@ -35,9 +35,10 @@ suppressing its rendering.
 ## Custom cell drawing
 
 Controls placed on a Canvas are standard layout children. For freeform cell
-rendering, derive a custom `Control` and override `OnRender(TerminalCanvas)`.
-The TerminalCanvas provides deterministic drawing primitives that operate on
-semantic cells without terminal escape knowledge:
+rendering, derive a custom `Control` and override
+`OnRenderContent(TerminalCanvas)`. The TerminalCanvas provides deterministic
+drawing primitives that operate on semantic cells without terminal escape
+knowledge:
 
 | Primitive                                 | Purpose                                        |
 | ----------------------------------------- | ---------------------------------------------- |

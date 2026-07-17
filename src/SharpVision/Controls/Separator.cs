@@ -20,7 +20,7 @@ public sealed class Separator: Control
     protected override Size MeasureOverride(Constraint constraint) { _ = constraint; return new Size(1, 1); }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0) { return; }
         var s = ResolvedStyle;

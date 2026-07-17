@@ -21,18 +21,23 @@ sections. Groups and separators are not selectable.
 - `FooterItems` (NavigationViewItems) — typed footer items pinned to the bottom,
   same typed overloads.
 - `SelectedItem` (NavigationViewItem?) — the currently selected item, or null.
+- `SelectItem(NavigationViewItem)` — selects an owned item without moving
+  keyboard focus; rejects null and items owned by another navigation view.
 - `SelectionChanged` — fires after a committed selection change.
 
-Tab wraps within the sidebar (`TabNavigation.Cycle`). Up/Down arrows navigate
-between selectable items, skipping groups and separators. Items scroll into view
-automatically.
+The view is the single sidebar tab stop (`TabNavigation.None`); items are
+private presentation faces and never receive keyboard focus. Up/Down arrows
+navigate between selectable items, skipping groups and separators. Items scroll
+into view automatically. Enter and Space are consumed by the selected view
+without transferring focus to an item face.
 
 ## NavigationViewItem
 
 Extends [`Pressable`](../pressable.md#pressable-contract). `Header` (string) is
 the label text. `Glyph` (string?) is an optional prefix shown before the header.
-Renders as `› Header` when selected or hovered, `· Header` otherwise. Focusing
-an item selects it in the owning `NavigationView`.
+Renders as `› Header` when selected or hovered, `· Header` otherwise. Pointer or
+programmatic selection updates the owning `NavigationView`; the item remains
+non-focusable and non-tab-stop.
 
 ## NavigationViewGroup
 
@@ -59,6 +64,7 @@ nav.Items.Add(settings);
 
 nav.Items.Add(new NavigationViewSeparator());
 nav.FooterItems.Add(new NavigationViewItem { Header = "Quit", Glyph = "🚪" });
+nav.SelectItem((NavigationViewItem)nav.Items[0]);
 
 nav.SelectionChanged += (_, _) =>
     Console.WriteLine($"Selected: {nav.SelectedItem?.Header}");
@@ -66,6 +72,7 @@ nav.SelectionChanged += (_, _) =>
 
 ## Test obligations
 
-Cover typed item addition, selection via focus, Up/Down keyboard navigation,
-group expand/collapse with sub-items, separator non-interactivity, footer item
-separation, header rendering, item removal clearing selection, and final cells.
+Cover typed item addition, owned and foreign programmatic selection, owner focus
+with Up/Down keyboard navigation, group expand/collapse with sub-items,
+separator non-interactivity, footer item separation, header rendering, item
+removal clearing selection, and final cells.

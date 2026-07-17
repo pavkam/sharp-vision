@@ -17,7 +17,34 @@ public sealed class NavigationViewTests
         nav.Items.Count.ShouldBe(2);
     }
 
-    /// <summary>Verifies focusing an item selects it and raises SelectionChanged.</summary>
+    /// <summary>Verifies callers select an owned semantic entry without moving focus to its private face.</summary>
+    [Fact]
+    public void SelectItem_WhenOwned_UpdatesSelectionWithoutChangingFocusOwnership()
+    {
+        var nav = new NavigationView();
+        var item = new NavigationViewItem { Header = "Page" };
+        nav.Items.Add(item);
+
+        nav.SelectItem(item);
+
+        nav.SelectedItem.ShouldBeSameAs(item);
+        item.IsSelected.ShouldBeTrue();
+        item.CanFocus.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies semantic selection rejects an entry from another navigation owner.</summary>
+    [Fact]
+    public void SelectItem_WhenForeign_ThrowsArgumentException()
+    {
+        var nav = new NavigationView();
+        var other = new NavigationView();
+        var item = new NavigationViewItem { Header = "Elsewhere" };
+        other.Items.Add(item);
+
+        _ = Should.Throw<ArgumentException>(() => nav.SelectItem(item));
+    }
+
+    /// <summary>Verifies private items reject focus while selection remains owner-managed.</summary>
     [Fact]
     public async Task Focus_WhenItemReceivesFocus_SelectsItemAsync()
     {
@@ -35,19 +62,10 @@ public sealed class NavigationViewTests
             var raised = 0;
             nav.SelectionChanged += (_, _) => raised++;
 
-            focus.Focus(item1).ShouldBeTrue();
-
-            nav.SelectedItem.ShouldBeSameAs(item1);
-            raised.ShouldBe(1);
-            item1.IsSelected.ShouldBeTrue();
-            item2.IsSelected.ShouldBeFalse();
-
-            focus.Focus(item2).ShouldBeTrue();
-
-            nav.SelectedItem.ShouldBeSameAs(item2);
-            raised.ShouldBe(2);
-            item1.IsSelected.ShouldBeFalse();
-            item2.IsSelected.ShouldBeTrue();
+            focus.Focus(item1).ShouldBeFalse();
+            nav.SelectedItem.ShouldBeNull();
+            raised.ShouldBe(0);
+            focus.Focus(nav).ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -68,16 +86,15 @@ public sealed class NavigationViewTests
             nav.Items.Add(c);
             nav.Attach(dispatcher);
             using FocusManager focus = new(nav);
-            focus.Focus(a).ShouldBeTrue();
-            nav.SelectedItem.ShouldBeSameAs(a);
+            focus.Focus(nav).ShouldBeTrue();
 
             var down = new KeyEventArgs(new Stroke(
                 Code.Down, default, nativeCode: 0, Modifiers.None, KeyAction.Press));
-            Router.Route(a, Events.Key, down);
+            _ = Router.Route(nav, Events.Key, down);
 
             down.Handled.ShouldBeTrue();
-            nav.SelectedItem.ShouldBeSameAs(b);
-            focus.Focused.ShouldBeSameAs(b);
+            nav.SelectedItem.ShouldBeSameAs(a);
+            focus.Focused.ShouldBeSameAs(nav);
         }, TestContext.Current.CancellationToken);
     }
 
@@ -96,12 +113,12 @@ public sealed class NavigationViewTests
             nav.Items.Add(group);
             nav.Attach(dispatcher);
             using FocusManager focus = new(nav);
-            focus.Focus(sub).ShouldBeTrue();
+            focus.Focus(nav).ShouldBeTrue();
 
-            Router.Route(sub, Events.Key, new KeyEventArgs(new Stroke(
+            _ = Router.Route(nav, Events.Key, new KeyEventArgs(new Stroke(
                 Code.Enter, default, nativeCode: 0, Modifiers.None, KeyAction.Press)));
 
-            nav.SelectedItem.ShouldBeSameAs(sub);
+            nav.SelectedItem.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -179,8 +196,7 @@ public sealed class NavigationViewTests
             nav.Items.Add(item);
             nav.Attach(dispatcher);
             using FocusManager focus = new(nav);
-            focus.Focus(item).ShouldBeTrue();
-            nav.SelectedItem.ShouldBeSameAs(item);
+            nav.SelectedItem.ShouldBeNull();
 
             _ = nav.Items.Remove(item);
 
@@ -188,7 +204,7 @@ public sealed class NavigationViewTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies only the selected item is a tab stop; others are focusable but not tab stops.</summary>
+    /// <summary>Verifies NavigationView is the only tab stop; private item faces are never focusable.</summary>
     [Fact]
     public async Task Selection_WhenChanged_OnlySelectedItemIsTabStopAsync()
     {
@@ -210,17 +226,10 @@ public sealed class NavigationViewTests
             b.IsTabStop.ShouldBeFalse();
             c.IsTabStop.ShouldBeFalse();
 
-            focus.Focus(a).ShouldBeTrue();
-
-            a.IsTabStop.ShouldBeTrue();
-            b.IsTabStop.ShouldBeFalse();
-            c.IsTabStop.ShouldBeFalse();
-
-            focus.Focus(b).ShouldBeTrue();
-
-            a.IsTabStop.ShouldBeFalse();
-            b.IsTabStop.ShouldBeTrue();
-            c.IsTabStop.ShouldBeFalse();
+            a.CanFocus.ShouldBeFalse();
+            b.CanFocus.ShouldBeFalse();
+            c.CanFocus.ShouldBeFalse();
+            focus.Focus(nav).ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
 }

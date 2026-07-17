@@ -183,8 +183,8 @@ public sealed class PopupTests
             root.Children.Add(popup);
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
-            using var capture = new CaptureManager(root);
-            var content = new OwnershipObserverControl { CanFocus = true };
+            using var capture = new PointerManager(root);
+            var content = new OwnershipObserverControl { Focusable = true };
             var acquiredFocus = false;
             var acquiredCapture = false;
             content.Attaching = control =>
@@ -234,7 +234,7 @@ public sealed class PopupTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var content = new ProbeControl { CanFocus = true };
+            var content = new ProbeControl { Focusable = true };
             var popup = new Popup { Content = content };
             var root = new Overlay();
             root.Children.Add(popup);
@@ -291,13 +291,13 @@ public sealed class PopupTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var content = new ProbeControl { CanFocus = true };
+            var content = new ProbeControl { Focusable = true };
             var popup = new Popup { Content = content };
             var root = new Overlay();
             root.Children.Add(popup);
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
-            using var capture = new CaptureManager(root);
+            using var capture = new PointerManager(root);
             popup.IsOpen = true;
             new Engine().Layout(root, new Size(12, 6));
             content.CaptureProbePointer().ShouldBeTrue();
@@ -479,33 +479,6 @@ public sealed class PopupTests
         popup.HitTest(new Point(2, 1)).ShouldBeSameAs(popup);
     }
 
-    /// <summary>Verifies popup surface and frame retain semantic resource decorations.</summary>
-    [Fact]
-    public void Render_WhenStyleUsesModernDecorations_PreservesSurfaceStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Popup>(
-            (State.Normal, new ThemeOverlay(
-                attributes: Attributes.Overline,
-                underline: Underline.Dotted,
-                underlineColor: Color.Indexed(4))));
-        var popup = new Popup()
-        {
-            Content = new ProbeControl(new Size(1, 1)),
-            IsOpen = true,
-            Style = style,
-        };
-        var size = new Size(6, 4);
-        new Engine().Layout(popup, size);
-        using Frame frame = new(size);
-
-        popup.Render(frame.Canvas);
-
-        var rendered = frame.GetCell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Style;
-        rendered.Attributes.ShouldBe(Attributes.Overline);
-        rendered.Underline.ShouldBe(Underline.Dotted);
-        rendered.UnderlineColor.ShouldBe(Color.Indexed(4));
-    }
-
     /// <summary>Verifies an open popup is painted and hit-tested above later ordinary siblings in its owning overlay.</summary>
     [Fact]
     public void Render_WhenLaterSiblingOverlaps_PopupRetainsTopmostInputAndSurface()
@@ -600,7 +573,7 @@ public sealed class PopupTests
             Modifiers.None,
             KeyAction.Press));
 
-        Router.Route(child, Events.Key, eventArgs);
+        _ = Router.Route(child, Events.Key, eventArgs);
 
         popup.IsOpen.ShouldBeFalse();
         eventArgs.Handled.ShouldBeTrue();
@@ -636,7 +609,7 @@ public sealed class PopupTests
         await dispatcher.InvokeAsync(() =>
         {
             var content = new TraversalOwner();
-            var child = new ProbeControl { CanFocus = true };
+            var child = new ProbeControl { Focusable = true };
             content.AddExcluded(child);
             var popup = new Popup { Content = content };
             var root = new Overlay();

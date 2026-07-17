@@ -74,7 +74,7 @@ public sealed class ButtonTests
         new Engine().Layout(button, new Size(10, 6));
         var released = content.Bounds;
 
-        Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+        _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
             nativeCode: 0,
@@ -147,7 +147,7 @@ public sealed class ButtonTests
         using Frame released = new(size);
         button.Render(released.Canvas);
 
-        Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+        _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
             nativeCode: 0,
@@ -163,13 +163,10 @@ public sealed class ButtonTests
         pressed.GetCell(new Point(6, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
     }
 
-    /// <summary>Verifies a shadowless Button keeps its position while Space resolves the pressed face appearance.</summary>
+    /// <summary>Verifies a shadowless Button keeps its position while Space presses its direct appearance.</summary>
     [Fact]
     public void Render_WhenPressedWithoutShadow_UsesPressedAppearanceWithoutTranslation()
     {
-        var style = ThemeTestSupport.OverlayStyle<Button>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(240))),
-            (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(24))));
         var button = new Button()
         {
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -177,13 +174,14 @@ public sealed class ButtonTests
             Width = Length.Cells(6),
             Height = Length.Cells(3),
             HasShadow = false,
-            Style = style,
+            Foreground = Color.Indexed(255),
+            Background = Color.Indexed(24),
             Content = new ControlText("Go"),
         };
         var size = new Size(10, 6);
         new Engine().Layout(button, size);
 
-        Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
+        _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
             nativeCode: 0,
@@ -200,23 +198,19 @@ public sealed class ButtonTests
         FrameOracle.Get(frame, new Point(6, 3)).ShouldBeEmpty();
     }
 
-    /// <summary>Verifies hover appearance brightens the interactive face while the detached shadow retains its normal dim treatment.</summary>
+    /// <summary>Verifies direct appearance styles the face while the detached shadow remains dim.</summary>
     [Fact]
     public void Render_WhenHovered_StylesFrameButNotShadow()
     {
-        var style = ThemeTestSupport.OverlayStyle<Button>(
-            (State.Normal, new ThemeOverlay(attributes: Attributes.None)),
-            (State.Hovered, new ThemeOverlay(attributes: Attributes.Bold)));
         var button = new Button()
         {
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(6),
             Height = Length.Cells(3),
-            Style = style,
+            Attributes = Attributes.Bold,
         };
         new Engine().Layout(button, new Size(10, 6));
-        button.SetHovered(true);
         using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
@@ -304,7 +298,7 @@ public sealed class ButtonTests
         ActivationCause? cause = null;
         button.Click += (_, eventArgs) => cause = eventArgs.Cause;
 
-        Router.Route(
+        _ = Router.Route(
             button,
             Events.Key,
             new KeyEventArgs(new Stroke(
@@ -335,7 +329,7 @@ public sealed class ButtonTests
         await dispatcher.InvokeAsync(() =>
         {
             button.Attach(dispatcher);
-            using CaptureManager capture = new(button);
+            using PointerManager capture = new(button);
             _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Release));
         }, TestContext.Current.CancellationToken);
@@ -359,13 +353,13 @@ public sealed class ButtonTests
         await dispatcher.InvokeAsync(() =>
         {
             button.Attach(dispatcher);
-            using CaptureManager capture = new(button);
+            using PointerManager capture = new(button);
 
             _ = capture.Dispatch(Pointer(new Point(2, 0), PointerAction.Move));
 
             capture.Hovered.ShouldBeSameAs(button);
-            button.IsHovered.ShouldBeTrue();
-            content.IsHovered.ShouldBeFalse();
+            button.IsPointerOver.ShouldBeTrue();
+            content.IsPointerOver.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -386,16 +380,15 @@ public sealed class ButtonTests
         frame.GetCell(new Point(3, 1)).IsContinuation.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a styled Button owns the complete visible surface behind its content.</summary>
+    /// <summary>Verifies a Button with direct colors owns the complete visible surface behind its content.</summary>
     [Fact]
     public void Render_WhenStyleDefinesBackground_FillsButtonBounds()
     {
-        var style = ThemeTestSupport.OverlayStyle<Button>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(255), background: Color.Indexed(24))));
         var button = new Button()
         {
             Content = new ControlText("Run"),
-            Style = style,
+            Foreground = Color.Indexed(255),
+            Background = Color.Indexed(24),
             Width = Length.Cells(8),
             Height = Length.Cells(3),
         };

@@ -56,7 +56,7 @@ public sealed class GalleryExitTests
         gallery.Attach(application);
         await application.StartAsync(TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
-            () => application.Focus.Focus(gallery.Navigation[0]).ShouldBeTrue(),
+            () => application.Focus.Focus(gallery.NavigationControl).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
 
         // Kitty keyboard protocol reports Ctrl+Q as CSI 113;5u, decoded to Character 'q' with Control.

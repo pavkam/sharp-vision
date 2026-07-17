@@ -51,7 +51,7 @@ public sealed class PropertyTests
         var control = new ProbeControl()
         {
             Bounds = new Rect(0, 0, 2, 1),
-            CanFocus = true,
+            Focusable = true,
             IsHitTestVisible = false,
         };
 
@@ -149,11 +149,11 @@ public sealed class PropertyTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var child = new ProbeControl { CanFocus = true };
+            var child = new ProbeControl { Focusable = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
-            using var capture = new CaptureManager(root);
+            using var capture = new PointerManager(root);
             focus.Focus(child).ShouldBeTrue();
             child.CaptureProbePointer().ShouldBeTrue();
             var expected = new InvalidOperationException("The visibility subscriber failed.");
@@ -194,13 +194,13 @@ public sealed class PropertyTests
             var root = new ProbeContainer();
             var child = new ProbeControl
             {
-                CanFocus = true,
+                Focusable = true,
                 ThrowOnPointerCaptureCancellation = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
-            using var capture = new CaptureManager(root);
+            using var capture = new PointerManager(root);
             focus.Focus(child).ShouldBeTrue();
             child.CaptureProbePointer().ShouldBeTrue();
             var propertySubscriberRan = false;

@@ -41,7 +41,9 @@ public sealed class NavigationView: CompositeControl
         InitializeContent(root);
         Items = new NavigationViewItems(this, isFooter: false);
         FooterItems = new NavigationViewItems(this, isFooter: true);
-        TabNavigation = TabNavigation.Continue;
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.None;
         _ = AddHandler(Events.Key, OnKeyRouted);
     }
 
@@ -73,6 +75,22 @@ public sealed class NavigationView: CompositeControl
     /// <summary>Gets the currently selected item, or null.</summary>
     public NavigationViewItem? SelectedItem { get; private set; }
 
+    /// <summary>Selects a currently owned navigation item without moving keyboard focus.</summary>
+    /// <param name="item">The non-null item owned by this navigation view.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="item"/> is not owned by this navigation view.</exception>
+    public void SelectItem(NavigationViewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (!ReferenceEquals(item.FindNavigationView(), this))
+        {
+            throw new ArgumentException("The item is not owned by this navigation view.", nameof(item));
+        }
+
+        Select(item);
+    }
+
     /// <summary>Gets the item count for one section.</summary>
     internal int GetItemCount(bool isFooter) =>
         (isFooter ? _footerStack : _itemsStack).Children.Count;
@@ -92,7 +110,8 @@ public sealed class NavigationView: CompositeControl
 
         if (entry is NavigationViewItem item)
         {
-            item.IsTabStop = false;
+            item.Focusable = false;
+            item.TabStop = false;
             item.Invoked += OnItemInvoked;
         }
     }
@@ -155,6 +174,17 @@ public sealed class NavigationView: CompositeControl
 
         int direction;
 
+        if (eventArgs.Stroke.Code == Code.Enter ||
+            (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
+        {
+            if (SelectedItem is not null)
+            {
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
         if (eventArgs.Stroke.Code == Code.Up)
         {
             direction = -1;
@@ -175,7 +205,6 @@ public sealed class NavigationView: CompositeControl
         if (next >= 0 && next < all.Count)
         {
             Select(all[next]);
-            _ = FocusOwner?.Focus(all[next]);
             _ = _itemsStack.BringIntoView(all[next]);
             eventArgs.Handled = true;
         }
@@ -212,16 +241,11 @@ public sealed class NavigationView: CompositeControl
         if (SelectedItem is { } previous)
         {
             previous.CommitSelection(false);
-            previous.IsTabStop = false;
         }
 
         SelectedItem = item;
 
-        if (item is not null)
-        {
-            item.CommitSelection(true);
-            item.IsTabStop = true;
-        }
+        item?.CommitSelection(true);
 
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }

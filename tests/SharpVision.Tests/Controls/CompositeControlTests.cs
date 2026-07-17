@@ -251,7 +251,7 @@ public sealed class CompositeControlTests
     public async Task MoveNext_WhenContentCanFocus_NavigatesToPrivateRootAsync()
     {
         await using var dispatcher = Dispatcher.Start();
-        var root = new ProbeControl { CanFocus = true };
+        var root = new ProbeControl { Focusable = true };
         var owner = new ProbeCompositeControl(root);
 
         await dispatcher.InvokeAsync(() =>
@@ -283,20 +283,20 @@ public sealed class CompositeControlTests
     {
         await using var dispatcher = Dispatcher.Start();
         var policy = new Policy(Ambiguous.Wide);
-        var context = ThemeContext.Create(new Theme());
+        var context = new Theme();
         var root = new OwnershipObserverControl();
         var owner = new ProbeCompositeControl(root);
 
         await dispatcher.InvokeAsync(() =>
         {
             owner.Attach(dispatcher, policy);
-            owner.PropagateThemeContext(context);
+            owner.PropagateTheme(context);
             using FocusManager focus = new(owner);
-            using CaptureManager capture = new(owner);
+            using PointerManager capture = new(owner);
 
             root.Dispatcher.ShouldBeSameAs(dispatcher);
             root.InheritedCellPolicy.ShouldBeSameAs(policy);
-            root.InheritedThemeContext.ShouldBeSameAs(context);
+            root.InheritedThemeValue.ShouldBeSameAs(context);
             root.InheritedFocusOwner.ShouldBeSameAs(focus);
             root.InheritedCaptureOwner.ShouldBeSameAs(capture);
         }, TestContext.Current.CancellationToken);

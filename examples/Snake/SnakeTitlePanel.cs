@@ -110,7 +110,7 @@ internal sealed class SnakeTitlePanel: CompositeControl
                 new FigletText(_standardFont)
                 {
                     Content = "GAME OVER",
-                    Foreground = ThemeColors.Error,
+                    Foreground = ColorRole.Error,
                     Attributes = TerminalAttributes.Bold,
                     HorizontalAlignment = HorizontalAlignment.Center,
                 },
@@ -281,7 +281,7 @@ internal sealed class SnakeTitlePanel: CompositeControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             BorderThickness = new Thickness(1),
             BorderGlyphs = Glyphs.Rounded,
-            BorderColor = ThemeColors.Border,
+            BorderColor = ColorRole.Border,
             HasShadow = true,
             ShadowOffset = new Point(1, 1),
             Padding = new Thickness(1, 0),

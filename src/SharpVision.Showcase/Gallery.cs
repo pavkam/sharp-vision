@@ -70,7 +70,6 @@ public sealed class Gallery: Screen
     }
 
     private readonly Dock _main;
-    private readonly NavigationView _nav;
     private readonly NavigationViewItem[] _navigation;
     private readonly ComboBox _themePicker;
     private readonly Button _quit;
@@ -82,7 +81,7 @@ public sealed class Gallery: Screen
     {
         Pages = Array.ConvertAll(_catalog, static entry => entry.Name);
         _main = new Dock();
-        _nav = new NavigationView { Header = "Components" };
+        NavigationControl = new NavigationView { Header = "Components" };
         _navigation = new NavigationViewItem[Pages.Count];
 
         for (var index = 0; index < Pages.Count; index++)
@@ -93,10 +92,10 @@ public sealed class Gallery: Screen
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
             _navigation[index] = item;
-            _nav.Items.Add(item);
+            NavigationControl.Items.Add(item);
         }
 
-        _nav.SelectionChanged += OnNavigationSelectionChanged;
+        NavigationControl.SelectionChanged += OnNavigationSelectionChanged;
         var sidebarLayout = new Dock();
         var header = CreateSidebarHeader();
         var darkIndex = Array.FindIndex(_themePickerEntries, static entry => entry.Slug == "default-dark");
@@ -129,7 +128,7 @@ public sealed class Gallery: Screen
         Dock.SetSide(footer, Side.Bottom);
         sidebarLayout.Children.Add(footer);
         sidebarLayout.Children.Add(header);
-        sidebarLayout.Children.Add(_nav);
+        sidebarLayout.Children.Add(NavigationControl);
         Sidebar = new Dock
         {
             Width = Length.Cells(28),
@@ -175,6 +174,9 @@ public sealed class Gallery: Screen
     /// <summary>Gets the stable stateful navigation entries in catalog order.</summary>
     internal IReadOnlyList<NavigationViewItem> Navigation => _navigation;
 
+    /// <summary>Gets the sidebar's single keyboard-focus owner.</summary>
+    internal NavigationView NavigationControl { get; }
+
     /// <summary>Creates a fresh detached showcase pane for one catalog index.</summary>
     /// <param name="index">The zero-based page index.</param>
     /// <returns>A new showcase pane instance.</returns>
@@ -202,14 +204,14 @@ public sealed class Gallery: Screen
         _ = FocusSelected(application.Focus);
     }
 
-    /// <summary>Focuses the selected sidebar entry after the application has attached the gallery tree.</summary>
+    /// <summary>Focuses the public sidebar owner after the application has attached the gallery tree.</summary>
     /// <param name="focus">The non-null attached root focus manager.</param>
-    /// <returns>True when the selected entry accepted focus; otherwise, false.</returns>
+    /// <returns>True when the navigation owner accepted focus; otherwise, false.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="focus"/> is null.</exception>
     internal bool FocusSelected(FocusManager focus)
     {
         ArgumentNullException.ThrowIfNull(focus);
-        return focus.Focus(_navigation[SelectedIndex]);
+        return focus.Focus(NavigationControl);
     }
 
     /// <summary>Selects one validated catalog page and replaces only the main documentation tree.</summary>
@@ -225,6 +227,7 @@ public sealed class Gallery: Screen
         Debug.Assert(_navigation[index].Header == _catalog[index].Name);
         var previous = _main.Children.Count > 0 ? _main.Children[0] : null;
         SelectedIndex = index;
+        NavigationControl.SelectItem(_navigation[index]);
 
         // A catalog selection creates a fresh page and therefore a fresh body viewport at offset zero.
         _main.Children.Clear();
@@ -334,7 +337,7 @@ public sealed class Gallery: Screen
         _ = sender;
         _ = eventArgs;
 
-        if (_nav.SelectedItem is { } selected)
+        if (NavigationControl.SelectedItem is { } selected)
         {
             var index = Array.IndexOf(_navigation, selected);
 
@@ -348,7 +351,7 @@ public sealed class Gallery: Screen
     /// <inheritdoc/>
     protected override void OnDispose()
     {
-        _nav.SelectionChanged -= OnNavigationSelectionChanged;
+        NavigationControl.SelectionChanged -= OnNavigationSelectionChanged;
         _themePicker.SelectionChanged -= OnThemeSelected;
         _quit.Click -= OnQuitClicked;
     }

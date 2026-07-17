@@ -42,9 +42,9 @@ shadow before raising `Click`.
 
 When `HasShadow` is false, the Button remains in its arranged box throughout a
 press: there is no absent shadow to cover. It still resolves the full
-[`State.Pressed`](../../concepts/styling.md#visual-states) appearance over its
-face and border, so a pressed background, foreground, or attribute provides the
-visual acknowledgement without pretending to have physical depth.
+[`VisualState.Pressed`](../../concepts/styling.md#visual-states) appearance over
+its face and border, so a pressed background, foreground, or attribute provides
+the visual acknowledgement without pretending to have physical depth.
 
 The shipped control exposes `Click` as a conventional CLR event carrying
 `ActivationEventArgs`; it uses the same committed activation pipeline as routed

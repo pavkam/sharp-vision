@@ -74,7 +74,7 @@ public sealed class InfrastructurePerformanceTests
             nativeCode: 0,
             Modifiers.None,
             KeyAction.Press));
-        Router.Route(target, Events.Key, eventArgs);
+        _ = Router.Route(target, Events.Key, eventArgs);
 
         (var allocated, var elapsed) = Measure(
             () => Router.Route(target, Events.Key, eventArgs),

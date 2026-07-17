@@ -13,15 +13,14 @@ public sealed partial class Window: ContentControl
 
     #region Construction and properties
 
-    static Window()
-    {
-        _ = HasShadowProperty.RegisterClassDefault<Window>(true);
-        _ = ShadowOffsetProperty.RegisterClassDefault<Window>(new Point(2, 1));
-        _ = ShadowAttributesProperty.RegisterClassDefault<Window>(TerminalAttributes.Dim);
-    }
-
     /// <summary>Initializes an empty window with a rounded border and composite shadow.</summary>
-    public Window() => PropertyChanged += OnWindowPropertyChanged;
+    public Window()
+    {
+        HasShadow = true;
+        ShadowOffset = new Point(2, 1);
+        ShadowAttributes = TerminalAttributes.Dim;
+        PropertyChanged += OnWindowPropertyChanged;
+    }
 
     /// <summary>Raised when the close glyph is activated by a pointer press or programmatic invocation.</summary>
     public event EventHandler? Closing;
@@ -128,9 +127,16 @@ public sealed partial class Window: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override ChromeRenderOptions GetChromeRenderOptions() => new()
     {
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+        SkipBodyFill = true,
+        SkipBorder = true,
+    };
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
+    {
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetAppearanceState());
 
         if (opaque)
         {
@@ -142,7 +148,7 @@ public sealed partial class Window: ContentControl
             return;
         }
 
-        var border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        var border = ControlAppearance.ResolveBorderStyle(this, GetAppearanceState());
         var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, background);
 
@@ -220,9 +226,9 @@ public sealed partial class Window: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
-        base.OnPointerCaptureCancelled(reason);
+        base.OnLostPointerCapture(reason);
         _dragging = false;
     }
 

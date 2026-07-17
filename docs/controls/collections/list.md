@@ -8,17 +8,16 @@ item into a private vertical `Stack` armed with the intrinsic
 [`AutoScroll`](../../concepts/scrolling.md) contract. It makes no virtualization
 or recycling claim.
 
-Each template result is wrapped by one ordinary pressable `ListItem`. The
-wrapper owns focus, activation, selected visual state, and exactly one template
-control through inherited `Content`; selection state propagates through that
-realized subtree so inherited `State.Selected` styling reaches the cells that
-actually render.
+Each template result is wrapped by one ordinary pressable `ListItem`. The List
+owns focus and current-item navigation; the wrapper owns activation,
+selected/current visual facts, and exactly one template control through
+inherited `Content`.
 
 When the resolved style supplies a background, the List paints its complete
 arranged surface with that normal or disabled appearance. Each realized item
-paints its complete row with the resolved item state, so a `State.Selected`
-overlay visibly highlights selected rows instead of changing only the label
-cells.
+paints its complete row with the resolved item state, so a
+`VisualState.Selected` overlay visibly highlights selected rows instead of
+changing only the label cells.
 
 ## API
 
@@ -54,11 +53,11 @@ cells.
 
 ## Interaction and layout
 
-Arrows move focus and active index in stable realized order while skipping
-effectively hidden or disabled template controls. Home/End choose the first or
-last eligible item. PageUp/PageDown advance by at least one and otherwise by the
-committed viewport height. Every successful move uses the composed
-`BringIntoView` path.
+Arrows keep focus on the List and move its active index in stable realized order
+while skipping effectively hidden or disabled template controls. Home/End choose
+the first or last eligible item. PageUp/PageDown advance by at least one and
+otherwise by the committed viewport height. Every successful move uses the
+composed `BringIntoView` path.
 
 Space follows press/release activation and changes selection; Enter invokes
 without changing it. Primary pointer release selects and invokes. In Multiple

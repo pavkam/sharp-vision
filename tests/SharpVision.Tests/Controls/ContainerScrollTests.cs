@@ -70,9 +70,8 @@ public sealed class ContainerScrollTests
     }
 
     /// <summary>
-    /// Verifies disarming AutoScroll collapses both previously visible owned
-    /// bars immediately from the property setter, rather than leaving a
-    /// stale bar visible (and tab-focusable) until the next arrange pass.
+    /// Verifies generated scrollbar chrome never changes public tab traversal,
+    /// including while a previously visible scrolling container is disarmed.
     /// </summary>
     [Fact]
     public void AutoScroll_WhenDisarmedAfterBarsWereVisible_CollapsesBothBars()
@@ -84,52 +83,22 @@ public sealed class ContainerScrollTests
             HorizontalBarVisibility = ScrollBarVisibility.Always,
             VerticalBarVisibility = ScrollBarVisibility.Always,
         };
-        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        container.Children.Add(new ProbeControl(new Size(4, 40)) { Focusable = true });
+        var navigationCount = container.NavigationCount;
         new Engine().Layout(container, new Size(4, 10));
-        var horizontal = container.NavigationAt(container.NavigationCount - 2);
-        var vertical = container.NavigationAt(container.NavigationCount - 1);
-        horizontal.Visibility.ShouldBe(Visibility.Visible);
-        vertical.Visibility.ShouldBe(Visibility.Visible);
+        container.NavigationCount.ShouldBe(navigationCount);
 
         container.AutoScroll = false;
 
-        horizontal.Visibility.ShouldBe(Visibility.Collapsed);
-        vertical.Visibility.ShouldBe(Visibility.Collapsed);
-    }
-
-    /// <summary>Verifies owned bars use the active theme's canonical chrome and fill.</summary>
-    [Fact]
-    public void ScrollBars_WhenStandardThemeIsApplied_UseThinLinePresentation()
-    {
-        var container = new Stack
-        {
-            AutoScroll = true,
-            ScrollBars = ScrollBars.Both,
-            ShowScrollBars = ShowScrollBars.Always,
-        };
-        container.Children.Add(new ProbeControl(new Size(20, 20)));
-        ThemeTestSupport.ApplyTheme(container, Themes.Dark);
-
-        new Engine().Layout(container, new Size(6, 4));
-
-        var horizontal = container.NavigationAt(container.NavigationCount - 2)
-            .ShouldBeOfType<ScrollBar>();
-        var vertical = container.NavigationAt(container.NavigationCount - 1)
-            .ShouldBeOfType<ScrollBar>();
-        horizontal.Chrome.ShouldBe(ScrollBarChrome.Thin);
-        horizontal.Fill.ShouldBe(ScrollBarFill.Line);
-        vertical.Chrome.ShouldBe(ScrollBarChrome.Thin);
-        vertical.Fill.ShouldBe(ScrollBarFill.Line);
+        container.NavigationCount.ShouldBe(navigationCount);
     }
 
     /// <summary>
-    /// Verifies an armed Stack's owned scrollbar chrome participates in
-    /// default Tab navigation instead of crashing: Stack.NavigationAt used to
-    /// index Children directly for every position, even though the registry's
-    /// navigation view also contains the two generated bar indices.
+    /// Verifies generated scrollbar chrome remains private to an armed Stack's
+    /// interaction model and cannot become an extra public tab stop.
     /// </summary>
     [Fact]
-    public async Task MoveNext_WhenStackIsArmed_ReachesChildThenBothBarsAsync()
+    public async Task MoveNext_WhenStackIsArmed_SkipsPrivateGeneratedBarsAsync()
     {
         await using var dispatcher = Dispatcher.Start();
         var panel = new Stack()
@@ -138,7 +107,7 @@ public sealed class ContainerScrollTests
             ScrollBars = ScrollBars.Both,
             ShowScrollBars = ShowScrollBars.Always,
         };
-        var child = new ProbeControl(new Size(4, 40)) { CanFocus = true };
+        var child = new ProbeControl(new Size(4, 40)) { Focusable = true };
         panel.Children.Add(child);
 
         await dispatcher.InvokeAsync(() =>
@@ -150,17 +119,6 @@ public sealed class ContainerScrollTests
             focus.MoveNext().ShouldBeTrue();
             focus.Focused.ShouldBeSameAs(child);
 
-            focus.MoveNext().ShouldBeTrue();
-            var first = focus.Focused.ShouldBeOfType<ScrollBar>();
-
-            focus.MoveNext().ShouldBeTrue();
-            var second = focus.Focused.ShouldBeOfType<ScrollBar>();
-
-            new[] { first.Orientation, second.Orientation }.ShouldBe(
-                [Orientation.Horizontal, Orientation.Vertical]);
-
-            // Cycles back to the child, proving exactly three eligible
-            // navigation stops: the child, then both bars at the tail.
             focus.MoveNext().ShouldBeTrue();
             focus.Focused.ShouldBeSameAs(child);
         }, TestContext.Current.CancellationToken);
@@ -355,10 +313,9 @@ public sealed class ContainerScrollTests
 
         container.AutoScroll = true;
 
-        // Registry-backed NavigationCount folds in the owned scrollbar chrome
-        // once created, so its growth proves the bars exist before Layout ever
-        // ran once for this container.
-        container.NavigationCount.ShouldBe(navigationCountBeforeArming + 2);
+        // Generated bars are framework-private and therefore cannot change the
+        // container's public sequential-navigation participants.
+        container.NavigationCount.ShouldBe(navigationCountBeforeArming);
     }
 
     /// <summary>

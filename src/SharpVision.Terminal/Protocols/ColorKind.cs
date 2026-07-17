@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Protocols;
 
-/// <summary>Identifies the encoded color representation.</summary>
+/// <summary>Identifies one concrete terminal color representation.</summary>
 public enum ColorKind
 {
     /// <summary>Use the terminal default color.</summary>
@@ -14,10 +14,4 @@ public enum ColorKind
 
     /// <summary>Use an explicit 24-bit RGB color.</summary>
     Rgb,
-
-    /// <summary>A theme-resolved semantic color slot; must be resolved to a concrete color before encoding.</summary>
-    Role,
-
-    /// <summary>Explicitly transparent — the control does not paint its background.</summary>
-    Transparent,
 }

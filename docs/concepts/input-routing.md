@@ -44,13 +44,13 @@ the [paste/focus](../protocols/paste-focus.md#paste-and-focus-contract) and
 
 ## Route construction
 
-Keyboard targets the focused control. Pointer input targets capture when active,
-otherwise hit testing over committed layout and clipping. The dispatcher
-snapshots ancestry, previews root to target, then bubbles target to root.
-`OriginalSource` never changes; controlled retargeting may change `Source`.
-Ancestry follows `Control.Parent` across every ownership role; route
-construction never requires the parent to be a `Container` or the edge to appear
-in public `Children`.
+Keyboard targets the focused control, or the application root when no control is
+focused. Pointer input targets capture when active, otherwise hit testing over
+committed layout and clipping. The dispatcher snapshots ancestry, previews root
+to target, then bubbles target to root. `OriginalSource` never changes;
+controlled retargeting may change `Source`. Ancestry follows `Control.Parent`
+across every ownership role; route construction never requires the parent to be
+a `Container` or the edge to appear in public `Children`.
 
 `Handled` suppresses remaining ordinary handlers and default control behavior.
 Handlers explicitly registered for handled events still run. Tree mutation
@@ -77,16 +77,16 @@ not retain controls or delegates.
 
 `OriginalSource` remains the initiating target. `Source` begins at that target
 and can be changed through `Retarget` only while dispatch is active. The current
-route control is the handler's `sender`; `Phase` reports preview or bubble.
-After an unhandled bubble, protected default behavior runs from the target
-toward the root until one route member handles the event. Composite controls
-therefore retain their traditional behavior when semantic child content is the
-pointer target. For an unhandled pressed Tab with no modifiers, or with only
-Shift, the shared control default moves the owning `FocusManager` forward or
-backward through its eligible tab order and marks the key handled. A control
-that owns Tab semantics, such as a `TextInput` with `AcceptsTab`, handles it
-before this fallback. Exceptions propagate after route state and pooled storage
-are cleaned.
+route control is the handler's `sender`; `Phase` reports preview or bubble. Each
+route member runs its bubble handlers and then, if still unhandled, its own
+default behavior before the next ancestor is considered. This prevents an
+ancestor widget default from preempting a nested editor. A pressed Tab with no
+modifiers other than Shift requests one post-route application traversal; the
+application executes that command exactly once from the stable route anchor. The
+same path enters the first eligible tab stop when no control was focused. A
+control that owns Tab semantics, such as a `TextInput` with `AcceptsTab`,
+handles it before this fallback. Exceptions propagate after route state and
+pooled storage are cleaned.
 
 ## Pointer capture and coordinates
 
@@ -99,7 +99,7 @@ Pointer events preserve screen cells, optional pixels, inferred cell position,
 buttons, wheel delta, modifiers, and action. Local coordinates are derived from
 committed transforms at each route element.
 
-`CaptureManager` synthesizes `PointerEventArgs.ClickCount` because terminal
+`PointerManager` synthesizes `PointerEventArgs.ClickCount` because terminal
 mouse reports do not carry desktop gesture counts. Presses accumulate only for
 the same routed target, button set, and cell within 500 milliseconds on the
 manager's monotonic `TimeProvider`; any mismatch or expired interval restarts at
@@ -120,25 +120,23 @@ Overlay, and scrolling containers preserve their documented viewport and z-order
 rules on top of this shared traversal. A pointer handler receives `LocalCells`
 relative to its current sender's committed bounds.
 
-On a primary press, `CaptureManager` resolves the nearest eligible focusable
+On a primary press, `PointerManager` resolves the nearest eligible focusable
 member from the routed target toward the root and commits focus before routing
 the pointer event. This shared rule applies to every focusable control;
 specialized controls may repeat the same idempotent focus request. A cancelled
 focus transaction does not suppress pointer routing.
 
-`CaptureManager.Dispatch` routes to exclusive capture when present and otherwise
-uses root hit testing. Hover always resolves from the physical hit-test target,
-even while another control is captured, so drag delivery cannot leave stale
-visual feedback. A pressable composite owns hover for its hit-tested
-descendants; for example, text inside a Button sets the Button's `IsHovered`,
-not the label's. It updates `IsHovered` and `IsPressed` before routing so
-handlers observe committed visual state. Release clears press after routing.
-Explicit `Release` is quiet; detach, disable, hide, disposal, and terminal-focus
-loss first clear capture plus any hover and press state owned by the unavailable
-subtree. If a capture target existed, its protected cancellation hook runs next;
-the manager-level `Cancelled` event then publishes the precise `ReleaseReason`.
-Capture requests made from either cancellation callback return false until the
-complete callback sequence has unwound.
+`PointerManager.Dispatch` routes to exclusive capture when present and otherwise
+uses root hit testing. Pointer state follows the physical hit-test path even
+while another control is captured: the direct target exposes
+`IsPointerDirectlyOver` and every ancestor exposes `IsPointerOver`. Semantic
+press state belongs only to `PressBehavior`; raw pointer dispatch never marks a
+control pressed. Explicit `Release` is quiet; detach, disable, hide, disposal,
+and terminal-focus loss first clear capture plus any hover and press state owned
+by the unavailable subtree. If a capture target existed, its protected
+cancellation hook runs next; the manager-level `Cancelled` event then publishes
+the precise `ReleaseReason`. Capture requests made from either cancellation
+callback return false until the complete callback sequence has unwound.
 
 Disabling, hiding, or collapsing a control commits the availability property,
 clears focus and capture, and only then publishes its property notification. A
@@ -167,7 +165,7 @@ position) and `PixelPosition` (the last zero-based pixel position, when the wire
 supplied one) are `null` before the first pointer arrives and are cleared on
 `PointerAction.Leave`; `Buttons`, `Modifiers`, and `LastAction` reflect the most
 recently dispatched pointer. `Hovered`, `Pressed`, and `Captured` delegate live
-to `CaptureManager` and are `null` until the tree attaches.
+to `PointerManager` and are `null` until the tree attaches.
 `Application.Dispatch` updates the device from every `RecordKind.Pointer` record
 before routing it, so a caller reading `Pointer` mid-callback sees the same
 state the router just used.
@@ -175,7 +173,7 @@ state the router just used.
 `Application.HasFocus` is a `bool` tracking whether the terminal window
 currently reports focus. It defaults to `true` (assume focused until told
 otherwise) and toggles on each `RecordKind.Focus` record, before that record is
-routed to the focused control's `Events.Focus` handler.
+routed to the focused control's `Events.TerminalFocusChanged` handler.
 
 No new event backs either member: `Pointer` and `HasFocus` are pull-style
 snapshots for code that wants "where is the mouse" or "are we focused" without

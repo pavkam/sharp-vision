@@ -114,12 +114,12 @@ public sealed class StackTests
         var panel = new Panel() { Reverse = true };
         var first = new ProbeControl(new Size(1, 1))
         {
-            CanFocus = true,
+            Focusable = true,
             Content = "A".AsMemory(),
         };
         var second = new ProbeControl(new Size(1, 1))
         {
-            CanFocus = true,
+            Focusable = true,
             Content = "B".AsMemory(),
         };
         panel.Children.Add(first);

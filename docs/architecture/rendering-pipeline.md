@@ -100,10 +100,11 @@ according to the
 
 `Control.Render(Canvas)` is dispatcher-affine and rejects reentrancy. It clears
 render invalidation before extension code, clips own drawing to `VisualBounds`,
-calls `OnRender`, then renders owned children through either the arranged
-`Bounds` clip or the documented unclipped-child path. An invalidation raised
-during either callback therefore remains pending for the next frame. An
-exception restores render dirtiness before propagating.
+draws framework-owned chrome underlay, calls `OnRenderContent`, then renders
+owned children through either the arranged `Bounds` clip or the documented
+unclipped-child path. An invalidation raised during either callback therefore
+remains pending for the next frame. An exception restores render dirtiness
+before propagating.
 
 Hidden, collapsed, and effectively hidden subtrees draw nothing. Every control
 renders normal-layer ownership slots in slot-registration then item order, so a
@@ -116,28 +117,23 @@ documented ordering and viewport semantics. Every descendant canvas intersects
 all applicable ancestor clips; coordinates remain absolute terminal cells,
 avoiding accumulated transform rounding.
 
-The base `OnRender` implementation calls `RenderChrome`, which draws configured
-body fill, per-side border, and intrinsic shadow. A derived control that
-completely overrides `OnRender` must call `RenderChrome` before custom content
-when it opts into those visuals; the base layout pipeline still reserves
-`BorderThickness` even when custom drawing omits the border. Base chrome draws
-shadow, then an opaque body, then border. Body opacity is active when `FillMode`
-is opaque or a `Background` value resolves from any cascade layer. Partial
-borders draw only enabled edges and repair glyphs that are wide under the active
-ambiguous-width policy to portable ASCII. On the base path, shadow expands own
-`VisualBounds` by its signed offset without reserving layout, child space, or
-hit targets, and ancestor canvas clips still contain that overflow. Button
-intentionally translates its owned content while pressed.
+The framework render path draws intrinsic chrome around content: shadow, body
+fill when `Background` is non-null, content, normal-layer children, then border
+overlay. A derived control overrides `OnRenderContent` for content only; it
+cannot skip intrinsic chrome. Partial borders draw only enabled edges and repair
+glyphs that are wide under the active ambiguous-width policy to portable ASCII.
+On the base path, shadow expands own `VisualBounds` by its signed offset without
+reserving layout, child space, or hit targets, and ancestor canvas clips still
+contain that overflow. Button intentionally translates its owned content while
+pressed.
 
 Button uses specialized `ControlChrome` options for pressed-face translation,
 normal-appearance shadow styling, and its shadow gap. Window instead draws its
-bespoke titled uniform frame and explicit shadow without calling base
-`RenderChrome`; its frame is not `BorderThickness` chrome.
+bespoke titled uniform frame and explicit shadow through its narrow
+chrome-options seam; its frame is not `BorderThickness` chrome.
 
-Sealed bespoke renderers such as `Text`, `FigletText`, and `TextInput` do not
-call base `RenderChrome`. Their `BorderThickness` still reserves layout, but a
-caller that needs a visible frame or shadow composes an ordinary
-chrome-rendering container such as `Dock` around them.
+Sealed bespoke renderers such as `Text`, `FigletText`, and `TextInput` draw
+content only; framework-owned chrome still surrounds them when configured.
 
 Derived controls draw only through semantic `Canvas` operations and use their
 border-and-padding-deflated `ContentBounds`. They never write ANSI, split

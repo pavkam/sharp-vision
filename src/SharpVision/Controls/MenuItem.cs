@@ -312,7 +312,7 @@ public sealed class MenuItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
@@ -321,7 +321,7 @@ public sealed class MenuItem: Pressable
 
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }
@@ -389,7 +389,9 @@ public sealed class MenuItem: Pressable
                 submenu.ItemInvoked -= OnSubmenuItemInvoked;
             }
 
-            _submenuPopup?.Dispose();
+            // The popup is an owned child and the registry disposes it after this notification.
+            // Disposing it here would reenter the owner's structural publication transaction.
+            _submenuPopup = null;
             Invoked = null;
         }
     }

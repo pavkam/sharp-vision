@@ -3,39 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-using System.Reflection;
-
 /// <summary>Verifies the private item-presentation authoring role.</summary>
 public sealed class ItemsControlTests
 {
-    /// <summary>Verifies the role exposes semantic helpers without leaking its presentation container.</summary>
-    [Fact]
-    public void Type_WhenInspected_ExposesOnePrivateItemPresentationRole()
-    {
-        var type = typeof(ItemsControl);
-        var protectedNames = type.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
-            .Where(static method => method.DeclaringType == typeof(ItemsControl) && method.IsFamily)
-            .Select(static method => method.Name)
-            .ToArray();
-
-        type.IsPublic.ShouldBeTrue();
-        type.IsAbstract.ShouldBeTrue();
-        type.BaseType.ShouldBe(typeof(Control));
-        typeof(IStyleScope).IsAssignableFrom(type).ShouldBeTrue();
-        type.GetProperty("Children", BindingFlags.Public | BindingFlags.Instance).ShouldBeNull();
-        type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .ShouldNotContain(static property => typeof(Container).IsAssignableFrom(property.PropertyType));
-        protectedNames.ShouldContain("InitializeItemsHost");
-        protectedNames.ShouldContain("GetItemControl");
-        protectedNames.ShouldContain("IndexOfItemControl");
-        protectedNames.ShouldContain("InsertItemControl");
-        protectedNames.ShouldContain("RemoveItemControl");
-        protectedNames.ShouldContain("RemoveItemControlAt");
-        protectedNames.ShouldContain("ReplaceItemControl");
-        protectedNames.ShouldContain("ClearItemControls");
-        protectedNames.ShouldContain("ReplaceItemControls");
-        protectedNames.ShouldContain("OnItemControlsChanged");
-    }
 
     /// <summary>Verifies host initialization is one-shot and owns only the private host.</summary>
     [Fact]
@@ -200,7 +170,7 @@ public sealed class ItemsControlTests
     {
         await using var dispatcher = Dispatcher.Start();
         var owner = new ProbeItemsControl();
-        var item = new ProbeControl { CanFocus = true };
+        var item = new ProbeControl { Focusable = true };
         owner.Insert(0, item);
 
         await dispatcher.InvokeAsync(() =>
@@ -220,14 +190,14 @@ public sealed class ItemsControlTests
     {
         await using var dispatcher = Dispatcher.Start();
         var owner = new ProbeItemsControl();
-        var item = new ProbeControl { CanFocus = true };
+        var item = new ProbeControl { Focusable = true };
         owner.Insert(0, item);
 
         await dispatcher.InvokeAsync(() =>
         {
             owner.Attach(dispatcher);
             using FocusManager focus = new(owner);
-            using CaptureManager capture = new(owner);
+            using PointerManager capture = new(owner);
             focus.Focus(item).ShouldBeTrue();
             capture.Capture(item).ShouldBeTrue();
 
@@ -239,20 +209,6 @@ public sealed class ItemsControlTests
             item.Parent.ShouldBeNull();
             item.IsDisposed.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Verifies the semantic item owner is a style scope for its private presentation subtree.</summary>
-    [Fact]
-    public void Foreground_WhenOwnerStyleDefinesValue_CascadesToItem()
-    {
-        var owner = new ProbeItemsControl();
-        var item = new ProbeControl();
-        var style = new ControlStyle<ProbeItemsControl>();
-        style.Set(Control.ForegroundProperty, State.Normal, Color.Indexed(6));
-        owner.Style = style;
-        owner.Insert(0, item);
-
-        (item.Foreground == Color.Indexed(6)).ShouldBeTrue();
     }
 
     /// <summary>Verifies disposing the semantic owner disposes the private host and remaining items once.</summary>

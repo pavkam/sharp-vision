@@ -52,9 +52,9 @@ Canvas has dedicated virtual-screen assertions and must retain its labeled
 fixed, percentage, edge-constraint, and clipping stages within the viewport.
 Button and Window assertions continue to cover intrinsic composite and
 block-glyph shadow properties through their live specimens. The Theming page
-also proves that an unprivileged showcase-authored derivative with a custom
-render override calls `RenderChrome` before custom content (its caption and
-body), preserving its intrinsic rounded frame.
+also proves that a showcase-authored derivative supplies custom content through
+`OnRenderContent` while the sealed renderer preserves its intrinsic rounded
+frame.
 
 The Prism page test activates its explicit phase-step Button and renders before
 and after the mutation. The live diagonal FIGlet control and its content retain

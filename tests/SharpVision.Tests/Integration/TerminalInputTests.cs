@@ -65,7 +65,7 @@ public sealed class TerminalInputTests
         var child = new ProbeControl()
         {
             Bounds = new Rect(0, 0, 4, 1),
-            CanFocus = true,
+            Focusable = true,
         };
         root.Children.Add(child);
         await using Application application = new(
@@ -127,7 +127,7 @@ public sealed class TerminalInputTests
         var child = new ProbeControl()
         {
             Bounds = new Rect(0, 0, 5, 4),
-            CanFocus = true,
+            Focusable = true,
         };
         root.Children.Add(child);
         await using Application application = new(
@@ -160,7 +160,7 @@ public sealed class TerminalInputTests
                     CompleteIfReady();
                 }
             });
-            _ = child.AddHandler(Events.Focus, (_, eventArgs) =>
+            _ = child.AddHandler(Events.TerminalFocusChanged, (_, eventArgs) =>
             {
                 if (eventArgs.Phase == Phase.Bubble)
                 {

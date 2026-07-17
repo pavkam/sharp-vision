@@ -6,18 +6,19 @@ namespace SharpVision.Controls;
 /// <summary>Displays a collapsible section with a focusable header toggle and optional content.</summary>
 public sealed class Expander: ContentControl
 {
-    private readonly PressInteraction _interaction;
+    private readonly PressBehavior _interaction;
 
     /// <summary>Initializes an expanded section with an empty header.</summary>
     public Expander()
     {
-        _interaction = new PressInteraction(
+        _interaction = new PressBehavior(
             () => new Rect(Bounds.X, Bounds.Y, Bounds.Width, Math.Min(1, Bounds.Height)),
             () => EffectiveIsEnabled && EffectiveIsVisible,
             () => FocusOwner is null || IsFocused, RequestFocus, CapturePointer,
             () => HasPointerCapture, ReleasePointerCapture, SetPressed,
             _ => IsExpanded = !IsExpanded);
-        CanFocus = true;
+        Focusable = true;
+        TabStop = true;
     }
 
     /// <summary>Raised after the expanded state changes.</summary>
@@ -38,7 +39,6 @@ public sealed class Expander: ContentControl
     } = true;
 
     /// <inheritdoc/>
-    protected override bool OwnsPointerState => true;
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -58,7 +58,7 @@ public sealed class Expander: ContentControl
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0) { return; }
         var s = ResolvedStyle;
@@ -73,7 +73,7 @@ public sealed class Expander: ContentControl
     protected override void OnFocusChanged(bool focused) { base.OnFocusChanged(focused); _interaction.FocusChanged(focused); }
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason) { base.OnPointerCaptureCancelled(reason); _interaction.CaptureCancelled(); }
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason) { base.OnLostPointerCapture(reason); _interaction.CaptureLost(); }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason) { base.OnUnavailable(reason); _interaction.Unavailable(); if (reason == ReleaseReason.Disposed) { ExpandedChanged = null; } }

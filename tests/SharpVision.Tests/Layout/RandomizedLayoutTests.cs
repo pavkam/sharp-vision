@@ -30,7 +30,7 @@ public sealed class RandomizedLayoutTests
         };
         root.Attach(dispatcher);
         using FocusManager focus = new(root);
-        using CaptureManager capture = new(root);
+        using PointerManager capture = new(root);
         List<ProbeControl> controls = [];
         var engine = new Engine();
         var size = new Size(80, 24);
@@ -65,7 +65,7 @@ public sealed class RandomizedLayoutTests
         ProbeContainer root,
         List<ProbeControl> controls,
         FocusManager focus,
-        CaptureManager capture,
+        PointerManager capture,
         ref Size size)
     {
         var control = controls.Count == 0 ? null : controls[random.Next(controls.Count)];
@@ -75,7 +75,7 @@ public sealed class RandomizedLayoutTests
             case 0 when controls.Count < 32:
                 var added = new ProbeControl(new Size(random.Next(0, 20), random.Next(0, 8)))
                 {
-                    CanFocus = random.Next(0, 2) == 0,
+                    Focusable = random.Next(0, 2) == 0,
                     Content = random.Next(0, 2) == 0 ? "界".AsMemory() : "x".AsMemory(),
                 };
                 root.Children.Add(added);
@@ -138,7 +138,7 @@ public sealed class RandomizedLayoutTests
             case 11 when control is not null:
                 var replacement = new ProbeControl(new Size(random.Next(0, 20), random.Next(0, 8)))
                 {
-                    CanFocus = random.Next(0, 2) == 0,
+                    Focusable = random.Next(0, 2) == 0,
                     Content = random.Next(0, 2) == 0 ? "界".AsMemory() : "r".AsMemory(),
                 };
                 var index = controls.IndexOf(control);
@@ -168,7 +168,7 @@ public sealed class RandomizedLayoutTests
         ProbeContainer root,
         List<ProbeControl> controls,
         FocusManager focus,
-        CaptureManager capture,
+        PointerManager capture,
         Size size)
     {
         var context = $"seed=0x{_seed:X8}, case={sample}, operation={operation}, size={size}";

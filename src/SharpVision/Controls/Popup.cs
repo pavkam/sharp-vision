@@ -19,7 +19,7 @@ public sealed class Popup: ContentControl
     public Popup()
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
-        CanFocus = false;
+        Focusable = false;
     }
 
     /// <inheritdoc/>
@@ -86,10 +86,25 @@ public sealed class Popup: ContentControl
     /// <summary>Raised after a popup has hidden its content and cleared its surface.</summary>
     public event EventHandler? Closed;
 
+    /// <summary>Gets or sets whether opening transfers focus to the first eligible descendant.</summary>
+    /// <remarks>
+    /// The default preserves popup behavior for dialogs and menus. Composite controls whose popup
+    /// is an implementation detail set this to <see langword="false"/> and retain focus on their
+    /// public owner.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
+    public bool FocusOnOpen
+    {
+        get;
+        set => _ = SetProperty(ref field, value, ChangeImpact.None);
+    } = true;
+
     /// <summary>Gets or sets whether the popup surface and content are arranged, rendered, and hit-testable.</summary>
     /// <remarks>
-    /// A changed value commits and publishes first. Opening then exposes the current content and
-    /// requests focus. Closing therefore raises <see cref="Closing"/> after this property is false:
+    /// A changed value commits and publishes first. Opening then exposes the current content and,
+    /// when <see cref="FocusOnOpen"/> is enabled, requests focus. Closing therefore raises
+    /// <see cref="Closing"/> after this property is false:
     /// current content retains its pre-close availability and the previous <see cref="SurfaceBounds"/>
     /// remains readable, while the surface is already ineligible for rendering and hit testing. The
     /// transition then collapses current content, clears the surface bounds, and raises
@@ -142,7 +157,7 @@ public sealed class Popup: ContentControl
                     CaptureFailure(
                         () =>
                         {
-                            if (Content is { } focusableChild && FindFocusable(focusableChild) is { } target)
+                            if (FocusOnOpen && Content is { } focusableChild && FindFocusable(focusableChild) is { } target)
                             {
                                 _ = FocusOwner?.Focus(target);
                             }
@@ -271,20 +286,16 @@ public sealed class Popup: ContentControl
     }
 
     /// <inheritdoc/>
-    /// <inheritdoc/>
-    protected override State GetVisualState() => State.Normal;
-
-    /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (!IsOpen || SurfaceBounds.Width == 0 || SurfaceBounds.Height == 0)
         {
             return;
         }
 
-        var style = GetResolvedStyle(State.Normal);
+        var style = GetResolvedStyle(VisualState.Normal);
         canvas.Clear(SurfaceBounds, style);
-        DrawFrame(canvas, ControlAppearance.ResolveBorderStyle(this, State.Normal));
+        DrawFrame(canvas, GetResolvedAppearance(VisualState.Normal).BorderStyle);
     }
 
     /// <inheritdoc/>

@@ -11,7 +11,7 @@ public sealed class InteractiveProbe: Control
     /// <summary>Initializes a focusable one-cell interaction target.</summary>
     public InteractiveProbe()
     {
-        CanFocus = true;
+        Focusable = true;
         Width = Length.Cells(1);
         Height = Length.Cells(1);
     }
@@ -51,7 +51,7 @@ public sealed class InteractiveProbe: Control
     public int CaptureCancellationCount { get; private set; }
 
     /// <summary>Gets the latest implicit pointer-capture release reason, or null before cancellation.</summary>
-    public ReleaseReason? LastCaptureCancellation { get; private set; }
+    public PointerCaptureLossReason? LastCaptureCancellation { get; private set; }
 
     /// <summary>Gets whether the capture manager still reported ownership inside the latest cancellation hook.</summary>
     public bool HadCaptureDuringCancellation { get; private set; }
@@ -113,9 +113,9 @@ public sealed class InteractiveProbe: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
-        base.OnPointerCaptureCancelled(reason);
+        base.OnLostPointerCapture(reason);
         LastCaptureCancellation = reason;
         HadCaptureDuringCancellation = HasPointerCapture;
         CaptureCancellationCount++;

@@ -23,10 +23,8 @@ public sealed class ExternalContractTests
     [Fact]
     public void ExternalToggleChip_WhenActivated_UsesProtectedVisualStateMutation()
     {
-        var style = new ControlStyle<ExternalToggleChip>();
-        style.Set(Control.ForegroundProperty, State.Checked, Color.Indexed(5));
         var content = new Gauge();
-        var chip = new ExternalToggleChip { Content = content, Style = style };
+        var chip = new ExternalToggleChip { Content = content, Foreground = Color.Indexed(5) };
         List<string?> properties = [];
         chip.PropertyChanged += (_, eventArgs) => properties.Add(eventArgs.PropertyName);
 
@@ -247,8 +245,8 @@ public sealed class ExternalContractTests
 
                 probe.HasCapture.ShouldBeFalse();
                 probe.HadCaptureDuringCancellation.ShouldBeFalse();
-                probe.CaptureCancellationCount.ShouldBe(1);
-                probe.LastCaptureCancellation.ShouldBe(ReleaseReason.Disabled);
+                probe.CaptureCancellationCount.ShouldBe(2);
+                probe.LastCaptureCancellation.ShouldBe(PointerCaptureLossReason.Unavailable);
                 application.Focus.Focused.ShouldBeNull();
             },
             TestContext.Current.CancellationToken);
@@ -297,7 +295,7 @@ public sealed class ExternalContractTests
         terminal.QueueResize(new Dimensions(new Size(8, 3)));
         var root = new InteractiveProbe()
         {
-            Foreground = ThemeColors.Accent,
+            Foreground = ColorRole.Accent,
         };
         await using var application = new Application(
             root,

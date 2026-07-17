@@ -162,7 +162,7 @@ public sealed class CheckBox: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
@@ -171,7 +171,7 @@ public sealed class CheckBox: Pressable
 
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }
@@ -278,9 +278,9 @@ public sealed class CheckBox: Pressable
             return;
         }
 
-        var state = GetVisualState();
-        var hasFocusOrCheck = (state & (State.Focused | State.Checked | State.Indeterminate)) != 0;
-        content.Foreground = hasFocusOrCheck ? ResolveProperty(ForegroundProperty, state) : null;
+        var state = GetAppearanceState();
+        var hasFocusOrCheck = (state & (VisualState.Focused | VisualState.Checked | VisualState.Indeterminate)) != 0;
+        content.Foreground = hasFocusOrCheck ? Foreground : null;
     }
 
     private static int? Subtract(int? value, int extent)

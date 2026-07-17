@@ -9,9 +9,12 @@ public enum TabNavigation
     /// <summary>No scope boundary. Tab passes through this control's children as part of the parent scope.</summary>
     Continue,
 
+    /// <summary>Visits this scope's descendants once, then continues in the parent scope.</summary>
+    Once,
+
     /// <summary>Tab wraps within this control's children. After the last child, focus returns to the first.</summary>
     Cycle,
 
-    /// <summary>Tab is trapped within this control's children. Focus cannot exit via Tab or Shift+Tab.</summary>
-    Contained,
+    /// <summary>Excludes this control's descendants from Tab traversal.</summary>
+    None,
 }

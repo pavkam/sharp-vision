@@ -20,8 +20,7 @@ internal sealed class SnakeHud: CompositeControl
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
         Height = Length.Cells(2);
-        Background = ThemeColors.Surface;
-        FillMode = FillMode.Opaque;
+        Background = ColorRole.Surface;
 
         _metrics = new Text("")
         {
@@ -64,8 +63,7 @@ internal sealed class SnakeHud: CompositeControl
             Orientation = Orientation.Vertical,
             Spacing = 0,
             Padding = new Thickness(1, 0),
-            Background = ThemeColors.Surface,
-            FillMode = FillMode.Opaque,
+            Background = ColorRole.Surface,
             Children = { metricsRow, controlsRow },
         };
 

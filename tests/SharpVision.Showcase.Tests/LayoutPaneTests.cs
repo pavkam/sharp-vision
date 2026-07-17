@@ -66,8 +66,8 @@ public sealed class LayoutPaneTests
         twoStar.Bounds.Height.ShouldBe(oneStar.Bounds.Height * 2);
         twoStar.Bounds.Height.ShouldBeGreaterThan(2);
         oneStar.Bounds.Height.ShouldBeGreaterThan(2);
-        twoStar.FillMode.ShouldBe(FillMode.Opaque);
-        oneStar.FillMode.ShouldBe(FillMode.Opaque);
+        _ = twoStar.Background.ShouldNotBeNull();
+        _ = oneStar.Background.ShouldNotBeNull();
     }
 
     private static Button FindButton(Control root, string content) =>

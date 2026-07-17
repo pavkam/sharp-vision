@@ -16,6 +16,8 @@ internal sealed class ListItem: Pressable
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
         HorizontalAlignment = HorizontalAlignment.Stretch;
+        Focusable = false;
+        TabStop = false;
         Index = index;
         Content = content;
     }
@@ -42,6 +44,17 @@ internal sealed class ListItem: Pressable
     /// <param name="value">The committed selected flag.</param>
     internal void CommitSelection(bool value) =>
         Commit(value);
+
+    /// <summary>Invokes this available item on behalf of its owning selector.</summary>
+    /// <param name="cause">The semantic activation source.</param>
+    /// <param name="key">The activating key, or null when activation is not key driven.</param>
+    /// <param name="modifiers">The modifiers captured with <paramref name="key"/>.</param>
+    internal void ActivateFromOwner(ActivationCause cause, Code? key, Modifiers modifiers)
+    {
+        LastKey = key;
+        LastModifiers = modifiers;
+        Activate(cause);
+    }
 
     /// <inheritdoc/>
     public override Control? HitTest(Point point) =>
@@ -104,9 +117,9 @@ internal sealed class ListItem: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             return;
         }

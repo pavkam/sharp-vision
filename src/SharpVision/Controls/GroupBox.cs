@@ -31,12 +31,19 @@ public sealed class GroupBox: ContentControl
     protected override void ArrangeOverride(Rect bounds) { if (Content is { } c) { ArrangeChild(c, new Thickness(1).Deflate(bounds), ResolvedAxes.Both); } }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override ChromeRenderOptions GetChromeRenderOptions() => new()
+    {
+        SkipBodyFill = true,
+        SkipBorder = true,
+    };
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0) { return; }
-        var opaque = ControlAppearance.HasOpaqueFill(this, GetVisualState());
+        var opaque = ControlAppearance.HasOpaqueFill(this, GetAppearanceState());
         if (opaque) { canvas.Clear(Bounds, ResolvedStyle); }
-        var border = ControlAppearance.ResolveBorderStyle(this, GetVisualState());
+        var border = ControlAppearance.ResolveBorderStyle(this, GetAppearanceState());
         var bg = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, bg);
         if (!string.IsNullOrEmpty(Header) && Bounds.Width > 3) { _ = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, Bounds.Width - 2, 1)).Draw($" {Header} ".AsSpan(), new Point(Bounds.X + 1, Bounds.Y), border, background: bg); }

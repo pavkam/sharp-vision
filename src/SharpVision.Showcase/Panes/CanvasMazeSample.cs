@@ -21,7 +21,7 @@ internal sealed class CanvasMazeSample: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;
         canvas.Clear(Bounds, style);

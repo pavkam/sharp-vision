@@ -83,7 +83,7 @@ public sealed class FigletText: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         EnsureOutput();
         var bounds = ContentBounds;

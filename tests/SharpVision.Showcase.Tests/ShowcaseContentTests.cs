@@ -19,7 +19,7 @@ public sealed class ShowcaseContentTests
             ["Grid"] = ["Track fundamentals", "Percentage and limits", "Responsive form", "Constrained space"],
             ["GroupBox"] = ["Basic group", "Multiple groups", "Nested groups", "Glyph styles"],
             ["List"] = ["Single selection", "Selection modes", "Templates", "Long data"],
-            ["Menu"] = ["Command menu", "Menu bar", "Popup composition", "Selection and invocation"],
+            ["Menu"] = ["Menu bar with submenus", "Context menu"],
             ["NavigationView"] = ["Basic sidebar", "Groups and separators", "Footer items"],
             ["Overlay"] = ["Layering", "Stable ties", "Pointer transparency", "Clipping"],
             ["Popup"] = ["Anchored menu", "Placement", "Fallback and clamp", "Lifecycle"],

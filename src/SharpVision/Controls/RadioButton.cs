@@ -39,14 +39,17 @@ public sealed class RadioButton: Pressable
 
             if (value)
             {
-                RadioGroup.Select(this, ActivationCause.Programmatic);
+                RadioGroupCoordinator.Select(this, ActivationCause.Programmatic);
             }
             else
             {
-                RadioGroup.Clear(this, ActivationCause.Programmatic);
+                RadioGroupCoordinator.Clear(this, ActivationCause.Programmatic);
             }
         }
     }
+
+    /// <inheritdoc/>
+    public override bool IsTabStop => TabStop && CanFocus && RadioGroupCoordinator.IsRovingTabStop(this);
 
     /// <summary>Gets or sets an optional ordinal group name scoped to the attached root.</summary>
     /// <exception cref="InvalidOperationException">The attached member is mutated off-dispatcher.</exception>
@@ -69,7 +72,7 @@ public sealed class RadioButton: Pressable
             if (IsChecked)
             {
                 CaptureFailure(
-                    () => RadioGroup.Select(this, ActivationCause.Programmatic),
+                    () => RadioGroupCoordinator.Select(this, ActivationCause.Programmatic),
                     ref failure);
             }
 
@@ -94,7 +97,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void Activate(ActivationCause cause) => RadioGroup.Select(this, cause);
+    protected override void Activate(ActivationCause cause) => RadioGroupCoordinator.Select(this, cause);
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -129,7 +132,7 @@ public sealed class RadioButton: Pressable
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {
@@ -141,7 +144,7 @@ public sealed class RadioButton: Pressable
         var length = glyph.EncodeToUtf16(buffer);
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }
@@ -167,7 +170,7 @@ public sealed class RadioButton: Pressable
 
         if (reverse || key.Stroke.Code is Code.Right or Code.Down)
         {
-            eventArgs.Handled = RadioGroup.Move(this, reverse);
+            eventArgs.Handled = RadioGroupCoordinator.Move(this, reverse);
         }
     }
 
@@ -178,7 +181,7 @@ public sealed class RadioButton: Pressable
 
         if (current is not null && IsChecked)
         {
-            RadioGroup.Select(this, ActivationCause.Programmatic);
+            RadioGroupCoordinator.Select(this, ActivationCause.Programmatic);
         }
     }
 
@@ -192,9 +195,9 @@ public sealed class RadioButton: Pressable
 
         if (Content is { } content)
         {
-            var state = GetVisualState();
-            var highlight = (state & (State.Focused | State.Checked)) != 0;
-            content.Foreground = highlight ? ResolveProperty(ForegroundProperty, state) : null;
+            var state = GetAppearanceState();
+            var highlight = (state & (VisualState.Focused | VisualState.Checked)) != 0;
+            content.Foreground = highlight ? Foreground : null;
         }
     }
 
@@ -239,8 +242,11 @@ public sealed class RadioButton: Pressable
     /// <summary>Publishes the property notification for one still-current staged commit.</summary>
     /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
-    internal void PublishChecked() =>
+    internal void PublishChecked()
+    {
         NotifyPropertyChanged(nameof(IsChecked), ChangeImpact.None);
+        NotifyPropertyChanged(nameof(IsTabStop), ChangeImpact.None);
+    }
 
     /// <summary>Requests focus through this member's protected manager boundary.</summary>
     /// <returns>True when focus is acquired or already owned.</returns>

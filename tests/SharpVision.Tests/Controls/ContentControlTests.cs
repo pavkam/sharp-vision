@@ -120,7 +120,7 @@ public sealed class ContentControlTests
     {
         await using var dispatcher = Dispatcher.Start();
         var owner = new ProbeContentControl();
-        var existing = new ProbeControl { CanFocus = true };
+        var existing = new ProbeControl { Focusable = true };
         var other = new ProbeContentControl();
         var invalid = new ProbeControl();
         owner.Content = existing;
@@ -130,7 +130,7 @@ public sealed class ContentControlTests
         {
             owner.Attach(dispatcher);
             using FocusManager focus = new(owner);
-            using CaptureManager capture = new(owner);
+            using PointerManager capture = new(owner);
             focus.Focus(existing).ShouldBeTrue();
             capture.Capture(existing).ShouldBeTrue();
 
@@ -640,7 +640,7 @@ public sealed class ContentControlTests
     public async Task MoveNext_WhenContentCanFocus_NavigatesToContentAsync()
     {
         await using var dispatcher = Dispatcher.Start();
-        var content = new ProbeControl { CanFocus = true };
+        var content = new ProbeControl { Focusable = true };
         var owner = new ProbeContentControl { Content = content };
 
         await dispatcher.InvokeAsync(() =>

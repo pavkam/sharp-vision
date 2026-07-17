@@ -23,8 +23,8 @@ global using SharpVision.Threading;
 
 global using BackgroundMode = SharpVision.Terminal.Rendering.BackgroundMode;
 global using KeyAction = SharpVision.Terminal.Input.Action;
-global using State = SharpVision.Styling.State;
 global using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;
 global using TerminalCanvas = SharpVision.Terminal.Rendering.Canvas;
 global using TerminalCapabilities = SharpVision.Terminal.Capabilities.Capabilities;
 global using TerminalStyle = SharpVision.Terminal.Rendering.CellStyle;
+global using VisualState = SharpVision.Styling.VisualState;

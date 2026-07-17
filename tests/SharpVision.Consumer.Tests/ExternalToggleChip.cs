@@ -23,7 +23,7 @@ public sealed class ExternalToggleChip: Pressable
     public int CaptureCancellationCount { get; private set; }
 
     /// <summary>Gets the latest capture-cancellation reason, or null before cancellation.</summary>
-    public ReleaseReason? LastCaptureCancellation { get; private set; }
+    public PointerCaptureLossReason? LastCaptureCancellation { get; private set; }
 
     /// <summary>Toggles through the same semantic path as keyboard and pointer activation.</summary>
     /// <exception cref="InvalidOperationException">The attached chip is accessed off-dispatcher.</exception>
@@ -49,9 +49,9 @@ public sealed class ExternalToggleChip: Pressable
     protected override bool IsCheckedState => IsChecked;
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
-        base.OnPointerCaptureCancelled(reason);
+        base.OnLostPointerCapture(reason);
         LastCaptureCancellation = reason;
         CaptureCancellationCount++;
     }

@@ -17,7 +17,7 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var child = new ProbeControl() { CanFocus = true };
+            var child = new ProbeControl() { Focusable = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using var manager = new FocusManager(root);
@@ -50,7 +50,7 @@ public sealed class FocusTests
                 }
             };
 
-            child.CanFocus = false;
+            child.Focusable = false;
 
             manager.Focused.ShouldBeNull();
             child.IsFocused.ShouldBeFalse();
@@ -69,7 +69,7 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var child = new ProbeControl() { CanFocus = true };
+            var child = new ProbeControl() { Focusable = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using var manager = new FocusManager(root);
@@ -81,7 +81,7 @@ public sealed class FocusTests
             {
                 eventArgs.Current.ShouldBeSameAs(child);
                 gainedCalls++;
-                child.CanFocus = false;
+                child.Focusable = false;
             };
             manager.Lost += (_, eventArgs) =>
             {
@@ -123,14 +123,14 @@ public sealed class FocusTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var root = new ProbeContainer() { CanFocus = true };
-            var child = new ProbeControl() { CanFocus = true };
+            var root = new ProbeContainer() { Focusable = true };
+            var child = new ProbeControl() { Focusable = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using var manager = new FocusManager(root);
             manager.Focus(child).ShouldBeTrue();
 
-            root.CanFocus = false;
+            root.Focusable = false;
 
             manager.Focused.ShouldBeSameAs(child);
             child.IsFocused.ShouldBeTrue();
@@ -146,8 +146,8 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var previous = new ProbeControl() { CanFocus = true };
-            var next = new ProbeControl() { CanFocus = true };
+            var previous = new ProbeControl() { Focusable = true };
+            var next = new ProbeControl() { Focusable = true };
             root.Children.Add(previous);
             root.Children.Add(next);
             root.Attach(dispatcher);
@@ -175,14 +175,14 @@ public sealed class FocusTests
             {
                 if (ReferenceEquals(eventArgs.Next, next))
                 {
-                    previous.CanFocus = false;
+                    previous.Focusable = false;
                 }
             };
             manager.Gained += (_, eventArgs) =>
             {
                 if (ReferenceEquals(eventArgs.Current, next))
                 {
-                    next.CanFocus = false;
+                    next.Focusable = false;
                 }
             };
 
@@ -191,8 +191,8 @@ public sealed class FocusTests
             manager.Focused.ShouldBeNull();
             previousNotifications.ShouldBe(1);
             nextNotifications.ShouldBe(1);
-            previous.CanFocus = true;
-            previous.CanFocus = false;
+            previous.Focusable = true;
+            previous.Focusable = false;
             previousNotifications.ShouldBe(3);
         }, TestContext.Current.CancellationToken);
     }
@@ -207,8 +207,8 @@ public sealed class FocusTests
         {
             List<string> order = [];
             var root = new RecordingControl("root", order);
-            var first = new ProbeControl() { CanFocus = true };
-            var second = new ProbeControl() { CanFocus = true };
+            var first = new ProbeControl() { Focusable = true };
+            var second = new ProbeControl() { Focusable = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -251,8 +251,8 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var first = new ProbeControl() { CanFocus = true };
-            var second = new ProbeControl() { CanFocus = true };
+            var first = new ProbeControl() { Focusable = true };
+            var second = new ProbeControl() { Focusable = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
@@ -277,9 +277,9 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var first = new ProbeControl() { CanFocus = true, TabIndex = 1 };
-            var second = new ProbeControl() { CanFocus = true, TabIndex = 0 };
-            var third = new ProbeControl() { CanFocus = true, TabIndex = 1 };
+            var first = new ProbeControl() { Focusable = true, TabIndex = 1 };
+            var second = new ProbeControl() { Focusable = true, TabIndex = 0 };
+            var third = new ProbeControl() { Focusable = true, TabIndex = 1 };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Children.Add(third);
@@ -310,10 +310,10 @@ public sealed class FocusTests
             var root = new ProbeContainer();
             var hidden = new ProbeControl()
             {
-                CanFocus = true,
+                Focusable = true,
                 Visibility = Visibility.Hidden,
             };
-            var foreign = new ProbeControl() { CanFocus = true };
+            var foreign = new ProbeControl() { Focusable = true };
             root.Children.Add(hidden);
             root.Attach(dispatcher);
             using FocusManager manager = new(root);
@@ -333,10 +333,10 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var outside = new ProbeControl() { CanFocus = true };
+            var outside = new ProbeControl() { Focusable = true };
             var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var inner1 = new ProbeControl() { CanFocus = true };
-            var inner2 = new ProbeControl() { CanFocus = true };
+            var inner1 = new ProbeControl() { Focusable = true };
+            var inner2 = new ProbeControl() { Focusable = true };
             scope.Children.Add(inner1);
             scope.Children.Add(inner2);
             root.Children.Add(outside);
@@ -363,10 +363,10 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var outside = new ProbeControl() { CanFocus = true };
-            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
-            var inner1 = new ProbeControl() { CanFocus = true };
-            var inner2 = new ProbeControl() { CanFocus = true };
+            var outside = new ProbeControl() { Focusable = true };
+            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var inner1 = new ProbeControl() { Focusable = true };
+            var inner2 = new ProbeControl() { Focusable = true };
             scope.Children.Add(inner1);
             scope.Children.Add(inner2);
             root.Children.Add(outside);
@@ -382,22 +382,23 @@ public sealed class FocusTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies MoveNext returns false for an empty scope.</summary>
+    /// <summary>Verifies an eligible empty cycle scope remains its own traversal entry.</summary>
     [Fact]
-    public async Task MoveNext_WhenScopeIsEmpty_ReturnsFalseAsync()
+    public async Task MoveNext_WhenScopeIsEmpty_WrapsToScopeOwnerAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var scope = new ProbeContainer() { CanFocus = true, TabNavigation = TabNavigation.Cycle };
+            var scope = new ProbeContainer() { Focusable = true, TabNavigation = TabNavigation.Cycle };
             root.Children.Add(scope);
             root.Attach(dispatcher);
             using var manager = new FocusManager(root);
             manager.Focus(scope).ShouldBeTrue();
 
-            manager.MoveNext().ShouldBeFalse();
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(scope);
         }, TestContext.Current.CancellationToken);
     }
 
@@ -411,7 +412,7 @@ public sealed class FocusTests
         {
             var root = new ProbeContainer();
             var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var only = new ProbeControl() { CanFocus = true };
+            var only = new ProbeControl() { Focusable = true };
             scope.Children.Add(only);
             root.Children.Add(scope);
             root.Attach(dispatcher);
@@ -433,10 +434,10 @@ public sealed class FocusTests
         {
             var root = new ProbeContainer();
             var outer = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var outerChild = new ProbeControl() { CanFocus = true };
-            var inner = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
-            var innerA = new ProbeControl() { CanFocus = true };
-            var innerB = new ProbeControl() { CanFocus = true };
+            var outerChild = new ProbeControl() { Focusable = true };
+            var inner = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var innerA = new ProbeControl() { Focusable = true };
+            var innerB = new ProbeControl() { Focusable = true };
             inner.Children.Add(innerA);
             inner.Children.Add(innerB);
             outer.Children.Add(outerChild);
@@ -453,9 +454,9 @@ public sealed class FocusTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies the scope root is excluded from its own scope's tab-stop candidates.</summary>
+    /// <summary>Verifies an eligible scope root participates between its direct children.</summary>
     [Fact]
-    public async Task MoveNext_WhenScopeRootIsTabStop_ExcludesRootFromOwnScopeAsync()
+    public async Task MoveNext_WhenScopeRootIsTabStop_IncludesRootInOwnScopeAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -464,12 +465,12 @@ public sealed class FocusTests
             var root = new ProbeContainer();
             var scope = new ProbeContainer()
             {
-                CanFocus = true,
-                IsTabStop = true,
+                Focusable = true,
+                TabStop = true,
                 TabNavigation = TabNavigation.Cycle,
             };
-            var child1 = new ProbeControl() { CanFocus = true };
-            var child2 = new ProbeControl() { CanFocus = true };
+            var child1 = new ProbeControl() { Focusable = true };
+            var child2 = new ProbeControl() { Focusable = true };
             scope.Children.Add(child1);
             scope.Children.Add(child2);
             root.Children.Add(scope);
@@ -479,6 +480,8 @@ public sealed class FocusTests
 
             manager.MoveNext().ShouldBeTrue();
             manager.Focused.ShouldBeSameAs(child2);
+            manager.MoveNext().ShouldBeTrue();
+            manager.Focused.ShouldBeSameAs(scope);
             manager.MoveNext().ShouldBeTrue();
             manager.Focused.ShouldBeSameAs(child1);
         }, TestContext.Current.CancellationToken);
@@ -493,13 +496,13 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var before = new ProbeControl() { CanFocus = true };
+            var before = new ProbeControl() { Focusable = true };
             var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var inner1 = new ProbeControl() { CanFocus = true };
-            var inner2 = new ProbeControl() { CanFocus = true };
+            var inner1 = new ProbeControl() { Focusable = true };
+            var inner2 = new ProbeControl() { Focusable = true };
             scope.Children.Add(inner1);
             scope.Children.Add(inner2);
-            var after = new ProbeControl() { CanFocus = true };
+            var after = new ProbeControl() { Focusable = true };
             root.Children.Add(before);
             root.Children.Add(scope);
             root.Children.Add(after);
@@ -521,13 +524,13 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var before = new ProbeControl() { CanFocus = true };
-            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Contained };
-            var inner1 = new ProbeControl() { CanFocus = true };
-            var inner2 = new ProbeControl() { CanFocus = true };
+            var before = new ProbeControl() { Focusable = true };
+            var scope = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
+            var inner1 = new ProbeControl() { Focusable = true };
+            var inner2 = new ProbeControl() { Focusable = true };
             scope.Children.Add(inner1);
             scope.Children.Add(inner2);
-            var after = new ProbeControl() { CanFocus = true };
+            var after = new ProbeControl() { Focusable = true };
             root.Children.Add(before);
             root.Children.Add(scope);
             root.Children.Add(after);
@@ -555,13 +558,13 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var a = new ProbeControl() { CanFocus = true };
+            var a = new ProbeControl() { Focusable = true };
             var menu = new ProbeContainer() { TabNavigation = TabNavigation.Cycle };
-            var m1 = new ProbeControl() { CanFocus = true };
-            var m2 = new ProbeControl() { CanFocus = true };
+            var m1 = new ProbeControl() { Focusable = true };
+            var m2 = new ProbeControl() { Focusable = true };
             menu.Children.Add(m1);
             menu.Children.Add(m2);
-            var b = new ProbeControl() { CanFocus = true };
+            var b = new ProbeControl() { Focusable = true };
             root.Children.Add(a);
             root.Children.Add(menu);
             root.Children.Add(b);
@@ -591,8 +594,8 @@ public sealed class FocusTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer();
-            var child = new ProbeControl() { CanFocus = true };
-            var replacement = new ProbeControl() { CanFocus = true };
+            var child = new ProbeControl() { Focusable = true };
+            var replacement = new ProbeControl() { Focusable = true };
             root.Children.Add(child);
             root.Children.Add(replacement);
             root.Attach(dispatcher);

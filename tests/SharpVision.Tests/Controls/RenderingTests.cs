@@ -144,55 +144,6 @@ public sealed class RenderingTests
         frame.GetCell(new Point(4, 0)).Lead.ShouldBe(new Point(3, 0));
     }
 
-    /// <summary>Verifies resolved visual state reaches final cell style.</summary>
-    [Fact]
-    public void Render_WhenControlStateChanges_WritesResolvedStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<ProbeControl>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
-            (State.Hovered, new ThemeOverlay(attributes: Attributes.Underline)),
-            (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))));
-        var control = new ProbeControl()
-        {
-            Bounds = new Rect(0, 0, 1, 1),
-            Content = "A".AsMemory(),
-            Style = style,
-        };
-        control.SetHovered(true);
-        control.SetPressed(true);
-        using Frame frame = new(new Size(1, 1));
-
-        control.Render(frame.Canvas);
-
-        var cell = frame.GetCell(default);
-        cell.Style.Foreground.ShouldBe(Color.Indexed(5));
-        cell.Style.Attributes.ShouldBe(Attributes.Underline);
-    }
-
-    /// <summary>Verifies render-time invalidation remains pending without recursive rendering.</summary>
-    [Fact]
-    public void Render_WhenCoreInvalidates_LeavesNextFramePending()
-    {
-        var control = new ProbeControl()
-        {
-            Bounds = new Rect(0, 0, 1, 1),
-            Content = "A".AsMemory(),
-            Rendering = current => current.SetHovered(true),
-        };
-        using Frame frame = new(new Size(1, 1));
-        control.Clear(Invalidation.All);
-        control.Invalidate(Invalidation.Render);
-
-        control.Render(frame.Canvas);
-
-        control.RenderCalls.ShouldBe(1);
-        control.Pending.ShouldBe(Invalidation.Render);
-        control.Rendering = null;
-        frame.Clear();
-        control.Render(frame.Canvas);
-        control.Pending.ShouldBe(Invalidation.None);
-    }
-
     /// <summary>Verifies a failed render restores dirtiness before preserving the exception.</summary>
     [Fact]
     public void Render_WhenCoreThrows_RestoresRenderInvalidation()

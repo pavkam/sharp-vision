@@ -52,7 +52,7 @@ public sealed class OrderingTests
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         var root = new ProbeContainer();
-        var child = new ProbeControl() { CanFocus = true };
+        var child = new ProbeControl() { Focusable = true };
         root.Children.Add(child);
         await using Application application = new(
             root,
@@ -90,7 +90,7 @@ public sealed class OrderingTests
         await using FakeTerminal terminal = new();
         var root = new ProbeContainer();
         var calls = 0;
-        _ = root.AddHandler(Events.Focus, (_, _) => calls++);
+        _ = root.AddHandler(Events.TerminalFocusChanged, (_, _) => calls++);
         await using Application application = new(
             root,
             terminal,

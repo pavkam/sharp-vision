@@ -17,9 +17,6 @@ internal sealed class ProbeControl: Control
     /// <param name="intrinsic">The non-negative intrinsic content size.</param>
     internal ProbeControl(Size intrinsic = default) => _intrinsic = intrinsic;
 
-    /// <inheritdoc/>
-    protected override bool OwnsPointerState => CanFocus;
-
     /// <summary>Gets constraints received by the content measure extension point.</summary>
     internal List<Constraint> MeasureConstraints { get; } = [];
 
@@ -66,7 +63,7 @@ internal sealed class ProbeControl: Control
     internal int PointerCaptureCancellationCalls { get; private set; }
 
     /// <summary>Gets the latest implicit pointer-capture cancellation reason.</summary>
-    internal ReleaseReason? PointerCaptureCancellationReason { get; private set; }
+    internal PointerCaptureLossReason? PointerCaptureCancellationReason { get; private set; }
 
     /// <summary>Gets whether pointer state was clear before the latest cancellation callback.</summary>
     internal bool PointerStateWasClearDuringCancellation { get; private set; }
@@ -140,7 +137,7 @@ internal sealed class ProbeControl: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         RenderCalls++;
         Rendering?.Invoke(this);
@@ -176,12 +173,12 @@ internal sealed class ProbeControl: Control
     }
 
     /// <inheritdoc/>
-    protected override void OnPointerCaptureCancelled(ReleaseReason reason)
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
         PointerCaptureCancellationCalls++;
         PointerCaptureCancellationReason = reason;
         PointerStateWasClearDuringCancellation =
-            !HasPointerCapture && !IsHovered && !IsPressed;
+            !HasPointerCapture && !IsPointerOver && !IsPressed;
 
         if (RecaptureDuringPointerCancellation)
         {

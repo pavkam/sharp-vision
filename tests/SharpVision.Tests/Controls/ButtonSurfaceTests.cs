@@ -29,7 +29,7 @@ public sealed class ButtonSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Assert
-        surface.ShouldHaveState(button, State.Normal);
+        surface.ShouldHaveState(button, VisualState.Normal);
         surface.ShouldRender("""
             ╭──────╮
             │Save  │
@@ -99,7 +99,7 @@ public sealed class ButtonSurfaceTests
         await surface.Pointer.MoveToAsync(button);
 
         // Assert
-        surface.ShouldHaveState(button, State.Hovered);
+        surface.ShouldHaveState(button, VisualState.PointerOver);
         surface.ShouldRender("""
             ╭──────╮
             │Save  │
@@ -110,8 +110,8 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.Indexed(14));
         var contentForeground = surface.Cell(new Point(1, 1)).Style.Foreground;
         contentForeground.Kind.ShouldBe(ColorKind.Indexed);
-        contentForeground.Red.ShouldBe((byte) 15);
-        surface.Cell(new Point(8, 1)).Style.Foreground.ShouldBe(Color.Indexed(8));
+        contentForeground.Red.ShouldBe((byte) 14);
+        surface.Cell(new Point(8, 1)).Style.Foreground.ShouldBe(Color.Indexed(15));
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
@@ -138,7 +138,7 @@ public sealed class ButtonSurfaceTests
         await surface.Pointer.PressAsync();
 
         // Assert
-        surface.ShouldHaveState(button, State.Hovered | State.Focused | State.Pressed);
+        surface.ShouldHaveState(button, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
         surface.ShouldRender("""
 
              ╭──────╮
@@ -150,7 +150,7 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(1, 1)).Text.ShouldBe("╭");
         surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(Color.Indexed(14));
         surface.Cell(new Point(2, 2)).Text.ShouldBe("S");
-        surface.Cell(new Point(2, 2)).Style.Foreground.ShouldBe(Color.Indexed(15));
+        surface.Cell(new Point(2, 2)).Style.Foreground.ShouldBe(Color.Indexed(14));
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldNotBe(Attributes.Dim);
         surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(Attributes.None);
         surface.Cell(new Point(2, 4)).Style.Attributes.ShouldBe(Attributes.None);
@@ -178,7 +178,7 @@ public sealed class ButtonSurfaceTests
         await surface.Keyboard.PressAsync(Code.Tab);
 
         // Assert
-        surface.ShouldHaveState(button, State.Focused);
+        surface.ShouldHaveState(button, VisualState.Focused);
         button.IsFocused.ShouldBeTrue();
         surface.ShouldRender("""
             ╭──────╮
@@ -217,7 +217,7 @@ public sealed class ButtonSurfaceTests
 
         // Assert
         clicks.ShouldBe(1);
-        surface.ShouldHaveState(button, State.Hovered | State.Focused);
+        surface.ShouldHaveState(button, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
             ╭──────╮
             │Save  │
@@ -260,7 +260,7 @@ public sealed class ButtonSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Act and assert released appearance
-        surface.ShouldHaveState(button, State.Normal);
+        surface.ShouldHaveState(button, VisualState.Normal);
         surface.ShouldRender(ReleasedSnapshot(hasBorder, hasShadow));
 
         if (hasShadow)
@@ -278,7 +278,7 @@ public sealed class ButtonSurfaceTests
         await surface.Pointer.PressAsync();
 
         // Assert held appearance
-        surface.ShouldHaveState(button, State.Hovered | State.Focused | State.Pressed);
+        surface.ShouldHaveState(button, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
         surface.ShouldRender(PressedSnapshot(hasBorder, hasShadow));
         surface.Cell(new Point(9, 2)).Text.ShouldBe(" ");
         surface.Cell(new Point(9, 2)).Style.Attributes.ShouldBe(Attributes.None);

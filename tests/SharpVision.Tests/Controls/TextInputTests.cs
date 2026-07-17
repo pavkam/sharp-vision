@@ -204,31 +204,7 @@ public sealed class TextInputTests
         frame.GetCell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a configured input background fills every arranged cell instead of only the rendered text.</summary>
-    [Fact]
-    public void Render_WhenBackgroundIsStyled_FillsEntireInputBox()
-    {
-        var background = Color.Indexed(24);
-        var style = ThemeTestSupport.OverlayStyle<TextInput>(
-            (State.Normal, new ThemeOverlay(background: background)));
-        var control = new TextInput()
-        {
-            Width = Length.Cells(5),
-            Text = "A",
-            Style = style,
-        };
-        new Engine().Layout(control, new Size(5, 1));
-        using Frame frame = new(new Size(5, 1));
-
-        control.Render(frame.Canvas);
-
-        for (var x = 0; x < 5; x++)
-        {
-            frame.GetCell(new Point(x, 0)).Style.Background.ShouldBe(background);
-        }
-    }
-
-    /// <summary>Verifies intrinsic border reservation positions editor text and caret exactly once.</summary>
+    /// <summary>Verifies framework-owned intrinsic chrome reserves editor text and caret exactly once.</summary>
     [Fact]
     public void Render_WhenBorderThicknessIsSet_InsetsEditorAndCaretExactlyOnce()
     {
@@ -246,7 +222,7 @@ public sealed class TextInputTests
         control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("A");
-        FrameOracle.Get(frame, new Point(0, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("┌");
         frame.Cursor.Visible.ShouldBeTrue();
         frame.Cursor.Position.ShouldBe(new Point(2, 1));
     }
@@ -288,7 +264,7 @@ public sealed class TextInputTests
             };
             control.Attach(dispatcher);
             using FocusManager focus = new(control);
-            using CaptureManager capture = new(control);
+            using PointerManager capture = new(control);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, new Point(5, 5)));
             _ = capture.Dispatch(Pointer(new Point(4, 0), PointerAction.Move, new Point(45, 5)));
@@ -318,7 +294,7 @@ public sealed class TextInputTests
             control.Attach(dispatcher);
             using FocusManager focus = new(control);
             var clock = new ManualTimeProvider();
-            using CaptureManager capture = new(control, clock);
+            using PointerManager capture = new(control, clock);
             var point = new Point(8, 0);
 
             _ = capture.Dispatch(Pointer(point, PointerAction.Press, new Point(85, 5)));
@@ -407,30 +383,6 @@ public sealed class TextInputTests
 
         var rail = control.HitTest(new Point(7, 0)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
-        rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
-        rail.Fill.ShouldBe(ScrollBarFill.Line);
-    }
-
-    /// <summary>Verifies an editor's owned rail follows the standard theme without a local presentation override.</summary>
-    [Fact]
-    public void ScrollBars_WhenStandardThemeIsApplied_UsesThinLinePresentation()
-    {
-        var control = new TextInput
-        {
-            Width = Length.Cells(8),
-            Height = Length.Cells(3),
-            AcceptsReturn = true,
-            Text = "one\ntwo\nthree\nfour\nfive",
-            ScrollBars = ScrollBars.Vertical,
-            ShowScrollBars = ShowScrollBars.Always,
-        };
-        ThemeTestSupport.ApplyTheme(control, Themes.Dark);
-
-        new Engine().Layout(control, new Size(8, 3));
-
-        var rail = control.HitTest(new Point(7, 0)).ShouldBeOfType<ScrollBar>();
-        control.ScrollBarChrome.ShouldBe(ScrollBarChrome.Thin);
-        control.ScrollBarFill.ShouldBe(ScrollBarFill.Line);
         rail.Chrome.ShouldBe(ScrollBarChrome.Thin);
         rail.Fill.ShouldBe(ScrollBarFill.Line);
     }
@@ -578,13 +530,13 @@ public sealed class TextInputTests
             var other = new ProbeControl()
             {
                 Bounds = new Rect(10, 0, 2, 1),
-                CanFocus = true,
+                Focusable = true,
             };
             root.Children.Add(control);
             root.Children.Add(other);
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
 
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Press, new Point(5, 5)));
             capture.Captured.ShouldBeSameAs(control);

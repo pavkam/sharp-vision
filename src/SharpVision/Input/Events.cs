@@ -25,5 +25,5 @@ public static class Events
     public static Event<PasteEventArgs> Paste { get; } = new("Paste", Strategy.TunnelBubble);
 
     /// <summary>Gets terminal focus transitions.</summary>
-    public static Event<FocusEventArgs> Focus { get; } = new("Focus", Strategy.TunnelBubble);
+    public static Event<TerminalFocusEventArgs> TerminalFocusChanged { get; } = new("TerminalFocusChanged", Strategy.TunnelBubble);
 }

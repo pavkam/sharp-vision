@@ -24,7 +24,18 @@ internal static class ControlChrome
     internal static void Render(
         Control control,
         TerminalCanvas canvas,
-        State visualState,
+        VisualState visualState,
+        ChromeRenderOptions? options = null)
+    {
+        RenderUnderlay(control, canvas, visualState, options);
+        RenderBorder(control, canvas, visualState, options);
+    }
+
+    /// <summary>Draws framework-owned shadow and body fill before content.</summary>
+    internal static void RenderUnderlay(
+        Control control,
+        TerminalCanvas canvas,
+        VisualState visualState,
         ChromeRenderOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(control);
@@ -32,8 +43,7 @@ internal static class ControlChrome
         var settings = options ?? default;
         var body = settings.BodyBounds ?? control.Bounds;
         var bodyStyle = control.GetResolvedAppearance(visualState).Style;
-        var opaque = ControlAppearance.HasOpaqueFill(control, visualState);
-        var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
+        var background = control.GetResolvedAppearance(visualState).BackgroundMode;
 
         if (control.HasShadow && !settings.SkipShadow)
         {
@@ -43,11 +53,11 @@ internal static class ControlChrome
                 body,
                 settings.ShadowExcludeBounds ?? body,
                 background,
-                settings.ShadowAppearanceSource ?? control.GetResolvedAppearance(State.Normal).Style,
+                settings.ShadowAppearanceSource ?? control.GetResolvedAppearance(VisualState.Normal).Style,
                 settings.PreserveButtonShadowGap);
         }
 
-        if (opaque && !settings.SkipBodyFill &&
+        if (background == BackgroundMode.Opaque && !settings.SkipBodyFill &&
             (!settings.ClearBodyWhenPressedWithShadow || !control.IsPressed || !control.HasShadow))
         {
             canvas.Clear(body, bodyStyle);
@@ -57,9 +67,23 @@ internal static class ControlChrome
             canvas.Clear(body, bodyStyle);
         }
 
+    }
+
+    /// <summary>Draws framework-owned border chrome after normal-layer content and children.</summary>
+    internal static void RenderBorder(
+        Control control,
+        TerminalCanvas canvas,
+        VisualState visualState,
+        ChromeRenderOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        var settings = options ?? default;
+        var body = settings.BodyBounds ?? control.Bounds;
+        var background = control.GetResolvedAppearance(visualState).BackgroundMode;
+
         if (!settings.SkipBorder && control.BorderThickness != default)
         {
-            var borderStyle = ControlAppearance.ResolveBorderStyle(control, visualState);
+            var borderStyle = control.GetResolvedAppearance(visualState).BorderStyle;
             var glyphs = settings.BorderGlyphs ?? control.BorderGlyphs;
             DrawPartialBorder(
                 canvas,
@@ -168,7 +192,11 @@ internal static class ControlChrome
         ArgumentNullException.ThrowIfNull(control);
 
         var target = Shift(sourceBounds, control.ShadowOffset).Intersect(canvas.Bounds);
-        var shadowBackground = control.ShadowBackground ?? control.Background ?? appearanceSource.Background;
+        var shadowBackground = control.ShadowBackground is { } configuredShadowBackground
+            ? control.ResolveThemeColor(configuredShadowBackground)
+            : control.Background is { } configuredBackground
+            ? control.ResolveThemeColor(configuredBackground)
+            : appearanceSource.Background;
         var shadowBackgroundMode = control.ShadowBackground.HasValue
             ? BackgroundMode.Opaque
             : background;
@@ -235,7 +263,9 @@ internal static class ControlChrome
             appearanceSource,
             control.ShadowAttributes);
         return new TerminalStyle(
-            control.ShadowForeground ?? appearanceSource.Foreground,
+            control.ShadowForeground is { } configuredShadowForeground
+                ? control.ResolveThemeColor(configuredShadowForeground)
+                : appearanceSource.Foreground,
             shadowBackground,
             attributes,
             appearanceSource.Hyperlink,

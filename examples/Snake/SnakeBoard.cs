@@ -38,7 +38,7 @@ public sealed class SnakeBoard: Control
     /// <summary>Initializes a focusable game board.</summary>
     public SnakeBoard()
     {
-        CanFocus = true;
+        Focusable = true;
         _ = AddHandler(Events.Key, OnKeyPressed);
     }
 
@@ -220,7 +220,7 @@ public sealed class SnakeBoard: Control
         new(constraint.Width ?? 60, constraint.Height ?? 24);
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         canvas.Clear(Bounds, new TerminalStyle(Color.Default, Color.Indexed(0)));
 

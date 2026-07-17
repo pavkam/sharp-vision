@@ -324,12 +324,6 @@ internal static class Markup
             return true;
         }
 
-        if (Enum.TryParse(key, ignoreCase: true, out ColorRole role) && Enum.IsDefined(role))
-        {
-            color = Color.Role((int) role);
-            return true;
-        }
-
         return false;
     }
 

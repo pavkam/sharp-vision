@@ -17,7 +17,9 @@ public sealed class TabControl: ItemsControl
         _stack = new Stack { Orientation = Orientation.Vertical };
         InitializeItemsHost(_stack);
         Items = new TabItems(this);
-        CanFocus = true;
+        Focusable = true;
+        TabStop = true;
+        TabNavigation = TabNavigation.Continue;
     }
 
     /// <summary>Raised after the selected tab index changes.</summary>
@@ -75,7 +77,7 @@ public sealed class TabControl: ItemsControl
     }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height < 2) { return; }
         var style = ResolvedStyle;

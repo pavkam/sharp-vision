@@ -128,7 +128,7 @@ the complete cluster.
 Markup foreground, background, attributes, underline, underline color, and
 hyperlink overlay the control's resolved visual-state style. An explicit markup
 background draws opaquely; otherwise text preserves an already painted surface
-unless the control's resolved `FillMode` is `Opaque`. A resolved `Background`
+unless the control has an explicit `Background`. A non-null `Background`
 supplies the color used by an opaque fill but does not by itself make passive
 text replace the destination surface.
 

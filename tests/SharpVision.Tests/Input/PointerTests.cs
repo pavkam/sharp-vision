@@ -20,23 +20,19 @@ public sealed class PointerTests
             var child = new ProbeControl()
             {
                 Bounds = new Rect(0, 0, 10, 5),
-                CanFocus = true,
+                Focusable = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
-            using var capture = new CaptureManager(root);
+            using var capture = new PointerManager(root);
             focus.Focus(child).ShouldBeTrue();
             capture.Capture(child).ShouldBeTrue();
-            var cancellations = 0;
-            capture.Cancelled += (_, _) => cancellations++;
-
-            child.CanFocus = false;
+            child.Focusable = false;
 
             focus.Focused.ShouldBeNull();
             child.IsFocused.ShouldBeFalse();
             capture.Captured.ShouldBeSameAs(child);
-            cancellations.ShouldBe(0);
         }, TestContext.Current.CancellationToken);
     }
 
@@ -52,7 +48,7 @@ public sealed class PointerTests
             var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 5) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
             var pointer = new Pointer(
                 null,
                 new Point(5, 5),
@@ -66,7 +62,7 @@ public sealed class PointerTests
 
             manager.Dispatch(pointer).ShouldBeNull();
             manager.Hovered.ShouldBeNull();
-            child.IsHovered.ShouldBeFalse();
+            child.IsPointerOver.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -82,7 +78,7 @@ public sealed class PointerTests
             var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 5) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
             Point? local = default;
             var routed = false;
             _ = child.AddHandler(Events.Pointer, (_, eventArgs) =>
@@ -137,10 +133,10 @@ public sealed class PointerTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl() { Bounds = new Rect(4, 3, 8, 4), CanFocus = true };
+            var child = new ProbeControl() { Bounds = new Rect(4, 3, 8, 4), Focusable = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
             List<(Control Sender, Point? Local)> observed = [];
             _ = root.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
@@ -165,7 +161,7 @@ public sealed class PointerTests
                 (root, new Point(6, 5)),
             ]);
             manager.Hovered.ShouldBeSameAs(child);
-            child.IsHovered.ShouldBeTrue();
+            child.IsPointerOver.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -181,17 +177,17 @@ public sealed class PointerTests
             var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
 
             manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move))
                 .ShouldBeSameAs(child);
 
-            manager.Hovered.ShouldBeNull();
-            child.IsHovered.ShouldBeFalse();
+            manager.Hovered.ShouldBeSameAs(child);
+            child.IsPointerOver.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies hover resolves to the nearest interactive ancestor of the hit control.</summary>
+    /// <summary>Verifies hover records the physical leaf while ancestors receive subtree membership.</summary>
     [Fact]
     public async Task Dispatch_WhenPointerHitsChildOfInteractiveAncestor_HoversAncestorAsync()
     {
@@ -200,19 +196,19 @@ public sealed class PointerTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
-            var ancestor = new ProbeContainer() { Bounds = new Rect(0, 0, 12, 8), CanFocus = true };
+            var ancestor = new ProbeContainer() { Bounds = new Rect(0, 0, 12, 8), Focusable = true };
             var child = new ProbeControl() { Bounds = new Rect(2, 2, 6, 4) };
             ancestor.Children.Add(child);
             root.Children.Add(ancestor);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
 
             manager.Dispatch(CreatePointer(new Point(4, 3), PointerAction.Move))
                 .ShouldBeSameAs(child);
 
-            manager.Hovered.ShouldBeSameAs(ancestor);
-            ancestor.IsHovered.ShouldBeTrue();
-            child.IsHovered.ShouldBeFalse();
+            manager.Hovered.ShouldBeSameAs(child);
+            ancestor.IsPointerOver.ShouldBeTrue();
+            child.IsPointerOver.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -228,23 +224,23 @@ public sealed class PointerTests
             var middle = new TraversalOwner
             {
                 Bounds = new Rect(0, 0, 12, 8),
-                CanFocus = true,
+                Focusable = true,
             };
             var leaf = new ProbeControl { Bounds = new Rect(2, 2, 6, 4) };
             middle.AddNormal(leaf);
             root.AddNormal(middle);
             root.Attach(dispatcher);
-            using var capture = new CaptureManager(root);
+            using var capture = new PointerManager(root);
 
             capture.Dispatch(CreatePointer(new Point(4, 3), PointerAction.Move)).ShouldBeSameAs(leaf);
-            capture.Hovered.ShouldBeSameAs(middle);
+            capture.Hovered.ShouldBeSameAs(leaf);
             capture.Capture(leaf).ShouldBeTrue();
 
             root.RemoveNormal(middle).ShouldBeTrue();
 
             capture.Hovered.ShouldBeNull();
             capture.Captured.ShouldBeNull();
-            middle.IsHovered.ShouldBeFalse();
+            middle.IsPointerOver.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -260,20 +256,19 @@ public sealed class PointerTests
             var child = new ProbeControl()
             {
                 Bounds = new Rect(4, 3, 8, 4),
-                CanFocus = true,
-                Style = FocusStyle(),
+                Focusable = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
-            using CaptureManager capture = new(root);
+            using PointerManager capture = new(root);
 
             capture.Dispatch(CreatePointer(new Point(6, 5), PointerAction.Press))
                 .ShouldBeSameAs(child);
 
             focus.Focused.ShouldBeSameAs(child);
             child.IsFocused.ShouldBeTrue();
-            child.Background.ShouldBe(Color.Indexed(11));
+            child.Background.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -291,7 +286,7 @@ public sealed class PointerTests
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
 
             manager.Capture(first).ShouldBeTrue();
             manager.Dispatch(CreatePointer(new Point(15, 5), PointerAction.Move))
@@ -316,7 +311,7 @@ public sealed class PointerTests
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
             List<Control> routed = [];
             _ = first.AddHandler(Events.Pointer, (sender, eventArgs) =>
             {
@@ -332,8 +327,8 @@ public sealed class PointerTests
 
             manager.Captured.ShouldBeSameAs(first);
             manager.Hovered.ShouldBeSameAs(second);
-            first.IsHovered.ShouldBeFalse();
-            second.IsHovered.ShouldBeTrue();
+            first.IsPointerOver.ShouldBeFalse();
+            second.IsPointerOver.ShouldBeTrue();
             routed.ShouldBe([first]);
         }, TestContext.Current.CancellationToken);
     }
@@ -350,20 +345,20 @@ public sealed class PointerTests
             var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
-            List<ReleaseReason> reasons = [];
-            manager.Cancelled += (_, eventArgs) => reasons.Add(eventArgs.Reason);
+            using PointerManager manager = new(root);
+            List<PointerCaptureLossReason> reasons = [];
+            child.LostPointerCapture += (_, eventArgs) => reasons.Add(eventArgs.Reason);
             manager.Capture(child).ShouldBeTrue();
 
             _ = root.Children.Remove(child);
 
             manager.Captured.ShouldBeNull();
-            reasons.ShouldBe([ReleaseReason.Detached]);
+            reasons.ShouldBe([PointerCaptureLossReason.Unavailable]);
             root.Children.Add(child);
             manager.Capture(child).ShouldBeTrue();
             manager.TerminalFocusLost();
             manager.TerminalFocusLost();
-            reasons.ShouldBe([ReleaseReason.Detached, ReleaseReason.TerminalFocusLost]);
+            reasons.ShouldBe([PointerCaptureLossReason.Unavailable, PointerCaptureLossReason.TerminalFocusLost]);
         }, TestContext.Current.CancellationToken);
     }
 
@@ -381,7 +376,7 @@ public sealed class PointerTests
             root.Children.Add(owner);
             root.Children.Add(other);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using var manager = new PointerManager(root);
             owner.CaptureProbePointer().ShouldBeTrue();
 
             other.ReleaseProbePointer();
@@ -404,11 +399,11 @@ public sealed class PointerTests
             var child = new ProbeControl()
             {
                 Bounds = new Rect(0, 0, 10, 10),
-                CanFocus = true,
+                Focusable = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using var manager = new PointerManager(root);
             child.CaptureProbePointer().ShouldBeTrue();
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
 
@@ -416,9 +411,9 @@ public sealed class PointerTests
 
             manager.Captured.ShouldBeNull();
             manager.Hovered.ShouldBeNull();
-            manager.Pressed.ShouldBeNull();
+            manager.PressOrigin.ShouldBeNull();
             child.PointerCaptureCancellationCalls.ShouldBe(1);
-            child.PointerCaptureCancellationReason.ShouldBe(ReleaseReason.Detached);
+            child.PointerCaptureCancellationReason.ShouldBe(PointerCaptureLossReason.Unavailable);
             child.PointerStateWasClearDuringCancellation.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
@@ -439,7 +434,7 @@ public sealed class PointerTests
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using var manager = new PointerManager(root);
             child.CaptureProbePointer().ShouldBeTrue();
 
             _ = root.Children.Remove(child);
@@ -465,16 +460,16 @@ public sealed class PointerTests
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using var manager = new PointerManager(root);
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
             child.RecaptureWhenPressedClears = true;
 
             _ = root.Children.Remove(child);
 
-            child.PressedClearRecaptureResult.ShouldBe(false);
+            child.PressedClearRecaptureResult.ShouldBeNull();
             child.Parent.ShouldBeNull();
             manager.Captured.ShouldBeNull();
-            manager.Pressed.ShouldBeNull();
+            manager.PressOrigin.ShouldBeNull();
         }, TestContext.Current.CancellationToken);
     }
 
@@ -490,16 +485,16 @@ public sealed class PointerTests
             var child = new ProbeControl()
             {
                 Bounds = new Rect(0, 0, 10, 10),
-                CanFocus = true,
+                Focusable = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using var manager = new PointerManager(root);
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
 
             child.IsEnabled = false;
 
-            manager.Pressed.ShouldBeNull();
+            manager.PressOrigin.ShouldBeNull();
             child.PointerCaptureCancellationCalls.ShouldBe(0);
         }, TestContext.Current.CancellationToken);
     }
@@ -520,10 +515,10 @@ public sealed class PointerTests
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using var manager = new PointerManager(root);
             child.CaptureProbePointer().ShouldBeTrue();
             var cancellations = 0;
-            manager.Cancelled += (_, _) => cancellations++;
+            child.LostPointerCapture += (_, _) => cancellations++;
 
             _ = Should.Throw<InvalidOperationException>(child.Dispose);
 
@@ -549,10 +544,10 @@ public sealed class PointerTests
                 ThrowOnPointerCaptureCancellation = true,
             };
             root.Attach(dispatcher);
-            using var manager = new CaptureManager(root);
+            using var manager = new PointerManager(root);
             root.CaptureProbePointer().ShouldBeTrue();
             var cancellations = 0;
-            manager.Cancelled += (_, _) => cancellations++;
+            root.LostPointerCapture += (_, _) => cancellations++;
 
             _ = Should.Throw<InvalidOperationException>(root.Dispose);
 
@@ -575,9 +570,9 @@ public sealed class PointerTests
             var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10) };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
-            List<ReleaseReason> reasons = [];
-            manager.Cancelled += (_, eventArgs) => reasons.Add(eventArgs.Reason);
+            using PointerManager manager = new(root);
+            List<PointerCaptureLossReason> reasons = [];
+            child.LostPointerCapture += (_, eventArgs) => reasons.Add(eventArgs.Reason);
             manager.Capture(child).ShouldBeTrue();
 
             child.IsEnabled = false;
@@ -586,7 +581,7 @@ public sealed class PointerTests
             child.Visibility = Visibility.Hidden;
 
             manager.Captured.ShouldBeNull();
-            reasons.ShouldBe([ReleaseReason.Disabled, ReleaseReason.Hidden]);
+            reasons.ShouldBe([PointerCaptureLossReason.Unavailable, PointerCaptureLossReason.Unavailable]);
         }, TestContext.Current.CancellationToken);
     }
 
@@ -602,12 +597,12 @@ public sealed class PointerTests
             var child = new ProbeControl()
             {
                 Bounds = new Rect(0, 0, 10, 10),
-                CanFocus = true,
+                Focusable = true,
             };
             root.Children.Add(child);
             root.Attach(dispatcher);
             var focus = new FocusManager(root);
-            var capture = new CaptureManager(root);
+            var capture = new PointerManager(root);
             focus.Focus(child).ShouldBeTrue();
             capture.Capture(child).ShouldBeTrue();
 
@@ -631,20 +626,20 @@ public sealed class PointerTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
-            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10), CanFocus = true };
+            var child = new ProbeControl() { Bounds = new Rect(0, 0, 10, 10), Focusable = true };
             root.Children.Add(child);
             root.Attach(dispatcher);
-            using CaptureManager manager = new(root);
+            using PointerManager manager = new(root);
 
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Move));
-            child.IsHovered.ShouldBeTrue();
+            child.IsPointerOver.ShouldBeTrue();
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
-            child.IsPressed.ShouldBeTrue();
+            child.IsPressed.ShouldBeFalse();
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Release));
             child.IsPressed.ShouldBeFalse();
             _ = manager.Dispatch(CreatePointer(new Point(2, 2), PointerAction.Press));
             manager.TerminalFocusLost();
-            child.IsHovered.ShouldBeFalse();
+            child.IsPointerOver.ShouldBeFalse();
             child.IsPressed.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
     }
@@ -658,13 +653,13 @@ public sealed class PointerTests
         await dispatcher.InvokeAsync(() =>
         {
             var root = new ProbeContainer() { Bounds = new Rect(0, 0, 20, 10) };
-            var first = new ProbeControl() { Bounds = new Rect(0, 0, 8, 8), CanFocus = true };
-            var second = new ProbeControl() { Bounds = new Rect(10, 0, 8, 8), CanFocus = true };
+            var first = new ProbeControl() { Bounds = new Rect(0, 0, 8, 8), Focusable = true };
+            var second = new ProbeControl() { Bounds = new Rect(10, 0, 8, 8), Focusable = true };
             root.Children.Add(first);
             root.Children.Add(second);
             root.Attach(dispatcher);
             var clock = new ManualTimeProvider();
-            using CaptureManager manager = new(root, clock);
+            using PointerManager manager = new(root, clock);
             List<int> observed = [];
             _ = root.AddHandler(Events.Pointer, (_, eventArgs) =>
             {
@@ -699,8 +694,4 @@ public sealed class PointerTests
         isMotion: action == PointerAction.Move,
         isCellPositionInferred: false);
 
-    private static ControlStyle<ProbeControl> FocusStyle() =>
-        ThemeTestSupport.OverlayStyle<ProbeControl>(
-            (State.Normal, new ThemeOverlay(background: Color.Indexed(10))),
-            (State.Focused, new ThemeOverlay(background: Color.Indexed(11))));
 }

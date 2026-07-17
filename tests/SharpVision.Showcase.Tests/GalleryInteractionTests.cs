@@ -75,7 +75,7 @@ public sealed class GalleryInteractionTests
             application,
             "Button keyboard activation");
 
-        var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
+        var main = DocumentationBody(gallery);
         var wheel = string.Concat(Enumerable.Repeat("\u001b[<65;30;10M", 8));
         terminal.QueueInput(Encoding.ASCII.GetBytes(wheel));
         await WaitUntilAsync(
@@ -139,7 +139,7 @@ public sealed class GalleryInteractionTests
         var target = await application.Dispatcher.InvokeAsync(
             () => new Point(activeEditor.Bounds.X + 1, activeEditor.Bounds.Y + 1),
             TestContext.Current.CancellationToken);
-        var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
+        var main = DocumentationBody(gallery);
         var previousPageOffset = await application.Dispatcher.InvokeAsync(
             () => main.VerticalOffset,
             TestContext.Current.CancellationToken);
@@ -277,8 +277,8 @@ public sealed class GalleryInteractionTests
 
         await application.Dispatcher.InvokeAsync(() =>
         {
-            button.IsHovered.ShouldBeTrue();
-            button.IsFocused.ShouldBeTrue();
+            button.IsPointerOver.ShouldBeTrue();
+            gallery.NavigationControl.IsFocused.ShouldBeTrue();
             button.IsPressed.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
 
@@ -292,7 +292,7 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(() =>
         {
             button.IsSelected.ShouldBeTrue();
-            button.Background.ShouldBe(Color.Indexed(4));
+            gallery.NavigationControl.IsFocused.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -317,17 +317,13 @@ public sealed class GalleryInteractionTests
 
         terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<35;{point.X + 1};{point.Y + 1}M"));
         await WaitUntilAsync(
-            () => entry.IsHovered,
+            () => entry.IsPointerOver,
             application,
             "sidebar passive hover");
 
-        await application.Dispatcher.InvokeAsync(() =>
-            entry.Foreground.ShouldBe(Color.Indexed(14)),
-            TestContext.Current.CancellationToken);
-
         terminal.QueueInput("\u001b[<35;0;0M"u8);
         await WaitUntilAsync(
-            () => !entry.IsHovered,
+            () => !entry.IsPointerOver,
             application,
             "sidebar passive hover leave");
 
@@ -357,13 +353,9 @@ public sealed class GalleryInteractionTests
 
         terminal.QueueInput(Encoding.ASCII.GetBytes($"\u001b[<35;{point.X + 1};{point.Y + 1}M"));
         await WaitUntilAsync(
-            () => active.IsHovered,
+            () => active.IsPointerOver,
             application,
             "sample button passive hover");
-
-        await application.Dispatcher.InvokeAsync(() =>
-            active.Foreground.ShouldBe(Color.Indexed(14)),
-            TestContext.Current.CancellationToken);
 
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -400,8 +392,6 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(() =>
         {
             active.IsFocused.ShouldBeTrue();
-            active.Foreground.ShouldBe(Color.Indexed(14));
-            active.Background.ShouldBe(Color.Indexed(0));
         }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -430,7 +420,7 @@ public sealed class GalleryInteractionTests
         await application.Dispatcher.InvokeAsync(() =>
         {
             var canvas = gallery.Navigation[IndexOf(gallery, "Canvas")];
-            canvas.IsFocused.ShouldBeTrue();
+            gallery.NavigationControl.IsFocused.ShouldBeTrue();
             canvas.IsSelected.ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
@@ -456,9 +446,11 @@ public sealed class GalleryInteractionTests
             terminal,
             ShowcaseStartupOptions.Create(new Dictionary<string, string?>()));
         await application.StartAsync(TestContext.Current.CancellationToken);
-        await application.Dispatcher.InvokeAsync(
-            () => application.Focus.Focus(gallery.Navigation[IndexOf(gallery, "Canvas")]).ShouldBeTrue(),
-            TestContext.Current.CancellationToken);
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            gallery.Select(IndexOf(gallery, "Canvas"));
+            application.Focus.Focus(gallery.NavigationControl).ShouldBeTrue();
+        }, TestContext.Current.CancellationToken);
 
         terminal.QueueInput("\r"u8);
         await WaitUntilAsync(
@@ -467,7 +459,7 @@ public sealed class GalleryInteractionTests
             "sidebar Enter activation");
 
         await application.Dispatcher.InvokeAsync(
-            () => gallery.Navigation[IndexOf(gallery, "Canvas")].IsFocused.ShouldBeTrue(),
+            () => gallery.NavigationControl.IsFocused.ShouldBeTrue(),
             TestContext.Current.CancellationToken);
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -705,6 +697,13 @@ public sealed class GalleryInteractionTests
         return index >= 0 ? index : throw new InvalidOperationException($"The {page} page is not registered.");
     }
 
+    private static Stack DocumentationBody(Gallery gallery)
+    {
+        ArgumentNullException.ThrowIfNull(gallery);
+        var page = gallery.CurrentPage.OwnedControlAt(0).ShouldBeOfType<Dock>();
+        return page.Children[1].ShouldBeOfType<Stack>();
+    }
+
     private static Task NextFrame(Application application)
     {
         ArgumentNullException.ThrowIfNull(application);
@@ -733,7 +732,7 @@ public sealed class GalleryInteractionTests
         application.FrameRendered += Complete;
         var moved = await application.Dispatcher.InvokeAsync(() =>
         {
-            var main = gallery.CurrentPage.Parent.ShouldBeOfType<Stack>();
+            var main = DocumentationBody(gallery);
             return main.BringIntoView(control);
         }, TestContext.Current.CancellationToken);
 

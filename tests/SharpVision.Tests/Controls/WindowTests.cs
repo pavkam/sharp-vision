@@ -134,31 +134,6 @@ public sealed class WindowTests
         FrameOracle.Get(frame, new Point(0, 3)).ShouldBe("╰");
     }
 
-    /// <summary>Verifies window body and border retain semantic resource decorations.</summary>
-    [Fact]
-    public void Render_WhenStyleUsesModernDecorations_PreservesChromeStyle()
-    {
-        var style = ThemeTestSupport.OverlayStyle<Window>(
-            (State.Normal, new ThemeOverlay(
-                attributes: Attributes.Overline,
-                underline: Underline.Paired,
-                underlineColor: Color.Indexed(6))));
-        var window = new Window()
-        {
-            Bounds = new Rect(0, 0, 4, 3),
-            Background = Color.Indexed(0),
-            Style = style,
-        };
-        using Frame frame = new(new Size(4, 3));
-
-        window.Render(frame.Canvas);
-
-        var rendered = frame.GetCell(default).Style;
-        rendered.Attributes.ShouldBe(Attributes.Overline);
-        rendered.Underline.ShouldBe(Underline.Paired);
-        rendered.UnderlineColor.ShouldBe(Color.Indexed(6));
-    }
-
     /// <summary>Verifies the Turbo Vision block shadow occupies only translated cells outside the window body.</summary>
     [Fact]
     public void Render_WhenBlockShadowIsEnabled_DrawsOutsideBodyWithoutCoveringContent()
@@ -233,8 +208,8 @@ public sealed class WindowTests
         content.Children.Add(cancel);
         var window = new Window() { Content = content };
 
-        Router.Route(window, Events.Key, Key(Code.Enter));
-        Router.Route(window, Events.Key, Key(Code.Escape));
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+        _ = Router.Route(window, Events.Key, Key(Code.Escape));
 
         defaults.ShouldBe(1);
         cancels.ShouldBe(1);
@@ -257,8 +232,8 @@ public sealed class WindowTests
         content.AddPopup(cancel);
         var window = new Window { Content = content };
 
-        Router.Route(window, Events.Key, Key(Code.Enter));
-        Router.Route(window, Events.Key, Key(Code.Escape));
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+        _ = Router.Route(window, Events.Key, Key(Code.Escape));
 
         defaults.ShouldBe(1);
         cancels.ShouldBe(1);
@@ -298,8 +273,8 @@ public sealed class WindowTests
         content.AddPopup(laterEligible);
         var window = new Window { Content = content };
 
-        Router.Route(window, Events.Key, Key(Code.Enter));
-        Router.Route(window, Events.Key, Key(Code.Escape));
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+        _ = Router.Route(window, Events.Key, Key(Code.Escape));
 
         invocations[disabled].ShouldBe(0);
         invocations[hidden].ShouldBe(0);
@@ -325,8 +300,8 @@ public sealed class WindowTests
             }
         });
 
-        Router.Route(window, Events.Key, handled);
-        Router.Route(window, Events.Key, Key(Code.Escape, KeyAction.Release));
+        _ = Router.Route(window, Events.Key, handled);
+        _ = Router.Route(window, Events.Key, Key(Code.Escape, KeyAction.Release));
 
         handled.Handled.ShouldBeTrue();
         invocations.ShouldBe(0);
@@ -363,7 +338,7 @@ public sealed class WindowTests
             canvas.Children.Add(window);
             new Engine().Layout(canvas, new Size(30, 15));
             canvas.Attach(dispatcher);
-            using CaptureManager capture = new(canvas);
+            using PointerManager capture = new(canvas);
 
             _ = capture.Dispatch(Pointer(new Point(5, 1), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(window);
@@ -399,7 +374,7 @@ public sealed class WindowTests
             canvas.Children.Add(window);
             new Engine().Layout(outer, new Size(40, 20));
             outer.Attach(dispatcher);
-            using CaptureManager capture = new(outer);
+            using PointerManager capture = new(outer);
 
             var titleY = window.Bounds.Y;
             var titleX = window.Bounds.X + 2;
@@ -433,7 +408,7 @@ public sealed class WindowTests
             canvas.Children.Add(window);
             new Engine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
-            using CaptureManager capture = new(canvas);
+            using PointerManager capture = new(canvas);
 
             _ = capture.Dispatch(Pointer(new Point(3, 1), PointerAction.Press));
             capture.Captured.ShouldNotBeSameAs(window);
@@ -463,7 +438,7 @@ public sealed class WindowTests
             canvas.Children.Add(window);
             new Engine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
-            using CaptureManager capture = new(canvas);
+            using PointerManager capture = new(canvas);
 
             _ = capture.Dispatch(Pointer(new Point(3, 0), PointerAction.Press));
             capture.Captured.ShouldBeSameAs(window);
@@ -496,7 +471,7 @@ public sealed class WindowTests
             canvas.Children.Add(window);
             new Engine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
-            using CaptureManager capture = new(canvas);
+            using PointerManager capture = new(canvas);
 
             _ = capture.Dispatch(Pointer(new Point(5, 2), PointerAction.Press));
             _ = capture.Dispatch(Pointer(new Point(0, 0), PointerAction.Move));

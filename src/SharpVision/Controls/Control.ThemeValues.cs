@@ -5,256 +5,108 @@ namespace SharpVision.Controls;
 
 using System.ComponentModel;
 
-
-
+/// <summary>Provides inherited immutable theme and direct appearance support.</summary>
 public abstract partial class Control
 {
-    private readonly Dictionary<IStyleProperty, object?> _localValues = [];
-    private readonly Dictionary<(IStyleProperty Property, State State), object?> _resolvedPropertyCache = [];
-    private TerminalStyle? _cachedResolvedStyle;
-    private bool _cachedHasOpaqueFill;
-    private State _cachedResolvedVisualState;
-    private int _cachedThemeVersion = -1;
-    private int _styleResolutionEpoch;
+    private readonly Dictionary<VisualState, Appearance> _appearanceStates = [];
 
-    /// <summary>Gets the internal theme snapshot published by the owning application.</summary>
-    internal ThemeContext? ThemeContext { get; private set; }
+    /// <summary>Gets the immutable theme inherited from the owning application.</summary>
+    public Theme? Theme => InheritedTheme;
 
-    /// <summary>Gets the per-instance style overlay applied only to this control.</summary>
-    internal IControlStyle? InstanceStyle { get; private set; }
+    /// <summary>Gets or sets whether this control stops ambient text appearance inheritance.</summary>
+    public bool AppearanceBoundary { get; set => _ = SetProperty(ref field, value, ChangeImpact.Render); }
 
-    /// <summary>Removes one explicit local style-property override.</summary>
-    /// <typeparam name="T">The property value type.</typeparam>
-    /// <param name="property">The registered style property.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="property"/> is null.</exception>
-    /// <exception cref="ArgumentException">
-    /// The property does not apply to the control's runtime type.
-    /// </exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void ClearValue<T>(StyleProperty<T> property)
+    /// <summary>Gets or sets a normal-state appearance overlay.</summary>
+    public Appearance Appearance { get; set => _ = SetProperty(ref field, value, ChangeImpact.Render); }
+
+    /// <summary>Gets state-specific appearance overlays.</summary>
+    public IReadOnlyDictionary<VisualState, Appearance> AppearanceStates => _appearanceStates;
+
+    /// <summary>Sets or removes a single state-specific appearance overlay.</summary>
+    public void SetAppearance(VisualState state, Appearance? appearance)
     {
-        ArgumentNullException.ThrowIfNull(property);
-        EnsureThemeProperty(property);
-        VerifyMutable();
+        if (state == VisualState.Normal || !Enum.IsDefined(state))
+        {
+            throw new ArgumentOutOfRangeException(nameof(state), state, "A single non-normal visual state is required.");
+        }
 
-        if (!_localValues.Remove(property))
+        VerifyMutable();
+        if (appearance is { } value)
+        {
+            _appearanceStates[state] = value;
+        }
+        else if (!_appearanceStates.Remove(state))
         {
             return;
         }
 
-        InvalidateThemeProperty(property);
+        Invalidate(Invalidation.Render);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AppearanceStates)));
     }
 
-    /// <summary>Reads one effective style-property value through the theme cascade.</summary>
-    /// <typeparam name="T">The property value type.</typeparam>
-    /// <param name="property">The registered style property.</param>
-    /// <returns>The resolved value.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="property"/> is null.</exception>
-    /// <exception cref="ArgumentException">
-    /// The property does not apply to the control's runtime type.
-    /// </exception>
-    public T GetValue<T>(StyleProperty<T> property)
+    internal Theme? InheritedTheme { get; private set; }
+
+    internal bool CommitTheme(Theme? theme)
     {
-        ArgumentNullException.ThrowIfNull(property);
-        return ResolveProperty(property, GetVisualState());
-    }
-
-    internal T ResolveProperty<T>(StyleProperty<T> property, State visualState)
-    {
-        EnsureThemeProperty(property);
-        (IStyleProperty Property, State State) key = (Property: property, State: visualState);
-
-        if (_resolvedPropertyCache.TryGetValue(key, out var cached))
-        {
-            return (T) cached!;
-        }
-
-        var value = ThemeResolver.Resolve(this, property, visualState);
-        _resolvedPropertyCache[key] = value;
-        return value;
-    }
-
-    /// <summary>Records one explicit local style-property override.</summary>
-    /// <typeparam name="T">The property value type.</typeparam>
-    /// <param name="property">The registered style property.</param>
-    /// <param name="value">The validated local value.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="property"/> is null.</exception>
-    /// <exception cref="ArgumentException">
-    /// The property does not apply to the control's runtime type or the value is invalid.
-    /// </exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void SetValue<T>(StyleProperty<T> property, T value)
-    {
-        ArgumentNullException.ThrowIfNull(property);
-        EnsureThemeProperty(property);
-        property.ValidateValue(value);
-        VerifyMutable();
-
-        if (_localValues.TryGetValue(property, out var stored) &&
-            EqualityComparer<T>.Default.Equals((T) stored!, value))
-        {
-            return;
-        }
-
-        _localValues[property] = value;
-        InvalidateThemeProperty(property);
-    }
-
-    internal bool TryGetLocalValue<T>(StyleProperty<T> property, out T value)
-    {
-        ArgumentNullException.ThrowIfNull(property);
-
-        if (_localValues.TryGetValue(property, out var stored) && stored is T typed)
-        {
-            value = typed;
-            return true;
-        }
-
-        value = default!;
-        return false;
-    }
-
-    /// <summary>Commits one theme identity without publishing its property notification.</summary>
-    /// <param name="context">The inherited theme context, or null.</param>
-    /// <returns>True when the identity changed.</returns>
-    internal bool CommitThemeContext(ThemeContext? context)
-    {
-        if (ReferenceEquals(ThemeContext, context))
+        if (ReferenceEquals(InheritedTheme, theme))
         {
             return false;
         }
 
-        ThemeContext = context;
-        InvalidateResolvedStyleCache();
+        InheritedTheme = theme;
         return true;
     }
 
-    /// <summary>Commits and publishes one local theme-context identity.</summary>
-    /// <param name="context">The inherited theme context, or null.</param>
-    internal void SetThemeContext(ThemeContext? context)
+    internal void SetTheme(Theme? theme)
     {
-        if (CommitThemeContext(context))
+        if (CommitTheme(theme))
         {
-            PublishThemeContextChanged();
+            PublishThemeChanged();
         }
     }
 
-    /// <summary>Applies one theme context to this control and its complete subtree.</summary>
-    /// <param name="context">The published theme context, or null to inherit none.</param>
-    internal void PropagateThemeContext(ThemeContext? context)
+    internal void PropagateTheme(Theme? theme)
     {
         OwnedControlRegistry.VerifyMutationAllowed(this);
         var entered = OwnedControlRegistry.EnterPublication(this);
-        var themeChanged = new List<Control>();
+        var themes = new List<Control>();
         var attached = new List<Control>();
         var detached = new List<Control>();
         var failure = (System.Runtime.ExceptionServices.ExceptionDispatchInfo?) null;
-
         try
         {
-            CommitSubtreeContext(
-                Dispatcher,
-                CellPolicy,
-                FocusOwner,
-                CaptureOwner,
-                context,
-                themeChanged,
-                attached,
-                detached);
-            PublishContextChanges(themeChanged, attached, detached, ref failure);
+            CommitSubtreeContext(Dispatcher, CellPolicy, FocusOwner, CaptureOwner, theme, themes, attached, detached);
+            PublishContextChanges(themes, attached, detached, ref failure);
         }
-        finally
-        {
-            OwnedControlRegistry.ExitPublication(entered);
-        }
-
+        finally { OwnedControlRegistry.ExitPublication(entered); }
         failure?.Throw();
     }
 
-    internal void SetInstanceStyle(IControlStyle? style) => InstanceStyle = style;
-
-    /// <summary>Gets the composed terminal style for an explicit visual state.</summary>
-    /// <param name="visualState">The active visual-state flags.</param>
-    /// <returns>The resolved terminal style.</returns>
-    protected internal TerminalStyle GetResolvedStyle(State visualState) =>
-        GetResolvedAppearance(visualState).Style;
-
-    internal ResolvedAppearance GetResolvedAppearance(State visualState)
+    internal Appearance CreateDefaultAppearance(VisualState state)
     {
-        var themeVersion = ThemeContext?.Version ?? -1;
-
-        if (_cachedResolvedStyle is { } cached &&
-            _cachedResolvedVisualState == visualState &&
-            _cachedThemeVersion == themeVersion &&
-            _styleResolutionEpoch == _cachedStyleResolutionEpoch)
-        {
-            return new ResolvedAppearance
-            {
-                Style = cached,
-                HasOpaqueFill = _cachedHasOpaqueFill,
-            };
-        }
-
-        var resolved = ControlAppearance.Resolve(this, visualState);
-        _cachedResolvedStyle = resolved.Style;
-        _cachedHasOpaqueFill = resolved.HasOpaqueFill;
-        _cachedResolvedVisualState = visualState;
-        _cachedThemeVersion = themeVersion;
-        _cachedStyleResolutionEpoch = _styleResolutionEpoch;
-        return resolved;
+        var defaults = ControlAppearanceDefaults.Get(this, state);
+        return _appearanceStates.TryGetValue(state, out var appearance)
+            ? defaults.Overlay(appearance)
+            : defaults;
     }
 
-    internal void InvalidateResolvedStyleCache()
+    internal Appearance ApplyLocalAppearance(Appearance appearance)
     {
-        _styleResolutionEpoch++;
-        _resolvedPropertyCache.Clear();
+        var direct = new Appearance(Foreground, Background, Attributes, Underline, UnderlineColor, BorderColor, BorderAttributes, ShadowForeground, ShadowBackground, ShadowAttributes);
+        return appearance.Overlay(Appearance).Overlay(direct);
     }
 
-    /// <summary>Clears the resolved-style caches of this control and every descendant.</summary>
-    /// <remarks>Used on structural moves where ancestor style scopes may have changed.</remarks>
-    internal void InvalidateSubtreeResolvedStyleCache()
-    {
-        InvalidateResolvedStyleCache();
-        VisitChildren(child => child.InvalidateSubtreeResolvedStyleCache());
-    }
+    internal Appearance GetNormalAmbientAppearance() => ApplyLocalAppearance(CreateDefaultAppearance(VisualState.Normal));
 
-    private void CascadeStyleScopeInvalidation(Invalidation invalidation)
-    {
-        if (this is not IStyleScope)
-        {
-            return;
-        }
+    /// <inheritdoc/>
+    protected internal TerminalStyle GetResolvedStyle(VisualState state) => GetResolvedAppearance(state).Style;
 
-        VisitChildren(child => child.InvalidateInheritedStyle(invalidation));
-    }
+    internal ResolvedAppearance GetResolvedAppearance(VisualState state) => AppearanceResolver.Resolve(this, state);
 
-    private void InvalidateInheritedStyle(Invalidation invalidation)
-    {
-        InvalidateResolvedStyleCache();
-        Invalidate(invalidation);
-        VisitChildren(child => child.InvalidateInheritedStyle(invalidation));
-    }
+    internal Color ResolveThemeColor(ThemeColor color) => Theme?.Resolve(color) ??
+        (color.TryGetColor(out var concrete) ? concrete : Color.Default);
 
-    private int _cachedStyleResolutionEpoch = -1;
+    internal static void InvalidateResolvedStyleCache() { }
 
-    private void EnsureThemeProperty<T>(StyleProperty<T> property)
-    {
-        if (!property.AppliesTo(GetType()))
-        {
-            throw new ArgumentException(
-                $"The property '{property.Name}' does not apply to {GetType().Name}.",
-                nameof(property));
-        }
-    }
-
-    private void InvalidateThemeProperty<T>(StyleProperty<T> property)
-    {
-        Debug.Assert(property is not null, "Theme invalidation requires a non-null property.");
-
-        InvalidateResolvedStyleCache();
-        Invalidate(InvalidationFor(property.Impact));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property.ClrName));
-    }
+    internal void InvalidateSubtreeResolvedStyleCache() => VisitChildren(child => child.InvalidateSubtreeResolvedStyleCache());
 }

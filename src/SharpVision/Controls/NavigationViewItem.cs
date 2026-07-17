@@ -63,11 +63,11 @@ public sealed class NavigationViewItem: Pressable
     protected override void ArrangeOverride(Rect bounds) { }
 
     /// <inheritdoc/>
-    protected override void OnRender(TerminalCanvas canvas)
+    protected override void OnRenderContent(TerminalCanvas canvas)
     {
         var style = ResolvedStyle;
 
-        if (ControlAppearance.HasOpaqueFill(this, GetVisualState()))
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }
@@ -77,7 +77,7 @@ public sealed class NavigationViewItem: Pressable
             return;
         }
 
-        var marker = _isSelected || IsHovered ? "›" : "·";
+        var marker = _isSelected || IsPointerOver ? "›" : "·";
         var prefix = Glyph is not null ? $"{Glyph} " : string.Empty;
         _ = canvas.Draw($" {marker} {prefix}{Header}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
     }
