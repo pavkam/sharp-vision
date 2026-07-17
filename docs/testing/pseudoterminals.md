@@ -28,6 +28,11 @@ Tests use deterministic deadlines and condition-based waits, never arbitrary
 sleep as proof. Raw transcripts redact clipboard/credential payloads and are
 attached on failure.
 
+Disposable tmux fixtures create an idle pane, configure retained-on-exit
+diagnostics, and only then replace the shell with the tested process. A dead
+pane fails with its exit status and latest redacted capture. Visible readiness,
+not elapsed wall-clock delay, gates input injection.
+
 The macOS fixture initializes cell/pixel dimensions through fixed-signature
 `openpty`, changes cells through the platform utility, then sends a real
 SIGWINCH. Linux uses the corresponding PTY and ioctl path. Unsupported platforms

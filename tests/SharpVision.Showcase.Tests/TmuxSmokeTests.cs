@@ -39,20 +39,50 @@ public sealed class TmuxSmokeTests
 
         try
         {
-            var start = new ProcessStartInfo()
+            var createSession = new ProcessStartInfo()
             {
                 FileName = "tmux",
-                Arguments =
-                    $"new-session -d -x 120 -y 40 -s {session} -c \"{root}\" " +
-                    "\"dotnet run --project src/SharpVision.Showcase/SharpVision.Showcase.csproj --configuration Release --no-build\"",
-                RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
             };
+            createSession.ArgumentList.Add("new-session");
+            createSession.ArgumentList.Add("-d");
+            createSession.ArgumentList.Add("-x");
+            createSession.ArgumentList.Add("120");
+            createSession.ArgumentList.Add("-y");
+            createSession.ArgumentList.Add("40");
+            createSession.ArgumentList.Add("-s");
+            createSession.ArgumentList.Add(session);
+            createSession.ArgumentList.Add("-c");
+            createSession.ArgumentList.Add(root);
+            await RunTmuxAsync(createSession);
 
-            var startProcess = Process.Start(start).ShouldNotBeNull();
-            await startProcess.WaitForExitAsync(TestContext.Current.CancellationToken);
-            startProcess.ExitCode.ShouldBe(0);
+            var retainExitedPane = new ProcessStartInfo()
+            {
+                FileName = "tmux",
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            retainExitedPane.ArgumentList.Add("set-option");
+            retainExitedPane.ArgumentList.Add("-t");
+            retainExitedPane.ArgumentList.Add(session);
+            retainExitedPane.ArgumentList.Add("remain-on-exit");
+            retainExitedPane.ArgumentList.Add("on");
+            await RunTmuxAsync(retainExitedPane);
+
+            var startShowcase = new ProcessStartInfo()
+            {
+                FileName = "tmux",
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            startShowcase.ArgumentList.Add("send-keys");
+            startShowcase.ArgumentList.Add("-t");
+            startShowcase.ArgumentList.Add(session);
+            startShowcase.ArgumentList.Add(
+                "exec dotnet run --project src/SharpVision.Showcase/SharpVision.Showcase.csproj --configuration Release --no-build");
+            startShowcase.ArgumentList.Add("Enter");
+            await RunTmuxAsync(startShowcase);
 
             _ = await WaitForPaneTextAsync(session, "Primary action", TimeSpan.FromSeconds(15));
 
@@ -98,46 +128,72 @@ public sealed class TmuxSmokeTests
         return text;
     }
 
+    private static async Task<string> ReadPaneStatusAsync(string session)
+    {
+        var query = new ProcessStartInfo()
+        {
+            FileName = "tmux",
+            Arguments = $"list-panes -t {session} -F \"#{{pane_dead}}:#{{pane_dead_status}}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        using var process = Process.Start(query).ShouldNotBeNull();
+        var outputTask = process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+        var standardErrorTask = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        await process.WaitForExitAsync(TestContext.Current.CancellationToken);
+        var output = await outputTask;
+        var standardError = await standardErrorTask;
+        process.ExitCode.ShouldBe(0, standardError);
+        return output.Trim();
+    }
+
+    /// <summary>Runs a configured tmux operation and reports its standard error when it fails.</summary>
+    /// <param name="startInfo">The fully configured tmux process start information.</param>
+    /// <returns>A task that completes after the tmux operation exits successfully.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="startInfo"/> is <see langword="null"/>.</exception>
+    private static async Task RunTmuxAsync(ProcessStartInfo startInfo)
+    {
+        ArgumentNullException.ThrowIfNull(startInfo);
+
+        using var process = Process.Start(startInfo).ShouldNotBeNull();
+        var standardError = await process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        await process.WaitForExitAsync(TestContext.Current.CancellationToken);
+        process.ExitCode.ShouldBe(0, standardError);
+    }
+
     private static async Task<string> WaitForPaneTextAsync(
         string session,
         string needle,
         TimeSpan timeout)
     {
         var deadline = Environment.TickCount64 + (long) timeout.TotalMilliseconds;
+        var latestPane = string.Empty;
 
         while (Environment.TickCount64 < deadline)
         {
-            if (!SessionExists(session))
+            latestPane = await ReadPaneAsync(session);
+            var paneStatus = await ReadPaneStatusAsync(session);
+
+            if (paneStatus.StartsWith("1:", StringComparison.Ordinal))
             {
-                throw new InvalidOperationException("The showcase terminated before tmux smoke completed.");
+                var exitStatus = paneStatus[2..];
+
+                throw new InvalidOperationException(
+                    $"The showcase pane exited with status {exitStatus}. Latest pane:{Environment.NewLine}{latestPane}");
             }
 
-            var text = await ReadPaneAsync(session);
-
-            if (text.Contains(needle, StringComparison.Ordinal))
+            if (latestPane.Contains(needle, StringComparison.Ordinal))
             {
-                return text;
+                return latestPane;
             }
 
             await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
-        throw new TimeoutException($"Timed out waiting for tmux pane text containing '{needle}'.");
-    }
-
-    private static bool SessionExists(string session)
-    {
-        var probe = new ProcessStartInfo
-        {
-            FileName = "tmux",
-            Arguments = $"has-session -t {session}",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-
-        using var process = Process.Start(probe);
-        return process is not null && process.WaitForExit(1000) && process.ExitCode == 0;
+        throw new TimeoutException(
+            $"Timed out waiting for tmux pane text containing '{needle}'. Latest pane:{Environment.NewLine}{latestPane}");
     }
 
     private static void KillSession(string session)
