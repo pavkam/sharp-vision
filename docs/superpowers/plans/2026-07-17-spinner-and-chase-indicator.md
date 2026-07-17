@@ -1,5 +1,7 @@
 # Spinner and Chase Indicator Implementation Plan
 
+<!-- markdownlint-disable MD046 -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use
@@ -132,19 +134,23 @@ mutation verify dispatcher access. Dispose is thread-safe. Validate 1 through
 
 - [ ] **Step 6: Run focused timer and dispatcher tests**
 
-  dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*DispatcherTimerTests|*DispatcherTests" --timeout 60s
+```bash
+dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
+  --filter-class "*DispatcherTimerTests" "*DispatcherTests" --timeout 60s
+```
 
 Expected: all selected tests pass with no warnings.
 
 - [ ] **Step 7: Commit**
 
-  git add src/SharpVision/Threading/Dispatcher.cs \
+```bash
+git add src/SharpVision/Threading/Dispatcher.cs \
   src/SharpVision/Threading/DispatcherTimer.cs \
   tests/SharpVision.Tests/Input/ManualTimeProvider.cs \
   tests/SharpVision.Tests/Input/ManualTimer.cs \
-  tests/SharpVision.Tests/Threading/DispatcherTimerTests.cs git commit -m "feat:
-  add deterministic dispatcher timer"
+  tests/SharpVision.Tests/Threading/DispatcherTimerTests.cs
+git commit -m "feat: add deterministic dispatcher timer"
+```
 
 ### Task 2: Application clock and mounted test support
 
@@ -162,8 +168,10 @@ test that advances 200 ms and waits for the resulting frame and idle transition.
 
 - [ ] **Step 2: Run the tests and verify the expected red state**
 
-  dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*ApplicationTests|*ComponentSurface*Tests" --timeout 60s
+```bash
+dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
+  --filter-class "*ApplicationTests" "*ComponentSurface*Tests" --timeout 60s
+```
 
 Expected: compilation fails because the clock parameters and advancement helper
 do not exist.
@@ -188,12 +196,14 @@ latest modeled screen on timeout.
 
 - [ ] **Step 5: Run focused tests and commit**
 
-  dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*ApplicationTests|*ComponentSurface*Tests" --timeout 60s git
-  add src/SharpVision/Runtime/Application.cs \
+```bash
+dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
+  --filter-class "*ApplicationTests" "*ComponentSurface*Tests" --timeout 60s
+git add src/SharpVision/Runtime/Application.cs \
   tests/SharpVision.Tests/Runtime/ApplicationTests.cs \
-  tests/SharpVision.Tests/Support/ComponentSurface.cs git commit -m "feat:
-  propagate application time provider"
+  tests/SharpVision.Tests/Support/ComponentSurface.cs
+git commit -m "feat: propagate application time provider"
+```
 
 ### Task 3: Spinner control
 
@@ -227,7 +237,7 @@ Mounted proof:
 - [ ] **Step 2: Run and verify red**
 
   dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*SpinnerTests|*SpinnerSurfaceTests" --timeout 60s
+  --filter-class "*SpinnerTests" "*SpinnerSurfaceTests" --timeout 60s
 
 Expected: compilation fails because the control and enum do not exist.
 
@@ -250,14 +260,17 @@ behavior backed by `SpinnerSurfaceTests`.
 
 - [ ] **Step 5: Run focused tests and commit**
 
-  dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*Spinner*Tests|*ComponentSurfaceCoverageTests|*TreeTests" \
-  --timeout 60s git add src/SharpVision/Controls/Spinner.cs \
+```bash
+dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
+  --filter-class "*Spinner*Tests" "*ComponentSurfaceCoverageTests" "*TreeTests" \
+  --timeout 60s
+git add src/SharpVision/Controls/Spinner.cs \
   src/SharpVision/Controls/SpinnerPattern.cs \
   tests/SharpVision.Tests/Controls/SpinnerTests.cs \
   tests/SharpVision.Tests/Controls/SpinnerSurfaceTests.cs \
-  tests/SharpVision.Tests/Support/ComponentSurfaceCoverageTests.cs git commit -m
-  "feat: add Spinner control"
+  tests/SharpVision.Tests/Support/ComponentSurfaceCoverageTests.cs
+git commit -m "feat: add Spinner control"
+```
 
 ### Task 4: ChaseIndicator control
 
@@ -278,9 +291,11 @@ interaction exclusions. Mounted tests compare consecutive semantic screens.
 
 - [ ] **Step 2: Run and verify red**
 
-  dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*ChaseIndicatorTests|*ChaseIndicatorSurfaceTests" \
+```bash
+dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
+  --filter-class "*ChaseIndicatorTests" "*ChaseIndicatorSurfaceTests" \
   --timeout 60s
+```
 
 Expected: compilation fails because the control and enum do not exist.
 
@@ -298,15 +313,17 @@ lifecycle as Spinner without a shared base class.
 
 - [ ] **Step 4: Register evidence, run tests, and commit**
 
-  dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*ChaseIndicator*Tests|*AmbiguousWidthControlTests|*ComponentSurfaceCoverageTests"
-  \
-  --timeout 60s git add src/SharpVision/Controls/ChaseIndicator.cs \
+```bash
+dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
+  --filter-class "*ChaseIndicator*Tests" "*AmbiguousWidthControlTests" \
+  "*ComponentSurfaceCoverageTests" --timeout 60s
+git add src/SharpVision/Controls/ChaseIndicator.cs \
   src/SharpVision/Controls/ChasePattern.cs \
   tests/SharpVision.Tests/Controls/ChaseIndicatorTests.cs \
   tests/SharpVision.Tests/Controls/ChaseIndicatorSurfaceTests.cs \
-  tests/SharpVision.Tests/Support/ComponentSurfaceCoverageTests.cs git commit -m
-  "feat: add ChaseIndicator control"
+  tests/SharpVision.Tests/Support/ComponentSurfaceCoverageTests.cs
+git commit -m "feat: add ChaseIndicator control"
+```
 
 ### Task 5: Normative documentation
 
@@ -375,11 +392,11 @@ valid continuation ownership.
 
 - [ ] **Step 2: Run and verify red**
 
-  dotnet test --project
-  tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj \
-  --filter-class "*GalleryTests|*ShowcaseContentTests|*SpinnerPaneTests|*ChaseIndicatorPaneTests"
-  \
-  --timeout 60s
+```bash
+dotnet test --project tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj \
+  --filter-class "*GalleryTests" "*ShowcaseContentTests" \
+  "*SpinnerPaneTests" "*ChaseIndicatorPaneTests" --timeout 60s
+```
 
 Expected: compilation and inventory failures because pages are absent.
 
@@ -393,38 +410,45 @@ to 30.
 
 - [ ] **Step 4: Run focused tests and commit**
 
-  dotnet test --project
-  tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj \
-  --filter-class "*GalleryTests|*ShowcaseContentTests|*SpinnerPaneTests|*ChaseIndicatorPaneTests"
-  \
-  --timeout 60s git add src/SharpVision.Showcase/Panes/SpinnerPane.cs \
+```bash
+dotnet test --project tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj \
+  --filter-class "*GalleryTests" "*ShowcaseContentTests" \
+  "*SpinnerPaneTests" "*ChaseIndicatorPaneTests" --timeout 60s
+git add src/SharpVision.Showcase/Panes/SpinnerPane.cs \
   src/SharpVision.Showcase/Panes/ChaseIndicatorPane.cs \
   src/SharpVision.Showcase/Gallery.cs \
   tests/SharpVision.Showcase.Tests/SpinnerPaneTests.cs \
   tests/SharpVision.Showcase.Tests/ChaseIndicatorPaneTests.cs \
   tests/SharpVision.Showcase.Tests/GalleryTests.cs \
   tests/SharpVision.Showcase.Tests/ShowcaseContentTests.cs \
-  docs/architecture/showcase.md docs/testing/showcase.md git commit -m "feat:
-  showcase animated indicators"
+  docs/architecture/showcase.md docs/testing/showcase.md
+git commit -m "feat: showcase animated indicators"
+```
 
 ### Task 7: Full verification
 
 - [ ] **Step 1: Run focused suites**
 
-  dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
-  --filter-class "*DispatcherTimerTests|*Spinner*Tests|*ChaseIndicator*Tests|*ApplicationTests|*ComponentSurfaceCoverageTests"
-  \
-  --timeout 60s dotnet test --project
-  tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj \
-  --filter-class "*SpinnerPaneTests|*ChaseIndicatorPaneTests|*GalleryTests|*ShowcaseContentTests"
-  \
+```bash
+dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj \
+  --filter-class "*DispatcherTimerTests" "*Spinner*Tests" \
+  "*ChaseIndicator*Tests" "*ApplicationTests" "*ComponentSurfaceCoverageTests" \
   --timeout 60s
+dotnet test --project tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj \
+  --filter-class "*SpinnerPaneTests" "*ChaseIndicatorPaneTests" \
+  "*GalleryTests" "*ShowcaseContentTests" --timeout 60s
+```
 
 Expected: all selected tests pass without warnings.
 
 - [ ] **Step 2: Run repository gates**
 
-  make format make lint make build make test
+```bash
+make format
+make lint
+make build
+make test
+```
 
 Expected: zero formatting drift, lint failures, build warnings/errors, or test
 failures, with discovered tests at or above the configured minimum.
