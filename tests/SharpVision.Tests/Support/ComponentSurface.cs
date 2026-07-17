@@ -6,7 +6,10 @@ namespace SharpVision.Tests.Support;
 /// <summary>Mounts one control in a real application and exposes its modeled terminal surface.</summary>
 internal sealed class ComponentSurface: IAsyncDisposable
 {
-    private const VisualState _observableStates = VisualState.PointerOver | VisualState.Focused | VisualState.Pressed | VisualState.Disabled;
+    private const VisualState _observableStates = VisualState.PointerOver |
+        VisualState.Focused |
+        VisualState.Pressed |
+        VisualState.Disabled;
     private readonly Application _application;
     private readonly CancellationToken _cancellationToken;
     private readonly Control _mounted;
@@ -360,6 +363,32 @@ internal sealed class ComponentSurface: IAsyncDisposable
         }
 
         actual.ShouldBe(expected);
+    }
+
+    /// <summary>Asserts the exact public control that owns application keyboard focus.</summary>
+    /// <param name="expected">The owned control expected to own focus, or null.</param>
+    /// <exception cref="ArgumentException"><paramref name="expected"/> is not owned by this surface.</exception>
+    internal void ShouldHaveFocus(Control? expected)
+    {
+        if (expected is not null && !IsOwned(expected))
+        {
+            throw new ArgumentException("The focus target is not owned by this component surface.", nameof(expected));
+        }
+
+        _application.Focus.Focused.ShouldBeSameAs(expected);
+    }
+
+    /// <summary>Asserts the exact public control that owns application pointer capture.</summary>
+    /// <param name="expected">The owned control expected to own capture, or null.</param>
+    /// <exception cref="ArgumentException"><paramref name="expected"/> is not owned by this surface.</exception>
+    internal void ShouldHaveCapture(Control? expected)
+    {
+        if (expected is not null && !IsOwned(expected))
+        {
+            throw new ArgumentException("The capture target is not owned by this component surface.", nameof(expected));
+        }
+
+        _application.Capture.Captured.ShouldBeSameAs(expected);
     }
 
     /// <summary>Asserts exact fixed-size surface text with omitted trailing blanks right-padded.</summary>

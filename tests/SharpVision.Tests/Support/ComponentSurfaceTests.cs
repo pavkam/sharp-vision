@@ -72,6 +72,29 @@ public sealed class ComponentSurfaceTests
         surface.ShouldHaveState(checkBox, VisualState.Focused);
     }
 
+    /// <summary>Verifies distinct Kitty actions expose held and released keyboard state.</summary>
+    [Fact]
+    public async Task Keyboard_WhenSpacePressAndReleaseAreSeparate_ExposesBothStatesAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox { Content = new ControlText("Choice") };
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act and assert held state
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+        checkBox.IsChecked.ShouldBe(false);
+        surface.ShouldHaveState(checkBox, VisualState.Focused | VisualState.Pressed);
+
+        // Act and assert released state
+        await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
+        checkBox.IsChecked.ShouldBe(true);
+        surface.ShouldHaveState(checkBox, VisualState.Focused);
+    }
+
     /// <summary>Verifies terminal resize commits new geometry before the settled frame is exposed.</summary>
     [Fact]
     public async Task ResizeAsync_WhenSurfaceChanges_ReflowsMountedTextAsync()
@@ -247,5 +270,49 @@ public sealed class ComponentSurfaceTests
         checkBox.IsChecked.ShouldBe(false);
         surface.ShouldHaveState(checkBox, VisualState.Disabled);
         surface.ShouldRender("[ ] Disabled");
+    }
+
+    /// <summary>Verifies one decoded Shift+Tab moves backward through the mounted tree.</summary>
+    [Fact]
+    public async Task Keyboard_WhenShiftTabIsPressed_MovesFocusBackwardThroughMountedRootAsync()
+    {
+        // Arrange
+        var first = new Button { Content = new ControlText("First") };
+        var second = new Button { Content = new ControlText("Second") };
+        var root = new Stack { Children = { first, second } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(16, 4),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
+
+        // Assert
+        surface.ShouldHaveFocus(first);
+    }
+
+    /// <summary>Verifies terminal leave clears hover, press, and capture without clearing logical focus.</summary>
+    [Fact]
+    public async Task Pointer_WhenTerminalLeaveArrives_ClearsHoverHeldStateAndCaptureAsync()
+    {
+        // Arrange
+        var button = new Button { Content = new ControlText("Leave") };
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(button);
+        await surface.Pointer.PressAsync();
+
+        // Act
+        await surface.Pointer.LeaveAsync();
+
+        // Assert
+        surface.ShouldHaveState(button, VisualState.Focused);
+        surface.ShouldHaveFocus(button);
+        surface.ShouldHaveCapture(null);
     }
 }

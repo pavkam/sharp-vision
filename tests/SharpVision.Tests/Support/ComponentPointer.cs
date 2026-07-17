@@ -215,6 +215,16 @@ internal sealed class ComponentPointer
         await ReleaseAsync();
     }
 
+    /// <summary>Emits the terminal pointer-leave report and clears local held-input bookkeeping.</summary>
+    /// <returns>A task completed after hover, press, and capture cleanup settle.</returns>
+    internal async Task LeaveAsync()
+    {
+        await _surface.SendAsync("\u001b[<35;0;0M"u8.ToArray(), "leave terminal pointer surface");
+        _lastPoint = null;
+        _primaryModifiers = Modifiers.None;
+        _primaryPressed = false;
+    }
+
     private static byte[] Encode(int button, Point point, char final) =>
         Encoding.ASCII.GetBytes(
             FormattableString.Invariant($"\u001b[<{button};{point.X + 1};{point.Y + 1}{final}"));

@@ -133,6 +133,22 @@ internal sealed class PressBehavior
     private void HandlePointer(PointerEventArgs eventArgs)
     {
         var pointer = eventArgs.Pointer;
+
+        if (pointer.Action == PointerAction.Leave)
+        {
+            var wasHeld = _pointerHeld;
+            _pointerHeld = false;
+            _setPressed(false);
+
+            if (_hasPointerCapture())
+            {
+                _releasePointerCapture();
+            }
+
+            eventArgs.Handled = wasHeld;
+            return;
+        }
+
         if ((pointer.Buttons & Buttons.Primary) == 0)
         {
             if (pointer.Action == PointerAction.Press)

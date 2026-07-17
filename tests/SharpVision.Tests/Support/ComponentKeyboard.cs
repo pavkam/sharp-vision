@@ -49,6 +49,8 @@ internal sealed class ComponentKeyboard
             : (code, modifiers) switch
             {
                 (Code.Tab, Modifiers.None) => _surface.SendAsync("\t"u8.ToArray(), "press Tab"),
+                (Code.Tab, Modifiers.Shift) => _surface.SendAsync("\u001b[Z"u8.ToArray(), "press Shift+Tab"),
+                (Code.Escape, Modifiers.None) => _surface.SendAsync("\u001b[27u"u8.ToArray(), "press Escape"),
                 (Code.Up, Modifiers.None) => _surface.SendAsync("\u001b[A"u8.ToArray(), "press Up"),
                 (Code.Down, Modifiers.None) => _surface.SendAsync("\u001b[B"u8.ToArray(), "press Down"),
                 (Code.Left, Modifiers.None) => _surface.SendAsync("\u001b[D"u8.ToArray(), "press Left"),
@@ -103,14 +105,26 @@ internal sealed class ComponentKeyboard
     /// <exception cref="ArgumentException"><paramref name="value"/> is a control scalar.</exception>
     internal async Task CompleteCharacterAsync(Rune value)
     {
-        if (Rune.GetUnicodeCategory(value) == UnicodeCategory.Control)
-        {
-            throw new ArgumentException("A completed character cannot be a control scalar.", nameof(value));
-        }
-
-        await _surface.SendAsync(Encode(value, eventType: 1), $"press {value}");
-        await _surface.SendAsync(Encode(value, eventType: 3), $"release {value}");
+        await PressCharacterAsync(value);
+        await ReleaseCharacterAsync(value);
     }
+
+    /// <summary>Presses one printable scalar through a Kitty keyboard press action.</summary>
+    /// <param name="value">The Unicode scalar character to press.</param>
+    /// <returns>A task completed after the routed press and rendering settle.</returns>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is a control scalar.</exception>
+    internal Task PressCharacterAsync(Rune value) => SendCharacterAsync(value, 1, "press");
+
+    /// <summary>Releases one printable scalar through a Kitty keyboard release action.</summary>
+    /// <param name="value">The Unicode scalar character to release.</param>
+    /// <returns>A task completed after the routed release and rendering settle.</returns>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is a control scalar.</exception>
+    internal Task ReleaseCharacterAsync(Rune value) => SendCharacterAsync(value, 3, "release");
+
+    private Task SendCharacterAsync(Rune value, int eventType, string action)
+        => Rune.GetUnicodeCategory(value) == UnicodeCategory.Control
+            ? throw new ArgumentException("A keyboard character cannot be a control scalar.", nameof(value))
+            : _surface.SendAsync(Encode(value, eventType), $"{action} {value}");
 
     private static byte[] Encode(Rune value, int eventType) => Encoding.ASCII.GetBytes(
         FormattableString.Invariant($"\u001b[{value.Value};1:{eventType}u"));
