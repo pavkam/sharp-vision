@@ -177,6 +177,14 @@ windows, scrollbars, and intrinsic container scrolling must enumerate
 valid/invalid transitions and event order. Fake clocks drive hover/open delays,
 timers, idle, and repeated input without wall-clock sleeps.
 
+Animated display controls use the same deterministic application clock. Tests
+advance one interval at a time and compare consecutive complete semantic
+screens, not private frame indices. They prove pause/resume, interval restart,
+effective visibility, attachment, detachment, disposal, width-policy fallback,
+and timer coalescing without sleeping. `SpinnerSurfaceTests` and
+`ChaseIndicatorSurfaceTests` provide the mounted evidence required by the
+public-control behavior catalog.
+
 Menu mounted-surface proof sends real pointer motion, primary press/release,
 Tab, Shift+Tab, arrows, Enter, Space, and Escape. It asserts the menu remains
 the single focus stop, private faces receive hover and pressed states, compact

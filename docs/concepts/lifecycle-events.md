@@ -45,9 +45,11 @@ Frame rendered reports only a completed transport write and its damage/byte
 metrics. Failed frames produce diagnostics and force invalidation instead.
 
 `Idle` fires once per transition into no ready or pending work, after input,
-layout, and rendering, directly before waiting. Phase 4 exposes no timer or tick
-API; a later scheduler must post ordinary dispatcher work and must never emulate
-ticks by repeatedly invoking idle callbacks.
+timer callbacks, layout, and rendering, directly before waiting.
+`DispatcherTimer` posts coalesced ordinary dispatcher work and never emulates
+ticks by repeatedly invoking idle callbacks. A tick that invalidates rendering
+is followed by the normal render and frame-completion order before the next
+application idle transition.
 
 The dispatcher primitive enforces the empty ready/pending transition and
 handler-posted-work rule. `Application` now connects terminal input, layout, and
@@ -68,6 +70,7 @@ into committed layout and the public resize event ordering described above.
 
 ## Tests
 
-Record exact startup/shutdown, resize, frame, exception, and idle order. Cover
-cancellation, handler exceptions, work queued from events, invalidation from
-resize handlers, transport failure, repeated stop, and no-spin fake waits.
+Record exact startup/shutdown, resize, timer, frame, exception, and idle order.
+Cover cancellation, handler exceptions, work queued from events, timer-driven
+invalidation, invalidation from resize handlers, transport failure, repeated
+stop, and no-spin fake waits.

@@ -24,6 +24,8 @@ All controls derive from the
 - [Prism](display/prism.md#prism-contract)
 - [Separator](display/separator.md#separator-contract)
 - [ProgressBar](display/progress-bar.md#progressbar-contract)
+- [Spinner](display/spinner.md#spinner-contract)
+- [ChaseIndicator](display/chase-indicator.md#chaseindicator-contract)
 
 Border and shadow are intrinsic `Control` chrome configured through
 `BorderThickness`, `BorderGlyphs`, `HasShadow`, `ShadowMode`, and the related

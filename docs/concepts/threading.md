@@ -27,6 +27,27 @@ records through thread-safe bounded queues. They never call controls. Queue
 backpressure, coalescing policy, and shutdown behavior are explicit per record
 type.
 
+## Dispatcher timers
+
+`Dispatcher.Start` accepts one optional `TimeProvider`; null selects
+`TimeProvider.System`. `Application` passes one resolved provider to its
+dispatcher and other time-aware owned services. Tests may therefore advance the
+complete application clock without wall-clock sleeps.
+
+`DispatcherTimer` owns one provider timer and raises `Tick` only on its
+dispatcher. Its interval is from 1 through 2,147,483,647 milliseconds. It starts
+after one complete interval, changing a running interval restarts one complete
+new interval, and stopping retains handlers for a later restart. Start, stop,
+and interval mutation are dispatcher-affine. Disposal is thread-safe and
+idempotent.
+
+The provider callback never invokes user code. It posts at most one pending
+tick; elapsed periods while that tick is queued are skipped rather than replayed
+as a burst. A full dispatcher queue drops that period and permits a later period
+to try again. Stop, disposal, and dispatcher shutdown suppress posted ticks that
+have not begun. Tick handlers run outside locks and failures follow ordinary
+`Dispatcher.UnhandledException` policy.
+
 ## Locks and reentrancy
 
 No user callback, control method, layout callback, or renderer hook runs under
@@ -50,5 +71,6 @@ no user callback or terminal I/O runs under them.
 
 Cover off-thread failure before mutation, posted/invoked success, exception and
 cancellation propagation, FIFO ordering within priority, resize coalescing,
-shutdown races, bounded queues, callback reentrancy attempts, and absence of
-busy waits using a fake clock/waiter.
+shutdown races, bounded queues, callback reentrancy attempts, timer cadence,
+interval replacement, coalescing, stop/disposal races, handler failure, and
+absence of busy waits using a fake clock/waiter.
