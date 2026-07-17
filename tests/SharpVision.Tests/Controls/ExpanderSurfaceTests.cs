@@ -57,12 +57,12 @@ public sealed class ExpanderSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Act pointer
-        await surface.Pointer.ClickAsync(expander.HeaderPart);
+        await surface.Pointer.ClickAsync(expander, new Point(1, 0));
 
         // Assert pointer
         expander.IsExpanded.ShouldBeFalse();
         changes.ShouldBe(1);
-        surface.ShouldHaveState(expander.HeaderPart, State.Hovered | State.Focused);
+        surface.ShouldHaveState(expander, VisualState.PointerOver | VisualState.Focused);
 
         // Act Space then Enter
         await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
@@ -97,19 +97,19 @@ public sealed class ExpanderSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Act disabled input
-        await surface.Pointer.ClickAsync(expander.HeaderPart);
+        await surface.Pointer.ClickAsync(expander, new Point(1, 0));
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PressAsync(Code.Enter);
 
         // Assert disabled refusal
         expander.IsExpanded.ShouldBeFalse();
-        surface.ShouldHaveState(expander.HeaderPart, State.Disabled);
+        surface.ShouldHaveState(expander, VisualState.Disabled);
         surface.ShouldRender("▶ Policy");
 
         // Act replace while collapsed, enable, and expand
         await surface.UpdateAsync(() => expander.Content = second, "replace collapsed Expander content");
         await surface.UpdateAsync(() => expander.IsEnabled = true, "enable Expander");
-        await surface.Pointer.ClickAsync(expander.HeaderPart);
+        await surface.Pointer.ClickAsync(expander, new Point(1, 0));
 
         // Assert replacement reveal
         first.Parent.ShouldBeNull();
@@ -144,7 +144,7 @@ public sealed class ExpanderSurfaceTests
         await surface.ResizeAsync(new Size(12, 2));
 
         // Assert
-        expander.HeaderPart.Bounds.ShouldBe(new Rect(0, 0, 12, 1));
+        expander.Bounds.ShouldBe(new Rect(0, 0, 12, 2));
         expander.Content.Bounds.ShouldBe(new Rect(0, 1, 12, 1));
         surface.ShouldRender("""
             ▼ 界 Tools

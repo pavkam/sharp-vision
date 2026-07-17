@@ -97,23 +97,15 @@ public sealed class ScrollBarSurfaceTests
         surface.ShouldRender("<#>");
     }
 
-    /// <summary>Verifies hover, focus, pressed, and disabled state reaches every mounted rail cell.</summary>
+    /// <summary>Verifies hover, focus, pressed, and disabled state commits and cleans up.</summary>
     [Fact]
-    public async Task Pointer_WhenBehaviorStateChanges_CommitsResolvedAppearanceAndCleanupAsync()
+    public async Task Pointer_WhenBehaviorStateChanges_CommitsStateAndCleanupAsync()
     {
         // Arrange
-        var style = ThemeTestSupport.OverlayStyle<ScrollBar>(
-            (State.Normal, new ThemeOverlay(foreground: Color.Indexed(2))),
-            (State.Hovered, new ThemeOverlay(attributes: Attributes.Bold)),
-            (State.Focused, new ThemeOverlay(attributes: Attributes.Underline)),
-            (State.Hovered | State.Focused, new ThemeOverlay(attributes: Attributes.Bold | Attributes.Underline)),
-            (State.Pressed, new ThemeOverlay(foreground: Color.Indexed(5))),
-            (State.Disabled, new ThemeOverlay(foreground: Color.Indexed(8))));
         var bar = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
             Chrome = ScrollBarChrome.Full,
-            Style = style,
             Width = Length.Cells(6),
             Height = Length.Cells(1),
         };
@@ -121,29 +113,25 @@ public sealed class ScrollBarSurfaceTests
             bar,
             new Size(6, 1),
             TestContext.Current.CancellationToken);
-        surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(2));
 
         // Act hover and focus
         await surface.Pointer.MoveToAsync(bar, new Point(1, 0));
         await surface.Keyboard.PressAsync(Code.Tab);
 
         // Assert hover and focus
-        surface.ShouldHaveState(bar, State.Hovered | State.Focused);
-        surface.Cell(default).Style.Attributes.ShouldBe(Attributes.Bold | Attributes.Underline);
+        surface.ShouldHaveState(bar, VisualState.PointerOver | VisualState.Focused);
 
         // Act press
         await surface.Pointer.PressAsync();
 
         // Assert press
-        surface.ShouldHaveState(bar, State.Hovered | State.Focused | State.Pressed);
-        surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(5));
+        surface.ShouldHaveState(bar, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
 
         // Act disable during capture
         await surface.UpdateAsync(() => bar.IsEnabled = false, "disable pressed ScrollBar");
 
         // Assert unavailable cleanup
-        surface.ShouldHaveState(bar, State.Disabled);
-        surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(8));
+        surface.ShouldHaveState(bar, VisualState.Disabled);
     }
 
     /// <summary>Verifies arrows, pages, and endpoints decode through terminal bytes with typed causes.</summary>
@@ -185,7 +173,7 @@ public sealed class ScrollBarSurfaceTests
         // Assert
         bar.Value.ShouldBe(78);
         causes.ShouldBe(Enumerable.Repeat(Cause.Keyboard, 6));
-        surface.ShouldHaveState(bar, State.Focused);
+        surface.ShouldHaveState(bar, VisualState.Focused);
         surface.ShouldRender("<.....#..>");
     }
 
@@ -268,13 +256,13 @@ public sealed class ScrollBarSurfaceTests
         // Act press and held motion
         await surface.Pointer.MoveToAsync(bar, new Point(1, 0));
         await surface.Pointer.PressAsync();
-        surface.ShouldHaveState(bar, State.Hovered | State.Focused | State.Pressed);
+        surface.ShouldHaveState(bar, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
         await surface.Pointer.MovePressedToAsync(bar, new Point(6, 0));
 
         // Assert committed drag
         bar.Value.ShouldBe(56);
         changes.ShouldBe(1);
-        surface.ShouldHaveState(bar, State.Hovered | State.Focused | State.Pressed);
+        surface.ShouldHaveState(bar, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
 
         // Act cancellation and physical release
         await surface.UpdateAsync(() => bar.IsEnabled = false, "disable dragging ScrollBar");
@@ -285,6 +273,6 @@ public sealed class ScrollBarSurfaceTests
         changes.ShouldBe(1);
         bar.IsPressed.ShouldBeFalse();
         bar.IsFocused.ShouldBeFalse();
-        surface.ShouldHaveState(bar, State.Disabled);
+        surface.ShouldHaveState(bar, VisualState.Disabled);
     }
 }

@@ -21,7 +21,7 @@ public sealed class CheckBoxSurfaceTests
 
         // Assert
         checkBox.IsChecked.ShouldBe(false);
-        surface.ShouldHaveState(checkBox, State.Normal);
+        surface.ShouldHaveState(checkBox, VisualState.Normal);
         surface.ShouldRender("[ ] 界");
         surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(15));
         var wide = surface.Cell(new Point(4, 0));
@@ -45,20 +45,20 @@ public sealed class CheckBoxSurfaceTests
 
         // Act and assert hover
         await surface.Pointer.MoveToAsync(checkBox);
-        surface.ShouldHaveState(checkBox, State.Hovered);
+        surface.ShouldHaveState(checkBox, VisualState.PointerOver);
         surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(14));
 
         // Act and assert held press
         await surface.Pointer.PressAsync();
         checkBox.IsChecked.ShouldBe(false);
-        surface.ShouldHaveState(checkBox, State.Hovered | State.Focused | State.Pressed);
+        surface.ShouldHaveState(checkBox, VisualState.PointerOver | VisualState.Focused | VisualState.Pressed);
         surface.ShouldRender("[ ] Choice");
 
         // Act and assert release
         await surface.Pointer.ReleaseAsync();
         checkBox.IsChecked.ShouldBe(true);
         cause.ShouldBe(ActivationCause.Pointer);
-        surface.ShouldHaveState(checkBox, State.Hovered | State.Focused);
+        surface.ShouldHaveState(checkBox, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("[✓] Choice");
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Color.Indexed(14));
     }
@@ -82,7 +82,7 @@ public sealed class CheckBoxSurfaceTests
 
         // Act and assert focus
         await surface.Keyboard.PressAsync(Code.Tab);
-        surface.ShouldHaveState(checkBox, State.Focused);
+        surface.ShouldHaveState(checkBox, VisualState.Focused);
         surface.ShouldRender("[ ] Option");
 
         // Act
@@ -92,7 +92,7 @@ public sealed class CheckBoxSurfaceTests
         // Assert
         checkBox.IsChecked.ShouldBeNull();
         causes.ShouldBe([ActivationCause.Keyboard, ActivationCause.Keyboard]);
-        surface.ShouldHaveState(checkBox, State.Focused);
+        surface.ShouldHaveState(checkBox, VisualState.Focused);
         surface.ShouldRender("[─] Option");
         surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(11));
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Color.Indexed(11));
@@ -128,7 +128,7 @@ public sealed class CheckBoxSurfaceTests
         checkBox.IsChecked.ShouldBe(true);
         checkBox.IsFocused.ShouldBeFalse();
         changes.ShouldBe(0);
-        surface.ShouldHaveState(checkBox, State.Disabled);
+        surface.ShouldHaveState(checkBox, VisualState.Disabled);
         surface.ShouldRender("[✓] Disabled");
         var foreground = surface.Cell(default).Style.Foreground;
         foreground.Kind.ShouldBe(ColorKind.Indexed);

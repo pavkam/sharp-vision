@@ -176,7 +176,7 @@ public sealed class OwnedControlRegistryTests
         var second = new OwnershipObserverControl();
         branch.AddPrimary(first);
         branch.AddSecondary(second);
-        var context = new Theme();
+        var context = new Theme(Themes.Dark.Glyphs);
 
         await dispatcher.InvokeAsync(() =>
         {

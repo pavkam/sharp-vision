@@ -283,7 +283,7 @@ public sealed class CompositeControlTests
     {
         await using var dispatcher = Dispatcher.Start();
         var policy = new Policy(Ambiguous.Wide);
-        var context = new Theme();
+        var context = new Theme(Themes.Dark.Glyphs);
         var root = new OwnershipObserverControl();
         var owner = new ProbeCompositeControl(root);
 

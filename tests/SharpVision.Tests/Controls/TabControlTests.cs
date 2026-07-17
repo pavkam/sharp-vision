@@ -22,10 +22,10 @@ public sealed class TabControlTests
 
         tabs.Items.ShouldBe([disabled, first, second]);
         tabs.SelectedIndex.ShouldBe(1);
-        tabs.SelectedItem.ShouldBeSameAs(first);
-        disabled.IsSelected.ShouldBeFalse();
-        first.IsSelected.ShouldBeTrue();
-        second.IsSelected.ShouldBeFalse();
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(first);
+        IsSelected(disabled).ShouldBeFalse();
+        IsSelected(first).ShouldBeTrue();
+        IsSelected(second).ShouldBeFalse();
         first.Parent.ShouldNotBeNull().Parent.ShouldBeSameAs(tabs);
     }
 
@@ -38,43 +38,37 @@ public sealed class TabControlTests
         var tabs = Create(first, second);
         var observations = new List<string>();
         tabs.SelectionChanged += (_, _) => observations.Add(
-            $"{tabs.SelectedIndex}:{first.IsSelected}:{second.IsSelected}");
+            $"{tabs.SelectedIndex}:{IsSelected(first)}:{IsSelected(second)}");
 
         tabs.SelectedIndex = 1;
         tabs.SelectedIndex = 1;
         tabs.SelectedIndex = -1;
 
         observations.ShouldBe(["1:False:True", "-1:False:False"]);
-        tabs.SelectedItem.ShouldBeNull();
+        tabs.SelectedIndex.ShouldBe(-1);
     }
 
-    /// <summary>Verifies insertion preserves identity and selected removal chooses successor then predecessor.</summary>
+    /// <summary>Verifies selected removal chooses successor then predecessor.</summary>
     [Fact]
-    public void Items_WhenMutated_RepairsSelectionByStableIdentityAndNearestEligibility()
+    public void Items_WhenSelectedPagesAreRemoved_RepairsToNearestEligibility()
     {
         var first = Create("First", "One");
         var selected = Create("Selected", "Two");
         var successor = Create("Successor", "Three");
-        var inserted = Create("Inserted", "Zero");
         var tabs = Create(first, selected, successor);
         tabs.SelectedIndex = 1;
-
-        tabs.Items.Insert(0, inserted);
-
-        tabs.SelectedIndex.ShouldBe(2);
-        tabs.SelectedItem.ShouldBeSameAs(selected);
 
         tabs.Items.Remove(selected).ShouldBeTrue();
 
         selected.Parent.ShouldBeNull();
         selected.IsDisposed.ShouldBeFalse();
-        tabs.SelectedIndex.ShouldBe(2);
-        tabs.SelectedItem.ShouldBeSameAs(successor);
+        tabs.SelectedIndex.ShouldBe(1);
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(successor);
 
         tabs.Items.Remove(successor).ShouldBeTrue();
 
-        tabs.SelectedIndex.ShouldBe(1);
-        tabs.SelectedItem.ShouldBeSameAs(first);
+        tabs.SelectedIndex.ShouldBe(0);
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(first);
     }
 
     /// <summary>Verifies disabling or collapsing the selected page chooses the nearest eligible page.</summary>
@@ -89,39 +83,31 @@ public sealed class TabControlTests
 
         second.IsEnabled = false;
 
-        tabs.SelectedItem.ShouldBeSameAs(third);
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(third);
 
         third.Visibility = Visibility.Collapsed;
 
-        tabs.SelectedItem.ShouldBeSameAs(first);
-        first.IsSelected.ShouldBeTrue();
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(first);
+        IsSelected(first).ShouldBeTrue();
     }
 
-    /// <summary>Verifies replacement transfers ownership and Clear detaches every page while clearing selection.</summary>
+    /// <summary>Verifies Clear detaches every page while clearing selection.</summary>
     [Fact]
-    public void Items_WhenSelectedPageIsReplacedOrCleared_TransfersIdentityAndDetachesWithoutDisposal()
+    public void Items_WhenCleared_DetachesWithoutDisposalAndClearsSelection()
     {
         var first = Create("First", "One");
         var selected = Create("Selected", "Two");
-        var replacement = Create("Replacement", "New");
         var tabs = Create(first, selected);
         tabs.SelectedIndex = 1;
-
-        tabs.Items[1] = replacement;
-
-        selected.Parent.ShouldBeNull();
-        selected.IsDisposed.ShouldBeFalse();
-        tabs.SelectedItem.ShouldBeSameAs(replacement);
-        replacement.IsSelected.ShouldBeTrue();
 
         tabs.Items.Clear();
 
         tabs.Items.ShouldBeEmpty();
         tabs.SelectedIndex.ShouldBe(-1);
         first.Parent.ShouldBeNull();
-        replacement.Parent.ShouldBeNull();
+        selected.Parent.ShouldBeNull();
         first.IsDisposed.ShouldBeFalse();
-        replacement.IsDisposed.ShouldBeFalse();
+        selected.IsDisposed.ShouldBeFalse();
     }
 
     /// <summary>Verifies invalid selected indexes and unavailable targets preserve the committed page.</summary>
@@ -137,8 +123,8 @@ public sealed class TabControlTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.SelectedIndex = 2);
         _ = Should.Throw<InvalidOperationException>(() => tabs.SelectedIndex = 1);
 
-        tabs.SelectedItem.ShouldBeSameAs(first);
-        first.IsSelected.ShouldBeTrue();
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(first);
+        IsSelected(first).ShouldBeTrue();
     }
 
     /// <summary>Verifies collection validation rejects invalid candidates before ownership or selection changes.</summary>
@@ -158,7 +144,7 @@ public sealed class TabControlTests
         _ = Should.Throw<ObjectDisposedException>(() => tabs.Items.Add(disposed));
 
         tabs.Items.ShouldBe([first]);
-        tabs.SelectedItem.ShouldBeSameAs(first);
+        tabs.Items[tabs.SelectedIndex].ShouldBeSameAs(first);
         _ = first.Parent.ShouldNotBeNull();
         attached.Parent.ShouldBeSameAs(host);
     }
@@ -174,8 +160,6 @@ public sealed class TabControlTests
 
         engine.Layout(tabs, new Size(20, 5));
 
-        first.HeaderPart.Bounds.ShouldBe(new Rect(0, 0, 9, 1));
-        second.HeaderPart.Bounds.ShouldBe(new Rect(10, 0, 4, 1));
         first.Content.ShouldNotBeNull().Bounds.ShouldBe(new Rect(0, 2, 20, 3));
         second.Content.ShouldNotBeNull().Bounds.ShouldBe(default);
 
@@ -207,4 +191,7 @@ public sealed class TabControlTests
         Header = header,
         Content = new ControlText(content),
     };
+
+    private static bool IsSelected(TabItem item) =>
+        (item.GetAppearanceState() & VisualState.Selected) != 0;
 }

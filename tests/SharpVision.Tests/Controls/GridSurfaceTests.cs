@@ -126,7 +126,7 @@ public sealed class GridSurfaceTests
         right.Bounds.ShouldBe(new Rect(6, 3, 3, 1));
         collapsed.Bounds.ShouldBe(default);
         activated.ShouldBeTrue();
-        surface.ShouldHaveState(right, State.Hovered | State.Focused);
+        surface.ShouldHaveState(right, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
 
              HEADER

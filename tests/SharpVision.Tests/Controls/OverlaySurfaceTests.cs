@@ -68,7 +68,7 @@ public sealed class OverlaySurfaceTests
             "remove top Overlay child");
         await surface.Pointer.ClickAsync(high);
         clicked.ShouldBe("high");
-        surface.ShouldHaveState(high, State.Hovered | State.Focused);
+        surface.ShouldHaveState(high, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("HH");
     }
 

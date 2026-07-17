@@ -16,7 +16,6 @@ public sealed class ProgressBarSurfaceTests
             Minimum = 0,
             Maximum = 100,
             Value = 40,
-            FillMode = FillMode.Transparent,
             Foreground = Color.Indexed(3),
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -35,8 +34,8 @@ public sealed class ProgressBarSurfaceTests
 
         // Assert
         bar.Value.ShouldBe(100);
-        bar.IsHovered.ShouldBeFalse();
-        surface.ShouldHaveState(bar, State.Normal);
+        bar.IsPointerOver.ShouldBeFalse();
+        surface.ShouldHaveState(bar, VisualState.Normal);
         surface.ShouldRender("█████");
     }
 
@@ -51,7 +50,6 @@ public sealed class ProgressBarSurfaceTests
             Maximum = 100,
             Value = 40,
             Orientation = Orientation.Vertical,
-            FillMode = FillMode.Transparent,
         };
 
         // Act
@@ -78,7 +76,6 @@ public sealed class ProgressBarSurfaceTests
         var bar = new ProgressBar
         {
             IsIndeterminate = true,
-            FillMode = FillMode.Transparent,
         };
 
         // Act

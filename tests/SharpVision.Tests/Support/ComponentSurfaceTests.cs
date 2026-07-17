@@ -46,7 +46,7 @@ public sealed class ComponentSurfaceTests
 
         // Assert
         checkBox.IsFocused.ShouldBeTrue();
-        surface.ShouldHaveState(checkBox, State.Focused);
+        surface.ShouldHaveState(checkBox, VisualState.Focused);
     }
 
     /// <summary>Verifies a complete Kitty character action drives Pressable press and release behavior.</summary>
@@ -69,7 +69,7 @@ public sealed class ComponentSurfaceTests
         // Assert
         checkBox.IsChecked.ShouldBe(true);
         cause.ShouldBe(ActivationCause.Keyboard);
-        surface.ShouldHaveState(checkBox, State.Focused);
+        surface.ShouldHaveState(checkBox, VisualState.Focused);
     }
 
     /// <summary>Verifies terminal resize commits new geometry before the settled frame is exposed.</summary>
@@ -188,7 +188,7 @@ public sealed class ComponentSurfaceTests
         bar.Value.ShouldBe(100);
         bar.IsPressed.ShouldBeFalse();
         causes.ShouldBe([Cause.Pointer, Cause.Wheel, Cause.Pointer]);
-        surface.ShouldHaveState(bar, State.Focused | State.Hovered);
+        surface.ShouldHaveState(bar, VisualState.Focused | VisualState.PointerOver);
     }
 
     /// <summary>Verifies invalid relative pointer requests fail before any terminal action is emitted.</summary>
@@ -222,7 +222,7 @@ public sealed class ComponentSurfaceTests
             () => surface.Pointer.MovePressedToAsync(bar, default));
 
         bar.Value.ShouldBe(0);
-        surface.ShouldHaveState(bar, State.Normal);
+        surface.ShouldHaveState(bar, VisualState.Normal);
     }
 
     /// <summary>Verifies input that changes no control state still crosses the routed dispatcher fence.</summary>
@@ -245,7 +245,7 @@ public sealed class ComponentSurfaceTests
 
         // Assert
         checkBox.IsChecked.ShouldBe(false);
-        surface.ShouldHaveState(checkBox, State.Disabled);
+        surface.ShouldHaveState(checkBox, VisualState.Disabled);
         surface.ShouldRender("[ ] Disabled");
     }
 }

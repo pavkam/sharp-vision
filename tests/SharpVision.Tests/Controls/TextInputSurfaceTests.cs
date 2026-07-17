@@ -32,7 +32,7 @@ public sealed class TextInputSurfaceTests
         // Assert
         input.Text.ShouldBe("A\u0301界");
         input.CaretIndex.ShouldBe(3);
-        surface.ShouldHaveState(input, State.Focused);
+        surface.ShouldHaveState(input, VisualState.Focused);
         surface.ShouldRender("A\u0301界");
         surface.Cell(default).Text.ShouldBe("A\u0301");
         surface.Cell(new Point(1, 0)).Text.ShouldBe("界");
@@ -230,7 +230,7 @@ public sealed class TextInputSurfaceTests
         // Assert disabled editor
         disabled.Text.ShouldBe("Safe");
         disabled.IsFocused.ShouldBeFalse();
-        disabledSurface.ShouldHaveState(disabled, State.Disabled);
+        disabledSurface.ShouldHaveState(disabled, VisualState.Disabled);
         disabledSurface.ShouldHaveCursor(default, visible: false);
     }
 
@@ -291,7 +291,7 @@ public sealed class TextInputSurfaceTests
         input.SelectionStart.ShouldBe(0);
         input.SelectionLength.ShouldBe(4);
         input.SelectedText.ShouldBe("A界e\u0301");
-        surface.ShouldHaveState(input, State.Hovered | State.Focused);
+        surface.ShouldHaveState(input, VisualState.PointerOver | VisualState.Focused);
         (surface.Cell(default).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
         (surface.Cell(new Point(1, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
         (surface.Cell(new Point(2, 0)).Style.Attributes & Attributes.Reverse).ShouldBe(Attributes.Reverse);
@@ -328,7 +328,7 @@ public sealed class TextInputSurfaceTests
             ne ┃
             ━──
             """);
-        surface.ShouldHaveState(input, State.Hovered);
+        surface.ShouldHaveState(input, VisualState.PointerOver);
         surface.ShouldHaveCursor(default, visible: false);
     }
 

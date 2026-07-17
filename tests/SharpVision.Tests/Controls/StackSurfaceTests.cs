@@ -108,7 +108,7 @@ public sealed class StackSurfaceTests
         collapsed.Bounds.ShouldBe(default);
         first.Bounds.ShouldBe(new Rect(0, 2, 4, 1));
         activated.ShouldBe("B");
-        surface.ShouldHaveState(second, State.Hovered | State.Focused);
+        surface.ShouldHaveState(second, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
             B
 

@@ -13,7 +13,6 @@ public sealed class SeparatorSurfaceTests
         // Arrange
         var separator = new Separator
         {
-            FillMode = FillMode.Transparent,
             Foreground = Color.Indexed(3),
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -25,29 +24,24 @@ public sealed class SeparatorSurfaceTests
         await surface.Pointer.MoveToAsync(separator);
 
         // Assert
-        surface.ShouldHaveState(separator, State.Normal);
-        separator.IsHovered.ShouldBeFalse();
+        surface.ShouldHaveState(separator, VisualState.Normal);
+        separator.IsPointerOver.ShouldBeFalse();
         surface.ShouldRender("─────");
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(Color.Indexed(3));
     }
 
-    /// <summary>Verifies orientation and glyph mutation redraw the complete final line.</summary>
+    /// <summary>Verifies orientation mutation redraws the complete final line.</summary>
     [Fact]
     public async Task UpdateAsync_WhenOrientationChanges_ReplacesHorizontalWithVerticalLineAsync()
     {
         // Arrange
-        var separator = new Separator
-        {
-            FillMode = FillMode.Transparent,
-            HorizontalGlyph = new Rune('='),
-            VerticalGlyph = new Rune('!'),
-        };
+        var separator = new Separator();
         await using var surface = await ComponentSurface.MountAsync(
             separator,
             new Size(5, 3),
             TestContext.Current.CancellationToken);
         surface.ShouldRender("""
-            =====
+            ─────
 
 
             """);
@@ -59,19 +53,19 @@ public sealed class SeparatorSurfaceTests
 
         // Assert
         surface.ShouldRender("""
-            !
-            !
-            !
+            │
+            │
+            │
             """);
 
         // Act and assert resized length
         await surface.ResizeAsync(new Size(1, 5));
         surface.ShouldRender("""
-            !
-            !
-            !
-            !
-            !
+            │
+            │
+            │
+            │
+            │
             """);
     }
 

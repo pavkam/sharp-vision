@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies ProgressBar range, glyph, layout, and rendering contracts.</summary>
+/// <summary>Verifies ProgressBar range, layout, and rendering contracts.</summary>
 public sealed class ProgressBarTests
 {
     /// <summary>Verifies documented range, presentation, alignment, and interaction defaults.</summary>
@@ -19,9 +19,7 @@ public sealed class ProgressBarTests
         bar.Value.ShouldBe(0);
         bar.IsIndeterminate.ShouldBeFalse();
         bar.Orientation.ShouldBe(Orientation.Horizontal);
-        bar.FillGlyph.ShouldBe(new Rune('█'));
-        bar.TrackGlyph.ShouldBe(new Rune('░'));
-        bar.IndeterminateGlyph.ShouldBe(new Rune('▒'));
+        bar.UseSubCellResolution.ShouldBeFalse();
         bar.HorizontalAlignment.ShouldBe(HorizontalAlignment.Stretch);
         bar.VerticalAlignment.ShouldBe(VerticalAlignment.Stretch);
         bar.CanFocus.ShouldBeFalse();
@@ -86,7 +84,7 @@ public sealed class ProgressBarTests
         properties.ShouldBe([nameof(ProgressBar.Maximum), nameof(ProgressBar.Value)]);
     }
 
-    /// <summary>Verifies invalid endpoints and glyphs fail without changing valid state.</summary>
+    /// <summary>Verifies invalid endpoints and orientation fail without changing valid state.</summary>
     [Fact]
     public void Setters_WhenValuesAreInvalid_ThrowBeforeMutation()
     {
@@ -99,49 +97,35 @@ public sealed class ProgressBarTests
         _ = Should.Throw<ArgumentException>(() => bar.Minimum = 1);
         _ = Should.Throw<ArgumentException>(() => bar.Maximum = 0);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Orientation = (Orientation) 99);
-        _ = Should.Throw<ArgumentException>(() => bar.FillGlyph = new Rune('\n'));
-        _ = Should.Throw<ArgumentException>(() => bar.TrackGlyph = new Rune('界'));
-        _ = Should.Throw<ArgumentException>(() => bar.IndeterminateGlyph = new Rune('\0'));
 
         // Assert
         bar.Minimum.ShouldBe(0);
         bar.Maximum.ShouldBe(1);
         bar.Orientation.ShouldBe(Orientation.Horizontal);
-        bar.FillGlyph.ShouldBe(new Rune('█'));
-        bar.TrackGlyph.ShouldBe(new Rune('░'));
-        bar.IndeterminateGlyph.ShouldBe(new Rune('▒'));
+        bar.UseSubCellResolution.ShouldBeFalse();
     }
 
-    /// <summary>Verifies ambiguous custom glyphs degrade by semantic role without mutation.</summary>
+    /// <summary>Verifies sub-cell rendering uses deterministic eighth-cell blocks.</summary>
     [Fact]
-    public void Render_WhenConfiguredGlyphsBecomeWide_UsesPortableFallbacks()
+    public void Render_WhenSubCellResolutionIsEnabled_UsesFractionalBlock()
     {
         // Arrange
         var bar = new ProgressBar
         {
-            FillGlyph = new Rune('·'),
-            TrackGlyph = new Rune('·'),
-            IndeterminateGlyph = new Rune('·'),
+            Value = 0.5,
+            UseSubCellResolution = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
         };
-        bar.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(bar, new Size(1, 1));
-        using Frame frame = new(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
+        new Engine().Layout(bar, new Size(3, 1));
+        using Frame frame = new(new Size(3, 1));
 
-        // Act and assert track
+        // Act
         bar.Render(frame.Canvas);
-        FrameOracle.Get(frame, default).ShouldBe(".");
 
-        // Act and assert fill
-        bar.Value = 1;
-        bar.Render(frame.Canvas);
-        FrameOracle.Get(frame, default).ShouldBe("#");
-
-        // Act and assert indeterminate
-        bar.IsIndeterminate = true;
-        bar.Render(frame.Canvas);
-        FrameOracle.Get(frame, default).ShouldBe("?");
-        bar.FillGlyph.ShouldBe(new Rune('·'));
-        bar.TrackGlyph.ShouldBe(new Rune('·'));
-        bar.IndeterminateGlyph.ShouldBe(new Rune('·'));
+        // Assert
+        FrameOracle.Get(frame, default).ShouldBe("█");
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("▌");
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBeEmpty();
     }
 }

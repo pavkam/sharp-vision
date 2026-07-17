@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies Separator defaults, validation, layout, and safe glyph behavior.</summary>
+/// <summary>Verifies Separator defaults, validation, layout, and rendering.</summary>
 public sealed class SeparatorTests
 {
     /// <summary>Verifies the divider starts horizontal, one-cell, and non-interactive.</summary>
@@ -15,15 +15,13 @@ public sealed class SeparatorTests
 
         // Assert
         separator.Orientation.ShouldBe(Orientation.Horizontal);
-        separator.HorizontalGlyph.ShouldBe(new Rune('─'));
-        separator.VerticalGlyph.ShouldBe(new Rune('│'));
         separator.HorizontalAlignment.ShouldBe(HorizontalAlignment.Stretch);
         separator.VerticalAlignment.ShouldBe(VerticalAlignment.Stretch);
         separator.CanFocus.ShouldBeFalse();
         separator.IsHitTestVisible.ShouldBeFalse();
     }
 
-    /// <summary>Verifies invalid orientation and glyph values fail before observable mutation.</summary>
+    /// <summary>Verifies invalid orientation fails before observable mutation.</summary>
     [Fact]
     public void Setters_WhenValuesAreInvalid_ThrowBeforeMutation()
     {
@@ -33,13 +31,9 @@ public sealed class SeparatorTests
         // Act
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             separator.Orientation = (Orientation) 99);
-        _ = Should.Throw<ArgumentException>(() => separator.HorizontalGlyph = new Rune('\n'));
-        _ = Should.Throw<ArgumentException>(() => separator.VerticalGlyph = new Rune('界'));
 
         // Assert
         separator.Orientation.ShouldBe(Orientation.Horizontal);
-        separator.HorizontalGlyph.ShouldBe(new Rune('─'));
-        separator.VerticalGlyph.ShouldBe(new Rune('│'));
     }
 
     /// <summary>Verifies either orientation retains a one-cell intrinsic desired size.</summary>
@@ -58,22 +52,20 @@ public sealed class SeparatorTests
         separator.DesiredSize.ShouldBe(new Size(1, 1));
     }
 
-    /// <summary>Verifies an ambiguous custom glyph degrades without changing its configured value.</summary>
+    /// <summary>Verifies the built-in horizontal glyph fills the arranged row.</summary>
     [Fact]
-    public void Render_WhenConfiguredGlyphBecomesWide_UsesPortableFallback()
+    public void Render_WhenHorizontal_FillsTheArrangedRow()
     {
         // Arrange
-        var separator = new Separator { HorizontalGlyph = new Rune('·') };
-        separator.SetCellPolicy(new Policy(Ambiguous.Wide));
+        var separator = new Separator();
         new Engine().Layout(separator, new Size(3, 1));
-        using Frame frame = new(new Size(3, 1), ambiguousWidth: Ambiguous.Wide);
+        using Frame frame = new(new Size(3, 1));
 
         // Act
         separator.Render(frame.Canvas);
 
         // Assert
-        FrameOracle.Get(frame, default).ShouldBe("-");
-        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("-");
-        separator.HorizontalGlyph.ShouldBe(new Rune('·'));
+        FrameOracle.Get(frame, default).ShouldBe("─");
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("─");
     }
 }

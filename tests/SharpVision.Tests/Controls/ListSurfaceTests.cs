@@ -9,6 +9,39 @@ using UiList = List;
 /// <summary>Verifies List selection, focus, invocation, modifiers, scrolling, mutation, and cells through mounted surfaces.</summary>
 public sealed class ListSurfaceTests
 {
+    /// <summary>Verifies hover paints only the targeted row while the focus-owning List stays neutral.</summary>
+    [Fact]
+    public async Task Pointer_WhenMovedOverItem_HighlightsOnlyTargetedRowAsync()
+    {
+        // Arrange
+        List<Label> realized = [];
+        var list = new UiList
+        {
+            ItemTemplate = item => Add(realized, new Label((string) item!)),
+            Items = ["One", "Two", "Three"],
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 3),
+            TestContext.Current.CancellationToken);
+        var target = realized[1].Parent.ShouldNotBeNull();
+        var untouchedBackground = surface.Cell(default).Style.Background;
+        var hoverBackground = list.Theme.ShouldNotBeNull().Resolve(ThemeColor.From(ColorRole.Surface));
+
+        // Act
+        await surface.Pointer.MoveToAsync(target);
+
+        // Assert
+        list.IsPointerOver.ShouldBeTrue();
+        target.IsPointerOver.ShouldBeTrue();
+        surface.Cell(default).Style.Background.ShouldBe(untouchedBackground);
+        surface.Cell(new Point(0, 1)).Style.Background.ShouldBe(hoverBackground);
+        surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(untouchedBackground);
+    }
+
     /// <summary>Verifies pointer and keyboard paths commit selection, focus, invocation, and Unicode appearance.</summary>
     [Fact]
     public async Task Input_WhenPointerAndKeyboardNavigate_SelectsAndInvokesExactRowsAsync()
@@ -17,14 +50,11 @@ public sealed class ListSurfaceTests
         List<Label> realized = [];
         var selectionOrder = new List<string>();
         var invoked = new List<(int Index, ActivationCause Cause)>();
-        var style = ThemeTestSupport.OverlayStyle<UiList>(
-            (State.Selected, new ThemeOverlay(attributes: Attributes.Reverse)));
         var list = new UiList
         {
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = ["One", "界", "Three"],
             ScrollBars = ScrollBars.None,
-            Style = style,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
@@ -48,7 +78,7 @@ public sealed class ListSurfaceTests
         await surface.Keyboard.PressAsync(Code.Tab);
 
         // Assert focus entry
-        surface.ShouldHaveState(list, State.Focused);
+        surface.ShouldHaveState(list, VisualState.Focused);
 
         // Act pointer
         await surface.Pointer.ClickAsync(realized[1].Parent.ShouldNotBeNull());
@@ -56,8 +86,9 @@ public sealed class ListSurfaceTests
         // Assert pointer
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
-        surface.ShouldHaveState(realized[1].Parent.ShouldNotBeNull(), State.Hovered | State.Focused);
-        surface.Cell(new Point(0, 1)).Style.Attributes.HasFlag(Attributes.Reverse).ShouldBeTrue();
+        surface.ShouldHaveState(realized[1].Parent.ShouldNotBeNull(), VisualState.PointerOver | VisualState.Focused);
+        (realized[1].Parent.ShouldNotBeNull().GetAppearanceState() & VisualState.Selected)
+            .ShouldBe(VisualState.Selected);
         surface.Cell(new Point(1, 1)).IsContinuation.ShouldBeTrue();
         invoked.ShouldBe([(1, ActivationCause.Pointer)]);
 
@@ -70,7 +101,7 @@ public sealed class ListSurfaceTests
         // Assert keyboard
         list.SelectedIndex.ShouldBe(0);
         list.ActiveIndex.ShouldBe(2);
-        surface.ShouldHaveState(realized[2].Parent.ShouldNotBeNull(), State.Focused);
+        surface.ShouldHaveState(realized[2].Parent.ShouldNotBeNull(), VisualState.Focused);
         invoked.ShouldBe([(1, ActivationCause.Pointer), (0, ActivationCause.Keyboard)]);
         selectionOrder.ShouldBe([
             "changing:1:",
@@ -114,7 +145,7 @@ public sealed class ListSurfaceTests
 
         // Assert disabled skip
         list.ActiveIndex.ShouldBe(1);
-        surface.ShouldHaveState(realized[1].Parent.ShouldNotBeNull(), State.Focused);
+        surface.ShouldHaveState(realized[1].Parent.ShouldNotBeNull(), VisualState.Focused);
         realized[2].EffectiveIsEnabled.ShouldBeFalse();
     }
 

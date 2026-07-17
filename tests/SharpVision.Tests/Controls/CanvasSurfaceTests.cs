@@ -50,7 +50,7 @@ public sealed class CanvasSurfaceTests
         // Assert resized geometry
         clicked.ShouldBe(2);
         child.Bounds.ShouldBe(new Rect(3, 3, 2, 1));
-        surface.ShouldHaveState(child, State.Hovered | State.Focused);
+        surface.ShouldHaveState(child, VisualState.PointerOver | VisualState.Focused);
         surface.Cell(new Point(3, 3)).Text.ShouldBe("界");
         surface.Cell(new Point(4, 3)).IsContinuation.ShouldBeTrue();
         surface.Cell(new Point(2, 2)).Text.ShouldBe(" ");

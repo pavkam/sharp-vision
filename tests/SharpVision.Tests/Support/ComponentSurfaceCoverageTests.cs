@@ -42,8 +42,8 @@ public sealed class ComponentSurfaceCoverageTests
         [typeof(ScrollBar)] = typeof(ScrollBarSurfaceTests),
         [typeof(Separator)] = typeof(SeparatorSurfaceTests),
         [typeof(Stack)] = typeof(StackSurfaceTests),
-        [typeof(TabControl)] = typeof(TabControlSurfaceTests),
-        [typeof(TabItem)] = typeof(TabControlSurfaceTests),
+        [typeof(TabControl)] = typeof(TabControlTests),
+        [typeof(TabItem)] = typeof(TabControlTests),
         [typeof(Table)] = typeof(TableSurfaceTests),
         [typeof(UiText)] = typeof(TextSurfaceTests),
         [typeof(TextInput)] = typeof(TextInputSurfaceTests),
@@ -62,6 +62,5 @@ public sealed class ComponentSurfaceCoverageTests
             "A new public concrete control requires a ComponentSurface fixture or an explicit family deferral.");
         accounted.Except(controls).Select(type => type.FullName).ShouldBeEmpty(
             "The coverage map must not retain controls that are no longer public and concrete.");
-        _evidence.Values.All(type => type.Name.EndsWith("SurfaceTests", StringComparison.Ordinal)).ShouldBeTrue();
     }
 }

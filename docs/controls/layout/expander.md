@@ -9,10 +9,9 @@ or a primary pointer click on the header toggles visibility of the content
 region below. The header always renders a directional glyph (`▼` expanded, `▶`
 collapsed) followed by the header text.
 
-The header is one retained framework part created by the concrete constructor.
-It is not rebuilt when state changes. `Expander` is a style scope, so inherited
-style lookup crosses the retained header and caller content through the ordinary
-control ancestry.
+`Expander` itself is the focus, hover, and press owner for the header row. The
+header is rendered directly by the control and is not exposed as a public
+presentation child. Caller content remains the one ordinary owned child.
 
 ## API
 
@@ -27,8 +26,9 @@ control ancestry.
   expanded. Replacing content while collapsed immediately releases the previous
   child without changing expansion state.
 
-Inherited disabled state applies to the retained header. An unavailable header
-remains visible but pointer, Space, and Enter input cannot change expansion.
+Inherited disabled state applies to the semantic header owner. An unavailable
+header remains visible but pointer, Space, and Enter input cannot change
+expansion.
 
 ## Example
 

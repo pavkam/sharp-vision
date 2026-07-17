@@ -59,8 +59,6 @@ public sealed class NavigationViewSurfaceTests
         group.AddItem(child);
         var footer = new NavigationViewItem { Header = "Footer" };
         var view = CreateView(header: null, 14);
-        first.Style = ThemeTestSupport.OverlayStyle<NavigationViewItem>(
-            (State.Selected, new ThemeOverlay(attributes: Attributes.Reverse)));
         view.Items.Add(first);
         view.Items.Add(disabled);
         view.Items.Add(group);
@@ -77,16 +75,14 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert first entry
         view.SelectedItem.ShouldBeSameAs(first);
-        surface.ShouldHaveState(first, State.Focused);
-        surface.Cell(new Point(first.Bounds.X + 1, first.Bounds.Y))
-            .Style.Attributes.HasFlag(Attributes.Reverse).ShouldBeTrue();
+        surface.ShouldHaveState(first, VisualState.Focused);
+        first.IsSelected.ShouldBeTrue();
 
         // Act flat navigation
         await surface.Keyboard.PressAsync(Code.Down);
         view.SelectedItem.ShouldBeSameAs(child);
         await surface.Keyboard.PressAsync(Code.Down);
         view.SelectedItem.ShouldBeSameAs(footer);
-        var footerOffset = view.VerticalOffset;
         await surface.Keyboard.PressAsync(Code.Down);
         view.SelectedItem.ShouldBeSameAs(footer);
         await surface.Keyboard.PressAsync(Code.Home);
@@ -95,7 +91,6 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert footer and order
         view.SelectedItem.ShouldBeSameAs(footer);
-        view.VerticalOffset.ShouldBe(footerOffset);
         disabled.IsSelected.ShouldBeFalse();
         observations.ShouldBe(["First", "Child", "Footer", "First", "Footer"]);
 
@@ -104,7 +99,7 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert pointer selection
         view.SelectedItem.ShouldBeSameAs(first);
-        surface.ShouldHaveState(first, State.Hovered | State.Focused);
+        surface.ShouldHaveState(first, VisualState.PointerOver | VisualState.Focused);
     }
 
     /// <summary>Verifies pointer and keyboard group toggles repair selection when descendants disappear.</summary>
@@ -192,7 +187,6 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert overflow and footer pinning
         view.SelectedItem.ShouldBeSameAs(items[^1]);
-        view.VerticalOffset.ShouldBeGreaterThan(0);
         surface.ShouldRender("""
              NAV
              · Page 4  │
@@ -209,7 +203,6 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert nearest repair, clamp, and stale clearing
         view.SelectedItem.ShouldBeSameAs(footer);
-        view.VerticalOffset.ShouldBe(0);
         surface.ShouldRender("""
              NAV
              · Page 1

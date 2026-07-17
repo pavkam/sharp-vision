@@ -10,7 +10,7 @@ public sealed class ThemeColorTests
     [Fact]
     public void Resolve_WhenThemeColorIsRole_UsesThemePalette()
     {
-        var theme = new Theme();
+        var theme = new Theme(Themes.Dark.Glyphs);
         theme.SetColor(ColorRole.Accent, Color.Indexed(14));
         theme.Freeze();
 
@@ -23,7 +23,7 @@ public sealed class ThemeColorTests
     [Fact]
     public void Resolve_WhenThemeColorIsConcrete_PreservesColor()
     {
-        var theme = new Theme();
+        var theme = new Theme(Themes.Dark.Glyphs);
         var color = Color.Rgb(10, 20, 30);
 
         theme.Resolve(ThemeColor.From(color)).ShouldBe(color);

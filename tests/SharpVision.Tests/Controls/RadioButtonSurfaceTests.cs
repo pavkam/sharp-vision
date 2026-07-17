@@ -59,14 +59,14 @@ public sealed class RadioButtonSurfaceTests
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
         first.IsChecked.ShouldBeTrue();
-        surface.ShouldHaveState(first, State.Focused);
+        surface.ShouldHaveState(first, VisualState.Focused);
 
         // Act and assert disabled skipping
         await surface.Keyboard.PressAsync(Code.Down);
         first.IsChecked.ShouldBeFalse();
         third.IsChecked.ShouldBeTrue();
         third.IsFocused.ShouldBeTrue();
-        surface.ShouldHaveState(third, State.Focused);
+        surface.ShouldHaveState(third, VisualState.Focused);
         surface.ShouldRender("""
             ○ One
             ○ Skip
@@ -115,7 +115,7 @@ public sealed class RadioButtonSurfaceTests
         first.IsChecked.ShouldBeFalse();
         second.IsChecked.ShouldBeTrue();
         cause.ShouldBe(ActivationCause.Pointer);
-        surface.ShouldHaveState(second, State.Hovered | State.Focused);
+        surface.ShouldHaveState(second, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
             ○ One
             ◉ Two
@@ -149,7 +149,7 @@ public sealed class RadioButtonSurfaceTests
 
         // Assert
         radio.IsChecked.ShouldBeTrue();
-        surface.ShouldHaveState(radio, State.Disabled);
+        surface.ShouldHaveState(radio, VisualState.Disabled);
         surface.ShouldRender("◉ Locked");
         var mark = surface.Cell(default).Style.Foreground;
         mark.Kind.ShouldBe(ColorKind.Indexed);

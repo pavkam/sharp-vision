@@ -86,21 +86,18 @@ public sealed class GroupBoxSurfaceTests
             """);
     }
 
-    /// <summary>Verifies inherited foreground reaches content while border style remains explicit.</summary>
+    /// <summary>Verifies direct foreground reaches content while border color remains explicit.</summary>
     [Fact]
-    public async Task Render_WhenStyleIsInherited_AppliesResolvedForegroundAcrossFrameAndContentAsync()
+    public async Task Render_WhenAppearanceIsAssigned_AppliesForegroundAcrossFrameAndContentAsync()
     {
         // Arrange
-        var style = ThemeTestSupport.OverlayStyle<GroupBox>(
-            (State.Normal, new ThemeOverlay(
-                foreground: Color.Indexed(2),
-                borderColor: Color.Indexed(2))));
         var content = new ControlText("Styled");
         var group = new GroupBox
         {
             Header = "Theme",
             Content = content,
-            Style = style,
+            Foreground = Color.Indexed(2),
+            BorderColor = Color.Indexed(2),
             Width = Length.Cells(10),
             Height = Length.Cells(3),
         };

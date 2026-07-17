@@ -3,7 +3,7 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies Expander validation, retained composition, layout, events, and ownership.</summary>
+/// <summary>Verifies Expander validation, direct header rendering, layout, events, and ownership.</summary>
 public sealed class ExpanderTests
 {
     /// <summary>Verifies defaults and invalid header assignments preserve committed state.</summary>
@@ -15,8 +15,6 @@ public sealed class ExpanderTests
         expander.Header.ShouldBeEmpty();
         expander.IsExpanded.ShouldBeTrue();
         expander.Content.ShouldBeNull();
-        _ = expander.HeaderPart.ShouldNotBeNull();
-        expander.HeaderPart.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("▼");
 
         _ = Should.Throw<ArgumentNullException>(() => expander.Header = null!);
         _ = Should.Throw<ArgumentException>(() => expander.Header = "bad\nheader");
@@ -41,17 +39,17 @@ public sealed class ExpanderTests
         engine.Layout(expander, new Size(20, 8));
 
         expander.DesiredSize.ShouldBe(new Size(9, 3));
-        expander.HeaderPart.Bounds.ShouldBe(new Rect(0, 0, 9, 1));
         content.Bounds.ShouldBe(new Rect(0, 1, 9, 2));
 
         expander.IsExpanded = false;
         engine.Layout(expander, new Size(20, 8));
 
         expander.DesiredSize.ShouldBe(new Size(9, 1));
-        expander.HeaderPart.Bounds.ShouldBe(new Rect(0, 0, 9, 1));
         content.Bounds.ShouldBe(default);
         content.Parent.ShouldBeSameAs(expander);
-        expander.HeaderPart.Content.ShouldBeOfType<ControlText>().Content.ShouldBe("▶ Details");
+        using var frame = new Frame(new Size(9, 1));
+        expander.Render(frame.Canvas);
+        FrameOracle.Get(frame, default).ShouldBe("▶");
     }
 
     /// <summary>Verifies changed expansion publishes committed state once and identical assignment is a no-op.</summary>

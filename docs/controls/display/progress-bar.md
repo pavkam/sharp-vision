@@ -14,8 +14,8 @@ children.
 - `IsIndeterminate` selects the deterministic unknown-duration presentation.
 - `Orientation` controls horizontal left-to-right or vertical bottom-to-top
   filling. Default is `Horizontal`.
-- `FillGlyph`, `TrackGlyph`, and `IndeterminateGlyph` are printable one-cell
-  Runes. Their defaults are `█`, `░`, and `▒`.
+- `UseSubCellResolution` selects eighth-cell block resolution. Its default is
+  `false`, which draws complete `█` fill cells and `░` track cells.
 
 Non-finite values throw `ArgumentOutOfRangeException`. An endpoint that would
 make the range empty or reversed throws `ArgumentException`. All validation
@@ -25,13 +25,12 @@ same transaction; endpoint observers already see the clamped value, followed by
 
 Determinate rendering normalizes `(Value - Minimum) / (Maximum - Minimum)` and
 fills `floor(normalized * axisCells)` complete cells. The maximum fills every
-cell. Remaining cells use `TrackGlyph`. Horizontal fill starts at the left;
-vertical fill starts at the bottom. Indeterminate mode draws
-`IndeterminateGlyph` in every available axis cell and does not claim animation.
+cell. Remaining cells use `░`. Horizontal fill starts at the left; vertical fill
+starts at the bottom.
 
-Glyph setters validate under the narrow policy. If a configured glyph becomes
-wide under the inherited ambiguous-width policy, that frame uses portable `#`,
-`.`, or `?` cells without changing the configured property.
+When sub-cell resolution is enabled, horizontal bars use `▏▎▍▌▋▊▉█` and
+vertical bars use `▁▂▃▄▅▆▇█`. The built-in blocks are fixed presentation rather
+than caller-configurable glyph state.
 
 The intrinsic desired size is one cell by one cell and both alignment axes
 default to `Stretch`. Rendering uses the resolved visual-state style, draws
@@ -54,8 +53,7 @@ var bar = new ProgressBar
 
 Cover finite validation, range ordering, value clamping, endpoint notification
 visibility, horizontal and vertical fill direction, empty/partial/full values,
-deterministic indeterminate rendering, glyph validation and ambiguous fallback,
-zero/tiny bounds, mutation, resize, style inheritance, non-interactive hit
-testing, and final cells. `ProgressBarSurfaceTests` must prove the
-terminal-visible determinate and indeterminate states through a mounted
-application.
+sub-cell resolution, deterministic indeterminate rendering, zero/tiny bounds,
+mutation, resize, appearance inheritance, non-interactive hit testing, and
+final cells. `ProgressBarSurfaceTests` must prove terminal-visible determinate
+and indeterminate states through a mounted application.

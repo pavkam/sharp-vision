@@ -71,7 +71,7 @@ public sealed class DockSurfaceTests
         bottom.Bounds.ShouldBe(new Rect(2, 5, 6, 1));
         fill.Bounds.ShouldBe(new Rect(2, 1, 6, 4));
         clicked.ShouldBeTrue();
-        surface.ShouldHaveState(fill, State.Hovered | State.Focused);
+        surface.ShouldHaveState(fill, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
             LLTTTTTTTT
             LLFFFFFFRR
