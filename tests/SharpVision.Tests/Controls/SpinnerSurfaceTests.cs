@@ -8,6 +8,36 @@ using SharpVision.Tests.Input;
 /// <summary>Verifies Spinner playback through a mounted terminal surface.</summary>
 public sealed class SpinnerSurfaceTests
 {
+    /// <summary>Verifies every built-in sequence completes its exact documented cycle.</summary>
+    [Theory]
+    [InlineData(SpinnerPattern.Braille, "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")]
+    [InlineData(SpinnerPattern.DenseBraille, "⣿⣷⣯⣟⡿⢿⣻⣽")]
+    [InlineData(SpinnerPattern.Ascii, "|/-\\")]
+    public async Task AdvanceAsync_WhenPatternCycles_RendersEveryDocumentedFrameAsync(
+        SpinnerPattern pattern,
+        string expected)
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var spinner = new Spinner { Pattern = pattern };
+        await using var surface = await ComponentSurface.MountAsync(
+            spinner,
+            new Size(1, 1),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Act and assert
+        for (var index = 0; index < expected.Length; index++)
+        {
+            surface.ShouldRender(expected[index].ToString());
+            await surface.AdvanceAsync(
+                TimeSpan.FromMilliseconds(200),
+                $"advance {pattern} Spinner from frame {index}");
+        }
+
+        surface.ShouldRender(expected[0].ToString());
+    }
+
     /// <summary>Verifies exact default frames, cadence, styling, and excluded interaction.</summary>
     [ComponentBehaviorEvidence(
         typeof(Spinner),

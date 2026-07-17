@@ -8,6 +8,32 @@ using SharpVision.Tests.Input;
 /// <summary>Verifies ChaseIndicator playback through a mounted terminal surface.</summary>
 public sealed class ChaseIndicatorSurfaceTests
 {
+    /// <summary>Verifies the minimum track alternates endpoints and pattern changes reset phase.</summary>
+    [Fact]
+    public async Task AdvanceAsync_WhenLengthIsTwo_AlternatesAndResetsPatternAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var indicator = new ChaseIndicator { Length = 2 };
+        await using var surface = await ComponentSurface.MountAsync(
+            indicator,
+            new Size(2, 1),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Act and assert
+        surface.ShouldRender("●◯");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "reach second chase endpoint");
+        surface.ShouldRender("◯●");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "return to first chase endpoint");
+        surface.ShouldRender("●◯");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "move before pattern reset");
+        await surface.UpdateAsync(
+            () => indicator.Pattern = ChasePattern.Diamond,
+            "reset ChaseIndicator pattern");
+        surface.ShouldRender("◆◇");
+    }
+
     /// <summary>Verifies the exact forward and reverse cycle without duplicate endpoints.</summary>
     [ComponentBehaviorEvidence(
         typeof(ChaseIndicator),
