@@ -14,6 +14,7 @@ public sealed class Gallery: Screen
     [
         (ButtonPane.Title, static () => new ButtonPane()),
         (CanvasPane.Title, static () => new CanvasPane()),
+        (ChaseIndicatorPane.Title, static () => new ChaseIndicatorPane()),
         (CheckBoxPane.Title, static () => new CheckBoxPane()),
         (ColorPickerPane.Title, static () => new ColorPickerPane()),
         (ComboBoxPane.Title, static () => new ComboBoxPane()),
@@ -33,6 +34,7 @@ public sealed class Gallery: Screen
         (ScrollBarPane.Title, static () => new ScrollBarPane()),
         (SeparatorPane.Title, static () => new SeparatorPane()),
         (SliderPane.Title, static () => new SliderPane()),
+        (SpinnerPane.Title, static () => new SpinnerPane()),
         (StackPane.Title, static () => new StackPane()),
         (TabControlPane.Title, static () => new TabControlPane()),
         (TablePane.Title, static () => new TablePane()),

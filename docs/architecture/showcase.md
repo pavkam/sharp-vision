@@ -29,13 +29,13 @@ remain visually distinct from surrounding prose in every theme. `Doc.Card`,
 specimens.
 
 `Gallery` owns the stable catalog of pane titles and factories
-(`(string Name, Func<CompositeControl> Create)[]`). The sidebar contains 28
-entries: Button, Canvas, CheckBox, ColorPicker, ComboBox, Dock, Expander,
-FigletText, Grid, GroupBox, List, Menu, NavigationView, Overlay, Popup, Prism,
-ProgressBar, RadioButton, ScrollBar, Separator, Slider, Stack, TabControl,
-Table, Text, TextInput, Window, and Theming. Foundation types, intrinsic chrome
-such as border and shadow, and unimplemented specifications are not navigation
-entries.
+(`(string Name, Func<CompositeControl> Create)[]`). The sidebar contains 30
+entries: Button, Canvas, ChaseIndicator, CheckBox, ColorPicker, ComboBox, Dock,
+Expander, FigletText, Grid, GroupBox, List, Menu, NavigationView, Overlay,
+Popup, Prism, ProgressBar, RadioButton, ScrollBar, Separator, Slider, Spinner,
+Stack, TabControl, Table, Text, TextInput, Window, and Theming. Foundation
+types, intrinsic chrome such as border and shadow, and unimplemented
+specifications are not navigation entries.
 
 Each pane installs one `Doc.Page` composed of one or more `Doc.Example` blocks:
 an Overview paragraph stating the control's purpose, followed by labeled, live
@@ -143,7 +143,7 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 ## Test contract
 
-Showcase tests assert the exact 28-page inventory, Button as the initial page,
+Showcase tests assert the exact 30-page inventory, Button as the initial page,
 marked `Text` documentation coverage, fresh detached composite ownership, stable
 composition-root identity across first layout, no pane inheriting `Container`,
 and matching runtime control type. They render every page at 30 by 8, 80 by 24,

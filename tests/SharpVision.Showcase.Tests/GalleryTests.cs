@@ -11,6 +11,7 @@ public sealed class GalleryTests
     [
         "Button",
         "Canvas",
+        "ChaseIndicator",
         "CheckBox",
         "ColorPicker",
         "ComboBox",
@@ -30,6 +31,7 @@ public sealed class GalleryTests
         "ScrollBar",
         "Separator",
         "Slider",
+        "Spinner",
         "Stack",
         "TabControl",
         "Table",

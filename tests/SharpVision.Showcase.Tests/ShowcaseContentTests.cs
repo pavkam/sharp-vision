@@ -11,6 +11,7 @@ public sealed class ShowcaseContentTests
         {
             ["Button"] = ["Start here", "Commands", "Window roles", "Shadow depth"],
             ["Canvas"] = ["Canvas layout", "Constraints", "Drawing fundamentals", "Useful custom drawing"],
+            ["ChaseIndicator"] = ["Glyph families", "Track length", "Playback"],
             ["CheckBox"] = ["Two-state choice", "Three-state policy", "Marks", "Form recipe"],
             ["ColorPicker"] = ["Adaptive color depth", "True color", "Indexed palettes", "Keyboard and pointer"],
             ["ComboBox"] = ["Start here", "Commit versus dismiss", "Long choices", "Constrained placement"],
@@ -30,6 +31,7 @@ public sealed class ShowcaseContentTests
             ["ScrollBar"] = ["Range anatomy", "Input parity", "Live range", "Tiny rails"],
             ["Separator"] = ["Horizontal separator", "Vertical separator", "In context"],
             ["Slider"] = ["Range and value", "Orientation", "Signed ranges", "Keyboard and pointer"],
+            ["Spinner"] = ["Braille", "Dense rotation", "ASCII fallback", "Playback"],
             ["Stack"] = ["Orientation", "Mixed sizing", "Visibility", "Constrained space"],
             ["TabControl"] = ["Basic tabs", "Dynamic tabs"],
             ["Table"] = ["Column sizing", "Interactive cells", "Dynamic rows", "Boundary states"],
