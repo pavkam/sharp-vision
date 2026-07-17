@@ -36,9 +36,8 @@ overlapping edits instead of replacing them.
 ### Typed semantic glyph palette
 
 Add one complete immutable `ThemeGlyphs` value to `Theme`, composed from
-purpose-specific immutable groups. Theme files may override any semantic glyph
-or group, and loading fills omitted values from the SharpVision baseline glyph
-resource. Controls resolve a local value first and the active palette second.
+purpose-specific immutable groups. Every theme file defines every semantic
+glyph, and controls resolve a local value first and the active palette second.
 
 This is the selected approach. It keeps control classes independent of theme
 file structure, gives progress and border families coherent validation, and
@@ -117,12 +116,12 @@ use copied immutable storage.
 The resolution order is:
 
 ```text
-explicit control value -> active Theme.Glyphs value -> baseline glyph value
+explicit control value -> active Theme.Glyphs value
 ```
 
-The baseline applies when a control is detached or its application has no theme.
-A loaded `Theme` is complete, so the third step is normally needed only for
-detached controls and defensive repair.
+When a control is detached or its application has no theme, it resolves through
+the complete `Themes.Dark` palette. There is no separate control fallback table
+or legacy glyph source.
 
 Existing glyph properties retain their public types and behavior. Their backing
 state records whether the caller explicitly assigned a value; constructor
@@ -144,13 +143,13 @@ resolved theme glyphs across frames.
 
 ## Theme file contract
 
-Theme schema version 1 gains an optional `glyphs` object. Existing version 1
-files with no glyph data remain valid. The object is semantic and grouped in the
+Theme schema version 2 requires a complete `glyphs` object. Schema version 1 is
+removed and rejected as unsupported. The object is semantic and grouped in the
 same shape as the public palette; for example:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "roles": {
     "background": "idx:0",
     "foreground": "idx:15"
@@ -172,16 +171,15 @@ same shape as the public palette; for example:
 }
 ```
 
-Omitted groups and members inherit from a versioned embedded baseline glyph
-resource. The baseline is parsed by the same strict loader as user data, which
-keeps the default glyph source out of control renderers. A loaded `Theme`
-retains only the resolved typed palette, not parser dictionaries.
+Every group and member is required. Missing values fail with the exact JSON
+path, which prevents a theme from silently changing appearance when framework
+defaults evolve. A loaded `Theme` retains only the resolved typed palette, not
+parser dictionaries.
 
-The built-in dark and light themes include explicit glyph sections. At least one
-shipped showcase-selectable theme uses a visibly contrasting but terminal- safe
-set so live switching demonstrates that glyph theming is functional, not merely
-representable. Curated color themes may inherit the baseline when their source
-project has no meaningful glyph language.
+All shipped themes migrate to schema version 2 and include complete glyph
+sections. At least one showcase-selectable theme uses a visibly contrasting but
+terminal-safe set so live switching demonstrates that glyph theming is
+functional, not merely representable.
 
 Unknown root groups, unknown group members, duplicate names, wrong JSON kinds,
 and excessive collection sizes are rejected. Existing document byte, decoded
@@ -253,13 +251,13 @@ and proves the current literal is still rendered.
 
 The completed evidence includes:
 
-- legacy version 1 files with no `glyphs` data;
-- partial and complete glyph documents;
+- schema version 1 rejection;
+- missing and complete glyph documents;
 - frozen programmatic themes and immutable published sequences;
 - unknown keys, duplicates, wrong JSON kinds, malformed Unicode, control,
   zero-cell, wide, and multi-scalar values;
 - incorrect progress sequence length or endpoint disagreement;
-- detached baseline rendering;
+- detached rendering through `Themes.Dark.Glyphs`;
 - exact themed cells for every audited control glyph family;
 - same-value local assignments establishing overrides;
 - local override precedence and focused reset behavior;
@@ -274,14 +272,14 @@ properties, setters, and reset operations from packed NuGet packages.
 
 ## Delivery order
 
-1. Add failing theme palette, JSON compatibility, validation, and freeze tests.
-2. Implement the typed immutable glyph model, baseline resource, loader merge,
-   and public programmatic surface.
+1. Add failing theme palette, schema version 2, validation, and freeze tests.
+2. Implement the typed immutable glyph model, required loader contract, and
+   public programmatic surface.
 3. Add failing shared chrome tests, then migrate borders, shadows, repair, and
    window chrome.
 4. Add failing control tests and migrate progress, disclosure, selection,
    navigation, scrollbars, separators, tabs, and truncation in focused batches.
-5. Prove local override, reset, detached baseline, and live replacement paths.
+5. Prove local override, reset, detached-theme, and live replacement paths.
 6. Update built-in theme data, normative docs, XML documentation, and affected
    control specifications.
 7. Update the theme showcase and representative screen tests.
@@ -295,8 +293,8 @@ The work is complete only when:
 - every glyph selected by `src/SharpVision/Controls` resolves from a local
   override or `Theme.Glyphs`;
 - no control renderer selects a literal special drawing glyph or repair glyph;
-- old theme files remain loadable and malformed glyph data fails with bounded,
-  path-specific diagnostics;
+- schema version 1 files are rejected and malformed glyph data fails with
+  bounded, path-specific diagnostics;
 - every loaded theme exposes a complete immutable palette;
 - local overrides and reset behavior are deterministic across live theme
   replacement;
