@@ -709,6 +709,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
         if (!_initialized)
         {
+            Root.SetCapabilities(Capabilities);
             Root.Attach(
                 Dispatcher,
                 CellPolicy,
@@ -779,6 +780,7 @@ public sealed partial class Application: ISink, IAsyncDisposable
 
         if (_initialized)
         {
+            Root.SetCapabilities(value);
             Root.SetCellPolicy(CellPolicy);
         }
 

@@ -18,11 +18,12 @@ public sealed class ComboBox: Control
 
     #region Construction and properties
 
-    /// <summary>Initializes an empty combo box with a framed private popup list.</summary>
+    /// <summary>Initializes an empty combo box with a light field border and a framed private popup.</summary>
     public ComboBox()
     {
         _list = new List
         {
+            BorderThickness = default,
             SelectionMode = SelectionMode.Single,
             TabStop = false,
         };
@@ -57,6 +58,8 @@ public sealed class ComboBox: Control
             ReleasePointerCapture,
             SetPressed,
             Activate);
+        BorderThickness = new Thickness(1);
+        BorderGlyphs = Glyphs.Light;
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;

@@ -13,6 +13,20 @@ using TerminalText = Terminal.Input.Text;
 /// <summary>Verifies TextInput validation, editing, events, input, rendering, and history.</summary>
 public sealed class TextInputTests
 {
+    /// <summary>Verifies a text field is discoverable through light intrinsic chrome by default.</summary>
+    [Fact]
+    public void Properties_WhenConstructed_UsesLightFieldBorder()
+    {
+        // Arrange
+        var control = new TextInput();
+
+        // Act
+
+        // Assert
+        control.BorderThickness.ShouldBe(new Thickness(1));
+        control.BorderGlyphs.ShouldBe(Glyphs.Light);
+    }
+
     /// <summary>Verifies conservative defaults and every direct assignment validates before mutation.</summary>
     [Fact]
     public void Properties_WhenAssignmentsAreInvalid_PreservePreviousState()
@@ -153,6 +167,7 @@ public sealed class TextInputTests
     {
         var control = new TextInput()
         {
+            BorderThickness = default,
             Text = "Ae\u0301👩‍💻",
             PasswordCharacter = new Rune('*'),
             Width = Length.Cells(6),
@@ -190,7 +205,7 @@ public sealed class TextInputTests
     [Fact]
     public void Render_WhenSelectionContainsWideRune_StylesCompleteOwnedCells()
     {
-        var control = new TextInput() { Text = "A界Z" };
+        var control = new TextInput() { BorderThickness = default, Text = "A界Z" };
         control.Select(start: 1, length: 1);
         new Engine().Layout(control, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
@@ -204,13 +219,12 @@ public sealed class TextInputTests
         frame.GetCell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
     }
 
-    /// <summary>Verifies framework-owned intrinsic chrome reserves editor text and caret exactly once.</summary>
+    /// <summary>Verifies default intrinsic chrome reserves editor text and caret exactly once.</summary>
     [Fact]
-    public void Render_WhenBorderThicknessIsSet_InsetsEditorAndCaretExactlyOnce()
+    public void Render_WhenConstructed_InsetsEditorAndCaretInsideLightFrame()
     {
         var control = new TextInput()
         {
-            BorderThickness = new Thickness(1),
             Width = Length.Cells(6),
             Height = Length.Cells(3),
             Text = "A",
@@ -222,7 +236,10 @@ public sealed class TextInputTests
         control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("A");
-        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╭");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("┌");
+        FrameOracle.Get(frame, new Point(5, 0)).ShouldBe("┐");
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("└");
+        FrameOracle.Get(frame, new Point(5, 2)).ShouldBe("┘");
         frame.Cursor.Visible.ShouldBeTrue();
         frame.Cursor.Position.ShouldBe(new Point(2, 1));
     }
@@ -318,6 +335,7 @@ public sealed class TextInputTests
         var control = new TextInput()
         {
             AcceptsReturn = true,
+            BorderThickness = default,
             Text = "123456\nabcdef\nXYZ",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -342,6 +360,7 @@ public sealed class TextInputTests
         var control = new TextInput()
         {
             AcceptsReturn = true,
+            BorderThickness = default,
             Text = "abcdef\none\ntwo\nthree",
             CaretIndex = 0,
         };
@@ -370,6 +389,7 @@ public sealed class TextInputTests
     {
         var control = new TextInput()
         {
+            BorderThickness = default,
             Width = Length.Cells(8),
             Height = Length.Cells(3),
             AcceptsReturn = true,
@@ -393,6 +413,7 @@ public sealed class TextInputTests
     {
         var input = new TextInput()
         {
+            BorderThickness = default,
             Width = Length.Cells(5),
             Height = Length.Cells(2),
             AcceptsReturn = true,

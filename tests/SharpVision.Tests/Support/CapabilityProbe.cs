@@ -17,7 +17,9 @@ internal sealed class CapabilityProbe: Control
         Capabilities previous,
         Capabilities current)
     {
-        _ = previous;
-        Transitions.Add(current.ColorDepth);
+        if (previous.ColorDepth != current.ColorDepth)
+        {
+            Transitions.Add(current.ColorDepth);
+        }
     }
 }

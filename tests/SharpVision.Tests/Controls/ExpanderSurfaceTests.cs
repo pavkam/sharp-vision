@@ -6,6 +6,37 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies Expander appearance, activation, focus, content exclusion, replacement, and resize through mounted surfaces.</summary>
 public sealed class ExpanderSurfaceTests
 {
+    /// <summary>Verifies default square chrome owns the surface and insets header and content cells.</summary>
+    [Fact]
+    public async Task Render_WhenDefaultChromeIsUsed_DrawsSquareSurfaceAndInsetsContentAsync()
+    {
+        // Arrange
+        var expander = new Expander
+        {
+            Header = "Details",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(4),
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            expander,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+            ┌──────────┐
+            │▼ Details │
+            │Body      │
+            └──────────┘
+            """);
+        expander.Content.Bounds.ShouldBe(new Rect(1, 2, 10, 1));
+        surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(
+            expander.Theme.ShouldNotBeNull().Resolve(ThemeColor.From(ColorRole.Surface)));
+    }
+
     /// <summary>Verifies expanded and collapsed states draw exact header/content cells and remove stale rows.</summary>
     [Fact]
     public async Task UpdateAsync_WhenExpansionChanges_DrawsExactStateAndClearsContentAsync()
@@ -13,6 +44,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
+            BorderThickness = default,
             Header = "Details",
             Content = new ControlText("Body\nMore"),
             Width = Length.Cells(12),
@@ -54,6 +86,7 @@ public sealed class ExpanderSurfaceTests
         var changes = 0;
         var expander = new Expander
         {
+            BorderThickness = default,
             Header = "Input",
             Content = new ControlText("Content"),
             Width = Length.Cells(12),
@@ -108,6 +141,7 @@ public sealed class ExpanderSurfaceTests
         var second = new ControlText("Second");
         var expander = new Expander
         {
+            BorderThickness = default,
             Header = "Policy",
             IsExpanded = false,
             IsEnabled = false,
@@ -165,6 +199,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
+            BorderThickness = default,
             Header = "界 Tools",
             Content = new ControlText("abcdefgh") { Overflow = Overflow.WrapAnywhere },
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -198,6 +233,7 @@ public sealed class ExpanderSurfaceTests
         // Arrange
         var expander = new Expander
         {
+            BorderThickness = default,
             Header = "Details",
             IsExpanded = false,
             Content = new ControlText("Hidden"),

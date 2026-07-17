@@ -12,7 +12,7 @@
     "foreground": "idx:15",
     "background": "idx:0",
     "surface": "idx:8",
-    "border": "idx:8",
+    "border": "idx:7",
     "accent": "idx:14",
     "muted": "idx:8",
     "selectionBackground": "idx:4",

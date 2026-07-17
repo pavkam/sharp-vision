@@ -12,9 +12,10 @@ public sealed class ShowcaseContentTests
             ["Button"] = ["Start here", "Commands", "Window roles", "Shadow depth"],
             ["Canvas"] = ["Canvas layout", "Constraints", "Drawing fundamentals", "Useful custom drawing"],
             ["CheckBox"] = ["Two-state choice", "Three-state policy", "Marks", "Form recipe"],
+            ["ColorPicker"] = ["Adaptive color depth", "True color", "Indexed palettes", "Keyboard and pointer"],
             ["ComboBox"] = ["Start here", "Commit versus dismiss", "Long choices", "Constrained placement"],
             ["Dock"] = ["Application shell", "Order and spacing", "Sizing from the remainder", "Constrained space"],
-            ["Expander"] = ["Basic expander", "Nested expanders", "FAQ pattern"],
+            ["Expander"] = ["Basic expander", "Nested expanders", "FAQ pattern", "Rounded chrome override"],
             ["FigletText"] = ["Live editor", "Font comparison", "Layout options", "Large output"],
             ["Grid"] = ["Track fundamentals", "Percentage and limits", "Responsive form", "Constrained space"],
             ["GroupBox"] = ["Basic group", "Multiple groups", "Nested groups", "Glyph styles"],
@@ -28,6 +29,7 @@ public sealed class ShowcaseContentTests
             ["RadioButton"] = ["Named group", "Arrow traversal", "Unnamed scope", "Events"],
             ["ScrollBar"] = ["Range anatomy", "Input parity", "Live range", "Tiny rails"],
             ["Separator"] = ["Horizontal separator", "Vertical separator", "In context"],
+            ["Slider"] = ["Range and value", "Orientation", "Signed ranges", "Keyboard and pointer"],
             ["Stack"] = ["Orientation", "Mixed sizing", "Visibility", "Constrained space"],
             ["TabControl"] = ["Basic tabs", "Dynamic tabs"],
             ["Table"] = ["Column sizing", "Interactive cells", "Dynamic rows", "Boundary states"],
@@ -59,6 +61,30 @@ public sealed class ShowcaseContentTests
         surface.Padding.ShouldBe(new Thickness(1));
         var content = surface.Content.ShouldBeOfType<Stack>();
         content.Children.ShouldHaveSingleItem().ShouldBeSameAs(specimen);
+    }
+
+    /// <summary>Verifies collection and disclosure pages demonstrate their square semantic surface defaults.</summary>
+    [Fact]
+    public void Content_WhenFramedControlPagesBuild_UseSquareSurfaceDefaults()
+    {
+        // Arrange
+        using var listPage = new ListPane();
+        using var navigationPage = new NavigationViewPane();
+        using var expanderPage = new ExpanderPane();
+
+        // Act
+        var list = ControlTree.FindAll<List>(listPage)[0];
+        var navigation = ControlTree.FindAll<NavigationView>(navigationPage)[0];
+        var expander = ControlTree.FindAll<Expander>(expanderPage)
+            .Single(value => value.Header == "Advanced settings");
+
+        // Assert
+        foreach (var control in new Control[] { list, navigation, expander })
+        {
+            control.BorderThickness.ShouldBe(new Thickness(1));
+            control.BorderGlyphs.ShouldBe(Glyphs.Light);
+            control.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+        }
     }
 
     /// <summary>Verifies a section renders orientation, ordered examples, and escaped source text.</summary>

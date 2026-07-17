@@ -9,13 +9,28 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies popup-style combo box geometry, keyboard opening, focus, and committed selection.</summary>
 public sealed class ComboBoxTests
 {
-    /// <summary>Verifies a closed box presents only the selected label while its list is neither rendered nor hit-testable.</summary>
+    /// <summary>Verifies a combo field is discoverable through light intrinsic chrome by default.</summary>
     [Fact]
-    public void Render_WhenClosed_ShowsSelectedLabelWithoutDropDown()
+    public void Properties_WhenConstructed_UsesLightFieldBorder()
+    {
+        // Arrange
+        var box = new ComboBox();
+
+        // Act
+
+        // Assert
+        box.BorderThickness.ShouldBe(new Thickness(1));
+        box.BorderGlyphs.ShouldBe(Glyphs.Light);
+    }
+
+    /// <summary>Verifies a closed box frames only the selected label while its list remains unavailable.</summary>
+    [Fact]
+    public void Render_WhenClosed_ShowsSelectedLabelInsideLightFrameWithoutDropDown()
     {
         var box = new ComboBox()
         {
-            Height = Length.Cells(1),
+            Width = Length.Cells(12),
+            Height = Length.Cells(3),
             Items = ["Small", "Large"],
             SelectedIndex = 1,
         };
@@ -25,9 +40,14 @@ public sealed class ComboBoxTests
 
         box.Render(frame.Canvas);
 
-        FrameOracle.Get(frame, default).ShouldBe("L");
-        FrameOracle.Get(frame, new Point(0, 1)).ShouldBeEmpty();
-        box.HitTest(new Point(0, 1)).ShouldBeNull();
+        FrameOracle.Get(frame, default).ShouldBe("┌");
+        FrameOracle.Get(frame, new Point(11, 0)).ShouldBe("┐");
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("└");
+        FrameOracle.Get(frame, new Point(11, 2)).ShouldBe("┘");
+        FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("L");
+        FrameOracle.Get(frame, new Point(10, 1)).ShouldBe("▼");
+        FrameOracle.Get(frame, new Point(0, 3)).ShouldBeEmpty();
+        box.HitTest(new Point(0, 3)).ShouldBeNull();
     }
 
     /// <summary>Verifies the field owns only a Popup and the Popup exclusively owns the private List.</summary>
@@ -42,6 +62,7 @@ public sealed class ComboBoxTests
         popup.Parent.ShouldBeSameAs(box);
         list.Parent.ShouldBeSameAs(popup);
         popup.Content.ShouldBeSameAs(list);
+        list.BorderThickness.ShouldBe(default);
     }
 
     /// <summary>Verifies ComboBox publishes its committed index before forwarding selection change.</summary>

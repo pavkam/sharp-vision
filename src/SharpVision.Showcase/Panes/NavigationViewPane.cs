@@ -13,13 +13,13 @@ internal sealed class NavigationViewPane: CompositeControl
     private static Dock CreateContent()
     {
         var status = new Text("Selected: Dashboard");
-        var basic = new NavigationView { Header = "MY APP", Width = Length.Cells(24), Height = Length.Cells(12), BorderThickness = new Thickness(1), BorderGlyphs = Glyphs.Rounded };
+        var basic = new NavigationView { Header = "MY APP", Width = Length.Cells(24), Height = Length.Cells(12) };
         basic.Items.Add(new NavigationViewItem { Header = "界 Dashboard" });
         basic.Items.Add(new NavigationViewItem { Header = "Reports", Glyph = "📈" });
         basic.Items.Add(new NavigationViewItem { Header = "Settings", Glyph = "⚙", IsEnabled = false });
         basic.SelectionChanged += (_, _) => status.Content = $"Selected: {basic.SelectedItem?.Header ?? "none"}";
 
-        var grouped = new NavigationView { Header = "PROJECT", Width = Length.Cells(24), Height = Length.Cells(16), BorderThickness = new Thickness(1), BorderGlyphs = Glyphs.Rounded };
+        var grouped = new NavigationView { Header = "PROJECT", Width = Length.Cells(24), Height = Length.Cells(16) };
         var core = new NavigationViewGroup { Header = "Core" };
         core.AddItem(new NavigationViewItem { Header = "Models" });
         core.AddItem(new NavigationViewItem { Header = "Services" });
@@ -30,13 +30,13 @@ internal sealed class NavigationViewPane: CompositeControl
         grouped.Items.Add(new NavigationViewSeparator());
         grouped.Items.Add(tests);
 
-        var footer = new NavigationView { Header = "SETTINGS", Width = Length.Cells(24), Height = Length.Cells(10), BorderThickness = new Thickness(1), BorderGlyphs = Glyphs.Rounded };
+        var footer = new NavigationView { Header = "SETTINGS", Width = Length.Cells(24), Height = Length.Cells(10) };
         footer.Items.Add(new NavigationViewItem { Header = "General" });
         footer.Items.Add(new NavigationViewItem { Header = "Appearance" });
         footer.FooterItems.Add(new NavigationViewSeparator());
         footer.FooterItems.Add(new NavigationViewItem { Header = "About" });
 
-        var overflow = new NavigationView { Header = "LONG", Width = Length.Cells(24), Height = Length.Cells(8), BorderThickness = new Thickness(1), BorderGlyphs = Glyphs.Rounded };
+        var overflow = new NavigationView { Header = "LONG", Width = Length.Cells(24), Height = Length.Cells(8) };
         for (var index = 1; index <= 8; index++)
         {
             overflow.Items.Add(new NavigationViewItem { Header = $"Destination {index}" });

@@ -15,6 +15,9 @@ border frame with an optional header label in the top edge, like a
   inside the preserved top corners and clips only within that interior.
 - `Glyphs` controls the terminal-safe glyph family for the border frame. Default
   is `Glyphs.Rounded`.
+- `Background` defaults to the semantic `Surface` role and `BorderColor`
+  defaults to the semantic `Border` role. Built-in themes keep those roles
+  visually distinct so the frame remains visible around the opaque interior.
 - `Content` is the single owned child, arranged inside the one-cell border
   inset. Use a [`Stack`](stack.md), [`Grid`](grid.md), or other layout container
   as content for multiple children.

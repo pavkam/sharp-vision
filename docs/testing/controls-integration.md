@@ -155,6 +155,13 @@ incremental bytes, and cleared stale item rows. A separate editor path adds
 owned bracketed paste containing a combining sequence, legacy Left, and
 Backspace checkpoints.
 
+`SliderSurfaceTests` mounts one rail and proves hover, Tab focus, directional
+keys, direct pointer selection, capture, semantic press state, exact cells, and
+disable cleanup. `ColorPickerSurfaceTests` mounts its retained true-color branch
+and proves owner hover, focus delegation, semantic selection, preview cells,
+composition ownership, and transitive capture cleanup. The component behavior
+catalog requires both fixtures before either exported control is accepted.
+
 `ScrollingTests` first sends 20 raw SGR wheel reports into nested hidden-bar
 Stacks with intrinsic `AutoScroll` and proves exact inner consumption, outward
 remainder, and resize clamping. A second application uses automatic bars on both

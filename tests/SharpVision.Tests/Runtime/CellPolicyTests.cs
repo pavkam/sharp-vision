@@ -74,7 +74,7 @@ public sealed class CellPolicyTests
         {
             var policy = new Policy(Ambiguous.Wide);
             var text = new TextControl("<b>·</b>");
-            var input = new TextInputControl() { Text = "·" };
+            var input = new TextInputControl() { BorderThickness = default, Text = "·" };
             text.Attach(dispatcher, policy);
             input.Attach(dispatcher, policy);
             var engine = new LayoutEngine();

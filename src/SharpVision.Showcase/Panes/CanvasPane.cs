@@ -62,7 +62,7 @@ internal sealed class CanvasPane: CompositeControl
         constraintStage.Children.Add(stretched);
 
         var explicitStage = Stage();
-        var explicitSize = Card("Explicit 12 cells", Glyphs.Heavy);
+        var explicitSize = Card("12 cells", Glyphs.Heavy);
         explicitSize.Width = Length.Cells(12);
         Canvas.SetLeft(explicitSize, Length.Cells(2));
         Canvas.SetRight(explicitSize, Length.Cells(2));
@@ -239,16 +239,7 @@ internal sealed class CanvasPane: CompositeControl
                     "Maze with merged junctions",
                     "Overlapping DrawHorizontalLine and DrawVerticalLine calls produce a maze where every intersection merges deterministically.",
                     new CanvasMazeSample(),
-                    "canvas.DrawBox(outer, LineStyle.Light, style);\ncanvas.DrawVerticalLine(wall, height, LineStyle.Light, style);\ncanvas.DrawHorizontalLine(floor, width, LineStyle.Light, style);")),
-            Doc.Section(
-                "🎨",
-                "Color palette",
-                "Indexed terminal colors rendered as solid blocks. Sixteen standard, 216-cube sample, and 24-level grayscale ramp.",
-                Doc.Example(
-                    "Terminal color grid",
-                    "Color.Indexed(n) maps directly to the terminal's 256-color palette for controls and custom drawing alike.",
-                    new CanvasColorGridSample(),
-                    "var color = Color.Indexed(index);\ncanvas.Fill(region, new Rune('█'), new CellStyle(color, Color.Default));")));
+                    "canvas.DrawBox(outer, LineStyle.Light, style);\ncanvas.DrawVerticalLine(wall, height, LineStyle.Light, style);\ncanvas.DrawHorizontalLine(floor, width, LineStyle.Light, style);")));
     }
 
     private static Canvas Stage() => new()

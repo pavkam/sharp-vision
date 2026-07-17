@@ -78,7 +78,13 @@ public sealed class ComponentCompositionSurfaceTests
         var label = new ControlText("Deep");
         var leaf = new CheckBox { Content = label };
         var inner = new Stack { Children = { leaf } };
-        var expander = new Expander { Header = "Section", Content = inner, IsExpanded = true };
+        var expander = new Expander
+        {
+            Header = "Section",
+            Content = inner,
+            IsExpanded = true,
+            BorderThickness = default,
+        };
         var group = new GroupBox { Header = "Group", Content = expander, Glyphs = Glyphs.Rounded };
         var window = new Window
         {

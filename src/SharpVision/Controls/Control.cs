@@ -635,6 +635,35 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             configure: null);
     }
 
+    /// <summary>Attaches a root and descendants with cell and terminal capability context.</summary>
+    /// <param name="dispatcher">The non-null owning dispatcher.</param>
+    /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>
+    /// <param name="capabilities">The non-null inherited terminal capability profile.</param>
+    /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
+    /// <exception cref="ArgumentException">Any descendant is already attached.</exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher or this control is owned.</exception>
+    /// <exception cref="ObjectDisposedException">Any descendant is disposed.</exception>
+    internal void Attach(
+        Dispatcher dispatcher,
+        Policy cellPolicy,
+        TerminalCapabilities capabilities)
+    {
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        ArgumentNullException.ThrowIfNull(cellPolicy);
+        ArgumentNullException.ThrowIfNull(capabilities);
+        VerifyLifecycleRoot();
+        dispatcher.VerifyAccess();
+        ValidateAttachment();
+        SetCapabilities(capabilities);
+        CommitAndPublishContext(
+            dispatcher,
+            cellPolicy,
+            FocusOwner,
+            CaptureOwner,
+            InheritedTheme,
+            configure: null);
+    }
+
     /// <summary>Stages application-root context and publishes lifecycle only after managers are configured.</summary>
     /// <param name="dispatcher">The non-null owning dispatcher.</param>
     /// <param name="cellPolicy">The non-null inherited Unicode cell policy.</param>

@@ -112,7 +112,7 @@ internal sealed class TextInputPane: CompositeControl
         var multiline = new TextInput()
         {
             Width = Length.Cells(28),
-            Height = Length.Cells(3),
+            Height = Length.Cells(5),
             AcceptsReturn = true,
             AcceptsTab = true,
             ScrollBars = ScrollBars.Vertical,

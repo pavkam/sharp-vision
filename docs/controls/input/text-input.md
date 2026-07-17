@@ -5,6 +5,15 @@
 `TextInput` is a focusable single- or multiline editor whose caret and selection
 indices are valid grapheme boundaries.
 
+## Default field chrome
+
+`TextInput` defaults to a one-cell border on every edge with `Glyphs.Light`. The
+intrinsic [shared chrome](../../concepts/styling.md#shared-chrome) reserves
+those cells before the editor viewport, so text, selection, caret, pointer
+mapping, and owned scrollbars all use the inset content box. Callers may choose
+another glyph family through `BorderGlyphs` or opt out explicitly with
+`BorderThickness = default`.
+
 All mutation first runs through the pure
 [`Edit`](../../../src/SharpVision/Text/Edit.cs) transaction model. It stores
 immutable strings and a directional

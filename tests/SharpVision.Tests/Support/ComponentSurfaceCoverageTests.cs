@@ -86,6 +86,18 @@ public sealed class ComponentSurfaceCoverageTests
             ComponentBehavior.PressRelease |
             ComponentBehavior.Activation |
             ComponentBehavior.UnavailableCleanup),
+        [typeof(Slider)] = Requirement<SliderSurfaceTests>(
+            _interactive |
+            ComponentBehavior.Directional |
+            ComponentBehavior.PressRelease |
+            ComponentBehavior.Activation |
+            ComponentBehavior.UnavailableCleanup),
+        [typeof(ColorPicker)] = Requirement<ColorPickerSurfaceTests>(
+            _passive |
+            ComponentBehavior.Hover |
+            ComponentBehavior.Activation |
+            ComponentBehavior.UnavailableCleanup |
+            ComponentBehavior.Composition),
         [typeof(List)] = Requirement<ListSurfaceTests>(
             _interactive |
             ComponentBehavior.Directional |

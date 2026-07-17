@@ -9,6 +9,8 @@ public sealed class GroupBox: ContentControl
     /// <summary>Initializes an empty group box.</summary>
     public GroupBox()
     {
+        Background = ColorRole.Surface;
+        BorderColor = ColorRole.Border;
         BorderThickness = new Thickness(1);
         BorderGlyphs = Glyphs.Rounded;
     }

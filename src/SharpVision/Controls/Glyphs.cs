@@ -88,6 +88,17 @@ public readonly record struct Glyphs
     /// <summary>Gets a full-block border set.</summary>
     public static Glyphs Solid { get; } = Uniform(new Rune('█'));
 
+    /// <summary>Gets a sculpted border set built from half-block edges and matching corner blocks.</summary>
+    public static Glyphs HalfBlock { get; } = new(
+        new Rune('▛'),
+        new Rune('▀'),
+        new Rune('▜'),
+        new Rune('▐'),
+        new Rune('▟'),
+        new Rune('▄'),
+        new Rune('▙'),
+        new Rune('▌'));
+
     /// <summary>Gets a light-shade border set.</summary>
     public static Glyphs LightShade { get; } = Uniform(new Rune('░'));
 

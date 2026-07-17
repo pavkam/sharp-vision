@@ -3,8 +3,8 @@
 ## Goal
 
 Make semantically bounded controls read as distinct fields or surfaces by
-default, and make every live Showcase specimen communicate its scenario
-without accidental truncation or unexplained shorthand.
+default, and make every live Showcase specimen communicate its scenario without
+accidental truncation or unexplained shorthand.
 
 ## Semantic frame policy
 
@@ -15,8 +15,8 @@ interactive fields while avoiding incidental frames around content and layout
 implementation details.
 
 `TextInput`, `ComboBox`, `Button`, `List`, `NavigationView`, `Expander`,
-`GroupBox`, `Popup`, and `Window` therefore present bounded chrome through
-their dedicated control contracts. Pure content controls such as `Text` and
+`GroupBox`, `Popup`, and `Window` therefore present bounded chrome through their
+dedicated control contracts. Pure content controls such as `Text` and
 `FigletText`; layout controls such as `Stack`, `Grid`, `Dock`, `Overlay`, and
 `Canvas`; and semantic item rows, separators, tracks, and indicators remain
 borderless unless their own control contract explicitly states otherwise.
@@ -70,8 +70,8 @@ foreground treatment remains unchanged.
 The `NavigationView`, `List`, `Expander`, `TextInput`, and `ComboBox` pages
 demonstrate their constructor defaults rather than repeating explicit frame
 configuration. At least one example may deliberately override the default with
-rounded or borderless chrome, but its heading and description must state that
-it is an override.
+rounded or borderless chrome, but its heading and description must state that it
+is an override.
 
 Every live page under `src/SharpVision.Showcase/Panes/` is audited at the
 supported wide Showcase layout. A specimen is corrected when fixed geometry,
@@ -96,8 +96,8 @@ The `List`, `NavigationView`, and `Expander` control specifications state the
 new frame, glyph, and background defaults plus the transparent normal-content
 rule. The `TextInput` and `ComboBox` specifications state their light frame
 defaults and explicit borderless opt-out. The Showcase architecture contract
-requires live specimen labels to be self-explanatory and fully visible unless
-a documented clipping example is teaching overflow behavior.
+requires live specimen labels to be self-explanatory and fully visible unless a
+documented clipping example is teaching overflow behavior.
 
 ## Proof
 

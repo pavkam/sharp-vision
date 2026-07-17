@@ -8,6 +8,30 @@ namespace SharpVision.Showcase.Tests;
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
 public sealed class ThemeGalleryTests
 {
+    /// <summary>Verifies the half-block border specimen renders its complete sculpted frame.</summary>
+    [Fact]
+    public void ThemingPane_WhenHalfBlockChromeRenders_ShowsExactBorderSurface()
+    {
+        // Arrange
+        using var page = new ThemingPane();
+        var size = new Size(140, 180);
+        new Engine().Layout(page, size);
+        using Frame frame = new(size);
+        var specimen = Find<Dock>(page, static value =>
+            value.BorderThickness == new Thickness(1) &&
+            value.BorderGlyphs == Glyphs.HalfBlock).ShouldNotBeNull();
+
+        // Act
+        page.Render(frame.Canvas);
+        var screen = new Screen(frame);
+
+        // Assert
+        new Size(specimen.Bounds.Width, specimen.Bounds.Height).ShouldBe(new Size(32, 3));
+        screen.Text.ShouldContain($"▛{new string('▀', 30)}▜");
+        screen.Text.ShouldContain($"▙{new string('▄', 30)}▟");
+        screen.Text.ShouldContain("▌Half-block border preset      ▐");
+    }
+
     /// <summary>Verifies the theming page includes controls whose drawing glyphs have no local overrides.</summary>
     [Fact]
     public void ThemingPane_WhenBuilt_DemonstratesThemeOwnedGlyphs()

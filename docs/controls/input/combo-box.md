@@ -19,6 +19,19 @@ that `Popup.Content` owns the private List. Keyboard and pointer press mechanics
 are composed from the same internal behavior used by `Pressable`, without
 claiming its single-content inheritance role.
 
+## Default field chrome
+
+The closed field defaults to a one-cell border on every edge with
+`Glyphs.Light`. The intrinsic
+[shared chrome](../../concepts/styling.md#shared-chrome) reserves those cells
+before the selected label and drop-down indicator. Callers may choose another
+glyph family through `BorderGlyphs` or opt out explicitly with
+`BorderThickness = default`.
+
+The private List opts out of its standalone default border because Popup owns
+the drop-down frame. This prevents nested chrome while retaining the List's
+selection, scrolling, and surface appearance inside the Popup.
+
 ## API
 
 - `Items` copies non-null choices into the owned single-selection list.

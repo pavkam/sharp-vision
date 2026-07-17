@@ -19,9 +19,9 @@ internal static class ControlAppearanceDefaults
     {
         ArgumentNullException.ThrowIfNull(control);
 
-        if (state == VisualState.PointerOver && control is ListItem)
+        if (state == VisualState.PointerOver && control is ListItem or NavigationViewItem)
         {
-            return new Appearance(null, ColorRole.Surface, null, null, null, null, null, null, null, null);
+            return new Appearance(ColorRole.Accent, null, null, null, null, null, null, null, null, null);
         }
 
         if (state == VisualState.PointerOver && control is MenuItem)

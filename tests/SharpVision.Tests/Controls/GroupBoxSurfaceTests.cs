@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies GroupBox header, border, content, style, clipping, and resize through mounted surfaces.</summary>
 public sealed class GroupBoxSurfaceTests
 {
+    /// <summary>Verifies the built-in dark theme paints a visible frame around the opaque group surface.</summary>
+    [Fact]
+    public void Render_WhenDefaultDarkThemeIsApplied_UsesDistinctSurfaceAndBorderColors()
+    {
+        // Arrange
+        var group = new GroupBox
+        {
+            Header = "Profile",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+        };
+        group.SetTheme(Themes.Dark);
+        Themes.Dark.TryGetColor(ColorRole.Surface, out var surfaceColor).ShouldBeTrue();
+        Themes.Dark.TryGetColor(ColorRole.Border, out var borderColor).ShouldBeTrue();
+        var size = new Size(10, 3);
+        new Engine().Layout(group, size);
+        using Frame frame = new(size);
+
+        // Act
+        group.Render(frame.Canvas);
+
+        // Assert
+        borderColor.ShouldNotBe(surfaceColor);
+        frame.GetCell(default).Style.Foreground.ShouldBe(borderColor);
+        frame.GetCell(default).Style.Background.ShouldBe(surfaceColor);
+        frame.GetCell(new Point(8, 1)).Style.Background.ShouldBe(surfaceColor);
+    }
+
     /// <summary>Verifies a mounted GroupBox observes descendant hover without taking focus or press state.</summary>
     [ComponentBehaviorEvidence(
         typeof(GroupBox),

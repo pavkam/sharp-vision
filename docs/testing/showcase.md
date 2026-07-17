@@ -2,7 +2,7 @@
 
 ## Showcase testing
 
-The showcase catalog test fixes the exact 26-page inventory and requires Button
+The showcase catalog test fixes the exact 28-page inventory and requires Button
 to be the initial page and Canvas to occupy index 1. Every page contains wrapped
 marked-Text Overview documentation and builds a fresh, detached, independently
 owned live tree. Each entry's tree contains the control named by that sidebar
@@ -26,7 +26,7 @@ The same runtime suite targets an SGR wheel report at the overflowing multiline
 offset remains unchanged, protecting leaf-first wheel routing from future
 regressions.
 
-Virtual-screen assertions render all 26 pages at 30 by 8, 80 by 24, and 140 by
+Virtual-screen assertions render all 28 pages at 30 by 8, 80 by 24, and 140 by
 40 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
 component navigation, non-default cell colors, page headings, automatic
 overflow, semantic text, and every wide-cell continuation relationship. The
@@ -50,11 +50,13 @@ live specimens use intrinsic control chrome when they need a frame.
 
 Canvas has dedicated virtual-screen assertions and must retain its labeled
 fixed, percentage, edge-constraint, and clipping stages within the viewport.
-Button and Window assertions continue to cover intrinsic composite and
-block-glyph shadow properties through their live specimens. The Theming page
-also proves that a showcase-authored derivative supplies custom content through
-`OnRenderContent` while the sealed renderer preserves its intrinsic rounded
-frame.
+Slider and ColorPicker have dedicated content and live-value tests; ColorPicker
+must expose the capability-adaptive retained component instead of an ad hoc
+Canvas palette specimen. Button and Window assertions continue to cover
+intrinsic composite and block-glyph shadow properties through their live
+specimens. The Theming page also proves that a showcase-authored derivative
+supplies custom content through `OnRenderContent` while the sealed renderer
+preserves its intrinsic rounded frame.
 
 The Prism page test activates its explicit phase-step Button and renders before
 and after the mutation. The live diagonal FIGlet control and its content retain

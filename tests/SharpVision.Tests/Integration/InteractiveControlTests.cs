@@ -49,7 +49,7 @@ public sealed class InteractiveControlTests
                 Center(input),
                 new Point(scrollBar.Bounds.Right - 2, scrollBar.Bounds.Y),
                 Center(scroll),
-                new Point(list.Bounds.X, list.Bounds.Y + 1),
+                new Point(list.ContentBounds.X, list.ContentBounds.Y + 1),
             },
             TestContext.Current.CancellationToken);
 
@@ -125,7 +125,7 @@ public sealed class InteractiveControlTests
                 .ShouldBe("◉");
             FrameOracle.Get(frame, new Point(input.Bounds.X, input.Bounds.Y)).ShouldBe("界");
             frame.GetCell(new Point(input.Bounds.X + 1, input.Bounds.Y)).IsContinuation.ShouldBeTrue();
-            FrameOracle.Get(frame, new Point(list.Bounds.X, list.Bounds.Y + 1)).ShouldBe("B");
+            FrameOracle.Get(frame, new Point(list.ContentBounds.X, list.ContentBounds.Y + 1)).ShouldBe("B");
         }, TestContext.Current.CancellationToken);
         terminal.Writes.SelectMany(static bytes => bytes)
             .ToArray()
@@ -168,7 +168,7 @@ public sealed class InteractiveControlTests
     public async Task Input_WhenTextPasteAndLegacyKeysArrive_CommitsExactEditorFrameAsync()
     {
         await using FakeTerminal terminal = new();
-        terminal.QueueResize(new Dimensions(new Size(12, 2)));
+        terminal.QueueResize(new Dimensions(new Size(12, 3)));
         var input = new TextInput();
         await using Application application = new(input, terminal, terminal, TerminalOptions.Minimal);
         await application.StartAsync(TestContext.Current.CancellationToken);
@@ -201,8 +201,9 @@ public sealed class InteractiveControlTests
             input.CaretIndex.ShouldBe(0);
             using Frame frame = new(application.Size);
             input.Render(frame.Canvas);
-            FrameOracle.Get(frame, default).ShouldBe("e\u0301");
-            frame.GetCell(new Point(1, 0)).IsContinuation.ShouldBeFalse();
+            FrameOracle.Get(frame, default).ShouldBe("┌");
+            FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("e\u0301");
+            frame.GetCell(new Point(2, 1)).IsContinuation.ShouldBeFalse();
         }, TestContext.Current.CancellationToken);
         terminal.Writes.SelectMany(static bytes => bytes)
             .Contains((byte) 'e').ShouldBeTrue();
@@ -273,7 +274,12 @@ public sealed class InteractiveControlTests
             GroupName = "choice",
             Width = Length.Cells(20),
         };
-        input = new TextInput { Width = Length.Cells(20), Height = Length.Cells(1) };
+        input = new TextInput
+        {
+            BorderThickness = default,
+            Width = Length.Cells(20),
+            Height = Length.Cells(1),
+        };
         scrollBar = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
@@ -291,6 +297,7 @@ public sealed class InteractiveControlTests
         };
         list = new UiList
         {
+            BorderThickness = default,
             Items = new object?[] { "A", "B", "C" },
             Width = Length.Cells(20),
             Height = Length.Cells(3),

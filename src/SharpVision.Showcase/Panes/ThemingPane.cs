@@ -96,6 +96,14 @@ internal sealed class ThemingPane: CompositeControl
             Padding = new Thickness(1, 0),
             Children = { new Text("Intrinsic themed border and shadow") },
         };
+        var halfBlockChrome = new Dock
+        {
+            Width = Length.Cells(32),
+            Height = Length.Cells(3),
+            BorderThickness = new Thickness(1),
+            BorderGlyphs = Glyphs.HalfBlock,
+            Children = { new Text("Half-block border preset") },
+        };
 
         return Doc.Page(
             Title,
@@ -144,8 +152,9 @@ internal sealed class ThemingPane: CompositeControl
                 "Border and shadow are intrinsic style properties on ordinary controls rather than wrapper control types.",
                 Doc.Example(
                     "Themeable surface chrome",
-                    "The Dock owns its border and block shadow directly while its child remains an ordinary content node.",
-                    chrome)),
+                    "The Docks own their heavy shadowed and sculpted half-block borders directly while each child remains an ordinary content node.",
+                    Doc.Column(chrome, halfBlockChrome),
+                    "surface.BorderGlyphs = Glyphs.HalfBlock;")),
             Doc.Section(
                 "🎭",
                 "Third-party controls",

@@ -12,10 +12,10 @@ retaining the existing Canvas color-grid visual language.
 ### Slider
 
 `Slider` is a focusable integer range control. It exposes `Minimum`, `Maximum`,
-`Value`, `SmallChange`, `LargeChange`, `Orientation`, and a `ValueChanged`
-event carrying the previous and committed values. The default range is 0
-through 100, the default small change is 1, the default large change is 10, and
-the default orientation is horizontal.
+`Value`, `SmallChange`, `LargeChange`, `Orientation`, and a `ValueChanged` event
+carrying the previous and committed values. The default range is 0 through 100,
+the default small change is 1, the default large change is 10, and the default
+orientation is horizontal.
 
 The range may include negative values. Setters reject an undefined orientation,
 negative changes, endpoints that invert the range or exclude the current value,
@@ -35,8 +35,8 @@ available to routed-event bubbling.
 The control draws one semantic rail with filled, unfilled, and thumb cells. It
 uses the resolved appearance for normal, hovered, pressed, focused, and disabled
 states, remains contained in zero and tiny bounds, and uses narrow ASCII
-fallbacks when a configured Unicode glyph is not one cell under the active
-width policy.
+fallbacks when a configured Unicode glyph is not one cell under the active width
+policy.
 
 ### ColorPicker
 
@@ -75,10 +75,10 @@ At true color, a stretching grid presents:
 - an uppercase `#RRGGBB` readout.
 
 Pointer coordinates map through committed bounds. The saturation/value plane is
-keyboard focusable and uses horizontal arrows for saturation and vertical
-arrows for value. Hue and RGB sliders retain the standard slider keyboard
-contract. Updating any surface synchronizes every other retained part before
-the picker publishes its one semantic value change.
+keyboard focusable and uses horizontal arrows for saturation and vertical arrows
+for value. Hue and RGB sliders retain the standard slider keyboard contract.
+Updating any surface synchronizes every other retained part before the picker
+publishes its one semantic value change.
 
 At indexed 256, the picker presents a 16-by-16 row-major swatch grid based on
 the Canvas showcase sample, using two terminal columns per swatch where space
@@ -96,8 +96,8 @@ never simulated by retaining an RGB `Value` the renderer will project later.
 The terminal project exposes one shared color-palette utility for deterministic
 projection and indexed-to-RGB resolution. The frame encoder and ColorPicker use
 that exact implementation. Projection preserves RGB only for true color,
-preserves already-contained indexed values, maps RGB or larger indexed values
-to the nearest supported reference entry, uses ascending index for ties, and
+preserves already-contained indexed values, maps RGB or larger indexed values to
+the nearest supported reference entry, uses ascending index for ties, and
 returns the terminal default in monochrome.
 
 The public utility validates unknown color depths. Indexed resolution follows
@@ -117,10 +117,10 @@ semantic terminal canvas and never emits escape bytes.
 ## Showcase and documentation
 
 The Canvas page stops presenting the palette grid as an ad hoc custom-drawing
-widget. Dedicated `Slider` and `ColorPicker` pages join the gallery catalog.
-The Slider page demonstrates horizontal, vertical, negative, stepped, and live
-value variants. The ColorPicker page demonstrates the active terminal tier,
-live preview and value reporting, pointer selection, and keyboard instructions.
+widget. Dedicated `Slider` and `ColorPicker` pages join the gallery catalog. The
+Slider page demonstrates horizontal, vertical, negative, stepped, and live value
+variants. The ColorPicker page demonstrates the active terminal tier, live
+preview and value reporting, pointer selection, and keyboard instructions.
 
 The control catalog, layout/input/styling links, showcase contract, testing
 contract, XML documentation, and dedicated control specifications update in the
@@ -139,11 +139,11 @@ Color tests cover the shared projector at every tier, all palette entries,
 tie-breaking, invalid depth, and fixed-seed RGB projection invariants.
 ColorPicker tests cover detached assignment, attachment and runtime capability
 transitions, lossy downgrade, no resurrection on upgrade, exact RGB slider
-synchronization, saturation/value and palette mapping, pointer capture,
-keyboard navigation, event order, focus, disabled state, zero/tiny/resize
-layout, selected markers, and final semantic cells. Fixed-seed randomized tests
-require every committed value to belong to the active color tier and every
-render write and hit target to remain contained.
+synchronization, saturation/value and palette mapping, pointer capture, keyboard
+navigation, event order, focus, disabled state, zero/tiny/resize layout,
+selected markers, and final semantic cells. Fixed-seed randomized tests require
+every committed value to belong to the active color tier and every render write
+and hit target to remain contained.
 
 Showcase tests verify both catalog pages, their required explanatory content,
 representative rendered screens, and live interaction logs. Focused tests run

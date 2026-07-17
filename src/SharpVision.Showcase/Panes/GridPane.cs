@@ -87,8 +87,8 @@ internal sealed class GridPane: CompositeControl
         percentage.Columns.Add(Track.Percent(40, minimum: 10, maximum: 16));
         percentage.Columns.Add(Track.Star(1, minimum: 8));
         percentage.Rows.Add(Track.Star(1));
-        AddCell(percentage, "40% min 10 max 16", 0, 0);
-        AddCell(percentage, "Star min 8", 0, 1);
+        AddCell(percentage, "40%", 0, 0);
+        AddCell(percentage, "Star", 0, 1);
 
         var implicitGrid = new Grid { Width = Length.Cells(28), Height = Length.Cells(3) };
         implicitGrid.Children.Add(Card("Implicit auto row + column"));
@@ -213,7 +213,6 @@ internal sealed class GridPane: CompositeControl
     {
         BorderThickness = new Thickness(1),
         BorderGlyphs = Glyphs.Light,
-        Padding = new Thickness(1, 0),
         Children = { new Text(text) },
     };
 }

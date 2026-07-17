@@ -22,14 +22,18 @@ public sealed class TextInputSurfaceTests
         {
             Placeholder = "Name",
             Width = Length.Cells(6),
-            Height = Length.Cells(1),
+            Height = Length.Cells(3),
         };
         await using var surface = await ComponentSurface.MountAsync(
             input,
-            new Size(6, 1),
+            new Size(6, 3),
             TestContext.Current.CancellationToken);
-        surface.ShouldRender("Name");
-        (surface.Cell(default).Style.Attributes & Attributes.Dim).ShouldBe(Attributes.Dim);
+        surface.ShouldRender("""
+            ┌────┐
+            │Name│
+            └────┘
+            """);
+        (surface.Cell(new Point(1, 1)).Style.Attributes & Attributes.Dim).ShouldBe(Attributes.Dim);
         surface.ShouldHaveCursor(default, visible: false);
 
         // Act
@@ -41,11 +45,15 @@ public sealed class TextInputSurfaceTests
         input.IsPressed.ShouldBeFalse();
         input.CaretIndex.ShouldBe(3);
         surface.ShouldHaveState(input, VisualState.Focused);
-        surface.ShouldRender("A\u0301界");
-        surface.Cell(default).Text.ShouldBe("A\u0301");
-        surface.Cell(new Point(1, 0)).Text.ShouldBe("界");
-        surface.Cell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
-        surface.ShouldHaveCursor(new Point(3, 0), visible: true);
+        surface.ShouldRender("""
+            ┌────┐
+            │Á界 │
+            └────┘
+            """);
+        surface.Cell(new Point(1, 1)).Text.ShouldBe("A\u0301");
+        surface.Cell(new Point(2, 1)).Text.ShouldBe("界");
+        surface.Cell(new Point(3, 1)).IsContinuation.ShouldBeTrue();
+        surface.ShouldHaveCursor(new Point(4, 1), visible: true);
     }
 
     /// <summary>Verifies navigation, Backspace, and Delete remove complete grapheme clusters.</summary>
@@ -56,6 +64,7 @@ public sealed class TextInputSurfaceTests
         // Arrange
         var input = new TextInput
         {
+            BorderThickness = default,
             Text = "A\u0301界B",
             Width = Length.Cells(6),
             Height = Length.Cells(1),
@@ -89,6 +98,7 @@ public sealed class TextInputSurfaceTests
         var input = new TextInput
         {
             AcceptsReturn = true,
+            BorderThickness = default,
             Text = "A\u0301界\nXYZ",
             Width = Length.Cells(5),
             Height = Length.Cells(2),
@@ -122,6 +132,7 @@ public sealed class TextInputSurfaceTests
         var changes = 0;
         var input = new TextInput
         {
+            BorderThickness = default,
             Width = Length.Cells(4),
             Height = Length.Cells(1),
         };
@@ -157,6 +168,7 @@ public sealed class TextInputSurfaceTests
         string? submitted = null;
         var single = new TextInput
         {
+            BorderThickness = default,
             Text = "Go",
             Width = Length.Cells(4),
             Height = Length.Cells(1),
@@ -179,6 +191,7 @@ public sealed class TextInputSurfaceTests
         var multi = new TextInput
         {
             AcceptsReturn = true,
+            BorderThickness = default,
             Width = Length.Cells(4),
             Height = Length.Cells(2),
         };
@@ -205,6 +218,7 @@ public sealed class TextInputSurfaceTests
         // Arrange password editor
         var password = new TextInput
         {
+            BorderThickness = default,
             Text = "Ae\u0301👩‍💻",
             PasswordCharacter = new Rune('*'),
             Width = Length.Cells(6),
@@ -223,6 +237,7 @@ public sealed class TextInputSurfaceTests
         // Arrange disabled editor
         var disabled = new TextInput
         {
+            BorderThickness = default,
             Text = "Safe",
             IsEnabled = false,
             Width = Length.Cells(4),
@@ -251,6 +266,7 @@ public sealed class TextInputSurfaceTests
         // Arrange
         var input = new TextInput
         {
+            BorderThickness = default,
             Text = "Read",
             IsReadOnly = true,
             Width = Length.Cells(4),
@@ -286,6 +302,7 @@ public sealed class TextInputSurfaceTests
         // Arrange
         var input = new TextInput
         {
+            BorderThickness = default,
             Text = "A界e\u0301Z",
             Width = Length.Cells(8),
             Height = Length.Cells(1),
@@ -318,6 +335,7 @@ public sealed class TextInputSurfaceTests
         var input = new TextInput
         {
             AcceptsReturn = true,
+            BorderThickness = default,
             Text = "abcdef\none\ntwo\nthree",
             CaretIndex = 0,
             Width = Length.Cells(4),
@@ -351,6 +369,7 @@ public sealed class TextInputSurfaceTests
         var input = new TextInput
         {
             AcceptsReturn = true,
+            BorderThickness = default,
             Text = "123456\nabcdef\nXYZ",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,

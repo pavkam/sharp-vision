@@ -29,11 +29,10 @@ internal sealed class ComboBoxPane: CompositeControl
             density.Content = comboBox.SelectedIndex >= 0
                 ? $"Selected: {comboBox.Items[comboBox.SelectedIndex]}."
                 : "No selection.";
-        var bordered = new ComboBox
+        var borderless = new ComboBox
         {
             Width = Length.Cells(28),
-            BorderThickness = new Thickness(1),
-            BorderGlyphs = Glyphs.Rounded,
+            BorderThickness = default,
             Items = ["Compact", "Comfortable", "Spacious"],
             SelectedIndex = 0,
         };
@@ -131,13 +130,13 @@ internal sealed class ComboBoxPane: CompositeControl
                 "Start here",
                 "Choose one compact value while keeping the full choice list available on demand.",
                 Doc.Example(
-                    "Default and bordered fields",
-                    "Both fields own an opaque Surface. Click, Enter, or Space opens the list; Enter commits, Escape or an outside click or wheel dismisses without changing the value.",
+                    "Default and borderless fields",
+                    "The default field uses a light frame; the explicit override removes it. Both keep an opaque Surface. Click, Enter, or Space opens the list; Enter commits, Escape or an outside click or wheel dismisses without changing the value.",
                     Doc.Column(
-                        new Text("Default field") { Attributes = TerminalAttributes.Bold },
+                        new Text("Default light border") { Attributes = TerminalAttributes.Bold },
                         stage,
-                        new Text("Explicit rounded border") { Attributes = TerminalAttributes.Bold },
-                        bordered,
+                        new Text("Explicit borderless override") { Attributes = TerminalAttributes.Bold },
+                        borderless,
                         density),
                     "var density = new ComboBox\n{\n    Items = [\"Compact\", \"Comfortable\", \"Spacious\"],\n    SelectedIndex = 1,\n};")),
             Doc.Section(

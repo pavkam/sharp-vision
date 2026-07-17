@@ -25,19 +25,44 @@ public sealed class SelectionPaneTests
         ControlTree.Text(page).ShouldContain("No selection.");
     }
 
-    /// <summary>Verifies the ComboBox page contrasts default and explicitly bordered closed fields.</summary>
+    /// <summary>Verifies the ComboBox page contrasts its light default with an explicit borderless field.</summary>
     [Fact]
-    public void ComboBox_WhenPageBuilds_ShowsDefaultAndBorderedFields()
+    public void ComboBox_WhenPageBuilds_ShowsDefaultAndBorderlessFields()
     {
+        // Arrange
         using var page = new ComboBoxPane();
         new Engine().Layout(page, new Size(100, 100));
         var fields = ControlTree.FindAll<ComboBox>(page)
             .Where(value => value.Items.Count == 3 && Equals(value.Items[0], "Compact"))
             .ToArray();
 
+        // Act
+
+        // Assert
+        fields.ShouldContain(value =>
+            value.BorderThickness == new Thickness(1) &&
+            value.BorderGlyphs == Glyphs.Light);
         fields.ShouldContain(value => value.BorderThickness == default);
-        fields.ShouldContain(value => value.BorderThickness == new Thickness(1));
+        ControlTree.Text(page).ShouldContain("Explicit borderless override");
         ControlTree.Text(page).ShouldContain("outside click or wheel dismisses");
+    }
+
+    /// <summary>Verifies TextInput specimens expose their light constructor frame.</summary>
+    [Fact]
+    public void TextInput_WhenPageBuilds_UsesDefaultLightFieldBorders()
+    {
+        // Arrange
+        using var page = new TextInputPane();
+        new Engine().Layout(page, new Size(100, 180));
+
+        // Act
+        var editors = ControlTree.FindAll<TextInput>(page);
+
+        // Assert
+        editors.ShouldNotBeEmpty();
+        editors.ShouldAllBe(value =>
+            value.BorderThickness == new Thickness(1) &&
+            value.BorderGlyphs == Glyphs.Light);
     }
 
     /// <summary>Verifies same-name RadioButtons remain exclusive across separate visual cards.</summary>

@@ -13,7 +13,7 @@ public sealed class NavigationView: CompositeControl
     private readonly Text _headerText;
     private readonly ItemNavigator _navigator;
 
-    /// <summary>Initializes a navigation view with an empty item collection.</summary>
+    /// <summary>Initializes a square semantic navigation surface with an empty item collection.</summary>
     public NavigationView()
     {
         _headerText = new Text(string.Empty)
@@ -43,6 +43,9 @@ public sealed class NavigationView: CompositeControl
         InitializeContent(root);
         Items = new NavigationViewItems(this, isFooter: false);
         FooterItems = new NavigationViewItems(this, isFooter: true);
+        BorderThickness = new Thickness(1);
+        BorderGlyphs = Glyphs.Light;
+        Background = ColorRole.Surface;
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;

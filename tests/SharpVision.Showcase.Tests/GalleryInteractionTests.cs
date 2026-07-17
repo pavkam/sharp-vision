@@ -132,7 +132,7 @@ public sealed class GalleryInteractionTests
         var editor = await application.Dispatcher.InvokeAsync(
             () => Find<TextInput>(
                 gallery.CurrentPage,
-                static value => value.AcceptsReturn && value.Height == Length.Cells(3)),
+                static value => value.AcceptsReturn && value.Height == Length.Cells(5)),
             TestContext.Current.CancellationToken);
         var activeEditor = editor.ShouldNotBeNull();
         await BringIntoViewAsync(activeEditor, gallery, application);
@@ -643,7 +643,7 @@ public sealed class GalleryInteractionTests
             },
             TestContext.Current.CancellationToken);
         var fontPoint = await application.Dispatcher.InvokeAsync(
-            () => new Point(activeFonts.Bounds.X + 1, activeFonts.Bounds.Y + 1),
+            () => new Point(activeFonts.ContentBounds.X, activeFonts.ContentBounds.Y + 1),
             TestContext.Current.CancellationToken);
         await application.Dispatcher.InvokeAsync(
             () =>

@@ -26,7 +26,7 @@ public sealed class List: ItemsControl
     private int _selectionVersion;
     private int _selectionAnchor = -1;
 
-    /// <summary>Initializes an empty single-selection List with a text template.</summary>
+    /// <summary>Initializes an empty single-selection List with a text template and square semantic surface.</summary>
     public List()
     {
         _itemsView = _items.AsReadOnly();
@@ -39,6 +39,9 @@ public sealed class List: ItemsControl
         };
         InitializeItemsHost(_stack);
         _ = AddHandler(Events.Key, OnKeyRouted);
+        BorderThickness = new Thickness(1);
+        BorderGlyphs = Glyphs.Light;
+        Background = ColorRole.Surface;
         Focusable = true;
         TabStop = true;
         TabNavigation = TabNavigation.None;

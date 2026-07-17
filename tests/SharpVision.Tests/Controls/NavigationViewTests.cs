@@ -6,6 +6,19 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies sidebar navigation item ownership, selection, groups, and keyboard navigation.</summary>
 public sealed class NavigationViewTests
 {
+    /// <summary>Verifies a navigation view starts as a square semantic surface without caller styling.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesSquareSurfaceDefaults()
+    {
+        // Arrange and act
+        var navigation = new NavigationView();
+
+        // Assert
+        navigation.BorderThickness.ShouldBe(new Thickness(1));
+        navigation.BorderGlyphs.ShouldBe(Glyphs.Light);
+        navigation.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+    }
+
     /// <summary>Verifies items are added through the typed collection.</summary>
     [Fact]
     public void Items_WhenAdded_IncreasesCount()
@@ -170,6 +183,7 @@ public sealed class NavigationViewTests
     {
         var nav = new NavigationView
         {
+            BorderThickness = default,
             Header = "My App",
             Width = Length.Cells(24),
             Height = Length.Cells(10),

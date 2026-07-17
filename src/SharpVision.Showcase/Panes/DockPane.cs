@@ -18,67 +18,67 @@ internal sealed class DockPane: CompositeControl
     {
         Dock allSides = new()
         {
-            Width = Length.Cells(38),
-            Height = Length.Cells(9),
+            Width = Length.Cells(56),
+            Height = Length.Cells(13),
             LastChildFills = true,
             Spacing = 1,
         };
         var left = Card("Explorer", Glyphs.Light);
-        left.Width = Length.Cells(7);
+        left.Width = Length.Cells(12);
         Dock.SetSide(left, Side.Left);
         allSides.Children.Add(left);
-        var top = Card("Header", Glyphs.Heavy);
-        top.Height = Length.Cells(2);
+        var top = Card("Application header", Glyphs.Heavy);
+        top.Height = Length.Cells(3);
         Dock.SetSide(top, Side.Top);
         allSides.Children.Add(top);
         var right = Card("Inspector", Glyphs.Paired);
-        right.Width = Length.Cells(8);
+        right.Width = Length.Cells(13);
         Dock.SetSide(right, Side.Right);
         allSides.Children.Add(right);
-        var bottom = Card("Status", Glyphs.Ascii);
-        bottom.Height = Length.Cells(2);
+        var bottom = Card("Status bar", Glyphs.Ascii);
+        bottom.Height = Length.Cells(3);
         Dock.SetSide(bottom, Side.Bottom);
         allSides.Children.Add(bottom);
-        allSides.Children.Add(Card("Main", Glyphs.Rounded));
+        allSides.Children.Add(Card("Editor workspace", Glyphs.Rounded));
 
         Dock order = new()
         {
-            Width = Length.Cells(30),
+            Width = Length.Cells(42),
             Height = Length.Cells(7),
             LastChildFills = true,
         };
         var first = Card("1: Left", Glyphs.Light);
-        first.Width = Length.Cells(9);
+        first.Width = Length.Cells(12);
         Dock.SetSide(first, Side.Left);
         order.Children.Add(first);
         var second = Card("2: Left", Glyphs.Light);
-        second.Width = Length.Cells(9);
+        second.Width = Length.Cells(12);
         Dock.SetSide(second, Side.Left);
         order.Children.Add(second);
         order.Children.Add(Card("3: Fill", Glyphs.Rounded));
 
         Dock noFill = new()
         {
-            Width = Length.Cells(30),
+            Width = Length.Cells(34),
             Height = Length.Cells(4),
             LastChildFills = false,
         };
         var onlyChild = Card("No remainder claimed", Glyphs.Heavy);
-        onlyChild.Width = Length.Cells(20);
+        onlyChild.Width = Length.Cells(24);
         Dock.SetSide(onlyChild, Side.Top);
         noFill.Children.Add(onlyChild);
 
         var remaining = new Dock
         {
-            Width = Length.Cells(40),
+            Width = Length.Cells(48),
             Height = Length.Cells(5),
             Spacing = 1,
         };
-        var firstPercent = Card("50% of 40", Glyphs.Light);
+        var firstPercent = Card("24 cells", Glyphs.Light);
         firstPercent.Width = Length.Percent(50);
         Dock.SetSide(firstPercent, Side.Left);
         remaining.Children.Add(firstPercent);
-        var secondPercent = Card("50% of remainder", Glyphs.Heavy);
+        var secondPercent = Card("12 cells", Glyphs.Heavy);
         secondPercent.Width = Length.Percent(50);
         Dock.SetSide(secondPercent, Side.Left);
         remaining.Children.Add(secondPercent);
@@ -121,8 +121,8 @@ internal sealed class DockPane: CompositeControl
                 "Application shell",
                 "Compose familiar application regions by consuming physical edges and leaving the center to the final child.",
                 Doc.Example(
-                    "Header, tools, status, and main",
-                    "Each region uses Dock.SetSide; Main receives the rectangle left after the four edge regions.",
+                    "Explorer, header, inspector, status, and editor",
+                    "Each named region uses Dock.SetSide; Editor workspace receives the rectangle left after the four edge regions.",
                     allSides,
                     "var shell = new Dock { LastChildFills = true };\nDock.SetSide(sidebar, Side.Left);\nshell.Children.Add(sidebar);\nshell.Children.Add(main);")),
             Doc.Section(
@@ -139,7 +139,7 @@ internal sealed class DockPane: CompositeControl
                 "Percentage edge sizes resolve against the rectangle available at that iteration, not the original panel.",
                 Doc.Example(
                     "Successive percentages",
-                    "The first receives half of forty cells; the second receives half of what remains; Fill receives the rest.",
+                    "The first receives 24 of 48 cells; the second receives 12 of the remainder; Fill receives the rest.",
                     remaining)),
             Doc.Section(
                 "⚓",

@@ -96,6 +96,7 @@ public sealed class AmbiguousWidthControlTests
     {
         var input = new TextInput()
         {
+            BorderThickness = default,
             Text = "a",
             PasswordCharacter = new Rune('·'),
             Width = Length.Cells(4),

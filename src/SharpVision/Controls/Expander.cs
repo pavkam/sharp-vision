@@ -10,7 +10,7 @@ public sealed class Expander: ContentControl
     private Rune? _collapsedGlyph;
     private Rune? _expandedGlyph;
 
-    /// <summary>Initializes an expanded section with an empty header.</summary>
+    /// <summary>Initializes an expanded square semantic surface with an empty header.</summary>
     public Expander()
     {
         _interaction = new PressBehavior(
@@ -19,6 +19,9 @@ public sealed class Expander: ContentControl
             () => FocusOwner is null || IsFocused, RequestFocus, CapturePointer,
             () => HasPointerCapture, ReleasePointerCapture, SetPressed,
             _ => IsExpanded = !IsExpanded);
+        BorderThickness = new Thickness(1);
+        BorderGlyphs = Glyphs.Light;
+        Background = ColorRole.Surface;
         Focusable = true;
         TabStop = true;
     }

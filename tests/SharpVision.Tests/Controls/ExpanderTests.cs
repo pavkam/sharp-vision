@@ -6,6 +6,19 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies Expander validation, direct header rendering, layout, events, and ownership.</summary>
 public sealed class ExpanderTests
 {
+    /// <summary>Verifies an Expander starts as a square semantic surface without caller styling.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesSquareSurfaceDefaults()
+    {
+        // Arrange and act
+        var expander = new Expander();
+
+        // Assert
+        expander.BorderThickness.ShouldBe(new Thickness(1));
+        expander.BorderGlyphs.ShouldBe(Glyphs.Light);
+        expander.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+    }
+
     /// <summary>Verifies defaults and invalid header assignments preserve committed state.</summary>
     [Fact]
     public void Properties_WhenCreatedOrAssignedInvalidHeader_PreserveDefaults()
@@ -29,6 +42,7 @@ public sealed class ExpanderTests
         var content = new ProbeControl(new Size(4, 2));
         var expander = new Expander
         {
+            BorderThickness = default,
             Header = "Details",
             Content = content,
             HorizontalAlignment = HorizontalAlignment.Left,

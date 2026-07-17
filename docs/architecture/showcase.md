@@ -29,12 +29,13 @@ remain visually distinct from surrounding prose in every theme. `Doc.Card`,
 specimens.
 
 `Gallery` owns the stable catalog of pane titles and factories
-(`(string Name, Func<CompositeControl> Create)[]`). The sidebar contains 26
-entries: Button, Canvas, CheckBox, ComboBox, Dock, Expander, FigletText, Grid,
-GroupBox, List, Menu, NavigationView, Overlay, Popup, Prism, ProgressBar,
-RadioButton, ScrollBar, Separator, Stack, TabControl, Table, Text, TextInput,
-Window, and Theming. Foundation types, intrinsic chrome such as border and
-shadow, and unimplemented specifications are not navigation entries.
+(`(string Name, Func<CompositeControl> Create)[]`). The sidebar contains 28
+entries: Button, Canvas, CheckBox, ColorPicker, ComboBox, Dock, Expander,
+FigletText, Grid, GroupBox, List, Menu, NavigationView, Overlay, Popup, Prism,
+ProgressBar, RadioButton, ScrollBar, Separator, Slider, Stack, TabControl,
+Table, Text, TextInput, Window, and Theming. Foundation types, intrinsic chrome
+such as border and shadow, and unimplemented specifications are not navigation
+entries.
 
 Each pane installs one `Doc.Page` composed of one or more `Doc.Example` blocks:
 an Overview paragraph stating the control's purpose, followed by labeled, live
@@ -45,6 +46,13 @@ or Interaction tables and no separate "Practical recipe" narrative section;
 documentation prose lives inline next to the specimen it describes. Marked
 `Text` headings and example descriptions use `Overflow.Wrap`, so they reflow as
 the page narrows along with the live specimens.
+
+At the supported wide layout, every ordinary specimen label is self-explanatory
+and fits its committed content box without accidental abbreviation. A layout
+example may clip a child only when clipping, saturation, or constrained overflow
+is the behavior being taught, and its adjacent heading or description must say
+so explicitly. Decorative borders and padding must not turn semantic labels into
+unexplained fragments.
 
 Popup specimens use bounded application stages with separate backdrop,
 interaction, and promoted-popup layers. Triggers keep their intrinsic size, each
@@ -58,7 +66,11 @@ Canvas demonstrates visual behavior as several labeled, framed live specimens
 rather than a single crowded sample. Each stage keeps the control's real layout
 and rendering path visible beside concise guidance for fixed, percentage,
 edge-constrained, layered, and clipped children. Intrinsic composite and
-block-glyph shadow variants remain visible on the Button and Window pages.
+block-glyph shadow variants remain visible on the Button and Window pages. The
+former ad hoc Canvas palette grid now lives in the dedicated ColorPicker page,
+where the same swatch language supports retained keyboard and pointer selection
+and adapts to the active terminal color depth. The Slider page proves direct
+signed-range selection independently of scrolling viewport semantics.
 
 ![Live colored dashboard captured from tmux](../images/showcase-dashboard.png)
 
@@ -131,7 +143,7 @@ logical embedded-resource names keep repository paths out of runtime APIs.
 
 ## Test contract
 
-Showcase tests assert the exact 26-page inventory, Button as the initial page,
+Showcase tests assert the exact 28-page inventory, Button as the initial page,
 marked `Text` documentation coverage, fresh detached composite ownership, stable
 composition-root identity across first layout, no pane inheriting `Container`,
 and matching runtime control type. They render every page at 30 by 8, 80 by 24,

@@ -13,11 +13,19 @@ owns focus and current-item navigation; the wrapper owns activation,
 selected/current visual facts, and exactly one template control through
 inherited `Content`.
 
-When the resolved style supplies a background, the List paints its complete
-arranged surface with that normal or disabled appearance. Each realized item
-paints its complete row with the resolved item state, so a
-`VisualState.Selected` overlay visibly highlights selected rows instead of
-changing only the label cells.
+By default, List is a distinct semantic surface with a one-cell `Glyphs.Light`
+square border and `ColorRole.Surface` background. These are ordinary inherited
+appearance properties: callers may remove the frame, choose another glyph
+family, or replace the background. The shared
+[chrome contract](../../concepts/styling.md#shared-chrome) reserves the frame
+inside the control's arranged box.
+
+List paints its complete arranged surface with its normal or disabled
+appearance. Normal and hovered realized items keep a transparent background so
+the owning surface remains continuous; hover uses accent foreground. A
+`VisualState.Selected` overlay paints `SelectionBackground` and
+`SelectionForeground` across the complete row instead of changing only the label
+cells.
 
 ## API
 

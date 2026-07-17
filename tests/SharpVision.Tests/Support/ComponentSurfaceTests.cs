@@ -130,6 +130,7 @@ public sealed class ComponentSurfaceTests
         // Arrange
         var input = new TextInput
         {
+            BorderThickness = default,
             Width = Length.Cells(4),
             Height = Length.Cells(1),
         };
@@ -160,6 +161,7 @@ public sealed class ComponentSurfaceTests
         // Arrange
         var input = new TextInput
         {
+            BorderThickness = default,
             Text = "A界",
             Width = Length.Cells(4),
             Height = Length.Cells(1),

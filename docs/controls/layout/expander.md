@@ -13,6 +13,13 @@ disclosure glyph followed by the header text.
 header is rendered directly by the control and is not exposed as a public
 presentation child. Caller content remains the one ordinary owned child.
 
+The control defaults to a one-cell `Glyphs.Light` square border and
+`ColorRole.Surface` background. Its header glyph, header text, and caller
+content render transparently over that surface unless a descendant supplies an
+explicit background. Callers may remove or restyle the inherited frame and
+surface properties; layout continues to follow the shared
+[chrome contract](../../concepts/styling.md#shared-chrome).
+
 ## API
 
 - `Header` is a non-null string rendered beside the toggle glyph. Terminal

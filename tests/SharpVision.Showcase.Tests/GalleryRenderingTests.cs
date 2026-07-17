@@ -140,7 +140,8 @@ public sealed class GalleryRenderingTests
         popup.SurfaceBounds.ShouldNotBe(default);
         content.Bounds.ShouldNotBe(default);
         Grapheme(frame, new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).ShouldBe("╭");
-        var contentPoint = new Point(content.Bounds.X, content.Bounds.Y);
+        Grapheme(frame, new Point(content.Bounds.X, content.Bounds.Y)).ShouldBe("┌");
+        var contentPoint = new Point(content.ContentBounds.X, content.ContentBounds.Y);
         Grapheme(frame, contentPoint).ShouldBe("D");
         var popupTarget = popup.HitTest(contentPoint).ShouldNotBeNull();
         gallery.HitTest(contentPoint).ShouldBeSameAs(popupTarget);
@@ -186,7 +187,8 @@ public sealed class GalleryRenderingTests
         gallery.Render(frame.Canvas);
 
         var active = FindAll<List>(gallery.CurrentPage).First(list => list.IsEnabled);
-        frame.GetCell(new Point(active.Bounds.X, active.Bounds.Y + 1)).Style.Background
+        var selectedPoint = new Point(active.ContentBounds.X, active.ContentBounds.Y + active.SelectedIndex);
+        frame.GetCell(selectedPoint).Style.Background
             .ShouldBe(Color.Indexed(4));
     }
 

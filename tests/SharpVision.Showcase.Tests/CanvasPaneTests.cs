@@ -6,6 +6,23 @@ namespace SharpVision.Showcase.Tests;
 /// <summary>Verifies Canvas layout and semantic custom-drawing showcase recipes.</summary>
 public sealed class CanvasPaneTests
 {
+    /// <summary>Verifies the explicit-size Canvas specimen labels the visible twelve-cell result without clipping.</summary>
+    [Fact]
+    public void Canvas_WhenExplicitSizeExampleRenders_ShowsCompleteExtentLabel()
+    {
+        // Arrange
+        using var page = new CanvasPane();
+        var size = new Size(140, 220);
+        new Engine().Layout(page, size);
+        using Frame frame = new(size);
+
+        // Act
+        page.Render(frame.Canvas);
+
+        // Assert
+        new Screen(frame).Text.ShouldContain("12 cells");
+    }
+
     /// <summary>Verifies opposing offsets stretch an automatic child across the Canvas remainder.</summary>
     [Fact]
     public void Canvas_WhenOpposingOffsetsArrange_StretchesAutomaticChild()
@@ -41,7 +58,6 @@ public sealed class CanvasPaneTests
             new CanvasSparklineSample(),
             new CanvasDashboardSample(),
             new CanvasMazeSample(),
-            new CanvasColorGridSample(),
         ];
 
         try
@@ -71,7 +87,6 @@ public sealed class CanvasPaneTests
             text.ShouldContain("Sparkline");
             text.ShouldContain("System Monitor");
             text.ShouldContain("Topology merge");
-            text.ShouldContain("Grayscale");
         }
         finally
         {

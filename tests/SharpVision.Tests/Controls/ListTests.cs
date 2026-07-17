@@ -12,6 +12,19 @@ using UiList = List;
 /// <summary>Verifies realized List ownership, selection, input, scrolling, and rendering.</summary>
 public sealed class ListTests
 {
+    /// <summary>Verifies a List starts as a square semantic surface without caller styling.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesSquareSurfaceDefaults()
+    {
+        // Arrange and act
+        var control = new UiList();
+
+        // Assert
+        control.BorderThickness.ShouldBe(new Thickness(1));
+        control.BorderGlyphs.ShouldBe(Glyphs.Light);
+        control.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+    }
+
     /// <summary>Verifies empty defaults and owned realization render every Unicode item.</summary>
     [Fact]
     public void Items_WhenAssigned_RealizesOwnedControlsAndExactCells()
@@ -19,6 +32,7 @@ public sealed class ListTests
         List<Label> realized = [];
         var control = new UiList()
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
             Items = new object?[] { "One", "界", null },
         };
@@ -74,6 +88,7 @@ public sealed class ListTests
         PopupHitProbe? probe = null;
         var control = new UiList
         {
+            BorderThickness = default,
             ItemTemplate = _ => probe = new PopupHitProbe(),
             Items = ["item"],
         };
@@ -115,6 +130,7 @@ public sealed class ListTests
         ItemTemplate valid = item => Add(previous, new Label((string) item!));
         var control = new UiList()
         {
+            BorderThickness = default,
             ItemTemplate = valid,
             Items = new object?[] { "A", "B" },
         };
@@ -137,6 +153,7 @@ public sealed class ListTests
         List<Label> realized = [];
         var control = new UiList()
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B" },
         };
@@ -207,6 +224,7 @@ public sealed class ListTests
         List<Label> realized = [];
         var control = new UiList()
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = new object?[] { "A", "B", "C" },
         };
@@ -266,6 +284,7 @@ public sealed class ListTests
         List<Label> realized = [];
         var control = new UiList()
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
         };
@@ -288,7 +307,11 @@ public sealed class ListTests
         }, TestContext.Current.CancellationToken);
     }
 
-    private static UiList Create(params object?[] items) => new() { Items = items };
+    private static UiList Create(params object?[] items) => new()
+    {
+        BorderThickness = default,
+        Items = items,
+    };
 
     private static Label Add(List<Label> controls, Label control)
     {

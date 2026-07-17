@@ -8,6 +8,14 @@ separators, an optional header, and a pinned footer section. It extends
 internal `Dock` layout: header docked top, footer docked bottom, and a
 scrollable items stack filling the remainder.
 
+The view defaults to a one-cell `Glyphs.Light` square border and
+`ColorRole.Surface` background. These are ordinary inherited properties and
+remain caller-overridable. Item rows render with transparent normal and hover
+backgrounds so the view owns one continuous surface; hover uses accent
+foreground, while selected rows use the semantic selection foreground and
+background. The frame follows the shared
+[chrome contract](../../concepts/styling.md#shared-chrome).
+
 Items, groups, and separators are managed through typed collections. Selection
 is flat across all `NavigationViewItem` entries in both the main and footer
 sections. Group headers participate in the current keyboard order but never

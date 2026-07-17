@@ -613,6 +613,7 @@ internal sealed class OwnedControlRegistry
 
             foreach (var control in added)
             {
+                control.SetCapabilities(Owner.CapabilityContext);
                 control.CommitSubtreeContext(
                     Owner.Dispatcher,
                     Owner.CellPolicy,

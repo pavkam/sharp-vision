@@ -33,6 +33,7 @@ public sealed class IntrinsicBorderTests
         { Glyphs.Rounded, '╭', '─', '│' },
         { Glyphs.Ascii, '+', '-', '|' },
         { Glyphs.Solid, '█', '█', '█' },
+        { Glyphs.HalfBlock, '▛', '▀', '▌' },
         { Glyphs.LightShade, '░', '░', '░' },
         { Glyphs.MediumShade, '▒', '▒', '▒' },
         { Glyphs.DarkShade, '▓', '▓', '▓' },

@@ -55,11 +55,11 @@ internal sealed class StackPane: CompositeControl
         var vFooter = new Dock
         {
             Background = ColorRole.Surface,
-            Height = Length.Cells(2),
+            Height = Length.Cells(3),
             Padding = new Thickness(1, 0),
             BorderThickness = new Thickness(1),
             BorderGlyphs = Glyphs.Heavy,
-            Children = { new Text("Footer (2 rows)") },
+            Children = { new Text("Footer region (3 rows)") },
         };
         vertical.Children.Add(vHeader);
         vertical.Children.Add(vContent);
@@ -187,7 +187,6 @@ internal sealed class StackPane: CompositeControl
     {
         BorderThickness = new Thickness(1),
         BorderGlyphs = glyphs,
-        Padding = new Thickness(1, 0),
         Children = { new Text(text) },
     };
 }

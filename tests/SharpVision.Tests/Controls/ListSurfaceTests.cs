@@ -9,10 +9,41 @@ using UiList = List;
 /// <summary>Verifies List selection, focus, invocation, modifiers, scrolling, mutation, and cells through mounted surfaces.</summary>
 public sealed class ListSurfaceTests
 {
-    /// <summary>Verifies hover paints only the targeted row while the focus-owning List stays neutral.</summary>
+    /// <summary>Verifies default square chrome owns the surface while idle rows remain transparent.</summary>
+    [Fact]
+    public async Task Render_WhenDefaultChromeIsUsed_DrawsSquareSurfaceBehindIdleRowsAsync()
+    {
+        // Arrange
+        var list = new UiList
+        {
+            Items = ["One", "Two", "Three"],
+            ScrollBars = ScrollBars.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(10, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+            ┌────────┐
+            │One     │
+            │Two     │
+            │Three   │
+            └────────┘
+            """);
+        surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(
+            list.Theme.ShouldNotBeNull().Resolve(ThemeColor.From(ColorRole.Surface)));
+    }
+
+    /// <summary>Verifies hover uses transparent accent text over the focus-owning List surface.</summary>
     [ComponentBehaviorEvidence(typeof(UiList), ComponentBehavior.Hover)]
     [Fact]
-    public async Task Pointer_WhenMovedOverItem_HighlightsOnlyTargetedRowAsync()
+    public async Task Pointer_WhenMovedOverItem_UsesTransparentAccentOverOwnerSurfaceAsync()
     {
         // Arrange
         List<Label> realized = [];
@@ -26,11 +57,12 @@ public sealed class ListSurfaceTests
         };
         await using var surface = await ComponentSurface.MountAsync(
             list,
-            new Size(8, 3),
+            new Size(10, 5),
             TestContext.Current.CancellationToken);
         var target = realized[1].Parent.ShouldNotBeNull();
-        var untouchedBackground = surface.Cell(default).Style.Background;
-        var hoverBackground = list.Theme.ShouldNotBeNull().Resolve(ThemeColor.From(ColorRole.Surface));
+        var theme = list.Theme.ShouldNotBeNull();
+        var surfaceBackground = theme.Resolve(ThemeColor.From(ColorRole.Surface));
+        var accentForeground = theme.Resolve(ThemeColor.From(ColorRole.Accent));
 
         // Act
         await surface.Pointer.MoveToAsync(target);
@@ -38,9 +70,10 @@ public sealed class ListSurfaceTests
         // Assert
         list.IsPointerOver.ShouldBeTrue();
         target.IsPointerOver.ShouldBeTrue();
-        surface.Cell(default).Style.Background.ShouldBe(untouchedBackground);
-        surface.Cell(new Point(0, 1)).Style.Background.ShouldBe(hoverBackground);
-        surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(untouchedBackground);
+        target.GetResolvedAppearance(target.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Transparent);
+        var targetOrigin = new Point(target.Bounds.X, target.Bounds.Y);
+        surface.Cell(targetOrigin).Style.Background.ShouldBe(surfaceBackground);
+        surface.Cell(targetOrigin).Style.Foreground.ShouldBe(accentForeground);
     }
 
     /// <summary>Verifies pointer and keyboard paths commit selection, focus, invocation, and Unicode appearance.</summary>
@@ -63,6 +96,7 @@ public sealed class ListSurfaceTests
         var invoked = new List<(int Index, ActivationCause Cause)>();
         var list = new UiList
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = ["One", "界", "Three"],
             ScrollBars = ScrollBars.None,
@@ -150,6 +184,7 @@ public sealed class ListSurfaceTests
         List<Label> realized = [];
         var list = new UiList
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = ["A", "B", "C", "D"],
             SelectionMode = SelectionMode.Multiple,
@@ -189,6 +224,7 @@ public sealed class ListSurfaceTests
         List<Label> realized = [];
         var list = new UiList
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = ["A", "B"],
             SelectedIndex = 0,
@@ -224,6 +260,7 @@ public sealed class ListSurfaceTests
         List<Label> realized = [];
         var list = new UiList
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = ["A", "B", "C"],
             SelectedIndex = 0,
@@ -262,6 +299,7 @@ public sealed class ListSurfaceTests
         // Arrange
         var list = new UiList
         {
+            BorderThickness = default,
             Items = ["A", "B"],
             ScrollBars = ScrollBars.None,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -291,6 +329,7 @@ public sealed class ListSurfaceTests
         // Arrange
         var list = new UiList
         {
+            BorderThickness = default,
             Items = ["A", "B"],
             ScrollBars = ScrollBars.None,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -324,6 +363,7 @@ public sealed class ListSurfaceTests
         // Arrange
         var list = new UiList
         {
+            BorderThickness = default,
             Items = ["A", "B"],
             ScrollBars = ScrollBars.None,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -363,6 +403,7 @@ public sealed class ListSurfaceTests
         List<Label> realized = [];
         var list = new UiList
         {
+            BorderThickness = default,
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray(),
             ScrollBars = ScrollBars.Vertical,

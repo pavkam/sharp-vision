@@ -6,6 +6,64 @@ namespace SharpVision.Showcase.Tests;
 /// <summary>Verifies live responsive layout recipes in the showcase.</summary>
 public sealed class LayoutPaneTests
 {
+    /// <summary>Verifies the application-shell specimen renders complete semantic region names.</summary>
+    [Fact]
+    public void Dock_WhenApplicationShellRenders_ShowsCompleteRegionNames()
+    {
+        // Arrange
+        using var page = new DockPane();
+        var size = new Size(140, 160);
+        new Engine().Layout(page, size);
+        using Frame frame = new(size);
+
+        // Act
+        page.Render(frame.Canvas);
+        var screen = new Screen(frame);
+
+        // Assert
+        screen.Text.ShouldContain("Explorer");
+        screen.Text.ShouldContain("Application header");
+        screen.Text.ShouldContain("Inspector");
+        screen.Text.ShouldContain("Status bar");
+        screen.Text.ShouldContain("Editor workspace");
+    }
+
+    /// <summary>Verifies ordinary Stack sizing specimens keep their visible region labels intact.</summary>
+    [Fact]
+    public void Stack_WhenSizingExamplesRender_ShowsCompleteRegionNames()
+    {
+        // Arrange
+        using var page = new StackPane();
+        var size = new Size(140, 180);
+        new Engine().Layout(page, size);
+        using Frame frame = new(size);
+
+        // Act
+        page.Render(frame.Canvas);
+        var screen = new Screen(frame);
+
+        // Assert
+        screen.Text.ShouldContain("Fixed 10");
+        screen.Text.ShouldContain("Footer region");
+    }
+
+    /// <summary>Verifies fixed Grid tracks show their complete cell allocation labels.</summary>
+    [Fact]
+    public void Grid_WhenFixedTracksRender_ShowsCompleteAllocationLabels()
+    {
+        // Arrange
+        using var page = new GridPane();
+        var size = new Size(140, 180);
+        new Engine().Layout(page, size);
+        using Frame frame = new(size);
+
+        // Act
+        page.Render(frame.Canvas);
+
+        // Assert
+        new Screen(frame).Text.ShouldContain("9 cells");
+    }
+
     /// <summary>Verifies Stack demonstrates the geometric difference between hidden and collapsed children.</summary>
     [Fact]
     public void Stack_WhenVisibilityExamplesBuild_ContainsHiddenAndCollapsedChildren()

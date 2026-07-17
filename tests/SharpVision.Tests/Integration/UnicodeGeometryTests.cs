@@ -24,7 +24,7 @@ public sealed class UnicodeGeometryTests
             var policy = new Policy(Ambiguous.Wide);
             var text = new TextControl() { Content = "·" };
             var marked = new TextControl("<b>·</b>");
-            var input = new TextInputControl() { Text = "·" };
+            var input = new TextInputControl() { BorderThickness = default, Text = "·" };
             var table = new Table();
             table.Columns.Add(TableColumn.Fixed("Value", 4));
             table.Rows.Add(new TableRow([new TextControl("·")]));
@@ -58,7 +58,12 @@ public sealed class UnicodeGeometryTests
 
         await dispatcher.InvokeAsync(() =>
         {
-            var input = new TextInputControl() { Text = source, Width = Length.Cells(2) };
+            var input = new TextInputControl()
+            {
+                BorderThickness = default,
+                Text = source,
+                Width = Length.Cells(2),
+            };
             input.Attach(dispatcher, Policy.Default);
             new Engine().Layout(input, new Size(2, 1));
             using Frame frame = new(new Size(2, 1));

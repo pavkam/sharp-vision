@@ -15,6 +15,8 @@ public sealed class GroupBoxTests
         group.Header.ShouldBeEmpty();
         group.Glyphs.ShouldBe(Glyphs.Rounded);
         group.BorderThickness.ShouldBe(new Thickness(1));
+        group.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+        group.BorderColor.ShouldBe(ThemeColor.From(ColorRole.Border));
         group.Content.ShouldBeNull();
 
         _ = Should.Throw<ArgumentNullException>(() => group.Header = null!);

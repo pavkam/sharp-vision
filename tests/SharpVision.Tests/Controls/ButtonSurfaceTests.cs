@@ -37,7 +37,8 @@ public sealed class ButtonSurfaceTests
 
 
             """);
-        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(Color.Indexed(8));
+        Themes.Dark.TryGetColor(ColorRole.Border, out var borderColor).ShouldBeTrue();
+        surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(borderColor);
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
@@ -141,7 +142,8 @@ public sealed class ButtonSurfaceTests
         // Assert
         surface.ShouldHaveState(button, VisualState.PointerOver);
         button.CanFocus.ShouldBeFalse();
-        surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(8));
+        Themes.Dark.TryGetColor(ColorRole.Border, out var borderColor).ShouldBeTrue();
+        surface.Cell(default).Style.Foreground.ShouldBe(borderColor);
         surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(Color.Indexed(15));
     }
 

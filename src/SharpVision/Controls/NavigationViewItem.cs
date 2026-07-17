@@ -115,7 +115,11 @@ public sealed class NavigationViewItem: Pressable
         var themed = current ? ResolveThemeGlyphs().Navigation.ItemCurrent : ResolveThemeGlyphs().Navigation.ItemIdle;
         var marker = CellGlyph.Resolve(current ? CurrentMarker : IdleMarker, themed.Fallback, CellPolicy.AmbiguousWidth);
         var prefix = Glyph is not null ? $"{Glyph} " : string.Empty;
-        _ = canvas.Clip(bounds).Draw($" {marker} {prefix}{Header}".AsSpan(), new Point(bounds.X, bounds.Y), style);
+        _ = canvas.Clip(bounds).Draw(
+            $" {marker} {prefix}{Header}".AsSpan(),
+            new Point(bounds.X, bounds.Y),
+            style,
+            background: BackgroundMode.Transparent);
     }
 
     /// <inheritdoc/>

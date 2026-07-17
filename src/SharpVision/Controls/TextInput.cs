@@ -25,7 +25,7 @@ public sealed class TextInput: Control
     private readonly ScrollBar _vertical;
     private Rect _editorBounds;
 
-    /// <summary>Initializes an empty focusable single-line editor.</summary>
+    /// <summary>Initializes an empty focusable single-line editor with a light one-cell border.</summary>
     public TextInput()
     {
         _chrome = RegisterOwnedSlot(
@@ -43,6 +43,8 @@ public sealed class TextInput: Control
         _vertical.ValueChanged += OnVerticalChanged;
         _chrome.Add(_horizontal);
         _chrome.Add(_vertical);
+        BorderThickness = new Thickness(1);
+        BorderGlyphs = Glyphs.Light;
         Focusable = true;
         TabStop = true;
     }

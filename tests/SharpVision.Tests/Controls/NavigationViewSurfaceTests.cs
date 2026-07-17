@@ -6,6 +6,32 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies NavigationView composition, selection, groups, scrolling, mutation, Unicode, and resize through mounted surfaces.</summary>
 public sealed class NavigationViewSurfaceTests
 {
+    /// <summary>Verifies item hover uses transparent accent text over the owning navigation surface.</summary>
+    [Fact]
+    public async Task Pointer_WhenMovedOverItem_UsesTransparentAccentOverOwnerSurfaceAsync()
+    {
+        // Arrange
+        var item = new NavigationViewItem { Header = "Home" };
+        var view = CreateView(header: null, 12, useDefaultChrome: true);
+        view.Items.Add(item);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(12, 3),
+            TestContext.Current.CancellationToken);
+        var theme = view.Theme.ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.MoveToAsync(item);
+
+        // Assert
+        item.GetResolvedAppearance(item.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Transparent);
+        var itemOrigin = new Point(item.Bounds.X, item.Bounds.Y);
+        surface.Cell(itemOrigin).Style.Background.ShouldBe(
+            theme.Resolve(ThemeColor.From(ColorRole.Surface)));
+        surface.Cell(itemOrigin).Style.Foreground.ShouldBe(
+            theme.Resolve(ThemeColor.From(ColorRole.Accent)));
+    }
+
     /// <summary>Verifies header, main, group, separators, footer, border, indentation, and Unicode draw exact cells.</summary>
     [ComponentBehaviorEvidence(
         typeof(NavigationViewSeparator),
@@ -25,9 +51,7 @@ public sealed class NavigationViewSurfaceTests
         var about = new NavigationViewItem { Header = "About", Glyph = "界" };
         var mainSeparator = new NavigationViewSeparator();
         var footerSeparator = new NavigationViewSeparator();
-        var view = CreateView("界 NAV", 20);
-        view.BorderThickness = new Thickness(1);
-        view.BorderGlyphs = Glyphs.Rounded;
+        var view = CreateView("界 NAV", 20, useDefaultChrome: true);
         view.Items.Add(home);
         view.Items.Add(group);
         view.Items.Add(mainSeparator);
@@ -40,7 +64,7 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert
         surface.ShouldRender("""
-            ╭──────────────────╮
+            ┌──────────────────┐
             │ 界 NAV           │
             │ · ◆ Home         │
             │ ▼ Tools          │
@@ -48,12 +72,14 @@ public sealed class NavigationViewSurfaceTests
             │──────────────────│
             │──────────────────│
             │ · 界 About       │
-            ╰──────────────────╯
+            └──────────────────┘
             """);
         surface.Cell(new Point(2, 1)).Text.ShouldBe("界");
         surface.Cell(new Point(3, 1)).IsContinuation.ShouldBeTrue();
         surface.Cell(new Point(4, 7)).Text.ShouldBe("界");
         surface.Cell(new Point(5, 7)).IsContinuation.ShouldBeTrue();
+        surface.Cell(new Point(1, 1)).Style.Background.ShouldBe(
+            view.Theme.ShouldNotBeNull().Resolve(ThemeColor.From(ColorRole.Surface)));
         view.SelectedItem.ShouldBeNull();
 
         // Act and assert excluded separator interaction
@@ -344,11 +370,21 @@ public sealed class NavigationViewSurfaceTests
             """);
     }
 
-    private static NavigationView CreateView(string? header, int width) => new()
+    private static NavigationView CreateView(string? header, int width, bool useDefaultChrome = false)
     {
-        Header = header,
-        Width = Length.Cells(width),
-        HorizontalAlignment = HorizontalAlignment.Stretch,
-        VerticalAlignment = VerticalAlignment.Stretch,
-    };
+        var view = new NavigationView
+        {
+            Header = header,
+            Width = Length.Cells(width),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+
+        if (!useDefaultChrome)
+        {
+            view.BorderThickness = default;
+        }
+
+        return view;
+    }
 }

@@ -37,8 +37,10 @@ bespoke. See the [shared chrome contract](../concepts/styling.md#shared-chrome).
 
 - [Button](input/button.md#button-contract)
 - [CheckBox](input/check-box.md#checkbox-contract)
+- [ColorPicker](input/color-picker.md#colorpicker-contract)
 - [ComboBox](input/combo-box.md#combobox-contract)
 - [RadioButton](input/radio-button.md#radiobutton-contract)
+- [Slider](input/slider.md#slider-contract)
 - [TextInput](input/text-input.md#textinput-contract)
 
 ### Layout and scrolling

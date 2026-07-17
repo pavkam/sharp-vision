@@ -13,11 +13,11 @@ public sealed class ThemeGlyphRenderingTests
         // Arrange, act, and assert
         Render(new ProgressBar { Value = 0.5 }, new Size(4, 1), Themes.White).ShouldBe("##..");
         Render(
-            new ComboBox { Items = ["A"], Width = Length.Cells(4) },
+            new ComboBox { BorderThickness = default, Items = ["A"], Width = Length.Cells(4) },
             new Size(4, 1),
             Themes.White).ShouldBe("A  v");
         Render(
-            new Expander { Header = "X", IsExpanded = false },
+            new Expander { BorderThickness = default, Header = "X", IsExpanded = false },
             new Size(4, 1),
             Themes.White).ShouldBe("> X ");
         Render(

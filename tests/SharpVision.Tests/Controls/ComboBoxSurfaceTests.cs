@@ -27,6 +27,7 @@ public sealed class ComboBoxSurfaceTests
         {
             Items = ["One", "Two", "Three"],
             Width = Length.Cells(10),
+            Height = Length.Cells(3),
             DropDownHeight = 3,
         };
         await using var surface = await ComponentSurface.MountAsync(
@@ -56,7 +57,14 @@ public sealed class ComboBoxSurfaceTests
         combo.IsOpen.ShouldBeFalse();
         combo.IsPressed.ShouldBeFalse();
         surface.ShouldHaveFocus(combo);
-        surface.ShouldRender("Two      ▼");
+        surface.ShouldRender("""
+            ┌────────┐
+            │Two    ▼│
+            └────────┘
+
+
+
+            """);
 
         // Act unavailable while another field press is held
         await surface.Pointer.MoveToAsync(combo);

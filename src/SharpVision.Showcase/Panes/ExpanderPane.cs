@@ -28,14 +28,13 @@ internal sealed class ExpanderPane: CompositeControl
                 Doc.Example("Two-level nesting", "Both toggle independently.", nested)),
             Doc.Section("📂", "FAQ pattern", "Collapsed expanders create an accordion.",
                 Doc.Example("Stacked questions", "Click any header.", Doc.Column(faq1, faq2))),
-            Doc.Section("📂", "Bordered expander", "Set BorderThickness and BorderGlyphs to frame the section with visible chrome.",
+            Doc.Section("📂", "Rounded chrome override", "Expanders are square framed surfaces by default; override BorderGlyphs when a softer frame suits the content.",
                 Doc.Example(
-                    "Rounded border with padding",
-                    "The border renders via intrinsic RenderChrome. Content is inset by the border and padding.",
+                    "Rounded connection settings",
+                    "This specimen keeps the default one-cell frame and replaces only its square glyph family.",
                     new Expander
                     {
                         Header = "Connection settings",
-                        BorderThickness = new Thickness(1),
                         BorderGlyphs = Glyphs.Rounded,
                         Padding = new Thickness(1, 0),
                         Content = new Stack
@@ -48,6 +47,6 @@ internal sealed class ExpanderPane: CompositeControl
                             },
                         },
                     },
-                    "var expander = new Expander\n{\n    Header = \"Settings\",\n    BorderThickness = new Thickness(1),\n    BorderGlyphs = Glyphs.Rounded,\n};")));
+                    "var expander = new Expander\n{\n    Header = \"Settings\",\n    BorderGlyphs = Glyphs.Rounded,\n};")));
     }
 }

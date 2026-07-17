@@ -72,6 +72,11 @@ theme group, so chrome never writes half of a wide cell. Partial borders draw
 only enabled edges; a corner glyph appears only when both adjoining edges are
 active.
 
+`Glyphs.HalfBlock` provides a sculpted one-cell frame. Its physical segments map
+to `▛▀▜` across the top, `▌` and `▐` on the sides, and `▙▄▟` across the bottom.
+The glyph family changes rendering only; `BorderThickness` retains the same
+zero-or-one-cell layout reservation as every other border preset.
+
 The render pipeline draws shadow first, then the body when `Background` is set,
 then content and normal-layer children, and finally the border overlay.
 Composite shadow restyles the translated cells it covers; block-glyph shadow
