@@ -10,6 +10,8 @@ public sealed class NavigationViewGroup: Control
 {
     private readonly Stack _stack;
     private readonly OwnedControlSlot _childrenSlot;
+    private Rune? _collapsedGlyph;
+    private Rune? _expandedGlyph;
 
     /// <summary>Initializes an expanded navigation group with no header.</summary>
     public NavigationViewGroup()
@@ -58,6 +60,32 @@ public sealed class NavigationViewGroup: Control
             }
         }
     } = true;
+
+    /// <summary>Gets or sets the local collapsed-group marker.</summary>
+    public Rune CollapsedGlyph { get => _collapsedGlyph ?? ResolveThemeGlyphs().Navigation.GroupCollapsed.Value; set => SetGlyph(ref _collapsedGlyph, value, nameof(CollapsedGlyph)); }
+
+    /// <summary>Gets or sets the local expanded-group marker.</summary>
+    public Rune ExpandedGlyph { get => _expandedGlyph ?? ResolveThemeGlyphs().Navigation.GroupExpanded.Value; set => SetGlyph(ref _expandedGlyph, value, nameof(ExpandedGlyph)); }
+
+    /// <summary>Clears both local disclosure glyphs so the active theme supplies them.</summary>
+    /// <exception cref="InvalidOperationException">The attached group is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The group is disposed.</exception>
+    public void ResetGlyphs()
+    {
+        VerifyMutable();
+
+        if (_collapsedGlyph.HasValue)
+        {
+            _collapsedGlyph = null;
+            NotifyPropertyChanged(nameof(CollapsedGlyph), ChangeImpact.Render);
+        }
+
+        if (_expandedGlyph.HasValue)
+        {
+            _expandedGlyph = null;
+            NotifyPropertyChanged(nameof(ExpandedGlyph), ChangeImpact.Render);
+        }
+    }
 
     /// <summary>Gets the number of sub-items.</summary>
     internal int ItemCount => _stack.Children.Count;
@@ -115,7 +143,8 @@ public sealed class NavigationViewGroup: Control
             return;
         }
 
-        var glyph = IsExpanded ? "▼" : "▶";
+        var themed = IsExpanded ? ResolveThemeGlyphs().Navigation.GroupExpanded : ResolveThemeGlyphs().Navigation.GroupCollapsed;
+        var glyph = CellGlyph.Resolve(IsExpanded ? ExpandedGlyph : CollapsedGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
         _ = canvas.Draw(
             $" {glyph} {Header}".AsSpan(),
             new Point(Bounds.X, Bounds.Y),
@@ -143,6 +172,7 @@ public sealed class NavigationViewGroup: Control
 
         if (keyboard || pointer)
         {
+            FindNavigationView()?.NotifyGroupInvoked(this);
             IsExpanded = !IsExpanded;
             eventArgs.Handled = true;
         }
@@ -161,4 +191,12 @@ public sealed class NavigationViewGroup: Control
         return null;
     }
 
+    private void SetGlyph(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+        if (storage == value) { return; }
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
+    }
 }

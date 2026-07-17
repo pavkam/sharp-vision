@@ -11,6 +11,7 @@ public sealed class NavigationView: CompositeControl
     private readonly Stack _itemsStack;
     private readonly Stack _footerStack;
     private readonly Text _headerText;
+    private readonly ItemNavigator _navigator;
 
     /// <summary>Initializes a navigation view with an empty item collection.</summary>
     public NavigationView()
@@ -30,6 +31,7 @@ public sealed class NavigationView: CompositeControl
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             ScrollBarChrome = ScrollBarChrome.Thin,
         };
+        _navigator = new ItemNavigator(CollectNavigableEntries);
 
         var root = new Dock();
         Dock.SetSide(_headerText, Side.Top);
@@ -88,6 +90,7 @@ public sealed class NavigationView: CompositeControl
             throw new ArgumentException("The item is not owned by this navigation view.", nameof(item));
         }
 
+        _ = _navigator.SetCurrent(item);
         Select(item);
     }
 
@@ -126,6 +129,8 @@ public sealed class NavigationView: CompositeControl
     internal bool RemoveEntry(Control entry, bool isFooter)
     {
         var stack = isFooter ? _footerStack : _itemsStack;
+        var currentRemoved = _navigator.Current is { } current &&
+            (ReferenceEquals(current, entry) || IsDescendantOf(current, entry));
         var selectedIndex = SelectedItem is { } selected
             ? CollectSelectableItems().IndexOf(selected)
             : -1;
@@ -133,6 +138,11 @@ public sealed class NavigationView: CompositeControl
         if (!stack.Children.Remove(entry))
         {
             return false;
+        }
+
+        if (currentRemoved)
+        {
+            _ = _navigator.SetCurrent(null);
         }
 
         if (entry is NavigationViewItem item)
@@ -154,6 +164,11 @@ public sealed class NavigationView: CompositeControl
     {
         var stack = isFooter ? _footerStack : _itemsStack;
 
+        if (_navigator.Current is { } current && IsDescendantOf(current, stack))
+        {
+            _ = _navigator.SetCurrent(null);
+        }
+
         foreach (var child in stack.Children)
         {
             if (child is NavigationViewItem item)
@@ -170,7 +185,16 @@ public sealed class NavigationView: CompositeControl
     internal void NotifyItemFocused(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
+        _ = _navigator.SetCurrent(item);
         Select(item);
+    }
+
+    /// <summary>Commits one pointer-targeted group as the current keyboard entry.</summary>
+    /// <param name="group">The non-null owned group.</param>
+    internal void NotifyGroupInvoked(NavigationViewGroup group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        _ = _navigator.SetCurrent(group);
     }
 
     /// <summary>Repairs selection after a retained group changes descendant visibility.</summary>
@@ -178,6 +202,11 @@ public sealed class NavigationView: CompositeControl
     internal void NotifyGroupVisibilityChanged(NavigationViewGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);
+
+        if (_navigator.Current is { } current && IsDescendantOf(current, group))
+        {
+            _ = _navigator.SetCurrent(group);
+        }
 
         if (SelectedItem is null || SelectedItem.EffectiveIsVisible)
         {
@@ -202,21 +231,19 @@ public sealed class NavigationView: CompositeControl
         if (eventArgs.Stroke.Code == Code.Enter ||
             (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
         {
-            if (SelectedItem is not null)
-            {
-                eventArgs.Handled = true;
-            }
-
+            eventArgs.Handled = ActivateCurrent();
             return;
         }
 
         if (eventArgs.Stroke.Code is Code.Home or Code.End)
         {
-            var endpoints = CollectSelectableItems();
+            var endpoints = CollectNavigableEntries();
 
             if (endpoints.Count > 0)
             {
-                Select(eventArgs.Stroke.Code == Code.Home ? endpoints[0] : endpoints[^1]);
+                var target = eventArgs.Stroke.Code == Code.Home ? endpoints[0] : endpoints[^1];
+                _ = _navigator.SetCurrent(target);
+                CommitCurrent(target);
                 eventArgs.Handled = true;
             }
 
@@ -236,20 +263,11 @@ public sealed class NavigationView: CompositeControl
             return;
         }
 
-        var all = CollectSelectableItems();
-        var current = SelectedItem is { } selected ? all.IndexOf(selected) : -1;
-        var next = current + direction;
         eventArgs.Handled = true;
 
-        if (next >= 0 && next < all.Count)
+        if (_navigator.Move(direction, wrap: false) && _navigator.Current is { } current)
         {
-            var item = all[next];
-            Select(item);
-
-            if (IsDescendantOf(item, _itemsStack))
-            {
-                _ = _itemsStack.BringIntoView(item);
-            }
+            CommitCurrent(current);
         }
     }
 
@@ -270,7 +288,50 @@ public sealed class NavigationView: CompositeControl
 
         if (sender is NavigationViewItem item)
         {
+            _ = _navigator.SetCurrent(item);
             Select(item);
+        }
+    }
+
+    private bool ActivateCurrent()
+    {
+        if (_navigator.Current is null)
+        {
+            var entries = CollectNavigableEntries();
+
+            if (entries.Count == 0)
+            {
+                return false;
+            }
+
+            _ = _navigator.SetCurrent(entries[0]);
+        }
+
+        if (_navigator.Current is NavigationViewGroup group)
+        {
+            group.IsExpanded = !group.IsExpanded;
+            return true;
+        }
+
+        if (_navigator.Current is NavigationViewItem item)
+        {
+            item.ActivateFromOwner(ActivationCause.Keyboard);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void CommitCurrent(Control current)
+    {
+        if (current is NavigationViewItem item)
+        {
+            Select(item);
+        }
+
+        if (IsDescendantOf(current, _itemsStack))
+        {
+            _ = _itemsStack.BringIntoView(current);
         }
     }
 
@@ -299,6 +360,44 @@ public sealed class NavigationView: CompositeControl
         CollectFrom(_itemsStack, result);
         CollectFrom(_footerStack, result);
         return result;
+    }
+
+    private List<Control> CollectNavigableEntries()
+    {
+        List<Control> result = [];
+        CollectNavigableFrom(_itemsStack, result);
+        CollectNavigableFrom(_footerStack, result);
+        return result;
+    }
+
+    private static void CollectNavigableFrom(Stack stack, List<Control> result)
+    {
+        foreach (var child in stack.Children)
+        {
+            if (child is NavigationViewItem { EffectiveIsVisible: true, EffectiveIsEnabled: true } item)
+            {
+                result.Add(item);
+            }
+            else if (child is NavigationViewGroup { EffectiveIsVisible: true, EffectiveIsEnabled: true } group)
+            {
+                result.Add(group);
+
+                if (!group.IsExpanded)
+                {
+                    continue;
+                }
+
+                for (var index = 0; index < group.ItemCount; index++)
+                {
+                    var sub = group.ItemAt(index);
+
+                    if (sub.EffectiveIsVisible && sub.EffectiveIsEnabled)
+                    {
+                        result.Add(sub);
+                    }
+                }
+            }
+        }
     }
 
     private static void CollectFrom(Stack stack, List<NavigationViewItem> result)

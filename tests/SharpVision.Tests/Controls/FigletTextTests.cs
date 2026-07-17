@@ -52,6 +52,30 @@ public sealed class FigletTextTests
         FrameOracle.Get(frame, new Point(6, 5)).ShouldBe(" ");
     }
 
+    /// <summary>Verifies FIGlet cells preserve the already-painted parent surface when no background is declared.</summary>
+    [Fact]
+    public void Render_WhenBackgroundIsUnset_PreservesDestinationSurface()
+    {
+        var control = new FigletText(FigletCatalog.Default.Load("Standard"))
+        {
+            Content = "H",
+            Foreground = Color.Indexed(45),
+        };
+        new Engine().Layout(control, new Size(7, 6));
+        using Frame frame = new(new Size(7, 6));
+        var destinationBackground = Color.Indexed(238);
+        frame.Canvas.Fill(
+            frame.Canvas.Bounds,
+            new Rune(' '),
+            new TerminalStyle(Color.Indexed(255), destinationBackground));
+
+        control.Render(frame.Canvas);
+
+        frame.GetCell(new Point(1, 0)).Style.ShouldBe(
+            new TerminalStyle(Color.Indexed(45), destinationBackground));
+        frame.GetCell(default).Style.Background.ShouldBe(destinationBackground);
+    }
+
     /// <summary>Verifies a null replacement fails before changing the current font.</summary>
     [Fact]
     public void Font_WhenValueIsNull_ThrowsBeforeMutation()

@@ -21,6 +21,13 @@ separate rendering model.
 - `ShowGridLines` and `GridLineColor` draw light Unicode lines in available gaps
   without covering child controls.
 
+## Theme glyphs
+
+`HorizontalGridGlyph`, `VerticalGridGlyph`, and `CrossGridGlyph` are validated
+one-cell local overrides. Otherwise table chrome resolves the corresponding
+`Theme.Glyphs.Separators` values and terminal-safe fallbacks.
+`ResetGridGlyphs()` clears all three overrides.
+
 ## Layout and ownership
 
 Columns resolve with the shared

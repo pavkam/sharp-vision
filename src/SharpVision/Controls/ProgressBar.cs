@@ -6,11 +6,18 @@ namespace SharpVision.Controls;
 /// <summary>Displays a visual progress indicator using block characters with optional sub-cell resolution.</summary>
 public sealed class ProgressBar: Control
 {
-    private static readonly string[] _horizontalBlocks = [" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"];
-    private static readonly string[] _verticalBlocks = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
+    private Rune? _fillGlyph;
+    private Rune? _trackGlyph;
+    private Rune? _indeterminateGlyph;
+    private double _value;
 
     /// <summary>Initializes a non-focusable horizontal progress bar at zero progress.</summary>
-    public ProgressBar() => IsHitTestVisible = false;
+    public ProgressBar()
+    {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        VerticalAlignment = VerticalAlignment.Stretch;
+        IsHitTestVisible = false;
+    }
 
     /// <summary>Gets or sets the minimum value.</summary>
     /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
@@ -18,7 +25,33 @@ public sealed class ProgressBar: Control
     public double Minimum
     {
         get;
-        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
+        set
+        {
+            ValidateFinite(value, nameof(value));
+
+            if (value >= Maximum)
+            {
+                throw new ArgumentException("Minimum must be below Maximum.", nameof(value));
+            }
+
+            VerifyMutable();
+            var clamped = Math.Max(_value, value);
+
+            if (field == value && _value == clamped)
+            {
+                return;
+            }
+
+            field = value;
+            var valueChanged = _value != clamped;
+            _value = clamped;
+            NotifyPropertyChanged(nameof(Minimum), ChangeImpact.Render);
+
+            if (valueChanged)
+            {
+                NotifyPropertyChanged(nameof(Value), ChangeImpact.Render);
+            }
+        }
     }
 
     /// <summary>Gets or sets the maximum value.</summary>
@@ -27,19 +60,46 @@ public sealed class ProgressBar: Control
     public double Maximum
     {
         get;
-        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
-    } = 1.0;
+        set
+        {
+            ValidateFinite(value, nameof(value));
+
+            if (value <= Minimum)
+            {
+                throw new ArgumentException("Maximum must be above Minimum.", nameof(value));
+            }
+
+            VerifyMutable();
+            var clamped = Math.Min(_value, value);
+
+            if (field == value && _value == clamped)
+            {
+                return;
+            }
+
+            field = value;
+            var valueChanged = _value != clamped;
+            _value = clamped;
+            NotifyPropertyChanged(nameof(Maximum), ChangeImpact.Render);
+
+            if (valueChanged)
+            {
+                NotifyPropertyChanged(nameof(Value), ChangeImpact.Render);
+            }
+        }
+    } = 1;
 
     /// <summary>Gets or sets the current value, clamped between Minimum and Maximum.</summary>
     /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
     public double Value
     {
-        get;
+        get => _value;
         set
         {
+            ValidateFinite(value, nameof(value));
             var clamped = Math.Clamp(value, Minimum, Maximum);
-            _ = SetProperty(ref field, clamped, ChangeImpact.Render);
+            _ = SetProperty(ref _value, clamped, ChangeImpact.Render);
         }
     }
 
@@ -72,9 +132,9 @@ public sealed class ProgressBar: Control
 
     /// <summary>Gets or sets whether to use fractional block characters for sub-cell resolution.</summary>
     /// <remarks>
-    /// When true, horizontal bars use ▏▎▍▌▋▊▉█ (8 levels per cell) and vertical bars use
-    /// ▁▂▃▄▅▆▇█ (8 levels per cell), providing 8x the effective resolution.
-    /// When false, each cell is either fully filled (█) or empty (░).
+    /// When true, bars use the theme's eight intermediate horizontal or vertical fraction levels,
+    /// providing eight times the effective resolution. When false, each cell uses either the
+    /// theme's full or empty progress glyph.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
@@ -82,6 +142,45 @@ public sealed class ProgressBar: Control
     {
         get;
         set => _ = SetProperty(ref field, value, ChangeImpact.Render);
+    }
+
+    /// <summary>Gets or sets the local fully filled glyph.</summary>
+    public Rune FillGlyph
+    {
+        get => _fillGlyph ?? ResolveThemeGlyphs().Progress.Full.Value;
+        set => SetGlyph(ref _fillGlyph, value, nameof(FillGlyph));
+    }
+
+    /// <summary>Gets or sets the local empty-track glyph.</summary>
+    public Rune TrackGlyph
+    {
+        get => _trackGlyph ?? ResolveThemeGlyphs().Progress.Empty.Value;
+        set => SetGlyph(ref _trackGlyph, value, nameof(TrackGlyph));
+    }
+
+    /// <summary>Gets or sets the local indeterminate glyph.</summary>
+    public Rune IndeterminateGlyph
+    {
+        get => _indeterminateGlyph ?? ResolveThemeGlyphs().Progress.Indeterminate.Value;
+        set => SetGlyph(ref _indeterminateGlyph, value, nameof(IndeterminateGlyph));
+    }
+
+    /// <summary>Clears local progress glyph overrides so the active theme supplies them.</summary>
+    public void ResetGlyphs()
+    {
+        VerifyMutable();
+
+        if (!_fillGlyph.HasValue && !_trackGlyph.HasValue && !_indeterminateGlyph.HasValue)
+        {
+            return;
+        }
+
+        _fillGlyph = null;
+        _trackGlyph = null;
+        _indeterminateGlyph = null;
+        NotifyPropertyChanged(nameof(FillGlyph), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(TrackGlyph), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(IndeterminateGlyph), ChangeImpact.Render);
     }
 
     /// <inheritdoc/>
@@ -100,6 +199,24 @@ public sealed class ProgressBar: Control
         }
 
         var style = ResolvedStyle;
+
+        if (IsIndeterminate)
+        {
+            var glyph = ResolveConfiguredGlyph(
+                IndeterminateGlyph,
+                ResolveThemeGlyphs().Progress.Indeterminate);
+
+            for (var y = Bounds.Y; y < Bounds.Bottom; y++)
+            {
+                for (var x = Bounds.X; x < Bounds.Right; x++)
+                {
+                    canvas.DrawRune(glyph, new Point(x, y), style, BackgroundMode.Transparent);
+                }
+            }
+
+            return;
+        }
+
         var range = Maximum - Minimum;
         var ratio = range > 0 ? Math.Clamp((Value - Minimum) / range, 0, 1) : 0;
 
@@ -115,6 +232,8 @@ public sealed class ProgressBar: Control
 
     private void RenderHorizontal(TerminalCanvas canvas, TerminalStyle style, double ratio)
     {
+        var progress = ResolveThemeGlyphs().Progress;
+
         if (UseSubCellResolution)
         {
             var totalEighths = (int) (ratio * Bounds.Width * 8);
@@ -125,11 +244,11 @@ public sealed class ProgressBar: Control
             {
                 var cellIndex = x - Bounds.X;
                 var glyph = cellIndex < fullCells
-                    ? _horizontalBlocks[8]
+                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
                     : cellIndex == fullCells && remainder > 0
-                        ? _horizontalBlocks[remainder]
-                        : " ";
-                _ = canvas.Draw(glyph.AsSpan(), new Point(x, Bounds.Y), style, background: BackgroundMode.Transparent);
+                        ? ResolveThemeGlyph(progress.HorizontalFractions.Span[remainder])
+                        : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                canvas.DrawRune(glyph, new Point(x, Bounds.Y), style, BackgroundMode.Transparent);
             }
         }
         else
@@ -138,14 +257,18 @@ public sealed class ProgressBar: Control
 
             for (var x = Bounds.X; x < Bounds.Right; x++)
             {
-                var glyph = x - Bounds.X < filled ? "█" : "░";
-                _ = canvas.Draw(glyph.AsSpan(), new Point(x, Bounds.Y), style, background: BackgroundMode.Transparent);
+                var glyph = x - Bounds.X < filled
+                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
+                    : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                canvas.DrawRune(glyph, new Point(x, Bounds.Y), style, BackgroundMode.Transparent);
             }
         }
     }
 
     private void RenderVertical(TerminalCanvas canvas, TerminalStyle style, double ratio)
     {
+        var progress = ResolveThemeGlyphs().Progress;
+
         if (UseSubCellResolution)
         {
             var totalEighths = (int) (ratio * Bounds.Height * 8);
@@ -156,11 +279,11 @@ public sealed class ProgressBar: Control
             {
                 var cellFromBottom = Bounds.Bottom - 1 - y;
                 var glyph = cellFromBottom < fullCells
-                    ? _verticalBlocks[8]
+                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
                     : cellFromBottom == fullCells && remainder > 0
-                        ? _verticalBlocks[remainder]
-                        : " ";
-                _ = canvas.Draw(glyph.AsSpan(), new Point(Bounds.X, y), style, background: BackgroundMode.Transparent);
+                        ? ResolveThemeGlyph(progress.VerticalFractions.Span[remainder])
+                        : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                canvas.DrawRune(glyph, new Point(Bounds.X, y), style, BackgroundMode.Transparent);
             }
         }
         else
@@ -170,9 +293,36 @@ public sealed class ProgressBar: Control
 
             for (var y = Bounds.Y; y < Bounds.Bottom; y++)
             {
-                var glyph = y >= emptyEnd ? "█" : "░";
-                _ = canvas.Draw(glyph.AsSpan(), new Point(Bounds.X, y), style, background: BackgroundMode.Transparent);
+                var glyph = y >= emptyEnd
+                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
+                    : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                canvas.DrawRune(glyph, new Point(Bounds.X, y), style, BackgroundMode.Transparent);
             }
+        }
+    }
+
+    private Rune ResolveConfiguredGlyph(Rune value, ThemedGlyph themed) =>
+        CellGlyph.Resolve(value, themed.Fallback, CellPolicy.AmbiguousWidth);
+
+    private void SetGlyph(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+
+        if (storage == value)
+        {
+            return;
+        }
+
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
+    }
+
+    private static void ValidateFinite(double value, string name)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new ArgumentOutOfRangeException(name, value, "Progress values must be finite.");
         }
     }
 }

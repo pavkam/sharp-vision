@@ -32,6 +32,9 @@ public sealed class CuratedThemesTests
         {
             var theme = ThemeCatalog.Default.Load(slug);
             theme.IsFrozen.ShouldBeTrue();
+            theme.SchemaVersion.ShouldBe(2);
+            theme.Glyphs.Progress.HorizontalFractions.Length.ShouldBe(9);
+            theme.Glyphs.Progress.VerticalFractions.Length.ShouldBe(9);
 
             foreach (var role in Enum.GetValues<ColorRole>())
             {

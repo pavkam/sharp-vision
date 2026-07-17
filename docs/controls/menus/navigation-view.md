@@ -10,7 +10,8 @@ scrollable items stack filling the remainder.
 
 Items, groups, and separators are managed through typed collections. Selection
 is flat across all `NavigationViewItem` entries in both the main and footer
-sections. Groups and separators are not selectable.
+sections. Group headers participate in the current keyboard order but never
+become `SelectedItem`; separators are skipped entirely.
 
 ## API
 
@@ -25,11 +26,13 @@ sections. Groups and separators are not selectable.
   keyboard focus; rejects null and items owned by another navigation view.
 - `SelectionChanged` — fires after a committed selection change.
 
-The view is the single sidebar tab stop (`TabNavigation.None`); items are
-private presentation faces and never receive keyboard focus. Up/Down arrows
-navigate between selectable items, skipping groups and separators. Items scroll
-into view automatically. Enter and Space are consumed by the selected view
-without transferring focus to an item face.
+The view is the single sidebar tab stop (`TabNavigation.None`); item and group
+faces never receive keyboard focus. Up/Down arrows move the current entry across
+available group headers and items while skipping separators. Home/End move to
+the first or last available entry. Current entries scroll into view
+automatically. Enter and Space toggle a current group or invoke a current item
+without transferring focus. When no entry is current, activation establishes the
+first available entry before applying its action.
 
 ## NavigationViewItem
 
@@ -42,14 +45,24 @@ non-focusable and non-tab-stop.
 ## NavigationViewGroup
 
 A collapsible labeled section. `Header` (string) is the group label rendered
-with a toggle glyph (`▼` expanded, `▶` collapsed). `IsExpanded` (bool, default
-true) controls sub-item visibility. Sub-items are `NavigationViewItem` instances
-added via the group's internal `AddItem` method. Pressing Enter on a focused
-group toggles its expansion.
+with the theme's expanded or collapsed disclosure glyph. `IsExpanded` (bool,
+default true) controls sub-item visibility. Sub-items are `NavigationViewItem`
+instances added via the group's internal `AddItem` method. Enter or Space on the
+current group toggles its expansion while the owning `NavigationView` retains
+focus. Collapsing a group whose descendant is current moves current state to the
+group header and repairs any now-hidden selection.
 
 ## NavigationViewSeparator
 
 A non-interactive horizontal divider line. Not focusable, not hit-testable.
+
+## Theme glyphs
+
+Idle/current item markers, group disclosure markers, and navigation separators
+resolve from `Theme.Glyphs.Navigation`. `IdleMarker`, `CurrentMarker`,
+`CollapsedGlyph`, `ExpandedGlyph`, and `NavigationViewSeparator.Glyph` provide
+validated local overrides. `ResetMarkers()`, `ResetGlyphs()`, and `ResetGlyph()`
+clear the corresponding item, group, and separator overrides.
 
 ## Example
 
@@ -72,7 +85,8 @@ nav.SelectionChanged += (_, _) =>
 
 ## Test obligations
 
-Cover typed item addition, owned and foreign programmatic selection, owner focus
-with Up/Down keyboard navigation, group expand/collapse with sub-items,
-separator non-interactivity, footer item separation, header rendering, item
-removal clearing selection, and final cells.
+Cover typed item addition, owned and foreign programmatic selection, retained
+owner focus with group-and-item keyboard navigation, Enter/Space group
+expand/collapse, selection repair for collapsed descendants, separator
+non-interactivity, footer item separation, header rendering, item removal
+clearing selection, and final cells.

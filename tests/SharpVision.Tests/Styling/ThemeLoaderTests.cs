@@ -9,11 +9,7 @@ namespace SharpVision.Tests.Styling;
 public sealed class ThemeLoaderTests
 {
     private static string Json(string roles, string palette = "\"bg\": \"#101010\", \"fg\": \"#e0e0e0\"") =>
-        $$"""
-          { "version": 1, "name": "T", "slug": "t", "colorScheme": "dark", "order": 1,
-            "author": "A", "license": "MIT", "source": "s",
-            "palette": { {{palette}} }, "roles": { {{roles}} } }
-          """;
+        ThemeJson.Create(roles, palette);
 
     /// <summary>Verifies a palette key, an inline hex literal, and an inline index literal all resolve.</summary>
     [Fact]

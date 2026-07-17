@@ -110,13 +110,19 @@ public sealed class NavigationViewSurfaceTests
         // Act Tab entry
         await surface.Keyboard.PressAsync(Code.Tab);
 
-        // Assert first entry
-        view.SelectedItem.ShouldBeSameAs(first);
+        // Assert focus entry precedes directional selection
+        view.SelectedItem.ShouldBeNull();
         surface.ShouldHaveState(view, VisualState.Focused);
         first.IsFocused.ShouldBeFalse();
+
+        await surface.Keyboard.PressAsync(Code.Down);
+        view.SelectedItem.ShouldBeSameAs(first);
         first.IsSelected.ShouldBeTrue();
 
         // Act flat navigation
+        await surface.Keyboard.PressAsync(Code.Down);
+        (group.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+        view.SelectedItem.ShouldBeSameAs(first);
         await surface.Keyboard.PressAsync(Code.Down);
         view.SelectedItem.ShouldBeSameAs(child);
         surface.ShouldHaveFocus(view);
@@ -196,7 +202,8 @@ public sealed class NavigationViewSurfaceTests
             new Size(14, 5),
             TestContext.Current.CancellationToken);
         await surface.Keyboard.PressAsync(Code.Tab);
-        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Down);
         view.SelectedItem.ShouldBeSameAs(first);
 
         // Act pointer collapse
@@ -231,6 +238,50 @@ public sealed class NavigationViewSurfaceTests
             """);
     }
 
+    /// <summary>Verifies owner-focused keyboard navigation reaches group headers and collapses their retained rows.</summary>
+    [Fact]
+    public async Task Input_WhenGroupsReceiveKeyboardNavigation_CollapsesEachGroupAsync()
+    {
+        // Arrange
+        var core = new NavigationViewGroup { Header = "Core" };
+        var models = new NavigationViewItem { Header = "Models" };
+        core.AddItem(models);
+        var tests = new NavigationViewGroup { Header = "Tests" };
+        var unit = new NavigationViewItem { Header = "Unit" };
+        tests.AddItem(unit);
+        var view = CreateView(header: null, 14);
+        view.Items.Add(core);
+        view.Items.Add(new NavigationViewSeparator());
+        view.Items.Add(tests);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(14, 5),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act collapse first group, navigate to the second header, and collapse it
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        core.IsExpanded.ShouldBeFalse();
+        tests.IsExpanded.ShouldBeFalse();
+        models.EffectiveIsVisible.ShouldBeFalse();
+        unit.EffectiveIsVisible.ShouldBeFalse();
+        core.Bounds.Height.ShouldBe(1);
+        tests.Bounds.Height.ShouldBe(1);
+        surface.ShouldHaveFocus(view);
+        (tests.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+        surface.ShouldRender("""
+             ▶ Core
+            ──────────────
+             ▶ Tests
+
+
+            """);
+    }
+
     /// <summary>Verifies main scrolling, selected removal repair, footer pinning, and resize offset clamping.</summary>
     [Fact]
     public async Task ResizeAsync_WhenMainItemsOverflowAndMutate_RepairsSelectionOffsetAndCellsAsync()
@@ -253,6 +304,7 @@ public sealed class NavigationViewSurfaceTests
             new Size(12, 7),
             TestContext.Current.CancellationToken);
         await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
 
         // Act navigate to final main item
         for (var index = 1; index < items.Length; index++)

@@ -15,6 +15,10 @@ count under the inherited application cell policy. The control does not scale or
 wrap FIGlet glyphs. Parent clipping or an ancestor `Container` with intrinsic
 `AutoScroll` provides bounded presentation for large fonts.
 
+Generated FIGlet cells preserve the destination background so the art blends
+into its parent surface. Setting `Background` explicitly fills the control's
+ordinary border box before the transparent FIGlet cells are drawn.
+
 ## Example
 
 ```csharp

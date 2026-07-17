@@ -271,7 +271,7 @@ internal static class Markup
         return underline != Underline.None;
     }
 
-    private static bool TryColor(ReadOnlySpan<char> value, out Color color)
+    private static bool TryColor(ReadOnlySpan<char> value, out ThemeColor color)
     {
         color = Color.Default;
 
@@ -282,7 +282,13 @@ internal static class Markup
 
         if (value[0] == '#')
         {
-            return Color.TryFromHex(value.ToString(), out color);
+            if (Color.TryFromHex(value.ToString(), out var concrete))
+            {
+                color = concrete;
+                return true;
+            }
+
+            return false;
         }
 
         if (int.TryParse(
@@ -321,6 +327,12 @@ internal static class Markup
         if (ansi >= 0)
         {
             color = Color.Indexed(ansi);
+            return true;
+        }
+
+        if (Enum.TryParse(key, ignoreCase: true, out ColorRole role) && Enum.IsDefined(role))
+        {
+            color = role;
             return true;
         }
 

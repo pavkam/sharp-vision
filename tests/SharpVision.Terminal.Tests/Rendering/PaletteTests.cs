@@ -55,6 +55,21 @@ public sealed class PaletteTests
         }
     }
 
+    /// <summary>Verifies one indexed reference entry resolves to its exact RGB components.</summary>
+    [Fact]
+    public void Resolve_WhenIndexedColorIsSupplied_ReturnsReferenceRgb() =>
+        Palette.Resolve(Color.Indexed(67)).ShouldBe(Color.Rgb(95, 135, 175));
+
+    /// <summary>Verifies concrete RGB and terminal-default colors need no indexed resolution.</summary>
+    [Fact]
+    public void Resolve_WhenColorIsNotIndexed_PreservesRepresentation()
+    {
+        var rgb = Color.Rgb(12, 34, 56);
+
+        Palette.Resolve(rgb).ShouldBe(rgb);
+        Palette.Resolve(Color.Default).ShouldBe(Color.Default);
+    }
+
     /// <summary>Verifies projection is deterministic and idempotent for random RGB colors.</summary>
     [Fact]
     public void Project_WhenRandomColorsAreRepeated_IsDeterministicAndIdempotent()

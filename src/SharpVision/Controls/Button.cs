@@ -18,7 +18,6 @@ public sealed partial class Button: Pressable
         BorderThickness = new Thickness(1);
         HasShadow = true;
         ShadowOffset = new Point(1, 1);
-        BorderGlyphs = Glyphs.Rounded;
         ShadowAttributes = TerminalAttributes.Dim;
     }
 

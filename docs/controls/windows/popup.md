@@ -3,10 +3,10 @@
 ## Popup contract
 
 `Popup` is a [`ContentControl`](../content-control.md#contentcontrol-contract)
-that displays its inherited `Content` on an opaque, one-cell rounded frame
-relative to an optional anchor. It is intentionally non-modal: callers compose
-it with an owner and decide what reopening or dismissal means. Elevation is
-automatic; a caller does not need to assign a higher ordinary z-order. Its
+that displays its inherited `Content` on an opaque, one-cell theme-resolved
+frame relative to an optional anchor. It is intentionally non-modal: callers
+compose it with an owner and decide what reopening or dismissal means. Elevation
+is automatic; a caller does not need to assign a higher ordinary z-order. Its
 surface always clears before its content renders, so a drop-down cannot visually
 blend with the content behind it.
 
@@ -28,9 +28,10 @@ same behavior through the Popup's intrinsic promotion.
 - `Anchor` and `Placement` define position. `Below`, `Above`, `Right`, and
   `Left` use the anchored edge and flip to the natural opposite side before
   clamping when the preferred side does not fit.
-- `Glyphs` defaults to `Glyphs.Rounded`; `BorderColor` optionally overrides only
-  its foreground. `Background` optionally overrides the opaque surface,
-  otherwise the resolved inherited background fills it.
+- `Glyphs` resolves the active theme border family unless a caller assigns a
+  local override; `BorderColor` optionally overrides only its foreground.
+  `Background` optionally overrides the opaque surface, otherwise the resolved
+  normal background fills it.
 - `SurfaceBounds` reports the committed rectangle including its one-cell frame.
 - `IsOpen` controls surface and content arranging, rendering, and hit testing.
   `FocusOnOpen` defaults to true and transfers focus to the first focusable
@@ -68,12 +69,26 @@ popup repositions before the next frame. Closed layout still enters the base
 collapsed-content measure and arrange transactions, clearing stale desired size
 and bounds without invoking content overrides.
 
+## Theme glyphs
+
+`Glyphs` remains an explicit local frame override. Without an assignment, popup
+chrome resolves the active theme's border family and terminal-safe repairs.
+`ResetBorderGlyphs()` returns it to theme resolution.
+
 ## Interaction
 
 Closed popups neither draw their surface nor participate in hit testing. An open
 popup directs pointer and keyboard input to its content through normal routing;
 its frame itself is also a hit-testable surface. The FIGlet showcase picker
 demonstrates the composition as `ComboBox → Popup → List`.
+
+Popup owns generic elevation, placement fallback, light dismissal, and
+open-chain lifetime. Consumers own domain interaction policy: for example,
+[`Menu`](../menus/menu.md#interaction) decides when hover switches an armed
+sibling submenu, while each `MenuItem` configures that retained popup's
+preferred direction and menu-specific surface appearance. A press inside any
+open descendant popup surface remains inside the ancestor chain; light dismissal
+must not collapse an ancestor before the descendant input route completes.
 
 ## Example
 
@@ -93,6 +108,7 @@ var popup = new Popup
 Cover closed rendering/hit testing, opaque framed cells, promotion above later
 siblings, exactly-once promotion from ordinary and popup slots, suppression by
 an ineligible intermediate owner, preferred and fallback placement, Escape from
-content, focus discovery across private slots, closing-focus restoration,
-callback-failure completion and first-failure order, reentrancy rejection,
-ownership, resize repositioning, collapsed geometry clearing, and final cells.
+content, descendant-surface light-dismiss preservation, focus discovery across
+private slots, closing-focus restoration, callback-failure completion and
+first-failure order, reentrancy rejection, ownership, resize repositioning,
+collapsed geometry clearing, and final cells.

@@ -36,6 +36,12 @@ Property notifications follow the same staged commit: the old member's
 checked member moving groups resolves the destination group before publishing
 `GroupName`.
 
+## Theme glyphs
+
+`UncheckedGlyph` and `CheckedGlyph` are validated one-cell local overrides.
+`ResetGlyphs()` returns both states to `Theme.Glyphs.Selection`. Theme changes
+repaint existing non-overridden radio buttons.
+
 ## Interaction
 
 Space/pointer selects. Arrow keys move focus and selection to the next eligible

@@ -8,6 +8,21 @@ namespace SharpVision.Showcase.Tests;
 /// <summary>Verifies application theme switching through the running showcase gallery.</summary>
 public sealed class ThemeGalleryTests
 {
+    /// <summary>Verifies the theming page includes controls whose drawing glyphs have no local overrides.</summary>
+    [Fact]
+    public void ThemingPane_WhenBuilt_DemonstratesThemeOwnedGlyphs()
+    {
+        using var page = new ThemingPane();
+
+        var progress = Find<ProgressBar>(page, static _ => true).ShouldNotBeNull();
+        var comboBox = Find<ComboBox>(page, static value => value.Items.Contains("Theme glyphs")).ShouldNotBeNull();
+        var expander = Find<Expander>(page, static value => value.Header == "Disclosure").ShouldNotBeNull();
+
+        progress.FillGlyph.ShouldBe(Themes.Dark.Glyphs.Progress.Full.Value);
+        comboBox.DropDownGlyph.ShouldBe(Themes.Dark.Glyphs.Disclosure.DropDown.Value);
+        expander.CollapsedGlyph.ShouldBe(Themes.Dark.Glyphs.Disclosure.Collapsed.Value);
+    }
+
     /// <summary>Verifies the type-style specimen compares a baseline with concise semantic styling.</summary>
     [Fact]
     public void ThemingPane_WhenTypeStyleBuilds_UsesSemanticPreviewWithoutRawRecords()

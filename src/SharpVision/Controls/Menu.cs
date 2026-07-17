@@ -99,6 +99,39 @@ public sealed class Menu: ItemsControl
     }
 
     /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        var desired = base.MeasureOverride(constraint);
+
+        if (Orientation != Orientation.Vertical)
+        {
+            return desired;
+        }
+
+        var labelWidth = 0;
+        var shortcutWidth = 0;
+
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            if (ItemAt(index) is not MenuItem item || item.Visibility == Visibility.Collapsed)
+            {
+                continue;
+            }
+
+            labelWidth = Math.Max(labelWidth, Add(item.DesiredLabelWidth, item.Margin.Horizontal));
+            shortcutWidth = Math.Max(shortcutWidth, item.ShortcutColumnWidth);
+        }
+
+        if (shortcutWidth == 0)
+        {
+            return desired;
+        }
+
+        var columnWidth = Add(Add(labelWidth, MenuItem.ShortcutGap), shortcutWidth);
+        return new Size(Math.Max(desired.Width, columnWidth), desired.Height);
+    }
+
+    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
@@ -471,10 +504,17 @@ public sealed class Menu: ItemsControl
         }
     }
 
-    private void ApplyItemSizing(Control item)
+    private static void ApplyItemSizing(Control item)
     {
-        item.Width = Orientation == Orientation.Vertical ? Length.Percent(100) : Length.Auto;
+        item.Width = Length.Auto;
         item.Height = Length.Cells(1);
+    }
+
+    private static int Add(int left, int right)
+    {
+        Debug.Assert(left >= 0, "Menu width accumulation uses a non-negative value.");
+        Debug.Assert(right >= 0, "Menu width accumulation uses a non-negative value.");
+        return (int) Math.Min(int.MaxValue, (long) left + right);
     }
 
     private static Control RequireEntry(Control child)

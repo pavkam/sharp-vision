@@ -9,6 +9,7 @@ using System.Runtime.ExceptionServices;
 public sealed class CheckBox: Pressable
 {
     private bool? _isChecked = false;
+    private Marks? _marks;
 
     /// <summary>Initializes an unchecked two-state CheckBox.</summary>
     public CheckBox()
@@ -80,9 +81,31 @@ public sealed class CheckBox: Pressable
     /// <exception cref="ObjectDisposedException">The CheckBox is disposed.</exception>
     public Marks Marks
     {
-        get;
-        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
-    } = Marks.Default;
+        get
+        {
+            var selection = ResolveThemeGlyphs().Selection;
+            return _marks ?? new Marks(
+                selection.CheckBoxSquareUnchecked.Value,
+                selection.CheckBoxSquareChecked.Value,
+                selection.CheckBoxSquareIndeterminate.Value);
+        }
+        set
+        {
+            VerifyMutable();
+            if (_marks == value) { return; }
+            _marks = value;
+            NotifyPropertyChanged(nameof(Marks), ChangeImpact.Render);
+        }
+    }
+
+    /// <summary>Clears local square marks so the active theme supplies them.</summary>
+    public void ResetMarks()
+    {
+        VerifyMutable();
+        if (!_marks.HasValue) { return; }
+        _marks = null;
+        NotifyPropertyChanged(nameof(Marks), ChangeImpact.Render);
+    }
 
     /// <summary>Gets or sets the built-in mark family used before the optional label.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
@@ -296,29 +319,33 @@ public sealed class CheckBox: Pressable
 
     private string Mark()
     {
+        var selection = ResolveThemeGlyphs().Selection;
+
         return MarkStyle switch
         {
             CheckBoxMarks.Brackets => _isChecked switch
             {
-                true => "[✓]",
-                false => "[ ]",
-                null => "[─]",
+                true => $"[{Mark(selection.CheckBoxBracketChecked)}]",
+                false => $"[{Mark(selection.CheckBoxBracketUnchecked)}]",
+                null => $"[{Mark(selection.CheckBoxBracketIndeterminate)}]",
             },
             CheckBoxMarks.Tick => _isChecked switch
             {
-                true => Mark(new Rune('✓'), new Rune('x')),
-                false => Mark(new Rune('○'), new Rune('o')),
-                null => Mark(new Rune('−'), new Rune('-')),
+                true => Mark(selection.CheckBoxTickChecked),
+                false => Mark(selection.CheckBoxTickUnchecked),
+                null => Mark(selection.CheckBoxTickIndeterminate),
             },
             CheckBoxMarks.Square => _isChecked switch
             {
-                true => Mark(Marks.Checked, new Rune('x')),
-                false => Mark(Marks.Unchecked, new Rune('o')),
-                null => Mark(Marks.Indeterminate, new Rune('-')),
+                true => Mark(Marks.Checked, selection.CheckBoxSquareChecked.Fallback),
+                false => Mark(Marks.Unchecked, selection.CheckBoxSquareUnchecked.Fallback),
+                null => Mark(Marks.Indeterminate, selection.CheckBoxSquareIndeterminate.Fallback),
             },
             _ => throw new UnreachableException(),
         };
     }
+
+    private string Mark(ThemedGlyph value) => ResolveThemeGlyph(value).ToString();
 
     private string Mark(Rune value, Rune fallback) => CellGlyph.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
 }

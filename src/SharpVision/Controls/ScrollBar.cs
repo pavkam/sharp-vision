@@ -24,10 +24,10 @@ public sealed class ScrollBar: Control
     private bool _hasIncrementGlyph;
     private bool _hasTrackGlyph;
     private bool _hasThumbGlyph;
-    private Rune DefaultDecrementGlyph { get; set; } = new('-');
-    private Rune DefaultIncrementGlyph { get; set; } = new('+');
-    private Rune DefaultTrackGlyph { get; set; } = new('.');
-    private Rune DefaultThumbGlyph { get; set; } = new('#');
+    private Rune DecrementGlyphOverride { get; set; }
+    private Rune IncrementGlyphOverride { get; set; }
+    private Rune TrackGlyphOverride { get; set; }
+    private Rune ThumbGlyphOverride { get; set; }
 
     /// <summary>Initializes a vertical focusable range from zero through one hundred.</summary>
     public ScrollBar()
@@ -199,7 +199,7 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune DecrementGlyph
     {
-        get => DefaultDecrementGlyph;
+        get => _hasDecrementGlyph ? DecrementGlyphOverride : DecrementThemeGlyph().Value;
         set
         {
             var glyph = Validate(value, nameof(value));
@@ -207,7 +207,7 @@ public sealed class ScrollBar: Control
             var wasCustom = _hasDecrementGlyph;
             _hasDecrementGlyph = true;
 
-            if (DefaultDecrementGlyph == glyph)
+            if (DecrementGlyphOverride == glyph)
             {
                 if (!wasCustom)
                 {
@@ -217,7 +217,7 @@ public sealed class ScrollBar: Control
                 return;
             }
 
-            DefaultDecrementGlyph = glyph;
+            DecrementGlyphOverride = glyph;
             NotifyPropertyChanged(nameof(DecrementGlyph), ChangeImpact.Render);
         }
     }
@@ -228,7 +228,7 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune IncrementGlyph
     {
-        get => DefaultIncrementGlyph;
+        get => _hasIncrementGlyph ? IncrementGlyphOverride : IncrementThemeGlyph().Value;
         set
         {
             var glyph = Validate(value, nameof(value));
@@ -236,7 +236,7 @@ public sealed class ScrollBar: Control
             var wasCustom = _hasIncrementGlyph;
             _hasIncrementGlyph = true;
 
-            if (DefaultIncrementGlyph == glyph)
+            if (IncrementGlyphOverride == glyph)
             {
                 if (!wasCustom)
                 {
@@ -246,7 +246,7 @@ public sealed class ScrollBar: Control
                 return;
             }
 
-            DefaultIncrementGlyph = glyph;
+            IncrementGlyphOverride = glyph;
             NotifyPropertyChanged(nameof(IncrementGlyph), ChangeImpact.Render);
         }
     }
@@ -257,7 +257,7 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune TrackGlyph
     {
-        get => DefaultTrackGlyph;
+        get => _hasTrackGlyph ? TrackGlyphOverride : TrackThemeGlyph().Value;
         set
         {
             var glyph = Validate(value, nameof(value));
@@ -265,7 +265,7 @@ public sealed class ScrollBar: Control
             var wasCustom = _hasTrackGlyph;
             _hasTrackGlyph = true;
 
-            if (DefaultTrackGlyph == glyph)
+            if (TrackGlyphOverride == glyph)
             {
                 if (!wasCustom)
                 {
@@ -275,7 +275,7 @@ public sealed class ScrollBar: Control
                 return;
             }
 
-            DefaultTrackGlyph = glyph;
+            TrackGlyphOverride = glyph;
             NotifyPropertyChanged(nameof(TrackGlyph), ChangeImpact.Render);
         }
     }
@@ -286,7 +286,7 @@ public sealed class ScrollBar: Control
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Rune ThumbGlyph
     {
-        get => DefaultThumbGlyph;
+        get => _hasThumbGlyph ? ThumbGlyphOverride : ThumbThemeGlyph().Value;
         set
         {
             var glyph = Validate(value, nameof(value));
@@ -294,7 +294,7 @@ public sealed class ScrollBar: Control
             var wasCustom = _hasThumbGlyph;
             _hasThumbGlyph = true;
 
-            if (DefaultThumbGlyph == glyph)
+            if (ThumbGlyphOverride == glyph)
             {
                 if (!wasCustom)
                 {
@@ -304,9 +304,29 @@ public sealed class ScrollBar: Control
                 return;
             }
 
-            DefaultThumbGlyph = glyph;
+            ThumbGlyphOverride = glyph;
             NotifyPropertyChanged(nameof(ThumbGlyph), ChangeImpact.Render);
         }
+    }
+
+    /// <summary>Clears all local scrollbar glyphs so the active theme supplies them.</summary>
+    public void ResetGlyphs()
+    {
+        VerifyMutable();
+
+        if (!_hasDecrementGlyph && !_hasIncrementGlyph && !_hasTrackGlyph && !_hasThumbGlyph)
+        {
+            return;
+        }
+
+        _hasDecrementGlyph = false;
+        _hasIncrementGlyph = false;
+        _hasTrackGlyph = false;
+        _hasThumbGlyph = false;
+        NotifyPropertyChanged(nameof(DecrementGlyph), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(IncrementGlyph), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(TrackGlyph), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(ThumbGlyph), ChangeImpact.Render);
     }
 
     /// <summary>Adds a signed command delta with saturation and endpoint clamping.</summary>
@@ -653,44 +673,52 @@ public sealed class ScrollBar: Control
 
     private int ButtonCount(int length) => Chrome == ScrollBarChrome.Full && length >= 2 ? 1 : 0;
 
-    private Rune DecrementRune() => CellGlyph.Resolve(
-        _hasDecrementGlyph
-            ? DecrementGlyph
-            : Orientation == Orientation.Vertical ? new Rune('▲') : new Rune('◀'),
-        new Rune('-'),
-        CellPolicy.AmbiguousWidth);
-
-    private Rune IncrementRune() => CellGlyph.Resolve(
-        _hasIncrementGlyph
-            ? IncrementGlyph
-            : Orientation == Orientation.Vertical ? new Rune('▼') : new Rune('▶'),
-        new Rune('+'),
-        CellPolicy.AmbiguousWidth);
-
-    private Rune TrackRune() => CellGlyph.Resolve(
-        _hasTrackGlyph
-            ? TrackGlyph
-            : Fill == ScrollBarFill.Line
-                ? Orientation == Orientation.Vertical ? new Rune('│') : new Rune('─')
-                : new Rune('░'),
-        new Rune('.'),
-        CellPolicy.AmbiguousWidth);
-
-    private Rune ThumbRune() => CellGlyph.Resolve(
-        _hasThumbGlyph
-            ? ThumbGlyph
-            : Fill == ScrollBarFill.Line
-                ? Orientation == Orientation.Vertical ? new Rune('┃') : new Rune('━')
-                : new Rune('▓'),
-        new Rune('#'),
-        CellPolicy.AmbiguousWidth);
-
-    private static void Draw(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style)
+    private Rune DecrementRune()
     {
-        Span<char> buffer = stackalloc char[2];
-        var length = glyph.EncodeToUtf16(buffer);
-        _ = canvas.Draw(buffer[..length], point, style, background: BackgroundMode.Transparent);
+        var themed = DecrementThemeGlyph();
+        return CellGlyph.Resolve(DecrementGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
     }
+
+    private Rune IncrementRune()
+    {
+        var themed = IncrementThemeGlyph();
+        return CellGlyph.Resolve(IncrementGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+    }
+
+    private Rune TrackRune()
+    {
+        var themed = TrackThemeGlyph();
+        return CellGlyph.Resolve(TrackGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+    }
+
+    private Rune ThumbRune()
+    {
+        var themed = ThumbThemeGlyph();
+        return CellGlyph.Resolve(ThumbGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+    }
+
+    private ThemedGlyph DecrementThemeGlyph() => Orientation == Orientation.Vertical
+        ? ResolveThemeGlyphs().ScrollBars.VerticalDecrement
+        : ResolveThemeGlyphs().ScrollBars.HorizontalDecrement;
+
+    private ThemedGlyph IncrementThemeGlyph() => Orientation == Orientation.Vertical
+        ? ResolveThemeGlyphs().ScrollBars.VerticalIncrement
+        : ResolveThemeGlyphs().ScrollBars.HorizontalIncrement;
+
+    private ThemedGlyph TrackThemeGlyph() => Fill == ScrollBarFill.Block
+        ? ResolveThemeGlyphs().ScrollBars.BlockTrack
+        : Orientation == Orientation.Vertical
+            ? ResolveThemeGlyphs().ScrollBars.VerticalLineTrack
+            : ResolveThemeGlyphs().ScrollBars.HorizontalLineTrack;
+
+    private ThemedGlyph ThumbThemeGlyph() => Fill == ScrollBarFill.Block
+        ? ResolveThemeGlyphs().ScrollBars.BlockThumb
+        : Orientation == Orientation.Vertical
+            ? ResolveThemeGlyphs().ScrollBars.VerticalLineThumb
+            : ResolveThemeGlyphs().ScrollBars.HorizontalLineThumb;
+
+    private static void Draw(TerminalCanvas canvas, Point point, Rune glyph, TerminalStyle style) =>
+        canvas.DrawRune(glyph, point, style, BackgroundMode.Transparent);
 
     private int Axis(Point point) => Orientation == Orientation.Vertical ? point.Y : point.X;
 

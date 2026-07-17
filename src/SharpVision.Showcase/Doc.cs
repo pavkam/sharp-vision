@@ -134,9 +134,21 @@ internal static class Doc
             Overflow = Overflow.Wrap,
         };
 
+        var specimenSurface = new GroupBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MaxWidth = 100,
+            Header = "Example",
+            Background = ColorRole.Surface,
+            BorderThickness = new Thickness(1),
+            Glyphs = Glyphs.Light,
+            BorderColor = ColorRole.Border,
+            Padding = new Thickness(1),
+            Content = new Stack { Children = { specimen } },
+        };
         var block = new Stack() { Spacing = 1 };
         block.Children.Add(text);
-        block.Children.Add(specimen);
+        block.Children.Add(specimenSurface);
 
         if (source is not null)
         {

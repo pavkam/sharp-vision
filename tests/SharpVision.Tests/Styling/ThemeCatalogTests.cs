@@ -35,6 +35,8 @@ public sealed class ThemeCatalogTests
         var theme = ThemeCatalog.Default.Load("default-dark");
 
         theme.IsFrozen.ShouldBeTrue();
+        theme.SchemaVersion.ShouldBe(2);
+        theme.Glyphs.Chrome.TopLeft.Value.ShouldBe(new Rune('╭'));
         theme.TryGetColor(ColorRole.Foreground, out var fg).ShouldBeTrue();
         fg.ShouldBe(Color.Indexed(15));
         theme.TryGetColor(ColorRole.Background, out var bg).ShouldBeTrue();

@@ -105,10 +105,10 @@ internal sealed class ListPane: CompositeControl
             Doc.Section(
                 "📋",
                 "Single selection",
-                "Active navigation, committed selection, and invocation are related but distinct states.",
+                "Keyboard navigation moves active selection immediately; Enter invokes the selected row separately.",
                 Doc.Example(
                     "Selectable result list",
-                    "Use arrows or paging to move, Space to select, and Enter to invoke. The status names the committed operation.",
+                    "Use arrows or paging to select and Enter to invoke. The status names the committed operation.",
                     Doc.Column(active, status),
                     "var results = new List\n{\n    Items = files,\n    SelectionMode = SelectionMode.Single,\n};")),
             Doc.Section(

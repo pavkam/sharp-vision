@@ -7,14 +7,14 @@ namespace SharpVision.Terminal.Rendering;
 using SharpVision.Terminal.Capabilities;
 
 /// <summary>Projects semantic colors through a deterministic xterm-compatible reference palette.</summary>
-internal static class Palette
+public static class Palette
 {
     /// <summary>Projects one semantic color to the highest representation allowed by a color tier.</summary>
     /// <param name="source">The semantic default, indexed, or RGB color.</param>
     /// <param name="depth">The validated terminal color tier.</param>
     /// <returns>The default color or a representation contained by <paramref name="depth"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="depth"/> is unknown.</exception>
-    internal static Color Project(Color source, ColorDepth depth)
+    public static Color Project(Color source, ColorDepth depth)
     {
         if (!Enum.IsDefined(depth))
         {
@@ -36,6 +36,23 @@ internal static class Palette
         Resolve(source, out var red, out var green, out var blue);
         var count = depth == ColorDepth.Basic16 ? 16 : 256;
         return Color.Indexed(Nearest(red, green, blue, count));
+    }
+
+    /// <summary>Resolves one indexed color to its deterministic xterm-compatible RGB value.</summary>
+    /// <param name="source">The terminal default, indexed, or RGB color.</param>
+    /// <returns>
+    /// The corresponding RGB color when <paramref name="source"/> is indexed; otherwise,
+    /// <paramref name="source"/> unchanged.
+    /// </returns>
+    public static Color Resolve(Color source)
+    {
+        if (source.Kind != ColorKind.Indexed)
+        {
+            return source;
+        }
+
+        Resolve(source.Index, out var red, out var green, out var blue);
+        return Color.Rgb(red, green, blue);
     }
 
     private static int Nearest(byte red, byte green, byte blue, int count)

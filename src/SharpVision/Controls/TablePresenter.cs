@@ -136,6 +136,9 @@ internal sealed class TablePresenter: Container
             inherited.Hyperlink,
             underline,
             underlineColor);
+        var horizontalGlyph = _owner.ResolvedHorizontalGridGlyph;
+        var verticalGlyph = _owner.ResolvedVerticalGridGlyph;
+        var crossGlyph = _owner.ResolvedCrossGridGlyph;
         var headerHeight = _owner.ShowHeader ? Add(_owner.CellPadding.Vertical, 1) : 0;
 
         if (_owner.ShowHeader)
@@ -170,16 +173,17 @@ internal sealed class TablePresenter: Container
         for (var index = 0; index < _owner.Columns.Count - 1; index++)
         {
             xLine = Add(xLine, ColumnWidths[index]);
-            canvas.DrawVerticalLine(new Point(xLine, ContentSlot.Y), ContentSlot.Height, LineStyle.Light, grid);
+            DrawVerticalGridLine(canvas, xLine, verticalGlyph, grid);
             xLine = Add(xLine, ColumnGap);
         }
 
         if (_owner.ShowHeader && _owner.Rows.Count > 0 && RowGap > 0)
         {
-            canvas.DrawHorizontalLine(
-                new Point(ContentSlot.X, Add(ContentSlot.Y, headerHeight)),
-                ContentSlot.Width,
-                LineStyle.Light,
+            DrawHorizontalGridLine(
+                canvas,
+                Add(ContentSlot.Y, headerHeight),
+                horizontalGlyph,
+                crossGlyph,
                 grid);
         }
 
@@ -188,7 +192,7 @@ internal sealed class TablePresenter: Container
         for (var index = 0; index < _owner.Rows.Count - 1; index++)
         {
             y = Add(y, RowHeights[index]);
-            canvas.DrawHorizontalLine(new Point(ContentSlot.X, y), ContentSlot.Width, LineStyle.Light, grid);
+            DrawHorizontalGridLine(canvas, y, horizontalGlyph, crossGlyph, grid);
             y = Add(y, RowGap);
         }
     }
@@ -196,6 +200,54 @@ internal sealed class TablePresenter: Container
     private int ColumnGap => Math.Max(_owner.ColumnSpacing, _owner.ShowGridLines ? 1 : 0);
 
     private int RowGap => Math.Max(_owner.RowSpacing, _owner.ShowGridLines ? 1 : 0);
+
+    private void DrawVerticalGridLine(
+        TerminalCanvas canvas,
+        int x,
+        Rune glyph,
+        TerminalStyle style)
+    {
+        for (var y = ContentSlot.Y; y < ContentSlot.Bottom; y++)
+        {
+            canvas.DrawRune(glyph, new Point(x, y), style, BackgroundMode.Transparent);
+        }
+    }
+
+    private void DrawHorizontalGridLine(
+        TerminalCanvas canvas,
+        int y,
+        Rune horizontal,
+        Rune cross,
+        TerminalStyle style)
+    {
+        for (var x = ContentSlot.X; x < ContentSlot.Right; x++)
+        {
+            canvas.DrawRune(
+                IsColumnSeparator(x) ? cross : horizontal,
+                new Point(x, y),
+                style,
+                BackgroundMode.Transparent);
+        }
+    }
+
+    private bool IsColumnSeparator(int x)
+    {
+        var line = ContentSlot.X;
+
+        for (var index = 0; index < _owner.Columns.Count - 1; index++)
+        {
+            line = Add(line, ColumnWidths[index]);
+
+            if (line == x)
+            {
+                return true;
+            }
+
+            line = Add(line, ColumnGap);
+        }
+
+        return false;
+    }
 
     private void MeasureCells(int? availableWidth)
     {

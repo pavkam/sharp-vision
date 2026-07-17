@@ -8,10 +8,13 @@ using System.Runtime.ExceptionServices;
 /// <summary>Defines one focusable command, check, or radio entry in a <see cref="Menu"/>.</summary>
 public sealed class MenuItem: Pressable
 {
+    private const int _shortcutGap = 2;
     private readonly OwnedControlSlot _submenuSlot;
     private bool _isChecked;
     private int _checkedVersion;
     private Popup? _submenuPopup;
+    private Rune? _uncheckedGlyph;
+    private Rune? _checkedGlyph;
 
     /// <summary>Initializes an ordinary command item with no content.</summary>
     public MenuItem()
@@ -151,6 +154,40 @@ public sealed class MenuItem: Pressable
         }
     }
 
+    /// <summary>Gets or sets the local unchecked marker for check and radio items.</summary>
+    public Rune UncheckedGlyph
+    {
+        get => _uncheckedGlyph ?? ThemeMenuGlyph(checkedValue: false).Value;
+        set => SetGlyph(ref _uncheckedGlyph, value, nameof(UncheckedGlyph));
+    }
+
+    /// <summary>Gets or sets the local checked marker for check and radio items.</summary>
+    public Rune CheckedGlyph
+    {
+        get => _checkedGlyph ?? ThemeMenuGlyph(checkedValue: true).Value;
+        set => SetGlyph(ref _checkedGlyph, value, nameof(CheckedGlyph));
+    }
+
+    /// <summary>Clears both local menu markers so the active theme supplies them.</summary>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public void ResetGlyphs()
+    {
+        VerifyMutable();
+
+        if (_uncheckedGlyph.HasValue)
+        {
+            _uncheckedGlyph = null;
+            NotifyPropertyChanged(nameof(UncheckedGlyph), ChangeImpact.Render);
+        }
+
+        if (_checkedGlyph.HasValue)
+        {
+            _checkedGlyph = null;
+            NotifyPropertyChanged(nameof(CheckedGlyph), ChangeImpact.Render);
+        }
+    }
+
     /// <summary>Gets or sets the optional non-empty radio-group name.</summary>
     /// <exception cref="ArgumentException">The value is empty or whitespace.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
@@ -282,7 +319,7 @@ public sealed class MenuItem: Pressable
 
         var content = Content;
         var shortcutExtra = ShortcutText is { Length: > 0 }
-            ? Add(ShortcutWidth, 2)
+            ? ShortcutExtent
             : 0;
 
         if (content is null)
@@ -307,9 +344,14 @@ public sealed class MenuItem: Pressable
         if (Content is { } content)
         {
             var consumed = Math.Min(PrefixWidth, bounds.Width);
+            var trailing = Math.Min(ShortcutExtent, bounds.Width - consumed);
             ArrangeChild(
                 content,
-                new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
+                new Rect(
+                    bounds.X + consumed,
+                    bounds.Y,
+                    bounds.Width - consumed - trailing,
+                    bounds.Height),
                 ResolvedAxes.Both);
         }
 
@@ -334,10 +376,15 @@ public sealed class MenuItem: Pressable
             canvas.Clear(Bounds, style);
         }
 
+        var themed = ThemeMenuGlyph(_isChecked);
+        var glyph = CellGlyph.Resolve(
+            _isChecked ? CheckedGlyph : UncheckedGlyph,
+            themed.Fallback,
+            CellPolicy.AmbiguousWidth);
         var marker = Kind switch
         {
-            MenuItemKind.Check => _isChecked ? "[✓] " : "[ ] ",
-            MenuItemKind.Radio => _isChecked ? "◉ " : "○ ",
+            MenuItemKind.Check => $"[{glyph}] ",
+            MenuItemKind.Radio => $"{glyph} ",
             MenuItemKind.Command => string.Empty,
             _ => throw new UnreachableException(),
         };
@@ -461,6 +508,15 @@ public sealed class MenuItem: Pressable
     /// <summary>Gets whether this item currently exposes its retained submenu popup.</summary>
     internal bool IsSubmenuOpen => _submenuPopup?.IsOpen == true;
 
+    /// <summary>Gets the measured label and marker width without the shortcut gutter or text.</summary>
+    internal int DesiredLabelWidth => Math.Max(0, DesiredSize.Width - ShortcutExtent);
+
+    /// <summary>Gets the Unicode cell width of this item's shortcut text.</summary>
+    internal int ShortcutColumnWidth => ShortcutWidth;
+
+    /// <summary>Gets the minimum cells reserved between the widest label and shortcut column.</summary>
+    internal static int ShortcutGap => _shortcutGap;
+
     /// <summary>Opens this item's submenu when one is assigned.</summary>
     internal void OpenSubmenu()
     {
@@ -488,6 +544,16 @@ public sealed class MenuItem: Pressable
         ? Terminal.Unicode.Width.Measure(shortcut, CellPolicy.AmbiguousWidth).Cells
         : 0;
 
+    private int ShortcutExtent => ShortcutWidth == 0 ? 0 : Add(ShortcutWidth, _shortcutGap);
+
+    private ThemedGlyph ThemeMenuGlyph(bool checkedValue)
+    {
+        var selection = ResolveThemeGlyphs().Selection;
+        return Kind == MenuItemKind.Radio
+            ? checkedValue ? selection.MenuRadioChecked : selection.MenuRadioUnchecked
+            : checkedValue ? selection.MenuCheckChecked : selection.MenuCheckUnchecked;
+    }
+
     private void ConfigureSubmenuPlacement()
     {
         Debug.Assert(_submenuPopup is not null, "Submenu placement requires a retained popup.");
@@ -501,6 +567,15 @@ public sealed class MenuItem: Pressable
         _ = sender;
         _ = eventArgs;
         _ = FindMenu()?.Focus();
+    }
+
+    private void SetGlyph(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+        if (storage == value) { return; }
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
     }
 
     private static int Add(int left, int right)

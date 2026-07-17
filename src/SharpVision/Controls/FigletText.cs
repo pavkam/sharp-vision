@@ -91,7 +91,11 @@ public sealed class FigletText: Control
 
         for (var row = 0; row < _lines.Length && row < bounds.Height; row++)
         {
-            _ = canvas.Draw(_lines[row], new Point(bounds.X, bounds.Y + row), style);
+            _ = canvas.Draw(
+                _lines[row],
+                new Point(bounds.X, bounds.Y + row),
+                style,
+                background: BackgroundMode.Transparent);
         }
     }
 

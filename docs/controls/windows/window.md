@@ -26,10 +26,16 @@ the content's ordinary box-model or input routing.
   window is a child of a `Canvas`. A primary pointer press on the top edge
   captures the pointer; move events update `Canvas.SetLeft` and `Canvas.SetTop`
   in real time; release ends the drag.
-- `CanClose` (default `false`) renders a close glyph ("✕") at the top-right
-  corner of the border. A primary pointer press on the glyph raises the
-  `Closing` event. The close glyph requires at least four columns of width to
-  appear.
+- `CanClose` (default `false`) renders the theme's window-close glyph at the
+  top-right corner of the border. A primary pointer press on the glyph raises
+  the `Closing` event. The close glyph requires at least four columns of width
+  to appear.
+
+## Theme glyphs
+
+`Glyphs`, inherited `ShadowGlyph`, and `CloseGlyph` are local overrides for
+`Theme.Glyphs.Chrome`. Resetting border or shadow glyphs returns those values to
+live theme resolution; `ResetCloseGlyph()` does the same for the close glyph.
 
 ## Lifecycle and interaction
 

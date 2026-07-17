@@ -9,9 +9,10 @@ cannot receive focus, is excluded from hit testing, and owns no children.
 
 - `Orientation` controls horizontal or vertical drawing. Default is
   `Horizontal`.
-Horizontal separators repeat the built-in `─` cell from left to right. Vertical
-separators repeat the built-in `│` cell from top to bottom. These cells are
-fixed presentation rather than caller-configurable glyph state.
+
+Horizontal separators repeat the theme's horizontal-separator glyph from left to
+right. Vertical separators repeat the theme's vertical-separator glyph from top
+to bottom.
 
 The intrinsic desired size is one cell by one cell. Both inherited alignment
 axes default to `Stretch`, and parent layout determines the final line length:
@@ -25,6 +26,12 @@ The line uses the resolved visual-state style and inherited semantic cell
 policy. Separator participates in shared intrinsic chrome when callers set
 border, body fill, or shadow properties, and draws its line inside
 `ContentBounds`. It never handles pointer or keyboard input.
+
+## Theme glyphs
+
+`HorizontalGlyph` and `VerticalGlyph` are validated one-cell local overrides.
+Without them, `Separator` resolves `Theme.Glyphs.Separators` at render time.
+`ResetGlyphs()` clears both overrides.
 
 ## Example
 

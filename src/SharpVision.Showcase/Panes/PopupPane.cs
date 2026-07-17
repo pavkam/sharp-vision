@@ -17,7 +17,7 @@ internal sealed class PopupPane: CompositeControl
     /// <inheritdoc/>
     private static Dock CreateContent()
     {
-        var status = new Text("Choose an item with the mouse, arrows, or Enter.");
+        var status = new Text("Selected action: none");
         var trigger = new Button() { Content = new Text("Actions ▼") };
         var choices = new List()
         {
@@ -42,75 +42,54 @@ internal sealed class PopupPane: CompositeControl
             popup.IsOpen = false;
         };
 
-        var menuControls = Doc.Column(trigger, status);
-        menuControls.Margin = new Thickness(2, 2, 0, 0);
-        var overlay = new Overlay
-        {
-            Width = Length.Cells(52),
-            Height = Length.Cells(13),
-            ClipToBounds = false,
-            Children =
-            {
-                ApplicationSurface(
-                    "Projects  Search  Settings\n\n" +
-                    "release-notes.md      edited now\n" +
-                    "roadmap.md            edited 2m ago\n\n" +
-                    "2 files · branch main"),
-                menuControls,
-            },
-        };
-        Overlay.SetZIndex(popup, 10);
-        overlay.Children.Add(popup);
+        Place(trigger, 2, 2);
+        Place(status, 2, 13);
+        var menuStage = ApplicationStage(
+            52,
+            15,
+            "Projects  Search  Settings\n\n\n\n\n" +
+            "release notes · now\n" +
+            "roadmap · 2m ago",
+            popup,
+            trigger,
+            status);
 
-        var placementStatus = new Text("Choose a side to open the preview.");
-        var placementAnchor = new Button { Content = new Text("Preview anchor") };
+        var placementStatus = new Text("Choose a direction to open the preview.");
+        var placementAnchor = PlacementControl("⚓ Anchor", ColorRole.Accent);
         var placementPopup = new Popup
         {
-            Width = Length.Star(1),
-            Height = Length.Star(1),
             Anchor = placementAnchor,
             Placement = PopupPlacement.Below,
             Glyphs = Glyphs.Rounded,
             Content = new Text("Placement preview"),
         };
-        var above = PlacementButton("Above", PopupPlacement.Above, placementPopup, placementStatus);
-        var below = PlacementButton("Below", PopupPlacement.Below, placementPopup, placementStatus);
-        var left = PlacementButton("Left", PopupPlacement.Left, placementPopup, placementStatus);
-        var right = PlacementButton("Right", PopupPlacement.Right, placementPopup, placementStatus);
-        var placementCanvas = new Canvas
-        {
-            Width = Length.Cells(64),
-            Height = Length.Cells(22),
-            ClipToBounds = false,
-        };
-        Place(above, 24, 1);
-        Place(left, 2, 8);
-        Place(placementAnchor, 24, 8);
-        Place(right, 50, 8);
-        Place(below, 24, 15);
-        Place(placementStatus, 2, 19);
-        placementCanvas.Children.Add(above);
-        placementCanvas.Children.Add(left);
-        placementCanvas.Children.Add(placementAnchor);
-        placementCanvas.Children.Add(right);
-        placementCanvas.Children.Add(below);
-        placementCanvas.Children.Add(placementStatus);
-        placementCanvas.Children.Add(placementPopup);
-        var placementStage = new Overlay
-        {
-            Width = Length.Cells(64),
-            Height = Length.Cells(22),
-            ClipToBounds = false,
-            Children =
-            {
-                ApplicationSurface(
-                    "Files  Edit  View  Run  Help\n\n" +
-                    "src/Controls/Popup.cs\n" +
-                    "tests/PopupTests.cs\n\n" +
-                    "Ready · 2 changes · Ln 48, Col 12"),
-                placementCanvas,
-            },
-        };
+        var above = PlacementButton("↑ Above", PopupPlacement.Above, placementPopup, placementStatus);
+        var below = PlacementButton("↓ Below", PopupPlacement.Below, placementPopup, placementStatus);
+        var left = PlacementButton("← Left", PopupPlacement.Left, placementPopup, placementStatus);
+        var right = PlacementButton("Right →", PopupPlacement.Right, placementPopup, placementStatus);
+        var placementSeparator = new Separator { Width = Length.Cells(66) };
+        Place(above, 29, 3);
+        Place(left, 2, 9);
+        Place(placementAnchor, 29, 9);
+        Place(right, 57, 9);
+        Place(below, 29, 16);
+        Place(placementSeparator, 2, 20);
+        Place(placementStatus, 2, 22);
+        var placementStage = ApplicationStage(
+            70,
+            24,
+            "Popup placement diagram",
+            placementPopup,
+            above,
+            left,
+            placementAnchor,
+            right,
+            below,
+            placementSeparator,
+            placementStatus);
+        var placementSurface = (Dock) placementStage.Children[0];
+        placementSurface.BorderGlyphs = Glyphs.Rounded;
+        placementSurface.BorderColor = ColorRole.Accent;
 
         var edgeTrigger = new Button { Content = new Text("Edge anchor") };
         var edgePopup = new Popup
@@ -119,21 +98,15 @@ internal sealed class PopupPane: CompositeControl
             Placement = PopupPlacement.Below,
             Content = new Text("Flips above, then clamps"),
         };
-        var edgeStage = new Overlay
-        {
-            Width = Length.Cells(28),
-            Height = Length.Cells(5),
-            ClipToBounds = false,
-            Children =
-            {
-                ApplicationSurface("Short workspace\n\nAnchor stays near the lower edge"),
-            },
-        };
-        edgeTrigger.VerticalAlignment = VerticalAlignment.Bottom;
+        Place(edgeTrigger, 2, 6);
         edgeTrigger.Click += (_, _) => edgePopup.IsOpen = !edgePopup.IsOpen;
-        edgeStage.Children.Add(edgeTrigger);
-        Overlay.SetZIndex(edgePopup, 10);
-        edgeStage.Children.Add(edgePopup);
+        var edgeStage = ApplicationStage(
+            32,
+            10,
+            "Short workspace\n\n\n\n" +
+            "Document behind popup",
+            edgePopup,
+            edgeTrigger);
 
         var lifecycleStatus = new Text("Lifecycle: closed");
         var lifecycleAnchor = new Button { Content = new Text("Show lifecycle popup") };
@@ -156,13 +129,16 @@ internal sealed class PopupPane: CompositeControl
                 lifecyclePopup.IsOpen = true;
             }
         };
-        var lifecycleStage = new Overlay
-        {
-            Width = Length.Cells(32),
-            Height = Length.Cells(6),
-            ClipToBounds = false,
-            Children = { lifecycleAnchor, lifecyclePopup },
-        };
+        Place(lifecycleAnchor, 2, 2);
+        Place(lifecycleStatus, 2, 8);
+        var lifecycleStage = ApplicationStage(
+            38,
+            10,
+            "Settings\n\n\n\n\n" +
+            "Task status: running",
+            lifecyclePopup,
+            lifecycleAnchor,
+            lifecycleStatus);
 
         var styledAnchor = new Button { Content = new Text("Styled popup") };
         var styledPopup = new Popup
@@ -173,18 +149,14 @@ internal sealed class PopupPane: CompositeControl
             Background = Color.Indexed(0),
         };
         styledAnchor.Click += (_, _) => styledPopup.IsOpen = !styledPopup.IsOpen;
-        var styledStage = new Overlay
-        {
-            Width = Length.Cells(30),
-            Height = Length.Cells(6),
-            ClipToBounds = false,
-            Children =
-            {
-                ApplicationSurface("Theme surface behind explicit popup chrome"),
-                styledAnchor,
-                styledPopup,
-            },
-        };
+        Place(styledAnchor, 2, 2);
+        var styledStage = ApplicationStage(
+            38,
+            9,
+            "Theme preview\n\n\n\n\n" +
+            "Content behind popup",
+            styledPopup,
+            styledAnchor);
 
         var resizeAnchor = new Button { Content = new Text("Resize anchor") };
         var resizePopup = new Popup
@@ -194,18 +166,14 @@ internal sealed class PopupPane: CompositeControl
             Placement = PopupPlacement.Right,
         };
         resizeAnchor.Click += (_, _) => resizePopup.IsOpen = !resizePopup.IsOpen;
-        var resizeStage = new Overlay
-        {
-            Width = Length.Cells(34),
-            Height = Length.Cells(6),
-            ClipToBounds = false,
-            Children =
-            {
-                ApplicationSurface("Resize the host after opening the popup"),
-                resizeAnchor,
-                resizePopup,
-            },
-        };
+        Place(resizeAnchor, 2, 3);
+        var resizeStage = ApplicationStage(
+            48,
+            9,
+            "Responsive workspace\n\n\n\n\n\n" +
+            "Resize the terminal while this is open",
+            resizePopup,
+            resizeAnchor);
 
         return Doc.Page(
             Title,
@@ -217,7 +185,7 @@ internal sealed class PopupPane: CompositeControl
                 Doc.Example(
                     "Action list",
                     "Open with pointer, Enter, or Space; choose with arrows and Enter; Escape closes and restores trigger focus.",
-                    overlay,
+                    menuStage,
                     "var popup = new Popup\n{\n    Anchor = trigger,\n    Content = choices,\n    Placement = PopupPlacement.Below,\n};")),
             Doc.Section(
                 "💬",
@@ -242,7 +210,7 @@ internal sealed class PopupPane: CompositeControl
                 Doc.Example(
                     "Ordered close notifications",
                     "Activate Show lifecycle popup to open it, then activate again and observe Closing → Closed from the public events.",
-                    Doc.Column(lifecycleStage, lifecycleStatus),
+                    lifecycleStage,
                     "popup.Closing += RestoreFocus;\npopup.Closed += ReportClosed;\npopup.IsOpen = false;")),
             Doc.Section(
                 "💬",
@@ -262,6 +230,35 @@ internal sealed class PopupPane: CompositeControl
                     resizeStage)));
     }
 
+    private static Overlay ApplicationStage(
+        int width,
+        int height,
+        string content,
+        Popup popup,
+        params Control[] controls)
+    {
+        var interactions = new Canvas { ClipToBounds = false };
+        foreach (var control in controls)
+        {
+            interactions.Children.Add(control);
+        }
+
+        var stage = new Overlay
+        {
+            Width = Length.Cells(width),
+            Height = Length.Cells(height),
+            ClipToBounds = true,
+            Children =
+            {
+                ApplicationSurface(content),
+                interactions,
+                popup,
+            },
+        };
+
+        return stage;
+    }
+
     private static Dock ApplicationSurface(string content) => new()
     {
         Background = ColorRole.Surface,
@@ -279,16 +276,26 @@ internal sealed class PopupPane: CompositeControl
         Popup popup,
         Text status)
     {
-        var button = new Button { Content = new Text(label) };
+        var button = PlacementControl(label, ColorRole.Border);
         button.Click += (_, _) =>
         {
             popup.Placement = placement;
             popup.IsOpen = true;
-            status.Content = $"Requested side: {label}";
+            status.Content = $"Requested side: {placement}";
         };
 
         return button;
     }
+
+    private static Button PlacementControl(string label, ColorRole borderColor) => new()
+    {
+        Content = new Text(label),
+        Background = ColorRole.Surface,
+        BorderThickness = new Thickness(1),
+        BorderGlyphs = Glyphs.Rounded,
+        BorderColor = borderColor,
+        Padding = new Thickness(1, 0),
+    };
 
     private static void Place(Control control, int left, int top)
     {

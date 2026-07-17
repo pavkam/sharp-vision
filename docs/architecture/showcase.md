@@ -19,12 +19,14 @@ Each concrete control lives in `src/SharpVision.Showcase/Panes/` as a
 installs it once through `InitializeContent` before any layout. There is no
 measure-time construction, shared showcase base class, or mandatory metadata: a
 pane composes public `Stack`, marked `Text`, `Dock`, and layout APIs directly.
-`Doc` (in `src/SharpVision.Showcase/Panes/Doc.cs`) holds the small composition
-helpers every pane shares: `Doc.Page(name, overview, sections...)` builds the
-bold heading plus an "Overview" paragraph and stacks the given sections beneath
-it; `Doc.Example(heading, description, specimen)` builds one labeled block
-pairing prose with a live specimen; `Doc.Card`, `Doc.Row`, and `Doc.Column` are
-composition shorthands for framing and arranging specimens.
+`Doc` (in `src/SharpVision.Showcase/Doc.cs`) holds the small composition helpers
+every pane shares: `Doc.Page(name, overview, sections...)` builds the bold
+heading plus an "Overview" paragraph and stacks the given sections beneath it;
+`Doc.Example(heading, description, specimen)` builds one labeled block and
+places every live specimen on the same bordered semantic `Surface`, so examples
+remain visually distinct from surrounding prose in every theme. `Doc.Card`,
+`Doc.Row`, and `Doc.Column` are composition shorthands for framing and arranging
+specimens.
 
 `Gallery` owns the stable catalog of pane titles and factories
 (`(string Name, Func<CompositeControl> Create)[]`). The sidebar contains 26
@@ -43,6 +45,14 @@ or Interaction tables and no separate "Practical recipe" narrative section;
 documentation prose lives inline next to the specimen it describes. Marked
 `Text` headings and example descriptions use `Overflow.Wrap`, so they reflow as
 the page narrows along with the live specimens.
+
+Popup specimens use bounded application stages with separate backdrop,
+interaction, and promoted-popup layers. Triggers keep their intrinsic size, each
+stage reserves enough space for every demonstrated open placement, and an open
+surface never covers another action or escapes into the next example. The
+placement specimen uses a rounded accent frame, a centered `⚓ Anchor`, bordered
+direction controls, and a separated status row so the relationship remains
+legible across themes.
 
 Canvas demonstrates visual behavior as several labeled, framed live specimens
 rather than a single crowded sample. Each stage keeps the control's real layout

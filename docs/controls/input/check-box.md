@@ -37,6 +37,13 @@ policy presents as the state-equivalent ASCII `o`, `x`, or `-`; its configured
 Rune remains unchanged. A true value adds `VisualState.Checked` to the inherited
 visual-state flags.
 
+## Theme glyphs
+
+Bracket, tick, and square states resolve from `Theme.Glyphs.Selection`.
+Assigning `Marks` overrides the square family only; `ResetMarks()` returns it to
+the active theme. Every mark and fallback remains one cell under the committed
+width policy.
+
 ## Interaction
 
 Space and pointer activation use the same transition. Press/capture behavior

@@ -14,7 +14,6 @@ public sealed class Text: Control
 {
     private const TerminalAttributes _blinkAttributes =
         TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
-    private const string _ellipsis = "…";
     private string _display = string.Empty;
     private StyleSpan[] _spans = [];
     private string? _parsedContent;
@@ -26,6 +25,7 @@ public sealed class Text: Control
     private Line[] _lines = [];
     private int _lineCount;
     private bool _layoutValid;
+    private Rune? _ellipsisGlyph;
 
     /// <summary>Initializes empty text with documented formatting defaults.</summary>
     public Text()
@@ -113,6 +113,34 @@ public sealed class Text: Control
             _hasAmbiguousWidth = true;
             _layoutValid = false;
             NotifyPropertyChanged(nameof(AmbiguousWidth), ChangeImpact.Measure);
+        }
+    }
+
+    /// <summary>Gets or sets the local one-cell truncation glyph.</summary>
+    public Rune EllipsisGlyph
+    {
+        get => _ellipsisGlyph ?? ResolveThemeGlyphs().Text.Ellipsis.Value;
+        set
+        {
+            _ = new ThemedGlyph(value, value);
+            VerifyMutable();
+            if (_ellipsisGlyph == value) { return; }
+            _ellipsisGlyph = value;
+            NotifyPropertyChanged(nameof(EllipsisGlyph), ChangeImpact.Render);
+        }
+    }
+
+    /// <summary>Clears the local truncation glyph so the active theme supplies it.</summary>
+    /// <exception cref="InvalidOperationException">The attached text control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The text control is disposed.</exception>
+    public void ResetEllipsisGlyph()
+    {
+        VerifyMutable();
+
+        if (_ellipsisGlyph.HasValue)
+        {
+            _ellipsisGlyph = null;
+            NotifyPropertyChanged(nameof(EllipsisGlyph), ChangeImpact.Render);
         }
     }
 
@@ -265,11 +293,12 @@ public sealed class Text: Control
         if (line.HasEllipsis)
         {
             var span = spanIndex >= 0 ? _spans[spanIndex] : default;
-            _ = canvas.Draw(
-                _ellipsis,
+            var themed = ResolveThemeGlyphs().Text.Ellipsis;
+            canvas.DrawRune(
+                CellGlyph.Resolve(EllipsisGlyph, themed.Fallback, AmbiguousWidth),
                 new Point(bounds.X + line.Leading + cells, bounds.Y + row),
                 ResolveSpanStyle(span),
-                background: ResolveBackgroundMode(span));
+                ResolveBackgroundMode(span));
         }
     }
 
@@ -322,15 +351,21 @@ public sealed class Text: Control
             underline = span.Underline;
         }
 
-        var underlineColor = span.UnderlineColor;
+        var underlineColor = span.UnderlineColor is { } configuredUnderlineColor
+            ? ResolveThemeColor(configuredUnderlineColor)
+            : (Color?) null;
         var (resolvedAttributes, resolvedUnderline, resolvedUnderlineColor) = Decoration.Resolve(
             inherited,
             attributes,
             underline,
             underlineColor);
         return new TerminalStyle(
-            span.Foreground ?? inherited.Foreground,
-            span.Background ?? inherited.Background,
+            span.Foreground is { } configuredForeground
+                ? ResolveThemeColor(configuredForeground)
+                : inherited.Foreground,
+            span.Background is { } configuredBackground
+                ? ResolveThemeColor(configuredBackground)
+                : inherited.Background,
             resolvedAttributes,
             span.Link ?? inherited.Hyperlink,
             resolvedUnderline,

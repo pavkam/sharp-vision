@@ -7,6 +7,9 @@ namespace SharpVision.Controls;
 public sealed class Table: ItemsControl
 {
     private readonly TablePresenter _presenter;
+    private Rune? _horizontalGridGlyph;
+    private Rune? _verticalGridGlyph;
+    private Rune? _crossGridGlyph;
 
     #region Construction and properties
 
@@ -106,6 +109,27 @@ public sealed class Table: ItemsControl
     {
         get;
         set => _ = SetProperty(ref field, value, ChangeImpact.Render);
+    }
+
+    /// <summary>Gets or sets the local horizontal grid glyph.</summary>
+    public Rune HorizontalGridGlyph { get => _horizontalGridGlyph ?? ResolveThemeGlyphs().Separators.TableHorizontal.Value; set => SetGridGlyph(ref _horizontalGridGlyph, value, nameof(HorizontalGridGlyph)); }
+
+    /// <summary>Gets or sets the local vertical grid glyph.</summary>
+    public Rune VerticalGridGlyph { get => _verticalGridGlyph ?? ResolveThemeGlyphs().Separators.TableVertical.Value; set => SetGridGlyph(ref _verticalGridGlyph, value, nameof(VerticalGridGlyph)); }
+
+    /// <summary>Gets or sets the local grid-intersection glyph.</summary>
+    public Rune CrossGridGlyph { get => _crossGridGlyph ?? ResolveThemeGlyphs().Separators.TableCross.Value; set => SetGridGlyph(ref _crossGridGlyph, value, nameof(CrossGridGlyph)); }
+
+    /// <summary>Clears all local grid glyphs so the active theme supplies them.</summary>
+    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
+    public void ResetGridGlyphs()
+    {
+        VerifyMutable();
+
+        ResetGridGlyph(ref _horizontalGridGlyph, nameof(HorizontalGridGlyph));
+        ResetGridGlyph(ref _verticalGridGlyph, nameof(VerticalGridGlyph));
+        ResetGridGlyph(ref _crossGridGlyph, nameof(CrossGridGlyph));
     }
 
     /// <summary>Gets the committed non-negative scrolling content extent.</summary>
@@ -239,7 +263,43 @@ public sealed class Table: ItemsControl
     /// <summary>Gets the current state snapshot for private table chrome resolution.</summary>
     internal VisualState CurrentVisualState => GetAppearanceState();
 
+    /// <summary>Gets the terminal-safe horizontal grid glyph for the current theme and cell policy.</summary>
+    internal Rune ResolvedHorizontalGridGlyph => CellGlyph.Resolve(
+        HorizontalGridGlyph,
+        ResolveThemeGlyphs().Separators.TableHorizontal.Fallback,
+        CellPolicy.AmbiguousWidth);
+
+    /// <summary>Gets the terminal-safe vertical grid glyph for the current theme and cell policy.</summary>
+    internal Rune ResolvedVerticalGridGlyph => CellGlyph.Resolve(
+        VerticalGridGlyph,
+        ResolveThemeGlyphs().Separators.TableVertical.Fallback,
+        CellPolicy.AmbiguousWidth);
+
+    /// <summary>Gets the terminal-safe grid-intersection glyph for the current theme and cell policy.</summary>
+    internal Rune ResolvedCrossGridGlyph => CellGlyph.Resolve(
+        CrossGridGlyph,
+        ResolveThemeGlyphs().Separators.TableCross.Fallback,
+        CellPolicy.AmbiguousWidth);
+
     #endregion
+
+    private void SetGridGlyph(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+        if (storage == value) { return; }
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
+    }
+
+    private void ResetGridGlyph(ref Rune? storage, string propertyName)
+    {
+        if (storage.HasValue)
+        {
+            storage = null;
+            NotifyPropertyChanged(propertyName, ChangeImpact.Render);
+        }
+    }
 
     #region Row ownership
 

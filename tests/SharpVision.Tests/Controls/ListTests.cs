@@ -222,13 +222,16 @@ public sealed class ListTests
             Key(control, Code.Down);
             focus.Focused.ShouldBeSameAs(control);
             control.ActiveIndex.ShouldBe(2);
+            control.SelectedIndex.ShouldBe(2);
             Space(control);
             control.SelectedIndex.ShouldBe(2);
             Key(control, Code.Enter);
             Key(control, Code.Home);
             control.ActiveIndex.ShouldBe(0);
+            control.SelectedIndex.ShouldBe(0);
             Key(control, Code.End);
             control.ActiveIndex.ShouldBe(2);
+            control.SelectedIndex.ShouldBe(2);
         }, TestContext.Current.CancellationToken);
 
         invoked.ShouldBe([2]);
@@ -281,6 +284,7 @@ public sealed class ListTests
 
             control.VerticalOffset.ShouldBeGreaterThan(0);
             control.ActiveIndex.ShouldBe(7);
+            control.SelectedIndex.ShouldBe(7);
         }, TestContext.Current.CancellationToken);
     }
 

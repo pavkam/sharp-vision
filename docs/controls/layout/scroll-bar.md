@@ -35,6 +35,13 @@ renders only the thumb; a two-cell control renders only its buttons; zero cells
 render nothing. This deterministic fallback never writes outside the arranged
 bounds.
 
+## Theme glyphs
+
+Directional buttons, block track/thumb, and orientation-specific line
+track/thumb values resolve from `Theme.Glyphs.ScrollBars`. Existing
+`DecrementGlyph`, `IncrementGlyph`, `TrackGlyph`, and `ThumbGlyph` assignments
+remain local overrides; `ResetGlyphs()` clears all four.
+
 ## Interaction
 
 Wheel input is handled only when the range value changes. At either endpoint an

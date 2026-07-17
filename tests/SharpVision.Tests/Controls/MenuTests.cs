@@ -9,7 +9,7 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies typed menu ownership, selection navigation, check states, and cells.</summary>
 public sealed class MenuTests
 {
-    /// <summary>Verifies typed collection ownership selects the first available item and renders vertical markers.</summary>
+    /// <summary>Verifies typed collection ownership selects the first available item and renders compact shared-width rows.</summary>
     [Fact]
     public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
     {
@@ -17,7 +17,10 @@ public sealed class MenuTests
         menu.Items.Add(new MenuItem { Content = new ControlText("Open") });
         menu.Items.Add(new MenuItem { Content = new ControlText("Pinned"), Kind = MenuItemKind.Check, IsChecked = true });
         menu.Items.Add(new MenuSeparator());
-        var size = new Size(12, 5);
+        var first = menu.Items[0];
+        var second = menu.Items[1];
+        var separator = menu.Items[2];
+        var size = new Size(12, 3);
         new Engine().Layout(menu, size);
         using Frame frame = new(size);
 
@@ -25,9 +28,13 @@ public sealed class MenuTests
 
         menu.Items.Count.ShouldBe(3);
         menu.SelectedIndex.ShouldBe(0);
+        menu.Spacing.ShouldBe(0);
+        first.Bounds.ShouldBe(new Rect(0, 0, menu.Bounds.Width, 1));
+        second.Bounds.ShouldBe(new Rect(0, 1, menu.Bounds.Width, 1));
+        separator.Bounds.ShouldBe(new Rect(0, 2, menu.Bounds.Width, 1));
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
-        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("[");
-        FrameOracle.Get(frame, new Point(0, 4)).ShouldBe("─");
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("[");
+        FrameOracle.Get(frame, new Point(menu.Bounds.Right - 1, 2)).ShouldBe("─");
     }
 
     /// <summary>Verifies directional keys skip separators while focus remains on the menu owner.</summary>
@@ -151,9 +158,9 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies Menu is one Tab stop and its private items never enter traversal.</summary>
+    /// <summary>Verifies Tab and Shift+Tab move menu selection while private items remain outside traversal.</summary>
     [Fact]
-    public async Task Dispatch_WhenTabPressed_FlowsThroughMenuItemsAsync()
+    public async Task Dispatch_WhenTabPressed_MovesSelectionWithoutLeavingMenuAsync()
     {
         await using var dispatcher = Dispatcher.Start();
 
@@ -173,11 +180,83 @@ public sealed class MenuTests
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
             focus.Focus(menu).ShouldBeTrue();
-            var result = Router.Route(menu, Events.Key, Tab());
+            var next = Router.Route(menu, Events.Key, Tab());
 
-            result.Command.ShouldBe(PostRouteCommand.TabNext);
-            focus.MoveNext(result.Anchor).ShouldBeTrue();
-            focus.Focused.ShouldBeSameAs(outside);
+            next.Handled.ShouldBeTrue();
+            next.Command.ShouldBe(PostRouteCommand.None);
+            menu.SelectedIndex.ShouldBe(1);
+            focus.Focused.ShouldBeSameAs(menu);
+
+            var previous = Router.Route(menu, Events.Key, Tab(Modifiers.Shift));
+
+            previous.Handled.ShouldBeTrue();
+            previous.Command.ShouldBe(PostRouteCommand.None);
+            menu.SelectedIndex.ShouldBe(0);
+            focus.Focused.ShouldBeSameAs(menu);
+            outside.IsFocused.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Enter invokes the selected private item through the menu focus owner.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterIsPressed_InvokesSelectedItemWithKeyboardCauseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var first = new MenuItem { Content = new ControlText("First") };
+            var second = new MenuItem { Content = new ControlText("Second") };
+            menu.Items.Add(first);
+            menu.Items.Add(second);
+            menu.SelectedIndex = 1;
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<(MenuItem Item, ActivationCause Cause)>();
+            menu.ItemInvoked += (_, eventArgs) => invocations.Add((eventArgs.Item, eventArgs.Cause));
+
+            // Act
+            var result = Router.Route(menu, Events.Key, Key(Code.Enter));
+
+            // Assert
+            result.Handled.ShouldBeTrue();
+            invocations.ShouldBe([(second, ActivationCause.Keyboard)]);
+            focus.Focused.ShouldBeSameAs(menu);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Space holds and then invokes the selected private item exactly once.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpaceCompletes_InvokesSelectedItemOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Content = new ControlText("Run") };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            // Act and assert held state
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+            press.Handled.ShouldBeTrue();
+            item.IsPressed.ShouldBeTrue();
+            invocations.ShouldBeEmpty();
+
+            // Act and assert completion
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release));
+            release.Handled.ShouldBeTrue();
+            item.IsPressed.ShouldBeFalse();
+            invocations.ShouldBe([ActivationCause.Keyboard]);
         }, TestContext.Current.CancellationToken);
     }
 
@@ -235,11 +314,128 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
-    private static KeyEventArgs Tab() => new(new Stroke(
-        Code.Tab,
+    /// <summary>Verifies submenu popup presentation follows the owning menu orientation.</summary>
+    [Fact]
+    public void PerformInvoke_WhenSubmenuOpens_UsesAttachedMenuSurfaceAndDirectionalPlacement()
+    {
+        // Arrange horizontal menu
+        var horizontalSubmenu = new Menu { Orientation = Orientation.Vertical };
+        horizontalSubmenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        var horizontalItem = new MenuItem
+        {
+            Content = new ControlText("File"),
+            Submenu = horizontalSubmenu,
+        };
+        var horizontal = new Menu
+        {
+            Orientation = Orientation.Horizontal,
+            Height = Length.Cells(1),
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        horizontal.Items.Add(horizontalItem);
+        var horizontalRoot = new Overlay { Children = { horizontal } };
+        var engine = new Engine();
+        engine.Layout(horizontalRoot, new Size(30, 10));
+
+        // Act horizontal
+        horizontalItem.PerformInvoke();
+        engine.Layout(horizontalRoot, new Size(30, 10));
+        var horizontalPopup = OwnedTree.Find<Popup>(horizontalItem).ShouldNotBeNull();
+
+        // Assert horizontal
+        horizontalPopup.Placement.ShouldBe(PopupPlacement.Below);
+        horizontalPopup.SurfaceBounds.Y.ShouldBe(horizontalItem.Bounds.Bottom);
+        horizontalPopup.Glyphs.ShouldBe(Glyphs.Light);
+        horizontalPopup.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+
+        // Arrange vertical menu
+        var verticalSubmenu = new Menu { Orientation = Orientation.Vertical };
+        verticalSubmenu.Items.Add(new MenuItem { Content = new ControlText("Recent") });
+        var verticalItem = new MenuItem
+        {
+            Content = new ControlText("Open"),
+            Submenu = verticalSubmenu,
+        };
+        var vertical = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            Width = Length.Cells(8),
+        };
+        vertical.Items.Add(verticalItem);
+        var verticalRoot = new Overlay { Children = { vertical } };
+        engine.Layout(verticalRoot, new Size(30, 10));
+
+        // Act vertical
+        verticalItem.PerformInvoke();
+        engine.Layout(verticalRoot, new Size(30, 10));
+        var verticalPopup = OwnedTree.Find<Popup>(verticalItem).ShouldNotBeNull();
+
+        // Assert vertical
+        verticalPopup.Placement.ShouldBe(PopupPlacement.Right);
+        verticalPopup.SurfaceBounds.X.ShouldBe(verticalItem.Bounds.Right);
+    }
+
+    /// <summary>Verifies every vertical row shares one trailing shortcut edge.</summary>
+    [Fact]
+    public void Render_WhenVerticalItemsHaveDifferentShortcuts_RightAlignsEveryHint()
+    {
+        // Arrange
+        var labelOnly = new MenuItem
+        {
+            Content = new ControlText("Open Recent"),
+        };
+        var shortHint = new MenuItem
+        {
+            Content = new ControlText("Run"),
+            ShortcutText = "F5",
+        };
+        var longHint = new MenuItem
+        {
+            Content = new ControlText("Save"),
+            ShortcutText = "Ctrl+S",
+        };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(labelOnly);
+        menu.Items.Add(shortHint);
+        menu.Items.Add(longHint);
+        var size = new Size(30, 3);
+        new Engine().Layout(menu, size);
+        using Frame frame = new(size);
+
+        // Act
+        menu.Render(frame.Canvas);
+
+        // Assert
+        menu.DesiredSize.Width.ShouldBe(19);
+        labelOnly.Bounds.Width.ShouldBe(19);
+        shortHint.Bounds.Right.ShouldBe(longHint.Bounds.Right);
+        FrameOracle.Get(frame, new Point(11, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(12, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(shortHint.Bounds.Right - 2, 1)).ShouldBe("F");
+        FrameOracle.Get(frame, new Point(longHint.Bounds.Right - 6, 2)).ShouldBe("C");
+        FrameOracle.Get(frame, new Point(shortHint.Bounds.Right - 1, 1)).ShouldBe("5");
+        FrameOracle.Get(frame, new Point(longHint.Bounds.Right - 1, 2)).ShouldBe("S");
+    }
+
+    private static KeyEventArgs Key(Code code) => new(new Stroke(
+        code,
         default,
         nativeCode: 0,
         Modifiers.None,
+        KeyAction.Press));
+
+    private static KeyEventArgs Space(KeyAction action) => new(new Stroke(
+        Code.Character,
+        new Rune(' '),
+        nativeCode: 0,
+        Modifiers.None,
+        action));
+
+    private static KeyEventArgs Tab(Modifiers modifiers = Modifiers.None) => new(new Stroke(
+        Code.Tab,
+        default,
+        nativeCode: 0,
+        modifiers,
         KeyAction.Press));
 
     /// <summary>Verifies changing a checked item to command clears checked state before observers.</summary>

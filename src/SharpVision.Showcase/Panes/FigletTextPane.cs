@@ -135,7 +135,7 @@ internal sealed class FigletTextPane: CompositeControl
             Doc.Section(
                 "🔤",
                 "Style",
-                "FIGlet output follows the active control style unless a local semantic override is intentional.",
+                "FIGlet output preserves its parent background while following the active foreground and attributes unless a local semantic override is intentional.",
                 Doc.Example(
                     "Inherited and explicit appearance",
                     "Theme follows the application; Accent owns a local semantic foreground and bold attribute.",

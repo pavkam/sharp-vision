@@ -67,7 +67,7 @@ public sealed class GroupBox: ContentControl
         if (opaque) { canvas.Clear(Bounds, ResolvedStyle); }
         var border = ControlAppearance.ResolveBorderStyle(this, GetAppearanceState());
         var bg = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
-        ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, bg);
+        ControlChrome.DrawUniformBorder(canvas, Bounds, ResolveBorderGlyphs(Glyphs), border, bg);
         if (!string.IsNullOrEmpty(Header) && Bounds.Width > 3) { _ = canvas.Clip(new Rect(Bounds.X + 1, Bounds.Y, Bounds.Width - 2, 1)).Draw($" {Header} ".AsSpan(), new Point(Bounds.X + 1, Bounds.Y), border, background: bg); }
     }
 }

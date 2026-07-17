@@ -8,14 +8,10 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies theme JSON deserialization into the definition DTO.</summary>
 public sealed class ThemeDeserializeTests
 {
-    private const string _json = /*lang=json,strict*/ """
-        {
-          "version": 1, "name": "Sample", "slug": "sample", "colorScheme": "dark", "order": 5,
-          "author": "A", "license": "MIT", "source": "https://example.test",
-          "palette": { "bg": "#000000", "fg": "#ffffff" },
-          "roles": { "background": "bg", "foreground": "fg" }
-        }
-        """;
+    private static readonly string _json = ThemeJson.Create(
+        "\"background\":\"bg\",\"foreground\":\"fg\"",
+        "\"bg\":\"#000000\",\"fg\":\"#ffffff\"",
+        "Sample");
 
     /// <summary>Verifies a well-formed theme document maps every field onto the definition.</summary>
     [Fact]
@@ -23,9 +19,9 @@ public sealed class ThemeDeserializeTests
     {
         var definition = ThemeLoader.Deserialize(_json, "sample");
 
-        definition.Version.ShouldBe(1);
-        definition.Slug.ShouldBe("sample");
-        definition.Order.ShouldBe(5);
+        definition.Version.ShouldBe(2);
+        definition.Slug.ShouldBe("t");
+        definition.Order.ShouldBe(1);
         definition.ColorScheme.ShouldBe("dark");
         definition.Palette!["bg"].ShouldBe("#000000");
         definition.Roles!["foreground"].ShouldBe("fg");

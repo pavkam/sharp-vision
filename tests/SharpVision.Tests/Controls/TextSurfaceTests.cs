@@ -68,6 +68,31 @@ public sealed class TextSurfaceTests
         continuation.LeadX.ShouldBe(1);
     }
 
+    /// <summary>Verifies semantic markup roles render as themed text without leaking tag syntax.</summary>
+    [Fact]
+    public async Task Render_WhenMarkupUsesSemanticThemeRoles_ResolvesVisibleTextAndColorsAsync()
+    {
+        // Arrange
+        var text = new ControlText("<accent>A</accent><info>I</info>")
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            text,
+            new Size(2, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("AI");
+        Themes.Dark.TryGetColor(ColorRole.Accent, out var accent).ShouldBeTrue();
+        Themes.Dark.TryGetColor(ColorRole.Info, out var info).ShouldBeTrue();
+        surface.Cell(default).Style.Foreground.ShouldBe(accent);
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(info);
+    }
+
     /// <summary>Verifies ellipsis and alignment mutation replace every stale terminal cell.</summary>
     [Fact]
     public async Task UpdateAsync_WhenTextAndAlignmentChange_ReplacesFormattedCellsAsync()
@@ -108,7 +133,6 @@ public sealed class TextSurfaceTests
         // Arrange
         var text = new ControlText("A")
         {
-            FillMode = FillMode.Transparent,
             Foreground = Color.Indexed(15),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
@@ -116,7 +140,6 @@ public sealed class TextSurfaceTests
         var background = new Dock
         {
             Background = Color.Indexed(4),
-            FillMode = FillMode.Opaque,
             Children = { text },
         };
 

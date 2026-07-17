@@ -10,6 +10,7 @@ public sealed partial class Window: ContentControl
 {
     private bool _dragging;
     private Point _dragPrevious;
+    private Rune? _closeGlyph;
 
     #region Construction and properties
 
@@ -80,9 +81,37 @@ public sealed partial class Window: ContentControl
     /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
     public Glyphs Glyphs
     {
-        get;
-        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
-    } = Glyphs.Rounded;
+        get => BorderGlyphs;
+        set => BorderGlyphs = value;
+    }
+
+    /// <summary>Gets or sets the local close-button glyph.</summary>
+    public Rune CloseGlyph
+    {
+        get => _closeGlyph ?? ResolveThemeGlyphs().Chrome.WindowClose.Value;
+        set
+        {
+            _ = new ThemedGlyph(value, value);
+            VerifyMutable();
+            if (_closeGlyph == value) { return; }
+            _closeGlyph = value;
+            NotifyPropertyChanged(nameof(CloseGlyph), ChangeImpact.Render);
+        }
+    }
+
+    /// <summary>Clears the local close-button glyph so the active theme supplies it.</summary>
+    /// <exception cref="InvalidOperationException">The attached window is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The window is disposed.</exception>
+    public void ResetCloseGlyph()
+    {
+        VerifyMutable();
+
+        if (_closeGlyph.HasValue)
+        {
+            _closeGlyph = null;
+            NotifyPropertyChanged(nameof(CloseGlyph), ChangeImpact.Render);
+        }
+    }
 
     #endregion
 
@@ -150,7 +179,7 @@ public sealed partial class Window: ContentControl
 
         var border = ControlAppearance.ResolveBorderStyle(this, GetAppearanceState());
         var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
-        ControlChrome.DrawUniformBorder(canvas, Bounds, Glyphs, border, background);
+        ControlChrome.DrawUniformBorder(canvas, Bounds, ResolveBorderGlyphs(Glyphs), border, background);
 
         if (!string.IsNullOrEmpty(Title) && Bounds.Width > 3)
         {
@@ -174,11 +203,12 @@ public sealed partial class Window: ContentControl
 
         if (CanClose && Bounds.Width > 3)
         {
-            _ = canvas.Draw(
-                "✕".AsSpan(),
+            var themed = ResolveThemeGlyphs().Chrome.WindowClose;
+            canvas.DrawRune(
+                CellGlyph.Resolve(CloseGlyph, themed.Fallback, CellPolicy.AmbiguousWidth),
                 new Point(Bounds.Right - 2, Bounds.Y),
                 border,
-                background: background);
+                background);
         }
 
         if (HasShadow)

@@ -10,9 +10,10 @@ public sealed class MenuItemShortcutTests
     [Fact]
     public void Render_WhenShortcutTextIsSet_DrawsDimTextAtRightEdge()
     {
+        var content = new ControlText("Save");
         var item = new MenuItem
         {
-            Content = new ControlText("Save"),
+            Content = content,
             ShortcutText = "Ctrl+S",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -26,6 +27,9 @@ public sealed class MenuItemShortcutTests
         FrameOracle.Get(frame, new Point(14, 0)).ShouldBe("C");
         FrameOracle.Get(frame, new Point(15, 0)).ShouldBe("t");
         FrameOracle.Get(frame, new Point(19, 0)).ShouldBe("S");
+        content.Bounds.Right.ShouldBe(12);
+        FrameOracle.Get(frame, new Point(12, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(13, 0)).ShouldBeEmpty();
         (frame.GetCell(new Point(14, 0)).Style.Attributes & Attributes.Dim).ShouldBe(Attributes.Dim);
     }
 
@@ -63,5 +67,29 @@ public sealed class MenuItemShortcutTests
         item.ShortcutText.ShouldBeNull();
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("E");
         item.DesiredSize.Width.ShouldBe(4);
+    }
+
+    /// <summary>Verifies shortcut geometry uses terminal cells for wide Unicode rather than UTF-16 length.</summary>
+    [Fact]
+    public void Render_WhenShortcutContainsWideUnicode_AlignsItsFinalCellToTheRightEdge()
+    {
+        // Arrange
+        var item = new MenuItem
+        {
+            Content = new ControlText("Open"),
+            ShortcutText = "界",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        var size = new Size(10, 1);
+        new Engine().Layout(item, size);
+        using Frame frame = new(size);
+
+        // Act
+        item.Render(frame.Canvas);
+
+        // Assert
+        item.DesiredSize.Width.ShouldBe(8);
+        FrameOracle.Get(frame, new Point(8, 0)).ShouldBe("界");
+        frame.GetCell(new Point(9, 0)).IsContinuation.ShouldBeTrue();
     }
 }

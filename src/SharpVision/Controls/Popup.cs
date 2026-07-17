@@ -66,9 +66,9 @@ public sealed class Popup: ContentControl
     /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
     public Glyphs Glyphs
     {
-        get;
-        set => _ = SetProperty(ref field, value, ChangeImpact.Render);
-    } = Glyphs.Rounded;
+        get => BorderGlyphs;
+        set => BorderGlyphs = value;
+    }
 
     /// <summary>Gets the committed visible surface rectangle, or an empty rectangle while closed.</summary>
     public Rect SurfaceBounds { get; private set; }
@@ -401,10 +401,12 @@ public sealed class Popup: ContentControl
 
     private void DrawFrame(TerminalCanvas canvas, TerminalStyle style)
     {
+        var glyphs = ResolveBorderGlyphs(Glyphs);
+
         for (var x = SurfaceBounds.X; x < SurfaceBounds.Right; x++)
         {
-            var top = x == SurfaceBounds.X ? Glyphs.TopLeft : x == SurfaceBounds.Right - 1 ? Glyphs.TopRight : Glyphs.Top;
-            var bottom = x == SurfaceBounds.X ? Glyphs.BottomLeft : x == SurfaceBounds.Right - 1 ? Glyphs.BottomRight : Glyphs.Bottom;
+            var top = x == SurfaceBounds.X ? glyphs.TopLeft : x == SurfaceBounds.Right - 1 ? glyphs.TopRight : glyphs.Top;
+            var bottom = x == SurfaceBounds.X ? glyphs.BottomLeft : x == SurfaceBounds.Right - 1 ? glyphs.BottomRight : glyphs.Bottom;
             canvas.DrawRune(top, new Point(x, SurfaceBounds.Y), style, BackgroundMode.Opaque);
 
             if (SurfaceBounds.Height > 1)
@@ -415,11 +417,11 @@ public sealed class Popup: ContentControl
 
         for (var y = SurfaceBounds.Y + 1; y < SurfaceBounds.Bottom - 1; y++)
         {
-            canvas.DrawRune(Glyphs.Left, new Point(SurfaceBounds.X, y), style, BackgroundMode.Opaque);
+            canvas.DrawRune(glyphs.Left, new Point(SurfaceBounds.X, y), style, BackgroundMode.Opaque);
 
             if (SurfaceBounds.Width > 1)
             {
-                canvas.DrawRune(Glyphs.Right, new Point(SurfaceBounds.Right - 1, y), style, BackgroundMode.Opaque);
+                canvas.DrawRune(glyphs.Right, new Point(SurfaceBounds.Right - 1, y), style, BackgroundMode.Opaque);
             }
         }
     }

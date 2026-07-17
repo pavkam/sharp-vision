@@ -115,14 +115,14 @@ public sealed class IntrinsicBorderTests
 
         control.Render(frame.Canvas);
 
-        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("┌");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╭");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("─");
-        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("┐");
+        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("╮");
         FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("│");
         FrameOracle.Get(frame, new Point(3, 1)).ShouldBe("│");
-        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("└");
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("╰");
         FrameOracle.Get(frame, new Point(1, 2)).ShouldBe("─");
-        FrameOracle.Get(frame, new Point(3, 2)).ShouldBe("┘");
+        FrameOracle.Get(frame, new Point(3, 2)).ShouldBe("╯");
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("界");
         frame.GetCell(new Point(2, 1)).IsContinuation.ShouldBeTrue();
     }
@@ -172,17 +172,17 @@ public sealed class IntrinsicBorderTests
                 FrameOracle.Get(frame, default).ShouldBeEmpty();
                 break;
             case (1, 1):
-                FrameOracle.Get(frame, default).ShouldBe("┌");
+                FrameOracle.Get(frame, default).ShouldBe("╭");
                 break;
             case (1, 3):
-                FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("┌");
+                FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╭");
                 FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("│");
-                FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("└");
+                FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("╰");
                 break;
             case (3, 1):
-                FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("┌");
+                FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╭");
                 FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("─");
-                FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("┐");
+                FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("╮");
                 break;
             default:
                 throw new InvalidOperationException("The tiny-border case is not defined.");

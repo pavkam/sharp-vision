@@ -173,7 +173,7 @@ public sealed class List: ItemsControl
     /// <summary>Gets one stable owner-backed read-only view in ascending index order.</summary>
     public IReadOnlyList<object?> SelectedItems => _selectedView;
 
-    /// <summary>Gets the active navigation index, or -1 when no item is active.</summary>
+    /// <summary>Gets the active navigation and keyboard-selection index, or -1 when no item is active.</summary>
     public int ActiveIndex { get; private set; } = -1;
 
     /// <summary>Gets the current navigation index, or -1 when no item is current.</summary>
@@ -415,6 +415,8 @@ public sealed class List: ItemsControl
         Debug.Assert(realized is not null, "List replacement requires realized items.");
         Debug.Assert(realized.Length == items.Count, "Realized items must match the source count.");
 
+        // Re-realization invalidates pending proposals that may still reference an old wrapper.
+        _selectionVersion++;
         List<ListItem> previous = [];
 
         for (var index = 0; index < ItemControlCount; index++)
@@ -480,7 +482,9 @@ public sealed class List: ItemsControl
             var changing = new ListSelectionChangingEventArgs(added, removed);
             SelectionChanging?.Invoke(this, changing);
 
-            if (changing.Cancel || version != _selectionVersion)
+            if (changing.Cancel ||
+                version != _selectionVersion ||
+                (SelectionMode == SelectionMode.None && next.Count > 0))
             {
                 return false;
             }
@@ -532,22 +536,14 @@ public sealed class List: ItemsControl
     /// <returns><see langword="true"/> when the key moved current item; otherwise, <see langword="false"/>.</returns>
     internal bool MoveCurrent(Code code)
     {
-        var current = ItemAt(ActiveIndex) ?? FindEligible(0, 1);
-
-        if (current is null)
-        {
-            return false;
-        }
-
-        var target = ResolveNavigation(current, code);
+        var target = ResolveMove(code);
 
         if (target is null)
         {
             return false;
         }
 
-        SetActiveIndex(target.Index);
-        _ = _stack.BringIntoView(target);
+        CommitCurrent(target);
         return true;
     }
 
@@ -585,7 +581,7 @@ public sealed class List: ItemsControl
             eventArgs.Cause == ActivationCause.Keyboard &&
             (modifiers & (Modifiers.Control | Modifiers.Shift)) == 0;
 
-        ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
+        _ = ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
         if (eventArgs.Cause == ActivationCause.Pointer)
         {
@@ -593,18 +589,19 @@ public sealed class List: ItemsControl
         }
     }
 
-    private void ApplyInputSelection(int index, Modifiers modifiers)
+    private bool ApplyInputSelection(int index, Modifiers modifiers)
     {
         Debug.Assert(index >= 0, "List input selection index is non-negative.");
 
         if (SelectionMode == SelectionMode.None)
         {
-            return;
+            return false;
         }
 
         HashSet<int> next = [.. _selection];
         var control = (modifiers & Modifiers.Control) != 0;
         var shift = (modifiers & Modifiers.Shift) != 0;
+        var nextAnchor = _selectionAnchor;
 
         if (SelectionMode == SelectionMode.Multiple && shift && _selectionAnchor >= 0)
         {
@@ -622,16 +619,23 @@ public sealed class List: ItemsControl
                 _ = next.Add(index);
             }
 
-            _selectionAnchor = index;
+            nextAnchor = index;
         }
         else
         {
             next.Clear();
             _ = next.Add(index);
-            _selectionAnchor = index;
+            nextAnchor = index;
         }
 
-        _ = ApplySelection(next, cancellable: true);
+        var accepted = ApplySelection(next, cancellable: true) || _selection.SetEquals(next);
+
+        if (accepted)
+        {
+            _selectionAnchor = nextAnchor;
+        }
+
+        return accepted;
     }
 
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
@@ -658,7 +662,54 @@ public sealed class List: ItemsControl
             return;
         }
 
-        eventArgs.Handled = MoveCurrent(eventArgs.Stroke.Code);
+        eventArgs.Handled = MoveSelection(eventArgs.Stroke.Code);
+    }
+
+    private bool MoveSelection(Code code)
+    {
+        var target = ResolveMove(code);
+
+        if (target is null)
+        {
+            return false;
+        }
+
+        if (SelectionMode != SelectionMode.None && !ApplyInputSelection(target.Index, Modifiers.None))
+        {
+            if (SelectionMode == SelectionMode.None)
+            {
+                _ = TryCommitCurrent(target);
+            }
+
+            return true;
+        }
+
+        _ = TryCommitCurrent(target);
+        return true;
+    }
+
+    private ListItem? ResolveMove(Code code)
+    {
+        var current = ItemAt(ActiveIndex) ?? FindEligible(0, 1);
+        return current is null ? null : ResolveNavigation(current, code);
+    }
+
+    private bool TryCommitCurrent(ListItem target)
+    {
+        if (!ReferenceEquals(ItemAt(target.Index), target))
+        {
+            return false;
+        }
+
+        CommitCurrent(target);
+        return true;
+    }
+
+    private void CommitCurrent(ListItem target)
+    {
+        Debug.Assert(target is not null, "List navigation commits a realized item.");
+        SetActiveIndex(target.Index);
+        _ = _stack.BringIntoView(target);
     }
 
     private ListItem? ResolveNavigation(ListItem current, Code code)

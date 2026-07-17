@@ -102,9 +102,9 @@ public sealed class TextTests
         FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("Z");
     }
 
-    /// <summary>Verifies ambiguous-wide ellipsis measurement matches semantic rendering.</summary>
+    /// <summary>Verifies an ambiguous-wide ellipsis uses its one-cell theme fallback.</summary>
     [Fact]
-    public void Render_WhenEllipsisIsAmbiguousWide_ReservesTwoCompleteCells()
+    public void Render_WhenEllipsisIsAmbiguousWide_UsesThemeFallback()
     {
         var text = new ControlText("abcde")
         {
@@ -117,8 +117,9 @@ public sealed class TextTests
         text.Render(frame.Canvas);
 
         text.Lines.Span[0].Cells.ShouldBe(4);
-        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("…");
-        frame.GetCell(new Point(3, 0)).IsContinuation.ShouldBeTrue();
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("c");
+        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe(".");
+        frame.GetCell(new Point(3, 0)).IsContinuation.ShouldBeFalse();
     }
 
     /// <summary>Verifies an ellipsis replacing the first wide cluster keeps that cluster's markup style.</summary>

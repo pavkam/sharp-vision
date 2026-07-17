@@ -12,7 +12,9 @@ activation, and menu-level invocation notifications.
 - `Items : MenuItems` exposes `IReadOnlyList<Control>` inspection plus typed
   `Add`/`Remove` overloads for `MenuItem` and `MenuSeparator`; arbitrary
   controls cannot enter through the semantic collection.
-- `Orientation` and `Spacing` control horizontal or vertical geometry.
+- `Orientation` and `Spacing` control horizontal or vertical geometry. `Spacing`
+  defaults to zero so vertical flyout entries occupy adjacent rows; horizontal
+  bars can opt into additional separation.
 - `SelectedIndex` tracks the active `MenuItem`; `-1` clears selection and a
   separator index is rejected.
 - `ItemInvoked` reports the item and activation cause after the item's own
@@ -20,31 +22,45 @@ activation, and menu-level invocation notifications.
 
 ## Interaction
 
-Arrow keys follow `Orientation`, skip separators and unavailable items, update
-`SelectedIndex`, and move focus to the new active item. Enter, Space, and a
-primary pointer click invoke through the shared
-[`Pressable`](../pressable.md#pressable-contract) contract. A `Menu` is
-composable inside `Popup` when an anchored flyout is needed.
+Arrow keys follow `Orientation`, while Tab and Shift+Tab move forward and
+backward regardless of orientation. Navigation wraps, skips separators and
+unavailable items, updates `SelectedIndex`, and retains focus on the menu. Enter
+and a completed Space activate the selected private item with a keyboard cause.
+A primary pointer click invokes through the shared
+[`Pressable`](../pressable.md#pressable-contract) contract.
+
+Pointer motion over an available item selects it and paints its complete row.
+Hover does not open a dormant menu. Once one sibling submenu is open, moving or
+keyboard-navigating to another item closes the previous sibling and opens the
+new item's submenu. Moving to an item without a submenu closes the previous
+submenu without invoking the command.
+
+A horizontal menu opens item submenus below the anchor. A vertical menu opens
+nested submenus to the right. Popup edge fallback may flip those preferred
+directions to keep the framed surface inside the terminal. Closing a submenu
+restores focus to its owning menu before hiding submenu content.
+
+Vertical menu width uses independent label and shortcut measurements: the widest
+label plus a two-cell gutter plus the widest shortcut. Shortcut text is
+right-aligned to the shared trailing edge, and label content cannot draw into
+the gutter.
 
 ### Keyboard navigation
 
 The menu sets
-[`TabNavigation.Cycle`](../../concepts/focus.md#hierarchical-tab-navigation) so
-that Tab wraps through `MenuItem` children instead of escaping to sibling
-controls. Separators and unavailable items are skipped because they are not
-focusable. When a `MenuItem` receives focus externally (for example through Tab
-or programmatic focus), the menu's `SelectedIndex` is synchronized
-automatically. This guarantees that subsequent arrow-key navigation starts from
-the correctly focused position, not from a stale selection.
+[`TabNavigation.None`](../../concepts/focus.md#hierarchical-tab-navigation) and
+owns one focus stop. Its private `MenuItem` faces never enter global traversal;
+the menu handles Tab and Shift+Tab before the global focus default and uses them
+to update selection. Separators and unavailable items are skipped.
 
 ```text
-  Tab    ┌─►  MenuItem "File"
-  ─────► │    MenuItem "Edit"
-         │    MenuSeparator       (skipped)
-         └──  MenuItem "Help"
-              ▲
-              │  Arrow keys: follow Orientation
-              │  Left/Right (horizontal) or Up/Down (vertical)
+  Menu focus ──► MenuItem "File"       (selected private face)
+                 MenuItem "Edit"
+                 MenuSeparator         (skipped)
+                 MenuItem "Help"
+                       ▲
+                       │ Tab/Shift+Tab: next/previous
+                       │ Arrow keys: follow Orientation
 ```
 
 Selecting a radio item stages every matching sibling's checked field before the
@@ -68,7 +84,9 @@ menu.Items.Add(new MenuItem
 
 ## Test obligations
 
-Cover constrained mixed ownership, separator selection rejection, horizontal and
-vertical layout, keyboard focus movement, pointer and keyboard invocation,
-atomic check/radio publication, disabled items, item/menu event order, tiny
-bounds, and final cells.
+Cover constrained mixed ownership, zero-spacing compact layout, shared row
+width, full-width separators, horizontal and vertical submenu placement,
+keyboard focus retention, Tab/Shift+Tab and arrow wrapping, Enter/Space and
+pointer invocation, physical hover selection and style, armed submenu switching,
+focus restoration, atomic check/radio publication, disabled items, item/menu
+event order, tiny bounds, Unicode shortcuts, and final cells.

@@ -145,7 +145,7 @@ public sealed class TableSurfaceTests
         // Assert reuse
         one.Bounds.ShouldBe(new Rect(0, 2, 8, 1));
         clicked.ShouldBe("One");
-        surface.ShouldHaveState(one, State.Hovered | State.Focused);
+        surface.ShouldHaveState(one, VisualState.PointerOver | VisualState.Focused);
         surface.ShouldRender("""
             Two
             Three

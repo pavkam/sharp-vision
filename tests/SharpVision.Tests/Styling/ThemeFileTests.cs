@@ -9,12 +9,10 @@ namespace SharpVision.Tests.Styling;
 /// <summary>Verifies the public runtime theme-file loader.</summary>
 public sealed class ThemeFileTests
 {
-    private const string _json = /*lang=json,strict*/ """
-        { "version": 1, "name": "Ext", "slug": "ext", "colorScheme": "dark", "order": 1,
-          "author": "A", "license": "MIT", "source": "s",
-          "palette": { "bg": "#101020", "fg": "#f0f0ff" },
-          "roles": { "background": "bg", "foreground": "fg", "accent": "#77aaff" } }
-        """;
+    private static readonly string _json = ThemeJson.Create(
+        "\"background\":\"bg\",\"foreground\":\"fg\",\"accent\":\"#77aaff\"",
+        "\"bg\":\"#101020\",\"fg\":\"#f0f0ff\"",
+        "Ext");
 
     /// <summary>Verifies parsing valid JSON text returns a frozen theme with resolved roles.</summary>
     [Fact]
@@ -78,7 +76,7 @@ public sealed class ThemeFileTests
     /// <summary>Verifies missing and unsupported schema versions are rejected before theme construction.</summary>
     [Theory]
     [InlineData(/*lang=json,strict*/ "{\"roles\":{\"background\":\"#000000\",\"foreground\":\"#ffffff\"}}")]
-    [InlineData(/*lang=json,strict*/ "{\"version\":2,\"roles\":{\"background\":\"#000000\",\"foreground\":\"#ffffff\"}}")]
+    [InlineData(/*lang=json,strict*/ "{\"version\":3,\"roles\":{\"background\":\"#000000\",\"foreground\":\"#ffffff\"}}")]
     public void Parse_WhenVersionIsMissingOrUnsupported_Throws(string json) =>
         Should.Throw<InvalidDataException>(() => ThemeFile.Parse(json));
 
@@ -226,25 +224,22 @@ public sealed class ThemeFileTests
         }
     }
 
-    private static string JsonWithPaletteKey(string key) => $$"""
-        { "version": 1, "palette": { "{{key}}": "#000000", "fg": "#ffffff" },
-          "roles": { "background": "{{key}}", "foreground": "fg" } }
-        """;
+    private static string JsonWithPaletteKey(string key) => ThemeJson.Create(
+        $"\"background\":\"{key}\",\"foreground\":\"fg\"",
+        $"\"{key}\":\"#000000\",\"fg\":\"#ffffff\"");
 
     private static string JsonWithPaletteEntries(int count)
     {
         var entries = Enumerable.Range(0, count)
             .Select(static index => $"\"k{index}\":\"#000000\"");
-        return $$"""
-            { "version": 1, "palette": { {{string.Join(',', entries)}} },
-              "roles": { "background": "k0", "foreground": "k0" } }
-            """;
+        return ThemeJson.Create(
+            "\"background\":\"k0\",\"foreground\":\"k0\"",
+            string.Join(',', entries));
     }
 
-    private static string JsonWithName(string name) => $$"""
-        { "version": 1, "name": "{{name}}",
-          "roles": { "background": "#000000", "foreground": "#ffffff" } }
-        """;
+    private static string JsonWithName(string name) => ThemeJson.Create(
+        "\"background\":\"#000000\",\"foreground\":\"#ffffff\"",
+        name: name);
 
     private static string JsonWithRoles(bool includeExtra)
     {
@@ -270,8 +265,6 @@ public sealed class ThemeFileTests
             entries.Add("\"extra\":\"#000000\"");
         }
 
-        return $$"""
-            { "version": 1, "roles": { {{string.Join(',', entries)}} } }
-            """;
+        return ThemeJson.Create(string.Join(',', entries));
     }
 }

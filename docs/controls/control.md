@@ -17,7 +17,7 @@ dispatcher.
 | `MaxWidth`, `MaxHeight`                                                             | `int.MaxValue`                  | Cell maximums not below the corresponding minimum.                              |
 | `Margin`                                                                            | Zero edges                      | External non-negative `Thickness`.                                              |
 | `BorderThickness`                                                                   | Zero edges                      | Physical zero-or-one-cell edges reserved inside the border box before padding.  |
-| `BorderGlyphs`                                                                      | `Glyphs.Default`                | Validated printable one-cell glyph family used by standard chrome; render-only. |
+| `BorderGlyphs`                                                                      | Active theme                    | Validated printable one-cell glyph family used by standard chrome; render-only. |
 | `Padding`                                                                           | Zero edges                      | Internal non-negative `Thickness`.                                              |
 | `HorizontalAlignment`, `VerticalAlignment`                                          | `Left`, `Stretch`               | Placement within the arranged slot.                                             |
 | `Visibility`                                                                        | `Visible`                       | Visible, hidden, or collapsed.                                                  |
@@ -49,26 +49,28 @@ Border or Shadow wrapper controls. `BorderThickness` always participates in the
 base box model. Visual chrome is automatic only for a render path that calls
 framework-owned chrome around content.
 
-| Property group                                             | Base default                | Impact  | Validation and contract                                                                 |
-| ---------------------------------------------------------- | --------------------------- | ------- | --------------------------------------------------------------------------------------- |
-| `Background`                                               | `null`                      | Render  | Null preserves destination cells; any concrete or semantic background paints the body.  |
-| `BorderThickness`                                          | Zero edges                  | Measure | Every physical edge is zero or one cell and is reserved before padding.                 |
-| `BorderGlyphs`                                             | `Glyphs.Default`            | Render  | Every Rune is printable and one cell under the narrow policy; invalid default rejected. |
-| `BorderColor`, `BorderAttributes`                          | `null`, `null`              | Render  | Optional appearance overlays; attributes reject unknown flags or conflicts.             |
-| `HasShadow`, `ShadowMode`, `ShadowOffset`                  | `false`, composite, `(0,0)` | Render  | Mode is defined; offset is signed visual overflow and never reserves layout.            |
-| `ShadowGlyph`                                              | `▓`                         | Render  | Printable one-cell Rune; used only by block-glyph mode.                                 |
-| `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `null`, `null`, `null`      | Render  | Optional overlays; attributes reject unknown flags or conflicts.                        |
+| Property group                                             | Base default                | Impact  | Validation and contract                                                                |
+| ---------------------------------------------------------- | --------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| `Background`                                               | `null`                      | Render  | Null preserves destination cells; any concrete or semantic background paints the body. |
+| `BorderThickness`                                          | Zero edges                  | Measure | Every physical edge is zero or one cell and is reserved before padding.                |
+| `BorderGlyphs`                                             | Theme chrome                | Render  | Every Rune is printable and one cell under the narrow policy; invalid value rejected.  |
+| `BorderColor`, `BorderAttributes`                          | `null`, `null`              | Render  | Optional appearance overlays; attributes reject unknown flags or conflicts.            |
+| `HasShadow`, `ShadowMode`, `ShadowOffset`                  | `false`, composite, `(0,0)` | Render  | Mode is defined; offset is signed visual overflow and never reserves layout.           |
+| `ShadowGlyph`                                              | Theme chrome                | Render  | Printable one-cell Rune; used only by block-glyph mode.                                |
+| `ShadowForeground`, `ShadowBackground`, `ShadowAttributes` | `null`, `null`, `null`      | Render  | Optional overlays; attributes reject unknown flags or conflicts.                       |
 
 Controls expose ordinary CLR configuration. `ThemeColor` may hold a concrete
 terminal colour or a `ColorRole`; roles resolve only at the appearance boundary.
 Text appearance inherits from an ancestor's normal appearance unless an
 `AppearanceBoundary` stops it. Background, border, and shadow never inherit.
 
-All validation occurs before observable mutation for local and theme values. At
-render time, a glyph that becomes wide only under the active ambiguous-width
-policy is repaired to a portable ASCII edge (`+`, `-`, or `|`) or block (`#`),
-so chrome never writes half of a wide cell. Partial borders draw only enabled
-edges; a corner glyph appears only when both adjoining edges are active.
+All validation occurs before observable mutation for local and theme values.
+`BorderGlyphs` and `ShadowGlyph` are local overrides; their reset methods return
+ownership to `Theme.Glyphs.Chrome`. At render time, a primary glyph that becomes
+wide under the active ambiguous-width policy uses the fallback stored in that
+theme group, so chrome never writes half of a wide cell. Partial borders draw
+only enabled edges; a corner glyph appears only when both adjoining edges are
+active.
 
 The render pipeline draws shadow first, then the body when `Background` is set,
 then content and normal-layer children, and finally the border overlay.
@@ -81,7 +83,7 @@ target. Button is intentionally different while pressed: it translates its face
 and owned content by `ShadowOffset` without changing its arranged border box.
 
 These are base defaults, not universal control appearance. `Button` publishes a
-one-cell rounded border, composite shadow, `(1,1)` offset, and dim shadow while
+one-cell themed border, composite shadow, `(1,1)` offset, and dim shadow while
 retaining zero padding. It invokes `ControlChrome` with specialized pressed-face
 and shadow-gap options. `Window` keeps its bespoke one-cell titled frame, uses a
 composite `(2,1)` dim shadow by default, and draws that frame/title/shadow
@@ -298,6 +300,13 @@ SetAppearance assigns an overlay for one VisualState. The resolver applies the
 fixed state order PointerOver, FocusWithin, Focused, Current, Selected, Checked,
 Indeterminate, Pressed, then Disabled. Text-only ambient values can flow through
 normal parentage; background, border, shadow, and visual states never cascade.
+
+Pointer membership and hover appearance are separate contracts. Every control in
+the physical hit ancestry exposes `PointerOver`, but the built-in hover overlay
+ordinarily paints only when effective `CanFocus` is true. A `List` is the
+focus-owning exception: its surface remains neutral while the targeted internal
+item wrapper paints the row hover surface. Other passive controls retain their
+normal appearance unless they explicitly configure a `PointerOver` appearance.
 
 GetAppearanceState derives the local flags from physical pointer membership,
 focus, press behavior, availability, and a control's explicit current,

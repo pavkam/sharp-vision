@@ -14,6 +14,7 @@ public sealed class ComboBox: Control
     private readonly Popup _popup;
     private readonly OwnedControlSlot _popupSlot;
     private readonly PressBehavior _interaction;
+    private Rune? _dropDownGlyph;
 
     #region Construction and properties
 
@@ -110,6 +111,42 @@ public sealed class ComboBox: Control
             _ = SetProperty(ref field, value, ChangeImpact.Measure);
         }
     } = 8;
+
+    /// <summary>Gets or sets the local one-cell drop-down indicator.</summary>
+    /// <exception cref="ArgumentException">The value is a control or does not occupy exactly one cell.</exception>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public Rune DropDownGlyph
+    {
+        get => _dropDownGlyph ?? ResolveThemeGlyphs().Disclosure.DropDown.Value;
+        set
+        {
+            _ = new ThemedGlyph(value, value);
+            VerifyMutable();
+
+            if (_dropDownGlyph == value)
+            {
+                return;
+            }
+
+            _dropDownGlyph = value;
+            NotifyPropertyChanged(nameof(DropDownGlyph), ChangeImpact.Render);
+        }
+    }
+
+    /// <summary>Clears the local drop-down indicator so the active theme supplies it.</summary>
+    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
+    public void ResetDropDownGlyph()
+    {
+        VerifyMutable();
+
+        if (_dropDownGlyph.HasValue)
+        {
+            _dropDownGlyph = null;
+            NotifyPropertyChanged(nameof(DropDownGlyph), ChangeImpact.Render);
+        }
+    }
 
     /// <summary>Gets or sets the axes available to the owned drop-down overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
@@ -255,11 +292,13 @@ public sealed class ComboBox: Control
             new Point(content.X, content.Y),
             style,
             background: BackgroundMode.Transparent);
-        _ = canvas.Draw(
-            " ▼".AsSpan(),
-            new Point(Math.Max(content.X, content.Right - 2), content.Y),
+        var themed = ResolveThemeGlyphs().Disclosure.DropDown;
+        var glyph = CellGlyph.Resolve(DropDownGlyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+        canvas.DrawRune(
+            glyph,
+            new Point(Math.Max(content.X, content.Right - 1), content.Y),
             style,
-            background: BackgroundMode.Transparent);
+            BackgroundMode.Transparent);
     }
 
     /// <inheritdoc/>

@@ -6,8 +6,8 @@
 optional content. It extends
 [`ContentControl`](../content-control.md#contentcontrol-contract). Enter, Space,
 or a primary pointer click on the header toggles visibility of the content
-region below. The header always renders a directional glyph (`▼` expanded, `▶`
-collapsed) followed by the header text.
+region below. The header always renders the theme's expanded or collapsed
+disclosure glyph followed by the header text.
 
 `Expander` itself is the focus, hover, and press owner for the header row. The
 header is rendered directly by the control and is not exposed as a public
@@ -29,6 +29,12 @@ presentation child. Caller content remains the one ordinary owned child.
 Inherited disabled state applies to the semantic header owner. An unavailable
 header remains visible but pointer, Space, and Enter input cannot change
 expansion.
+
+## Theme glyphs
+
+`CollapsedGlyph` and `ExpandedGlyph` are validated one-cell local overrides.
+`ResetGlyphs()` clears both; otherwise the header resolves
+`Theme.Glyphs.Disclosure` at render time.
 
 ## Example
 

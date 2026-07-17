@@ -110,6 +110,39 @@ public abstract partial class Control
     internal Color ResolveThemeColor(ThemeColor color) => Theme?.Resolve(color) ??
         (color.TryGetColor(out var concrete) ? concrete : Color.Default);
 
+    internal ThemeGlyphs ResolveThemeGlyphs() => Theme?.Glyphs ?? Themes.Dark.Glyphs;
+
+    internal Rune ResolveThemeGlyph(ThemedGlyph glyph) =>
+        CellGlyph.Resolve(glyph.Value, glyph.Fallback, CellPolicy.AmbiguousWidth);
+
+    internal Glyphs ResolveBorderGlyphs(Glyphs glyphs)
+    {
+        var fallback = ResolveThemeGlyphs().Chrome;
+        return new Glyphs(
+            CellGlyph.Resolve(glyphs.TopLeft, fallback.TopLeft.Fallback, CellPolicy.AmbiguousWidth),
+            CellGlyph.Resolve(glyphs.Top, fallback.Top.Fallback, CellPolicy.AmbiguousWidth),
+            CellGlyph.Resolve(glyphs.TopRight, fallback.TopRight.Fallback, CellPolicy.AmbiguousWidth),
+            CellGlyph.Resolve(glyphs.Right, fallback.Right.Fallback, CellPolicy.AmbiguousWidth),
+            CellGlyph.Resolve(glyphs.BottomRight, fallback.BottomRight.Fallback, CellPolicy.AmbiguousWidth),
+            CellGlyph.Resolve(glyphs.Bottom, fallback.Bottom.Fallback, CellPolicy.AmbiguousWidth),
+            CellGlyph.Resolve(glyphs.BottomLeft, fallback.BottomLeft.Fallback, CellPolicy.AmbiguousWidth),
+            CellGlyph.Resolve(glyphs.Left, fallback.Left.Fallback, CellPolicy.AmbiguousWidth));
+    }
+
+    private Glyphs ThemeBorderGlyphs()
+    {
+        var chrome = ResolveThemeGlyphs().Chrome;
+        return new Glyphs(
+            chrome.TopLeft.Value,
+            chrome.Top.Value,
+            chrome.TopRight.Value,
+            chrome.Right.Value,
+            chrome.BottomRight.Value,
+            chrome.Bottom.Value,
+            chrome.BottomLeft.Value,
+            chrome.Left.Value);
+    }
+
     internal static void InvalidateResolvedStyleCache() { }
 
     internal void InvalidateSubtreeResolvedStyleCache() => VisitChildren(child => child.InvalidateSubtreeResolvedStyleCache());

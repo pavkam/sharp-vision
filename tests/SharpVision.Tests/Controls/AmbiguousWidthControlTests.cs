@@ -67,8 +67,8 @@ public sealed class AmbiguousWidthControlTests
 
         scrollBar.Render(frame.Canvas);
 
-        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("-");
-        FrameOracle.Get(frame, new Point(4, 0)).ShouldBe("+");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("<");
+        FrameOracle.Get(frame, new Point(4, 0)).ShouldBe(">");
     }
 
     /// <summary>Verifies checkbox marks retain their documented one-cell width.</summary>

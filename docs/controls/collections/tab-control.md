@@ -9,10 +9,11 @@ strip, keyboard navigation, and content participation. It extends
 semantic page content without exposing presentation header controls.
 
 The header strip occupies the first row. Each label has one cell of horizontal
-padding, adjacent labels are separated by `│`, and a `─` rule occupies the
-second row when height permits. Only selected content participates in measure,
-arrangement, rendering, hit testing, and navigation below the rule. Unselected
-content remains owned and attached with empty bounds.
+padding, adjacent labels use the theme's tab-divider glyph, and the theme's
+selected-underline glyph occupies the second row when height permits. Only
+selected content participates in measure, arrangement, rendering, hit testing,
+and navigation below the rule. Unselected content remains owned and attached
+with empty bounds.
 
 ## API
 
@@ -24,8 +25,7 @@ content remains owned and attached with empty bounds.
   selection. The first effectively visible and enabled tab auto-selects. Invalid
   indexes and unavailable targets are rejected before mutation.
 - `SelectionChanged` fires once after the selected page identity and retained
-  content participation commit. Identical assignment is not a selection
-  change.
+  content participation commit. Identical assignment is not a selection change.
 
 Removing, disabling, or collapsing the selected page chooses the nearest
 eligible successor, then predecessor, or clears selection. Clearing the
@@ -45,6 +45,12 @@ pressed, or disabled state.
 non-null string without terminal controls, rendered in the owning tab strip.
 `Content` is the single caller-replaceable owned child arranged below the rule
 only while selected.
+
+## Theme glyphs
+
+`DividerGlyph` and `UnderlineGlyph` are validated one-cell local overrides for
+the header row. Their defaults resolve from `Theme.Glyphs.Separators` on every
+render. `ResetGlyphs()` clears both overrides.
 
 ## Example
 

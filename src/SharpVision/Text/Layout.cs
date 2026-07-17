@@ -9,7 +9,6 @@ namespace SharpVision.Text;
 public static class Layout
 {
     private const int _tabSize = 4;
-    private const string _ellipsis = "…";
 
     /// <summary>Formats text with one overflow policy into caller-owned line storage.</summary>
     /// <param name="value">The UTF-16 text borrowed for this call.</param>
@@ -183,7 +182,7 @@ public static class Layout
             return;
         }
 
-        var ellipsisCells = Width.Measure(_ellipsis, ambiguous).Cells;
+        const int ellipsisCells = 1;
         var ellipsis = overflow == Overflow.Ellipsis &&
             width >= ellipsisCells;
         var limit = Math.Max(0, width - (ellipsis ? ellipsisCells : 0));

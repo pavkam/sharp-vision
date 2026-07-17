@@ -201,7 +201,7 @@ public sealed class GalleryInteractionTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies the List example reports a changed selection through its public selection API.</summary>
+    /// <summary>Verifies decoded keyboard navigation changes the List selection and visible status.</summary>
     [Fact]
     public async Task Input_WhenListSelectionChanges_UpdatesSelectionStatusAsync()
     {
@@ -230,11 +230,9 @@ public sealed class GalleryInteractionTests
             TestContext.Current.CancellationToken);
         var selected = active.ShouldNotBeNull();
         await application.Dispatcher.InvokeAsync(
-            () =>
-            {
-                selected.SelectedIndex = 2;
-            },
+            () => application.Focus.Focus(selected).ShouldBeTrue(),
             TestContext.Current.CancellationToken);
+        terminal.QueueInput("\u001b[B"u8);
 
         await WaitUntilAsync(
             () => Find<ControlText>(
@@ -243,6 +241,54 @@ public sealed class GalleryInteractionTests
             application,
             "List selection status");
 
+        application.Failure.ShouldBeNull();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies decoded keyboard input reaches and collapses both showcased navigation groups.</summary>
+    [Fact]
+    public async Task Input_WhenNavigationViewGroupsAreCurrent_TogglesEachGroupAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(100, 40)));
+        using Gallery gallery = new();
+        await using Application application = new(
+            gallery,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.Dispatcher.InvokeAsync(
+            () => gallery.Select(IndexOf(gallery, "NavigationView")),
+            TestContext.Current.CancellationToken);
+        var navigation = await application.Dispatcher.InvokeAsync(
+            () => Find<NavigationView>(gallery.CurrentPage, static value => value.Header == "PROJECT"),
+            TestContext.Current.CancellationToken);
+        var active = navigation.ShouldNotBeNull();
+        var core = active.Items[0].ShouldBeOfType<NavigationViewGroup>();
+        var tests = active.Items[2].ShouldBeOfType<NavigationViewGroup>();
+        await BringIntoViewAsync(active, gallery, application);
+        await application.Dispatcher.InvokeAsync(
+            () => application.Focus.Focus(active).ShouldBeTrue(),
+            TestContext.Current.CancellationToken);
+
+        terminal.QueueInput("\r"u8);
+        await WaitUntilAsync(
+            () => !core.IsExpanded,
+            application,
+            "first showcased navigation group collapse");
+        terminal.QueueInput("\u001b[B\r"u8);
+        await WaitUntilAsync(
+            () => !tests.IsExpanded,
+            application,
+            "second showcased navigation group collapse");
+
+        await application.Dispatcher.InvokeAsync(() =>
+        {
+            active.IsFocused.ShouldBeTrue();
+            active.SelectedItem.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
         application.Failure.ShouldBeNull();
         await application.StopAsync(TestContext.Current.CancellationToken);
     }

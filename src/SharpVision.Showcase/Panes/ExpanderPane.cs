@@ -27,6 +27,27 @@ internal sealed class ExpanderPane: CompositeControl
             Doc.Section("📂", "Nested expanders", "Expanders inside expanders.",
                 Doc.Example("Two-level nesting", "Both toggle independently.", nested)),
             Doc.Section("📂", "FAQ pattern", "Collapsed expanders create an accordion.",
-                Doc.Example("Stacked questions", "Click any header.", Doc.Column(faq1, faq2))));
+                Doc.Example("Stacked questions", "Click any header.", Doc.Column(faq1, faq2))),
+            Doc.Section("📂", "Bordered expander", "Set BorderThickness and BorderGlyphs to frame the section with visible chrome.",
+                Doc.Example(
+                    "Rounded border with padding",
+                    "The border renders via intrinsic RenderChrome. Content is inset by the border and padding.",
+                    new Expander
+                    {
+                        Header = "Connection settings",
+                        BorderThickness = new Thickness(1),
+                        BorderGlyphs = Glyphs.Rounded,
+                        Padding = new Thickness(1, 0),
+                        Content = new Stack
+                        {
+                            Spacing = 1,
+                            Children =
+                            {
+                                new CheckBox { Content = new Text("Use proxy") },
+                                new CheckBox { Content = new Text("Verify SSL") },
+                            },
+                        },
+                    },
+                    "var expander = new Expander\n{\n    Header = \"Settings\",\n    BorderThickness = new Thickness(1),\n    BorderGlyphs = Glyphs.Rounded,\n};")));
     }
 }

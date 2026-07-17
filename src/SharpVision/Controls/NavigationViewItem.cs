@@ -7,6 +7,8 @@ namespace SharpVision.Controls;
 public sealed class NavigationViewItem: Pressable
 {
     private bool _isSelected;
+    private Rune? _idleMarker;
+    private Rune? _currentMarker;
 
     /// <summary>Initializes a navigation entry with a fixed one-cell height.</summary>
     public NavigationViewItem() => Height = Length.Cells(1);
@@ -40,9 +42,39 @@ public sealed class NavigationViewItem: Pressable
     /// <summary>Gets whether this entry is the navigation view's selected item.</summary>
     public bool IsSelected => _isSelected;
 
+    /// <summary>Gets or sets the local idle item marker.</summary>
+    public Rune IdleMarker { get => _idleMarker ?? ResolveThemeGlyphs().Navigation.ItemIdle.Value; set => SetMarker(ref _idleMarker, value, nameof(IdleMarker)); }
+
+    /// <summary>Gets or sets the local current item marker.</summary>
+    public Rune CurrentMarker { get => _currentMarker ?? ResolveThemeGlyphs().Navigation.ItemCurrent.Value; set => SetMarker(ref _currentMarker, value, nameof(CurrentMarker)); }
+
+    /// <summary>Clears both local item markers so the active theme supplies them.</summary>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public void ResetMarkers()
+    {
+        VerifyMutable();
+
+        if (_idleMarker.HasValue)
+        {
+            _idleMarker = null;
+            NotifyPropertyChanged(nameof(IdleMarker), ChangeImpact.Render);
+        }
+
+        if (_currentMarker.HasValue)
+        {
+            _currentMarker = null;
+            NotifyPropertyChanged(nameof(CurrentMarker), ChangeImpact.Render);
+        }
+    }
+
     /// <summary>Commits the visual selected state from the containing navigation view.</summary>
     internal void CommitSelection(bool value) =>
         _ = SetVisualStateProperty(ref _isSelected, value, nameof(IsSelected));
+
+    /// <summary>Activates this item on behalf of its focus-owning navigation view.</summary>
+    /// <param name="cause">The validated semantic activation source.</param>
+    internal void ActivateFromOwner(ActivationCause cause) => Activate(cause);
 
     /// <inheritdoc/>
     protected override bool IsSelectedState => _isSelected;
@@ -79,7 +111,9 @@ public sealed class NavigationViewItem: Pressable
             return;
         }
 
-        var marker = _isSelected || IsPointerOver ? "›" : "·";
+        var current = _isSelected || IsPointerOver;
+        var themed = current ? ResolveThemeGlyphs().Navigation.ItemCurrent : ResolveThemeGlyphs().Navigation.ItemIdle;
+        var marker = CellGlyph.Resolve(current ? CurrentMarker : IdleMarker, themed.Fallback, CellPolicy.AmbiguousWidth);
         var prefix = Glyph is not null ? $"{Glyph} " : string.Empty;
         _ = canvas.Clip(bounds).Draw($" {marker} {prefix}{Header}".AsSpan(), new Point(bounds.X, bounds.Y), style);
     }
@@ -119,5 +153,14 @@ public sealed class NavigationViewItem: Pressable
         }
 
         return null;
+    }
+
+    private void SetMarker(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+        if (storage == value) { return; }
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
     }
 }

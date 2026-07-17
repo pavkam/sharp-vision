@@ -116,6 +116,35 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(8, 1)).Style.Attributes.ShouldBe(Attributes.Dim);
     }
 
+    /// <summary>Verifies disabling focus eligibility also removes the built-in interactive hover treatment.</summary>
+    [Fact]
+    public async Task Pointer_WhenButtonIsNotFocusable_PreservesNormalAppearanceAsync()
+    {
+        // Arrange
+        var button = new Button
+        {
+            Focusable = false,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3),
+            Content = new ControlText("Save"),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(10, 5),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(button);
+
+        // Assert
+        surface.ShouldHaveState(button, VisualState.PointerOver);
+        button.CanFocus.ShouldBeFalse();
+        surface.Cell(default).Style.Foreground.ShouldBe(Color.Indexed(8));
+        surface.Cell(new Point(1, 1)).Style.Foreground.ShouldBe(Color.Indexed(15));
+    }
+
     /// <summary>Verifies a held primary pointer translates the complete focused face into its shadow.</summary>
     [ComponentBehaviorEvidence(
         typeof(Button),

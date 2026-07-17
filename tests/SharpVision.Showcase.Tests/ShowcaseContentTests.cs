@@ -37,6 +37,30 @@ public sealed class ShowcaseContentTests
             ["Theming"] = ["Application theme", "Catalog", "Visual states", "Third-party controls"],
         };
 
+    /// <summary>Verifies every live specimen is visually separated from the documentation page.</summary>
+    [Fact]
+    public void Example_WhenSpecimenIsBuilt_WrapsItInAStandardSurface()
+    {
+        // Arrange
+        var specimen = new Button { Content = new ControlText("Run") };
+
+        // Act
+        using var example = Doc.Example("Command", "Runs the command.", specimen);
+
+        // Assert
+        var block = example.ShouldBeOfType<Stack>();
+        var surface = block.Children[1].ShouldBeOfType<GroupBox>();
+        surface.Header.ShouldBe("Example");
+        surface.Glyphs.ShouldBe(Glyphs.Light);
+        surface.MaxWidth.ShouldBe(100);
+        surface.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+        surface.BorderThickness.ShouldBe(new Thickness(1));
+        surface.BorderColor.ShouldBe(ThemeColor.From(ColorRole.Border));
+        surface.Padding.ShouldBe(new Thickness(1));
+        var content = surface.Content.ShouldBeOfType<Stack>();
+        content.Children.ShouldHaveSingleItem().ShouldBeSameAs(specimen);
+    }
+
     /// <summary>Verifies a section renders orientation, ordered examples, and escaped source text.</summary>
     [Fact]
     public void Section_WhenExamplesIncludeSource_RendersOrderedEscapedDocumentation()

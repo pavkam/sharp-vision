@@ -35,4 +35,7 @@ internal sealed class ThemeDefinition
 
     /// <summary>Gets or sets the semantic role map (role name to color-value or palette key).</summary>
     public Dictionary<string, string>? Roles { get; set; }
+
+    /// <summary>Gets or sets the complete semantic glyph palette.</summary>
+    public ThemeGlyphs? Glyphs { get; set; }
 }

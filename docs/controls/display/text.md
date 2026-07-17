@@ -79,7 +79,9 @@ Color-valued tags accept:
 - RGB values `#rgb` and `#rrggbb`.
 
 Semantic roles resolve through the active theme at render time. Unresolved role
-values never reach terminal cells.
+values never reach terminal cells. Parsing retains concrete colors and semantic
+roles as `ThemeColor` values through each style span; `Text` resolves them only
+while drawing into the frame.
 
 ### Escaping and recovery
 
@@ -104,6 +106,13 @@ Parsing is lenient and deterministic:
 - a hyperlink target must be non-empty and contain no control code unit.
 
 Hyperlinks become OSC 8 metadata on cells but never open a URL automatically.
+
+## Theme glyphs
+
+`EllipsisGlyph` is a validated one-cell local override. When absent, ellipsis
+overflow resolves `Theme.Glyphs.Text.Ellipsis`; width reservation remains one
+cell and runtime repair uses the theme-owned fallback. `ResetEllipsisGlyph()`
+clears the override.
 
 ## Unicode, layout, and rendering
 
@@ -140,12 +149,12 @@ boundaries.
 
 ## Test obligations
 
-Cover every tag and color form, named and generic closes, overlap, auto-close,
-complete-fragment malformed recovery, invalid links, escaping round trips, and
-fixed-seed span tiling. Cover all overflow modes, invalid values, empty and
-multiline text, resize reflow, alignment, tabs, combining marks, variation
-selectors, ZWJ emoji, wide cells, invalid UTF-16, and both ambiguous-width
-policies.
+Cover every tag and concrete or semantic color form, named and generic closes,
+overlap, auto-close, complete-fragment malformed recovery, invalid links,
+escaping round trips, and fixed-seed span tiling. Cover all overflow modes,
+invalid values, empty and multiline text, resize reflow, alignment, tabs,
+combining marks, variation selectors, ZWJ emoji, wide cells, invalid UTF-16, and
+both ambiguous-width policies.
 
 Rendering proof includes exact semantic foreground/background/attributes, typed
 underline and underline color, theme-role resolution, OSC 8 metadata, mutually

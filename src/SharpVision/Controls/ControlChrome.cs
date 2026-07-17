@@ -84,15 +84,14 @@ internal static class ControlChrome
         if (!settings.SkipBorder && control.BorderThickness != default)
         {
             var borderStyle = control.GetResolvedAppearance(visualState).BorderStyle;
-            var glyphs = settings.BorderGlyphs ?? control.BorderGlyphs;
+            var glyphs = control.ResolveBorderGlyphs(settings.BorderGlyphs ?? control.BorderGlyphs);
             DrawPartialBorder(
                 canvas,
                 body,
                 control.BorderThickness,
                 glyphs,
                 borderStyle,
-                background,
-                control.CellPolicy);
+                background);
         }
     }
 
@@ -144,31 +143,29 @@ internal static class ControlChrome
     /// <param name="glyphs">The validated glyph family.</param>
     /// <param name="style">The border semantic style.</param>
     /// <param name="background">Whether border backgrounds replace destination cells.</param>
-    /// <param name="cellPolicy">The Unicode cell policy used for glyph repair.</param>
     internal static void DrawPartialBorder(
         TerminalCanvas canvas,
         Rect bounds,
         Thickness thickness,
         Glyphs glyphs,
         TerminalStyle style,
-        BackgroundMode background,
-        Policy cellPolicy)
+        BackgroundMode background)
     {
         if (bounds.Width == 0 || bounds.Height == 0)
         {
             return;
         }
 
-        DrawHorizontalEdge(canvas, bounds, thickness, glyphs, style, background, cellPolicy, top: true);
+        DrawHorizontalEdge(canvas, bounds, thickness, glyphs, style, background, top: true);
         if (bounds.Height > 1)
         {
-            DrawHorizontalEdge(canvas, bounds, thickness, glyphs, style, background, cellPolicy, top: false);
+            DrawHorizontalEdge(canvas, bounds, thickness, glyphs, style, background, top: false);
         }
 
-        DrawVerticalEdge(canvas, bounds, thickness, glyphs, style, background, cellPolicy, left: true);
+        DrawVerticalEdge(canvas, bounds, thickness, glyphs, style, background, left: true);
         if (bounds.Width > 1)
         {
-            DrawVerticalEdge(canvas, bounds, thickness, glyphs, style, background, cellPolicy, left: false);
+            DrawVerticalEdge(canvas, bounds, thickness, glyphs, style, background, left: false);
         }
     }
 
@@ -231,7 +228,7 @@ internal static class ControlChrome
                         "Public validation limits shadow modes.");
                     var glyph = CellGlyph.Resolve(
                         control.ShadowGlyph,
-                        new Rune('#'),
+                        control.ResolveThemeGlyphs().Chrome.Shadow.Fallback,
                         control.CellPolicy.AmbiguousWidth);
                     canvas.DrawRune(glyph, point, style, shadowBackgroundMode);
                 }
@@ -280,7 +277,6 @@ internal static class ControlChrome
         Glyphs glyphs,
         TerminalStyle style,
         BackgroundMode background,
-        Policy cellPolicy,
         bool top)
     {
         var active = top ? thickness.Top != 0 : thickness.Bottom != 0;
@@ -305,14 +301,7 @@ internal static class ControlChrome
                 glyph = top ? glyphs.TopRight : glyphs.BottomRight;
             }
 
-            var fallback = x == bounds.X || x == bounds.Right - 1
-                ? new Rune('+')
-                : new Rune('-');
-            canvas.DrawRune(
-                CellGlyph.Resolve(glyph, fallback, cellPolicy.AmbiguousWidth),
-                new Point(x, y),
-                style,
-                background);
+            canvas.DrawRune(glyph, new Point(x, y), style, background);
         }
     }
 
@@ -323,7 +312,6 @@ internal static class ControlChrome
         Glyphs glyphs,
         TerminalStyle style,
         BackgroundMode background,
-        Policy cellPolicy,
         bool left)
     {
         var active = left ? thickness.Left != 0 : thickness.Right != 0;
@@ -340,11 +328,7 @@ internal static class ControlChrome
         for (var y = start; y < end; y++)
         {
             var glyph = left ? glyphs.Left : glyphs.Right;
-            canvas.DrawRune(
-                CellGlyph.Resolve(glyph, new Rune('|'), cellPolicy.AmbiguousWidth),
-                new Point(x, y),
-                style,
-                background);
+            canvas.DrawRune(glyph, new Point(x, y), style, background);
         }
     }
 

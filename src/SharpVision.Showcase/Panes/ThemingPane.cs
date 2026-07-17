@@ -54,6 +54,22 @@ internal sealed class ThemingPane: CompositeControl
         Button plain = new() { Content = new Text("Themed sibling") };
 
         var roleSwatches = BuildRoleSwatches();
+        var glyphPreview = Doc.Column(
+            new ProgressBar
+            {
+                Width = Length.Cells(18),
+                Value = 0.5,
+            },
+            new ComboBox
+            {
+                Width = Length.Cells(18),
+                Items = ["Theme glyphs"],
+            },
+            new Expander
+            {
+                Header = "Disclosure",
+                IsExpanded = false,
+            });
 
         var catalogEntry = ThemeCatalog.Default.Entries[0];
         var catalog = new Text(
@@ -83,15 +99,15 @@ internal sealed class ThemingPane: CompositeControl
 
         return Doc.Page(
             Title,
-            "Demonstrates immutable application palettes, direct appearances, and ordinary control properties.",
+            "Demonstrates immutable application color and glyph palettes, direct appearances, and ordinary control properties.",
             Doc.Section(
                 "🎭",
                 "Application theme",
                 "The sidebar picker publishes one frozen application theme snapshot to every attached control.",
                 Doc.Example(
                     "Live semantic roles",
-                    "Change themes in the sidebar and both the custom panel and all twelve role swatches update through Application.Theme.",
-                    Doc.Column(panel, roleSwatches),
+                    "Change themes in the sidebar; the panel, twelve role swatches, progress cells, drop-down marker, and disclosure marker update through Application.Theme.",
+                    Doc.Column(panel, roleSwatches, new Text("Theme-owned glyphs"), glyphPreview),
                     "application.Theme = ThemeCatalog.Default.Load(\"default-dark\");")),
             Doc.Section(
                 "🎭",

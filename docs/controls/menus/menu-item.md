@@ -15,16 +15,28 @@ inherited `Content` as its sole visible face; there is no competing text-only
   selection within its containing menu.
 - `Invoked` reports the committed activation after check/radio state updates.
 
-Check entries reserve `[ ]` or `[x]` plus one separator cell before content.
-Radio entries reserve `○` or `◉` plus one separator cell. Content is measured
-through the remaining constraint and arranged through the common inherited
-content slot, so state changes do not move it and collapsed content contributes
-no margin. Matching radio fields are all staged before any
-`PropertyChanged(IsChecked)` callback; reentrant selection suppresses stale
-outer notifications.
+Check and radio entries reserve the corresponding theme-owned selection glyph
+plus one separator cell before content. Content is measured through the
+remaining constraint and arranged through the common inherited content slot, so
+state changes do not move it and collapsed content contributes no margin.
+Matching radio fields are all staged before any `PropertyChanged(IsChecked)`
+callback; reentrant selection suppresses stale outer notifications.
+
+Menu items default to horizontal stretch. In a vertical menu every item
+therefore consumes the shared menu width, allowing content, shortcut hints, and
+separators to form one aligned surface. An explicit caller alignment remains
+authoritative.
 
 The item's own `Invoked` subscribers complete before `Menu.ItemInvoked` is
 forwarded. Both callbacks observe committed check/radio state.
+
+## Theme glyphs
+
+Check and radio item markers resolve from `Theme.Glyphs.Selection`.
+`UncheckedGlyph` and `CheckedGlyph` provide validated local overrides for the
+item's current `Kind`. `MenuSeparator.Glyph` similarly overrides
+`Theme.Glyphs.Separators.Menu`. `MenuItem.ResetGlyphs()` and
+`MenuSeparator.ResetGlyph()` clear the corresponding overrides.
 
 ## Shortcut text
 
@@ -40,17 +52,31 @@ new MenuItem
 };
 ```
 
-When set, the item's desired width includes the shortcut length plus two cells
-of spacing. The shortcut text is drawn at the trailing edge of the item's
-arranged bounds using the resolved style with `Attributes.Dim` added. Setting
-`ShortcutText` to null removes it.
+When set, the item's desired width includes the shortcut's Unicode terminal-cell
+width plus a two-cell gutter. A vertical menu reserves one shared width equal to
+its widest label, that gutter, and its widest shortcut. The shortcut text is
+drawn at the trailing edge of the item's arranged bounds using the resolved
+style with `Attributes.Dim` added, while content is clipped before the gutter.
+Every stretched sibling therefore shares one shortcut edge without allowing a
+longer label-only row to collapse the shortcut column. Setting `ShortcutText` to
+null removes it.
+
+## Submenus
+
+`Submenu` creates one retained popup owned by the item. Menu-item activation
+toggles it; an armed owning menu may also open it while moving selection. The
+popup uses a light square frame and the semantic surface background so it reads
+as part of the menu system. Its preferred placement is below an item in a
+horizontal menu and right of an item in a vertical menu. Generic popup fallback,
+promotion, light dismissal, and ancestor-chain preservation remain unchanged.
+Closing restores focus to the owning menu.
 
 ## MenuSeparator contract
 
 `MenuSeparator : Control` is the distinct non-interactive entry role. It is
 never a `Pressable` or a `MenuItemKind`: it cannot focus, hit test, select, or
-invoke. It measures three cells by one cell and draws a clipped horizontal rule
-across its arranged width.
+invoke. It measures three cells by one cell, defaults to horizontal stretch, and
+draws a clipped horizontal rule across the complete arranged menu width.
 
 `MenuItems` exposes typed `Add` and `Remove` overloads for `MenuItem` and
 `MenuSeparator`; it has no arbitrary `Add(Control)` entry point.
@@ -71,5 +97,7 @@ menu.Items.Add(new MenuItem
 
 Cover each item kind, invalid checked-state assignment, atomic radio observers,
 item-before-menu invocation, inherited content ownership and Unicode layout,
-keyboard and pointer activation, separator focus/hit/invoke suppression, narrow
-clipping, styles, and exact cells.
+Unicode shortcut measurement and trailing alignment, keyboard and pointer
+activation, hover styling, submenu placement/lifecycle/focus restoration,
+separator focus/hit/invoke suppression, shared-width rules, narrow clipping,
+styles, and exact cells.

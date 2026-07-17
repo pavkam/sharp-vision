@@ -69,7 +69,7 @@ public sealed class DisplayPanelTests
     {
         using Frame frame = new(size);
         root.Render(frame.Canvas);
-        FrameOracle.Get(frame, default).ShouldBe("┌");
+        FrameOracle.Get(frame, default).ShouldBe("╭");
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBe(expectedLabel);
 
         if (expectedLabel == "界")

@@ -6,8 +6,42 @@ namespace SharpVision.Controls;
 /// <summary>Draws one non-interactive separator entry inside a <see cref="Menu"/>.</summary>
 public sealed class MenuSeparator: Control
 {
+    private Rune? _glyph;
+
     /// <summary>Initializes a non-focusable and non-hit-testable separator.</summary>
-    public MenuSeparator() => IsHitTestVisible = false;
+    public MenuSeparator()
+    {
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        IsHitTestVisible = false;
+    }
+
+    /// <summary>Gets or sets the local separator glyph.</summary>
+    public Rune Glyph
+    {
+        get => _glyph ?? ResolveThemeGlyphs().Separators.Menu.Value;
+        set
+        {
+            _ = new ThemedGlyph(value, value);
+            VerifyMutable();
+            if (_glyph == value) { return; }
+            _glyph = value;
+            NotifyPropertyChanged(nameof(Glyph), ChangeImpact.Render);
+        }
+    }
+
+    /// <summary>Clears the local separator glyph so the active theme supplies it.</summary>
+    /// <exception cref="InvalidOperationException">The attached separator is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The separator is disposed.</exception>
+    public void ResetGlyph()
+    {
+        VerifyMutable();
+
+        if (_glyph.HasValue)
+        {
+            _glyph = null;
+            NotifyPropertyChanged(nameof(Glyph), ChangeImpact.Render);
+        }
+    }
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -24,13 +58,16 @@ public sealed class MenuSeparator: Control
             return;
         }
 
+        var themed = ResolveThemeGlyphs().Separators.Menu;
+        var glyph = CellGlyph.Resolve(Glyph, themed.Fallback, CellPolicy.AmbiguousWidth);
+
         for (var x = Bounds.X; x < Bounds.Right; x++)
         {
-            _ = canvas.Draw(
-                "─".AsSpan(),
+            canvas.DrawRune(
+                glyph,
                 new Point(x, Bounds.Y),
                 ResolvedStyle,
-                background: BackgroundMode.Transparent);
+                BackgroundMode.Transparent);
         }
     }
 }

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "One Dark",
   "slug": "one-dark",
   "colorScheme": "dark",
@@ -8,15 +8,346 @@
   "license": "MIT",
   "source": "https://github.com/joshdick/onedark.vim",
   "palette": {
-    "bg": "#282c34", "cursor-grey": "#2c323c", "visual-grey": "#3e4452",
-    "gutter-grey": "#4b5263", "comment-grey": "#5c6370", "fg": "#abb2bf",
-    "red": "#e06c75", "green": "#98c379", "yellow": "#e5c07b", "orange": "#d19a66",
-    "blue": "#61afef", "purple": "#c678dd", "cyan": "#56b6c2"
+    "bg": "#282c34",
+    "cursor-grey": "#2c323c",
+    "visual-grey": "#3e4452",
+    "gutter-grey": "#4b5263",
+    "comment-grey": "#5c6370",
+    "fg": "#abb2bf",
+    "red": "#e06c75",
+    "green": "#98c379",
+    "yellow": "#e5c07b",
+    "orange": "#d19a66",
+    "blue": "#61afef",
+    "purple": "#c678dd",
+    "cyan": "#56b6c2"
   },
   "roles": {
-    "background": "bg", "foreground": "fg", "surface": "cursor-grey",
-    "border": "gutter-grey", "muted": "comment-grey", "accent": "blue",
-    "selectionBackground": "visual-grey", "selectionForeground": "fg",
-    "error": "red", "warning": "orange", "success": "green", "info": "cyan"
+    "background": "bg",
+    "foreground": "fg",
+    "surface": "cursor-grey",
+    "border": "gutter-grey",
+    "muted": "comment-grey",
+    "accent": "blue",
+    "selectionBackground": "visual-grey",
+    "selectionForeground": "fg",
+    "error": "red",
+    "warning": "orange",
+    "success": "green",
+    "info": "cyan"
+  },
+  "glyphs": {
+    "chrome": {
+      "topLeft": {
+        "value": "╭",
+        "fallback": "+"
+      },
+      "top": {
+        "value": "─",
+        "fallback": "-"
+      },
+      "topRight": {
+        "value": "╮",
+        "fallback": "+"
+      },
+      "right": {
+        "value": "│",
+        "fallback": "|"
+      },
+      "bottomRight": {
+        "value": "╯",
+        "fallback": "+"
+      },
+      "bottom": {
+        "value": "─",
+        "fallback": "-"
+      },
+      "bottomLeft": {
+        "value": "╰",
+        "fallback": "+"
+      },
+      "left": {
+        "value": "│",
+        "fallback": "|"
+      },
+      "shadow": {
+        "value": "▓",
+        "fallback": "#"
+      },
+      "windowClose": {
+        "value": "✕",
+        "fallback": "x"
+      }
+    },
+    "progress": {
+      "empty": {
+        "value": "░",
+        "fallback": "."
+      },
+      "full": {
+        "value": "█",
+        "fallback": "#"
+      },
+      "indeterminate": {
+        "value": "▒",
+        "fallback": "?"
+      },
+      "horizontalFractions": [
+        {
+          "value": "░",
+          "fallback": "."
+        },
+        {
+          "value": "▏",
+          "fallback": ":"
+        },
+        {
+          "value": "▎",
+          "fallback": "-"
+        },
+        {
+          "value": "▍",
+          "fallback": "="
+        },
+        {
+          "value": "▌",
+          "fallback": "+"
+        },
+        {
+          "value": "▋",
+          "fallback": "*"
+        },
+        {
+          "value": "▊",
+          "fallback": "%"
+        },
+        {
+          "value": "▉",
+          "fallback": "@"
+        },
+        {
+          "value": "█",
+          "fallback": "#"
+        }
+      ],
+      "verticalFractions": [
+        {
+          "value": "░",
+          "fallback": "."
+        },
+        {
+          "value": "▁",
+          "fallback": ":"
+        },
+        {
+          "value": "▂",
+          "fallback": "-"
+        },
+        {
+          "value": "▃",
+          "fallback": "="
+        },
+        {
+          "value": "▄",
+          "fallback": "+"
+        },
+        {
+          "value": "▅",
+          "fallback": "*"
+        },
+        {
+          "value": "▆",
+          "fallback": "%"
+        },
+        {
+          "value": "▇",
+          "fallback": "@"
+        },
+        {
+          "value": "█",
+          "fallback": "#"
+        }
+      ]
+    },
+    "disclosure": {
+      "collapsed": {
+        "value": "▶",
+        "fallback": ">"
+      },
+      "expanded": {
+        "value": "▼",
+        "fallback": "v"
+      },
+      "dropDown": {
+        "value": "▼",
+        "fallback": "v"
+      }
+    },
+    "selection": {
+      "checkBoxBracketUnchecked": {
+        "value": " ",
+        "fallback": " "
+      },
+      "checkBoxBracketChecked": {
+        "value": "✓",
+        "fallback": "x"
+      },
+      "checkBoxBracketIndeterminate": {
+        "value": "─",
+        "fallback": "-"
+      },
+      "checkBoxTickUnchecked": {
+        "value": "○",
+        "fallback": "o"
+      },
+      "checkBoxTickChecked": {
+        "value": "✓",
+        "fallback": "x"
+      },
+      "checkBoxTickIndeterminate": {
+        "value": "−",
+        "fallback": "-"
+      },
+      "checkBoxSquareUnchecked": {
+        "value": "☐",
+        "fallback": "o"
+      },
+      "checkBoxSquareChecked": {
+        "value": "☑",
+        "fallback": "x"
+      },
+      "checkBoxSquareIndeterminate": {
+        "value": "◩",
+        "fallback": "-"
+      },
+      "radioUnchecked": {
+        "value": "○",
+        "fallback": "o"
+      },
+      "radioChecked": {
+        "value": "◉",
+        "fallback": "x"
+      },
+      "menuCheckUnchecked": {
+        "value": " ",
+        "fallback": " "
+      },
+      "menuCheckChecked": {
+        "value": "✓",
+        "fallback": "x"
+      },
+      "menuRadioUnchecked": {
+        "value": "○",
+        "fallback": "o"
+      },
+      "menuRadioChecked": {
+        "value": "◉",
+        "fallback": "x"
+      }
+    },
+    "navigation": {
+      "itemIdle": {
+        "value": "·",
+        "fallback": "."
+      },
+      "itemCurrent": {
+        "value": "›",
+        "fallback": ">"
+      },
+      "groupCollapsed": {
+        "value": "▶",
+        "fallback": ">"
+      },
+      "groupExpanded": {
+        "value": "▼",
+        "fallback": "v"
+      },
+      "separator": {
+        "value": "─",
+        "fallback": "-"
+      }
+    },
+    "scrollBars": {
+      "verticalDecrement": {
+        "value": "▲",
+        "fallback": "^"
+      },
+      "verticalIncrement": {
+        "value": "▼",
+        "fallback": "v"
+      },
+      "horizontalDecrement": {
+        "value": "◀",
+        "fallback": "<"
+      },
+      "horizontalIncrement": {
+        "value": "▶",
+        "fallback": ">"
+      },
+      "blockTrack": {
+        "value": "░",
+        "fallback": "."
+      },
+      "blockThumb": {
+        "value": "▓",
+        "fallback": "#"
+      },
+      "horizontalLineTrack": {
+        "value": "─",
+        "fallback": "-"
+      },
+      "horizontalLineThumb": {
+        "value": "━",
+        "fallback": "="
+      },
+      "verticalLineTrack": {
+        "value": "│",
+        "fallback": "|"
+      },
+      "verticalLineThumb": {
+        "value": "┃",
+        "fallback": "#"
+      }
+    },
+    "separators": {
+      "horizontal": {
+        "value": "─",
+        "fallback": "-"
+      },
+      "vertical": {
+        "value": "│",
+        "fallback": "|"
+      },
+      "menu": {
+        "value": "─",
+        "fallback": "-"
+      },
+      "tableHorizontal": {
+        "value": "─",
+        "fallback": "-"
+      },
+      "tableVertical": {
+        "value": "│",
+        "fallback": "|"
+      },
+      "tableCross": {
+        "value": "┼",
+        "fallback": "+"
+      },
+      "tabDivider": {
+        "value": "│",
+        "fallback": "|"
+      },
+      "tabUnderline": {
+        "value": "─",
+        "fallback": "-"
+      }
+    },
+    "text": {
+      "ellipsis": {
+        "value": "…",
+        "fallback": "."
+      }
+    }
   }
 }

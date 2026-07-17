@@ -12,7 +12,7 @@ internal static class ThemeLoader
     /// <summary>Gets the maximum characters accepted in a palette or role key.</summary>
     internal const int MaximumKeyCharacters = 64;
 
-    private const int _maximumDepth = 4;
+    private const int _maximumDepth = 6;
     private const int _maximumPaletteEntries = 256;
     private const int _maximumRoleEntries = 12;
     private const int _maximumStringCharacters = 2048;
@@ -34,6 +34,8 @@ internal static class ThemeLoader
         ["success"] = ColorRole.Success,
         ["info"] = ColorRole.Info,
     };
+
+    #region Document parsing and validation
 
     /// <summary>Parses one bounded theme JSON string into a validated definition.</summary>
     /// <param name="json">The theme JSON text.</param>
@@ -111,7 +113,7 @@ internal static class ThemeLoader
     /// <param name="utf8">The complete borrowed UTF-8 document.</param>
     /// <param name="source">A non-empty label used in diagnostics.</param>
     /// <returns>The validated definition.</returns>
-    /// <exception cref="InvalidDataException">The document exceeds a limit or violates schema version 1.</exception>
+    /// <exception cref="InvalidDataException">The document exceeds a limit or violates schema version 2.</exception>
     internal static ThemeDefinition Deserialize(ReadOnlyMemory<byte> utf8, string source)
     {
         if (utf8.Length > MaximumDocumentBytes)
@@ -168,7 +170,7 @@ internal static class ThemeLoader
     {
         ArgumentNullException.ThrowIfNull(definition);
 
-        if (definition.Version != 1)
+        if (definition.Version != 2)
         {
             throw new InvalidDataException(
                 $"Theme '{source}' uses unsupported schema version {definition.Version}.");
@@ -177,7 +179,10 @@ internal static class ThemeLoader
         var palette = ResolvePalette(definition, source);
         var roles = ResolveRoles(definition, palette, source);
         FillFallbacks(roles, source);
-        return ThemeBuilder.Build(roles);
+        return ThemeBuilder.Build(
+            roles,
+            definition.Glyphs ?? throw new InvalidDataException($"Theme '{source}' is missing required property 'glyphs'."),
+            definition);
     }
 
     private static ThemeDefinition ParseDefinition(JsonElement root, string source)
@@ -242,6 +247,12 @@ internal static class ThemeLoader
                         _maximumRoleEntries,
                         ref decodedCharacters);
                     break;
+                case "glyphs":
+                    definition.Glyphs = ReadThemeGlyphs(
+                        property.Value,
+                        source,
+                        ref decodedCharacters);
+                    break;
                 default:
                     throw new InvalidDataException(
                         $"Theme '{source}' has unknown root property '{property.Name}'.");
@@ -253,7 +264,7 @@ internal static class ThemeLoader
             throw new InvalidDataException($"Theme '{source}' is missing required property 'version'.");
         }
 
-        if (definition.Version != 1)
+        if (definition.Version != 2)
         {
             throw new InvalidDataException(
                 $"Theme '{source}' uses unsupported schema version {definition.Version}.");
@@ -262,6 +273,11 @@ internal static class ThemeLoader
         if (!seen.Contains("roles"))
         {
             throw new InvalidDataException($"Theme '{source}' is missing required property 'roles'.");
+        }
+
+        if (!seen.Contains("glyphs"))
+        {
+            throw new InvalidDataException($"Theme '{source}' is missing required property 'glyphs'.");
         }
 
         ValidateOptionalMetadata(definition, seen, source);
@@ -304,6 +320,297 @@ internal static class ThemeLoader
             }
         }
     }
+
+    #endregion
+
+    #region Semantic glyph parsing
+
+    private static ThemeGlyphs ReadThemeGlyphs(
+        JsonElement element,
+        string source,
+        ref int decodedCharacters)
+    {
+        var root = ReadObject(
+            element,
+            source,
+            "glyphs",
+            ["chrome", "progress", "disclosure", "selection", "navigation", "scrollBars", "separators", "text"],
+            ref decodedCharacters);
+        var chrome = ReadObject(
+            root["chrome"],
+            source,
+            "glyphs.chrome",
+            ["topLeft", "top", "topRight", "right", "bottomRight", "bottom", "bottomLeft", "left", "shadow", "windowClose"],
+            ref decodedCharacters);
+        var progress = ReadObject(
+            root["progress"],
+            source,
+            "glyphs.progress",
+            ["empty", "full", "indeterminate", "horizontalFractions", "verticalFractions"],
+            ref decodedCharacters);
+        var disclosure = ReadObject(
+            root["disclosure"],
+            source,
+            "glyphs.disclosure",
+            ["collapsed", "expanded", "dropDown"],
+            ref decodedCharacters);
+        var selection = ReadObject(
+            root["selection"],
+            source,
+            "glyphs.selection",
+            [
+                "checkBoxBracketUnchecked", "checkBoxBracketChecked", "checkBoxBracketIndeterminate",
+                "checkBoxTickUnchecked", "checkBoxTickChecked", "checkBoxTickIndeterminate",
+                "checkBoxSquareUnchecked", "checkBoxSquareChecked", "checkBoxSquareIndeterminate",
+                "radioUnchecked", "radioChecked", "menuCheckUnchecked", "menuCheckChecked",
+                "menuRadioUnchecked", "menuRadioChecked",
+            ],
+            ref decodedCharacters);
+        var navigation = ReadObject(
+            root["navigation"],
+            source,
+            "glyphs.navigation",
+            ["itemIdle", "itemCurrent", "groupCollapsed", "groupExpanded", "separator"],
+            ref decodedCharacters);
+        var scrollBars = ReadObject(
+            root["scrollBars"],
+            source,
+            "glyphs.scrollBars",
+            [
+                "verticalDecrement", "verticalIncrement", "horizontalDecrement", "horizontalIncrement",
+                "blockTrack", "blockThumb", "horizontalLineTrack", "horizontalLineThumb",
+                "verticalLineTrack", "verticalLineThumb",
+            ],
+            ref decodedCharacters);
+        var separators = ReadObject(
+            root["separators"],
+            source,
+            "glyphs.separators",
+            ["horizontal", "vertical", "menu", "tableHorizontal", "tableVertical", "tableCross", "tabDivider", "tabUnderline"],
+            ref decodedCharacters);
+        var text = ReadObject(
+            root["text"],
+            source,
+            "glyphs.text",
+            ["ellipsis"],
+            ref decodedCharacters);
+
+        var empty = ReadGlyph(progress["empty"], source, "glyphs.progress.empty", ref decodedCharacters);
+        var full = ReadGlyph(progress["full"], source, "glyphs.progress.full", ref decodedCharacters);
+        ProgressGlyphs progressGlyphs;
+
+        try
+        {
+            progressGlyphs = new ProgressGlyphs(
+                empty,
+                full,
+                ReadGlyph(progress["indeterminate"], source, "glyphs.progress.indeterminate", ref decodedCharacters),
+                ReadGlyphArray(
+                    progress["horizontalFractions"],
+                    source,
+                    "glyphs.progress.horizontalFractions",
+                    ref decodedCharacters),
+                ReadGlyphArray(
+                    progress["verticalFractions"],
+                    source,
+                    "glyphs.progress.verticalFractions",
+                    ref decodedCharacters));
+        }
+        catch (ArgumentException error)
+        {
+            throw new InvalidDataException(
+                $"Theme '{source}' progress fraction endpoints must match its empty and full glyphs.",
+                error);
+        }
+
+        return new ThemeGlyphs(
+            new ChromeGlyphs(
+                ReadGlyph(chrome["topLeft"], source, "glyphs.chrome.topLeft", ref decodedCharacters),
+                ReadGlyph(chrome["top"], source, "glyphs.chrome.top", ref decodedCharacters),
+                ReadGlyph(chrome["topRight"], source, "glyphs.chrome.topRight", ref decodedCharacters),
+                ReadGlyph(chrome["right"], source, "glyphs.chrome.right", ref decodedCharacters),
+                ReadGlyph(chrome["bottomRight"], source, "glyphs.chrome.bottomRight", ref decodedCharacters),
+                ReadGlyph(chrome["bottom"], source, "glyphs.chrome.bottom", ref decodedCharacters),
+                ReadGlyph(chrome["bottomLeft"], source, "glyphs.chrome.bottomLeft", ref decodedCharacters),
+                ReadGlyph(chrome["left"], source, "glyphs.chrome.left", ref decodedCharacters),
+                ReadGlyph(chrome["shadow"], source, "glyphs.chrome.shadow", ref decodedCharacters),
+                ReadGlyph(chrome["windowClose"], source, "glyphs.chrome.windowClose", ref decodedCharacters)),
+            progressGlyphs,
+            new DisclosureGlyphs(
+                ReadGlyph(disclosure["collapsed"], source, "glyphs.disclosure.collapsed", ref decodedCharacters),
+                ReadGlyph(disclosure["expanded"], source, "glyphs.disclosure.expanded", ref decodedCharacters),
+                ReadGlyph(disclosure["dropDown"], source, "glyphs.disclosure.dropDown", ref decodedCharacters)),
+            new SelectionGlyphs(
+                ReadGlyph(selection["checkBoxBracketUnchecked"], source, "glyphs.selection.checkBoxBracketUnchecked", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxBracketChecked"], source, "glyphs.selection.checkBoxBracketChecked", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxBracketIndeterminate"], source, "glyphs.selection.checkBoxBracketIndeterminate", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxTickUnchecked"], source, "glyphs.selection.checkBoxTickUnchecked", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxTickChecked"], source, "glyphs.selection.checkBoxTickChecked", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxTickIndeterminate"], source, "glyphs.selection.checkBoxTickIndeterminate", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxSquareUnchecked"], source, "glyphs.selection.checkBoxSquareUnchecked", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxSquareChecked"], source, "glyphs.selection.checkBoxSquareChecked", ref decodedCharacters),
+                ReadGlyph(selection["checkBoxSquareIndeterminate"], source, "glyphs.selection.checkBoxSquareIndeterminate", ref decodedCharacters),
+                ReadGlyph(selection["radioUnchecked"], source, "glyphs.selection.radioUnchecked", ref decodedCharacters),
+                ReadGlyph(selection["radioChecked"], source, "glyphs.selection.radioChecked", ref decodedCharacters),
+                ReadGlyph(selection["menuCheckUnchecked"], source, "glyphs.selection.menuCheckUnchecked", ref decodedCharacters),
+                ReadGlyph(selection["menuCheckChecked"], source, "glyphs.selection.menuCheckChecked", ref decodedCharacters),
+                ReadGlyph(selection["menuRadioUnchecked"], source, "glyphs.selection.menuRadioUnchecked", ref decodedCharacters),
+                ReadGlyph(selection["menuRadioChecked"], source, "glyphs.selection.menuRadioChecked", ref decodedCharacters)),
+            new NavigationGlyphs(
+                ReadGlyph(navigation["itemIdle"], source, "glyphs.navigation.itemIdle", ref decodedCharacters),
+                ReadGlyph(navigation["itemCurrent"], source, "glyphs.navigation.itemCurrent", ref decodedCharacters),
+                ReadGlyph(navigation["groupCollapsed"], source, "glyphs.navigation.groupCollapsed", ref decodedCharacters),
+                ReadGlyph(navigation["groupExpanded"], source, "glyphs.navigation.groupExpanded", ref decodedCharacters),
+                ReadGlyph(navigation["separator"], source, "glyphs.navigation.separator", ref decodedCharacters)),
+            new ScrollBarGlyphs(
+                ReadGlyph(scrollBars["verticalDecrement"], source, "glyphs.scrollBars.verticalDecrement", ref decodedCharacters),
+                ReadGlyph(scrollBars["verticalIncrement"], source, "glyphs.scrollBars.verticalIncrement", ref decodedCharacters),
+                ReadGlyph(scrollBars["horizontalDecrement"], source, "glyphs.scrollBars.horizontalDecrement", ref decodedCharacters),
+                ReadGlyph(scrollBars["horizontalIncrement"], source, "glyphs.scrollBars.horizontalIncrement", ref decodedCharacters),
+                ReadGlyph(scrollBars["blockTrack"], source, "glyphs.scrollBars.blockTrack", ref decodedCharacters),
+                ReadGlyph(scrollBars["blockThumb"], source, "glyphs.scrollBars.blockThumb", ref decodedCharacters),
+                ReadGlyph(scrollBars["horizontalLineTrack"], source, "glyphs.scrollBars.horizontalLineTrack", ref decodedCharacters),
+                ReadGlyph(scrollBars["horizontalLineThumb"], source, "glyphs.scrollBars.horizontalLineThumb", ref decodedCharacters),
+                ReadGlyph(scrollBars["verticalLineTrack"], source, "glyphs.scrollBars.verticalLineTrack", ref decodedCharacters),
+                ReadGlyph(scrollBars["verticalLineThumb"], source, "glyphs.scrollBars.verticalLineThumb", ref decodedCharacters)),
+            new SeparatorGlyphs(
+                ReadGlyph(separators["horizontal"], source, "glyphs.separators.horizontal", ref decodedCharacters),
+                ReadGlyph(separators["vertical"], source, "glyphs.separators.vertical", ref decodedCharacters),
+                ReadGlyph(separators["menu"], source, "glyphs.separators.menu", ref decodedCharacters),
+                ReadGlyph(separators["tableHorizontal"], source, "glyphs.separators.tableHorizontal", ref decodedCharacters),
+                ReadGlyph(separators["tableVertical"], source, "glyphs.separators.tableVertical", ref decodedCharacters),
+                ReadGlyph(separators["tableCross"], source, "glyphs.separators.tableCross", ref decodedCharacters),
+                ReadGlyph(separators["tabDivider"], source, "glyphs.separators.tabDivider", ref decodedCharacters),
+                ReadGlyph(separators["tabUnderline"], source, "glyphs.separators.tabUnderline", ref decodedCharacters)),
+            new TextGlyphs(
+                ReadGlyph(text["ellipsis"], source, "glyphs.text.ellipsis", ref decodedCharacters)));
+    }
+
+    private static Dictionary<string, JsonElement> ReadObject(
+        JsonElement element,
+        string source,
+        string field,
+        string[] members,
+        ref int decodedCharacters)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            throw WrongType(source, field, "an object");
+        }
+
+        var expected = new HashSet<string>(members, StringComparer.Ordinal);
+        var values = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!expected.Contains(property.Name))
+            {
+                throw new InvalidDataException($"Theme '{source}' has unknown field '{field}.{property.Name}'.");
+            }
+
+            if (!values.TryAdd(property.Name, property.Value))
+            {
+                throw Duplicate(source, property.Name, field);
+            }
+
+            AddDecoded(property.Name, source, ref decodedCharacters);
+        }
+
+        foreach (var member in members)
+        {
+            if (!values.ContainsKey(member))
+            {
+                throw new InvalidDataException($"Theme '{source}' is missing required field '{field}.{member}'.");
+            }
+        }
+
+        return values;
+    }
+
+    private static ThemedGlyph ReadGlyph(
+        JsonElement element,
+        string source,
+        string field,
+        ref int decodedCharacters)
+    {
+        var value = ReadObject(
+            element,
+            source,
+            field,
+            ["value", "fallback"],
+            ref decodedCharacters);
+        var primary = ReadRune(value["value"], source, $"{field}.value", ref decodedCharacters);
+        var fallback = ReadRune(value["fallback"], source, $"{field}.fallback", ref decodedCharacters);
+
+        try
+        {
+            return new ThemedGlyph(primary, fallback);
+        }
+        catch (ArgumentException error)
+        {
+            var member = error.ParamName == "fallback" ? "fallback" : "value";
+            throw new InvalidDataException(
+                $"Theme '{source}' field '{field}.{member}' must contain a printable one-cell glyph.",
+                error);
+        }
+    }
+
+    private static ThemedGlyph[] ReadGlyphArray(
+        JsonElement element,
+        string source,
+        string field,
+        ref int decodedCharacters)
+    {
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            throw WrongType(source, field, "an array");
+        }
+
+        var values = element.EnumerateArray().ToArray();
+
+        if (values.Length != 9)
+        {
+            throw new InvalidDataException($"Theme '{source}' field '{field}' must contain exactly nine glyphs.");
+        }
+
+        var glyphs = new ThemedGlyph[values.Length];
+
+        for (var index = 0; index < values.Length; index++)
+        {
+            glyphs[index] = ReadGlyph(
+                values[index],
+                source,
+                $"{field}[{index}]",
+                ref decodedCharacters);
+        }
+
+        return glyphs;
+    }
+
+    private static Rune ReadRune(
+        JsonElement element,
+        string source,
+        string field,
+        ref int decodedCharacters)
+    {
+        var value = ReadString(element, source, field, ref decodedCharacters);
+        var enumerator = value.EnumerateRunes();
+
+        if (!enumerator.MoveNext())
+        {
+            throw new InvalidDataException($"Theme '{source}' field '{field}' must contain exactly one Unicode scalar.");
+        }
+
+        var rune = enumerator.Current;
+
+        return enumerator.MoveNext()
+            ? throw new InvalidDataException($"Theme '{source}' field '{field}' must contain exactly one Unicode scalar.")
+            : rune;
+    }
+
+    #endregion
+
+    #region Primitive value parsing
 
     private static Dictionary<string, string> ReadMap(
         JsonElement element,
@@ -402,6 +709,10 @@ internal static class ThemeLoader
 
     private static InvalidDataException TooLarge(string source) =>
         new($"Theme '{source}' exceeds the {MaximumDocumentBytes}-byte document limit.");
+
+    #endregion
+
+    #region Color resolution
 
     private static Dictionary<string, Color> ResolvePalette(ThemeDefinition definition, string source)
     {
@@ -517,4 +828,6 @@ internal static class ThemeLoader
             throw new InvalidDataException($"Theme '{source}' {where} has invalid color '{value}'.", error);
         }
     }
+
+    #endregion
 }

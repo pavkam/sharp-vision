@@ -10,10 +10,10 @@ internal readonly record struct OpenTag
     private OpenTag(
         string name,
         TerminalAttributes attributes,
-        Color? foreground,
-        Color? background,
+        ThemeColor? foreground,
+        ThemeColor? background,
         Underline? underline,
-        Color? underlineColor,
+        ThemeColor? underlineColor,
         string? link)
     {
         Name = name;
@@ -32,16 +32,16 @@ internal readonly record struct OpenTag
     internal TerminalAttributes Attributes { get; }
 
     /// <summary>Gets the foreground contribution.</summary>
-    internal Color? Foreground { get; }
+    internal ThemeColor? Foreground { get; }
 
     /// <summary>Gets the background contribution.</summary>
-    internal Color? Background { get; }
+    internal ThemeColor? Background { get; }
 
     /// <summary>Gets the underline contribution.</summary>
     internal Underline? Underline { get; }
 
     /// <summary>Gets the underline color contribution.</summary>
-    internal Color? UnderlineColor { get; }
+    internal ThemeColor? UnderlineColor { get; }
 
     /// <summary>Gets the semantic hyperlink contribution.</summary>
     internal string? Link { get; }
@@ -57,14 +57,14 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed color.</param>
     /// <returns>The active facet.</returns>
-    internal static OpenTag ForegroundTag(ReadOnlySpan<char> name, Color value) =>
+    internal static OpenTag ForegroundTag(ReadOnlySpan<char> name, ThemeColor value) =>
         new(name.ToString(), TerminalAttributes.None, value, null, null, null, null);
 
     /// <summary>Creates one background facet.</summary>
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed color.</param>
     /// <returns>The active facet.</returns>
-    internal static OpenTag BackgroundTag(ReadOnlySpan<char> name, Color value) =>
+    internal static OpenTag BackgroundTag(ReadOnlySpan<char> name, ThemeColor value) =>
         new(name.ToString(), TerminalAttributes.None, null, value, null, null, null);
 
     /// <summary>Creates one typed underline facet.</summary>
@@ -78,7 +78,7 @@ internal readonly record struct OpenTag
     /// <param name="name">The source tag name.</param>
     /// <param name="value">The contributed color.</param>
     /// <returns>The active facet.</returns>
-    internal static OpenTag UnderlineColorTag(ReadOnlySpan<char> name, Color value) =>
+    internal static OpenTag UnderlineColorTag(ReadOnlySpan<char> name, ThemeColor value) =>
         new(name.ToString(), TerminalAttributes.None, null, null, null, value, null);
 
     /// <summary>Creates one semantic hyperlink facet.</summary>

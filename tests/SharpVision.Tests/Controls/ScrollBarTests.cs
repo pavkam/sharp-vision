@@ -156,7 +156,7 @@ public sealed class ScrollBarTests
         Cells(frame, width: 10, y: 0).ShouldBe("────━━────");
     }
 
-    /// <summary>Verifies explicitly assigning a legacy glyph remains an intentional custom override.</summary>
+    /// <summary>Verifies an explicitly assigned glyph remains an intentional local override.</summary>
     [Fact]
     public void Render_WhenLegacyTrackGlyphIsAssigned_UsesAssignedGlyph()
     {
@@ -397,7 +397,7 @@ public sealed class ScrollBarTests
         Cells(two, width: 2, y: 0).ShouldBe("◀▶");
 
         _ = Should.Throw<ArgumentException>(() => control.TrackGlyph = new Rune('界'));
-        control.TrackGlyph.ShouldBe(new Rune('.'));
+        control.TrackGlyph.ShouldBe(Themes.Dark.Glyphs.ScrollBars.BlockTrack.Value);
     }
 
     /// <summary>Verifies public event data rejects impossible values and unknown causes.</summary>

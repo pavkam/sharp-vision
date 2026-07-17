@@ -12,6 +12,8 @@ public sealed class RadioButton: Pressable
 {
     private bool _isChecked;
     private int _checkedVersion;
+    private Rune? _uncheckedGlyph;
+    private Rune? _checkedGlyph;
 
     /// <summary>Initializes an unselected RadioButton.</summary>
     public RadioButton()
@@ -83,6 +85,31 @@ public sealed class RadioButton: Pressable
         }
     }
 
+    /// <summary>Gets or sets the local unchecked radio mark.</summary>
+    public Rune UncheckedGlyph
+    {
+        get => _uncheckedGlyph ?? ResolveThemeGlyphs().Selection.RadioUnchecked.Value;
+        set => SetGlyph(ref _uncheckedGlyph, value, nameof(UncheckedGlyph));
+    }
+
+    /// <summary>Gets or sets the local checked radio mark.</summary>
+    public Rune CheckedGlyph
+    {
+        get => _checkedGlyph ?? ResolveThemeGlyphs().Selection.RadioChecked.Value;
+        set => SetGlyph(ref _checkedGlyph, value, nameof(CheckedGlyph));
+    }
+
+    /// <summary>Clears local radio marks so the active theme supplies them.</summary>
+    public void ResetGlyphs()
+    {
+        VerifyMutable();
+        if (!_uncheckedGlyph.HasValue && !_checkedGlyph.HasValue) { return; }
+        _uncheckedGlyph = null;
+        _checkedGlyph = null;
+        NotifyPropertyChanged(nameof(UncheckedGlyph), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(CheckedGlyph), ChangeImpact.Render);
+    }
+
     /// <summary>Selects an available member through the programmatic path.</summary>
     /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
@@ -139,7 +166,13 @@ public sealed class RadioButton: Pressable
             return;
         }
 
-        var glyph = new Rune(IsChecked ? '◉' : '○');
+        var themed = IsChecked
+            ? ResolveThemeGlyphs().Selection.RadioChecked
+            : ResolveThemeGlyphs().Selection.RadioUnchecked;
+        var glyph = CellGlyph.Resolve(
+            IsChecked ? CheckedGlyph : UncheckedGlyph,
+            themed.Fallback,
+            CellPolicy.AmbiguousWidth);
         Span<char> buffer = stackalloc char[2];
         var length = glyph.EncodeToUtf16(buffer);
         var style = ResolvedStyle;
@@ -187,6 +220,15 @@ public sealed class RadioButton: Pressable
 
     /// <inheritdoc/>
     protected override bool IsCheckedState => IsChecked;
+
+    private void SetGlyph(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+        if (storage == value) { return; }
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
+    }
 
     /// <inheritdoc/>
     protected override void OnFocusChanged(bool focused)

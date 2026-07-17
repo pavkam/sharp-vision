@@ -126,6 +126,6 @@ public sealed class ProgressBarTests
         // Assert
         FrameOracle.Get(frame, default).ShouldBe("█");
         FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("▌");
-        FrameOracle.Get(frame, new Point(2, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("░");
     }
 }

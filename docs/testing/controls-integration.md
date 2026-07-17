@@ -76,11 +76,11 @@ focus into the mounted component without calling `FocusManager` directly.
 Tests drive `surface.Pointer` with `MoveToAsync`, `PressAsync`, `ReleaseAsync`,
 `ClickAsync`, `LeaveAsync`, or captured drag operations, and drive
 `surface.Keyboard` with supported typed key codes, Shift+Tab, and distinct Kitty
-character press/release actions.
-Those helpers emit terminal bytes; they never call `Router.Route`, direct hover
-mutation, `SetPressed`, or `FocusManager.Focus` on the component. Each action
-waits until the transport consumes its bytes and the application reaches idle
-after routed work, layout, rendering, and output.
+character press/release actions. Those helpers emit terminal bytes; they never
+call `Router.Route`, direct hover mutation, `SetPressed`, or
+`FocusManager.Focus` on the component. Each action waits until the transport
+consumes its bytes and the application reaches idle after routed work, layout,
+rendering, and output.
 
 ```csharp
 await using var surface = await ComponentSurface.MountAsync(
@@ -169,3 +169,10 @@ Phase 5 buttons, toggles, radio groups, text editing, selection, menus, popups,
 windows, scrollbars, and intrinsic container scrolling must enumerate
 valid/invalid transitions and event order. Fake clocks drive hover/open delays,
 timers, idle, and repeated input without wall-clock sleeps.
+
+Menu mounted-surface proof sends real pointer motion, primary press/release,
+Tab, Shift+Tab, arrows, Enter, Space, and Escape. It asserts the menu remains
+the single focus stop, private faces receive hover and pressed states, compact
+rows and shortcuts share one trailing edge, an armed submenu switches on pointer
+or keyboard selection, generic popup ancestry stays intact, and closing restores
+focus before submenu content becomes unavailable.

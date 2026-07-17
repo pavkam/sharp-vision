@@ -19,6 +19,31 @@ internal static class ControlAppearanceDefaults
     {
         ArgumentNullException.ThrowIfNull(control);
 
+        if (state == VisualState.PointerOver && control is ListItem)
+        {
+            return new Appearance(null, ColorRole.Surface, null, null, null, null, null, null, null, null);
+        }
+
+        if (state == VisualState.PointerOver && control is MenuItem)
+        {
+            return new Appearance(
+                ColorRole.SelectionForeground,
+                ColorRole.SelectionBackground,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+        }
+
+        if (state == VisualState.PointerOver && (!control.CanFocus || control is List))
+        {
+            return Appearance.Empty;
+        }
+
         var baseAppearance = GetBase(state);
         return control switch
         {
@@ -28,7 +53,6 @@ internal static class ControlAppearanceDefaults
             RadioButton => baseAppearance.Overlay(GetRadioButton(state)),
             ScrollBar => baseAppearance.Overlay(GetScrollBar(state)),
             TextInput => baseAppearance.Overlay(GetTextInput(state)),
-            List => baseAppearance.Overlay(GetList(state)),
             _ => baseAppearance,
         };
     }
@@ -100,10 +124,4 @@ internal static class ControlAppearanceDefaults
             : Appearance.Empty;
     }
 
-    private static Appearance GetList(VisualState state)
-    {
-        return state == VisualState.PointerOver
-            ? new Appearance(null, ColorRole.Surface, null, null, null, null, null, null, null, null)
-            : Appearance.Empty;
-    }
 }

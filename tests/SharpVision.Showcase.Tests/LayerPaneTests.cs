@@ -20,6 +20,56 @@ public sealed class LayerPaneTests
         popups.ShouldAllBe(popup => popup.SurfaceBounds == default);
     }
 
+    /// <summary>Verifies every Popup trigger keeps its intrinsic height inside the live specimen.</summary>
+    [Fact]
+    public void Popup_WhenPageLaysOut_AnchorsRemainContentSized()
+    {
+        // Arrange
+        using var page = new PopupPane();
+
+        // Act
+        new Engine().Layout(page, new Size(100, 180));
+        var anchors = ControlTree.FindAll<Popup>(page)
+            .Select(popup => popup.Anchor.ShouldNotBeNull())
+            .ToArray();
+
+        // Assert
+        anchors.ShouldAllBe(anchor => anchor.Bounds.Height == anchor.DesiredSize.Height);
+    }
+
+    /// <summary>Verifies open Popup surfaces stay inside their specimens without covering an action.</summary>
+    [Fact]
+    public void Popup_WhenEachSurfaceOpens_StaysInsideItsStageWithoutCoveringButtons()
+    {
+        // Arrange
+        using var page = new PopupPane();
+        var engine = new Engine();
+        var size = new Size(100, 180);
+        engine.Layout(page, size);
+        var popups = ControlTree.FindAll<Popup>(page);
+        var buttons = ControlTree.FindAll<Button>(page);
+
+        foreach (var popup in popups)
+        {
+            // Act
+            popup.IsOpen = true;
+            engine.Layout(page, size);
+
+            // Assert
+            popup.SurfaceBounds.ShouldNotBe(default);
+            popup.SurfaceBounds.Intersect(popup.Parent.ShouldNotBeNull().Bounds)
+                .ShouldBe(popup.SurfaceBounds);
+            foreach (var button in buttons)
+            {
+                var overlap = popup.SurfaceBounds.Intersect(button.Bounds);
+                (overlap.Width == 0 || overlap.Height == 0).ShouldBeTrue();
+            }
+
+            popup.IsOpen = false;
+            engine.Layout(page, size);
+        }
+    }
+
     /// <summary>Verifies decorative Overlay content can render without intercepting pointer input.</summary>
     [Fact]
     public void Overlay_WhenPointerTransparencyBuilds_ContainsTransparentDecoration()
@@ -34,6 +84,30 @@ public sealed class LayerPaneTests
 
         // Assert
         decoration.IsHitTestVisible.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies example surfaces use bounded square frames with a consistent title.</summary>
+    [Fact]
+    public void Overlay_WhenPageIsWide_BoundsAndTitlesEveryExampleSurface()
+    {
+        // Arrange
+        using var page = new OverlayPane();
+
+        // Act
+        new Engine().Layout(page, new Size(200, 120));
+        var surfaces = ControlTree.FindAll<GroupBox>(page)
+            .Where(value =>
+                value.Header == "Example" &&
+                value.Background == ColorRole.Surface &&
+                value.BorderThickness == new Thickness(1) &&
+                value.Padding == new Thickness(1))
+            .ToArray();
+
+        // Assert
+        surfaces.Length.ShouldBe(7);
+        surfaces.ShouldAllBe(surface => surface.MaxWidth == 100);
+        surfaces.ShouldAllBe(surface => surface.Bounds.Width <= 100);
+        surfaces.ShouldAllBe(surface => surface.Glyphs == Glyphs.Light);
     }
 
     /// <summary>Verifies Popup reports Closing before Closed through its public lifecycle.</summary>

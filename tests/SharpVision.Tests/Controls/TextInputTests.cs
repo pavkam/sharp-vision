@@ -222,7 +222,7 @@ public sealed class TextInputTests
         control.Render(frame.Canvas);
 
         FrameOracle.Get(frame, new Point(1, 1)).ShouldBe("A");
-        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("┌");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╭");
         frame.Cursor.Visible.ShouldBeTrue();
         frame.Cursor.Position.ShouldBe(new Point(2, 1));
     }

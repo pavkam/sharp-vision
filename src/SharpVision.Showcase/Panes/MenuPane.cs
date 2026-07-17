@@ -20,6 +20,16 @@ internal sealed class MenuPane: CompositeControl
 
         var fileNew = new MenuItem { Content = new Text("New") };
         var fileOpen = new MenuItem { Content = new Text("Open") };
+        var fileRecentToday = new MenuItem { Content = new Text("Today") };
+        var fileRecentArchive = new MenuItem { Content = new Text("Archive") };
+        var fileRecentSubmenu = new Menu { Orientation = Orientation.Vertical };
+        fileRecentSubmenu.Items.Add(fileRecentToday);
+        fileRecentSubmenu.Items.Add(fileRecentArchive);
+        var fileOpenRecent = new MenuItem
+        {
+            Content = new Text("Open Recent"),
+            Submenu = fileRecentSubmenu,
+        };
         var fileSave = new MenuItem { Content = new Text("Save"), ShortcutText = "Ctrl+S" };
         var fileSaveAs = new MenuItem { Content = new Text("Save As...") };
         var fileExit = new MenuItem { Content = new Text("Exit"), ShortcutText = "Ctrl+Q" };
@@ -27,6 +37,7 @@ internal sealed class MenuPane: CompositeControl
         var fileSubmenu = new Menu { Orientation = Orientation.Vertical };
         fileSubmenu.Items.Add(fileNew);
         fileSubmenu.Items.Add(fileOpen);
+        fileSubmenu.Items.Add(fileOpenRecent);
         fileSubmenu.Items.Add(new MenuSeparator());
         fileSubmenu.Items.Add(fileSave);
         fileSubmenu.Items.Add(fileSaveAs);
@@ -79,6 +90,7 @@ internal sealed class MenuPane: CompositeControl
 
         menuBar.ItemInvoked += OnInvoked;
         fileSubmenu.ItemInvoked += OnInvoked;
+        fileRecentSubmenu.ItemInvoked += OnInvoked;
         editSubmenu.ItemInvoked += OnInvoked;
         viewSubmenu.ItemInvoked += OnInvoked;
         helpSubmenu.ItemInvoked += OnInvoked;
@@ -118,10 +130,10 @@ internal sealed class MenuPane: CompositeControl
             Doc.Section(
                 "📑",
                 "Menu bar with submenus",
-                "A horizontal menu bar where each top-level entry owns a vertical submenu. Activating an entry opens its submenu as a popup; Escape closes it.",
+                "A horizontal menu bar where each top-level entry owns a compact vertical submenu. Hover switches an open sibling popup, Open Recent demonstrates right-side nesting, and Escape restores the owning menu.",
                 Doc.Example(
                     "Application menu bar",
-                    "Click or Enter on File, Edit, View, or Help to open their submenus. Arrow keys navigate within each submenu. Submenus contain commands, separators, check toggles, and radio groups.",
+                    "Click or Enter on File, Edit, View, or Help, then hover another heading to switch. Tab and arrows move selection; Open Recent extends to the right. Shortcuts share one trailing edge and separators span the menu.",
                     Doc.Column(barFrame, barStatus),
                     "var file = new MenuItem { Content = new Text(\"File\") };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Content = new Text(\"New\") });\nfile.Submenu = fileMenu;")),
             Doc.Section(

@@ -34,6 +34,13 @@ claiming its single-content inheritance role.
   frame outside that limit and keeps the open list above later page content as
   defined by the [Popup contract](../windows/popup.md#popup-contract).
 
+## Theme glyphs
+
+`DropDownGlyph` is a validated one-cell local override for the closed-field
+indicator. `ResetDropDownGlyph()` returns the field to
+`Theme.Glyphs.Disclosure.DropDown`. Theme replacement repaints an existing
+non-overridden field.
+
 ## Interaction
 
 Enter, Space, or a primary pointer click toggles the list. ComboBox remains

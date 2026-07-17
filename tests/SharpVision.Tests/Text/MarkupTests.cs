@@ -47,6 +47,22 @@ public sealed class MarkupTests
         spans[2].Foreground.ShouldBe(Color.Rgb(255, 136, 0));
     }
 
+    /// <summary>Verifies semantic role tags remain typed until an active theme resolves them.</summary>
+    [Fact]
+    public void Parse_WhenSemanticColorRolesAreMarked_PreservesThemeTokens()
+    {
+        var spans = Markup.Parse(
+            "<accent>a</accent><fg=info>b</fg><bg=surface><uc=warning>c</uc></bg>",
+            out var display);
+
+        display.ShouldBe("abc");
+        spans.Length.ShouldBe(3);
+        spans[0].Foreground.ShouldBe(ThemeColor.From(ColorRole.Accent));
+        spans[1].Foreground.ShouldBe(ThemeColor.From(ColorRole.Info));
+        spans[2].Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+        spans[2].UnderlineColor.ShouldBe(ThemeColor.From(ColorRole.Warning));
+    }
+
     /// <summary>Verifies every documented ANSI palette name resolves to its exact index.</summary>
     [Theory]
     [InlineData("black", 0)]

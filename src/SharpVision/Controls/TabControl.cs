@@ -15,6 +15,8 @@ public sealed class TabControl: ItemsControl
     private bool _updatingPresentation;
     private int _pressedHeaderIndex = -1;
     private int _selectedIndex = -1;
+    private Rune? _dividerGlyph;
+    private Rune? _underlineGlyph;
 
     /// <summary>Initializes an empty tab control with typed managed pages.</summary>
     public TabControl()
@@ -48,10 +50,37 @@ public sealed class TabControl: ItemsControl
         }
     }
 
+    /// <summary>Gets or sets the local tab-divider glyph.</summary>
+    public Rune DividerGlyph { get => _dividerGlyph ?? ResolveThemeGlyphs().Separators.TabDivider.Value; set => SetGlyph(ref _dividerGlyph, value, nameof(DividerGlyph)); }
+
+    /// <summary>Gets or sets the local selected-tab underline glyph.</summary>
+    public Rune UnderlineGlyph { get => _underlineGlyph ?? ResolveThemeGlyphs().Separators.TabUnderline.Value; set => SetGlyph(ref _underlineGlyph, value, nameof(UnderlineGlyph)); }
+
+    /// <summary>Clears both local tab glyphs so the active theme supplies them.</summary>
+    /// <exception cref="InvalidOperationException">The attached tab control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tab control is disposed.</exception>
+    public void ResetGlyphs()
+    {
+        VerifyMutable();
+
+        if (_dividerGlyph.HasValue)
+        {
+            _dividerGlyph = null;
+            NotifyPropertyChanged(nameof(DividerGlyph), ChangeImpact.Render);
+        }
+
+        if (_underlineGlyph.HasValue)
+        {
+            _underlineGlyph = null;
+            NotifyPropertyChanged(nameof(UnderlineGlyph), ChangeImpact.Render);
+        }
+    }
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         ApplyPresentation();
+
         var contentConstraint = new Constraint(constraint.Width, constraint.Height.HasValue ? Math.Max(0, constraint.Height.Value - 2) : null);
         var content = base.MeasureOverride(contentConstraint);
 
@@ -79,6 +108,9 @@ public sealed class TabControl: ItemsControl
     {
         if (Bounds.Width == 0 || Bounds.Height < 2) { return; }
         var style = ResolvedStyle;
+        var separators = ResolveThemeGlyphs().Separators;
+        var divider = CellGlyph.Resolve(DividerGlyph, separators.TabDivider.Fallback, CellPolicy.AmbiguousWidth);
+        var underline = CellGlyph.Resolve(UnderlineGlyph, separators.TabUnderline.Fallback, CellPolicy.AmbiguousWidth);
         var x = Bounds.X;
         for (var i = 0; i < ItemControlCount; i++)
         {
@@ -89,13 +121,13 @@ public sealed class TabControl: ItemsControl
             if (x + cells > Bounds.Right) { break; }
             if (sel) { canvas.Clear(new Rect(x, Bounds.Y, cells, 1), style); }
             _ = canvas.Draw(label.AsSpan(), new Point(x, Bounds.Y), style, background: sel ? BackgroundMode.Opaque : BackgroundMode.Transparent);
-            if (i < ItemControlCount - 1) { _ = canvas.Draw("│".AsSpan(), new Point(x + cells, Bounds.Y), style, background: BackgroundMode.Transparent); x += cells + 1; }
+            if (i < ItemControlCount - 1) { canvas.DrawRune(divider, new Point(x + cells, Bounds.Y), style, BackgroundMode.Transparent); x += cells + 1; }
             else { x += cells; }
         }
 
         for (var lx = Bounds.X; lx < Bounds.Right; lx++)
         {
-            _ = canvas.Draw("─".AsSpan(), new Point(lx, Bounds.Y + 1), style, background: BackgroundMode.Transparent);
+            canvas.DrawRune(underline, new Point(lx, Bounds.Y + 1), style, BackgroundMode.Transparent);
         }
     }
 
@@ -455,4 +487,12 @@ public sealed class TabControl: ItemsControl
         ApplyPresentation();
     }
 
+    private void SetGlyph(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+        if (storage == value) { return; }
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
+    }
 }

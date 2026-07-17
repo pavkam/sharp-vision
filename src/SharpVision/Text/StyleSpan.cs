@@ -19,11 +19,11 @@ internal readonly record struct StyleSpan
     internal StyleSpan(
         int offset,
         int length,
-        Color? foreground,
-        Color? background,
+        ThemeColor? foreground,
+        ThemeColor? background,
         TerminalAttributes attributes,
         Underline underline,
-        Color? underlineColor,
+        ThemeColor? underlineColor,
         string? link)
     {
         Debug.Assert(offset >= 0, "Markup span offsets are non-negative.");
@@ -45,10 +45,10 @@ internal readonly record struct StyleSpan
     internal int Length { get; }
 
     /// <summary>Gets the foreground override, or null to inherit.</summary>
-    internal Color? Foreground { get; }
+    internal ThemeColor? Foreground { get; }
 
     /// <summary>Gets the background override, or null to inherit.</summary>
-    internal Color? Background { get; }
+    internal ThemeColor? Background { get; }
 
     /// <summary>Gets the additive terminal attributes.</summary>
     internal TerminalAttributes Attributes { get; }
@@ -57,7 +57,7 @@ internal readonly record struct StyleSpan
     internal Underline Underline { get; }
 
     /// <summary>Gets the underline color override, or null to inherit.</summary>
-    internal Color? UnderlineColor { get; }
+    internal ThemeColor? UnderlineColor { get; }
 
     /// <summary>Gets the semantic hyperlink target, or null.</summary>
     internal string? Link { get; }

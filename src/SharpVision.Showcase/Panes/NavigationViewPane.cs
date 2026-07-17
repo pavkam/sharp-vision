@@ -43,11 +43,11 @@ internal sealed class NavigationViewPane: CompositeControl
         }
 
         return Doc.Page(Title, "Provides a sidebar navigation control with typed items, collapsible groups, and pinned footer.",
-            Doc.Section("🧭", "Basic sidebar", "Up/Down arrows navigate. Focus selects.",
+            Doc.Section("🧭", "Basic sidebar", "Up/Down arrows move the current entry while the sidebar retains focus.",
                 Doc.Example("App sidebar with glyphs", "Unicode labels, optional glyph prefixes, and unavailable entries share one route.", Doc.Column(basic, status), "nav.Items.Add(new NavigationViewItem { Header = \"界 Dashboard\" });"),
                 Doc.Example("Overflow navigation", "Eight destinations exercise the intrinsic scrolling stack.", overflow)),
-            Doc.Section("🧭", "Groups and separators", "Groups create collapsible sections.",
-                Doc.Example("Project browser", "Two groups with separator. Enter toggles.", grouped)),
+            Doc.Section("🧭", "Groups and separators", "Group headers participate in keyboard navigation without becoming selected items.",
+                Doc.Example("Project browser", "Use Up/Down to reach a group header; Enter or Space toggles it.", grouped)),
             Doc.Section("🧭", "Footer items", "FooterItems pinned to bottom.",
                 Doc.Example("Settings with footer", "About stays pinned.", footer)));
     }

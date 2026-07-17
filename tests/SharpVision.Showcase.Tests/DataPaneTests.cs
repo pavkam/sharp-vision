@@ -21,6 +21,44 @@ public sealed class DataPaneTests
         _ = popup.Content.ShouldBeOfType<Menu>();
     }
 
+    /// <summary>Verifies Menu demonstrates a vertical item whose nested submenu opens to the right.</summary>
+    [Fact]
+    public void Menu_WhenNestedRecipeBuilds_ContainsDirectionalAttachedSubmenu()
+    {
+        // Arrange
+        using var page = new MenuPane();
+        new Engine().Layout(page, new Size(100, 120));
+
+        // Act
+        var item = ControlTree.FindAll<MenuItem>(page).Single(value =>
+            value.Content is ControlText { Content: "Open Recent" });
+        var owner = ControlTree.FindAll<MenuItem>(page).Single(value =>
+            value.Content is ControlText { Content: "File" });
+        var submenu = item.Submenu.ShouldNotBeNull();
+        var fileMenu = owner.Submenu.ShouldNotBeNull();
+        owner.PerformInvoke();
+        new Engine().Layout(page, new Size(100, 120));
+        item.PerformInvoke();
+        new Engine().Layout(page, new Size(100, 120));
+        var popup = ControlTree.FindAll<Popup>(item).Single();
+        var ownerPopup = ControlTree.FindAll<Popup>(owner).Single(value =>
+            ReferenceEquals(value.Content, owner.Submenu));
+
+        // Assert
+        submenu.Orientation.ShouldBe(Orientation.Vertical);
+        popup.IsOpen.ShouldBeTrue();
+        ownerPopup.IsOpen.ShouldBeTrue();
+        popup.Placement.ShouldBe(PopupPlacement.Right);
+        popup.Glyphs.ShouldBe(Glyphs.Light);
+        popup.Background.ShouldBe(ThemeColor.From(ColorRole.Surface));
+        fileMenu.DesiredSize.Width.ShouldBe(19);
+        var save = ControlTree.FindAll<MenuItem>(fileMenu).Single(value =>
+            value.Content is ControlText { Content: "Save" });
+        var exit = ControlTree.FindAll<MenuItem>(fileMenu).Single(value =>
+            value.Content is ControlText { Content: "Exit" });
+        save.Bounds.Right.ShouldBe(exit.Bounds.Right);
+    }
+
     /// <summary>Verifies ScrollBar live geometry updates without replacing the control.</summary>
     [Fact]
     public void ScrollBar_WhenViewportActionRuns_UpdatesViewportAndStatus()

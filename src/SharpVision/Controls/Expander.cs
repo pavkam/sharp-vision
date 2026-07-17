@@ -7,6 +7,8 @@ namespace SharpVision.Controls;
 public sealed class Expander: ContentControl
 {
     private readonly PressBehavior _interaction;
+    private Rune? _collapsedGlyph;
+    private Rune? _expandedGlyph;
 
     /// <summary>Initializes an expanded section with an empty header.</summary>
     public Expander()
@@ -48,6 +50,31 @@ public sealed class Expander: ContentControl
         set { if (SetProperty(ref field, value, ChangeImpact.Measure)) { ExpandedChanged?.Invoke(this, EventArgs.Empty); } }
     } = true;
 
+    /// <summary>Gets or sets the local collapsed-state indicator.</summary>
+    public Rune CollapsedGlyph
+    {
+        get => _collapsedGlyph ?? ResolveThemeGlyphs().Disclosure.Collapsed.Value;
+        set => SetGlyph(ref _collapsedGlyph, value, nameof(CollapsedGlyph));
+    }
+
+    /// <summary>Gets or sets the local expanded-state indicator.</summary>
+    public Rune ExpandedGlyph
+    {
+        get => _expandedGlyph ?? ResolveThemeGlyphs().Disclosure.Expanded.Value;
+        set => SetGlyph(ref _expandedGlyph, value, nameof(ExpandedGlyph));
+    }
+
+    /// <summary>Clears local disclosure indicators so the active theme supplies them.</summary>
+    public void ResetGlyphs()
+    {
+        VerifyMutable();
+        if (!_collapsedGlyph.HasValue && !_expandedGlyph.HasValue) { return; }
+        _collapsedGlyph = null;
+        _expandedGlyph = null;
+        NotifyPropertyChanged(nameof(CollapsedGlyph), ChangeImpact.Render);
+        NotifyPropertyChanged(nameof(ExpandedGlyph), ChangeImpact.Render);
+    }
+
     /// <inheritdoc/>
 
     /// <inheritdoc/>
@@ -79,9 +106,25 @@ public sealed class Expander: ContentControl
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0) { return; }
+        var content = ContentBounds;
         var s = ResolvedStyle;
-        _ = canvas.Draw((IsExpanded ? "▼ " : "▶ ").AsSpan(), new Point(Bounds.X, Bounds.Y), s, background: BackgroundMode.Transparent);
-        if (Header.Length > 0 && Bounds.Width > 2) { _ = canvas.Clip(new Rect(Bounds.X + 2, Bounds.Y, Bounds.Width - 2, 1)).Draw(Header.AsSpan(), new Point(Bounds.X + 2, Bounds.Y), s, background: BackgroundMode.Transparent); }
+        var themed = IsExpanded ? ResolveThemeGlyphs().Disclosure.Expanded : ResolveThemeGlyphs().Disclosure.Collapsed;
+        var selected = IsExpanded ? ExpandedGlyph : CollapsedGlyph;
+        canvas.DrawRune(
+            CellGlyph.Resolve(selected, themed.Fallback, CellPolicy.AmbiguousWidth),
+            new Point(content.X, content.Y),
+            s,
+            BackgroundMode.Transparent);
+        if (Header.Length > 0 && content.Width > 2) { _ = canvas.Clip(new Rect(content.X + 2, content.Y, content.Width - 2, 1)).Draw(Header.AsSpan(), new Point(content.X + 2, content.Y), s, background: BackgroundMode.Transparent); }
+    }
+
+    private void SetGlyph(ref Rune? storage, Rune value, string propertyName)
+    {
+        _ = new ThemedGlyph(value, value);
+        VerifyMutable();
+        if (storage == value) { return; }
+        storage = value;
+        NotifyPropertyChanged(propertyName, ChangeImpact.Render);
     }
 
     /// <inheritdoc/>

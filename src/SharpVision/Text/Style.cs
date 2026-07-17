@@ -11,10 +11,10 @@ internal readonly record struct Style
 
     private Style(
         TerminalAttributes attributes,
-        Color? foreground,
-        Color? background,
+        ThemeColor? foreground,
+        ThemeColor? background,
         Underline underline,
-        Color? underlineColor,
+        ThemeColor? underlineColor,
         string? link)
     {
         Attributes = attributes;
@@ -36,13 +36,13 @@ internal readonly record struct Style
 
     private TerminalAttributes Attributes { get; }
 
-    private Color? Foreground { get; }
+    private ThemeColor? Foreground { get; }
 
-    private Color? Background { get; }
+    private ThemeColor? Background { get; }
 
     private Underline Underline { get; }
 
-    private Color? UnderlineColor { get; }
+    private ThemeColor? UnderlineColor { get; }
 
     private string? Link { get; }
 
@@ -52,10 +52,10 @@ internal readonly record struct Style
     internal static Style From(IReadOnlyList<OpenTag> open)
     {
         var attributes = TerminalAttributes.None;
-        Color? foreground = null;
-        Color? background = null;
+        ThemeColor? foreground = null;
+        ThemeColor? background = null;
         var underline = Underline.None;
-        Color? underlineColor = null;
+        ThemeColor? underlineColor = null;
         string? link = null;
 
         foreach (var tag in open)
