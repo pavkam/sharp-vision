@@ -204,6 +204,28 @@ public sealed class DispatcherTimerTests
         ticks.ShouldBe(0);
     }
 
+    /// <summary>Verifies a late clock signal is harmless after dispatcher shutdown begins.</summary>
+    [Fact]
+    public async Task Advance_WhenDispatcherIsDisposed_DoesNotLeakCallbackFailureAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var timer = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(dispatcher, TimeSpan.FromMilliseconds(200));
+                value.Start();
+                return value;
+            },
+            TestContext.Current.CancellationToken);
+        await dispatcher.DisposeAsync();
+
+        // Act and assert
+        Should.NotThrow(() => clock.Advance(TimeSpan.FromMilliseconds(200)));
+        timer.Dispose();
+    }
+
     /// <summary>Verifies tick handler failures use ordinary dispatcher reporting.</summary>
     [Fact]
     public async Task Tick_WhenHandlerThrows_UsesDispatcherUnhandledPolicyAsync()
