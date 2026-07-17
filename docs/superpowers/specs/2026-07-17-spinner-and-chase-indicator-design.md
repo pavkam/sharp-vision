@@ -123,6 +123,10 @@ starts it when `IsPlaying` is true. `OnDetached` stops and disposes it. A posted
 tick that loses the attachment race becomes a no-op. Reattachment resumes from
 the retained frame or position after a complete interval.
 
+`OnDisposing` also stops and disposes the timer before attached-root disposal
+clears dispatcher context. Detachment followed by disposal remains safe because
+timer disposal is idempotent.
+
 Setting `IsPlaying` to false stops the timer and retains the current phase.
 Setting it to true starts a fresh interval without resetting phase. Changing
 `Interval` validates before mutation and restarts a running timer from the new
