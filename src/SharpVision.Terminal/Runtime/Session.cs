@@ -239,7 +239,14 @@ public sealed class Session: IAsyncDisposable
                 if (deadline is not null && ReferenceEquals(completed, deadline))
                 {
                     await deadline.ConfigureAwait(false);
-                    _ = negotiator!.Expire();
+                    var expired = negotiator!.Expire();
+
+                    if (!expired && !negotiator.IsComplete)
+                    {
+                        deadline = DelayUntilAsync(negotiator.Deadline, linked.Token);
+                        continue;
+                    }
+
                     var capabilities = negotiator.Capabilities;
                     _sink.Profile(capabilities);
                     await EnableOptionalAsync(capabilities, linked.Token)

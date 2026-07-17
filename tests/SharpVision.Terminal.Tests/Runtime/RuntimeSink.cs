@@ -36,6 +36,10 @@ internal sealed class RuntimeSink: ISink
     internal TaskCompletionSource ProfileReceived { get; } =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>Gets completion for the first reported runtime fault.</summary>
+    internal TaskCompletionSource<Exception> FaultReceived { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>Gets the closure callback count.</summary>
     internal int ClosedCount { get; private set; }
 
@@ -112,5 +116,9 @@ internal sealed class RuntimeSink: ISink
     }
 
     /// <inheritdoc/>
-    public void Fault(Exception exception) => Faults.Add(exception);
+    public void Fault(Exception exception)
+    {
+        Faults.Add(exception);
+        _ = FaultReceived.TrySetResult(exception);
+    }
 }

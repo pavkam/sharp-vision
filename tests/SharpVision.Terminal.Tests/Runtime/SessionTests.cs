@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Terminal.Capabilities;
 
 using SharpVision.Terminal.Runtime;
@@ -88,6 +90,63 @@ public sealed class SessionTests
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
         sink.Resizes.ShouldBe([dimensions]);
         sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
+    }
+
+    /// <summary>Verifies an early deadline callback re-arms until the absolute deadline.</summary>
+    [Fact]
+    public async Task RunAsync_WhenDeadlineTimerCompletesBeforeUtcDeadline_RearmsAndPublishesAtDeadlineAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var clock = new EarlyTimerTimeProvider();
+        var limits = Limits.Default with
+        {
+            QueryTimeout = TimeSpan.FromSeconds(1),
+        };
+        var options = RuntimeOptions.Minimal with
+        {
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?> { ["TERM"] = "xterm-kitty" },
+                limits: limits),
+        };
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            options,
+            clock);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var dimensions = new Dimensions(new Size(80, 24));
+        var rearmedOrFaulted = Task.WhenAny(
+            clock.SecondTimerCreated.Task,
+            sink.FaultReceived.Task);
+
+        // Act
+        resize.Resize(dimensions);
+        clock.FireFirstTimerEarly();
+        var firstOutcome = await rearmedOrFaulted.WaitAsync(
+            TestContext.Current.CancellationToken);
+
+        if (ReferenceEquals(firstOutcome, sink.FaultReceived.Task))
+        {
+            ExceptionDispatchInfo.Capture(await sink.FaultReceived.Task).Throw();
+        }
+
+        sink.Profiles.ShouldBeEmpty();
+        sink.Resizes.ShouldBeEmpty();
+        clock.Advance(limits.QueryTimeout);
+        await sink.ProfileReceived.Task.WaitAsync(TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        // Assert
+        _ = sink.Profiles.ShouldHaveSingleItem();
+        sink.Resizes.ShouldBe([dimensions]);
+        sink.Order.ShouldBe(["profile", "resize", "closed"]);
+        sink.Faults.ShouldBeEmpty();
     }
 
     /// <summary>Verifies capacity one sends only DA and can complete startup early.</summary>

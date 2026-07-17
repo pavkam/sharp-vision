@@ -63,6 +63,13 @@ complete negotiation early. At the deadline, absent replies remain absent query
 evidence; they do not become unsupported values and therefore cannot erase
 environment hints or explicit overrides.
 
+The
+[`Runtime.Session` event loop](runtime-event-loop.md#terminal-session-implementation)
+treats deadline-timer completion as a wakeup, not proof that the absolute UTC
+deadline has elapsed. An early callback re-arms against the same deadline;
+profile publication and the retained first resize remain blocked until
+expiration succeeds or validated replies complete negotiation.
+
 The runtime publishes exactly one immutable startup profile before forwarding
 the first resize. Explicit overrides are applied last. Matched, duplicate, late,
 and unsolicited replies remain observable through runtime response events.
