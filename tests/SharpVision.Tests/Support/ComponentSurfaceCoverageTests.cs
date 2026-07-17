@@ -31,9 +31,11 @@ public sealed class ComponentSurfaceCoverageTests
     private static readonly Dictionary<Type, ComponentBehaviorRequirement> _requirements = new()
     {
         [typeof(UiText)] = Requirement<TextSurfaceTests>(_passive | ComponentBehavior.Hover),
+        [typeof(ChaseIndicator)] = Requirement<ChaseIndicatorSurfaceTests>(_passive | ComponentBehavior.HoverExcluded),
         [typeof(FigletText)] = Requirement<FigletTextSurfaceTests>(_passive | ComponentBehavior.Hover),
         [typeof(Prism)] = Requirement<PrismSurfaceTests>(_passive | ComponentBehavior.Hover | ComponentBehavior.Composition),
         [typeof(ProgressBar)] = Requirement<ProgressBarSurfaceTests>(_passive | ComponentBehavior.HoverExcluded),
+        [typeof(Spinner)] = Requirement<SpinnerSurfaceTests>(_passive | ComponentBehavior.HoverExcluded),
         [typeof(Separator)] = Requirement<SeparatorSurfaceTests>(_passive | ComponentBehavior.HoverExcluded),
         [typeof(UiCanvas)] = Requirement<CanvasSurfaceTests>(_passive | ComponentBehavior.Hover | ComponentBehavior.Composition),
         [typeof(Dock)] = Requirement<DockSurfaceTests>(_passive | ComponentBehavior.Hover | ComponentBehavior.Composition),

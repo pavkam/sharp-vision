@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Support;
 
+using SharpVision.Tests.Input;
+
 /// <summary>Mounts one control in a real application and exposes its modeled terminal surface.</summary>
 internal sealed class ComponentSurface: IAsyncDisposable
 {
@@ -12,6 +14,7 @@ internal sealed class ComponentSurface: IAsyncDisposable
         VisualState.Disabled;
     private readonly Application _application;
     private readonly CancellationToken _cancellationToken;
+    private readonly ManualTimeProvider? _timeProvider;
     private readonly Control _mounted;
     private readonly ComponentTerminal _terminal;
 
@@ -19,12 +22,14 @@ internal sealed class ComponentSurface: IAsyncDisposable
         Application application,
         Control mounted,
         ComponentTerminal terminal,
+        ManualTimeProvider? timeProvider,
         CancellationToken cancellationToken)
     {
         _application = application;
         _cancellationToken = cancellationToken;
         _mounted = mounted;
         _terminal = terminal;
+        _timeProvider = timeProvider;
         Pointer = new ComponentPointer(this);
         Keyboard = new ComponentKeyboard(this);
     }
@@ -47,6 +52,23 @@ internal sealed class ComponentSurface: IAsyncDisposable
     internal static async Task<ComponentSurface> MountAsync(
         Control control,
         Size size,
+        CancellationToken cancellationToken) =>
+        await MountAsync(control, size, timeProvider: null, cancellationToken);
+
+    /// <summary>Mounts one detached control with a deterministic application clock.</summary>
+    /// <param name="control">The non-null detached control to mount.</param>
+    /// <param name="size">The positive terminal surface size.</param>
+    /// <param name="timeProvider">The non-null deterministic application clock.</param>
+    /// <param name="cancellationToken">Requests cancellation while the first frame settles.</param>
+    /// <returns>The started component surface after its first rendered frame.</returns>
+    /// <exception cref="ArgumentNullException">A required argument is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A surface dimension is not positive.</exception>
+    /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
+    /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
+    internal static async Task<ComponentSurface> MountAsync(
+        Control control,
+        Size size,
+        ManualTimeProvider? timeProvider,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(control);
@@ -63,7 +85,12 @@ internal sealed class ComponentSurface: IAsyncDisposable
         host.Children.Add(control);
         var terminal = new ComponentTerminal(size);
         _ = terminal.QueueResize(new Dimensions(size));
-        var application = new Application(host, terminal, terminal, TerminalOptions.Minimal);
+        var application = new Application(
+            host,
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            timeProvider: timeProvider);
 
         try
         {
@@ -91,12 +118,60 @@ internal sealed class ComponentSurface: IAsyncDisposable
                 application.Idle -= OnIdle;
             }
 
-            return new ComponentSurface(application, control, terminal, cancellationToken);
+            return new ComponentSurface(
+                application,
+                control,
+                terminal,
+                timeProvider,
+                cancellationToken);
         }
         catch
         {
             await application.DisposeAsync();
             throw;
+        }
+    }
+
+    /// <summary>Advances the deterministic application clock and waits for resulting work to settle.</summary>
+    /// <param name="value">The non-negative duration to advance.</param>
+    /// <param name="description">The non-empty diagnostic action description.</param>
+    /// <returns>A task completed after timer work, rendering, and output settle.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> is negative.</exception>
+    /// <exception cref="ArgumentException"><paramref name="description"/> is empty.</exception>
+    /// <exception cref="InvalidOperationException">The surface has no deterministic clock.</exception>
+    /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    internal async Task AdvanceAsync(TimeSpan value, string description)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(value, TimeSpan.Zero);
+        ArgumentException.ThrowIfNullOrEmpty(description);
+        var timeProvider = _timeProvider ?? throw new InvalidOperationException(
+            "The component surface was mounted without a deterministic clock.");
+        var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnIdle(object? sender, EventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            _ = idle.TrySetResult();
+        }
+
+        _application.Idle += OnIdle;
+
+        try
+        {
+            timeProvider.Advance(value);
+            await _application.Dispatcher.InvokeAsync(static () => { }, _cancellationToken);
+            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException(
+                $"Component clock action '{description}' did not settle. Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
+                exception);
+        }
+        finally
+        {
+            _application.Idle -= OnIdle;
         }
     }
 
