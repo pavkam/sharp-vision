@@ -106,6 +106,12 @@ public sealed class NavigationView: CompositeControl
             entry is NavigationViewItem or NavigationViewGroup or NavigationViewSeparator,
             "Navigation view entries are constrained by typed collection overloads.");
         var stack = isFooter ? _footerStack : _itemsStack;
+
+        if (entry is NavigationViewSeparator)
+        {
+            entry.Width = Length.Percent(100);
+        }
+
         stack.Children.Add(entry);
 
         if (entry is NavigationViewItem item)
@@ -120,6 +126,9 @@ public sealed class NavigationView: CompositeControl
     internal bool RemoveEntry(Control entry, bool isFooter)
     {
         var stack = isFooter ? _footerStack : _itemsStack;
+        var selectedIndex = SelectedItem is { } selected
+            ? CollectSelectableItems().IndexOf(selected)
+            : -1;
 
         if (!stack.Children.Remove(entry))
         {
@@ -132,7 +141,8 @@ public sealed class NavigationView: CompositeControl
 
             if (ReferenceEquals(SelectedItem, item))
             {
-                Select(null);
+                var remaining = CollectSelectableItems();
+                Select(remaining.Count == 0 ? null : remaining[Math.Min(selectedIndex, remaining.Count - 1)]);
             }
         }
 
@@ -163,6 +173,32 @@ public sealed class NavigationView: CompositeControl
         Select(item);
     }
 
+    /// <summary>Repairs selection after a retained group changes descendant visibility.</summary>
+    /// <param name="group">The non-null owned group that changed expansion.</param>
+    internal void NotifyGroupVisibilityChanged(NavigationViewGroup group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+
+        if (SelectedItem is null || SelectedItem.EffectiveIsVisible)
+        {
+            return;
+        }
+
+        var remaining = CollectSelectableItems();
+        Select(remaining.Count == 0 ? null : remaining[0]);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (focused && SelectedItem is null)
+        {
+            Select(CollectSelectableItems().FirstOrDefault());
+        }
+    }
+
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
     {
         _ = sender;
@@ -185,6 +221,19 @@ public sealed class NavigationView: CompositeControl
             return;
         }
 
+        if (eventArgs.Stroke.Code is Code.Home or Code.End)
+        {
+            var endpoints = CollectSelectableItems();
+
+            if (endpoints.Count > 0)
+            {
+                Select(eventArgs.Stroke.Code == Code.Home ? endpoints[0] : endpoints[^1]);
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
         if (eventArgs.Stroke.Code == Code.Up)
         {
             direction = -1;
@@ -201,12 +250,17 @@ public sealed class NavigationView: CompositeControl
         var all = CollectSelectableItems();
         var current = SelectedItem is { } selected ? all.IndexOf(selected) : -1;
         var next = current + direction;
+        eventArgs.Handled = true;
 
         if (next >= 0 && next < all.Count)
         {
-            Select(all[next]);
-            _ = _itemsStack.BringIntoView(all[next]);
-            eventArgs.Handled = true;
+            var item = all[next];
+            Select(item);
+
+            if (IsDescendantOf(item, _itemsStack))
+            {
+                _ = _itemsStack.BringIntoView(item);
+            }
         }
     }
 
@@ -279,5 +333,18 @@ public sealed class NavigationView: CompositeControl
                 }
             }
         }
+    }
+
+    private static bool IsDescendantOf(Control control, Control ancestor)
+    {
+        for (var current = control.Parent; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, ancestor))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

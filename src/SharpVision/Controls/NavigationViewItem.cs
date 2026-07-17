@@ -72,14 +72,16 @@ public sealed class NavigationViewItem: Pressable
             canvas.Clear(Bounds, style);
         }
 
-        if (Bounds.Width == 0 || Bounds.Height == 0)
+        var bounds = ContentBounds;
+
+        if (bounds.Width == 0 || bounds.Height == 0)
         {
             return;
         }
 
         var marker = _isSelected || IsPointerOver ? "›" : "·";
         var prefix = Glyph is not null ? $"{Glyph} " : string.Empty;
-        _ = canvas.Draw($" {marker} {prefix}{Header}".AsSpan(), new Point(Bounds.X, Bounds.Y), style);
+        _ = canvas.Clip(bounds).Draw($" {marker} {prefix}{Header}".AsSpan(), new Point(bounds.X, bounds.Y), style);
     }
 
     /// <inheritdoc/>

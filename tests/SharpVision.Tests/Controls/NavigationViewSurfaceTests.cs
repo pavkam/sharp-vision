@@ -7,6 +7,14 @@ namespace SharpVision.Tests.Controls;
 public sealed class NavigationViewSurfaceTests
 {
     /// <summary>Verifies header, main, group, separators, footer, border, indentation, and Unicode draw exact cells.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(NavigationViewSeparator),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.HoverExcluded |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded)]
     [Fact]
     public async Task Render_WhenEverySectionIsPresent_DrawsExactRetainedSidebarAsync()
     {
@@ -15,13 +23,15 @@ public sealed class NavigationViewSurfaceTests
         var group = new NavigationViewGroup { Header = "Tools" };
         group.AddItem(new NavigationViewItem { Header = "Edit" });
         var about = new NavigationViewItem { Header = "About", Glyph = "界" };
+        var mainSeparator = new NavigationViewSeparator();
+        var footerSeparator = new NavigationViewSeparator();
         var view = CreateView("界 NAV", 20);
         view.BorderThickness = new Thickness(1);
         view.BorderGlyphs = Glyphs.Rounded;
         view.Items.Add(home);
         view.Items.Add(group);
-        view.Items.Add(new NavigationViewSeparator());
-        view.FooterItems.Add(new NavigationViewSeparator());
+        view.Items.Add(mainSeparator);
+        view.FooterItems.Add(footerSeparator);
         view.FooterItems.Add(about);
         await using var surface = await ComponentSurface.MountAsync(
             view,
@@ -45,9 +55,36 @@ public sealed class NavigationViewSurfaceTests
         surface.Cell(new Point(4, 7)).Text.ShouldBe("界");
         surface.Cell(new Point(5, 7)).IsContinuation.ShouldBeTrue();
         view.SelectedItem.ShouldBeNull();
+
+        // Act and assert excluded separator interaction
+        await surface.Pointer.MoveToAsync(mainSeparator);
+        mainSeparator.IsPointerOver.ShouldBeFalse();
+        mainSeparator.IsFocused.ShouldBeFalse();
+        mainSeparator.IsPressed.ShouldBeFalse();
     }
 
     /// <summary>Verifies Tab entry, pointer selection, arrows, Home/End, disabled skipping, footer traversal, and event order.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(NavigationView),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.Focus |
+        ComponentBehavior.Tab |
+        ComponentBehavior.Directional |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Activation |
+        ComponentBehavior.UnavailableCleanup |
+        ComponentBehavior.Composition)]
+    [ComponentBehaviorEvidence(
+        typeof(NavigationViewItem),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressRelease |
+        ComponentBehavior.Activation |
+        ComponentBehavior.UnavailableCleanup)]
     [Fact]
     public async Task Input_WhenItemsNavigate_UsesOneFlatEligibleSelectionOrderAsync()
     {
@@ -75,12 +112,14 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert first entry
         view.SelectedItem.ShouldBeSameAs(first);
-        surface.ShouldHaveState(first, VisualState.Focused);
+        surface.ShouldHaveState(view, VisualState.Focused);
+        first.IsFocused.ShouldBeFalse();
         first.IsSelected.ShouldBeTrue();
 
         // Act flat navigation
         await surface.Keyboard.PressAsync(Code.Down);
         view.SelectedItem.ShouldBeSameAs(child);
+        surface.ShouldHaveFocus(view);
         await surface.Keyboard.PressAsync(Code.Down);
         view.SelectedItem.ShouldBeSameAs(footer);
         await surface.Keyboard.PressAsync(Code.Down);
@@ -94,15 +133,51 @@ public sealed class NavigationViewSurfaceTests
         disabled.IsSelected.ShouldBeFalse();
         observations.ShouldBe(["First", "Child", "Footer", "First", "Footer"]);
 
-        // Act pointer parity
-        await surface.Pointer.ClickAsync(first);
+        // Act pointer parity through distinct held and released states
+        await surface.Pointer.MoveToAsync(first);
+        await surface.Pointer.PressAsync();
+
+        // Assert item press does not steal root focus or select before release
+        first.IsPressed.ShouldBeTrue();
+        first.IsFocused.ShouldBeFalse();
+        view.SelectedItem.ShouldBeSameAs(footer);
+        surface.ShouldHaveCapture(first);
+
+        // Act release
+        await surface.Pointer.ReleaseAsync();
 
         // Assert pointer selection
         view.SelectedItem.ShouldBeSameAs(first);
-        surface.ShouldHaveState(first, VisualState.PointerOver | VisualState.Focused);
+        surface.ShouldHaveState(view, VisualState.PointerOver | VisualState.Focused);
+        surface.ShouldHaveState(first, VisualState.PointerOver);
+        first.IsPressed.ShouldBeFalse();
+
+        // Act unavailable while another item press is held
+        await surface.Pointer.PressAsync();
+        await surface.UpdateAsync(() => first.IsEnabled = false, "disable held NavigationViewItem");
+
+        // Assert item cleanup preserves completed selection
+        first.IsPressed.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+        view.SelectedItem.ShouldBeSameAs(first);
+
+        // Act and assert focus-owner cleanup
+        await surface.UpdateAsync(() => view.IsEnabled = false, "disable focused NavigationView");
+        view.IsPressed.ShouldBeFalse();
+        view.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveFocus(null);
     }
 
     /// <summary>Verifies pointer and keyboard group toggles repair selection when descendants disappear.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(NavigationViewGroup),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task Input_WhenSelectedGroupCollapses_RepairsSelectionAndRetainedBoundsAsync()
     {
@@ -142,8 +217,8 @@ public sealed class NavigationViewSurfaceTests
 
             """);
 
-        // Act keyboard expand
-        await surface.Keyboard.PressAsync(Code.Enter);
+        // Act pointer expand
+        await surface.Pointer.ClickAsync(group, new Point(1, 0));
 
         // Assert expanded
         group.IsExpanded.ShouldBeTrue();
@@ -189,11 +264,11 @@ public sealed class NavigationViewSurfaceTests
         view.SelectedItem.ShouldBeSameAs(items[^1]);
         surface.ShouldRender("""
              NAV
-             · Page 4  │
-             · Page 5  │
-             · Page 6  ┃
-             · Page 7  ┃
-             › Page 8  ┃
+             · Page 4  ░
+             · Page 5  ░
+             · Page 6  ▓
+             · Page 7  ▓
+             › Page 8  ▓
              · Footer
             """);
 

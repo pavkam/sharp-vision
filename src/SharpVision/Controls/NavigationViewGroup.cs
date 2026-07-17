@@ -54,6 +54,7 @@ public sealed class NavigationViewGroup: Control
             if (SetProperty(ref field, value, ChangeImpact.Measure))
             {
                 _stack.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+                FindNavigationView()?.NotifyGroupVisibilityChanged(this);
             }
         }
     } = true;
@@ -89,7 +90,7 @@ public sealed class NavigationViewGroup: Control
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var headerCells = (int) Math.Min(int.MaxValue, 2L + Terminal.Unicode.Width.Measure(Header).Cells);
+        var headerCells = (int) Math.Min(int.MaxValue, 3L + Terminal.Unicode.Width.Measure(Header).Cells);
         var childrenDesired = MeasureChild(_stack, constraint);
         var childrenHeight = IsExpanded ? childrenDesired.Height : 0;
         return new Size(
@@ -100,10 +101,10 @@ public sealed class NavigationViewGroup: Control
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        if (IsExpanded && bounds.Height > 1)
-        {
-            ArrangeChild(_stack, new Rect(bounds.X, bounds.Y + 1, bounds.Width, bounds.Height - 1), ResolvedAxes.Both);
-        }
+        var slot = IsExpanded && bounds.Height > 1
+            ? new Rect(bounds.X, bounds.Y + 1, bounds.Width, bounds.Height - 1)
+            : default;
+        ArrangeChild(_stack, slot, ResolvedAxes.Both);
     }
 
     /// <inheritdoc/>
@@ -127,11 +128,37 @@ public sealed class NavigationViewGroup: Control
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
-        if (!eventArgs.Handled &&
-            eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press, Code: Code.Enter } })
+        if (eventArgs.Handled)
+        {
+            return;
+        }
+
+        var keyboard = eventArgs is KeyEventArgs { Stroke: { Action: KeyAction.Press, Code: Code.Enter } };
+        var pointer = eventArgs is PointerEventArgs
+        {
+            Pointer.Action: PointerAction.Release,
+            Pointer.Buttons: var buttons,
+            LocalCells.Y: 0,
+        } && (buttons & Buttons.Primary) != 0;
+
+        if (keyboard || pointer)
         {
             IsExpanded = !IsExpanded;
             eventArgs.Handled = true;
         }
     }
+
+    private NavigationView? FindNavigationView()
+    {
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (current is NavigationView view)
+            {
+                return view;
+            }
+        }
+
+        return null;
+    }
+
 }

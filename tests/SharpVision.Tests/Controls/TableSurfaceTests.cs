@@ -47,6 +47,46 @@ public sealed class TableSurfaceTests
         surface.Cell(new Point(13, 2)).IsContinuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies physical pointer state does not make a passive table grid look interactive.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(Table),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Composition)]
+    [Fact]
+    public async Task Pointer_WhenMovedOverPassiveTable_PreservesGridAppearanceAsync()
+    {
+        // Arrange
+        var table = new Table
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        table.Columns.Add(TableColumn.Fixed("A", 4));
+        table.Columns.Add(TableColumn.Fixed("B", 4));
+        table.Rows.Add(new TableRow([new ControlText("one"), new ControlText("two")]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(9, 3),
+            TestContext.Current.CancellationToken);
+        var gridPoint = new Point(4, 1);
+        var before = surface.Cell(gridPoint).Style.Foreground;
+
+        // Act
+        await surface.Pointer.MoveToAsync(table);
+
+        // Assert
+        table.IsPointerOver.ShouldBeTrue();
+        table.CanFocus.ShouldBeFalse();
+        table.IsFocused.ShouldBeFalse();
+        table.IsPressed.ShouldBeFalse();
+        surface.Cell(gridPoint).Style.Foreground.ShouldBe(before);
+    }
+
     /// <summary>Verifies row removal and reinsertion reflows clickable cells and clears abandoned rows.</summary>
     [Fact]
     public async Task UpdateAsync_WhenClickableRowIsRemovedAndReused_ReflowsWithoutStaleCellsAsync()

@@ -10,6 +10,7 @@ using UiList = List;
 public sealed class ListSurfaceTests
 {
     /// <summary>Verifies hover paints only the targeted row while the focus-owning List stays neutral.</summary>
+    [ComponentBehaviorEvidence(typeof(UiList), ComponentBehavior.Hover)]
     [Fact]
     public async Task Pointer_WhenMovedOverItem_HighlightsOnlyTargetedRowAsync()
     {
@@ -43,6 +44,16 @@ public sealed class ListSurfaceTests
     }
 
     /// <summary>Verifies pointer and keyboard paths commit selection, focus, invocation, and Unicode appearance.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(UiList),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Focus |
+        ComponentBehavior.Tab |
+        ComponentBehavior.Directional |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Activation |
+        ComponentBehavior.UnavailableCleanup |
+        ComponentBehavior.Composition)]
     [Fact]
     public async Task Input_WhenPointerAndKeyboardNavigate_SelectsAndInvokesExactRowsAsync()
     {
@@ -86,7 +97,8 @@ public sealed class ListSurfaceTests
         // Assert pointer
         list.SelectedIndex.ShouldBe(1);
         list.ActiveIndex.ShouldBe(1);
-        surface.ShouldHaveState(realized[1].Parent.ShouldNotBeNull(), VisualState.PointerOver | VisualState.Focused);
+        surface.ShouldHaveState(list, VisualState.PointerOver | VisualState.Focused);
+        surface.ShouldHaveState(realized[1].Parent.ShouldNotBeNull(), VisualState.PointerOver);
         (realized[1].Parent.ShouldNotBeNull().GetAppearanceState() & VisualState.Selected)
             .ShouldBe(VisualState.Selected);
         surface.Cell(new Point(1, 1)).IsContinuation.ShouldBeTrue();
@@ -101,7 +113,7 @@ public sealed class ListSurfaceTests
         // Assert keyboard
         list.SelectedIndex.ShouldBe(0);
         list.ActiveIndex.ShouldBe(2);
-        surface.ShouldHaveState(realized[2].Parent.ShouldNotBeNull(), VisualState.Focused);
+        surface.ShouldHaveState(list, VisualState.PointerOver | VisualState.Focused);
         invoked.ShouldBe([(1, ActivationCause.Pointer), (0, ActivationCause.Keyboard)]);
         selectionOrder.ShouldBe([
             "changing:1:",
@@ -109,6 +121,15 @@ public sealed class ListSurfaceTests
             "changing:0:1",
             "changed:0:1",
         ]);
+
+        // Act unavailable while focused
+        await surface.UpdateAsync(() => list.IsEnabled = false, "disable focused List");
+
+        // Assert cleanup without semantic press state
+        list.IsPressed.ShouldBeFalse();
+        list.IsFocused.ShouldBeFalse();
+        surface.ShouldHaveFocus(null);
+        surface.ShouldHaveCapture(null);
     }
 
     /// <summary>Verifies modified pointer selection and arrow navigation skip an unavailable realized item.</summary>
@@ -145,7 +166,7 @@ public sealed class ListSurfaceTests
 
         // Assert disabled skip
         list.ActiveIndex.ShouldBe(1);
-        surface.ShouldHaveState(realized[1].Parent.ShouldNotBeNull(), VisualState.Focused);
+        surface.ShouldHaveState(list, VisualState.PointerOver | VisualState.Focused);
         realized[2].EffectiveIsEnabled.ShouldBeFalse();
     }
 

@@ -9,6 +9,7 @@ using SharpVision.Terminal.Input;
 public sealed class TabControl: ItemsControl
 {
     private readonly Stack _stack;
+    private int _pressedHeaderIndex = -1;
     private int _selectedIndex = -1;
 
     /// <summary>Initializes an empty tab control with typed managed pages.</summary>
@@ -105,7 +106,23 @@ public sealed class TabControl: ItemsControl
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
-        if (eventArgs.Handled || eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key) { return; }
+
+        if (eventArgs.Handled)
+        {
+            return;
+        }
+
+        if (eventArgs is PointerEventArgs pointer)
+        {
+            HandlePointer(pointer);
+            return;
+        }
+
+        if (eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        {
+            return;
+        }
+
         if (key.Stroke.Code == Code.Left && _selectedIndex > 0) { Select(_selectedIndex - 1); eventArgs.Handled = true; }
         else if (key.Stroke.Code == Code.Right && _selectedIndex < ItemControlCount - 1) { Select(_selectedIndex + 1); eventArgs.Handled = true; }
     }
@@ -128,7 +145,145 @@ public sealed class TabControl: ItemsControl
     internal void ClearItems() { ClearItemControls(); Select(-1); }
 
     /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason) { base.OnUnavailable(reason); if (reason == ReleaseReason.Disposed) { SelectionChanged = null; } }
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+
+        if (!focused)
+        {
+            CancelHeaderPress(releaseCapture: true);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
+    {
+        base.OnLostPointerCapture(reason);
+        CancelHeaderPress(releaseCapture: false);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+        CancelHeaderPress(releaseCapture: false);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            SelectionChanged = null;
+        }
+    }
+
+    private void HandlePointer(PointerEventArgs eventArgs)
+    {
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action == PointerAction.Leave)
+        {
+            var wasHeld = _pressedHeaderIndex >= 0;
+            CancelHeaderPress(releaseCapture: true);
+            eventArgs.Handled = wasHeld;
+            return;
+        }
+
+        var index = HeaderIndexAt(eventArgs.LocalCells);
+
+        if (pointer.Action == PointerAction.Press &&
+            (pointer.Buttons & Buttons.Primary) != 0 &&
+            index >= 0 && ItemAt(index).EffectiveIsEnabled)
+        {
+            if (!CapturePointer())
+            {
+                return;
+            }
+
+            _ = RequestFocus();
+            _pressedHeaderIndex = index;
+            SetPressed(true);
+            eventArgs.Handled = true;
+            return;
+        }
+
+        if (_pressedHeaderIndex < 0)
+        {
+            return;
+        }
+
+        var completes = index == _pressedHeaderIndex;
+        SetPressed(completes);
+        eventArgs.Handled = true;
+
+        if (pointer.Action != PointerAction.Release)
+        {
+            return;
+        }
+
+        var selected = _pressedHeaderIndex;
+        _pressedHeaderIndex = -1;
+
+        if (HasPointerCapture)
+        {
+            ReleasePointerCapture();
+        }
+
+        SetPressed(false);
+
+        if (completes)
+        {
+            Select(selected);
+        }
+    }
+
+    private int HeaderIndexAt(Point? local)
+    {
+        if (local is not { Y: 0 } point)
+        {
+            return -1;
+        }
+
+        var x = 0;
+
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            var item = (TabItem) GetItemControl(index);
+            var width = Terminal.Unicode.Width.Measure(item.Header).Cells + 2;
+
+            if (x + width > Bounds.Width)
+            {
+                return -1;
+            }
+
+            if (point.X >= x && point.X < x + width)
+            {
+                return index;
+            }
+
+            x += width;
+
+            if (index < ItemControlCount - 1)
+            {
+                if (point.X == x)
+                {
+                    return -1;
+                }
+
+                x++;
+            }
+        }
+
+        return -1;
+    }
+
+    private void CancelHeaderPress(bool releaseCapture)
+    {
+        _pressedHeaderIndex = -1;
+        SetPressed(false);
+
+        if (releaseCapture && HasPointerCapture)
+        {
+            ReleasePointerCapture();
+        }
+    }
 
     private void Select(int index)
     {
