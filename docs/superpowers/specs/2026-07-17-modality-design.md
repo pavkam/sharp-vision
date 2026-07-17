@@ -153,7 +153,8 @@ remains, an ineligible saved target yields no focus rather than choosing an
 unrelated application control.
 
 Focus restoration uses `FocusReason.Restore` and retains the existing
-transactional changing/lost/gained event order.
+transactional changing/lost/gained event order. Focus changing and changed
+payloads expose the reason while preserving their existing constructor surface.
 
 ## Pointer targeting, hover, pressed state, and capture
 
@@ -170,7 +171,9 @@ Capture owned by an eligible in-plane control continues to win over physical hit
 testing, including drags that leave the plane's visual bounds. Entering a scope
 cancels capture, hover, and press bookkeeping owned outside the new plane. New
 capture requests outside the active plane return false. Capture is never
-restored when a scope exits.
+restored when a scope exits. Capture cancelled only because the active plane
+changed reports a distinct `ModalScopeChanged` loss reason rather than claiming
+that the still-visible control became unavailable.
 
 For `OutsideInteraction.Dismiss`, an uncaptured primary press or wheel outside
 every plane root raises `DismissRequested`. Pointer movement alone does not
@@ -202,7 +205,10 @@ Entering is transactional. If capture cancellation, focus movement, or a
 callback fails, the new scope rolls back before `Enter` throws, and the earliest
 failure remains authoritative. Exiting commits stack state first, attempts all
 capture/focus cleanup and notifications, then rethrows the earliest failure. No
-failure may leave a scope active without returning its handle.
+failure may leave a scope active without returning its handle. Entry rollback
+restores stack and eligible focus state but never reacquires pointer capture
+that was already cancelled; capture restoration is forbidden across every modal
+transition.
 
 `DismissRequested` runs after the manager commits that the outside input is
 consumed. Its handler may synchronously close or dispose the scope. If the
