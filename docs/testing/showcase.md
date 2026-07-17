@@ -2,7 +2,7 @@
 
 ## Showcase testing
 
-The showcase catalog test fixes the exact 28-page inventory and requires Button
+The showcase catalog test fixes the exact 30-page inventory and requires Button
 to be the initial page and Canvas to occupy index 1. Every page contains wrapped
 marked-Text Overview documentation and builds a fresh, detached, independently
 owned live tree. Each entry's tree contains the control named by that sidebar
@@ -26,7 +26,7 @@ The same runtime suite targets an SGR wheel report at the overflowing multiline
 offset remains unchanged, protecting leaf-first wheel routing from future
 regressions.
 
-Virtual-screen assertions render all 28 pages at 30 by 8, 80 by 24, and 140 by
+Virtual-screen assertions render all 30 pages at 30 by 8, 80 by 24, and 140 by
 40 cells. They verify selected identity, the `SHARP VISION` sidebar identity,
 component navigation, non-default cell colors, page headings, automatic
 overflow, semantic text, and every wide-cell continuation relationship. The
@@ -77,3 +77,8 @@ The capture renderer has its own ANSI-to-HTML test, while
 `scripts/capture-showcase.sh` fails if the Release app exits early, never
 renders `SHARP VISION`, `Overview`, and the final Button specimen, or does not
 produce a valid PNG.
+
+Spinner and ChaseIndicator pages expose every built-in pattern through live
+public controls. Dedicated page tests prove representative initial cells, paused
+specimens, non-default chase length, and valid continuation ownership; mounted
+control-surface tests provide deterministic consecutive-frame evidence.
