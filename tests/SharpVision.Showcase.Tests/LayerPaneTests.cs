@@ -129,10 +129,10 @@ public sealed class LayerPaneTests
 
     /// <summary>Verifies four placement actions move one open Popup around one central anchor.</summary>
     [Theory]
-    [InlineData("Above", PopupPlacement.Above)]
-    [InlineData("Below", PopupPlacement.Below)]
-    [InlineData("Left", PopupPlacement.Left)]
-    [InlineData("Right", PopupPlacement.Right)]
+    [InlineData("↑ Above", PopupPlacement.Above)]
+    [InlineData("↓ Below", PopupPlacement.Below)]
+    [InlineData("← Left", PopupPlacement.Left)]
+    [InlineData("Right →", PopupPlacement.Right)]
     public void Popup_WhenPlacementActionRuns_MovesSamePopupAroundAnchor(
         string action,
         PopupPlacement placement)
@@ -141,7 +141,7 @@ public sealed class LayerPaneTests
         var engine = new Engine();
         var size = new Size(100, 160);
         engine.Layout(page, size);
-        var anchor = FindButton(page, "Preview anchor");
+        var anchor = FindButton(page, "⚓ Anchor");
         var popup = ControlTree.FindAll<Popup>(page).Single(value =>
             value.Content is ControlText { Content: "Placement preview" });
         var trigger = FindButton(page, action);
@@ -151,7 +151,7 @@ public sealed class LayerPaneTests
 
         popup.Placement.ShouldBe(placement);
         popup.IsOpen.ShouldBeTrue();
-        ControlTree.Text(page).ShouldContain($"Requested side: {action}");
+        ControlTree.Text(page).ShouldContain($"Requested side: {placement}");
 
         switch (placement)
         {
@@ -203,14 +203,13 @@ public sealed class LayerPaneTests
         var popup = ControlTree.FindAll<Popup>(popupPage).Single(value =>
             value.Content is ControlText { Content: "Placement preview" });
         var popupBackdrop = ControlTree.FindAll<ControlText>(popupPage).Single(value =>
-            value.Content.Contains("Files", StringComparison.Ordinal) &&
-            value.Content.Contains("Ready", StringComparison.Ordinal));
+            value.Content == "Popup placement diagram");
         var window = ControlTree.FindAll<Window>(windowPage).Single(value => value.Title == "Draggable settings");
         var windowBackdrop = ControlTree.FindAll<ControlText>(windowPage).Single(value =>
             value.Content.Contains("Dashboard", StringComparison.Ordinal) &&
             value.Content.Contains("Drag the window", StringComparison.Ordinal));
 
-        FindButton(popupPage, "Below").PerformClick();
+        FindButton(popupPage, "↓ Below").PerformClick();
         engine.Layout(popupPage, new Size(100, 180));
 
         popup.SurfaceBounds.Intersect(popupBackdrop.Parent.ShouldNotBeNull().Bounds).Width.ShouldBeGreaterThan(0);
