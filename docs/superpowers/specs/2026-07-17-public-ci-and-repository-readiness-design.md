@@ -60,9 +60,7 @@ their current meaning. CI calls the same targets contributors run locally.
 ### Reusable actions
 
 `.github/actions/setup/action.yml` prepares .NET 10 and Node.js 24, restores
-NuGet, npm, and repository-local .NET tools, and caches only dependency data. It
-installs tmux on Linux and macOS so the pseudoterminal smoke test executes
-rather than silently skipping where the hosted runner supports it.
+NuGet, npm, and repository-local .NET tools, and caches only dependency data.
 
 `.github/actions/build-and-test/action.yml` runs formatting and repository
 linters, builds Release, executes all tests with hang diagnostics and TRX

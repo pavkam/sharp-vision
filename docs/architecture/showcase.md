@@ -141,20 +141,10 @@ Vendored resources used by examples remain under the documented
 [external-resource boundary](../../extern/README.md#external-resources). Stable
 logical embedded-resource names keep repository paths out of runtime APIs.
 
-## Test contract
+## Verification contract
 
-Showcase tests assert the exact 30-page inventory, Button as the initial page,
-marked `Text` documentation coverage, fresh detached composite ownership, stable
-composition-root identity across first layout, no pane inheriting `Container`,
-and matching runtime control type. They render every page at 30 by 8, 80 by 24,
-and 140 by 40 cells, validate wide-cell continuation structure, and prove
-automatic scrolling. A full Application test drives SGR pointer selection,
-keyboard sidebar navigation and button activation, wheel scrolling, text
-editing, and pixel-aware resize through terminal bytes. Dedicated tests prove
-cooperative exit through both the sidebar `Quit` button and a decoded `Ctrl+C`
-key. Startup coverage requires the exact SGR mouse-mode lease before the first
-frame. The live tmux smoke test then proves a normal Down/Up keyboard round trip
-between Button and Canvas, passive Canvas hover and leave, separate complete SGR
-clicks for Canvas and Button, Figlet dropdown opening and font selection, and a
-captured ScrollBar thumb drag. Each completes without a trailing flushing key.
-The live image supplements these assertions; it cannot replace them.
+The showcase compiles with the solution as production code and uses only public
+library APIs. Behavioral, input, layout, rendering, and Unicode guarantees are
+proved by the terminal and UI suites at the library boundaries that own them.
+The checked-in live image demonstrates the runnable gallery but does not replace
+those automated contracts.

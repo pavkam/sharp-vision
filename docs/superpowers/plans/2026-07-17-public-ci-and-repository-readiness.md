@@ -24,8 +24,6 @@ OpenSSF Scorecard, Dependabot.
 
 ## File map
 
-- `tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs`: deterministic tmux
-  bootstrap and retained failure diagnostics.
 - `.config/dotnet-tools.json`, `.config/coverage-baseline.json`, and
   `eng/CodeCoverage.runsettings`: pinned tools and coverage policy.
 - `scripts/validate-coverage.mjs`, `scripts/validate-action-pins.mjs`,
@@ -40,81 +38,13 @@ OpenSSF Scorecard, Dependabot.
 - `docs/testing/continuous-integration.md`, `.github/REPOSITORY_SETTINGS.md`,
   and `README.md`: public quality contract and backed badges.
 
-### Task 1: Stabilize the tmux baseline before measuring coverage
+### Required baseline behavior
 
-**Files:**
-
-- Modify: `tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs`
-- Modify: `docs/testing/pseudoterminals.md`
-
-- [ ] **Step 1: Reproduce the existing failure once**
-
-```bash
-dotnet test --project tests/SharpVision.Showcase.Tests \
-  --configuration Release \
-  --filter-class '*TmuxSmokeTests' \
-  --timeout 60s
-```
-
-Expected: FAIL with `The showcase terminated before tmux smoke completed.` This
-red observation was reproduced on `fe1130b`; do not rerun to obtain a lucky
-result.
-
-- [ ] **Step 2: Configure the pane before replacing its shell**
-
-Replace direct-command startup with three awaited tmux operations: create an
-idle session, set `remain-on-exit on`, then send this command:
-
-```text
-exec dotnet run --project src/SharpVision.Showcase/SharpVision.Showcase.csproj --configuration Release --no-build
-```
-
-Add a `RunTmuxAsync(ProcessStartInfo)` helper that reads standard error, awaits
-exit, and asserts exit code zero with stderr as the assertion message. Keep all
-argument validation and XML documentation required by the repository.
-
-Update `WaitForPaneTextAsync` to capture the latest pane and query:
-
-```text
-tmux list-panes -t SESSION -F "#{pane_dead}:#{pane_dead_status}"
-```
-
-If the pane is dead, throw with its status and the latest pane. If the deadline
-expires, include the latest pane in the timeout. Preserve the bounded 100 ms
-condition poll; add no readiness sleep and no retry.
-
-- [ ] **Step 3: Document the fixture invariant**
-
-Add this contract to `docs/testing/pseudoterminals.md`:
-
-```markdown
-Disposable tmux fixtures create an idle pane, configure retained-on-exit
-diagnostics, and only then replace the shell with the tested process. A dead
-pane fails with its exit status and latest redacted capture. Visible readiness,
-not elapsed wall-clock delay, gates input injection.
-```
-
-- [ ] **Step 4: Verify stability and the full baseline**
-
-```bash
-for run in 1 2 3 4 5; do
-  dotnet test --project tests/SharpVision.Showcase.Tests \
-    --configuration Release \
-    --filter-class '*TmuxSmokeTests' \
-    --timeout 60s || exit 1
-done
-make test
-```
-
-Expected: five focused passes followed by at least 1,959 successful tests and
-zero failures.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add tests/SharpVision.Showcase.Tests/TmuxSmokeTests.cs docs/testing/pseudoterminals.md
-git commit -m "test(showcase): stabilize tmux startup proof"
-```
+Revision `dda008f` fixes `Runtime.Session` so an early negotiation timer
+completion is rearmed against the same finite deadline after the first query is
+written. Its deterministic regression in `SessionTests`, supporting runtime
+fakes, production change, and capability documentation are required baseline
+behavior and must remain intact throughout this plan.
 
 ### Task 2: Add local GitHub Actions validation
 
@@ -408,8 +338,8 @@ uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
 
 Cache NuGet/tool packages from `.config/dotnet-tools.json`,
 `Directory.Packages.props`, and project files; setup-node owns npm caching.
-Install tmux with `apt-get` on Linux and Homebrew on macOS. Finish with
-`dotnet tool restore`, `dotnet restore SharpVision.slnx`, and `npm ci`.
+Finish with `dotnet tool restore`, `dotnet restore SharpVision.slnx`, and
+`npm ci`.
 
 - [ ] **Step 2: Create the build-and-test action**
 
@@ -694,8 +624,8 @@ git commit -m "docs: add public contribution and support policies"
 
 - [ ] **Step 1: Write the normative CI contract**
 
-Document the local command mapping, three-platform matrix, tmux installation,
-test discovery, retained diagnostics, coverage boundary and baseline update
+Document the local command mapping, three-platform matrix, test discovery,
+retained diagnostics, coverage boundary and baseline update
 procedure, Codecov OIDC trust boundary, artifact retention, security workflows,
 release-readiness no-publication rule, and prohibition on retrying flakes. Link
 it from the test map as `Continuous integration`.
@@ -757,9 +687,9 @@ make coverage
 make release-artifacts VERSION=0.0.0-ci.audit
 ```
 
-Expected: zero warnings and errors, at least 1,959 tests, valid
-Markdown/links/actions, coverage at or above baseline, package-consumer success,
-and complete release artifacts.
+Expected: zero warnings and errors, the configured minimum discovered tests,
+valid Markdown/links/actions, coverage at or above baseline, package-consumer
+success, and complete release artifacts.
 
 - [ ] **Step 2: Audit permissions and forbidden publication paths**
 

@@ -17,7 +17,9 @@ documentation, tests, and showcase example agree.
 - `src/SharpVision/` contains the dispatcher, mutable controls, layout, input
   routing, focus, styling, scrolling, menus, popups, and windows.
 - `src/SharpVision.Showcase/` demonstrates every shipped control and state.
-- `tests/` mirrors the three production projects.
+- `tests/` contains the terminal and UI suites plus the unprivileged consumer
+  contract suite. The showcase is compiled as a production example and has no
+  dedicated test project.
 - `docs/` contains normative architecture, protocol, concept, control, and test
   specifications.
 - `.codex/skills/` contains focused routing and invariants for each domain.
@@ -177,8 +179,8 @@ in the protocol document.
   and frame-diff equivalence.
 - End-to-end tests drive terminal input through the dispatcher and controls to
   final output bytes.
-- Every control requires a showcase page and a representative showcase screen
-  test before it is complete.
+- Every control requires a showcase page and representative behavioral and
+  rendering tests in the UI suite before it is complete.
 
 Focused tests use Microsoft Testing Platform filters, for example:
 

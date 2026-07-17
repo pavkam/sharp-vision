@@ -1,6 +1,6 @@
 ---
 name: testing-quality
-description: Use when designing, generating, reviewing, diagnosing, or running SharpVision unit, randomized, parser-fragmentation, Unicode, rendering, control, integration, pseudoterminal, allocation, performance, snapshot, or showcase tests.
+description: Use when designing, generating, reviewing, diagnosing, or running SharpVision unit, randomized, parser-fragmentation, Unicode, rendering, control, integration, pseudoterminal, allocation, performance, snapshot, or showcase verification.
 ---
 
 # Testing Quality

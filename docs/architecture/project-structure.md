@@ -2,8 +2,10 @@
 
 ## Project structure contract
 
-The solution contains three production projects, one matching test project for
-each, and one deliberately unprivileged consumer-contract test project.
+The solution contains three production projects, matching test projects for the
+terminal and UI libraries, and one deliberately unprivileged consumer-contract
+test project. The showcase is compiled as a production example and has no
+dedicated test project.
 
 ```mermaid
 flowchart LR
@@ -13,13 +15,11 @@ flowchart LR
     TerminalTests["SharpVision.Terminal.Tests"]
     UITests["SharpVision.Tests"]
     ConsumerTests["SharpVision.Consumer.Tests"]
-    ShowcaseTests["SharpVision.Showcase.Tests"]
     UI --> Terminal
     Showcase --> UI
     TerminalTests -. tests .-> Terminal
     UITests -. tests .-> UI
     ConsumerTests -. public contract .-> UI
-    ShowcaseTests -. tests .-> Showcase
 ```
 
 `SharpVision.Terminal` owns protocols, transport, capabilities, input events,

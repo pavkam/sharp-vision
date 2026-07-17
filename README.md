@@ -18,7 +18,10 @@ protocols or controls before their typed tests pass.
   geometry, rendering, capability, and transport library.
 - `SharpVision` is the traditional mutable-control UI toolkit.
 - `SharpVision.Showcase` is the responsive interactive control gallery.
-- Each production project has a matching xUnit v3 test project under `tests/`.
+- The terminal and UI libraries have matching xUnit v3 suites under `tests/`;
+  the unprivileged consumer suite verifies public extension contracts. The
+  showcase is compiled as a production example and has no dedicated test
+  project.
 
 The
 [project structure](docs/architecture/project-structure.md#project-structure-contract)

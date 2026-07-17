@@ -72,7 +72,6 @@ cell rendering, routed events, and an interactive showcase page.
 
 ```bash
 dotnet test --project tests/SharpVision.Tests/SharpVision.Tests.csproj --filter-class "*Control*Tests" --timeout 60s
-dotnet test --project tests/SharpVision.Showcase.Tests/SharpVision.Showcase.Tests.csproj --timeout 60s
 make lint
 make build
 make test

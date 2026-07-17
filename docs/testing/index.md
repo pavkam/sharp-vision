@@ -10,4 +10,3 @@
 - [Randomized testing](randomized.md#randomized-testing)
 - [Pseudoterminals](pseudoterminals.md#pseudoterminal-testing)
 - [Performance](performance.md#performance-testing)
-- [Showcase](showcase.md#showcase-testing)
