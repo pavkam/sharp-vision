@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">SharpVision terminal lens icon</title>
+  <desc id="desc">A terminal window containing a pixel-built eye and a bright square focus cell.</desc>
+  <rect width="1024" height="1024" rx="224" fill="#0b0f14"/>
+  <rect x="128" y="152" width="768" height="720" rx="112" fill="#111827" stroke="#55e6ff" stroke-width="48"/>
+  <path d="M152 312h720" stroke="#2638ff" stroke-width="48"/>
+  <rect x="208" y="214" width="48" height="48" rx="14" fill="#f4f7ff"/>
+  <rect x="288" y="214" width="48" height="48" rx="14" fill="#55e6ff"/>
+  <rect x="368" y="214" width="48" height="48" rx="14" fill="#2638ff"/>
+  <path d="M224 552 352 424h320l128 128-128 128H352L224 552Z" fill="#2638ff"/>
+  <path d="M320 552 400 480h224l80 72-80 72H400l-80-72Z" fill="#0b0f14"/>
+  <rect x="456" y="496" width="112" height="112" rx="20" fill="#55e6ff"/>
+  <path d="m470 518 38 34-38 34v-26l10-8-10-8v-26Z" fill="#0b0f14"/>
+  <rect x="514" y="572" width="34" height="10" rx="5" fill="#0b0f14"/>
+  <rect x="224" y="744" width="240" height="32" rx="16" fill="#f4f7ff"/>
+</svg>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Layout, Input, and Events"
+  short_description: "Keep geometry and event order deterministic"
+  default_prompt: "Use $layout-input-events to implement or review SharpVision layout, scrolling, routing, resize, or idle behavior."

@@ -1,0 +1,23 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Terminal.Rendering;
+
+/// <summary>Combines one cell's connections with its line-family intent.</summary>
+internal readonly struct Topology
+{
+    /// <summary>Initializes one internally validated topology.</summary>
+    /// <param name="connections">The non-empty connection mask.</param>
+    /// <param name="line">The line family.</param>
+    public Topology(LineConnections connections, LineStyle line)
+    {
+        Connections = connections;
+        Line = line;
+    }
+
+    /// <summary>Gets the connection mask.</summary>
+    public LineConnections Connections { get; }
+
+    /// <summary>Gets the line family.</summary>
+    public LineStyle Line { get; }
+}

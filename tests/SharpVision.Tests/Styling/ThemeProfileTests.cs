@@ -1,0 +1,87 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Styling;
+
+/// <summary>Verifies global semantic theme-profile composition.</summary>
+public sealed class ThemeProfileTests
+{
+    /// <summary>Verifies one state overlay changes only the supplied composite member.</summary>
+    [Fact]
+    public void Resolve_WhenPointerIsOver_OverlaysActiveBorderForeground()
+    {
+        var normal = CreateAppearance();
+        var profile = new ThemeProfile(
+            normal,
+            pointerOver: new AppearanceSet(
+                border: new BorderSet(foreground: ThemeColor.ActiveBorder)));
+
+        var resolved = profile.Resolve(VisualState.PointerOver);
+
+        resolved.Border.Foreground.ThemeColor.ShouldBe(ThemeColor.ActiveBorder);
+        resolved.Border.Background.ShouldBe(normal.Border.Background);
+        resolved.Border.GlyphStyle.ShouldBe(normal.Border.GlyphStyle);
+        resolved.Face.ShouldBe(normal.Face);
+        resolved.Shadow.ShouldBe(normal.Shadow);
+    }
+
+    /// <summary>Verifies later state overlays retain the established deterministic precedence.</summary>
+    [Fact]
+    public void Resolve_WhenFocusedAndDisabled_DisabledContributionWins()
+    {
+        var profile = new ThemeProfile(
+            CreateAppearance(),
+            focused: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.FocusedText)),
+            disabled: new AppearanceSet(face: new FaceSet(foreground: ThemeColor.DisabledText)));
+
+        var resolved = profile.Resolve(VisualState.Focused | VisualState.Disabled);
+
+        resolved.Face.Foreground.ThemeColor.ShouldBe(ThemeColor.DisabledText);
+    }
+
+    /// <summary>Verifies frozen themes resolve known global values without a control type.</summary>
+    [Fact]
+    public void ResolveColor_WhenKnownColorIsRequested_ReturnsConfiguredConcreteColor()
+    {
+        var theme = new Theme();
+        theme.SetColor(ThemeColor.ActiveBorder, Color.Rgb(1, 2, 3));
+
+        theme.ResolveColor(ThemeColor.ActiveBorder).ShouldBe(Color.Rgb(1, 2, 3));
+    }
+
+    /// <summary>Verifies a programmatically constructed theme starts with usable role-specific chrome.</summary>
+    [Fact]
+    public void Constructor_WhenProfilesAreNotLoaded_UsesRoleSpecificDefaults()
+    {
+        var theme = new Theme();
+
+        theme.Control.Normal.Border.Sides.ShouldBe(BorderSide.None);
+        theme.Input.Normal.Border.Sides.ShouldBe(BorderSide.All);
+        theme.Input.Normal.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Heavy);
+        theme.Container.Normal.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
+        theme.Window.Normal.Shadow.IsVisible.ShouldBeTrue();
+        theme.Popup.Normal.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
+    }
+
+    private static ThemeAppearance CreateAppearance() => new(
+        new Face(
+            ThemeColor.ControlText,
+            ThemeColor.Control,
+            ThemeDecoration.NormalText,
+            Underline.None,
+            Color.Default),
+        new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Heavy,
+            ThemeColor.ControlBorder,
+            ThemeColor.Control,
+            ThemeDecoration.Border),
+        new Shadow(
+            false,
+            ShadowMode.Composite,
+            default,
+            new Rune('▓'),
+            ThemeColor.ControlShadow,
+            Color.Transparent,
+            ThemeDecoration.Shadow));
+}

@@ -1,0 +1,129 @@
+# Focus
+
+## Focus contract
+
+One control within a `FocusManager` root may hold keyboard focus. A focusable
+control is attached, visible, enabled, and has `CanFocus` set. An active
+[modal plane](modality.md#modal-focus) narrows eligible focus without creating a
+second focus manager.
+
+Focus changes are dispatcher-affine and transactional. Preview handlers may
+cancel a requested change. A committed change updates the manager before lost
+and gained notifications so handlers observe the new state consistently.
+
+`FocusManager` owns one attached root. `Focus(Control?)` rejects foreign
+controls, returns false for ineligible or cancelled targets, and commits
+`Focused` plus both controls' `IsFocused` state before `Lost` and `Gained`. Tree
+mutation during `Changing` is revalidated before commit. Cleanup caused by
+detach, hide, disable, or disposal cannot be cancelled.
+
+## Navigation
+
+`MoveNext()` and `MoveNext(reverse: true)` traverse deterministic tab order.
+After an unhandled key route, the shared control default maps a pressed Tab to
+`MoveNext()` and Shift+Tab to `MoveNext(reverse: true)`. A control-specific
+behavior may handle the key first; for example, `TextInput.AcceptsTab` inserts a
+tab instead of moving focus. Other modifiers remain available to explicit
+control behavior. Explicit and pointer-triggered focus requests use the same
+`Focus(Control?)` validation path. While modality is active, that path rejects
+targets outside the active plane; unhandled Tab and Shift+Tab use the
+[plane-wide traversal contract](modality.md#keyboard-text-and-paste).
+
+`MoveNext(reverse)` sorts eligible members by `TabIndex` and then stable tree
+order, wraps at both ends, and uses the same cancellable transaction as an
+explicit request. Stable tree order descends navigation-participating ownership
+slots on every `Control`, in slot-registration then item order; private content
+and framework parts therefore participate when their slot opts in without
+pretending their owner is a public multi-child `Container`. Controls with a
+semantic visual order, such as `Stack.Reverse`, may override only that local
+navigation order while retaining the same registry membership and eligibility.
+
+A primary pointer press focuses the nearest eligible `CanFocus` member from the
+hit target toward the owned root before routed pointer behavior runs. Clicking
+content inside a focusable composite therefore focuses the composite; clicking a
+focusable leaf focuses that leaf. The committed focus state drives the control's
+`Focused` visual-state overlay. Modal pointer targeting applies the
+[active-plane filter](modality.md#modal-pointer-and-capture) before this focus
+request.
+
+When the modal-eligible hit target belongs to a
+[`Window`](../controls/windows/window.md#chrome-and-interaction), the nearest
+Window is also the pointer-focus boundary. Eligible controls on the hit ancestry
+inside that Window may receive focus; a chrome or background press cannot climb
+past the Window to focus an application-shell ancestor. Window activation is
+independent, so that press still updates `Application.ActiveWindow` when focus
+remains unchanged.
+
+Every committed focus transition updates `Application.ActiveWindow` from the
+nearest Window ancestor of the new focus target. Programmatic focus, pointer
+focus, Tab traversal, access keys, modal entry, and focus release therefore use
+the same activation rule. A committed target outside all Windows, including
+null, clears activation. Focus flags and Window `IsActive` remain separate
+facts.
+
+Detach, hide/collapse, disable, disposal, or manager disposal releases invalid
+focus deterministically.
+
+Disposing `FocusManager` from `Changing`, a control focus-state callback,
+`Lost`, or `Gained` makes the manager unavailable immediately, stops the
+in-flight transition, and completes physical focus and ownership cleanup before
+the enclosing request returns. Any later queued requests complete as rejected in
+their original order. Each completion observes only the failure attached to its
+own request, while the enclosing rethrow preserves an earlier deferred failure
+over later focus callbacks or disposal cleanup. A modal restoration canceled by
+this cleanup treats the disposed manager as a terminal no-focus state rather
+than attempting a new fallback request.
+
+## Hierarchical Tab navigation
+
+Control.TabNavigation governs how a control contributes to its owning navigation
+tree. The modes are:
+
+- Continue: contribute an eligible control, then its descendants in direct
+  sibling order. Reverse traversal visits descendants before the control.
+- Once: contribute one entry: the eligible owner, otherwise the first eligible
+  descendant.
+- Cycle: use Continue order while focus is inside the scope and wrap only at
+  that scope's boundaries.
+- None: an eligible owner contributes itself but its descendants do not enter
+  sequential traversal.
+
+Each owner sorts only its direct navigation participants by TabIndex and
+insertion order. A grandchild therefore never competes directly with a
+grandparent's siblings. Generated framework parts do not participate.
+
+Lists, Menu, NavigationView, and ComboBox use None: the widget owns the one Tab
+stop, and arrows update a current item without moving focus to private item
+faces. TabControl uses Continue: its header owner is a tab stop and the selected
+page contributes ordinary descendant controls. A standalone ScrollBar can be a
+tab stop; generated scrollbar parts cannot.
+
+Setting `CanFocus` to false on the focused control commits the new eligibility
+before synchronously clearing `FocusManager.Focused` and `IsFocused`. This
+cleanup bypasses the cancellable `Changing` event, and `Lost` observes the
+committed false/null state before the `CanFocus` property-change notification.
+If eligibility changes from a `Changing`, `Lost`, or `Gained` callback, cleanup
+waits only for the active transaction guard to unwind and completes before the
+enclosing `Focus` request returns. Its `CanFocus` property-change notification
+is deferred behind that cleanup, preserving the same observable ordering. Focus
+eligibility is local to the control and independent of pointer capture, so this
+transition neither releases capture nor evicts a focused descendant.
+
+Terminal focus from
+[mode 1004](../protocols/paste-focus.md#paste-and-focus-contract) is separate
+from control focus and never invents a new focused control.
+
+[Access keys](access-keys.md#focus-and-semantic-actions) reuse this focus
+manager: focusable captions target themselves, captioned scopes target their
+first eligible descendant in hierarchical tab order, and label-like leaves
+advance from their stable tree anchor. Modal eligibility remains authoritative.
+
+## Test obligations
+
+Cover traversal order, cancellation, event order, disabled/hidden/detached
+targets, [nested modal restoration](modality.md#modal-focus), popup restoration,
+mutation during notification, explicit/pointer navigation, radio/menu arrows,
+terminal focus loss, and resize.
+
+Manager/root disposal tests require every focus flag and inherited manager
+reference to be cleared before descendants are released.

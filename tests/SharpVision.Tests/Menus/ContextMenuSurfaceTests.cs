@@ -1,0 +1,405 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Menus;
+
+/// <summary>Verifies context menu behaviour with real pointer routing across control types and configurations.</summary>
+public sealed class ContextMenuSurfaceTests
+{
+    /// <summary>Verifies right-click on a button with a custom ContextMenu opens the popup.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(ContextMenu),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Transient |
+        ComponentBehavior.Composition)]
+    [Fact]
+    public async Task Pointer_WhenSecondaryPressOnButtonWithContextMenu_OpensMenuAsync()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("Inspect") });
+        menu.Items.Add(new MenuItem { Content = new ControlText("Run") });
+        var button = new Button
+        {
+            Content = new ControlText("Target"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(30, 10), TestContext.Current.CancellationToken);
+
+        menu.IsOpen.ShouldBeFalse();
+        await surface.Pointer.RightClickAsync(button);
+        menu.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies right-click on a TextInput opens the default TextInputContextMenu.</summary>
+    [ComponentBehaviorEvidence(
+        typeof(TextInputContextMenu),
+        ComponentBehavior.Mounted |
+        ComponentBehavior.Hover |
+        ComponentBehavior.FocusExcluded |
+        ComponentBehavior.TabExcluded |
+        ComponentBehavior.DirectionalExcluded |
+        ComponentBehavior.PressReleaseExcluded |
+        ComponentBehavior.Transient |
+        ComponentBehavior.Composition)]
+    [Fact]
+    public async Task Pointer_WhenSecondaryPressOnTextInput_OpensDefaultContextMenuAsync()
+    {
+        var input = new TextInput
+        {
+            Text = "Hello world",
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 12), TestContext.Current.CancellationToken);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        menu.IsOpen.ShouldBeFalse();
+        await surface.Pointer.RightClickAsync(input);
+        menu.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a control without a ContextMenu ignores secondary press.</summary>
+    [Fact]
+    public async Task Pointer_WhenSecondaryPressOnControlWithoutMenu_DoesNothingAsync()
+    {
+        var button = new Button
+        {
+            Content = new ControlText("Plain"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(20, 5), TestContext.Current.CancellationToken);
+
+        button.ContextMenu.ShouldBeNull();
+        await surface.Pointer.RightClickAsync(button);
+        button.ContextMenu.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a disabled control does not show the context menu.</summary>
+    [Fact]
+    public async Task Pointer_WhenSecondaryPressOnDisabledControl_DoesNotOpenMenuAsync()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("Action") });
+        var button = new Button
+        {
+            Content = new ControlText("Disabled"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(1),
+            IsEnabled = false,
+            ContextMenu = menu
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(20, 5), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(button);
+        menu.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies clicking outside an open context menu closes it.</summary>
+    [Fact]
+    public async Task Pointer_WhenClickOutsideOpenMenu_ClosesMenuAsync()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("Action") });
+        var button = new Button
+        {
+            Content = new ControlText("Target"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+        var filler = new ControlText("filler") { Width = Length.Cells(10) };
+        var row = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 1,
+            Children = { button, filler }
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            row, new Size(30, 15), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(button);
+        menu.IsOpen.ShouldBeTrue();
+
+        await surface.Pointer.ClickAsync(filler);
+        menu.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Opening event disables Cut and Copy when there is no selection.</summary>
+    [Fact]
+    public async Task Pointer_WhenTextInputHasNoSelection_DisablesCutAndCopyAsync()
+    {
+        var input = new TextInput
+        {
+            Text = "hello",
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 14), TestContext.Current.CancellationToken);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        await surface.Pointer.RightClickAsync(input);
+
+        ((MenuItem) menu.Items[3]).IsEnabled.ShouldBeFalse();
+        ((MenuItem) menu.Items[4]).IsEnabled.ShouldBeFalse();
+        ((MenuItem) menu.Items[7]).IsEnabled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Undo is disabled on a fresh empty TextInput.</summary>
+    [Fact]
+    public async Task Pointer_WhenEmptyTextInputIsUnedited_DisablesUndoAsync()
+    {
+        var input = new TextInput
+        {
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 14), TestContext.Current.CancellationToken);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        await surface.Pointer.RightClickAsync(input);
+
+        ((MenuItem) menu.Items[0]).IsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies read-only TextInput disables Cut and Paste but allows Copy.</summary>
+    [Fact]
+    public async Task Pointer_WhenTextInputIsReadOnly_DisablesCutAndPasteAsync()
+    {
+        var input = new TextInput
+        {
+            Text = "read only text",
+            IsReadOnly = true,
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 14), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(input);
+        await surface.UpdateAsync(() => input.Select(0, 4), "select text");
+        await surface.Pointer.RightClickAsync(input);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        ((MenuItem) menu.Items[3]).IsEnabled.ShouldBeFalse();
+        ((MenuItem) menu.Items[4]).IsEnabled.ShouldBeTrue();
+        ((MenuItem) menu.Items[5]).IsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies password TextInput disables both Cut and Copy.</summary>
+    [Fact]
+    public async Task Pointer_WhenTextInputIsPassword_DisablesCutAndCopyAsync()
+    {
+        var input = new TextInput
+        {
+            Text = "secret",
+            PasswordCharacter = new Rune('*'),
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 14), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(input);
+        await surface.UpdateAsync(() => input.Select(0, 6), "select all");
+        await surface.Pointer.RightClickAsync(input);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        ((MenuItem) menu.Items[3]).IsEnabled.ShouldBeFalse();
+        ((MenuItem) menu.Items[4]).IsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies empty TextInput disables Select All.</summary>
+    [Fact]
+    public async Task Pointer_WhenTextInputIsEmpty_DisablesSelectAllAsync()
+    {
+        var input = new TextInput
+        {
+            Text = "",
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 14), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(input);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        ((MenuItem) menu.Items[7]).IsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies TextInput with selection enables Cut and Copy.</summary>
+    [Fact]
+    public async Task Pointer_WhenTextInputHasSelection_EnablesCutAndCopyAsync()
+    {
+        var input = new TextInput
+        {
+            Text = "hello world",
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 14), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(input);
+        await surface.UpdateAsync(() => input.Select(0, 5), "select hello");
+        await surface.Pointer.RightClickAsync(input);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        ((MenuItem) menu.Items[3]).IsEnabled.ShouldBeTrue();
+        ((MenuItem) menu.Items[4]).IsEnabled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies TextInput with undo history enables Undo.</summary>
+    [Fact]
+    public async Task Pointer_WhenTextInputHasUndoHistory_EnablesUndoAsync()
+    {
+        var input = new TextInput
+        {
+            Text = "original",
+            Width = Length.Cells(20),
+            Height = Length.Cells(3)
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            input, new Size(30, 14), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(input);
+        await surface.Keyboard.TypeAsync("extra");
+        await surface.Pointer.RightClickAsync(input);
+
+        var menu = input.ContextMenu.ShouldBeOfType<TextInputContextMenu>();
+        ((MenuItem) menu.Items[0]).IsEnabled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies right-click works on a CheckBox with a context menu.</summary>
+    [Fact]
+    public async Task Pointer_WhenSecondaryPressOnCheckBox_OpensAttachedMenuAsync()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("Info") });
+        var check = new CheckBox
+        {
+            Content = new ControlText("Option"),
+            Width = Length.Cells(12),
+            ContextMenu = menu
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            check, new Size(20, 5), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(check);
+        menu.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies replacing a ContextMenu while open closes the old one.</summary>
+    [Fact]
+    public async Task Pointer_WhenMenuReplacedWhileOpen_ClosesOldMenuAsync()
+    {
+        var first = new ContextMenu();
+        first.Items.Add(new MenuItem { Content = new ControlText("First") });
+        var second = new ContextMenu();
+        second.Items.Add(new MenuItem { Content = new ControlText("Second") });
+        var button = new Button
+        {
+            Content = new ControlText("Host"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = first
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(30, 10), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(button);
+        first.IsOpen.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => button.ContextMenu = second, "replace context menu");
+
+        first.IsOpen.ShouldBeFalse();
+        second.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Opening fires before IsOpen becomes true.</summary>
+    [Fact]
+    public async Task Pointer_WhenOpeningEventFires_FiresBeforeIsOpenChangesAsync()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("Test") });
+        var wasOpenDuringOpening = true;
+        menu.Opening += (_, _) => wasOpenDuringOpening = menu.IsOpen;
+        var button = new Button
+        {
+            Content = new ControlText("Host"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(30, 10), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(button);
+        wasOpenDuringOpening.ShouldBeFalse();
+        menu.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Closed event fires after light dismiss.</summary>
+    [Fact]
+    public async Task Pointer_WhenClosedEventFires_ReportsClosedStateAsync()
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("Test") });
+        var closedRaised = false;
+        menu.Closed += (_, _) => closedRaised = true;
+        var button = new Button
+        {
+            Content = new ControlText("Host"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+        var filler = new ControlText("filler") { Width = Length.Cells(10) };
+        var row = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 1,
+            Children = { button, filler }
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            row, new Size(30, 15), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(button);
+        menu.IsOpen.ShouldBeTrue();
+
+        await surface.Pointer.ClickAsync(filler);
+
+        closedRaised.ShouldBeTrue();
+        menu.IsOpen.ShouldBeFalse();
+    }
+}

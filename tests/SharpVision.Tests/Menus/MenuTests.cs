@@ -1,0 +1,492 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Menus;
+
+/// <summary>Verifies typed menu ownership, selection navigation, check states, and cells.</summary>
+public sealed class MenuTests
+{
+    /// <summary>Verifies menus begin with a useful minimum while retaining inherited width configuration.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesConfigurableTenCellMinimumWidth()
+    {
+        // Arrange and act
+        var menu = new Menu();
+
+        // Assert default and validation-before-mutation
+        menu.MinWidth.ShouldBe(10);
+        menu.MaxWidth.ShouldBe(int.MaxValue);
+        _ = Should.Throw<ArgumentException>(() => menu.MaxWidth = 9);
+        menu.MaxWidth.ShouldBe(int.MaxValue);
+
+        // Act and assert direct inherited configuration
+        menu.MinWidth = 0;
+        menu.MaxWidth = 24;
+        menu.MinWidth.ShouldBe(0);
+        menu.MaxWidth.ShouldBe(24);
+    }
+
+    /// <summary>Verifies typed collection ownership selects the first available item and renders compact shared-width rows.</summary>
+    [Fact]
+    public void Items_WhenAdded_UseTypedOwnershipSelectionAndVerticalCells()
+    {
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        menu.Items.Add(
+            new MenuItem { Content = new ControlText("Pinned"), Kind = MenuItemKind.Check, IsChecked = true });
+        menu.Items.Add(new MenuSeparator());
+        var first = menu.Items[0];
+        var second = menu.Items[1];
+        var separator = menu.Items[2];
+        var size = new Size(12, 3);
+        new Engine().Layout(menu, size);
+        using Frame frame = new(size);
+
+        menu.Render(frame.Canvas);
+
+        menu.Items.Count.ShouldBe(3);
+        menu.SelectedIndex.ShouldBe(0);
+        menu.Spacing.ShouldBe(0);
+        first.Bounds.ShouldBe(new Rect(0, 0, menu.Bounds.Width, 1));
+        second.Bounds.ShouldBe(new Rect(0, 1, menu.Bounds.Width, 1));
+        separator.Bounds.ShouldBe(new Rect(0, 2, menu.Bounds.Width, 1));
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("[");
+        FrameOracle.Get(frame, new Point(menu.Bounds.Right - 1, 2)).ShouldBe("─");
+    }
+
+    /// <summary>Verifies directional keys skip separators while focus remains on the menu owner.</summary>
+    [Fact]
+    public async Task Dispatch_WhenDirectionalKeyArrives_SkipsSeparatorAndFocusesNextItemAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var first = new MenuItem { Content = new ControlText("First") };
+            var separator = new MenuSeparator();
+            var second = new MenuItem { Content = new ControlText("Second") };
+            menu.Items.Add(first);
+            menu.Items.Add(separator);
+            menu.Items.Add(second);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(menu).ShouldBeTrue();
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Down,
+                default,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+            menu.SelectedIndex.ShouldBe(2);
+            focus.Focused.ShouldBeSameAs(menu);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies check and named radio items commit state before menu-level invocation reporting.</summary>
+    [Fact]
+    public void PerformInvoke_WhenCheckAndRadioItemsActivate_CommitsStateBeforeEvent()
+    {
+        var menu = new Menu();
+        var check = new MenuItem { Content = new ControlText("Auto save"), Kind = MenuItemKind.Check };
+        var first = new MenuItem
+        {
+            Content = new ControlText("Small"),
+            Kind = MenuItemKind.Radio,
+            GroupName = "size",
+            IsChecked = true
+        };
+        var second = new MenuItem
+        {
+            Content = new ControlText("Large"),
+            Kind = MenuItemKind.Radio,
+            GroupName = "size"
+        };
+        List<string> observed = [];
+        menu.Items.Add(check);
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.ItemInvoked += (_, eventArgs) =>
+            observed.Add($"{eventArgs.Item.Content.ShouldBeOfType<ControlText>().Content}:{eventArgs.Item.IsChecked}");
+
+        check.PerformInvoke();
+        second.PerformInvoke();
+
+        check.IsChecked.ShouldBeTrue();
+        first.IsChecked.ShouldBeFalse();
+        second.IsChecked.ShouldBeTrue();
+        observed.ShouldBe(["Auto save:True", "Large:True"]);
+    }
+
+    /// <summary>Verifies radio property observers see a complete group commit.</summary>
+    [Fact]
+    public void IsChecked_WhenRadioSelectionChanges_StagesEveryFieldBeforePropertyNotifications()
+    {
+        var menu = new Menu();
+        var first = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "size", IsChecked = true };
+        var second = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "size" };
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.IsChecked))
+            {
+                first.IsChecked.ShouldBeFalse();
+                second.IsChecked.ShouldBeTrue();
+                observed = true;
+            }
+        };
+
+        second.IsChecked = true;
+
+        observed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an item reports its invocation before the owning menu forwards it.</summary>
+    [Fact]
+    public void PerformInvoke_WhenItemActivates_RaisesItemBeforeMenuNotification()
+    {
+        var menu = new Menu();
+        var item = new MenuItem();
+        List<string> order = [];
+        menu.Items.Add(item);
+        item.Invoked += (_, _) => order.Add("item");
+        menu.ItemInvoked += (_, _) => order.Add("menu");
+
+        item.PerformInvoke();
+
+        order.ShouldBe(["item", "menu"]);
+    }
+
+    /// <summary>Verifies a separator is never focusable, hit-testable, selectable, or invokable.</summary>
+    [Fact]
+    public async Task MenuSeparator_WhenUsed_RemainsNonInteractiveAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu();
+            var item = new MenuItem { Content = new ControlText("Open") };
+            var separator = new MenuSeparator();
+            menu.Items.Add(item);
+            menu.Items.Add(separator);
+            new Engine().Layout(menu, new Size(12, 1));
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+
+            separator.CanFocus.ShouldBeFalse();
+            separator.HitTest(new Point(separator.Bounds.X, separator.Bounds.Y)).ShouldBeNull();
+            focus.Focus(separator).ShouldBeFalse();
+            _ = Should.Throw<ArgumentException>(() => menu.SelectedIndex = 1);
+            menu.SelectedIndex.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Tab and Shift+Tab move menu selection while private items remain outside traversal.</summary>
+    [Fact]
+    public async Task Dispatch_WhenTabPressed_MovesSelectionWithoutLeavingMenuAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var root = new ProbeContainer();
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var a = new MenuItem { Content = new ControlText("A") };
+            var b = new MenuItem { Content = new ControlText("B") };
+            var c = new MenuItem { Content = new ControlText("C") };
+            var outside = new ProbeControl { Focusable = true };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            root.Children.Add(menu);
+            root.Children.Add(outside);
+            root.Attach(dispatcher);
+            using FocusManager focus = new(root);
+            focus.Focus(menu).ShouldBeTrue();
+            var next = Router.Route(menu, Events.Key, Tab());
+
+            next.Handled.ShouldBeTrue();
+            next.Command.ShouldBe(PostRouteCommand.None);
+            menu.SelectedIndex.ShouldBe(1);
+            focus.Focused.ShouldBeSameAs(menu);
+
+            var previous = Router.Route(menu, Events.Key, Tab(Modifiers.Shift));
+
+            previous.Handled.ShouldBeTrue();
+            previous.Command.ShouldBe(PostRouteCommand.None);
+            menu.SelectedIndex.ShouldBe(0);
+            focus.Focused.ShouldBeSameAs(menu);
+            outside.IsFocused.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Enter invokes the selected private item through the menu focus owner.</summary>
+    [Fact]
+    public async Task Dispatch_WhenEnterIsPressed_InvokesSelectedItemWithKeyboardCauseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var first = new MenuItem { Content = new ControlText("First") };
+            var second = new MenuItem { Content = new ControlText("Second") };
+            menu.Items.Add(first);
+            menu.Items.Add(second);
+            menu.SelectedIndex = 1;
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<(MenuItem Item, ActivationCause Cause)>();
+            menu.ItemInvoked += (_, eventArgs) => invocations.Add((eventArgs.Item, eventArgs.Cause));
+
+            // Act
+            var result = Router.Route(menu, Events.Key, Key(Code.Enter));
+
+            // Assert
+            result.Handled.ShouldBeTrue();
+            invocations.ShouldBe([(second, ActivationCause.Keyboard)]);
+            focus.Focused.ShouldBeSameAs(menu);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies Space holds and then invokes the selected private item exactly once.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpaceCompletes_InvokesSelectedItemOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Content = new ControlText("Run") };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            // Act and assert held state
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+            press.Handled.ShouldBeTrue();
+            item.IsPressed.ShouldBeTrue();
+            invocations.ShouldBeEmpty();
+
+            // Act and assert completion
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release));
+            release.Handled.ShouldBeTrue();
+            item.IsPressed.ShouldBeFalse();
+            invocations.ShouldBe([ActivationCause.Keyboard]);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies private menu items reject external focus.</summary>
+    [Fact]
+    public async Task Focus_WhenMenuItemReceivesExternalFocus_SyncsSelectedIndexAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var a = new MenuItem { Content = new ControlText("A") };
+            var b = new MenuItem { Content = new ControlText("B") };
+            var c = new MenuItem { Content = new ControlText("C") };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            focus.Focus(c).ShouldBeFalse();
+            menu.SelectedIndex.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies arrow navigation wraps current selection while focus remains on the menu.</summary>
+    [Fact]
+    public async Task Dispatch_WhenArrowAfterExternalFocus_NavigatesFromFocusedItemAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var a = new MenuItem { Content = new ControlText("A") };
+            var b = new MenuItem { Content = new ControlText("B") };
+            var c = new MenuItem { Content = new ControlText("C") };
+            menu.Items.Add(a);
+            menu.Items.Add(b);
+            menu.Items.Add(c);
+            menu.Attach(dispatcher);
+            using FocusManager focus = new(menu);
+            menu.SelectedIndex = 2;
+            focus.Focus(menu).ShouldBeTrue();
+
+            _ = Router.Route(menu, Events.Key, new KeyEventArgs(new Stroke(
+                Code.Down,
+                default,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+            menu.SelectedIndex.ShouldBe(0);
+            focus.Focused.ShouldBeSameAs(menu);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies submenu popup presentation follows the owning menu orientation.</summary>
+    [Fact]
+    public void PerformInvoke_WhenSubmenuOpens_UsesAttachedMenuSurfaceAndDirectionalPlacement()
+    {
+        // Arrange horizontal menu
+        var horizontalSubmenu = new Menu { Orientation = Orientation.Vertical };
+        horizontalSubmenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        var horizontalItem = new MenuItem { Content = new ControlText("File"), Submenu = horizontalSubmenu };
+        var horizontal = new Menu
+        {
+            Orientation = Orientation.Horizontal,
+            Height = Length.Cells(1),
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        horizontal.Items.Add(horizontalItem);
+        var horizontalRoot = new Overlay { Children = { horizontal } };
+        var engine = new Engine();
+        engine.Layout(horizontalRoot, new Size(30, 10));
+
+        // Act horizontal
+        horizontalItem.PerformInvoke();
+        engine.Layout(horizontalRoot, new Size(30, 10));
+        var horizontalPopup = OwnedTree.Find<Popup>(horizontalItem).ShouldNotBeNull();
+
+        // Assert horizontal
+        horizontalPopup.Placement.ShouldBe(PopupPlacement.Below);
+        horizontalPopup.SurfaceBounds.Y.ShouldBe(horizontalItem.Bounds.Bottom);
+        horizontalPopup.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
+        horizontalPopup.Face.Background.ShouldBe(ThemeColor.Surface);
+
+        // Arrange vertical menu
+        var verticalSubmenu = new Menu { Orientation = Orientation.Vertical };
+        verticalSubmenu.Items.Add(new MenuItem { Content = new ControlText("Recent") });
+        var verticalItem = new MenuItem { Content = new ControlText("Open"), Submenu = verticalSubmenu };
+        var vertical = new Menu { Orientation = Orientation.Vertical, Width = Length.Cells(8) };
+        vertical.Items.Add(verticalItem);
+        var verticalRoot = new Overlay { Children = { vertical } };
+        engine.Layout(verticalRoot, new Size(30, 10));
+
+        // Act vertical
+        verticalItem.PerformInvoke();
+        engine.Layout(verticalRoot, new Size(30, 10));
+        var verticalPopup = OwnedTree.Find<Popup>(verticalItem).ShouldNotBeNull();
+
+        // Assert vertical
+        verticalPopup.Placement.ShouldBe(PopupPlacement.Right);
+        verticalPopup.SurfaceBounds.X.ShouldBe(verticalItem.Bounds.Right);
+    }
+
+    /// <summary>Verifies every vertical row shares one trailing shortcut edge.</summary>
+    [Fact]
+    public void Render_WhenVerticalItemsHaveDifferentShortcuts_RightAlignsEveryHint()
+    {
+        // Arrange
+        var labelOnly = new MenuItem { Content = new ControlText("Open Recent") };
+        var shortHint = new MenuItem { Content = new ControlText("Run"), ShortcutText = "F5" };
+        var longHint = new MenuItem { Content = new ControlText("Save"), ShortcutText = "Ctrl+S" };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(labelOnly);
+        menu.Items.Add(shortHint);
+        menu.Items.Add(longHint);
+        var size = new Size(30, 3);
+        new Engine().Layout(menu, size);
+        using Frame frame = new(size);
+
+        // Act
+        menu.Render(frame.Canvas);
+
+        // Assert
+        menu.DesiredSize.Width.ShouldBe(19);
+        labelOnly.Bounds.Width.ShouldBe(19);
+        shortHint.Bounds.Right.ShouldBe(longHint.Bounds.Right);
+        FrameOracle.Get(frame, new Point(11, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(12, 0)).ShouldBeEmpty();
+        FrameOracle.Get(frame, new Point(shortHint.Bounds.Right - 2, 1)).ShouldBe("F");
+        FrameOracle.Get(frame, new Point(longHint.Bounds.Right - 6, 2)).ShouldBe("C");
+        FrameOracle.Get(frame, new Point(shortHint.Bounds.Right - 1, 1)).ShouldBe("5");
+        FrameOracle.Get(frame, new Point(longHint.Bounds.Right - 1, 2)).ShouldBe("S");
+    }
+
+    private static KeyEventArgs Key(Code code) => new(new Stroke(
+        code,
+        default,
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press));
+
+    private static KeyEventArgs Space(KeyAction action) => new(new Stroke(
+        Code.Character,
+        new Rune(' '),
+        nativeCode: 0,
+        Modifiers.None,
+        action));
+
+    private static KeyEventArgs Tab(Modifiers modifiers = Modifiers.None) => new(new Stroke(
+        Code.Tab,
+        default,
+        nativeCode: 0,
+        modifiers,
+        KeyAction.Press));
+
+    /// <summary>Verifies changing a checked item to command clears checked state before observers.</summary>
+    [Fact]
+    public void Kind_WhenCheckedItemBecomesCommand_StagesUncheckedStateBeforeNotification()
+    {
+        var item = new MenuItem { Kind = MenuItemKind.Check, IsChecked = true };
+        var observed = false;
+        item.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.Kind))
+            {
+                item.Kind.ShouldBe(MenuItemKind.Command);
+                item.IsChecked.ShouldBeFalse();
+                observed = true;
+            }
+        };
+
+        item.Kind = MenuItemKind.Command;
+
+        observed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies moving a checked radio item resolves its destination before GroupName publication.</summary>
+    [Fact]
+    public void GroupName_WhenCheckedRadioMoves_ResolvesDestinationBeforePropertyNotification()
+    {
+        var menu = new Menu();
+        var first = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "a", IsChecked = true };
+        var second = new MenuItem { Kind = MenuItemKind.Radio, GroupName = "b", IsChecked = true };
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var observed = false;
+        first.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(MenuItem.GroupName))
+            {
+                first.IsChecked.ShouldBeTrue();
+                second.IsChecked.ShouldBeFalse();
+                observed = true;
+            }
+        };
+
+        first.GroupName = "b";
+
+        observed.ShouldBeTrue();
+    }
+}

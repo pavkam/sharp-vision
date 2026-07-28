@@ -1,0 +1,67 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Styling;
+
+/// <summary>Defines immutable progress-track, fill, and ordered fractional glyphs.</summary>
+internal sealed class ProgressGlyphs
+{
+    private const int _levelCount = 9;
+    private readonly ControlGlyph[] _horizontalFractions;
+    private readonly ControlGlyph[] _verticalFractions;
+
+    /// <summary>Initializes a complete progress glyph family.</summary>
+    /// <param name="empty">The empty-track glyph.</param>
+    /// <param name="full">The fully filled glyph.</param>
+    /// <param name="indeterminate">The indeterminate-state glyph.</param>
+    /// <param name="horizontalFractions">Nine horizontal levels from empty through full.</param>
+    /// <param name="verticalFractions">Nine vertical levels from empty through full.</param>
+    /// <exception cref="ArgumentException">
+    /// A fractional sequence does not contain nine entries or its endpoints do not match
+    /// <paramref name="empty"/> and <paramref name="full"/>.
+    /// </exception>
+    public ProgressGlyphs(
+        ControlGlyph empty,
+        ControlGlyph full,
+        ControlGlyph indeterminate,
+        ReadOnlySpan<ControlGlyph> horizontalFractions,
+        ReadOnlySpan<ControlGlyph> verticalFractions)
+    {
+        Validate(horizontalFractions, empty, full, nameof(horizontalFractions));
+        Validate(verticalFractions, empty, full, nameof(verticalFractions));
+        Empty = empty;
+        Full = full;
+        Indeterminate = indeterminate;
+        _horizontalFractions = horizontalFractions.ToArray();
+        _verticalFractions = verticalFractions.ToArray();
+    }
+
+    /// <summary>Gets the empty-track glyph.</summary>
+    public ControlGlyph Empty { get; }
+
+    /// <summary>Gets the fully filled glyph.</summary>
+    public ControlGlyph Full { get; }
+
+    /// <summary>Gets the indeterminate-state glyph.</summary>
+    public ControlGlyph Indeterminate { get; }
+
+    /// <summary>Gets nine horizontal levels from empty through full.</summary>
+    public ReadOnlyMemory<ControlGlyph> HorizontalFractions => _horizontalFractions;
+
+    /// <summary>Gets nine vertical levels from empty through full.</summary>
+    public ReadOnlyMemory<ControlGlyph> VerticalFractions => _verticalFractions;
+
+    private static void Validate(
+        ReadOnlySpan<ControlGlyph> values,
+        ControlGlyph empty,
+        ControlGlyph full,
+        string name)
+    {
+        if (values.Length != _levelCount || values[0] != empty || values[^1] != full)
+        {
+            throw new ArgumentException(
+                "Progress fractions must contain nine levels whose endpoints match empty and full.",
+                name);
+        }
+    }
+}

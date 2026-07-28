@@ -1,0 +1,158 @@
+name: 📦 Publish SharpVision
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NUGET_SOURCE: https://api.nuget.org/v3/index.json
+
+jobs:
+  publish:
+    name: 📦 Build and Publish
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.package-version.outputs.version }}
+      ui_deployed: ${{ steps.published-versions.outputs.ui_deployed }}
+
+    steps:
+      - name: ☁️ Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: ⚙️ Set up repository
+        uses: ./.github/actions/setup
+
+      - name: ⏯️ Build and test
+        uses: ./.github/actions/build-and-test
+
+      - name: 🔖 Read package version
+        id: package-version
+        shell: bash
+        run: |
+          ui_version="$(dotnet msbuild src/SharpVision/SharpVision.csproj -getProperty:OverallVersion | tail -n 1)"
+
+          if [[ ! "$ui_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "SharpVision version is not a valid semver string: $ui_version" >&2
+            exit 1
+          fi
+
+          echo "version=$ui_version" >> "$GITHUB_OUTPUT"
+
+      - name: 🔎 Check if package is already published
+        id: published-versions
+        shell: bash
+        env:
+          VERSION: ${{ steps.package-version.outputs.version }}
+        run: |
+          package_url="https://api.nuget.org/v3-flatcontainer/sharpvision/$VERSION/sharpvision.$VERSION.nupkg"
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$package_url")"
+
+          case "$status" in
+            200)
+              echo "ui_deployed=yes" >> "$GITHUB_OUTPUT"
+              echo "SharpVision $VERSION is already published."
+              ;;
+            404)
+              echo "ui_deployed=no" >> "$GITHUB_OUTPUT"
+              echo "SharpVision $VERSION is not published yet."
+              ;;
+            *)
+              echo "Unexpected NuGet response: HTTP $status" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: 📦 Pack SharpVision
+        if: ${{ steps.published-versions.outputs.ui_deployed == 'no' }}
+        shell: bash
+        env:
+          VERSION: ${{ steps.package-version.outputs.version }}
+        run: |
+          rm -rf artifacts/package
+          mkdir -p artifacts/package
+
+          dotnet pack src/SharpVision/SharpVision.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output artifacts/package
+
+          expected_files=(
+            "SharpVision.$VERSION.nupkg"
+            "SharpVision.$VERSION.snupkg"
+          )
+          mapfile -t package_files < <(find artifacts/package -maxdepth 1 -type f -printf '%f\n' | sort)
+
+          if [[ "${package_files[*]}" != "${expected_files[*]}" ]]; then
+            echo "Unexpected package output. Only SharpVision package and symbols are expected:" >&2
+            printf '  %s\n' "${package_files[@]}" >&2
+            exit 1
+          fi
+
+          echo "Verified package output: ${package_files[*]}"
+
+      - name: 🚀 Publish SharpVision package
+        if: ${{ steps.published-versions.outputs.ui_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ steps.package-version.outputs.version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.${VERSION}.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+      - name: 🚀 Publish SharpVision symbols
+        if: ${{ steps.published-versions.outputs.ui_deployed == 'no' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+          VERSION: ${{ steps.package-version.outputs.version }}
+        run: >-
+          dotnet nuget push "artifacts/package/SharpVision.${VERSION}.snupkg"
+          --api-key "$NUGET_API_KEY"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
+
+  summary:
+    name: ✔️ Generate publish summary
+    needs: publish
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📝 Write summary
+        shell: bash
+        run: |
+          if [[ "${{ needs.publish.result }}" == "success" ]]; then
+            if [[ "${{ needs.publish.outputs.ui_deployed }}" == "no" ]]; then
+              ui_status="✅ Published"
+            else
+              ui_status="✅ Already published"
+            fi
+
+            {
+              echo "## NuGet package"
+              echo
+              echo "| Package | Status | Version |"
+              echo "| --- | --- | --- |"
+              echo "| SharpVision | $ui_status | ${{ needs.publish.outputs.version }} |"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## ❌ Publish failed"
+              echo
+              echo "The publish job ended with status: **${{ needs.publish.result }}**."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

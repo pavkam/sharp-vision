@@ -1,0 +1,115 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Terminal.Discovery.Adapters;
+
+using Capabilities;
+
+using MultiplexingKind = Multiplexing.Kind;
+using MultiplexingPolicy = Multiplexing.Policy;
+
+/// <summary>Translates caller-supplied environment hints into conservative semantic evidence.</summary>
+internal static class EnvironmentEvidenceAdapter
+{
+    /// <summary>Applies environment hints and safety narrowing to one immutable snapshot.</summary>
+    /// <param name="capabilities">The non-null semantic capabilities to refine.</param>
+    /// <param name="environment">The non-null caller-supplied environment snapshot.</param>
+    /// <returns>The original or refined immutable capability snapshot.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> or <paramref name="environment"/> is null.</exception>
+    public static TerminalCapabilities Apply(
+        TerminalCapabilities capabilities,
+        IReadOnlyDictionary<string, string?> environment)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        ArgumentNullException.ThrowIfNull(environment);
+
+        _ = environment.TryGetValue("TERM", out var term);
+        _ = environment.TryGetValue("COLORTERM", out var colorTerm);
+        _ = environment.TryGetValue("TERM_PROGRAM", out var program);
+        var kitty = Contains(term, "kitty");
+        var xterm = Contains(term, "xterm");
+
+        if (capabilities.ColorOrigin == Origin.Default &&
+            (Contains(colorTerm, "truecolor") || Contains(colorTerm, "24bit") || kitty))
+        {
+            capabilities = capabilities with { ColorDepth = ColorDepth.TrueColor, ColorOrigin = Origin.Environment };
+        }
+        else if (capabilities.ColorOrigin == Origin.Default && Contains(term, "256color"))
+        {
+            capabilities = capabilities with { ColorDepth = ColorDepth.Indexed256, ColorOrigin = Origin.Environment };
+        }
+
+        if (kitty)
+        {
+            var hint = new Feature(Support.Tentative, Origin.Environment);
+            capabilities = capabilities with
+            {
+                SynchronizedOutput = ApplyHint(capabilities.SynchronizedOutput, hint),
+                FocusReporting = ApplyHint(capabilities.FocusReporting, hint),
+                BracketedPaste = ApplyHint(capabilities.BracketedPaste, hint),
+                PixelMouse = ApplyHint(capabilities.PixelMouse, hint),
+                CellMouse = ApplyHint(capabilities.CellMouse, hint),
+                KittyKeyboard = ApplyHint(capabilities.KittyKeyboard, hint),
+                Osc52 = ApplyHint(capabilities.Osc52, hint),
+                KittyClipboard = ApplyHint(capabilities.KittyClipboard, hint),
+                KittyGraphics = ApplyHint(capabilities.KittyGraphics, hint),
+                StyledUnderlines = ApplyHint(capabilities.StyledUnderlines, hint),
+                UnderlineColor = ApplyHint(capabilities.UnderlineColor, hint),
+                Overline = ApplyHint(capabilities.Overline, hint)
+            };
+        }
+        else if (xterm)
+        {
+            var hint = new Feature(Support.Tentative, Origin.Environment);
+            capabilities = capabilities with
+            {
+                FocusReporting = ApplyHint(capabilities.FocusReporting, hint),
+                BracketedPaste = ApplyHint(capabilities.BracketedPaste, hint),
+                CellMouse = ApplyHint(capabilities.CellMouse, hint),
+                XtermKeyboard = ApplyHint(capabilities.XtermKeyboard, hint),
+                Osc52 = ApplyHint(capabilities.Osc52, hint),
+                StyledUnderlines = ApplyHint(capabilities.StyledUnderlines, hint),
+                UnderlineColor = ApplyHint(capabilities.UnderlineColor, hint),
+                Overline = ApplyHint(capabilities.Overline, hint)
+            };
+        }
+
+        if (string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase))
+        {
+            var hint = new Feature(Support.Tentative, Origin.Environment);
+            capabilities = capabilities with { ItermImages = ApplyHint(capabilities.ItermImages, hint) };
+        }
+
+        var multiplexer = MultiplexingPolicy.Detect(environment).Kind != MultiplexingKind.None;
+        var remote = environment.ContainsKey("SSH_CONNECTION") ||
+                     environment.ContainsKey("SSH_TTY");
+
+        if (multiplexer)
+        {
+            var unavailable = new Feature(Support.Unsupported, Origin.Environment);
+            capabilities = capabilities with
+            {
+                KittyClipboard = unavailable,
+                KittyGraphics = unavailable,
+                ItermImages = unavailable
+            };
+        }
+
+        if (remote)
+        {
+            capabilities = capabilities with
+            {
+                Osc52 = Feature.Unknown,
+                KittyClipboard = new Feature(Support.Unsupported, Origin.Environment)
+            };
+        }
+
+        return capabilities;
+    }
+
+    private static Feature ApplyHint(Feature current, Feature hint) =>
+        current.State == Support.Unknown ? hint : current;
+
+    private static bool Contains(string? value, string fragment) =>
+        value?.Contains(fragment, StringComparison.OrdinalIgnoreCase) == true;
+}

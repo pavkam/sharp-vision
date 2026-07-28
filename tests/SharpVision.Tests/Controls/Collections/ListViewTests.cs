@@ -1,0 +1,576 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Tests.Controls.Collections;
+
+using Label = ControlText;
+using UiListView = ListView;
+
+/// <summary>Verifies realized ListView ownership, selection, input, scrolling, and rendering.</summary>
+public sealed class ListViewTests
+{
+    /// <summary>Verifies a ListView starts as a quiet borderless collection surface without caller styling.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_UsesQuietBackgroundDefaults()
+    {
+        // Arrange and act
+        var control = new UiListView();
+
+        // Assert
+        control.ActualBorder.Sides.ShouldBe(BorderSide.None);
+        control.Face.Background.ShouldBe(ThemeColor.Control);
+    }
+
+    /// <summary>Verifies empty defaults and owned realization render every Unicode item.</summary>
+    [Fact]
+    public void Items_WhenAssigned_RealizesOwnedControlsAndExactCells()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
+            Items = new object?[] { "One", "界", null }
+        };
+        new Engine().Layout(control, new Size(5, 3));
+        using Frame frame = new(new Size(5, 3));
+
+        control.Render(frame.Canvas);
+
+        control.SelectionMode.ShouldBe(ListSelectionMode.Single);
+        control.SelectedIndex.ShouldBe(-1);
+        control.SelectedItem.ShouldBeNull();
+        control.Items.Count.ShouldBe(3);
+        realized.Count.ShouldBe(3);
+        realized.All(item => item.Parent is not null).ShouldBeTrue();
+        realized.Select(item => item.Parent).Distinct().Count().ShouldBe(3);
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
+        FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("界");
+        FrameOracle.Get(frame, new Point(0, 2)).ShouldBe("n");
+    }
+
+    /// <summary>Verifies ListView exposes the canonical overflow policy and its actual composed scrollbar.</summary>
+    [Fact]
+    public void ScrollBars_WhenConfigured_ForwardCommonPolicyToComposedViewport()
+    {
+        var control = Create("one", "two", "three", "four", "five", "six");
+        control.HorizontalAlignment = HorizontalAlignment.Stretch;
+        control.ScrollBars = ScrollBars.Vertical;
+        control.ShowScrollBars = ShowScrollBars.Always;
+        control.ScrollBarStyle = ScrollBarStyle.ThinLine;
+        new Engine().Layout(control, new Size(6, 3));
+
+        control.ScrollBars.ShouldBe(ScrollBars.Vertical);
+        control.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
+        control.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinLine);
+        var rail = control.HitTest(new Point(5, 0)).ShouldBeOfType<ScrollBar>();
+        rail.Orientation.ShouldBe(Orientation.Vertical);
+        rail.ActualStyle.ShouldBe(ScrollBarStyle.ThinLine);
+
+        control.ShowScrollBars = ShowScrollBars.Never;
+        new Engine().Layout(control, new Size(6, 3));
+
+        control.HitTest(new Point(5, 0)).ShouldNotBeOfType<ScrollBar>();
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBars = (ScrollBars) 99);
+    }
+
+    /// <summary>Verifies generated-rail local and Theme ownership publish exact resolved-style notifications.</summary>
+    [Fact]
+    public void ScrollBarStyle_WhenOwnershipChanges_PublishesLocalAndActualNotifications()
+    {
+        var control = new UiListView();
+        List<string?> notifications = [];
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName is nameof(UiListView.ScrollBarStyle) or nameof(UiListView.ActualScrollBarStyle))
+            {
+                notifications.Add(eventArgs.PropertyName);
+            }
+        };
+        var thinTheme = ScrollBarTheme(ScrollBarStyle.ThinLine);
+        var fullTheme = ScrollBarTheme(ScrollBarStyle.FullLine);
+
+        control.SetTheme(thinTheme);
+        notifications.ShouldBe([nameof(UiListView.ActualScrollBarStyle)]);
+        notifications.Clear();
+
+        control.ScrollBarStyle = ScrollBarStyle.FullBlock;
+        control.ScrollBarStyle = null;
+        notifications.ShouldBe([
+            nameof(UiListView.ScrollBarStyle),
+            nameof(UiListView.ActualScrollBarStyle),
+            nameof(UiListView.ScrollBarStyle),
+            nameof(UiListView.ActualScrollBarStyle)
+        ]);
+        notifications.Clear();
+
+        control.SetTheme(fullTheme);
+        notifications.ShouldBe([nameof(UiListView.ActualScrollBarStyle)]);
+    }
+
+    /// <summary>Verifies ListView preserves a popup result already found by base registry traversal without searching twice.</summary>
+    [Fact]
+    public void HitTest_WhenRegistryFindsPopup_PreservesResultWithoutSecondTraversal()
+    {
+        PopupHitProbe? probe = null;
+        var control = new UiListView
+        {
+            ItemTemplate = _ => probe = new PopupHitProbe(),
+            Items = ["item"]
+        };
+        new Engine().Layout(control, new Size(4, 1));
+
+        var hit = control.HitTest(default);
+
+        _ = probe.ShouldNotBeNull();
+        hit.ShouldBeSameAs(probe);
+        probe.PopupHitTestCalls.ShouldBe(1);
+    }
+
+    /// <summary>Verifies unchanged overflow policy assignments do not raise duplicate public notifications.</summary>
+    [Fact]
+    public void ShowScrollBars_WhenValueIsUnchanged_DoesNotRaisePropertyChanged()
+    {
+        var control = new UiListView();
+        var notifications = 0;
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(UiListView.ShowScrollBars))
+            {
+                notifications++;
+            }
+        };
+
+        control.ShowScrollBars = ShowScrollBars.WhenNeeded;
+        control.ShowScrollBars = ShowScrollBars.Always;
+        control.ShowScrollBars = ShowScrollBars.Always;
+
+        notifications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies failed item or template replacement leaves the complete old tree untouched.</summary>
+    [Fact]
+    public void ItemTemplate_WhenCandidateIsInvalid_PreservesItemsTemplateAndOwnership()
+    {
+        List<Label> previous = [];
+        ItemTemplate valid = item => Add(previous, new Label((string) item!));
+        var control = new UiListView
+        {
+            ItemTemplate = valid,
+            Items = new object?[] { "A", "B" }
+        };
+        var duplicate = new Label("bad");
+
+        _ = Should.Throw<ArgumentNullException>(() => control.Items = null!);
+        _ = Should.Throw<ArgumentNullException>(() => control.ItemTemplate = null!);
+        _ = Should.Throw<ArgumentException>(() => control.ItemTemplate = _ => null!);
+        _ = Should.Throw<ArgumentException>(() => control.ItemTemplate = _ => duplicate);
+
+        control.ItemTemplate.ShouldBeSameAs(valid);
+        control.Items.ShouldBe(new object?[] { "A", "B" });
+        previous.All(item => item is { IsDisposed: false, Parent: not null }).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies successful replacement disposes every detached realized wrapper and child.</summary>
+    [Fact]
+    public void Items_WhenReplaced_DisposesPreviousRealizationWithoutStateLeakage()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label((string) item!)),
+            Items = new object?[] { "A", "B" }
+        };
+        Label[] previous = [.. realized];
+
+        control.Items = new object?[] { "C" };
+
+        previous.All(item => item is { IsDisposed: true, Parent: null }).ShouldBeTrue();
+        control.Items.ShouldBe(new object?[] { "C" });
+        _ = realized[^1].Parent.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies an item reset preserves selected values and the active value when their indexes move.</summary>
+    [Fact]
+    public void Items_WhenResetReordersExistingItems_PreservesSelectedAndActiveItems()
+    {
+        var first = new object();
+        var selected = new object();
+        var active = new object();
+        var control = new UiListView
+        {
+            SelectionMode = ListSelectionMode.Multiple,
+            Items = [first, selected, active]
+        };
+        _ = control.SetSelected(1, true);
+        _ = control.SetSelected(2, true);
+
+        control.Items = [active, first, selected];
+
+        control.SelectedItems.ShouldBe([active, selected]);
+        control.SelectedIndex.ShouldBe(0);
+        control.ActiveIndex.ShouldBe(0);
+        control.Items[control.ActiveIndex].ShouldBeSameAs(active);
+    }
+
+    /// <summary>Verifies equal duplicate occurrences map in their original occurrence order.</summary>
+    [Fact]
+    public void Items_WhenResetReordersEqualDuplicates_PreservesSelectedOccurrence()
+    {
+        var control = new UiListView
+        {
+            SelectionMode = ListSelectionMode.Multiple,
+            Items = ["A", "A", "B"]
+        };
+        _ = control.SetSelected(1, true);
+
+        control.Items = ["A", "B", "A"];
+
+        control.SelectedIndex.ShouldBe(2);
+        control.SelectedItem.ShouldBe("A");
+        control.ActiveIndex.ShouldBe(2);
+    }
+
+    /// <summary>Verifies an item reset removes stale selection and repairs the active index deterministically.</summary>
+    [Fact]
+    public void Items_WhenSelectedItemIsRemoved_ClearsSelectionAndKeepsValidActiveItem()
+    {
+        var selected = new object();
+        var remaining = new object();
+        var control = new UiListView
+        {
+            Items = [selected, remaining],
+            SelectedIndex = 0
+        };
+
+        control.Items = [new object(), remaining];
+
+        control.SelectedIndex.ShouldBe(-1);
+        control.ActiveIndex.ShouldBe(0);
+        control.Items[control.ActiveIndex].ShouldNotBeSameAs(selected);
+    }
+
+    /// <summary>Verifies programmatic selection rejects an unavailable row without disturbing valid selection.</summary>
+    [Fact]
+    public void SetSelected_WhenItemIsDisabled_RejectsSelectionAndPreservesValidSelection()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label((string) item!)),
+            Items = ["A", "B"]
+        };
+        realized[1].IsEnabled = false;
+        control.SelectedIndex = 0;
+
+        control.SetSelected(1, true).ShouldBeFalse();
+
+        control.SelectedIndex.ShouldBe(0);
+        control.SelectedItem.ShouldBe("A");
+    }
+
+    /// <summary>Verifies assigning a disabled SelectedIndex preserves the existing valid selection.</summary>
+    [Fact]
+    public void SelectedIndex_WhenTargetIsDisabled_PreservesExistingSelection()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label((string) item!)),
+            Items = ["A", "B"]
+        };
+        realized[1].IsEnabled = false;
+        control.SelectedIndex = 0;
+
+        control.SelectedIndex = 1;
+
+        control.SelectedIndex.ShouldBe(0);
+        control.SelectedItem.ShouldBe("A");
+    }
+
+    /// <summary>Verifies snapshot active fallback skips a disabled last row and chooses the last available row.</summary>
+    [Fact]
+    public void Items_WhenActiveFallbackIsDisabled_ChoosesLastAvailableRow()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item =>
+            {
+                var label = new Label((string) item!);
+
+                if (Equals(item, "Disabled"))
+                {
+                    label.IsEnabled = false;
+                }
+
+                return Add(realized, label);
+            },
+            Items = ["A", "B", "C"],
+            SelectedIndex = 2
+        };
+
+        control.Items = ["Available", "Disabled"];
+
+        control.ActiveIndex.ShouldBe(0);
+        control.Items[control.ActiveIndex].ShouldBe("Available");
+        realized[^1].EffectiveIsEnabled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies active fallback chooses a closer available higher row over a farther lower row.</summary>
+    [Fact]
+    public void Items_WhenHigherAvailableRowIsCloser_ChoosesHigherRow()
+    {
+        var control = new UiListView
+        {
+            ItemTemplate = item =>
+            {
+                var label = new Label((string) item!);
+
+                if (Equals(item, "Disabled"))
+                {
+                    label.IsEnabled = false;
+                }
+
+                return label;
+            },
+            Items = ["A", "B", "C"],
+            SelectedIndex = 2
+        };
+
+        control.Items = ["Low", "Disabled", "Disabled", "High"];
+
+        control.ActiveIndex.ShouldBe(3);
+        control.Items[control.ActiveIndex].ShouldBe("High");
+    }
+
+    /// <summary>Verifies none, single, and multiple modes normalize selection deterministically.</summary>
+    [Fact]
+    public void SetSelected_WhenModesDiffer_EnforcesModeAndIndexContracts()
+    {
+        var control = Create("A", "B", "C");
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SelectedIndex = 3);
+        control.SelectedIndex = 1;
+        control.SelectedItem.ShouldBe("B");
+        control.SelectedItems.ShouldBe(new object?[] { "B" });
+
+        control.SelectionMode = ListSelectionMode.Multiple;
+        control.SetSelected(2, true).ShouldBeTrue();
+        control.SelectedItems.ShouldBe(new object?[] { "B", "C" });
+        control.SelectionMode = ListSelectionMode.Single;
+        control.SelectedItems.ShouldBe(new object?[] { "B" });
+        control.SelectionMode = ListSelectionMode.None;
+        control.SelectedIndex.ShouldBe(-1);
+        _ = Should.Throw<InvalidOperationException>(() => control.SelectedIndex = 0);
+    }
+
+    /// <summary>Verifies cancellable selection precedes one committed added/removed notification.</summary>
+    [Fact]
+    public void SelectedIndex_WhenChangingIsCancelled_PreservesStateAndStableSelectedView()
+    {
+        var control = Create("A", "B", "C");
+        var view = control.SelectedItems;
+        List<string> order = [];
+        control.SelectionChanging += (_, eventArgs) =>
+        {
+            order.Add($"changing:{Join(eventArgs.AddedIndexes)}:{Join(eventArgs.RemovedIndexes)}");
+            eventArgs.Cancel = eventArgs.AddedIndexes.Span.Contains(2);
+        };
+        control.SelectionChanged += (_, eventArgs) =>
+            order.Add($"changed:{Join(eventArgs.AddedIndexes)}:{Join(eventArgs.RemovedIndexes)}");
+
+        control.SelectedIndex = 1;
+        control.SelectedIndex = 2;
+
+        control.SelectedIndex.ShouldBe(1);
+        control.ActiveIndex.ShouldBe(1);
+        control.SelectedItems.ShouldBeSameAs(view);
+        view.ShouldBe(new object?[] { "B" });
+        order.ShouldBe([
+            "changing:1:",
+            "changed:1:",
+            "changing:2:1"
+        ]);
+    }
+
+    /// <summary>Verifies arrows skip unavailable items, Space selects, Enter invokes, and Home/End navigate.</summary>
+    [Fact]
+    public async Task Dispatch_WhenKeyboardNavigates_UsesStableRealizedOrderAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label((string) item!)),
+            Items = new object?[] { "A", "B", "C" }
+        };
+        realized[1].IsEnabled = false;
+        List<int> invoked = [];
+        control.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            using FocusManager focus = new(control);
+            focus.Focus(control).ShouldBeTrue();
+            Key(control, Code.Down);
+            focus.Focused.ShouldBeSameAs(control);
+            control.ActiveIndex.ShouldBe(2);
+            control.SelectedIndex.ShouldBe(2);
+            Space(control);
+            control.SelectedIndex.ShouldBe(2);
+            Key(control, Code.Enter);
+            Key(control, Code.Home);
+            control.ActiveIndex.ShouldBe(0);
+            control.SelectedIndex.ShouldBe(0);
+            Key(control, Code.End);
+            control.ActiveIndex.ShouldBe(2);
+            control.SelectedIndex.ShouldBe(2);
+        }, TestContext.Current.CancellationToken);
+
+        invoked.ShouldBe([2]);
+    }
+
+    /// <summary>Verifies pointer modifiers toggle and range-select in multiple mode.</summary>
+    [Fact]
+    public async Task Dispatch_WhenPointerUsesModifiers_AppliesToggleAndRangeSelectionAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var control = Create("A", "B", "C", "D");
+        control.Bounds = new Rect(0, 0, 4, 4);
+        control.SelectionMode = ListSelectionMode.Multiple;
+        new Engine().Layout(control, new Size(4, 4));
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            using PointerManager capture = new(control);
+            Click(capture, new Point(0, 1), Modifiers.Control);
+            Click(capture, new Point(0, 3), Modifiers.Shift);
+        }, TestContext.Current.CancellationToken);
+
+        control.SelectedItems.ShouldBe(new object?[] { "B", "C", "D" });
+    }
+
+    /// <summary>Verifies active items are minimally brought through the armed item Stack on resize.</summary>
+    [Fact]
+    public async Task Dispatch_WhenActiveItemMovesBeyondViewport_BringsItIntoViewAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label((string) item!)),
+            Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new Engine().Layout(control, new Size(8, 3));
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            control.Attach(dispatcher);
+            using FocusManager focus = new(control);
+            focus.Focus(control).ShouldBeTrue();
+
+            for (var index = 0; index < 7; index++)
+            {
+                Key(control, Code.Down);
+            }
+
+            control.VerticalOffset.ShouldBeGreaterThan(0);
+            control.ActiveIndex.ShouldBe(7);
+            control.SelectedIndex.ShouldBe(7);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies SelectedItem setter selects the matching item by value.</summary>
+    [Fact]
+    public void SelectedItem_WhenSetToValue_SelectsMatchingIndex()
+    {
+        var control = Create("A", "B", "C");
+        control.SelectedItem = "B";
+        control.SelectedIndex.ShouldBe(1);
+        control.SelectedItem.ShouldBe("B");
+    }
+
+    /// <summary>Verifies SelectedItem setter clears selection when set to null.</summary>
+    [Fact]
+    public void SelectedItem_WhenSetToNull_ClearsSelection()
+    {
+        var control = Create("A", "B");
+        control.SelectedIndex = 0;
+        control.SelectedItem = null;
+        control.SelectedIndex.ShouldBe(-1);
+        control.SelectedItem.ShouldBeNull();
+    }
+
+    /// <summary>Verifies SelectedItem setter clears selection when value is not found.</summary>
+    [Fact]
+    public void SelectedItem_WhenValueNotFound_ClearsSelection()
+    {
+        var control = Create("A", "B");
+        control.SelectedIndex = 0;
+        control.SelectedItem = "Z";
+        control.SelectedIndex.ShouldBe(-1);
+        control.SelectedItem.ShouldBeNull();
+    }
+
+    private static UiListView Create(params object?[] items) => new() { Items = items };
+
+    private static Theme ScrollBarTheme(ScrollBarStyle _)
+    {
+        var theme = new Theme();
+
+        theme.Freeze();
+        return theme;
+    }
+
+    private static Label Add(List<Label> controls, Label control)
+    {
+        controls.Add(control);
+        return control;
+    }
+
+    private static string Join(ReadOnlyMemory<int> values) => string.Join(',', values.ToArray());
+
+    private static void Key(Control target, Code code, Rune? character = null) =>
+        _ = Router.Route(
+            target,
+            Events.Key,
+            new KeyEventArgs(new Stroke(
+                code,
+                character,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+    private static void Space(Control target)
+    {
+        Key(target, Code.Character, new Rune(' '));
+        _ = Router.Route(
+            target,
+            Events.Key,
+            new KeyEventArgs(new Stroke(
+                Code.Character,
+                new Rune(' '),
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Release)));
+    }
+
+    private static void Click(PointerManager capture, Point point, Modifiers modifiers)
+    {
+        _ = capture.Dispatch(Pointer(point, PointerAction.Press, modifiers));
+        _ = capture.Dispatch(Pointer(point, PointerAction.Release, modifiers));
+    }
+
+    private static Pointer Pointer(Point cells, PointerAction action, Modifiers modifiers) => new(
+        cells,
+        pixels: null,
+        Buttons.Primary,
+        action,
+        wheelX: 0,
+        wheelY: 0,
+        modifiers,
+        isMotion: false,
+        isCellPositionInferred: false);
+}

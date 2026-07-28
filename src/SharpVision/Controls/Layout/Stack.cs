@@ -1,0 +1,347 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Controls.Layout;
+
+/// <summary>Arranges owned children sequentially on one terminal-cell axis.</summary>
+[SuppressMessage(
+    "Naming",
+    "CA1711:Identifiers should not have incorrect suffix",
+    Justification = "Stack is the approved concise terminal control name, not a collection type.")]
+[PublicAPI]
+public sealed class Stack: Container
+{
+    /// <summary>Gets or sets the complete locally authored border.</summary>
+    public new Border Border { get => base.Border; set => base.Border = value; }
+
+    /// <summary>Returns border ownership to the active Theme.</summary>
+    public new void ResetBorder() => base.ResetBorder();
+
+    /// <summary>Gets or sets the complete locally authored shadow.</summary>
+    public new Shadow Shadow { get => base.Shadow; set => base.Shadow = value; }
+
+    /// <summary>Returns shadow ownership to the active Theme.</summary>
+    public new void ResetShadow() => base.ResetShadow();
+
+    /// <summary>Initializes a stack that fills its parent cross-axis slot.</summary>
+    public Stack() => HorizontalAlignment = HorizontalAlignment.Stretch;
+
+    /// <summary>Gets or sets the sequential layout axis.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Orientation Orientation
+    {
+        get;
+        set
+        {
+            if (!Enum.IsDefined(value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The orientation is unknown.");
+            }
+
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    } = Orientation.Vertical;
+
+    /// <summary>Gets or sets non-negative cells between non-collapsed children.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public int Spacing
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        }
+    }
+
+    /// <summary>Gets or sets whether visual and default navigation order is reversed.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool Reverse
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
+    }
+
+    /// <inheritdoc/>
+    internal override Control NavigationAt(int index) =>
+        Reverse && index < Children.Count ? Children[Children.Count - index - 1] : base.NavigationAt(index);
+
+    /// <inheritdoc/>
+    internal override Control? HitTestPopupCore(Point point)
+    {
+        if (!Reverse)
+        {
+            return base.HitTestPopupCore(point);
+        }
+
+        for (var index = 0; index < Children.Count; index++)
+        {
+            if (Children[index].HitTestPopupBranch(point, OwnedControlLayer.Normal) is { } popup)
+            {
+                return popup;
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        var axis = 0;
+        var cross = 0;
+        var count = 0;
+
+        foreach (var child in Children)
+        {
+            child.Measure(Orientation == Orientation.Vertical
+                ? new Constraint(constraint.Width, height: null)
+                : new Constraint(width: null, constraint.Height));
+
+            if (child.Visibility == Visibility.Collapsed)
+            {
+                continue;
+            }
+
+            var desiredAxis = Orientation == Orientation.Vertical
+                ? LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical)
+                : LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal);
+            var desiredCross = Orientation == Orientation.Vertical
+                ? LayoutMath.Add(child.DesiredSize.Width, child.Margin.Horizontal)
+                : LayoutMath.Add(child.DesiredSize.Height, child.Margin.Vertical);
+            axis = LayoutMath.Add(axis, desiredAxis);
+            cross = Math.Max(cross, desiredCross);
+            count++;
+        }
+
+        axis = LayoutMath.Add(axis, SpacingExtent(count, int.MaxValue));
+        return Orientation == Orientation.Vertical
+            ? new Size(cross, axis)
+            : new Size(axis, cross);
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        var count = CountParticipants();
+
+        if (count == 0)
+        {
+            return;
+        }
+
+        var rentedChildren = ArrayPool<Control>.Shared.Rent(count);
+        var rentedLengths = ArrayPool<Length>.Shared.Rent(count);
+        var rentedAutomatic = ArrayPool<int>.Shared.Rent(count);
+        var rentedMinimum = ArrayPool<int>.Shared.Rent(count);
+        var rentedMaximum = ArrayPool<int>.Shared.Rent(count);
+        var rentedExtents = ArrayPool<int>.Shared.Rent(count);
+        var children = rentedChildren.AsSpan(0, count);
+        var lengths = rentedLengths.AsSpan(0, count);
+        var automatic = rentedAutomatic.AsSpan(0, count);
+        var minimum = rentedMinimum.AsSpan(0, count);
+        var maximum = rentedMaximum.AsSpan(0, count);
+        var extents = rentedExtents.AsSpan(0, count);
+
+        try
+        {
+            Fill(children, lengths, automatic, minimum, maximum);
+            var axis = Orientation == Orientation.Vertical ? bounds.Height : bounds.Width;
+            var spacing = SpacingExtent(count, axis);
+            var margins = SumMargins(children);
+            var available = Math.Max(0, axis - spacing - margins);
+
+            // Percentages use the complete final content axis. Converting the
+            // resolved request to cells lets margins reserve their own space
+            // without changing that percentage base or star remainder.
+            for (var index = 0; index < count; index++)
+            {
+                if (lengths[index].Kind == Kind.Percent)
+                {
+                    lengths[index] = Length.Cells(Percent(axis, lengths[index].Value));
+                }
+            }
+
+            Tracks.Resolve(available, lengths, automatic, minimum, maximum, extents);
+            Arrange(children, extents, bounds, spacing);
+        }
+        finally
+        {
+            children.Clear();
+            lengths.Clear();
+            automatic.Clear();
+            minimum.Clear();
+            maximum.Clear();
+            extents.Clear();
+            ArrayPool<Control>.Shared.Return(rentedChildren, clearArray: true);
+            ArrayPool<Length>.Shared.Return(rentedLengths);
+            ArrayPool<int>.Shared.Return(rentedAutomatic);
+            ArrayPool<int>.Shared.Return(rentedMinimum);
+            ArrayPool<int>.Shared.Return(rentedMaximum);
+            ArrayPool<int>.Shared.Return(rentedExtents);
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderContent(TerminalCanvas canvas, Rect contentClip)
+    {
+        if (!Reverse)
+        {
+            base.RenderContent(canvas, contentClip);
+            return;
+        }
+
+        for (var index = Children.Count - 1; index >= 0; index--)
+        {
+            if (Children[index].RendersInNormalLayer)
+            {
+                Children[index].Render(canvas, contentClip);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
+    {
+        if (!Reverse)
+        {
+            base.RenderOwnedPopupDescendants(canvas);
+            return;
+        }
+
+        for (var index = Children.Count - 1; index >= 0; index--)
+        {
+            Children[index].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
+        }
+    }
+
+    private static int Percent(int axis, double value)
+    {
+        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
+
+        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
+        return result >= int.MaxValue ? int.MaxValue : (int) result;
+    }
+
+    private int CountParticipants()
+    {
+        var count = 0;
+
+        foreach (var child in Children)
+        {
+            if (child.Visibility != Visibility.Collapsed)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private void Fill(
+        Span<Control> children,
+        Span<Length> lengths,
+        Span<int> automatic,
+        Span<int> minimum,
+        Span<int> maximum)
+    {
+        var position = 0;
+
+        for (var offset = 0; offset < Children.Count; offset++)
+        {
+            var index = Reverse ? Children.Count - offset - 1 : offset;
+            var child = Children[index];
+
+            if (child.Visibility == Visibility.Collapsed)
+            {
+                continue;
+            }
+
+            children[position] = child;
+            lengths[position] = Orientation == Orientation.Vertical ? child.Height : child.Width;
+            automatic[position] = Orientation == Orientation.Vertical
+                ? child.DesiredSize.Height
+                : child.DesiredSize.Width;
+            minimum[position] = Orientation == Orientation.Vertical ? child.MinHeight : child.MinWidth;
+            maximum[position] = Orientation == Orientation.Vertical ? child.MaxHeight : child.MaxWidth;
+            position++;
+        }
+
+        Debug.Assert(position == children.Length, "Every participating child must have one track.");
+    }
+
+    private int SumMargins(ReadOnlySpan<Control> children)
+    {
+        Debug.Assert(children.Length >= 0, "Stack margin sum requires a valid span.");
+
+        var result = 0;
+
+        foreach (var child in children)
+        {
+            result = LayoutMath.Add(
+                result,
+                Orientation == Orientation.Vertical
+                    ? child.Margin.Vertical
+                    : child.Margin.Horizontal);
+        }
+
+        return result;
+    }
+
+    private void Arrange(
+        ReadOnlySpan<Control> children,
+        ReadOnlySpan<int> extents,
+        Rect bounds,
+        int spacing)
+    {
+        Debug.Assert(children.Length == extents.Length, "Every arranged child must have one extent.");
+        Debug.Assert(spacing >= 0, "Stack spacing is non-negative.");
+
+        var origin = Orientation == Orientation.Vertical ? bounds.Y : bounds.X;
+        var remainingSpacing = spacing;
+
+        for (var index = 0; index < children.Length; index++)
+        {
+            var child = children[index];
+            var margin = Orientation == Orientation.Vertical
+                ? child.Margin.Vertical
+                : child.Margin.Horizontal;
+            var outer = LayoutMath.Add(extents[index], margin);
+            var slot = Orientation == Orientation.Vertical
+                ? new Rect(bounds.X, origin, bounds.Width, outer)
+                : new Rect(origin, bounds.Y, outer, bounds.Height);
+
+            child.Arrange(
+                slot,
+                widthResolved: Orientation == Orientation.Horizontal,
+                heightResolved: Orientation == Orientation.Vertical);
+            origin = LayoutMath.Add(origin, outer);
+
+            if (index < children.Length - 1)
+            {
+                var gap = Math.Min(Spacing, remainingSpacing);
+                origin = LayoutMath.Add(origin, gap);
+                remainingSpacing -= gap;
+            }
+        }
+    }
+
+    private int SpacingExtent(int count, int limit)
+    {
+        Debug.Assert(count >= 0, "Participant count is non-negative.");
+        Debug.Assert(limit >= 0, "Spacing limit is non-negative.");
+
+        if (count <= 1)
+        {
+            return 0;
+        }
+
+        var requested = (long) Spacing * (count - 1);
+        return (int) Math.Min(limit, Math.Min(int.MaxValue, requested));
+    }
+}

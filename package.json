@@ -1,0 +1,32 @@
+{
+  "name": "sharpvision-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentation quality tooling for SharpVision.",
+  "scripts": {
+    "check:unicode": "node scripts/generate-unicode-data.mjs --check",
+    "check:figlet": "node scripts/audit-figlet-fonts.mjs --source ${FIGLET_FONT_SOURCE} --commit 417429ef36ab039cbf192a4424c60aa23fc32de8 --output src/SharpVision/Fonts/Resources/fonts.manifest.json --check",
+    "format": "prettier --write \"**/*.md\"",
+    "format:check": "prettier --check \"**/*.md\"",
+    "generate:unicode": "node scripts/generate-unicode-data.mjs",
+    "lint:actions": "find .github/workflows .github/actions -type f \\( -name '*.yml' -o -name '*.yaml' \\) -print0 | sort -z | xargs -0 -n1 action-validator",
+    "lint:action-pins": "node scripts/validate-action-pins.mjs",
+    "lint:csharp-usings": "node scripts/validate-csharp-usings.mjs",
+    "lint:csharp-types": "node scripts/validate-csharp-types.mjs",
+    "lint:docs-structure": "node scripts/validate-doc-structure.mjs",
+    "lint:extern": "node scripts/validate-extern.mjs",
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.worktrees\" \"#.superpowers\"",
+    "lint:links": "node scripts/validate-doc-links.mjs",
+    "refresh:unicode": "node scripts/generate-unicode-data.mjs --refresh",
+    "test:binding-coverage": "node scripts/validate-binding-coverage.mjs TestResults/binding/coverage.cobertura.xml 95 90",
+    "test:docs": "node --test scripts/*.test.mjs"
+  },
+  "devDependencies": {
+    "@action-validator/cli": "0.6.0",
+    "markdownlint-cli2": "0.23.0",
+    "prettier": "3.9.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

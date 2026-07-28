@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">SharpVision icon</title>
+  <desc id="desc">A terminal prompt shaped like a sharp eye.</desc>
+  <rect width="256" height="256" rx="48" fill="#111827"/>
+  <path d="M45 128c24-39 51-59 83-59s59 20 83 59c-24 39-51 59-83 59s-59-20-83-59Z" fill="#22d3ee"/>
+  <circle cx="128" cy="128" r="37" fill="#111827"/>
+  <circle cx="128" cy="128" r="18" fill="#f8fafc"/>
+  <path d="M74 194h108" stroke="#a78bfa" stroke-linecap="round" stroke-width="12"/>
+  <path d="m88 177 20 17-20 17M148 211h24" fill="none" stroke="#f8fafc" stroke-linecap="round" stroke-linejoin="round" stroke-width="10"/>
+</svg>

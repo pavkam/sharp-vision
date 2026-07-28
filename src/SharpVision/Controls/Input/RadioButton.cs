@@ -1,0 +1,356 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Controls.Input;
+
+using System.Runtime.ExceptionServices;
+
+using SharpVision.Terminal.Input;
+
+using DisplayText = Display.Text;
+
+/// <summary>Defines a focusable mutually exclusive selection control.</summary>
+[PublicAPI]
+public sealed class RadioButton: Pressable
+{
+    private static readonly Func<RadioButtonStyle?, Theme?, RadioButtonStyle> _styleResolver = ResolveStyle;
+    private static readonly Func<RadioButtonStyle, RadioButtonStyle, InvalidationImpact> _styleComparer = CompareStructure;
+    private static readonly Func<RadioButtonStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
+    private bool _isChecked;
+    private int _checkedVersion;
+
+    /// <summary>Initializes an unselected RadioButton.</summary>
+    public RadioButton()
+    {
+    }
+
+    /// <summary>Initializes an unselected RadioButton with text content.</summary>
+    /// <param name="text">The non-null text content.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
+    public RadioButton(string text) : this()
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        Content = new DisplayText(text);
+    }
+
+    /// <summary>Raised after this member becomes selected.</summary>
+    public event EventHandler<RadioButtonSelectionChangedEventArgs>? Checked;
+
+    /// <summary>Raised after this member loses selection.</summary>
+    public event EventHandler<RadioButtonSelectionChangedEventArgs>? Unchecked;
+
+    /// <summary>Raised on the newly selected or explicitly cleared member.</summary>
+    public event EventHandler<RadioButtonSelectionChangedEventArgs>? SelectionChanged;
+
+    /// <summary>Gets or sets whether this member is selected.</summary>
+    /// <exception cref="InvalidOperationException">The attached member is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    public bool IsChecked
+    {
+        get => _isChecked;
+        set
+        {
+            VerifyMutable();
+
+            if (value)
+            {
+                RadioGroupCoordinator.Select(this, ActivationCause.Programmatic);
+            }
+            else
+            {
+                RadioGroupCoordinator.Clear(this, ActivationCause.Programmatic);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public override bool IsTabStop => TabStop && CanFocus && RadioGroupCoordinator.IsRovingTabStop(this);
+
+    /// <summary>Gets or sets an optional ordinal group name scoped to the attached root.</summary>
+    /// <exception cref="InvalidOperationException">The attached member is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    public string? GroupName
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (string.Equals(field, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            field = value;
+            ExceptionDispatchInfo? failure = null;
+
+            if (IsChecked)
+            {
+                ExceptionAggregation.Capture(
+                    () => RadioGroupCoordinator.Select(this, ActivationCause.Programmatic),
+                    ref failure);
+            }
+
+            ExceptionAggregation.Capture(
+                () => NotifyPropertyChanged(nameof(GroupName), InvalidationImpact.None),
+                ref failure);
+            failure?.Throw();
+        }
+    }
+
+    /// <summary>Gets or sets the complete local presentation, or null to use the semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached member is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    public RadioButtonStyle? Style
+    {
+        get;
+        set => _ = SetControlStyle(
+            ref field,
+            value,
+            _styleResolver,
+            _styleComparer,
+            _appearanceSelector,
+            nameof(Style),
+            nameof(ActualStyle));
+    }
+
+    /// <summary>Gets the complete local presentation or library mark mechanics completed with the semantic input profile.</summary>
+    public RadioButtonStyle ActualStyle => ResolveStyle(Style, Theme);
+
+    /// <inheritdoc/>
+    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
+
+    /// <inheritdoc/>
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+
+    /// <inheritdoc/>
+    protected override InvalidationImpact GetThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace) =>
+        GetControlStyleThemeImpact(
+            Style,
+            previous,
+            current,
+            _styleResolver,
+            _styleComparer,
+            _appearanceSelector,
+            previousParentAmbientFace,
+            currentParentAmbientFace);
+
+    /// <inheritdoc/>
+    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
+        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
+            ? nameof(ActualStyle)
+            : null;
+
+    /// <summary>Activates an available RadioButton through its public API.</summary>
+    /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    public void PerformClick()
+    {
+        VerifyMutable();
+
+        if (EffectiveIsEnabled && EffectiveIsVisible)
+        {
+            Activate(ActivationCause.Programmatic);
+        }
+    }
+
+    /// <summary>Selects an available member through the programmatic path.</summary>
+    /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+
+    /// <inheritdoc/>
+    protected override void Activate(ActivationCause cause) => RadioGroupCoordinator.Select(this, cause);
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        var content = Content;
+
+        if (content is null)
+        {
+            return new Size(MarkWidth, 1);
+        }
+
+        var desired = MeasureChild(
+            content,
+            new Constraint(LayoutMath.Subtract(constraint.Width, MarkWidth + 1), constraint.Height));
+
+        return content.Visibility == Visibility.Collapsed
+            ? new Size(MarkWidth, 1)
+            : new Size(
+                LayoutMath.Add(MarkWidth + 1, LayoutMath.Add(desired.Width, content.Margin.Horizontal)),
+                Math.Max(1, LayoutMath.Add(desired.Height, content.Margin.Vertical)));
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        if (Content is { } content)
+        {
+            var consumed = Math.Min(MarkWidth + 1, bounds.Width);
+            ArrangeChild(
+                content,
+                new Rect(bounds.X + consumed, bounds.Y, bounds.Width - consumed, bounds.Height),
+                ResolvedAxes.Both);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnRenderContent(TerminalCanvas canvas)
+    {
+        if (Bounds.Width == 0 || Bounds.Height == 0)
+        {
+            return;
+        }
+
+        var style = ResolvedStyle;
+
+        if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
+        {
+            canvas.Clear(Bounds, style);
+        }
+
+        _ = canvas.Draw(
+            Mark().AsSpan(),
+            new Point(Bounds.X, Bounds.Y),
+            style,
+            background: BackgroundMode.Transparent);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        base.OnEvent(eventArgs);
+
+        if (eventArgs.Handled || eventArgs is not KeyEventArgs { Stroke.Action: KeyAction.Press } key)
+        {
+            return;
+        }
+
+        var reverse = key.Stroke.Code is Code.Left or Code.Up;
+
+        if (reverse || key.Stroke.Code is Code.Right or Code.Down)
+        {
+            eventArgs.Handled = RadioGroupCoordinator.Move(this, reverse);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnParentChanged(Control? previous, Control? current)
+    {
+        base.OnParentChanged(previous, current);
+
+        if (current is not null && IsChecked)
+        {
+            RadioGroupCoordinator.Select(this, ActivationCause.Programmatic);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override bool IsCheckedState => IsChecked;
+
+    /// <inheritdoc/>
+    protected override void OnUnavailable(ReleaseReason reason)
+    {
+        base.OnUnavailable(reason);
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            Checked = null;
+            Unchecked = null;
+            SelectionChanged = null;
+        }
+    }
+
+    /// <summary>Stages a coordinated checked value without publishing a partial group.</summary>
+    /// <param name="value">The checked value to commit.</param>
+    /// <returns>The new commit version, or zero when the value is unchanged.</returns>
+    internal int StageChecked(bool value)
+    {
+        VerifyMutable();
+
+        if (_isChecked == value)
+        {
+            return 0;
+        }
+
+        _isChecked = value;
+        _checkedVersion++;
+        InvalidateVisualState();
+        return _checkedVersion;
+    }
+
+    /// <summary>Gets whether one staged checked commit remains current after callbacks.</summary>
+    /// <param name="version">The positive staged commit version.</param>
+    /// <param name="value">The expected staged value.</param>
+    /// <returns>True when no reentrant selection replaced the commit.</returns>
+    internal bool IsCheckedCommitCurrent(int version, bool value) =>
+        version > 0 && _checkedVersion == version && _isChecked == value;
+
+    /// <summary>Publishes the property notification for one still-current staged commit.</summary>
+    /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    internal void PublishChecked()
+    {
+        NotifyPropertyChanged(nameof(IsChecked), InvalidationImpact.None);
+        NotifyPropertyChanged(nameof(IsTabStop), InvalidationImpact.None);
+    }
+
+    /// <summary>Requests focus through this member's protected manager boundary.</summary>
+    /// <returns>True when focus is acquired or already owned.</returns>
+    /// <exception cref="InvalidOperationException">The attached member is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The member is disposed.</exception>
+    internal bool RequestGroupFocus() => RequestFocus();
+
+    /// <summary>Raises Checked after a complete group commit.</summary>
+    internal void RaiseChecked(RadioButtonSelectionChangedEventArgs eventArgs) =>
+        Checked?.Invoke(this, eventArgs);
+
+    /// <summary>Raises SelectionChanged after non-stale specific events.</summary>
+    internal void RaiseSelectionChanged(RadioButtonSelectionChangedEventArgs eventArgs) =>
+        SelectionChanged?.Invoke(this, eventArgs);
+
+    /// <summary>Raises Unchecked after a complete group commit.</summary>
+    internal void RaiseUnchecked(RadioButtonSelectionChangedEventArgs eventArgs) =>
+        Unchecked?.Invoke(this, eventArgs);
+
+    private int MarkWidth => ActualStyle.MarkWidth;
+
+    private string Mark()
+    {
+        var selection = ControlGlyphs.Selection;
+        var style = ActualStyle;
+
+        return style.MarkStyle switch
+        {
+            RadioButtonMarkStyle.Circle => Mark(
+                IsChecked ? style.Glyphs.Checked : style.Glyphs.Unchecked,
+                IsChecked ? selection.RadioChecked.Fallback : selection.RadioUnchecked.Fallback),
+            RadioButtonMarkStyle.Parentheses => IsChecked
+                ? $"({Mark(style.Glyphs.Checked, selection.RadioParenthesesChecked.Fallback)})"
+                : $"({Mark(style.Glyphs.Unchecked, selection.RadioParenthesesUnchecked.Fallback)})",
+            _ => throw new UnreachableException()
+        };
+    }
+
+    private string Mark(Rune value, Rune fallback) =>
+        CellGlyphResolver.Resolve(value, fallback, CellPolicy.AmbiguousWidth).ToString();
+
+    private static RadioButtonStyle ResolveStyle(RadioButtonStyle? localStyle, Theme? theme) =>
+        localStyle ?? new RadioButtonStyle(
+            RadioButtonStyle.Default.MarkStyle,
+            RadioButtonStyle.Default.Glyphs,
+            RadioButtonStyle.WithCheckedAccent(ControlStyleProfiles.WithoutChrome((theme ?? Themes.Dark).Input)));
+
+    private static InvalidationImpact CompareStructure(RadioButtonStyle previous, RadioButtonStyle current) =>
+        previous.MarkWidth != current.MarkWidth
+            ? InvalidationImpact.Measure
+            : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
+                ? InvalidationImpact.Render
+                : InvalidationImpact.None;
+
+}

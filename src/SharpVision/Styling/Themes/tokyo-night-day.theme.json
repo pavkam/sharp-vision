@@ -1,0 +1,206 @@
+{
+  "name": "Tokyo Night Day",
+  "slug": "tokyo-night-day",
+  "colorScheme": "light",
+  "order": 12,
+  "author": "Folke Lemaitre",
+  "license": "MIT",
+  "source": "https://github.com/folke/tokyonight.nvim",
+  "palette": {
+    "bg": "#e1e2e7",
+    "bg-highlight": "#c4c8da",
+    "fg": "#3760bf",
+    "comment": "#848cb5",
+    "blue": "#2e7de9",
+    "cyan": "#007197",
+    "green": "#587539",
+    "magenta": "#9854f1",
+    "red": "#f52a65",
+    "yellow": "#8c6c3e",
+    "orange": "#b15c00",
+    "selection": "#b7c1e3"
+  },
+  "status": {
+    "error": "red",
+    "warning": "yellow",
+    "success": "green",
+    "info": "blue",
+    "muted": "comment",
+    "hotkey": "yellow"
+  },
+  "colors": {
+    "window": "bg",
+    "windowText": "fg",
+    "surface": "bg-highlight",
+    "surfaceText": "fg",
+    "control": "bg-highlight",
+    "controlText": "fg",
+    "controlBorder": "comment",
+    "controlShadow": "comment",
+    "activeControl": "#b5b9cb",
+    "activeText": "fg",
+    "activeBorder": "fg",
+    "focusedControl": "#bac8e9",
+    "focusedText": "blue",
+    "focusedBorder": "blue",
+    "pressedControl": "#cecdcb",
+    "pressedText": "yellow",
+    "pressedBorder": "yellow",
+    "selectedControl": "selection",
+    "selectedText": "fg",
+    "disabledControl": "bg-highlight",
+    "disabledText": "comment",
+    "disabledBorder": "comment",
+    "accent": "blue",
+    "muted": "comment",
+    "hotkey": "yellow",
+    "error": "red",
+    "warning": "yellow",
+    "success": "green",
+    "info": "blue"
+  },
+  "attributes": {
+    "normalText": [],
+    "activeText": [],
+    "focusedText": "bold",
+    "pressedText": [],
+    "selectedText": [],
+    "disabledText": [],
+    "border": [],
+    "shadow": "dim",
+    "hotkey": "underline"
+  },
+  "styles": {
+    "control": {
+      "normal": {
+        "face": {
+          "foreground": "controlText",
+          "background": "control",
+          "attributes": "normalText"
+        },
+        "border": {
+          "sides": "none",
+          "glyphStyle": "rounded",
+          "foreground": "controlBorder",
+          "background": "control",
+          "attributes": "border"
+        },
+        "shadow": {
+          "visible": false,
+          "mode": "composite",
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "glyph": "▓",
+          "foreground": "controlShadow",
+          "background": "transparent",
+          "attributes": "shadow"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "activeText",
+          "attributes": "activeText"
+        },
+        "border": {
+          "foreground": "activeBorder"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "focusedText",
+          "background": "focusedControl",
+          "attributes": "focusedText"
+        },
+        "border": {
+          "foreground": "focusedBorder"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "pressedText",
+          "background": "pressedControl",
+          "attributes": "pressedText"
+        },
+        "border": {
+          "foreground": "pressedBorder"
+        }
+      },
+      "selected": {
+        "face": {
+          "foreground": "selectedText",
+          "background": "selectedControl",
+          "attributes": "selectedText"
+        }
+      },
+      "disabled": {
+        "face": {
+          "foreground": "disabledText",
+          "background": "disabledControl",
+          "attributes": "disabledText"
+        },
+        "border": {
+          "foreground": "disabledBorder"
+        }
+      }
+    },
+    "input": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "heavy"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "background": "activeControl"
+        }
+      }
+    },
+    "container": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "light"
+        }
+      }
+    },
+    "window": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "paired"
+        },
+        "shadow": {
+          "visible": true,
+          "mode": "composite",
+          "offset": {
+            "x": 2,
+            "y": 1
+          }
+        }
+      }
+    },
+    "popup": {
+      "normal": {
+        "face": {
+          "background": "surface"
+        },
+        "border": {
+          "sides": "all",
+          "glyphStyle": "rounded"
+        }
+      }
+    }
+  }
+}

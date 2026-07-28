@@ -1,0 +1,4 @@
+interface:
+  display_name: "Terminal Protocols"
+  short_description: "Implement terminal protocols without byte-level surprises"
+  default_prompt: "Use $terminal-protocols to implement or review a SharpVision terminal protocol change."

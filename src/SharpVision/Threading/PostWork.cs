@@ -1,0 +1,22 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Threading;
+
+/// <summary>Executes one fire-and-observe dispatcher callback.</summary>
+internal sealed class PostWork: Work
+{
+    private readonly Action _action;
+
+    /// <summary>Initializes one validated fire-and-observe callback.</summary>
+    /// <param name="action">The non-null callback to execute.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    public PostWork(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        _action = action;
+    }
+
+    /// <inheritdoc/>
+    public override void Execute() => _action();
+}

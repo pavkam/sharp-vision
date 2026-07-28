@@ -1,0 +1,186 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Styling;
+
+using Terminal.Rendering;
+
+/// <summary>Defines immutable printable narrow Runes for every border segment.</summary>
+[DebuggerDisplay("{ToString()}")]
+[PublicAPI]
+public readonly record struct BorderGlyphStyle
+{
+    /// <summary>Initializes and validates all physical border glyphs.</summary>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
+    public BorderGlyphStyle(
+        Rune topLeft,
+        Rune top,
+        Rune topRight,
+        Rune right,
+        Rune bottomRight,
+        Rune bottom,
+        Rune bottomLeft,
+        Rune left)
+    {
+        TopLeft = Validate(topLeft, nameof(topLeft));
+        Top = Validate(top, nameof(top));
+        TopRight = Validate(topRight, nameof(topRight));
+        Right = Validate(right, nameof(right));
+        BottomRight = Validate(bottomRight, nameof(bottomRight));
+        Bottom = Validate(bottom, nameof(bottom));
+        BottomLeft = Validate(bottomLeft, nameof(bottomLeft));
+        Left = Validate(left, nameof(left));
+    }
+
+    /// <summary>Gets the light Unicode box-drawing set.</summary>
+    public static BorderGlyphStyle Light { get; } = new(
+        new Rune('┌'),
+        new Rune('─'),
+        new Rune('┐'),
+        new Rune('│'),
+        new Rune('┘'),
+        new Rune('─'),
+        new Rune('└'),
+        new Rune('│'));
+
+    /// <summary>Gets the heavy Unicode box-drawing set.</summary>
+    public static BorderGlyphStyle Heavy { get; } = new(
+        new Rune('┏'),
+        new Rune('━'),
+        new Rune('┓'),
+        new Rune('┃'),
+        new Rune('┛'),
+        new Rune('━'),
+        new Rune('┗'),
+        new Rune('┃'));
+
+    /// <summary>Gets the paired-line Unicode box-drawing set.</summary>
+    public static BorderGlyphStyle Paired { get; } = new(
+        new Rune('╔'),
+        new Rune('═'),
+        new Rune('╗'),
+        new Rune('║'),
+        new Rune('╝'),
+        new Rune('═'),
+        new Rune('╚'),
+        new Rune('║'));
+
+    /// <summary>Gets the rounded light Unicode box-drawing set.</summary>
+    public static BorderGlyphStyle Rounded { get; } = new(
+        new Rune('╭'),
+        new Rune('─'),
+        new Rune('╮'),
+        new Rune('│'),
+        new Rune('╯'),
+        new Rune('─'),
+        new Rune('╰'),
+        new Rune('│'));
+
+    /// <summary>Gets the portable ASCII border set.</summary>
+    public static BorderGlyphStyle Ascii { get; } = new(
+        new Rune('+'),
+        new Rune('-'),
+        new Rune('+'),
+        new Rune('|'),
+        new Rune('+'),
+        new Rune('-'),
+        new Rune('+'),
+        new Rune('|'));
+
+    /// <summary>Gets a full-block border set.</summary>
+    public static BorderGlyphStyle Solid { get; } = Uniform(new Rune('█'));
+
+    /// <summary>Gets a sculpted border set built from half-block edges and matching corner blocks.</summary>
+    public static BorderGlyphStyle HalfBlock { get; } = new(
+        new Rune('▛'),
+        new Rune('▀'),
+        new Rune('▜'),
+        new Rune('▐'),
+        new Rune('▟'),
+        new Rune('▄'),
+        new Rune('▙'),
+        new Rune('▌'));
+
+    /// <summary>Gets a light-shade border set.</summary>
+    public static BorderGlyphStyle LightShade { get; } = Uniform(new Rune('░'));
+
+    /// <summary>Gets a medium-shade border set.</summary>
+    public static BorderGlyphStyle MediumShade { get; } = Uniform(new Rune('▒'));
+
+    /// <summary>Gets a dark-shade border set.</summary>
+    public static BorderGlyphStyle DarkShade { get; } = Uniform(new Rune('▓'));
+
+    /// <summary>Gets the default light Unicode box-drawing set.</summary>
+    public static BorderGlyphStyle Default => Light;
+
+    /// <summary>Gets the top-left glyph.</summary>
+    public Rune TopLeft { get; }
+
+    /// <summary>Gets the top edge glyph.</summary>
+    public Rune Top { get; }
+
+    /// <summary>Gets the top-right glyph.</summary>
+    public Rune TopRight { get; }
+
+    /// <summary>Gets the right edge glyph.</summary>
+    public Rune Right { get; }
+
+    /// <summary>Gets the bottom-right glyph.</summary>
+    public Rune BottomRight { get; }
+
+    /// <summary>Gets the bottom edge glyph.</summary>
+    public Rune Bottom { get; }
+
+    /// <summary>Gets the bottom-left glyph.</summary>
+    public Rune BottomLeft { get; }
+
+    /// <summary>Gets the left edge glyph.</summary>
+    public Rune Left { get; }
+
+    /// <summary>Resolves a standard box-drawing family to its semantic line topology.</summary>
+    /// <param name="line">The matching line family when this value is standard.</param>
+    /// <returns>Whether this value represents a standard topology-aware line family.</returns>
+    internal bool TryGetLineStyle(out LineStyle line)
+    {
+        if (this == Light)
+        {
+            line = LineStyle.Light;
+            return true;
+        }
+
+        if (this == Rounded)
+        {
+            line = LineStyle.Rounded;
+            return true;
+        }
+
+        if (this == Heavy)
+        {
+            line = LineStyle.Heavy;
+            return true;
+        }
+
+        if (this == Paired)
+        {
+            line = LineStyle.Paired;
+            return true;
+        }
+
+        if (this == Ascii)
+        {
+            line = LineStyle.Ascii;
+            return true;
+        }
+
+        line = default;
+        return false;
+    }
+
+    /// <inheritdoc/>
+    public override string ToString() => $"BorderGlyphStyle '{TopLeft}'";
+
+    private static Rune Validate(Rune value, string name) =>
+        CellGlyphResolver.ValidateSingleCell(value, name);
+
+    private static BorderGlyphStyle Uniform(Rune value) => new(value, value, value, value, value, value, value, value);
+}

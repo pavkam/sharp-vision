@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation Specifications"
+  short_description: "Keep SharpVision specs authoritative and linked"
+  default_prompt: "Use $docs-specifications to create, update, or audit SharpVision normative documentation."

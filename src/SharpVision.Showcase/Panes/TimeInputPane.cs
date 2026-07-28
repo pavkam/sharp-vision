@@ -1,0 +1,94 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Showcase.Panes;
+
+using System.Globalization;
+
+using Text = SharpVision.Controls.Display.Text;
+
+/// <summary>Documents the TimeInput control with live time-editing specimens.</summary>
+internal sealed class TimeInputPane: CompositeControl
+{
+    /// <summary>The exact catalog/page name.</summary>
+    internal const string Title = "TimeInput";
+
+    /// <summary>Initializes the retained interactive TimeInput documentation page.</summary>
+    internal TimeInputPane() => InitializeContent(CreateContent());
+
+    private static DocPage CreateContent()
+    {
+        // 24-hour format (default).
+        var status24 = new Text("Value: (pick a time)");
+        var input24 = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };
+        input24.ValueChanged += (_, eventArgs) =>
+            status24.Content = $"Value: {FormatTime(eventArgs.Value)}";
+        status24.Content = $"Value: {FormatTime(input24.Value)}";
+
+        // 12-hour format with AM/PM.
+        var status12 = new Text("Value: (pick a time)");
+        var input12 = new TimeInput { Use24HourFormat = false };
+        input12.ValueChanged += (_, eventArgs) =>
+            status12.Content = $"Value: {FormatTime(eventArgs.Value)}";
+        status12.Content = $"Value: {FormatTime(input12.Value)}";
+
+        // With seconds visible.
+        var statusSec = new Text("Value: (pick a time)");
+        var inputSec = new TimeInput { ShowSeconds = true };
+        inputSec.ValueChanged += (_, eventArgs) =>
+            statusSec.Content = $"Value: {FormatTime(eventArgs.Value, showSeconds: true)}";
+        statusSec.Content = $"Value: {FormatTime(inputSec.Value, showSeconds: true)}";
+
+        // Nullable.
+        var statusNull = new Text("Value: (pick a time)");
+        var inputNull = new TimeInput { AllowNull = true };
+        inputNull.ValueChanged += (_, eventArgs) =>
+            statusNull.Content = $"Value: {FormatTime(eventArgs.Value)}";
+        statusNull.Content = $"Value: {FormatTime(inputNull.Value)}";
+
+        return new DocPage(
+            Title,
+            "<info>TimeInput</info> edits a time value with inline segment navigation and optional 12-hour or seconds display.",
+            new DocSection(
+                "🕐",
+                "24-hour format",
+                "The default display uses a 24-hour clock. <reverse>Up</reverse>/<reverse>Down</reverse> arrows adjust the focused segment; this specimen uses a 15-minute TimeStep for the minute segment.",
+                new DocExample(
+                    "Default time field",
+                    "<reverse>Left</reverse>/<reverse>Right</reverse> navigate between hour and minute segments. <reverse>Up</reverse>/<reverse>Down</reverse> increment or decrement.",
+                    new DocColumn(input24, status24),
+                    "var timeInput = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };\ntimeInput.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
+            new DocSection(
+                "🕑",
+                "12-hour format",
+                "Set <info>Use24HourFormat</info> to false for a 12-hour clock with an AM/PM segment.",
+                new DocExample(
+                    "AM/PM time field",
+                    "The AM/PM segment toggles with <reverse>Up</reverse>/<reverse>Down</reverse> or by typing <reverse>A</reverse> or <reverse>P</reverse>.",
+                    new DocColumn(input12, status12),
+                    "timeInput.Use24HourFormat = false;")),
+            new DocSection(
+                "⏱️",
+                "With seconds",
+                "Enable <info>ShowSeconds</info> to add a third editable segment for second-level precision.",
+                new DocExample(
+                    "Seconds-precision field",
+                    "The seconds segment behaves identically to hour and minute: arrow keys, digit entry, and segment navigation.",
+                    new DocColumn(inputSec, statusSec),
+                    "timeInput.ShowSeconds = true;")),
+            new DocSection(
+                "🚫",
+                "Nullable",
+                "With <info>AllowNull</info> set, pressing <reverse>Delete</reverse> clears the committed value to null, displaying placeholder dashes.",
+                new DocExample(
+                    "Clearable time field",
+                    "Press <reverse>Delete</reverse> to clear. Any subsequent edit restores a concrete time value.",
+                    new DocColumn(inputNull, statusNull),
+                    "timeInput.AllowNull = true;\n// Value is null when cleared")));
+    }
+
+    private static string FormatTime(TimeOnly? time, bool showSeconds = false) =>
+        time.HasValue
+            ? time.Value.ToString(showSeconds ? "HH:mm:ss" : "HH:mm", CultureInfo.InvariantCulture)
+            : "(none)";
+}

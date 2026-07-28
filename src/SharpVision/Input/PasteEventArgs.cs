@@ -1,0 +1,18 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Input;
+
+using SharpVision.Terminal.Input;
+
+/// <summary>Provides an owned immutable bracketed-paste payload.</summary>
+[PublicAPI]
+public sealed class PasteEventArgs: RoutedEventArgs
+{
+    /// <summary>Initializes routed bracketed-paste input.</summary>
+    /// <param name="paste">The immutable owned paste payload.</param>
+    public PasteEventArgs(Paste paste) => Paste = paste;
+
+    /// <summary>Gets the owned paste payload.</summary>
+    public Paste Paste { get; }
+}

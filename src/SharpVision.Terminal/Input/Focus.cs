@@ -1,0 +1,20 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Terminal.Input;
+
+/// <summary>Represents a terminal focus transition.</summary>
+[PublicAPI]
+public readonly record struct Focus
+{
+    /// <summary>Initializes a terminal focus transition.</summary>
+    /// <param name="gained">Whether terminal focus was gained rather than lost.</param>
+    public Focus(bool gained) => Gained = gained;
+
+    /// <summary>Gets whether terminal focus was gained rather than lost.</summary>
+    public bool Gained { get; }
+
+    /// <summary>Deconstructs the focus transition.</summary>
+    /// <param name="gained">Receives whether terminal focus was gained.</param>
+    public void Deconstruct(out bool gained) => gained = Gained;
+}

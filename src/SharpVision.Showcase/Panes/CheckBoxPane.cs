@@ -1,0 +1,180 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Showcase.Panes;
+
+using Text = SharpVision.Controls.Display.Text;
+
+/// <summary>Documents the CheckBox control with live, themed toggle specimens.</summary>
+internal sealed class CheckBoxPane: CompositeControl
+{
+    internal CheckBoxPane() => InitializeContent(CreateContent());
+
+    /// <summary>The exact catalog/page name.</summary>
+    internal const string Title = "CheckBox";
+
+    /// <inheritdoc/>
+    private static DocPage CreateContent()
+    {
+        var status = new Text("State log: waiting");
+        var live = new CheckBox { Content = new Text("&Toggle with Space, Enter, or a pointer click") };
+        live.StateChanged += (_, eventArgs) =>
+            status.Content = $"State log: {eventArgs.Current?.ToString() ?? "indeterminate"} ({eventArgs.Cause})";
+
+        // Built-in mark families and one validated custom glyph set.
+        var square = new CheckBox
+        {
+            Content = new Text("&Square marks"),
+            Style = CheckBoxStyle.Square,
+            IsChecked = true
+        };
+        var brackets = new CheckBox
+        {
+            Content = new Text("&Bracket marks"),
+            Style = CheckBoxStyle.Brackets,
+            IsChecked = true
+        };
+        var tick = new CheckBox
+        {
+            Content = new Text("Tic&k marks"),
+            Style = CheckBoxStyle.Tick,
+            IsChecked = true
+        };
+        var custom = new CheckBox
+        {
+            Content = new Text("Custo&m marks"),
+            Style = new CheckBoxStyle(
+                CheckBoxMarkStyle.Square,
+                new CheckBoxGlyphs(new Rune('·'), new Rune('✓'), new Rune('~')),
+                CheckBoxStyle.Default.Appearance),
+            IsChecked = true
+        };
+
+        // Three-state specimens: unchecked, checked, and indeterminate.
+        var @unchecked = new CheckBox { Content = new Text("&Unchecked"), Style = CheckBoxStyle.Brackets };
+        var @checked = new CheckBox
+        {
+            Content = new Text("&Checked"),
+            Style = CheckBoxStyle.Brackets,
+            IsChecked = true
+        };
+        var indeterminate = new CheckBox
+        {
+            Content = new Text("&Indeterminate"),
+            Style = CheckBoxStyle.Brackets,
+            IsThreeState = true,
+            IsChecked = null
+        };
+        var stateStage = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(1, 0),
+            Children = { new DocColumn(@unchecked, @checked, indeterminate) }
+        };
+
+        var disabled = new CheckBox
+        {
+            Content = new Text("&Disabled, checked"),
+            Style = CheckBoxStyle.Brackets,
+            IsChecked = true,
+            IsEnabled = false
+        };
+
+        // Three-state policy normalizes null to false when returning to two states.
+        var policyStatus = new Text("Policy: indeterminate");
+        var policy = new CheckBox
+        {
+            Content = new Text("&Optional inherited value"),
+            IsThreeState = true,
+            IsChecked = null
+        };
+        var twoState = new Button { Content = new Text("&Return to two states") };
+        twoState.Click += (_, _) =>
+        {
+            policy.IsThreeState = false;
+            policyStatus.Content = $"Policy: {policy.IsChecked}";
+        };
+
+        // State-specific notifications precede the general StateChanged notification.
+        var eventStatus = new Text("Events: waiting");
+        var eventProbe = new CheckBox { Content = new Text("Obser&ve event order") };
+        eventProbe.Checked += (_, _) => eventStatus.Content = "Events: Checked";
+        eventProbe.Unchecked += (_, _) => eventStatus.Content = "Events: Unchecked";
+        eventProbe.Indeterminate += (_, _) => eventStatus.Content = "Events: Indeterminate";
+        eventProbe.StateChanged += (_, _) => eventStatus.Content += " → StateChanged";
+
+        // PerformClick reports Programmatic as the activation cause.
+        var programmaticStatus = new Text("Programmatic toggle: waiting");
+        var programmaticTarget = new CheckBox { Content = new Text("&Programmatic target") };
+        programmaticTarget.StateChanged += (_, eventArgs) =>
+            programmaticStatus.Content = $"Programmatic toggle: {eventArgs.Current} ({eventArgs.Cause})";
+        var programmaticTrigger = new Button { Content = new Text("Toggle pro&grammatically") };
+        programmaticTrigger.Click += (_, _) => programmaticTarget.PerformClick();
+
+        // Form recipe: grouped options with one disabled retained value.
+        var settings = new DocCard(new DocColumn(
+            new Text("Export options")
+            {
+                Face = new Face(
+                ThemeColor.ControlText,
+                Color.Transparent,
+                TerminalAttributes.Bold,
+                Underline.None,
+                Color.Default)
+            },
+            new CheckBox { Content = new Text("Include meta&data"), IsChecked = true },
+            new CheckBox { Content = new Text("Compr&ess output") },
+            disabled));
+
+        return new DocPage(
+            Title,
+            "<info>CheckBox</info> toggles an optional label through <i>two-state</i> or <i>three-state</i> selection with explicit events.",
+            new DocSection(
+                "☑️",
+                "Two-state choice",
+                "Use the default false/true cycle for independent Boolean options.",
+                new DocExample(
+                    "Live toggle",
+                    "Use <reverse>Space</reverse>, <reverse>Enter</reverse>, or a primary click. The status reports both the <success>committed value</success> and activation cause.",
+                    new DocColumn(live, status),
+                    "var option = new CheckBox { Content = new Text(\"Include metadata\") };")),
+            new DocSection(
+                "☑️",
+                "Three-state policy",
+                "Use null only when the option genuinely represents an inherited or mixed value.",
+                new DocExample(
+                    "Cycle and normalize",
+                    "The compact marks sit on a contrasting Surface without painting selection blocks. Return the live policy to two states and null normalizes to false.",
+                    new DocColumn(stateStage, policy, twoState, policyStatus),
+                    "option.IsThreeState = true;\noption.IsChecked = null;")),
+            new DocSection(
+                "☑️",
+                "Styles",
+                "Built-in families and validated caller glyphs retain stable label placement.",
+                new DocExample(
+                    "Built-in and custom glyphs",
+                    "Square, bracket, tick, and custom marks all use printable one-cell state glyphs.",
+                    new DocColumn(square, brackets, tick, custom))),
+            new DocSection(
+                "☑️",
+                "Events",
+                "State-specific notifications precede the general StateChanged notification.",
+                new DocExample(
+                    "Committed event order",
+                    "Toggle the probe and read the exact state-specific → StateChanged sequence.",
+                    new DocColumn(eventProbe, eventStatus)),
+                new DocExample(
+                    "Programmatic activation",
+                    "Toggle the target through PerformClick. The same event contract reports Programmatic as the cause.",
+                    new DocColumn(programmaticTrigger, programmaticTarget, programmaticStatus),
+                    "target.PerformClick();")),
+            new DocSection(
+                "☑️",
+                "Form recipe",
+                "Group related options and keep unavailable retained values visible as context.",
+                new DocExample(
+                    "Export settings",
+                    "The disabled checked option remains readable but refuses focus and activation.",
+                    settings)));
+    }
+}
