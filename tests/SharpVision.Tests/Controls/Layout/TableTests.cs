@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Controls.Layout;
 /// <summary>Verifies table ownership, track geometry, headers, grid cells, and row validation.</summary>
 public sealed class TableTests
 {
-    /// <summary>Verifies private rail ownership publishes exact local and resolved-style notifications.</summary>
+    /// <summary>Verifies private rail local mechanics publish exact resolved-style notifications.</summary>
     [Fact]
     public void ScrollBarStyle_WhenOwnershipChanges_PublishesLocalAndActualNotifications()
     {
@@ -19,14 +19,7 @@ public sealed class TableTests
                 notifications.Add(eventArgs.PropertyName);
             }
         };
-        var thinTheme = ScrollBarTheme(ScrollBarStyle.ThinLine);
-        var fullTheme = ScrollBarTheme(ScrollBarStyle.FullLine);
-
-        table.SetTheme(thinTheme);
-        notifications.ShouldBe([nameof(Table.ActualScrollBarStyle)]);
-        notifications.Clear();
-
-        table.ScrollBarStyle = ScrollBarStyle.FullBlock;
+        table.ScrollBarStyle = ScrollBarStyle.ThinLine;
         table.ScrollBarStyle = null;
         notifications.ShouldBe([
             nameof(Table.ScrollBarStyle),
@@ -36,8 +29,8 @@ public sealed class TableTests
         ]);
         notifications.Clear();
 
-        table.SetTheme(fullTheme);
-        notifications.ShouldBe([nameof(Table.ActualScrollBarStyle)]);
+        table.SetTheme(Themes.White);
+        notifications.ShouldBeEmpty();
     }
 
     /// <summary>Verifies stable row selection, active cell tracking, clearing, and deterministic copy.</summary>
@@ -688,11 +681,4 @@ public sealed class TableTests
         replacementCell.Parent.ShouldBeNull();
     }
 
-    private static Theme ScrollBarTheme(ScrollBarStyle _)
-    {
-        var theme = new Theme();
-
-        theme.Freeze();
-        return theme;
-    }
 }

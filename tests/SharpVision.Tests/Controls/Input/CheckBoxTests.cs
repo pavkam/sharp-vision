@@ -11,16 +11,16 @@ public sealed class CheckBoxTests
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()
     {
-        var theme = CreateTheme(CheckBoxStyle.Square);
+        var theme = ThemeWithInputProfile(CheckBoxStyle.Square.Appearance);
         var checkBox = new CheckBox();
 
         checkBox.SetTheme(theme);
         checkBox.Style.ShouldBeNull();
-        checkBox.ActualStyle.ShouldBe(CheckBoxStyle.Default);
+        checkBox.ActualStyle.ShouldBe(ThemeOwnedStyle(theme.Input));
         checkBox.Style = CheckBoxStyle.Tick;
         checkBox.ActualStyle.ShouldBe(CheckBoxStyle.Tick);
         checkBox.Style = null;
-        checkBox.ActualStyle.ShouldBe(CheckBoxStyle.Default);
+        checkBox.ActualStyle.ShouldBe(ThemeOwnedStyle(theme.Input));
     }
 
     /// <summary>Verifies a mark-width style change invalidates measurement.</summary>
@@ -46,7 +46,7 @@ public sealed class CheckBoxTests
         checkBox.Content.ShouldBeNull();
         checkBox.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
         checkBox.Style.ShouldBeNull();
-        checkBox.ActualStyle.ShouldBe(CheckBoxStyle.Default);
+        checkBox.ActualStyle.ShouldBe(ThemeOwnedStyle(Themes.Dark.Input));
         checkBox.PerformClick();
         checkBox.IsChecked.ShouldBe(true);
         checkBox.PerformClick();
@@ -356,11 +356,17 @@ public sealed class CheckBoxTests
             Modifiers.None,
             action)));
 
-    private static Theme CreateTheme(CheckBoxStyle _)
+    private static Theme ThemeWithInputProfile(ThemeProfile input)
     {
         var theme = new Theme();
-
+        theme.SetProfiles(theme.Control, input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
         return theme;
     }
+
+    private static CheckBoxStyle ThemeOwnedStyle(ThemeProfile input) =>
+        new(
+            CheckBoxStyle.Default.MarkStyle,
+            CheckBoxStyle.Default.Glyphs,
+            ControlStyleProfiles.WithoutChrome(input));
 }

@@ -86,7 +86,7 @@ public sealed class ComboBoxTests
         list.ActualBorder.Sides.ShouldBe(BorderSide.None);
     }
 
-    /// <summary>Verifies drop-down rail ownership publishes exact local and resolved-style notifications.</summary>
+    /// <summary>Verifies drop-down rail local mechanics publish exact resolved-style notifications.</summary>
     [Fact]
     public void ScrollBarStyle_WhenOwnershipChanges_PublishesLocalAndActualNotifications()
     {
@@ -99,14 +99,7 @@ public sealed class ComboBoxTests
                 notifications.Add(eventArgs.PropertyName);
             }
         };
-        var thinTheme = ScrollBarTheme(ScrollBarStyle.ThinLine);
-        var fullTheme = ScrollBarTheme(ScrollBarStyle.FullLine);
-
-        box.SetTheme(thinTheme);
-        notifications.ShouldBe([nameof(ComboBox.ActualScrollBarStyle)]);
-        notifications.Clear();
-
-        box.ScrollBarStyle = ScrollBarStyle.FullBlock;
+        box.ScrollBarStyle = ScrollBarStyle.ThinLine;
         box.ScrollBarStyle = null;
         notifications.ShouldBe([
             nameof(ComboBox.ScrollBarStyle),
@@ -116,8 +109,8 @@ public sealed class ComboBoxTests
         ]);
         notifications.Clear();
 
-        box.SetTheme(fullTheme);
-        notifications.ShouldBe([nameof(ComboBox.ActualScrollBarStyle)]);
+        box.SetTheme(Themes.White);
+        notifications.ShouldBeEmpty();
     }
 
     /// <summary>Verifies ComboBox publishes its committed index before forwarding selection change.</summary>
@@ -471,14 +464,6 @@ public sealed class ComboBoxTests
         nativeCode: 0,
         Modifiers.None,
         KeyAction.Press));
-
-    private static Theme ScrollBarTheme(ScrollBarStyle _)
-    {
-        var theme = new Theme();
-
-        theme.Freeze();
-        return theme;
-    }
 
     private static KeyEventArgs Key(Code code) => new(new Stroke(
         code,

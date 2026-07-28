@@ -10,16 +10,16 @@ public sealed class SpinnerTests
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()
     {
-        var theme = CreateTheme(SpinnerStyle.Ascii);
+        var theme = ThemeWithControlProfile(SpinnerStyle.Ascii.Appearance);
         var spinner = new Spinner();
 
         spinner.SetTheme(theme);
         spinner.Style.ShouldBeNull();
-        spinner.ActualStyle.ShouldBe(SpinnerStyle.Default);
+        spinner.ActualStyle.ShouldBe(ThemeOwnedStyle(theme.Control));
         spinner.Style = SpinnerStyle.DenseBraille;
         spinner.ActualStyle.ShouldBe(SpinnerStyle.DenseBraille);
         spinner.Style = null;
-        spinner.ActualStyle.ShouldBe(SpinnerStyle.Default);
+        spinner.ActualStyle.ShouldBe(ThemeOwnedStyle(theme.Control));
     }
 
     /// <summary>Verifies documented one-cell non-interactive defaults.</summary>
@@ -31,7 +31,7 @@ public sealed class SpinnerTests
 
         // Assert
         spinner.Style.ShouldBeNull();
-        spinner.ActualStyle.ShouldBe(SpinnerStyle.Braille);
+        spinner.ActualStyle.ShouldBe(ThemeOwnedStyle(Themes.Dark.Control));
         spinner.Interval.ShouldBe(TimeSpan.FromMilliseconds(200));
         spinner.IsPlaying.ShouldBeTrue();
         spinner.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
@@ -55,7 +55,7 @@ public sealed class SpinnerTests
 
         // Assert
         spinner.Style.ShouldBeNull();
-        spinner.ActualStyle.ShouldBe(SpinnerStyle.Braille);
+        spinner.ActualStyle.ShouldBe(ThemeOwnedStyle(Themes.Dark.Control));
         spinner.Interval.ShouldBe(TimeSpan.FromMilliseconds(200));
     }
 
@@ -139,11 +139,14 @@ public sealed class SpinnerTests
             spinner.IsPlaying = false);
     }
 
-    private static Theme CreateTheme(SpinnerStyle _)
+    private static Theme ThemeWithControlProfile(ThemeProfile control)
     {
         var theme = new Theme();
-
+        theme.SetProfiles(control, theme.Input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
         return theme;
     }
+
+    private static SpinnerStyle ThemeOwnedStyle(ThemeProfile control) =>
+        new(SpinnerStyle.Default.Frames, control);
 }

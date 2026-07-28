@@ -10,16 +10,16 @@ public sealed class ChaseIndicatorTests
     [Fact]
     public void Style_WhenThemeAndLocalValuesChange_UsesDocumentedPrecedence()
     {
-        var theme = CreateTheme(ChaseIndicatorStyle.Diamond);
+        var theme = ThemeWithControlProfile(ChaseIndicatorStyle.Diamond.Appearance);
         var indicator = new ChaseIndicator();
 
         indicator.SetTheme(theme);
         indicator.Style.ShouldBeNull();
-        indicator.ActualStyle.ShouldBe(ChaseIndicatorStyle.Default);
+        indicator.ActualStyle.ShouldBe(ThemeOwnedStyle(theme.Control));
         indicator.Style = ChaseIndicatorStyle.Square;
         indicator.ActualStyle.ShouldBe(ChaseIndicatorStyle.Square);
         indicator.Style = null;
-        indicator.ActualStyle.ShouldBe(ChaseIndicatorStyle.Default);
+        indicator.ActualStyle.ShouldBe(ThemeOwnedStyle(theme.Control));
     }
 
     /// <summary>Verifies documented five-cell non-interactive defaults.</summary>
@@ -32,7 +32,7 @@ public sealed class ChaseIndicatorTests
         // Assert
         indicator.Movement.ShouldBe(ChaseMovement.Bounce);
         indicator.Style.ShouldBeNull();
-        indicator.ActualStyle.ShouldBe(ChaseIndicatorStyle.Circle);
+        indicator.ActualStyle.ShouldBe(ThemeOwnedStyle(Themes.Dark.Control));
         indicator.Length.ShouldBe(5);
         indicator.Orientation.ShouldBe(Orientation.Horizontal);
         indicator.Spacing.ShouldBe(0);
@@ -68,7 +68,7 @@ public sealed class ChaseIndicatorTests
         // Assert
         indicator.Length.ShouldBe(5);
         indicator.Style.ShouldBeNull();
-        indicator.ActualStyle.ShouldBe(ChaseIndicatorStyle.Circle);
+        indicator.ActualStyle.ShouldBe(ThemeOwnedStyle(Themes.Dark.Control));
         indicator.Movement.ShouldBe(ChaseMovement.Bounce);
         indicator.Interval.ShouldBe(TimeSpan.FromMilliseconds(200));
         indicator.TrailLength.ShouldBe(2);
@@ -236,11 +236,14 @@ public sealed class ChaseIndicatorTests
         frame.GetCell(new Point(3, 0)).Style.Foreground.ShouldBe(Color.Rgb(15, 15, 15));
     }
 
-    private static Theme CreateTheme(ChaseIndicatorStyle _)
+    private static Theme ThemeWithControlProfile(ThemeProfile control)
     {
         var theme = new Theme();
-
+        theme.SetProfiles(control, theme.Input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
         return theme;
     }
+
+    private static ChaseIndicatorStyle ThemeOwnedStyle(ThemeProfile control) =>
+        new(ChaseIndicatorStyle.Default.Active, ChaseIndicatorStyle.Default.Inactive, control);
 }

@@ -72,17 +72,17 @@ public sealed class ThemeProfile
     /// <summary>Gets the disabled contribution.</summary>
     public AppearanceSet Disabled { get; }
 
-    /// <summary>Gets whether any state contribution can change the border's reserved sides.</summary>
-    internal bool StateCanChangeBorderSides =>
-        HasBorderSides(PointerOver) ||
-        HasBorderSides(FocusWithin) ||
-        HasBorderSides(Focused) ||
-        HasBorderSides(Current) ||
-        HasBorderSides(Selected) ||
-        HasBorderSides(Checked) ||
-        HasBorderSides(Indeterminate) ||
-        HasBorderSides(Pressed) ||
-        HasBorderSides(Disabled);
+    /// <summary>Gets whether any state contribution can alter intrinsic chrome geometry.</summary>
+    internal bool StateCanChangeChromeGeometry =>
+        ChangesChromeGeometry(PointerOver) ||
+        ChangesChromeGeometry(FocusWithin) ||
+        ChangesChromeGeometry(Focused) ||
+        ChangesChromeGeometry(Current) ||
+        ChangesChromeGeometry(Selected) ||
+        ChangesChromeGeometry(Checked) ||
+        ChangesChromeGeometry(Indeterminate) ||
+        ChangesChromeGeometry(Pressed) ||
+        ChangesChromeGeometry(Disabled);
 
     /// <summary>Resolves the complete appearance for an exact set of visual-state flags.</summary>
     /// <param name="state">The exact local visual-state flags.</param>
@@ -126,5 +126,8 @@ public sealed class ThemeProfile
         _ => throw new UnreachableException()
     };
 
-    private static bool HasBorderSides(AppearanceSet set) => set.Border?.Sides.HasValue == true;
+    private static bool ChangesChromeGeometry(AppearanceSet set) =>
+        set.Border?.Sides.HasValue == true ||
+        set.Shadow?.IsVisible.HasValue == true ||
+        set.Shadow?.Offset.HasValue == true;
 }

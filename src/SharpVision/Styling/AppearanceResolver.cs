@@ -65,7 +65,7 @@ internal static class AppearanceResolver
             useExplicitAmbient: true);
     }
 
-    /// <summary>Compares all visual states using explicit old and new ambient parent faces.</summary>
+    /// <summary>Compares the active visual state using explicit old and new ambient parent faces.</summary>
     /// <param name="control">The non-null control whose local appearance values participate.</param>
     /// <param name="previousTheme">The Theme before the prospective change, or null.</param>
     /// <param name="previousProfile">The non-null complete profile before the change.</param>
@@ -73,7 +73,7 @@ internal static class AppearanceResolver
     /// <param name="currentProfile">The non-null complete profile after the change.</param>
     /// <param name="previousParentAmbientFace">The explicit parent ambient face before the change.</param>
     /// <param name="currentParentAmbientFace">The explicit parent ambient face after the change.</param>
-    /// <returns>The strongest exact invalidation impact across every defined state combination.</returns>
+    /// <returns>The exact invalidation impact for the currently rendered state.</returns>
     /// <exception cref="ArgumentNullException">A required control or profile is null.</exception>
     internal static InvalidationImpact GetImpact(
         Control control,
@@ -88,35 +88,22 @@ internal static class AppearanceResolver
         ArgumentNullException.ThrowIfNull(previousProfile);
         ArgumentNullException.ThrowIfNull(currentProfile);
 
-        const int stateCount = 1 << 9;
-        var impact = InvalidationImpact.None;
-
-        for (var index = 0; index < stateCount; index++)
-        {
-            var previous = Resolve(
-                control,
-                (VisualState) index,
-                previousTheme,
-                previousProfile,
-                previousParentAmbientFace,
-                useExplicitAmbient: true);
-            var current = Resolve(
-                control,
-                (VisualState) index,
-                currentTheme,
-                currentProfile,
-                currentParentAmbientFace,
-                useExplicitAmbient: true);
-            var stateImpact = control.GetAppearanceChangeImpact(previous, current);
-            if (stateImpact == InvalidationImpact.Measure)
-            {
-                return stateImpact;
-            }
-
-            impact = Control.MaximumImpact(impact, stateImpact);
-        }
-
-        return impact;
+        var state = control.GetAppearanceState();
+        var previous = Resolve(
+            control,
+            state,
+            previousTheme,
+            previousProfile,
+            previousParentAmbientFace,
+            useExplicitAmbient: true);
+        var current = Resolve(
+            control,
+            state,
+            currentTheme,
+            currentProfile,
+            currentParentAmbientFace,
+            useExplicitAmbient: true);
+        return control.GetAppearanceChangeImpact(previous, current);
     }
 
     private static ResolvedAppearance Resolve(

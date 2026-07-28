@@ -174,7 +174,7 @@ public sealed class SpinnerSurfaceTests
         surface.ShouldRender("-");
     }
 
-    /// <summary>Verifies appearance-only local and Theme changes repaint without resetting the active frame.</summary>
+    /// <summary>Verifies appearance changes preserve phase while the active style owner retains its frame sequence.</summary>
     [Fact]
     public async Task UpdateAsync_WhenOnlyAppearanceChanges_PreservesAdvancedFrameAsync()
     {
@@ -202,8 +202,8 @@ public sealed class SpinnerSurfaceTests
         surface.Cell(default).Style.Foreground.ShouldBe(
             Palette.Project(Color.Rgb(0xFF, 0x00, 0x00), ColorDepth.Basic16));
 
-        var firstTheme = CreateTheme(firstStyle);
-        var secondTheme = CreateTheme(secondStyle);
+        var firstTheme = ThemeWithControlProfile(firstStyle.Appearance);
+        var secondTheme = ThemeWithControlProfile(secondStyle.Appearance);
         await surface.UpdateAsync(
             () =>
             {
@@ -211,13 +211,16 @@ public sealed class SpinnerSurfaceTests
                 spinner.Style = null;
             },
             "restore Theme-owned Spinner appearance");
-        surface.ShouldRender("⣷");
+        surface.ShouldRender("⠋");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "advance Theme-owned Spinner");
+        surface.ShouldRender("⠙");
 
         await surface.UpdateAsync(
             () => spinner.PropagateTheme(secondTheme),
             "swap only Theme-owned Spinner appearance");
 
-        surface.ShouldRender("⣷");
+        surface.ShouldRender("⠙");
         surface.Cell(default).Style.Foreground.ShouldBe(
             Palette.Project(Color.Rgb(0xFF, 0x00, 0x00), ColorDepth.Basic16));
     }
@@ -231,10 +234,10 @@ public sealed class SpinnerSurfaceTests
             AppearanceTestValues.Border(BorderSide.None),
             AppearanceTestValues.Shadow(visible: false)));
 
-    private static Theme CreateTheme(SpinnerStyle _)
+    private static Theme ThemeWithControlProfile(ThemeProfile control)
     {
         var theme = new Theme();
-
+        theme.SetProfiles(control, theme.Input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
         return theme;
     }

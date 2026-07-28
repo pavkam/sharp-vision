@@ -73,7 +73,7 @@ public sealed class ListViewTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBars = (ScrollBars) 99);
     }
 
-    /// <summary>Verifies generated-rail local and Theme ownership publish exact resolved-style notifications.</summary>
+    /// <summary>Verifies generated-rail local mechanics publish exact resolved-style notifications.</summary>
     [Fact]
     public void ScrollBarStyle_WhenOwnershipChanges_PublishesLocalAndActualNotifications()
     {
@@ -86,14 +86,7 @@ public sealed class ListViewTests
                 notifications.Add(eventArgs.PropertyName);
             }
         };
-        var thinTheme = ScrollBarTheme(ScrollBarStyle.ThinLine);
-        var fullTheme = ScrollBarTheme(ScrollBarStyle.FullLine);
-
-        control.SetTheme(thinTheme);
-        notifications.ShouldBe([nameof(UiListView.ActualScrollBarStyle)]);
-        notifications.Clear();
-
-        control.ScrollBarStyle = ScrollBarStyle.FullBlock;
+        control.ScrollBarStyle = ScrollBarStyle.ThinLine;
         control.ScrollBarStyle = null;
         notifications.ShouldBe([
             nameof(UiListView.ScrollBarStyle),
@@ -103,8 +96,8 @@ public sealed class ListViewTests
         ]);
         notifications.Clear();
 
-        control.SetTheme(fullTheme);
-        notifications.ShouldBe([nameof(UiListView.ActualScrollBarStyle)]);
+        control.SetTheme(Themes.White);
+        notifications.ShouldBeEmpty();
     }
 
     /// <summary>Verifies ListView preserves a popup result already found by base registry traversal without searching twice.</summary>
@@ -515,14 +508,6 @@ public sealed class ListViewTests
     }
 
     private static UiListView Create(params object?[] items) => new() { Items = items };
-
-    private static Theme ScrollBarTheme(ScrollBarStyle _)
-    {
-        var theme = new Theme();
-
-        theme.Freeze();
-        return theme;
-    }
 
     private static Label Add(List<Label> controls, Label control)
     {

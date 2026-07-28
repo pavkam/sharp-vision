@@ -212,8 +212,8 @@ public sealed class ControlCompositeAppearanceTests
     [Fact]
     public void SetTheme_WhenExplicitStyleKeepsOutputEqual_NotifiesOnlyTheme()
     {
-        var previousTheme = ThemeWithButton(ButtonStyle.Standard);
-        var currentTheme = ThemeWithButton(ButtonStyle.Filled);
+        var previousTheme = ThemeWithInputProfile(ButtonStyle.Standard.Appearance);
+        var currentTheme = ThemeWithInputProfile(ButtonStyle.Filled.Appearance);
         var local = StyleWith(face: AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3)));
         var control = new StyledProbe { Style = local };
         control.SetTheme(previousTheme);
@@ -247,8 +247,8 @@ public sealed class ControlCompositeAppearanceTests
             face: AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3)));
         var currentStyle = StyleWith(
             face: AppearanceTestValues.Face(foreground: Color.Rgb(4, 5, 6)));
-        var previousTheme = ThemeWithButton(previousStyle);
-        var currentTheme = ThemeWithButton(currentStyle);
+        var previousTheme = ThemeWithInputProfile(previousStyle.Appearance);
+        var currentTheme = ThemeWithInputProfile(currentStyle.Appearance);
         var control = new StyledProbe();
         control.SetTheme(previousTheme);
         var expectedBorder = control.ActualBorder;
@@ -309,8 +309,8 @@ public sealed class ControlCompositeAppearanceTests
             face: AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3)));
         var currentStyle = StyleWith(
             face: AppearanceTestValues.Face(foreground: Color.Rgb(4, 5, 6)));
-        var previousTheme = ThemeWithButton(previousStyle);
-        var currentTheme = ThemeWithButton(currentStyle);
+        var previousTheme = ThemeWithInputProfile(previousStyle.Appearance);
+        var currentTheme = ThemeWithInputProfile(currentStyle.Appearance);
         var child = new StyledProbe();
         var root = new Stack { Children = { child } };
         root.PropagateTheme(previousTheme);
@@ -400,19 +400,19 @@ public sealed class ControlCompositeAppearanceTests
     public void Style_WhenSetAndReset_FollowsLocalThemeAndFallbackPrecedence()
     {
         var themed = ButtonStyle.Filled;
-        var theme = ThemeWithButton(themed);
+        var theme = ThemeWithInputProfile(themed.Appearance);
         var control = new StyledProbe();
 
-        control.ActualStyle.ShouldBe(ButtonStyle.Standard);
+        control.ActualStyle.ShouldBe(InputProfileStyle(Themes.Dark.Input));
         control.SetTheme(theme);
-        control.ActualStyle.ShouldBe(themed);
+        control.ActualStyle.ShouldBe(ThemeOwnedStyle(themed));
 
         control.Style = ButtonStyle.Standard;
         control.ActualStyle.ShouldBe(ButtonStyle.Standard);
 
         control.Style = null;
         control.Style.ShouldBeNull();
-        control.ActualStyle.ShouldBe(themed);
+        control.ActualStyle.ShouldBe(ThemeOwnedStyle(themed));
     }
 
     /// <summary>Verifies semantic-equal local assignments do not notify or invalidate.</summary>
@@ -478,7 +478,7 @@ public sealed class ControlCompositeAppearanceTests
     [Fact]
     public void Style_WhenLocalOwnershipChangesButResolvedStyleIsEqual_DoesNotInvalidateDerivedValues()
     {
-        var theme = ThemeWithButton(ButtonStyle.Standard);
+        var theme = ThemeWithInputProfile(ButtonStyle.Standard.Appearance);
         var control = new StyledProbe();
         control.SetTheme(theme);
         var notifications = new List<string?>();
@@ -565,8 +565,8 @@ public sealed class ControlCompositeAppearanceTests
     [Fact]
     public void SetTheme_WhenResolvedStyleChanges_CommitsOnlyAfterCalculatingImpact()
     {
-        var previous = ThemeWithButton(ButtonStyle.Standard);
-        var current = ThemeWithButton(ButtonStyle.Filled);
+        var previous = ThemeWithInputProfile(ButtonStyle.Standard.Appearance);
+        var current = ThemeWithInputProfile(ButtonStyle.Filled.Appearance);
         var control = new StyledProbe();
         control.SetTheme(previous);
         control.Clear(Invalidation.All);
@@ -575,7 +575,7 @@ public sealed class ControlCompositeAppearanceTests
 
         control.ThemeObservedDuringImpact.ShouldBeSameAs(previous);
         control.Theme.ShouldBeSameAs(current);
-        control.ActualStyle.ShouldBe(ButtonStyle.Filled);
+        control.ActualStyle.ShouldBe(ThemeOwnedStyle(ButtonStyle.Filled));
         control.Pending.ShouldBe(Invalidation.All);
     }
 
@@ -583,8 +583,8 @@ public sealed class ControlCompositeAppearanceTests
     [Fact]
     public void SetTheme_WhenExplicitStyleMakesThemeIrrelevant_DoesNotInvalidateResolvedValues()
     {
-        var previous = ThemeWithButton(ButtonStyle.Standard);
-        var current = ThemeWithButton(ButtonStyle.Filled);
+        var previous = ThemeWithInputProfile(ButtonStyle.Standard.Appearance);
+        var current = ThemeWithInputProfile(ButtonStyle.Filled.Appearance);
         var local = StyleWith(face: AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3)));
         var control = new StyledProbe { Style = local };
         control.SetTheme(previous);
@@ -595,6 +595,27 @@ public sealed class ControlCompositeAppearanceTests
         control.Theme.ShouldBeSameAs(current);
         control.ActualStyle.ShouldBe(local);
         control.Pending.ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies an inactive Theme state does not synchronously schedule layout until that state becomes active.</summary>
+    [Fact]
+    public void SetTheme_WhenOnlyInactiveStateChangesBorderSides_DefersMeasureUntilStateActivates()
+    {
+        var normal = Theme.CreateDefaultAppearance(ThemeRole.Control);
+        var previous = ThemeWithControlProfile(new ThemeProfile(normal));
+        var current = ThemeWithControlProfile(
+            new ThemeProfile(
+                normal,
+                pointerOver: new AppearanceSet(border: new BorderSet(sides: BorderSide.All))));
+        var control = new ProbeControl();
+        control.SetTheme(previous);
+        control.Clear(Invalidation.All);
+
+        control.SetTheme(current);
+
+        control.Pending.ShouldBe(Invalidation.None);
+        control.SetPointerOver(value: true, directlyOver: true);
+        control.Pending.ShouldBe(Invalidation.All);
     }
 
     /// <summary>Verifies non-specialized controls retain ThemeRole-based appearance resolution.</summary>
@@ -715,13 +736,19 @@ public sealed class ControlCompositeAppearanceTests
             new ThemeProfile(appearance, pointerOver: pointerOver));
     }
 
-    private static Theme ThemeWithButton(ButtonStyle _)
+    private static Theme ThemeWithInputProfile(ThemeProfile input)
     {
         var theme = new Theme();
-
+        theme.SetProfiles(theme.Control, input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
         return theme;
     }
+
+    private static ButtonStyle ThemeOwnedStyle(ButtonStyle style) =>
+        new(ButtonStyle.Standard.Padding, style.Appearance);
+
+    private static ButtonStyle InputProfileStyle(ThemeProfile input) =>
+        new(ButtonStyle.Standard.Padding, input);
 
     private static Theme ThemeWithControl(Color foreground)
     {
@@ -742,6 +769,14 @@ public sealed class ControlCompositeAppearanceTests
             theme.Container,
             theme.Window,
             theme.Popup);
+        theme.Freeze();
+        return theme;
+    }
+
+    private static Theme ThemeWithControlProfile(ThemeProfile profile)
+    {
+        var theme = new Theme();
+        theme.SetProfiles(profile, theme.Input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
         return theme;
     }

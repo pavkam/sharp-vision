@@ -2094,7 +2094,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     /// </remarks>
     private Invalidation VisualStateInvalidation()
     {
-        if (AppearanceProfile.StateCanChangeBorderSides)
+        if (AppearanceProfile.StateCanChangeChromeGeometry)
         {
             return Invalidation.Measure;
         }

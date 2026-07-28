@@ -26,7 +26,7 @@ public sealed class ButtonSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             button,
             new Size(8, 3),
-            CreateTheme(hidden),
+            CreateTheme(hidden.Appearance),
             TestContext.Current.CancellationToken);
         var visibilityImpact = Invalidation.None;
         var offsetImpact = Invalidation.None;
@@ -35,7 +35,7 @@ public sealed class ButtonSurfaceTests
             () =>
             {
                 button.Clear(Invalidation.All);
-                button.PropagateTheme(CreateTheme(visible));
+                button.PropagateTheme(CreateTheme(visible.Appearance));
                 visibilityImpact = button.Pending;
             },
             "show Button shadow through Theme");
@@ -43,7 +43,7 @@ public sealed class ButtonSurfaceTests
             () =>
             {
                 button.Clear(Invalidation.All);
-                button.PropagateTheme(CreateTheme(moved));
+                button.PropagateTheme(CreateTheme(moved.Appearance));
                 offsetImpact = button.Pending;
             },
             "move Button shadow through Theme");
@@ -467,12 +467,14 @@ public sealed class ButtonSurfaceTests
             Width = Length.Cells(8),
             Height = Length.Cells(3),
             Content = new ControlText("Save"),
-            Style = new ButtonStyleSet(
-                appearance: new AppearanceProfileSet(
-                    pointerOver: new AppearanceSet(
-                        face: new FaceSet(background: Color.Rgb(255, 0, 0)),
-                        border: new BorderSet(glyphStyle: BorderGlyphStyle.Ascii))))
-                .Apply(ButtonStyle.Standard)
+            Style = new ButtonStyle(
+                ButtonStyle.Standard.Padding,
+                StyleResolution.Apply(
+                    Themes.Dark.Input,
+                    new AppearanceProfileSet(
+                        pointerOver: new AppearanceSet(
+                            face: new FaceSet(background: Color.Rgb(255, 0, 0)),
+                            border: new BorderSet(glyphStyle: BorderGlyphStyle.Ascii)))))
         };
         await using var surface = await ComponentSurface.MountAsync(
             button,
@@ -794,10 +796,10 @@ public sealed class ButtonSurfaceTests
 
     #region Test fixtures
 
-    private static Theme CreateTheme(ButtonStyle _)
+    private static Theme CreateTheme(ThemeProfile input)
     {
         var theme = new Theme();
-
+        theme.SetProfiles(theme.Control, input, theme.Container, theme.Window, theme.Popup);
         theme.Freeze();
         return theme;
     }

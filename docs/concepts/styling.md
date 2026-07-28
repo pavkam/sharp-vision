@@ -109,7 +109,9 @@ Changing border sides can change reserved layout space and causes measure
 invalidation. Color, attributes, and glyph-family state changes require only
 render invalidation. Exact resolved appearances are cached per control state;
 theme publication, local assignments, state changes, and ambient-boundary
-changes clear the affected cache entries.
+changes clear the affected cache entries. A theme replacement compares only the
+currently rendered state; inactive state changes are resolved and laid out when
+that state next becomes active.
 
 Global Theme profiles define high-level role chrome. Complete typed Theme styles
 also own control-specific padding, glyph families, part colors, and appearance.
