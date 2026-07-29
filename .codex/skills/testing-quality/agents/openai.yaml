@@ -1,4 +1,0 @@
-interface:
-  display_name: "Testing Quality"
-  short_description: "Prove terminal and UI behavior through real paths"
-  default_prompt: "Use $testing-quality to design, generate, or review SharpVision tests and verification evidence."
