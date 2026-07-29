@@ -944,6 +944,84 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBe("\u001b[>4m");
     }
 
+    /// <summary>
+    /// Verifies a sink failure raised while a read still borrows the rental never clears or
+    /// releases that pooled array.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeSinkFailsDuringPendingRead_DoesNotReturnBorrowedBufferAsync()
+    {
+        await using PendingReadTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var failure = new InvalidOperationException("resize sink failed");
+        var sink = new RuntimeSink { ResizeFailure = failure };
+        var options = RuntimeOptions.Minimal with
+        {
+            ReadBufferSize = 256,
+            CleanupTimeout = TimeSpan.FromMilliseconds(50)
+        };
+        await using Session session = new(transport, resize, sink, options);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.ReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        resize.Resize(new Dimensions(new Size(80, 24)));
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(running);
+
+        thrown.ShouldBeSameAs(failure);
+        transport.IsReadPending.ShouldBeTrue();
+        transport.Borrowed.Length.ShouldBe(256);
+        transport.Borrowed.ToArray().ShouldAllBe(value => value == PendingReadTransport.Sentinel);
+    }
+
+    /// <summary>
+    /// Verifies the session waits for a transport whose cancellation completes asynchronously
+    /// before it stops owning the rented read buffer.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenCancellationCompletesAsynchronously_DrainsReadBeforeReturningAsync()
+    {
+        await using PendingReadTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with { CleanupTimeout = TimeSpan.FromSeconds(30) };
+        await using Session session = new(transport, resize, sink, options);
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.ReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await cancellation.CancelAsync();
+        await transport.CancellationObserved.Task.WaitAsync(TestContext.Current.CancellationToken);
+        _ = await Should.ThrowAsync<TimeoutException>(
+            () => running.WaitAsync(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken));
+
+        transport.ReleaseCancelledRead();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+        transport.IsReadPending.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies a transport that never completes its read cannot stall shutdown past the
+    /// configured cleanup budget.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenTransportIgnoresCancellation_ReleasesWithinCleanupBudgetAsync()
+    {
+        await using PendingReadTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var options = RuntimeOptions.Minimal with { CleanupTimeout = TimeSpan.FromMilliseconds(50) };
+        await using Session session = new(transport, resize, sink, options);
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.ReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            running.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+
+        transport.IsReadPending.ShouldBeTrue();
+    }
+
     private static TerminalCapabilities Supported()
     {
         var supported = new Feature(CapabilitySupport.Supported, Origin.Override);

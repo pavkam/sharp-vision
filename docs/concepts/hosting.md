@@ -132,6 +132,14 @@ positive; `MouseTracking`, `ColorDepth`, and `MouseCoordinates` must be defined
 enum values. Each violation throws `ArgumentOutOfRangeException` from the `init`
 accessor before any state changes.
 
+`CleanupTimeout` bounds two distinct shutdown steps. It caps the reverse
+terminal-mode restoration writes, and it caps the drain that waits for an
+outstanding `ITransport.ReadAsync` to finish borrowing the session read buffer.
+A transport whose cancellation completes asynchronously therefore delays exit by
+at most this budget; a transport that never completes forfeits its pooled read
+array rather than stalling shutdown. Custom transports that complete
+cancellation promptly never observe either delay.
+
 `ConsoleRunOptions.ToTerminalOptions(TerminalProfile)` maps these properties
 onto the Terminal-layer `Options` record consumed by `Session` (the complete
 profile, negotiation, alternate screen, cursor visibility, focus/paste, mouse

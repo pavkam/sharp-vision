@@ -431,15 +431,20 @@ public sealed class Session: IAsyncDisposable
         var hasPendingResize = false;
         var pendingResize = default(Dimensions);
 
+        // The loop tasks are declared outside the try so cleanup can drain the read
+        // that still borrows the rented buffer and observe every abandoned task.
+        Task<int>? read = null;
+        Task<Dimensions>? resize = null;
+
         // Capability publication is the startup barrier. Input may refine the
         // negotiator immediately, while only the newest pre-publication resize
         // is retained so controls never observe geometry under a stale profile.
         try
         {
-            var read = _transport.ReadAsync(
+            read = _transport.ReadAsync(
                 buffer.AsMemory(0, _options.ReadBufferSize),
                 linked.Token).AsTask();
-            var resize = _resize.ReadAsync(linked.Token).AsTask();
+            resize = _resize.ReadAsync(linked.Token).AsTask();
 
             while (true)
             {
@@ -553,8 +558,79 @@ public sealed class Session: IAsyncDisposable
         finally
         {
             linked.Cancel();
-            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+
+            // ITransport borrows the read destination until the returned operation completes,
+            // and cancellation is only a request. A sink failure, an optional-mode failure, or
+            // a transport whose cancellation completes asynchronously can therefore reach this
+            // point with the read still owning the rental. Returning it here would let the pool
+            // reissue storage a live read can still fill, and clearArray would write zeroes into
+            // storage that read is still filling. Drain first, and permanently abandon the array
+            // when a non-cooperative transport outlives the bounded shutdown budget.
+            Observe(resize);
+            Observe(deadline);
+
+            if (await DrainAsync(read).ConfigureAwait(false))
+            {
+                ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+            }
         }
+    }
+
+    private async ValueTask<bool> DrainAsync(Task<int>? read)
+    {
+        // Awaits the outstanding read to terminal completion and reports whether the rented
+        // input buffer is free again.
+        if (read is null)
+        {
+            return true;
+        }
+
+        if (!read.IsCompleted)
+        {
+            // Shutdown stays bounded by the cleanup timeout. A transport that neither completes
+            // nor honors cancellation within that budget permanently costs one pooled array,
+            // which is strictly cheaper than publishing storage it can still write into.
+            using var expiry = new CancellationTokenSource();
+            var budget = Task.Delay(_options.CleanupTimeout, _timeProvider, expiry.Token);
+            var completed = await Task.WhenAny(read, budget).ConfigureAwait(false);
+            await expiry.CancelAsync().ConfigureAwait(false);
+            Observe(budget);
+
+            if (!ReferenceEquals(completed, read))
+            {
+                Observe(read);
+                return false;
+            }
+        }
+
+        Observe(read);
+        return true;
+    }
+
+    private static void Observe(Task? task)
+    {
+        // The event loop drops its read, resize, and deadline tasks on every exit path. An
+        // unobserved faulted task would otherwise surface much later as a process-wide
+        // TaskScheduler.UnobservedTaskException unrelated to the real failure.
+        if (task is null)
+        {
+            return;
+        }
+
+        if (task.IsCompleted)
+        {
+            _ = task.Exception;
+            return;
+        }
+
+        _ = task.ContinueWith(
+            static completed =>
+            {
+                _ = completed.Exception;
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     #endregion

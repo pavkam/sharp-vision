@@ -8,7 +8,7 @@ after return, frame completion, or disposal.
 
 | Data                    | Owner                        | Lifetime                         |
 | ----------------------- | ---------------------------- | -------------------------------- |
-| Transport read buffer   | Runtime session              | Until decoder call returns       |
+| Transport read buffer   | Runtime session              | Until the drained read completes |
 | Decoder state           | Decoder instance             | Until reset/disposal             |
 | Decoded immutable event | Event value or owned payload | Through dispatcher delivery      |
 | Terminal context        | Session and application      | One immutable snapshot at a time |
@@ -105,9 +105,20 @@ propagates without retaining local pooled ownership or leaving the writer gate
 acquired; subsequent disposal is a no-op.
 
 `Runtime.Session` rents one finite read buffer for the event loop and clears it
-before pool return. `IResizeSource` returns immutable `Dimensions` values and
-retains no caller memory. The session owns disposal of its transport and resize
-source; `StreamTransport` in turn owns its streams unless `leaveOpen` is true.
+before pool return. Because `ITransport.ReadAsync` borrows that destination
+until its returned operation completes, and cancellation is only a request, the
+event loop drains the outstanding read before it releases the rental. Every
+event-loop exit — orderly closure, cancellation, a sink or optional-mode
+failure, or a transport fault — cancels the linked token, awaits the read to
+terminal completion, and only then returns the cleared array. The drain is
+bounded by `Options.CleanupTimeout`: a transport that neither completes nor
+honors cancellation within that budget permanently forfeits that one array
+instead of publishing storage it can still write into. The session also observes
+its abandoned read, resize, and negotiation-deadline tasks so a late failure
+cannot resurface as an unobserved task exception. `IResizeSource` returns
+immutable `Dimensions` values and retains no caller memory. The session owns
+disposal of its transport and resize source; `StreamTransport` in turn owns its
+streams unless `leaveOpen` is true.
 
 Every `SharpVision.Controls.Control` owns one central registry of ordered visual
 slots. `Container.Children` exposes only its public container-child slot;

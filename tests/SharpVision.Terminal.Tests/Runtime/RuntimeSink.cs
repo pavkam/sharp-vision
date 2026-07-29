@@ -53,6 +53,9 @@ internal sealed class RuntimeSink: ISink
     /// <summary>Gets an optional exact text callback failure.</summary>
     internal Exception? TextFailure { get; init; }
 
+    /// <summary>Gets an optional exact resize callback failure.</summary>
+    internal Exception? ResizeFailure { get; init; }
+
     /// <summary>Gets reported runtime faults.</summary>
     internal List<Exception> Faults { get; } = [];
 
@@ -124,6 +127,11 @@ internal sealed class RuntimeSink: ISink
     /// <inheritdoc/>
     public void Resize(in Dimensions value)
     {
+        if (ResizeFailure is not null)
+        {
+            throw ResizeFailure;
+        }
+
         Resizes.Add(value);
         Order.Add("resize");
         _ = ResizeReceived.TrySetResult();
