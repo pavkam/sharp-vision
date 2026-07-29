@@ -27,6 +27,54 @@ public sealed class TreeView: CompositeControl
     private bool _rebuildScheduled;
     private bool _batchUpdate;
 
+    /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
+    /// <remarks>
+    /// Null returns the bar to the library default for this control, which is
+    /// <see cref="ScrollBarStyle.ThinBlock"/>. An explicit value stays caller-owned. The
+    /// generated bar is a private retained part, so this proxy is the only way to reach it.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public ScrollBarStyle? ScrollBarStyle
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var previous = ActualScrollBarStyle;
+            field = value;
+            var current = ActualScrollBarStyle;
+
+            // Chrome changes the reserved extent, so they need a measure pass; everything else is
+            // appearance only.
+            var impact = previous.Chrome != current.Chrome
+                ? InvalidationImpact.Measure
+                : previous == current
+                    ? InvalidationImpact.None
+                    : InvalidationImpact.Render;
+            _itemsStack.ScrollBarStyle = current;
+            NotifyPropertyChanged(nameof(ScrollBarStyle), impact);
+
+            if (previous != current)
+            {
+                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
+            }
+        }
+    }
+
+    private static ScrollBarStyle DefaultScrollBarStyle =>
+        Controls.ScrollBarStyle.ThinBlock;
+
+    /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
+    public ScrollBarStyle ActualScrollBarStyle =>
+        ScrollBarStyle ?? DefaultScrollBarStyle;
+
     /// <summary>Initializes a framed focusable tree view with an empty root item collection.</summary>
     public TreeView()
     {
@@ -35,7 +83,7 @@ public sealed class TreeView: CompositeControl
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarStyle = ScrollBarStyle.ThinBlock
+            ScrollBarStyle = DefaultScrollBarStyle
         };
         _navigator = new CurrentItemNavigator(CollectVisibleItems);
 
@@ -136,6 +184,75 @@ public sealed class TreeView: CompositeControl
 
         _ = _navigator.SetCurrent(item);
         _ = ApplyInputSelection(item, Modifiers.None);
+    }
+
+    /// <summary>Adds or removes one owned item from the selection without replacing the rest.</summary>
+    /// <remarks>
+    /// The single-item <see cref="SelectItem"/> replaces the whole selection, so programmatic
+    /// multi-select previously required emulating input or rebuilding the complete set. Selecting
+    /// while <see cref="SelectionMode"/> is <see cref="TreeSelectionMode.Single"/> replaces the
+    /// selection, matching what input does. Deselecting is always permitted.
+    /// </remarks>
+    /// <param name="item">The non-null owned item.</param>
+    /// <param name="selected">Whether the item should end up selected.</param>
+    /// <returns><see langword="true"/> when the committed selection changed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentException">The item is not owned by this tree view.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Selection was requested while the selection mode is <see cref="TreeSelectionMode.None"/>,
+    /// or the attached tree view is mutated off-dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public bool SetSelected(TreeViewItem item, bool selected)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (!ReferenceEquals(item.FindTreeView(), this))
+        {
+            throw new ArgumentException("The item is not owned by this tree view.", nameof(item));
+        }
+
+        if (selected && SelectionMode == TreeSelectionMode.None)
+        {
+            throw new InvalidOperationException("TreeSelectionMode.None does not accept selection.");
+        }
+
+        VerifyMutable();
+
+        if (selected && !item.EffectiveIsEnabled)
+        {
+            return false;
+        }
+
+        HashSet<TreeViewItem> next = [.. _selectedItems];
+
+        if (selected)
+        {
+            if (SelectionMode == TreeSelectionMode.Single)
+            {
+                next.Clear();
+            }
+
+            _ = next.Add(item);
+        }
+        else
+        {
+            _ = next.Remove(item);
+        }
+
+        if (_selectedItems.SetEquals(next))
+        {
+            return false;
+        }
+
+        CommitSelection(next);
+
+        if (selected)
+        {
+            _selectionAnchor = item;
+        }
+
+        return true;
     }
 
     /// <summary>Selects every enabled item when multiple selection is enabled.</summary>
@@ -480,6 +597,35 @@ public sealed class TreeView: CompositeControl
         var previous = SelectedItem;
         var changed = !_selectedItems.SetEquals(next);
 
+        // Capture the delta against the previous set before it is replaced. Ordering both
+        // snapshots by the tree walk keeps them stable and comparable to SelectedItems.
+        List<TreeViewItem> added = [];
+        List<TreeViewItem> removed = [];
+
+        if (changed)
+        {
+            foreach (var item in ownedItems)
+            {
+                if (next.Contains(item) && !_selectedItems.Contains(item))
+                {
+                    added.Add(item);
+                }
+                else if (!next.Contains(item) && _selectedItems.Contains(item))
+                {
+                    removed.Add(item);
+                }
+            }
+
+            // A detached item leaves the owned walk, so it can only be reported as removed here.
+            foreach (var item in _selectedItems)
+            {
+                if (!next.Contains(item) && !ownedItems.Contains(item))
+                {
+                    removed.Add(item);
+                }
+            }
+        }
+
         foreach (var item in _selectedItems)
         {
             item.CommitSelection(next.Contains(item));
@@ -498,7 +644,9 @@ public sealed class TreeView: CompositeControl
         {
             NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
             NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
-            SelectionChanged?.Invoke(this, new TreeViewSelectionChangedEventArgs(previous, SelectedItem));
+            SelectionChanged?.Invoke(
+                this,
+                new TreeViewSelectionChangedEventArgs(previous, SelectedItem, added, removed));
         }
     }
 

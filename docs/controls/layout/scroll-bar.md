@@ -27,6 +27,13 @@ Generated-bar hosts publish nullable `ScrollBarStyle` and read-only
 bars; null lets the current Theme supply it. Raw per-part colors, glyphs,
 `ScrollBarChrome`, and `ScrollBarFill` are not independent control properties.
 
+`TreeView` and `NavigationView` retain their scrolling stack privately, so those
+proxies are the only way to reach the bar they generate. Null resolves to the
+control's documented default rather than pinning one: `ThinBlock` for `TreeView`
+and `ThinLine` for `NavigationView`. A change that alters `Chrome` invalidates
+measure because the reserved extent moves; every other difference is render
+only.
+
 ## Behavior
 
 Range setters validate before mutation. `ScrollBy` saturates and clamps.

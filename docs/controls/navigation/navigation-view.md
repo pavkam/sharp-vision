@@ -23,14 +23,16 @@ become `SelectedItem`; separators are skipped entirely.
 
 ## API
 
-| Member             | Default                | Purpose                                                            |
-| ------------------ | ---------------------- | ------------------------------------------------------------------ |
-| `Header`           | `null`                 | Shows an optional bold title above the main section.               |
-| `Items`            | Empty typed collection | Owns main items, groups, and separators in a scrollable section.   |
-| `FooterItems`      | Empty typed collection | Owns equivalent entries pinned below the main section.             |
-| `SelectedItem`     | `null`, read-only      | Reports the selected `NavigationViewItem` across both sections.    |
-| `SelectItem(...)`  | —                      | Selects one item owned by this view without moving keyboard focus. |
-| `SelectionChanged` | No subscribers         | Reports committed selection.                                       |
+| Member                 | Default                | Purpose                                                            |
+| ---------------------- | ---------------------- | ------------------------------------------------------------------ |
+| `Header`               | `null`                 | Shows an optional bold title above the main section.               |
+| `Items`                | Empty typed collection | Owns main items, groups, and separators in a scrollable section.   |
+| `FooterItems`          | Empty typed collection | Owns equivalent entries pinned below the main section.             |
+| `SelectedItem`         | `null`, read-only      | Reports the selected `NavigationViewItem` across both sections.    |
+| `SelectItem(...)`      | —                      | Selects one item owned by this view without moving keyboard focus. |
+| `SelectionChanged`     | No subscribers         | Reports committed selection.                                       |
+| `ScrollBarStyle`       | `null`                 | Local style for the generated bar; null resolves to `ThinLine`.    |
+| `ActualScrollBarStyle` | `ThinLine`, read-only  | Reports the style applied to the generated bar.                    |
 
 ## Behavior
 

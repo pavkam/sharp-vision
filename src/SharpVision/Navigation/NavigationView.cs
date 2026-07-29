@@ -18,6 +18,54 @@ public sealed class NavigationView: CompositeControl
     private readonly DisplayText _headerText;
     private readonly CurrentItemNavigator _navigator;
 
+    /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
+    /// <remarks>
+    /// Null returns the bar to the library default for this control, which is
+    /// <see cref="ScrollBarStyle.ThinLine"/>. An explicit value stays caller-owned. The
+    /// generated bar is a private retained part, so this proxy is the only way to reach it.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached navigation view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
+    public ScrollBarStyle? ScrollBarStyle
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var previous = ActualScrollBarStyle;
+            field = value;
+            var current = ActualScrollBarStyle;
+
+            // Chrome changes the reserved extent, so they need a measure pass; everything else is
+            // appearance only.
+            var impact = previous.Chrome != current.Chrome
+                ? InvalidationImpact.Measure
+                : previous == current
+                    ? InvalidationImpact.None
+                    : InvalidationImpact.Render;
+            _itemsStack.ScrollBarStyle = current;
+            NotifyPropertyChanged(nameof(ScrollBarStyle), impact);
+
+            if (previous != current)
+            {
+                NotifyPropertyChanged(nameof(ActualScrollBarStyle), InvalidationImpact.None);
+            }
+        }
+    }
+
+    private static ScrollBarStyle DefaultScrollBarStyle =>
+        Controls.ScrollBarStyle.ThinLine;
+
+    /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
+    public ScrollBarStyle ActualScrollBarStyle =>
+        ScrollBarStyle ?? DefaultScrollBarStyle;
+
     /// <summary>Initializes a quiet square navigation background with an empty item collection.</summary>
     public NavigationView()
     {
@@ -40,7 +88,7 @@ public sealed class NavigationView: CompositeControl
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarStyle = ScrollBarStyle.ThinLine
+            ScrollBarStyle = DefaultScrollBarStyle
         };
         _navigator = new CurrentItemNavigator(CollectNavigableEntries);
 

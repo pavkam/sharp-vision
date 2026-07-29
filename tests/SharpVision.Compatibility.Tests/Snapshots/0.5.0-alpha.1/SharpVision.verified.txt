@@ -96,8 +96,10 @@ namespace SharpVision.Controls.Collections
     public sealed class TreeView : SharpVision.Controls.CompositeControl
     {
         public TreeView() { }
+        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
         public int Indent { get; set; }
         public SharpVision.Controls.Collections.TreeViewItemCollection Items { get; }
+        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Controls.Collections.TreeViewItem? SelectedItem { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> SelectedItems { get; }
         public SharpVision.Controls.Collections.TreeSelectionMode SelectionMode { get; set; }
@@ -110,6 +112,7 @@ namespace SharpVision.Controls.Collections
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void SelectAll() { }
         public void SelectItem(SharpVision.Controls.Collections.TreeViewItem item) { }
+        public bool SetSelected(SharpVision.Controls.Collections.TreeViewItem item, bool selected) { }
     }
     public sealed class TreeViewItem : SharpVision.Controls.Control
     {
@@ -154,8 +157,11 @@ namespace SharpVision.Controls.Collections
     public sealed class TreeViewSelectionChangedEventArgs : System.EventArgs
     {
         public TreeViewSelectionChangedEventArgs(SharpVision.Controls.Collections.TreeViewItem? previousItem, SharpVision.Controls.Collections.TreeViewItem? currentItem) { }
+        public TreeViewSelectionChangedEventArgs(SharpVision.Controls.Collections.TreeViewItem? previousItem, SharpVision.Controls.Collections.TreeViewItem? currentItem, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> addedItems, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> removedItems) { }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> AddedItems { get; }
         public SharpVision.Controls.Collections.TreeViewItem? CurrentItem { get; }
         public SharpVision.Controls.Collections.TreeViewItem? PreviousItem { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> RemovedItems { get; }
     }
 }
 namespace SharpVision.Controls
@@ -2265,9 +2271,11 @@ namespace SharpVision.Navigation
     {
         public NavigationView() { }
         protected override string? AccessKeyText { get; }
+        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Navigation.NavigationViewEntryCollection FooterItems { get; }
         public string? Header { get; set; }
         public SharpVision.Navigation.NavigationViewEntryCollection Items { get; }
+        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Navigation.NavigationViewItem? SelectedItem { get; }
         public event System.EventHandler<SharpVision.Navigation.NavigationViewSelectionChangedEventArgs>? SelectionChanged;
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }

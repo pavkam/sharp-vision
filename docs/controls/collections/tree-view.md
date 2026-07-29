@@ -8,19 +8,22 @@ items.
 
 ## API
 
-| Member                         | Default                    | Contract                                                |
-| ------------------------------ | -------------------------- | ------------------------------------------------------- |
-| `Items`                        | empty                      | Typed owned root-item collection.                       |
-| `SelectedItem`                 | `null`                     | First selected item in stable tree order.               |
-| `SelectedItems`                | empty                      | Read-only snapshot in stable tree order.                |
-| `SelectionMode`                | `TreeSelectionMode.Single` | Allows no, one, or multiple selected items.             |
-| `Indent`                       | `2` cells                  | Non-negative horizontal extent per visible depth level. |
-| `SelectionChanged`             | no subscribers             | Raised after a committed selection change.              |
-| `ItemInvoked`                  | no subscribers             | Raised after pointer or keyboard activation.            |
-| `SelectItem(TreeViewItem)`     | —                          | Selects an item owned by this tree.                     |
-| `SelectAll()`                  | —                          | Selects every enabled item in multiple-selection mode.  |
-| `ClearSelection()`             | —                          | Clears the current selection.                           |
-| `ExpandAll()`, `CollapseAll()` | —                          | Changes expansion for the complete hierarchy.           |
+| Member                         | Default                    | Contract                                                 |
+| ------------------------------ | -------------------------- | -------------------------------------------------------- |
+| `Items`                        | empty                      | Typed owned root-item collection.                        |
+| `SelectedItem`                 | `null`                     | First selected item in stable tree order.                |
+| `SelectedItems`                | empty                      | Read-only snapshot in stable tree order.                 |
+| `SelectionMode`                | `TreeSelectionMode.Single` | Allows no, one, or multiple selected items.              |
+| `Indent`                       | `2` cells                  | Non-negative horizontal extent per visible depth level.  |
+| `SetSelected(item, selected)`  | —                          | Adds or removes one item without replacing the rest.     |
+| `ScrollBarStyle`               | `null`                     | Local generated-bar style; null resolves to `ThinBlock`. |
+| `ActualScrollBarStyle`         | `ThinBlock`, read-only     | Reports the style applied to the generated bar.          |
+| `SelectionChanged`             | no subscribers             | Raised after a committed selection change.               |
+| `ItemInvoked`                  | no subscribers             | Raised after pointer or keyboard activation.             |
+| `SelectItem(TreeViewItem)`     | —                          | Selects an item owned by this tree.                      |
+| `SelectAll()`                  | —                          | Selects every enabled item in multiple-selection mode.   |
+| `ClearSelection()`             | —                          | Clears the current selection.                            |
+| `ExpandAll()`, `CollapseAll()` | —                          | Changes expansion for the complete hierarchy.            |
 
 `SelectionMode` defaults to `Single`. `Multiple` supports Control toggles, Shift
 ranges over enabled visible items, `SelectAll`, `ClearSelection`, and Control+A.
@@ -41,6 +44,17 @@ single toggle linear in the nodes it touches instead of quadratic.
 A structural change replaces the visible presentation as one validated snapshot
 rather than clearing it and re-adding every item, and an unchanged flat list
 costs nothing.
+
+`SetSelected(TreeViewItem, bool)` adds or removes one item without replacing the
+rest, which `SelectItem` cannot do. In `Single` mode selecting through it
+replaces the selection exactly as input does; deselecting is always permitted.
+`SelectionChanged` carries owned `AddedItems` and `RemovedItems` snapshots in
+stable tree order, because `PreviousItem` and `CurrentItem` describe only the
+first selected identity and cannot express a range, `SelectAll`, a removal
+repair, or a mode change.
+
+The generated scrollbar is reached through nullable `ScrollBarStyle` and
+resolved `ActualScrollBarStyle`; null resolves to `ThinBlock`.
 
 Set `TreeViewItem.IsCheckable` to display a check mark. Setting `IsChecked` on a
 checkable parent propagates to checkable descendants. A parent becomes
