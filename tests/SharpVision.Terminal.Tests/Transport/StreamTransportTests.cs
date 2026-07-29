@@ -102,4 +102,93 @@ public sealed class StreamTransportTests
         borrowed.DisposeCount.ShouldBe(0);
         await borrowed.DisposeAsync();
     }
+
+    /// <summary>
+    /// Verifies a transport that owns its input but borrows its output closes only the input,
+    /// which is the ownership split an interactive host needs when it opens its own tty device
+    /// alongside a process-owned standard output stream.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenInputIsOwnedAndOutputIsBorrowed_ClosesOnlyInputAsync()
+    {
+        var input = new TrackingStream();
+        var output = new TrackingStream();
+        var transport = new StreamTransport(input, output, leaveInputOpen: false, leaveOutputOpen: true);
+
+        await transport.DisposeAsync();
+        await transport.DisposeAsync();
+
+        input.DisposeCount.ShouldBe(1);
+        output.DisposeCount.ShouldBe(0);
+        await output.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies the mirrored split closes only the output, proving the two ownership flags are
+    /// genuinely independent rather than one flag applied twice.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenOutputIsOwnedAndInputIsBorrowed_ClosesOnlyOutputAsync()
+    {
+        var input = new TrackingStream();
+        var output = new TrackingStream();
+        var transport = new StreamTransport(input, output, leaveInputOpen: true, leaveOutputOpen: false);
+
+        await transport.DisposeAsync();
+
+        input.DisposeCount.ShouldBe(0);
+        output.DisposeCount.ShouldBe(1);
+        await input.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies one stream supplied as both input and output is closed exactly once no matter
+    /// which side claims ownership, and is never closed when both sides borrow it.
+    /// </summary>
+    /// <param name="leaveInputOpen">Whether the input side borrows the shared stream.</param>
+    /// <param name="leaveOutputOpen">Whether the output side borrows the shared stream.</param>
+    /// <param name="expected">The exact number of disposal calls the shared stream must observe.</param>
+    [Theory]
+    [InlineData(false, false, 1)]
+    [InlineData(false, true, 1)]
+    [InlineData(true, false, 1)]
+    [InlineData(true, true, 0)]
+    public async Task DisposeAsync_WhenOneStreamIsBothEnds_ClosesItAtMostOnceAsync(
+        bool leaveInputOpen,
+        bool leaveOutputOpen,
+        int expected)
+    {
+        var shared = new TrackingStream();
+        var transport = new StreamTransport(shared, shared, leaveInputOpen, leaveOutputOpen);
+
+        await transport.DisposeAsync();
+
+        shared.DisposeCount.ShouldBe(expected);
+        await shared.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies the shared-flag overload keeps its documented meaning by forwarding the same
+    /// decision to both streams, so existing callers observe no behavioral change.
+    /// </summary>
+    /// <param name="leaveOpen">Whether the transport borrows both streams.</param>
+    /// <param name="expected">The exact number of disposal calls each stream must observe.</param>
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 0)]
+    public async Task DisposeAsync_WhenSharedFlagOverloadIsUsed_AppliesItToBothStreamsAsync(
+        bool leaveOpen,
+        int expected)
+    {
+        var input = new TrackingStream();
+        var output = new TrackingStream();
+        var transport = new StreamTransport(input, output, leaveOpen);
+
+        await transport.DisposeAsync();
+
+        input.DisposeCount.ShouldBe(expected);
+        output.DisposeCount.ShouldBe(expected);
+        await input.DisposeAsync();
+        await output.DisposeAsync();
+    }
 }

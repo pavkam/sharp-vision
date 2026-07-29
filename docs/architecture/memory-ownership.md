@@ -181,8 +181,13 @@ Protocol encoders write synchronously to caller spans or `IBufferWriter<byte>`.
 Any data crossing an `await`, queue, callback, or dispatcher boundary must be an
 owned immutable value or copy. A `ReadOnlyMemory<T>` API documents whether the
 caller or library owns its backing storage. `StreamTransport` borrows input and
-output streams until disposal, serializes writes and flushes, and disposes both
-only when constructed without `leaveOpen`.
+output streams until disposal and serializes writes and flushes. Stream
+ownership is decided per stream: the `leaveOpen` overload applies one decision
+to both, while `StreamTransport(input, output, leaveInputOpen, leaveOutputOpen)`
+lets a transport own the device it was handed while borrowing another. A stream
+supplied as both input and output is closed at most once. A host that opens its
+own input device must claim that stream, because a single shared flag would
+either leak the opened device or close a stream the transport never owned.
 
 ## Pool safety
 

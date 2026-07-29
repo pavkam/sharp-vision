@@ -242,6 +242,21 @@ asynchronous input stream and wraps it with `Console.OpenStandardOutput()` in a
 dimensions through `TIOCGWINSZ` — this is what makes pixel-accurate mouse
 reporting work in a console run, unlike the cell-only polling fallback.
 
+Those two streams have different owners, so the transport is constructed with
+`leaveInputOpen: false, leaveOutputOpen: true`. The host opened `/dev/tty`
+itself and must close it during ordinary shutdown, while standard output belongs
+to the process and is only borrowed. Disposing the transport therefore closes
+the tty descriptor, and a completed lifecycle leaves nothing open. Windows keeps
+a shared `leaveOpen: true`, which is correct there because
+`Console.OpenStandardInput` and `Console.OpenStandardOutput` both wrap
+process-owned handles.
+
+If construction fails partway, `Open` unwinds in exact reverse order — resize
+source, transport, tty stream, then the raw-mode lease — because the resize
+source borrows the raw tty descriptor and must stop observing it before the
+stream that owns it closes. Each release is guarded so a cleanup failure cannot
+replace the construction failure the caller needs to see.
+
 ### Windows
 
 `WindowsConsoleHost.Open` enters VT mode through `WindowsConsoleMode.Enter`,
