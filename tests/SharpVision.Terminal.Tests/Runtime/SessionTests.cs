@@ -945,6 +945,44 @@ public sealed class SessionTests
     }
 
     /// <summary>
+    /// Verifies a failing resize disposal never abandons the transport. Every owned resource is
+    /// attempted exactly once and the first failure is the one the caller observes.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenResizeDisposalFails_StillDisposesTransportAsync()
+    {
+        var transport = new SessionTransport();
+        var resize = new FailingResizeSource();
+        var sink = new RuntimeSink();
+        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+
+        var thrown = await Should.ThrowAsync<IOException>(async () => await session.DisposeAsync());
+
+        thrown.ShouldBeSameAs(resize.Failure);
+        resize.DisposeCount.ShouldBe(1);
+        transport.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a second disposal after a failed first is quiet and attempts nothing again, so an
+    /// outer <c>await using</c> cannot repeat a failed teardown.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenCalledAgainAfterFailure_IsQuietAndAttemptsNothingAsync()
+    {
+        var transport = new SessionTransport();
+        var resize = new FailingResizeSource();
+        var sink = new RuntimeSink();
+        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        _ = await Should.ThrowAsync<IOException>(async () => await session.DisposeAsync());
+
+        await session.DisposeAsync();
+
+        resize.DisposeCount.ShouldBe(1);
+        transport.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
     /// Verifies disposal during an active run completes reverse mode restoration before it tears
     /// down the transport those restoration writes depend on.
     /// </summary>

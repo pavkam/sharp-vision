@@ -257,7 +257,17 @@ public sealed class Session: IAsyncDisposable
 
         if (owner is null)
         {
-            await disposal.ConfigureAwait(false);
+            // A joining caller still waits for the single teardown to finish, but disposal is
+            // idempotent: only the caller that performed it reports the failure, so this
+            // continuation waits without rethrowing.
+            await disposal.ContinueWith(
+                static _ =>
+                {
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default).ConfigureAwait(false);
+
             return;
         }
 
@@ -269,13 +279,30 @@ public sealed class Session: IAsyncDisposable
         catch (Exception exception)
         {
             owner.SetException(exception);
+
+            // No joiner may ever await the shared task. The owner reports the failure by
+            // rethrowing, so observe the copy that task retains.
+            _ = owner.Task.Exception;
+
             throw;
         }
     }
 
     private async ValueTask DisposeCoreAsync()
     {
-        _lifetime.Cancel();
+        // Every owned resource is attempted exactly once in the documented order even when an
+        // earlier one throws. Abandoning the rest would leak the transport streams, handles, and
+        // buffered output that the failing resource has nothing to do with.
+        Exception? primary = null;
+
+        try
+        {
+            _lifetime.Cancel();
+        }
+        catch (Exception exception)
+        {
+            primary = exception;
+        }
 
         Task? completion;
 
@@ -293,9 +320,37 @@ public sealed class Session: IAsyncDisposable
             await completion.ConfigureAwait(false);
         }
 
-        await _resize.DisposeAsync().ConfigureAwait(false);
-        await _transport.DisposeAsync().ConfigureAwait(false);
-        _lifetime.Dispose();
+        try
+        {
+            await _resize.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            primary ??= exception;
+        }
+
+        try
+        {
+            await _transport.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            primary ??= exception;
+        }
+
+        try
+        {
+            _lifetime.Dispose();
+        }
+        catch (Exception exception)
+        {
+            primary ??= exception;
+        }
+
+        if (primary is not null)
+        {
+            ExceptionDispatchInfo.Capture(primary).Throw();
+        }
     }
 
     #endregion

@@ -277,6 +277,156 @@ public sealed class ApplicationTests
         terminal.Writes.Count.ShouldBeGreaterThanOrEqualTo(3);
     }
 
+    /// <summary>
+    /// Verifies an already-cancelled caller token ends only the caller's wait. The shutdown
+    /// request itself is irrevocable, so cleanup must still run to completion.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenCallerTokenIsAlreadyCancelled_StillCompletesShutdownAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { AlternateScreen = true });
+        var stopping = 0;
+        var stopped = 0;
+        application.Stopping += (_, _) => stopping++;
+        application.Stopped += (_, _) => stopped++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await application.StopAsync(cancelled.Token));
+
+        await application.Completion.WaitAsync(TestContext.Current.CancellationToken);
+        stopping.ShouldBe(1);
+        stopped.ShouldBe(1);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies cancelling the wait after the request was queued still completes shutdown, and
+    /// that a later uncancelled stop observes the same single lifecycle.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenCallerStopsWaiting_CompletesShutdownExactlyOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal with { AlternateScreen = true });
+        var stopping = 0;
+        var stopped = 0;
+        application.Stopping += (_, _) => stopping++;
+        application.Stopped += (_, _) => stopped++;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        using var cancellation = new CancellationTokenSource();
+
+        var stopRequest = application.StopAsync(cancellation.Token).AsTask();
+        await cancellation.CancelAsync();
+
+        try
+        {
+            await stopRequest;
+        }
+        catch (OperationCanceledException)
+        {
+            // The caller may or may not win the race against its own request; either way the
+            // application must still shut down exactly once.
+        }
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        stopping.ShouldBe(1);
+        stopped.ShouldBe(1);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies a Stopping handler that requests shutdown again cannot re-enter the cancellable
+    /// event. Dispatcher invocation runs inline on the dispatcher thread, so an unguarded nested
+    /// request recurses until the stack is exhausted.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenRequestedFromStoppingHandler_RaisesStoppingOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var calls = 0;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Stopping += OnStopping;
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        calls.ShouldBe(1);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+        return;
+
+        void OnStopping(object? sender, StoppingEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+            calls++;
+
+            // Bounded so a regression fails the assertion instead of exhausting the stack.
+            if (calls < 8)
+            {
+                _ = application.StopAsync().AsTask();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies a handler that cancels the request while also requesting shutdown again leaves the
+    /// application running: a nested unforced request cannot override the cancellation it saw.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_WhenHandlerCancelsAndRequestsAgain_LeavesApplicationRunningAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var calls = 0;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        application.Stopping += OnStopping;
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        calls.ShouldBe(1);
+        application.Completion.IsCompleted.ShouldBeFalse();
+        application.Stopping -= OnStopping;
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        application.Completion.IsCompletedSuccessfully.ShouldBeTrue();
+        return;
+
+        void OnStopping(object? sender, StoppingEventArgs eventArgs)
+        {
+            _ = sender;
+            calls++;
+            eventArgs.Cancel = true;
+
+            if (calls < 8)
+            {
+                _ = application.StopAsync().AsTask();
+            }
+        }
+    }
+
     /// <summary>Verifies an explicit stopping preview may cancel one request.</summary>
     [Fact]
     public async Task StopAsync_WhenPreviewCancels_LeavesApplicationRunningAsync()

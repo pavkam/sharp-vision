@@ -139,9 +139,21 @@ public sealed class StreamTransport: ITransport
         {
             var shared = ReferenceEquals(_input, _output);
 
+            // Both owned streams are attempted exactly once even when the first throws. Letting
+            // an input failure skip the output would leak a handle and its buffered output for a
+            // reason that has nothing to do with the output stream.
+            Exception? primary = null;
+
             if (!_leaveInputOpen)
             {
-                await _input.DisposeAsync().ConfigureAwait(false);
+                try
+                {
+                    await _input.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    primary = exception;
+                }
             }
 
             // A stream passed as both input and output is one resource. Skip the second release
@@ -149,7 +161,19 @@ public sealed class StreamTransport: ITransport
             // the output side claims it.
             if (!_leaveOutputOpen && (!shared || _leaveInputOpen))
             {
-                await _output.DisposeAsync().ConfigureAwait(false);
+                try
+                {
+                    await _output.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    primary ??= exception;
+                }
+            }
+
+            if (primary is not null)
+            {
+                ExceptionDispatchInfo.Capture(primary).Throw();
             }
         }
         finally

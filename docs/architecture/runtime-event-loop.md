@@ -170,6 +170,38 @@ render cancellation during requested shutdown is not promoted to failure.
 `Failure` preserves the first primary exception; `LastCleanupException` exposes
 a later session or synchronized-output cleanup failure.
 
+### Stop request versus caller wait
+
+The `StopAsync` cancellation token bounds only the caller's observation. The
+shutdown request itself is irrevocable and is always queued to the dispatcher
+without that token, so an already-cancelled token cannot leave the application
+running with `Completion` pending. A cancelled caller may receive
+`OperationCanceledException`, but `Stopping` is still raised, cleanup still
+runs, `Completion` still finishes, and owned resources are still disposed once.
+A caller that stops waiting leaves the queued request observed, so a
+lifecycle-handler failure cannot resurface as an unobserved task exception.
+
+One stop request raises `Stopping` exactly once. Dispatcher invocation runs
+inline on the dispatcher thread, so a handler that calls `StopAsync` again would
+otherwise re-enter the same cancellable event and recurse until the stack is
+exhausted. A nested request while the event is being raised is therefore
+absorbed: it cannot raise the event again and cannot override a handler that
+cancelled it. A nested _forced_ request — closure, terminal fault, or an
+unhandled callback — still overrides that cancellation.
+
+### Exception-complete disposal
+
+Every owned resource is attempted exactly once in its documented order even when
+an earlier one throws. `Session` disposal attempts the resize source, the
+transport, and the lifetime source; `StreamTransport` disposal attempts each
+stream it owns. The first exception is retained and rethrown after the remaining
+cleanup finishes, so one failure never abandons unrelated handles or buffered
+output. A stream supplied as both input and output is attempted exactly once.
+
+Disposal stays idempotent: a second call after a failed first is quiet and
+retries nothing. When callers dispose concurrently, only the caller that
+performed the teardown reports its failure; joiners return once it finished.
+
 ## Terminal session implementation
 
 `SharpVision.Terminal.Runtime.Session` owns the terminal-side startup, read,

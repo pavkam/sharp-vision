@@ -104,6 +104,73 @@ public sealed class StreamTransportTests
     }
 
     /// <summary>
+    /// Verifies a failing input disposal never abandons the output. Both owned streams are
+    /// attempted exactly once and the first exception is the one the caller observes.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenBothOwnedStreamsFail_AttemptsBothAndKeepsInputFailureAsync()
+    {
+        var input = new FailingStream();
+        var output = new FailingStream();
+        var transport = new StreamTransport(input, output);
+
+        var thrown = await Should.ThrowAsync<IOException>(async () => await transport.DisposeAsync());
+
+        thrown.ShouldBeSameAs(input.Failure);
+        input.DisposeCount.ShouldBe(1);
+        output.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies an output-only failure is reported after the input closed normally.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenOnlyOutputFails_ReportsOutputFailureAsync()
+    {
+        var input = new TrackingStream();
+        var output = new FailingStream();
+        var transport = new StreamTransport(input, output);
+
+        var thrown = await Should.ThrowAsync<IOException>(async () => await transport.DisposeAsync());
+
+        thrown.ShouldBeSameAs(output.Failure);
+        input.DisposeCount.ShouldBe(1);
+        output.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a second disposal after a failed first is quiet and attempts nothing again, so a
+    /// failed teardown cannot be repeated by an outer <c>await using</c>.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenCalledAgainAfterFailure_IsQuietAndAttemptsNothingAsync()
+    {
+        var input = new FailingStream();
+        var output = new FailingStream();
+        var transport = new StreamTransport(input, output);
+        _ = await Should.ThrowAsync<IOException>(async () => await transport.DisposeAsync());
+
+        await transport.DisposeAsync();
+
+        input.DisposeCount.ShouldBe(1);
+        output.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies a failing stream supplied as both ends is attempted exactly once, so exception
+    /// handling never turns a shared resource into a double release.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenSharedStreamFails_AttemptsItExactlyOnceAsync()
+    {
+        var shared = new FailingStream();
+        var transport = new StreamTransport(shared, shared);
+
+        var thrown = await Should.ThrowAsync<IOException>(async () => await transport.DisposeAsync());
+
+        thrown.ShouldBeSameAs(shared.Failure);
+        shared.DisposeCount.ShouldBe(1);
+    }
+
+    /// <summary>
     /// Verifies a transport that owns its input but borrows its output closes only the input,
     /// which is the ownership split an interactive host needs when it opens its own tty device
     /// alongside a process-owned standard output stream.

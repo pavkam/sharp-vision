@@ -71,6 +71,8 @@ public sealed class Application: ISink, IAsyncDisposable
     private bool _layoutSinceLastRender;
     private bool _rendererInvalidationPending;
     private bool _startedRaised;
+    private bool _raisingStopping;
+    private bool _forcedWhileRaising;
     private volatile bool _stopping;
     private volatile bool _stopped;
     private int _startState;
@@ -345,6 +347,12 @@ public sealed class Application: ISink, IAsyncDisposable
     }
 
     /// <summary>Requests idempotent shutdown and waits for complete cleanup.</summary>
+    /// <remarks>
+    /// The shutdown request is irrevocable and the token bounds only this caller's observation of
+    /// it. Cancelling — including passing an already-cancelled token — may end the wait with
+    /// <see cref="OperationCanceledException"/>, but shutdown still proceeds: <see cref="Stopping"/>
+    /// is raised, cleanup runs, <see cref="Completion"/> finishes, and owned resources are disposed.
+    /// </remarks>
     /// <param name="cancellationToken">Cancels only the caller's wait.</param>
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
@@ -355,9 +363,26 @@ public sealed class Application: ISink, IAsyncDisposable
 
         if (!_stopping)
         {
-            await Dispatcher.InvokeAsync(
+            // Forwarding the caller token to the dispatcher would let it cancel the request
+            // itself, so an already-cancelled token would leave the application running with
+            // Completion pending — the opposite of what the caller asked for. The request is
+            // always queued unconditionally and the token is applied only to the wait below.
+            var request = Dispatcher.InvokeAsync(
                 () => BeginStopping(forced: false, exception: null),
-                cancellationToken);
+                CancellationToken.None).AsTask();
+
+            try
+            {
+                await request.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // The queued request still runs. Observe it so a lifecycle-handler failure
+                // cannot resurface later as an unobserved task exception.
+                Observe(request);
+
+                throw;
+            }
         }
 
         if (_stopping)
@@ -549,17 +574,61 @@ public sealed class Application: ISink, IAsyncDisposable
             return;
         }
 
-        var eventArgs = new StoppingEventArgs();
-        Stopping?.Invoke(this, eventArgs);
+        if (_raisingStopping)
+        {
+            // A Stopping handler requested shutdown again. Dispatcher invocation runs inline on
+            // the dispatcher thread, so without this guard the nested request would raise the
+            // same cancellable event again and recurse until the stack is exhausted. One stop
+            // request raises Stopping exactly once; a nested forced request must still override
+            // a handler that cancelled this one.
+            _forcedWhileRaising |= forced;
+            Failure ??= exception;
 
-        if (eventArgs.Cancel && !forced)
+            return;
+        }
+
+        var eventArgs = new StoppingEventArgs();
+        _raisingStopping = true;
+
+        try
+        {
+            Stopping?.Invoke(this, eventArgs);
+        }
+        finally
+        {
+            _raisingStopping = false;
+        }
+
+        if (eventArgs.Cancel && !forced && !_forcedWhileRaising)
         {
             return;
         }
 
+        _forcedWhileRaising = false;
         _stopping = true;
         Failure ??= exception;
         _lifetime.Cancel();
+    }
+
+    private static void Observe(Task task)
+    {
+        // An abandoned lifecycle task must never surface later as a process-wide
+        // TaskScheduler.UnobservedTaskException unrelated to the real failure.
+        if (task.IsCompleted)
+        {
+            _ = task.Exception;
+
+            return;
+        }
+
+        _ = task.ContinueWith(
+            static completed =>
+            {
+                _ = completed.Exception;
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private void CompleteRender(
