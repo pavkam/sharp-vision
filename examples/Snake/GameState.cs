@@ -18,8 +18,24 @@ public sealed class GameState
     private int _speedTicksRemaining;
 
     /// <summary>Initializes a new game on the given board dimensions.</summary>
+    /// <param name="width">The playable board width. Must be at least 4 to hold the seeded body.</param>
+    /// <param name="height">The playable board height. Must be at least 1.</param>
+    /// <param name="difficulty">The requested difficulty, clamped to the supported 0-2 range.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="width"/> is below 4 or <paramref name="height"/> is below 1.
+    /// </exception>
     public GameState(int width, int height, int difficulty)
     {
+        if (width < 4)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width), width, "The board must be at least 4 cells wide.");
+        }
+
+        if (height < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(height), height, "The board must be at least 1 cell tall.");
+        }
+
         Width = width;
         Height = height;
         Difficulty = Math.Clamp(difficulty, 0, 2);
@@ -173,16 +189,7 @@ public sealed class GameState
         _direction = Direction.Right;
         _pendingDirection = Direction.Right;
 
-        var startX = Width / 4;
-        var startY = Height / 2;
-
-        for (var i = 3; i >= 0; i--)
-        {
-            var point = new Point(startX - i, startY);
-            _ = _body.AddFirst(point);
-            _ = _occupied.Add(point);
-        }
-
+        SeedBody();
         GenerateObstacles();
         EnsureApples();
     }
@@ -212,18 +219,28 @@ public sealed class GameState
             _direction = Direction.Right;
             _pendingDirection = Direction.Right;
 
-            var startX = Width / 4;
-            var startY = Height / 2;
-
-            for (var i = 3; i >= 0; i--)
-            {
-                var point = new Point(startX - i, startY);
-                _ = _body.AddFirst(point);
-                _ = _occupied.Add(point);
-            }
+            SeedBody();
         }
 
         return TickResult.Died;
+    }
+
+    // Width/4 alone can place the body partly off-board on a narrow board
+    // (for example Width=10 gives startX=2, so the 4-cell body would start at
+    // X=-1). Clamping startX to the inclusive [3, Width-1] range keeps every
+    // seeded segment on the board; the constructor's Width>=4 minimum keeps
+    // that range non-empty.
+    private void SeedBody()
+    {
+        var startX = Math.Clamp(Width / 4, 3, Width - 1);
+        var startY = Height / 2;
+
+        for (var i = 3; i >= 0; i--)
+        {
+            var point = new Point(startX - i, startY);
+            _ = _body.AddFirst(point);
+            _ = _occupied.Add(point);
+        }
     }
 
     private void RemoveTail()
@@ -293,14 +310,28 @@ public sealed class GameState
         }
     }
 
+    // The requested target can exceed the board's actual free-cell capacity
+    // (a small board, a long snake, or a full round of obstacles can all
+    // shrink it toward zero). Capping the target to observed capacity and
+    // stopping the loop the moment a placement attempt makes no progress
+    // turns an unbounded spin into a bounded, always-terminating call: it
+    // never waits on placements the board genuinely cannot satisfy.
     private void EnsureApples()
     {
         var area = Width * Height;
-        var target = Math.Max(2, (area / 200) + Difficulty + 1);
+        var requested = Math.Max(2, (area / 200) + Difficulty + 1);
+        var freeCells = Math.Max(0, area - _occupied.Count - _obstacles.Count - _apples.Count);
+        var target = Math.Min(requested, _apples.Count + freeCells);
 
         while (_apples.Count < target)
         {
+            var before = _apples.Count;
             SpawnApple();
+
+            if (_apples.Count == before)
+            {
+                break;
+            }
         }
     }
 

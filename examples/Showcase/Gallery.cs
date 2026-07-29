@@ -244,6 +244,34 @@ public sealed class Gallery: Screen
             : _catalog[index].Create();
     }
 
+    /// <summary>Gets the catalog's group name for one page index.</summary>
+    /// <param name="index">The zero-based page index.</param>
+    /// <returns>The group the page renders under in the sidebar.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
+    internal static string CatalogGroup(int index)
+    {
+        return (uint) index >= (uint) _catalog.Length
+            ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
+            : _catalog[index].Group;
+    }
+
+    /// <summary>Gets every defined sidebar group name, in declaration order.</summary>
+    internal static IReadOnlyList<string> CatalogGroups => _groups;
+
+    /// <summary>Gets the total number of catalog pages without constructing a Gallery.</summary>
+    internal static int CatalogCount => _catalog.Length;
+
+    /// <summary>Gets the catalog's page name for one page index.</summary>
+    /// <param name="index">The zero-based page index.</param>
+    /// <returns>The name shown in the sidebar and used as the page's public title.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the catalog.</exception>
+    internal static string CatalogName(int index)
+    {
+        return (uint) index >= (uint) _catalog.Length
+            ? throw new ArgumentOutOfRangeException(nameof(index), index, "The page index is outside the catalog.")
+            : _catalog[index].Name;
+    }
+
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="application"/> is null.</exception>
     protected override void OnAttach(Application application)

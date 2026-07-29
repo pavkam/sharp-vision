@@ -114,4 +114,60 @@ public sealed class GallerySurfaceTests
         // Cleanup
         await surface.Keyboard.PressAsync(Code.Escape);
     }
+
+    /// <summary>
+    /// Verifies every production catalog page mounts, lays out, and renders
+    /// without throwing at three representative sizes. Gallery.CreatePage is a
+    /// long-standing internal seam with no callers before this test; only 3 of
+    /// the catalog's pages were ever constructed by the test suite, so a
+    /// broken constructor or layout failure in any of the others would not
+    /// have failed CI.
+    /// </summary>
+    /// <param name="index">The catalog page index under test.</param>
+    [Theory]
+    [MemberData(nameof(CatalogIndices))]
+    public async Task CreatePage_WhenMountedAtSupportedSize_LaysOutAndRendersWithoutThrowingAsync(int index)
+    {
+        var name = Gallery.CatalogName(index);
+
+        foreach (var size in new[] { new Size(30, 8), new Size(80, 24), new Size(140, 40) })
+        {
+            var page = Gallery.CreatePage(index);
+
+            try
+            {
+                await using var surface = await ComponentSurface.MountAsync(
+                    page, size, TestContext.Current.CancellationToken);
+
+                page.Bounds.Width.ShouldBeLessThanOrEqualTo(size.Width);
+                page.IsDisposed.ShouldBeFalse();
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"Catalog page '{name}' (index {index}) failed to mount at {size.Width}x{size.Height}.",
+                    exception);
+            }
+        }
+    }
+
+    /// <summary>Verifies every catalog page has a unique name and a defined sidebar group.</summary>
+    [Fact]
+    public void Catalog_WhenEnumerated_HasUniqueNamesAndKnownGroups()
+    {
+        var names = new List<string>();
+        var knownGroups = new HashSet<string>(Gallery.CatalogGroups, StringComparer.Ordinal);
+
+        for (var index = 0; index < Gallery.CatalogCount; index++)
+        {
+            names.Add(Gallery.CatalogName(index));
+            knownGroups.ShouldContain(Gallery.CatalogGroup(index));
+        }
+
+        names.Distinct(StringComparer.Ordinal).Count().ShouldBe(names.Count);
+    }
+
+    /// <summary>Provides every catalog page index for the mounting theory.</summary>
+    public static IEnumerable<object[]> CatalogIndices() =>
+        Enumerable.Range(0, Gallery.CatalogCount).Select(static index => new object[] { index });
 }

@@ -307,7 +307,7 @@ public sealed class EditorScreen: Screen
             return;
         }
 
-        await WriteFileAsync(_filePath);
+        _ = await WriteFileAsync(_filePath);
     }
 
     private async void SaveFileAsAsync()
@@ -327,11 +327,18 @@ public sealed class EditorScreen: Screen
             return;
         }
 
-        await WriteFileAsync(path);
+        _ = await WriteFileAsync(path);
         _ = Application?.Focus.Focus(_editor);
     }
 
-    private async Task WriteFileAsync(string path)
+    /// <summary>Writes the editor text to disk.</summary>
+    /// <param name="path">The destination file path.</param>
+    /// <returns>
+    /// True when the write committed successfully; false when it failed, in which case the
+    /// document remains dirty and <see cref="_filePath"/> is unchanged so no caller mistakes a
+    /// failed save for permission to discard, replace, or close the document.
+    /// </returns>
+    private async Task<bool> WriteFileAsync(string path)
     {
         try
         {
@@ -339,10 +346,12 @@ public sealed class EditorScreen: Screen
             _filePath = path;
             MarkClean();
             SetStatus($"Saved {Path.GetFileName(path)}");
+            return true;
         }
         catch (Exception ex)
         {
             _ = await MessageBox.ShowAsync(_editor, $"Could not save file:\n{ex.Message}", "Error");
+            return false;
         }
     }
 
@@ -387,17 +396,25 @@ public sealed class EditorScreen: Screen
                         return false;
                     }
 
-                    await WriteFileAsync(saveResult.Path);
+                    if (!await WriteFileAsync(saveResult.Path))
+                    {
+                        return false;
+                    }
+
                     break;
                 }
             case MessageBoxResult.Yes:
-                await WriteFileAsync(_filePath);
+                if (!await WriteFileAsync(_filePath))
+                {
+                    return false;
+                }
+
                 break;
             case MessageBoxResult.Ok:
             case MessageBoxResult.No:
                 break;
             default:
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(result), result, "Unknown message box result.");
         }
 
         return true;

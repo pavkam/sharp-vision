@@ -41,6 +41,65 @@ public sealed class TextEditorSurfaceTests
         status.Bounds.Bottom.ShouldBe(26);
     }
 
+    /// <summary>
+    /// Verifies a save failure (writing to a path that resolves to an existing
+    /// directory) reports the error and keeps the document dirty, rather than
+    /// silently treating the failed write as a successful save. Before the
+    /// fix, WriteFileAsync swallowed the exception and the discard-gate always
+    /// returned true regardless of write outcome.
+    /// </summary>
+    [Fact]
+    public async Task Pointer_WhenSaveAsWritesToADirectoryPath_ReportsErrorAndKeepsDocumentDirtyAsync()
+    {
+        // Arrange: a real subdirectory of the dialog's default browse directory
+        // (Environment.CurrentDirectory) stands in for an unwritable target.
+        var directoryName = $"save-failure-{Guid.NewGuid():N}";
+        var directoryPath = Path.Combine(Environment.CurrentDirectory, directoryName);
+        _ = Directory.CreateDirectory(directoryPath);
+
+        try
+        {
+            var screen = new TextEditor.EditorScreen();
+            await using var surface = await ComponentSurface.MountScreenAsync(
+                screen,
+                new Size(90, 26),
+                TestContext.Current.CancellationToken);
+            var editor = Editor(screen);
+            await surface.UpdateAsync(() => editor.Text = "unsaved content", "type content");
+
+            var file = FindItem(screen, "File");
+            var saveAs = FindItem(file.Submenu.ShouldNotBeNull(), "Save As...");
+            await surface.Pointer.ClickAsync(file);
+            await surface.Pointer.ClickAsync(saveAs);
+            await surface.UpdateAsync(static () => { }, "show Save As dialog");
+
+            // The filename input receives initial load focus, so typed text and
+            // Enter route directly to it without locating the private field.
+            await surface.Keyboard.TypeAsync(directoryName);
+            await surface.Keyboard.PressAsync(Code.Enter);
+            await surface.UpdateAsync(static () => { }, "attempt the failing write");
+
+            // Assert: the write failure surfaces as an error dialog.
+            var error = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+            error.Title.ShouldBe("Error");
+            await surface.Keyboard.PressAsync(Code.Enter);
+            await surface.UpdateAsync(static () => { }, "dismiss error dialog");
+
+            // Assert: the document is still considered dirty. Quitting must
+            // still prompt to discard rather than closing silently.
+            var quitItem = FindItem(file.Submenu.ShouldNotBeNull(), "Quit");
+            await surface.Pointer.ClickAsync(file);
+            await surface.Pointer.ClickAsync(quitItem);
+            await surface.UpdateAsync(static () => { }, "attempt to quit");
+
+            _ = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+        }
+        finally
+        {
+            Directory.Delete(directoryPath, recursive: true);
+        }
+    }
+
     /// <summary>Verifies a clicked Search command closes the menu plane and shows an attached modeless find Window.</summary>
     [Fact]
     public async Task Pointer_WhenSearchFindIsClicked_ShowsModelessFindWindowAfterMenuClosesAsync()

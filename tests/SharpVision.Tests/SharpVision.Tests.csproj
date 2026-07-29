@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\examples\Snake\Snake.csproj"/>
     <ProjectReference Include="..\..\examples\TextEditor\TextEditor.csproj"/>
     <ProjectReference Include="..\..\examples\Showcase\SharpVision.Showcase.csproj"/>
     <ProjectReference Include="..\..\src\SharpVision\SharpVision.csproj"/>
