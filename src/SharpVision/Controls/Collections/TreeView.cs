@@ -5,6 +5,7 @@ namespace SharpVision.Controls.Collections;
 
 using Layout;
 
+using SharpVision.Controls.Input;
 using SharpVision.Terminal.Input;
 
 using LayoutStack = Layout.Stack;
@@ -168,6 +169,51 @@ public sealed class TreeView: CompositeControl
             }
         }
     } = TreeSelectionMode.Single;
+
+    /// <summary>Gets or sets the check-mark presentation shared by this tree's checkable items.</summary>
+    /// <remarks>
+    /// Null leaves each item on the library default. An item may still override this locally
+    /// through <see cref="TreeViewItem.CheckMark"/>, giving the precedence local item, then owning
+    /// tree, then library default. Only the mark layout and glyphs are shared; a tree row paints
+    /// itself from its own resolved style, so no CheckBox appearance is applied here.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public CheckMark? CheckMark
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var previous = ActualCheckMark;
+            field = value;
+            var current = ActualCheckMark;
+
+            // The mark occupies cells ahead of the header, so a width change moves every row's
+            // text and needs a measure pass rather than a repaint.
+            var impact = previous.Width != current.Width
+                ? InvalidationImpact.Measure
+                : previous == current
+                    ? InvalidationImpact.None
+                    : InvalidationImpact.Render;
+            NotifyPropertyChanged(nameof(CheckMark), impact);
+
+            if (previous != current)
+            {
+                NotifyPropertyChanged(nameof(ActualCheckMark), InvalidationImpact.None);
+                InvalidateItemChrome(impact);
+            }
+        }
+    }
+
+    /// <summary>Gets the check-mark presentation applied to items that do not override it.</summary>
+    public CheckMark ActualCheckMark => CheckMark ?? Input.CheckMark.Brackets;
 
     /// <summary>Gets or sets the number of cells per indentation level.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -693,6 +739,19 @@ public sealed class TreeView: CompositeControl
     {
         _ = item;
         Invalidate(Invalidation.Render);
+    }
+
+    private void InvalidateItemChrome(InvalidationImpact impact)
+    {
+        // Items resolve the shared mark on demand, so they only need to be told to redraw or, when
+        // the reservation moved, to measure again.
+        foreach (var control in _itemsStack.Children)
+        {
+            if (control is TreeViewItem item)
+            {
+                item.NotifyCheckMarkChanged(impact);
+            }
+        }
     }
 
     internal void NotifyItemEnabledChanged(TreeViewItem item)

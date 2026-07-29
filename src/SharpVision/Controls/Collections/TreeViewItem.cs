@@ -13,10 +13,11 @@ public sealed class TreeViewItem: Control
     // These dimensions are terminal-cell invariants for the compact tree row chrome.
     private const int _rowHeightCells = 1;
     private const int _disclosureWidthCells = 1;
-    private const int _checkGlyphWidthCells = 2;
-    private const int _headerLeadingSpaceCells = 1;
+    // A checkable row separates its disclosure glyph from its mark, so the two never read as one
+    // cluster. Reserved only when a mark is drawn.
+    private const int _checkGapCells = 1;
     // A row reserves one terminal cell between its chrome and header text.
-    private const int _headerGapCells = 1;
+    private const int _headerLeadingSpaceCells = 1;
     private const int _defaultIndentCells = 2;
 
     private bool _isSelected;
@@ -26,7 +27,6 @@ public sealed class TreeViewItem: Control
 
     /// <summary>Gets this item's own stored check state, ignoring any descendant aggregate.</summary>
     internal bool? OwnCheckState => _isChecked;
-    private CheckBoxGlyphs? _checkGlyphs;
 
     /// <summary>Initializes a tree view item with a fixed one-cell height.</summary>
     public TreeViewItem()
@@ -135,15 +135,80 @@ public sealed class TreeViewItem: Control
     }
 
     /// <summary>Gets or sets the three one-cell glyphs used for check states.</summary>
+    /// <remarks>
+    /// A convenience projection over <see cref="ActualCheckMark"/>. Reading reports the resolved
+    /// glyphs; assigning keeps the resolved mark layout and replaces only its glyphs, so the two
+    /// surfaces cannot disagree about which glyphs a row draws.
+    /// </remarks>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public CheckBoxGlyphs CheckGlyphs
     {
-        get => _checkGlyphs ?? CheckBoxGlyphs.Default;
+        get => ActualCheckMark.Glyphs;
         set
         {
-            if (SetOptionalValue(ref _checkGlyphs, value, CheckBoxGlyphs.Default))
+            VerifyMutable();
+
+            if (ActualCheckMark.Glyphs == value)
             {
-                Invalidate(InvalidationImpact.Render);
+                return;
             }
+
+            CheckMark = ActualCheckMark.WithGlyphs(value);
+            NotifyPropertyChanged(nameof(CheckGlyphs), InvalidationImpact.Render);
+        }
+    }
+
+    /// <summary>Gets or sets this item's local check-mark presentation.</summary>
+    /// <remarks>
+    /// Null defers to the owning <see cref="TreeView.CheckMark"/>, and then to the library default,
+    /// giving the precedence local item, owning tree, library default.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public CheckMark? CheckMark
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var previous = ActualCheckMark;
+            field = value;
+            var current = ActualCheckMark;
+
+            // A width change moves the header, so it needs measure rather than a repaint.
+            var impact = previous.Width != current.Width
+                ? InvalidationImpact.Measure
+                : previous == current
+                    ? InvalidationImpact.None
+                    : InvalidationImpact.Render;
+            NotifyPropertyChanged(nameof(CheckMark), impact);
+
+            if (previous != current)
+            {
+                NotifyPropertyChanged(nameof(ActualCheckMark), InvalidationImpact.None);
+            }
+        }
+    }
+
+    /// <summary>Gets the check-mark presentation this item renders.</summary>
+    public CheckMark ActualCheckMark =>
+        CheckMark ?? FindTreeView()?.ActualCheckMark ?? Input.CheckMark.Brackets;
+
+    /// <summary>Redraws or remeasures after the owning tree changed the shared mark.</summary>
+    /// <param name="impact">The invalidation the shared change requires.</param>
+    internal void NotifyCheckMarkChanged(InvalidationImpact impact)
+    {
+        if (CheckMark is null && IsCheckable)
+        {
+            NotifyPropertyChanged(nameof(ActualCheckMark), impact);
         }
     }
 
@@ -178,11 +243,18 @@ public sealed class TreeViewItem: Control
     {
         _ = constraint;
         var indent = FindTreeView()?.Indent ?? _defaultIndentCells;
-        var checkWidth = IsCheckable ? _checkGlyphWidthCells : 0;
+
+        // Must match OnRenderContent exactly: indent, one disclosure cell, a gap and the resolved
+        // mark when checkable, then one leading space before the header.
+        var checkWidth = IsCheckable ? _checkGapCells + ActualCheckMark.Width : 0;
         return new Size(
             (int) Math.Min(
                 int.MaxValue,
-                ((long) Depth * indent) + _headerGapCells + checkWidth + Terminal.Unicode.Width.Measure(Header).Cells),
+                ((long) Depth * indent) +
+                _disclosureWidthCells +
+                checkWidth +
+                _headerLeadingSpaceCells +
+                Terminal.Unicode.Width.Measure(Header).Cells),
             _rowHeightCells);
     }
 
@@ -253,19 +325,17 @@ public sealed class TreeViewItem: Control
 
         if (IsCheckable)
         {
-            var glyphs = CheckGlyphs;
-            var checkGlyph = IsChecked switch
-            {
-                true => glyphs.Checked,
-                false => glyphs.Unchecked,
-                null => glyphs.Indeterminate
-            };
-            canvas.DrawRune(
-                CellGlyphResolver.Resolve(checkGlyph, CheckBoxGlyphs.Default.Unchecked, CellPolicy.AmbiguousWidth),
+            // The presenter owns bracket construction and per-state fallback, so a one-cell and a
+            // three-cell family degrade identically here and in a standalone CheckBox. The leading
+            // space keeps the disclosure glyph and the mark from reading as one cluster.
+            var mark = ActualCheckMark;
+            var cells = CheckMarkPresenter.Format(mark, IsChecked, CellPolicy.AmbiguousWidth);
+            _ = clipped.Draw(
+                $"{new string(' ', _checkGapCells)}{cells}".AsSpan(),
                 new Point(x, bounds.Y),
                 style,
-                BackgroundMode.Transparent);
-            x += _checkGlyphWidthCells;
+                background: BackgroundMode.Transparent);
+            x += _checkGapCells + mark.Width;
         }
 
         if (bounds.Width > x - bounds.X + _headerLeadingSpaceCells)
@@ -307,9 +377,11 @@ public sealed class TreeViewItem: Control
                 return;
             }
 
-            var checkX = glyphX + _disclosureWidthCells;
+            var checkX = glyphX + _disclosureWidthCells + _checkGapCells;
 
-            if (IsCheckable && cells.X == checkX)
+            // A bracket mark occupies three cells, so any cell of the mark toggles it. Testing
+            // only the first cell made two thirds of a bracket mark unclickable.
+            if (IsCheckable && cells.X >= checkX && cells.X < checkX + ActualCheckMark.Width)
             {
                 SetCheckState(IsChecked != true, ActivationCause.Pointer, propagate: true);
                 eventArgs.Handled = true;
@@ -593,25 +665,4 @@ public sealed class TreeViewItem: Control
         return _isChecked;
     }
 
-    private static bool SetOptionalValue(ref CheckBoxGlyphs? field, CheckBoxGlyphs value, CheckBoxGlyphs defaultValue)
-    {
-        if (value.Equals(defaultValue))
-        {
-            if (field is null)
-            {
-                return false;
-            }
-
-            field = null;
-            return true;
-        }
-
-        if (field is { } existing && existing.Equals(value))
-        {
-            return false;
-        }
-
-        field = value;
-        return true;
-    }
 }

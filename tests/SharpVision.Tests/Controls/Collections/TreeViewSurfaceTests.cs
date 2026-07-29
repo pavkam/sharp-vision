@@ -259,7 +259,11 @@ public sealed class TreeViewSurfaceTests
             TestThemes.BorderlessContainer,
             TestContext.Current.CancellationToken);
 
-        surface.Cell(new Point(1, 0)).Text.ShouldBe("☐");
+        // Disclosure at 0, a gap at 1, then the default three-cell bracket mark.
+        surface.Cell(new Point(1, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("[");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("]");
 
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PressAsync(Code.Down);
@@ -267,7 +271,44 @@ public sealed class TreeViewSurfaceTests
 
         parent.IsChecked.ShouldBe(true);
         child.IsChecked.ShouldBe(true);
-        surface.Cell(new Point(1, 0)).Text.ShouldBe("☑");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("✓");
+    }
+
+    /// <summary>
+    /// Verifies a bracket mark renders its three cells, keeps the header offset consistent with the
+    /// measured reservation, and toggles from any cell of the mark rather than only its first.
+    /// </summary>
+    [Fact]
+    public async Task Pointer_WhenBracketMarkIsClicked_RendersThreeCellsAndTogglesFromAnyCellAsync()
+    {
+        var item = new TreeViewItem { Header = "Item", IsCheckable = true };
+        var tree = CreateTree(20);
+        tree.CheckMark = CheckMark.Brackets;
+        tree.Items.Add(item);
+
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(20, 4),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        // One disclosure cell, a gap, the three-cell mark, then the leading space before the
+        // header.
+        surface.Cell(new Point(1, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("[");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("]");
+        surface.Cell(new Point(6, 0)).Text.ShouldBe("I");
+
+        // The closing bracket is the cell a single-cell hit test used to miss.
+        await surface.Pointer.ClickAsync(item, new Point(4, 0));
+
+        item.IsChecked.ShouldBe(true);
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("✓");
+
+        await surface.Pointer.ClickAsync(item, new Point(2, 0));
+
+        item.IsChecked.ShouldBe(false);
     }
 
     private static TreeView CreateTree(int width)

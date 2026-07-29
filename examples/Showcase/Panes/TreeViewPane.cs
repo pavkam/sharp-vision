@@ -73,6 +73,18 @@ internal sealed class TreeViewPane: CompositeControl
         var clearSelection = new Button("Clear &Selection");
         clearSelection.Click += (_, _) => controlledTree.ClearSelection();
 
+        var markTrees = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 2,
+            Children =
+            {
+                MarkSpecimen("Square", CheckMark.Square),
+                MarkSpecimen("Brackets", CheckMark.Brackets),
+                MarkSpecimen("Tick", CheckMark.Tick)
+            }
+        };
+
         const string recipe = """
             var tree = new TreeView { Width = Length.Cells(34) };
 
@@ -117,6 +129,30 @@ internal sealed class TreeViewPane: CompositeControl
                         Orientation = Orientation.Horizontal,
                         Spacing = 1,
                         Children = { expandAll, collapseAll, selectAll, clearSelection }
-                    }))));
+                    }))),
+            new DocSection("\u2611\ufe0f", "Check mark families",
+                "<info>CheckMark</info> selects the same mark layouts a standalone " +
+                "<info>CheckBox</info> offers. Set it on the tree to share one presentation, or on " +
+                "a single item to override it. Brackets reserve three cells and shift the header " +
+                "accordingly; every cell of the mark is clickable.",
+                new DocExample("Square, Brackets, and Tick",
+                    "Each tree checks the same nodes. Click any mark cell to toggle it.",
+                    markTrees)));
+    }
+
+    private static DocColumn MarkSpecimen(string title, CheckMark mark)
+    {
+        var tree = new TreeView
+        {
+            Width = Length.Cells(22),
+            Height = Length.Cells(5),
+            CheckMark = mark
+        };
+        var parent = new TreeViewItem("Group") { IsCheckable = true, IsExpanded = true };
+        parent.Children.Add(new TreeViewItem("Checked") { IsCheckable = true, IsChecked = true });
+        parent.Children.Add(new TreeViewItem("Unchecked") { IsCheckable = true });
+        tree.Items.Add(parent);
+
+        return new DocColumn(new Text(title), tree);
     }
 }

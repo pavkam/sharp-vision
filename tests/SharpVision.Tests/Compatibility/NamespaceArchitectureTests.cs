@@ -84,6 +84,7 @@ public sealed class NamespaceArchitectureTests
                 "CheckBoxMarkStyle",
                 "CheckBoxStyle",
                 "CheckBoxStyleSet",
+                "CheckMark",
                 "ColorPicker",
                 "ComboBox",
                 "DateInput",

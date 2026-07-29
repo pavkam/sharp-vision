@@ -96,7 +96,9 @@ namespace SharpVision.Controls.Collections
     public sealed class TreeView : SharpVision.Controls.CompositeControl
     {
         public TreeView() { }
+        public SharpVision.Controls.Input.CheckMark ActualCheckMark { get; }
         public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Input.CheckMark? CheckMark { get; set; }
         public int Indent { get; set; }
         public SharpVision.Controls.Collections.TreeViewItemCollection Items { get; }
         public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
@@ -119,7 +121,9 @@ namespace SharpVision.Controls.Collections
     {
         public TreeViewItem() { }
         public TreeViewItem(string header) { }
+        public SharpVision.Controls.Input.CheckMark ActualCheckMark { get; }
         public SharpVision.Controls.Input.CheckBoxGlyphs CheckGlyphs { get; set; }
+        public SharpVision.Controls.Input.CheckMark? CheckMark { get; set; }
         public SharpVision.Controls.Collections.TreeViewItemCollection Children { get; }
         public int Depth { get; }
         public bool HasChildren { get; }
@@ -922,6 +926,23 @@ namespace SharpVision.Controls.Input
         public SharpVision.Controls.Input.CheckBoxGlyphs? Glyphs { get; }
         public SharpVision.Controls.Input.CheckBoxMarkStyle? MarkStyle { get; }
         public SharpVision.Controls.Input.CheckBoxStyle Apply(SharpVision.Controls.Input.CheckBoxStyle baseline) { }
+    }
+    public readonly struct CheckMark : System.IEquatable<SharpVision.Controls.Input.CheckMark>
+    {
+        public CheckMark(SharpVision.Controls.Input.CheckBoxMarkStyle markStyle, SharpVision.Controls.Input.CheckBoxGlyphs glyphs) { }
+        public SharpVision.Controls.Input.CheckBoxGlyphs Glyphs { get; }
+        public SharpVision.Controls.Input.CheckBoxMarkStyle MarkStyle { get; }
+        public int Width { get; }
+        public static SharpVision.Controls.Input.CheckMark Brackets { get; }
+        public static SharpVision.Controls.Input.CheckMark Square { get; }
+        public static SharpVision.Controls.Input.CheckMark Tick { get; }
+        public bool Equals(SharpVision.Controls.Input.CheckMark other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public System.Text.Rune GlyphFor(bool? state) { }
+        public SharpVision.Controls.Input.CheckMark WithGlyphs(SharpVision.Controls.Input.CheckBoxGlyphs glyphs) { }
+        public static bool operator !=(SharpVision.Controls.Input.CheckMark left, SharpVision.Controls.Input.CheckMark right) { }
+        public static bool operator ==(SharpVision.Controls.Input.CheckMark left, SharpVision.Controls.Input.CheckMark right) { }
     }
     public sealed class ColorPicker : SharpVision.Controls.CompositeControl
     {
