@@ -39,7 +39,7 @@ runs:
       with:
         name: test-results-${{ runner.os }}
         path: "**/TestResults/**/*.trx"
-        if-no-files-found: warn
+        if-no-files-found: error
 
     - name: 📤 Upload coverage report
       if: ${{ always() }}
@@ -55,3 +55,5 @@ runs:
       with:
         check_name: "📋 Test results on ${{ runner.os }}"
         files: "**/TestResults/**/*.trx"
+        action_fail: true
+        action_fail_on_inconclusive: true

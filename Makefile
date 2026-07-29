@@ -28,7 +28,7 @@ restore:
 
 build: restore
 	@echo "🔨 Building SharpVision..."
-	@dotnet build $(SOLUTION) --configuration Release --no-restore
+	@dotnet build $(SOLUTION) --configuration $${CONFIGURATION:-Release} --no-restore
 	@echo "✅ Build complete."
 
 run:
@@ -42,6 +42,7 @@ test: build
 test-ci: build
 	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --coverage --coverage-output-format cobertura --report-xunit-trx
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --coverage --coverage-settings tests/SharpVision.Tests/coverage.config --coverage-output-format cobertura --report-xunit-trx --parallel none
+	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1 --timeout 300s --report-xunit-trx
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85
 
 test-binding-coverage: build
@@ -60,6 +61,8 @@ lint: restore
 	@npm run lint:extern
 	@npm run lint:actions
 	@npm run lint:action-pins
+	@npm run lint:ci-gate
+	@npm run lint:performance-assertions
 	@npm run format:check
 	@npm run lint:markdown
 	@npm run lint:links

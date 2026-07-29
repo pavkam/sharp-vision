@@ -239,9 +239,9 @@ public sealed class PhaseThreePerformanceTests
         sink.Count.ShouldBe(120_000);
     }
 
-    /// <summary>Verifies warmed xterm cursor and color programs allocate nothing with a relative time budget.</summary>
+    /// <summary>Verifies warmed xterm cursor and color programs allocate nothing.</summary>
     [Fact]
-    public void Write_WhenTerminfoProgramsAreWarm_AllocatesZeroBytesWithinRelativeBudget()
+    public void Write_WhenTerminfoProgramsAreWarm_AllocatesZeroBytes()
     {
         // ncurses 6.6 terminfo.src xterm cursor-address and xterm-256color setaf forms.
         var cursor = Compiler.Compile("\u001b[%i%p1%d;%p2%dH"u8, Limits.Default);
@@ -274,21 +274,8 @@ public sealed class PhaseThreePerformanceTests
         }
 
         expansionWatch.Stop();
-        var directWatch = Stopwatch.StartNew();
-
-        for (var index = 0; index < 50_000; index++)
-        {
-            destination.Clear();
-            destination.Write("\u001b[5;10H\u001b[38;5;200m"u8);
-        }
-
-        directWatch.Stop();
-        var relativeBudgetTicks = Math.Max(
-            directWatch.Elapsed.Ticks * 100,
-            TimeSpan.FromMilliseconds(100).Ticks);
 
         minimum.ShouldBe(0);
-        expansionWatch.Elapsed.Ticks.ShouldBeLessThan(relativeBudgetTicks);
         Report("terminfo cup/setaf expansion", expansionWatch.Elapsed, 100_000);
     }
 
@@ -321,13 +308,10 @@ public sealed class PhaseThreePerformanceTests
         var executableCount = ConstructPrograms(executable, 10_000);
         executableWatch.Stop();
         var executableAllocated = GC.GetAllocatedBytesForCurrentThread() - executableBefore;
-        var relativeBudget = Math.Max(
-            opaqueWatch.Elapsed.Ticks * 10,
-            TimeSpan.FromMilliseconds(100).Ticks);
 
         executableCount.ShouldBe(opaqueCount);
         executableAllocated.ShouldBeLessThanOrEqualTo(opaqueAllocated + 1_024);
-        executableWatch.Elapsed.Ticks.ShouldBeLessThan(relativeBudget);
+        Report("opaque vs. executable program-set construction", executableWatch.Elapsed, executableCount);
     }
 
     private static (long Allocated, TimeSpan Elapsed) Measure<TState>(
