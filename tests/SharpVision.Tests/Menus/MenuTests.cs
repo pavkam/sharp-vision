@@ -46,6 +46,7 @@ public sealed class MenuTests
 
         menu.Items.Count.ShouldBe(3);
         menu.SelectedIndex.ShouldBe(0);
+        menu.SelectedItem.ShouldBeSameAs(first);
         menu.Spacing.ShouldBe(0);
         first.Bounds.ShouldBe(new Rect(0, 0, menu.Bounds.Width, 1));
         second.Bounds.ShouldBe(new Rect(0, 1, menu.Bounds.Width, 1));
@@ -53,6 +54,53 @@ public sealed class MenuTests
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
         FrameOracle.Get(frame, new Point(0, 1)).ShouldBe("[");
         FrameOracle.Get(frame, new Point(menu.Bounds.Right - 1, 2)).ShouldBe("─");
+    }
+
+    /// <summary>Verifies SelectedItem mirrors SelectedIndex and reports the selected item identity.</summary>
+    [Fact]
+    public void SelectedItem_WhenSet_UpdatesSelectedIndexAndReportsIdentity()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var second = new MenuItem { Content = new ControlText("Second") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+
+        menu.SelectedItem = second;
+
+        menu.SelectedIndex.ShouldBe(1);
+        menu.SelectedItem.ShouldBeSameAs(second);
+
+        menu.SelectedIndex = 0;
+
+        menu.SelectedItem.ShouldBeSameAs(first);
+    }
+
+    /// <summary>Verifies setting SelectedItem to null clears selection, matching SelectedIndex = -1.</summary>
+    [Fact]
+    public void SelectedItem_WhenSetToNull_ClearsSelection()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
+
+        menu.SelectedItem = null;
+
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
+    }
+
+    /// <summary>Verifies setting SelectedItem to an item this menu does not own clears selection.</summary>
+    [Fact]
+    public void SelectedItem_WhenItemIsNotOwned_ClearsSelection()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
+        var foreign = new MenuItem { Content = new ControlText("Foreign") };
+
+        menu.SelectedItem = foreign;
+
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.SelectedItem.ShouldBeNull();
     }
 
     /// <summary>Verifies directional keys skip separators while focus remains on the menu owner.</summary>

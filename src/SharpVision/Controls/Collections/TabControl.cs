@@ -119,6 +119,16 @@ public sealed class TabControl: ItemsControl
         }
     }
 
+    /// <summary>Gets the selected page, or sets one owned page as selected; null clears selection.</summary>
+    /// <remarks>Setting a page not owned by this tab control clears selection, matching <see cref="SelectedIndex"/>'s -1.</remarks>
+    /// <exception cref="InvalidOperationException">The attached tab control is mutated off-dispatcher, or the target page is unavailable.</exception>
+    /// <exception cref="ObjectDisposedException">The tab control is disposed.</exception>
+    public TabItem? SelectedItem
+    {
+        get => _selectedIndex < 0 ? null : ItemAt(_selectedIndex);
+        set => SelectedIndex = value is null ? -1 : IndexOfItem(value);
+    }
+
     /// <summary>Gets or sets the local tab-divider glyph.</summary>
     /// <exception cref="ArgumentException">The value is a terminal control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached tab control is mutated off-dispatcher.</exception>
@@ -320,6 +330,9 @@ public sealed class TabControl: ItemsControl
 
         var wasSelected = idx == _selectedIndex;
         var previousSelectedIndex = _selectedIndex;
+        // Captured before detachment: once the item is removed, its old index
+        // may resolve to a different surviving item or be out of range.
+        var previousSelectedItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
         var header = HeaderAt(idx);
         item.PropertyChanged -= OnItemPropertyChanged;
         header.Activated -= OnHeaderActivated;
@@ -332,13 +345,13 @@ public sealed class TabControl: ItemsControl
         if (wasSelected)
         {
             var target = FindNearestEligible(Math.Min(idx, ItemControlCount - 1));
-            CommitSelectionAfterMutation(target, previousSelectedIndex);
+            CommitSelectionAfterMutation(target, previousSelectedIndex, previousSelectedItem);
         }
         else
         {
             if (idx < _selectedIndex)
             {
-                CommitSelectionAfterMutation(_selectedIndex - 1, previousSelectedIndex);
+                CommitSelectionAfterMutation(_selectedIndex - 1, previousSelectedIndex, previousSelectedItem);
                 return true;
             }
 
@@ -379,6 +392,8 @@ public sealed class TabControl: ItemsControl
     {
         VerifyMutable();
         var headers = new TabHeader[_headers.Children.Count];
+        var previousSelectedIndex = _selectedIndex;
+        var previousSelectedItem = previousSelectedIndex >= 0 ? ItemAt(previousSelectedIndex) : null;
 
         for (var index = 0; index < ItemControlCount; index++)
         {
@@ -393,7 +408,7 @@ public sealed class TabControl: ItemsControl
 
         ClearItemControls();
         _headers.Children.Clear();
-        Select(-1);
+        CommitSelectionAfterMutation(-1, previousSelectedIndex, previousSelectedItem);
 
         foreach (var header in headers)
         {
@@ -454,17 +469,18 @@ public sealed class TabControl: ItemsControl
     {
         VerifyMutable();
 
-        CommitSelection(index, _selectedIndex);
+        var previousItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
+        CommitSelection(index, _selectedIndex, previousItem);
     }
 
-    private void CommitSelectionAfterMutation(int index, int previousIndex)
+    private void CommitSelectionAfterMutation(int index, int previousIndex, TabItem? previousItem)
     {
         VerifyMutable();
         _selectedIndex = -1;
-        CommitSelection(index, previousIndex);
+        CommitSelection(index, previousIndex, previousItem);
     }
 
-    private void CommitSelection(int index, int previousIndex)
+    private void CommitSelection(int index, int previousIndex, TabItem? previousItem)
     {
 
         if (index >= 0 && !IsEligible(index))
@@ -494,8 +510,27 @@ public sealed class TabControl: ItemsControl
         {
             _ = _headers.BringIntoView(HeaderAt(_selectedIndex));
         }
+
+        var currentItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
+
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
-        SelectionChanged?.Invoke(this, new TabSelectionChangedEventArgs(previousIndex, index));
+        NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Measure);
+        SelectionChanged?.Invoke(
+            this,
+            new TabSelectionChangedEventArgs(previousIndex, index, previousItem, currentItem));
+    }
+
+    private int IndexOfItem(TabItem item)
+    {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            if (ReferenceEquals(ItemAt(index), item))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private void ApplyPresentation()

@@ -306,15 +306,6 @@ public sealed class ComboBox: Control
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
         base.GetThemeResolvedStylePropertyName(previous, current);
 
-    /// <summary>Gets or sets whether the field accepts typed text in addition to list selection.</summary>
-    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public bool IsEditable
-    {
-        get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
-    }
-
     /// <summary>Gets or sets whether the private drop-down owns a dismissing modal plane rooted at this field.</summary>
     /// <exception cref="ArgumentException">The attached ComboBox is not an eligible modal root.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>

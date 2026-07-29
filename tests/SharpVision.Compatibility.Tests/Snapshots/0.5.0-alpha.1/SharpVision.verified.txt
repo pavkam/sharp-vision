@@ -50,6 +50,7 @@ namespace SharpVision.Controls.Collections
         public SharpVision.Layout.Length HeaderWidth { get; set; }
         public SharpVision.Controls.Collections.TabItemCollection Items { get; }
         public int SelectedIndex { get; set; }
+        public SharpVision.Controls.Collections.TabItem? SelectedItem { get; set; }
         public SharpVision.Terminal.Protocols.Color? SelectionIndicatorColor { get; set; }
         public System.Text.Rune UnderlineGlyph { get; set; }
         public event System.EventHandler<SharpVision.Controls.Collections.TabCloseRequestedEventArgs>? CloseRequested;
@@ -84,9 +85,11 @@ namespace SharpVision.Controls.Collections
     }
     public sealed class TabSelectionChangedEventArgs : System.EventArgs
     {
-        public TabSelectionChangedEventArgs(int previousIndex, int currentIndex) { }
+        public TabSelectionChangedEventArgs(int previousIndex, int currentIndex, SharpVision.Controls.Collections.TabItem? previousItem, SharpVision.Controls.Collections.TabItem? currentItem) { }
         public int CurrentIndex { get; }
+        public SharpVision.Controls.Collections.TabItem? CurrentItem { get; }
         public int PreviousIndex { get; }
+        public SharpVision.Controls.Collections.TabItem? PreviousItem { get; }
     }
     public enum TreeSelectionMode
     {
@@ -861,7 +864,6 @@ namespace SharpVision.Controls.Input
         public bool AllowNull { get; set; }
         public System.Text.Rune DropDownGlyph { get; set; }
         public int DropDownHeight { get; set; }
-        public bool IsEditable { get; set; }
         public bool IsOpen { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
         public string Placeholder { get; set; }
@@ -2179,6 +2181,7 @@ namespace SharpVision.Menus
         public SharpVision.Menus.MenuEntryCollection Items { get; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
         public int SelectedIndex { get; set; }
+        public SharpVision.Menus.MenuItem? SelectedItem { get; set; }
         public int Spacing { get; set; }
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? ItemInvoked;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }

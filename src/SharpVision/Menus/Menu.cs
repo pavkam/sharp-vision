@@ -116,6 +116,16 @@ public sealed class Menu: ItemsControl
         }
     }
 
+    /// <summary>Gets the selected item, or sets one owned non-separator item as selected; null clears selection.</summary>
+    /// <remarks>Setting an item not owned by this menu clears selection, matching <see cref="SelectedIndex"/>'s -1.</remarks>
+    /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
+    public MenuItem? SelectedItem
+    {
+        get => _selectedIndex < 0 ? null : (MenuItem) ItemAt(_selectedIndex);
+        set => SelectedIndex = value is null ? -1 : IndexOfItem(value);
+    }
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
@@ -1017,6 +1027,20 @@ public sealed class Menu: ItemsControl
         }
 
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+    }
+
+    private int IndexOfItem(MenuItem item)
+    {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            if (ReferenceEquals(ItemAt(index), item))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private void OnFocusEntered(object? sender, EventArgs eventArgs)

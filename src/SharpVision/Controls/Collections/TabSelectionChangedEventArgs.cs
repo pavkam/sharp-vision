@@ -10,10 +10,18 @@ public sealed class TabSelectionChangedEventArgs: EventArgs
     /// <summary>Initializes one immutable tab selection transition.</summary>
     /// <param name="previousIndex">The index before the transition, or -1.</param>
     /// <param name="currentIndex">The committed index, or -1.</param>
-    public TabSelectionChangedEventArgs(int previousIndex, int currentIndex)
+    /// <param name="previousItem">The page selected before the transition, or null.</param>
+    /// <param name="currentItem">The page selected after the transition, or null.</param>
+    public TabSelectionChangedEventArgs(
+        int previousIndex,
+        int currentIndex,
+        TabItem? previousItem,
+        TabItem? currentItem)
     {
         PreviousIndex = previousIndex;
         CurrentIndex = currentIndex;
+        PreviousItem = previousItem;
+        CurrentItem = currentItem;
     }
 
     /// <summary>Gets the index before the transition, or -1.</summary>
@@ -21,4 +29,10 @@ public sealed class TabSelectionChangedEventArgs: EventArgs
 
     /// <summary>Gets the committed index, or -1.</summary>
     public int CurrentIndex { get; }
+
+    /// <summary>Gets the page selected before the transition, or null.</summary>
+    public TabItem? PreviousItem { get; }
+
+    /// <summary>Gets the page selected after the transition, or null.</summary>
+    public TabItem? CurrentItem { get; }
 }

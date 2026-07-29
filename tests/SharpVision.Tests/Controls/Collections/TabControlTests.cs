@@ -16,12 +16,113 @@ public sealed class TabControlTests
         // Assert
         tabs.Items.ShouldBeEmpty();
         tabs.SelectedIndex.ShouldBe(-1);
+        tabs.SelectedItem.ShouldBeNull();
         tabs.DividerColor.ShouldBeNull();
         tabs.SelectionIndicatorColor.ShouldBeNull();
         tabs.CanFocus.ShouldBeTrue();
         tabs.IsHitTestVisible.ShouldBeTrue();
         tabs.HeaderWidth.ShouldBe(Length.Auto);
         tabs.HeaderOverflowPolicy.ShouldBe(TabHeaderOverflowPolicy.Clip);
+    }
+
+    /// <summary>Verifies SelectedItem mirrors SelectedIndex and reports the selected page identity.</summary>
+    [Fact]
+    public void SelectedItem_WhenSet_UpdatesSelectedIndexAndReportsIdentity()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+
+        tabs.SelectedItem = second;
+
+        tabs.SelectedIndex.ShouldBe(1);
+        tabs.SelectedItem.ShouldBeSameAs(second);
+
+        tabs.SelectedIndex = 0;
+
+        tabs.SelectedItem.ShouldBeSameAs(first);
+    }
+
+    /// <summary>Verifies setting SelectedItem to null clears selection, matching SelectedIndex = -1.</summary>
+    [Fact]
+    public void SelectedItem_WhenSetToNull_ClearsSelection()
+    {
+        var tabs = Create(Create("First", "One"));
+        tabs.SelectedIndex = 0;
+
+        tabs.SelectedItem = null;
+
+        tabs.SelectedIndex.ShouldBe(-1);
+        tabs.SelectedItem.ShouldBeNull();
+    }
+
+    /// <summary>Verifies setting SelectedItem to a page this control does not own clears selection.</summary>
+    [Fact]
+    public void SelectedItem_WhenItemIsNotOwned_ClearsSelection()
+    {
+        var owned = Create("First", "One");
+        var tabs = Create(owned);
+        tabs.SelectedIndex = 0;
+        var foreign = Create("Foreign", "Elsewhere");
+
+        tabs.SelectedItem = foreign;
+
+        tabs.SelectedIndex.ShouldBe(-1);
+        tabs.SelectedItem.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the selection-changed event carries the previous and current page identities.</summary>
+    [Fact]
+    public void SelectionChanged_WhenSelectionChanges_CarriesItemIdentities()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        tabs.SelectedIndex = 0;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+
+        tabs.SelectedIndex = 1;
+
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            args => args.PreviousItem.ShouldBeSameAs(first),
+            args => args.CurrentItem.ShouldBeSameAs(second));
+    }
+
+    /// <summary>Verifies removing the selected page reports its identity as PreviousItem, not a shifted successor.</summary>
+    [Fact]
+    public void SelectionChanged_WhenSelectedPageIsRemoved_ReportsRemovedItemAsPrevious()
+    {
+        var selected = Create("Selected", "One");
+        var next = Create("Next", "Two");
+        var tabs = Create(selected, next);
+        tabs.SelectedIndex = 0;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+
+        tabs.Items.Remove(selected).ShouldBeTrue();
+
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            args => args.PreviousItem.ShouldBeSameAs(selected),
+            args => args.CurrentItem.ShouldBeSameAs(next));
+    }
+
+    /// <summary>Verifies clearing every page while one is selected reports its identity as PreviousItem.</summary>
+    [Fact]
+    public void SelectionChanged_WhenCleared_ReportsPreviousItemAndNoCurrentItem()
+    {
+        var selected = Create("Selected", "One");
+        var tabs = Create(selected);
+        tabs.SelectedIndex = 0;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+
+        tabs.Items.Clear();
+
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            args => args.PreviousItem.ShouldBeSameAs(selected),
+            args => args.CurrentItem.ShouldBeNull());
+        tabs.SelectedItem.ShouldBeNull();
     }
 
     /// <summary>Verifies a close request can be cancelled or accepted before removal.</summary>

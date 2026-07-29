@@ -34,7 +34,6 @@ without claiming its single-content inheritance role.
 | `Placeholder`                            | `Select…`           | Face text shown when no item is selected.                                                   |
 | `DropDownHeight`                         | `8` cells           | Caps the ListView interior; the connected Popup's three visible frame edges are additional. |
 | `IsOpen`                                 | `false`             | Controls popup layout, rendering, and hit testing.                                          |
-| `IsEditable`                             | `false`             | Stores an editable-field request; the current control has no typed-text path.               |
 | `ScrollBars`, `ShowScrollBars`           | ListView defaults   | Configure overflow visibility in the private list.                                          |
 | `ScrollBarStyle`, `ActualScrollBarStyle` | `null`, Theme style | Override or inspect the private list's complete rail presentation.                          |
 | `DropDownGlyph`                          | Code-owned          | Overrides the validated one-cell disclosure marker.                                         |
@@ -72,9 +71,8 @@ the ListView's selection, scrolling, and surface appearance inside the Popup.
   page content as defined by the
   [Popup contract](../popups/popup.md#popup-contract).
 
-- `IsEditable` currently stores the requested field mode and invalidates
-  measure, but `ComboBox` does not expose an edit buffer or typed-text input
-  path. Use `TextInput` with a `Popup` for editable suggestions.
+`ComboBox` has no typed-text input path; it selects from `Items` only. Compose
+`TextInput` with a `Popup` directly for an editable suggestion field.
 
 ## Code-owned glyphs
 
