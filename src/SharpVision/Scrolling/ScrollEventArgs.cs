@@ -1,9 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Input;
-
-using Scrolling;
+namespace SharpVision.Scrolling;
 
 /// <summary>Reports one committed ScrollBar value transition.</summary>
 [PublicAPI]
@@ -16,7 +14,7 @@ public sealed class ScrollEventArgs: EventArgs
     /// <exception cref="ArgumentOutOfRangeException">
     /// A value is negative or <paramref name="cause"/> is unknown.
     /// </exception>
-    public ScrollEventArgs(int previousValue, int value, Cause cause)
+    public ScrollEventArgs(int previousValue, int value, ScrollCause cause)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(previousValue);
         ArgumentOutOfRangeException.ThrowIfNegative(value);
@@ -38,5 +36,5 @@ public sealed class ScrollEventArgs: EventArgs
     public int Value { get; }
 
     /// <summary>Gets the input path that caused the transition.</summary>
-    public Cause Cause { get; }
+    public ScrollCause Cause { get; }
 }

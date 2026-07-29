@@ -5,6 +5,7 @@ namespace SharpVision.Controls.Layout;
 
 using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
+using SharpVision.Controls.Scrolling;
 
 using TerminalInput = Terminal.Input;
 
@@ -289,7 +290,7 @@ public sealed class Table: ItemsControl
 
     /// <summary>Gets the resolved private-scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Controls.ScrollBarStyle.Default;
+        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
@@ -343,7 +344,7 @@ public sealed class Table: ItemsControl
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public bool ScrollBy(int x, int y, Scrolling.Cause cause = Scrolling.Cause.Programmatic) =>
+    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
         _presenter.ScrollBy(x, y, cause);
 
     /// <summary>Scrolls minimally to expose one row-cell descendant.</summary>

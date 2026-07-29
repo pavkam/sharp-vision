@@ -5,13 +5,13 @@ namespace SharpVision.Scrolling;
 
 /// <summary>Describes one contained integer scrollbar thumb.</summary>
 [PublicAPI]
-public readonly record struct Thumb
+public readonly record struct ScrollThumb
 {
     /// <summary>Initializes non-negative thumb geometry.</summary>
     /// <param name="start">The non-negative track offset.</param>
     /// <param name="length">The non-negative thumb length.</param>
     /// <exception cref="ArgumentOutOfRangeException">A value is negative.</exception>
-    public Thumb(int start, int length)
+    public ScrollThumb(int start, int length)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(start);
         ArgumentOutOfRangeException.ThrowIfNegative(length);
@@ -31,7 +31,7 @@ public readonly record struct Thumb
     /// <param name="trackLength">The non-negative available track cells.</param>
     /// <returns>The contained thumb.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="trackLength"/> is negative.</exception>
-    public static Thumb Resolve(Range range, int trackLength)
+    public static ScrollThumb Resolve(ScrollRange range, int trackLength)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(trackLength);
 
@@ -42,7 +42,7 @@ public readonly record struct Thumb
 
         if (range.Span == 0)
         {
-            return new Thumb(0, trackLength);
+            return new ScrollThumb(0, trackLength);
         }
 
         var total = (long) range.Span + range.Viewport;
@@ -54,7 +54,7 @@ public readonly record struct Thumb
         var offset = range.Value - range.Minimum;
         var start = travel == 0 ? 0 : Round((long) travel * offset, range.Span);
 
-        return new Thumb(start, length);
+        return new ScrollThumb(start, length);
     }
 
     /// <summary>Maps a dragged thumb offset back to the nearest range value.</summary>
@@ -63,7 +63,7 @@ public readonly record struct Thumb
     /// <param name="thumbStart">The requested thumb start, clamped to travel.</param>
     /// <returns>The inclusive mapped value.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="trackLength"/> is negative.</exception>
-    public static int ValueAt(Range range, int trackLength, int thumbStart)
+    public static int ValueAt(ScrollRange range, int trackLength, int thumbStart)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(trackLength);
         var thumb = Resolve(range, trackLength);

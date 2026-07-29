@@ -69,6 +69,7 @@ infrastructure namespaces:
 | `SharpVision.Controls.Input`       | Buttons, editors, pickers, calendars, and value controls.                      |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.                               |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization.                   |
+| `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.                          |
 | `SharpVision.Menus`                | Menus, typed menu entries, and context menus.                                  |
 | `SharpVision.Navigation`           | Sidebar navigation controls and entries.                                       |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle, bounds, and modality coordination.          |
@@ -76,6 +77,7 @@ infrastructure namespaces:
 | `SharpVision.Windows`              | Free-standing retained window surfaces.                                        |
 | `SharpVision.Dialogs`              | Complete retained modal tasks with typed options and results.                  |
 | `SharpVision.Layout`               | Shared box geometry, measure/arrange, and track allocation.                    |
+| `SharpVision.Scrolling`            | Scroll axes, visibility, chrome, range/thumb math, and transition events.      |
 | `SharpVision.Input`                | Shared routed input, focus, hit testing, and pointer capture.                  |
 | `SharpVision.Styling`              | Shared style resources, chrome contracts, and visual-state resolution.         |
 | `SharpVision.Runtime`              | Terminal session ownership, application lifecycle, and console host bootstrap. |

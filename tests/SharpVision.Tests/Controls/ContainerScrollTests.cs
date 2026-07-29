@@ -245,13 +245,13 @@ public sealed class ContainerScrollTests
         ScrollChangedEventArgs? captured = null;
         container.ScrollChanged += (_, e) => captured = e;
 
-        _ = container.ScrollBy(0, 3, Cause.Keyboard);
+        _ = container.ScrollBy(0, 3, ScrollCause.Keyboard);
 
         _ = captured.ShouldNotBeNull();
         captured.Offset.ShouldBe(new Point(0, 3));
         captured.Extent.ShouldBe(container.Extent);
         captured.Viewport.ShouldBe(container.Viewport);
-        captured.Cause.ShouldBe(Cause.Keyboard);
+        captured.Cause.ShouldBe(ScrollCause.Keyboard);
     }
 
     /// <summary>Verifies a no-op ScrollBy raises no ScrollChanged event.</summary>
@@ -264,7 +264,7 @@ public sealed class ContainerScrollTests
         var raised = false;
         container.ScrollChanged += (_, _) => raised = true;
 
-        container.ScrollBy(0, 0, Cause.Keyboard).ShouldBeFalse();
+        container.ScrollBy(0, 0, ScrollCause.Keyboard).ShouldBeFalse();
 
         raised.ShouldBeFalse();
     }
@@ -481,14 +481,14 @@ public sealed class ContainerScrollTests
         container.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => container.HorizontalOffset = 16);
-        container.ScrollBy(int.MaxValue, int.MaxValue, Cause.Wheel).ShouldBeTrue();
+        container.ScrollBy(int.MaxValue, int.MaxValue, ScrollCause.Wheel).ShouldBeTrue();
 
         container.HorizontalOffset.ShouldBe(15);
         container.VerticalOffset.ShouldBe(7);
         changes.Count.ShouldBe(1);
         changes[0].PreviousOffset.ShouldBe(default);
         changes[0].Offset.ShouldBe(new Point(15, 7));
-        changes[0].Cause.ShouldBe(Cause.Wheel);
+        changes[0].Cause.ShouldBe(ScrollCause.Wheel);
     }
 
     /// <summary>Verifies a growing viewport clamps offsets before exposing the committed geometry.</summary>
@@ -514,7 +514,7 @@ public sealed class ContainerScrollTests
         container.HorizontalOffset.ShouldBe(2);
         container.VerticalOffset.ShouldBe(1);
         _ = change.ShouldNotBeNull();
-        change.Cause.ShouldBe(Cause.Resize);
+        change.Cause.ShouldBe(ScrollCause.Resize);
     }
 
     /// <summary>Verifies arranged translation, viewport clipping, and hit testing agree once content is scrolled.</summary>
@@ -592,7 +592,7 @@ public sealed class ContainerScrollTests
 
     /// <summary>
     /// Verifies content shrink clamps both offsets before its change notification,
-    /// reporting <see cref="Cause.Content"/> because the content extent (not the
+    /// reporting <see cref="ScrollCause.Content"/> because the content extent (not the
     /// viewport) changed.
     /// </summary>
     [Fact]
@@ -618,7 +618,7 @@ public sealed class ContainerScrollTests
         container.Extent.ShouldBe(new Size(4, 2));
         new Point(container.HorizontalOffset, container.VerticalOffset).ShouldBe(default);
         _ = change.ShouldNotBeNull();
-        change.Cause.ShouldBe(Cause.Content);
+        change.Cause.ShouldBe(ScrollCause.Content);
         change.Offset.ShouldBe(default);
     }
 

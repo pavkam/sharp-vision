@@ -1,7 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Tests.Controls.Layout;
+namespace SharpVision.Tests.Controls.Scrolling;
 
 /// <summary>Verifies ScrollBar appearance, range input, capture, and cleanup through mounted surfaces.</summary>
 public sealed class ScrollBarSurfaceTests
@@ -211,7 +211,7 @@ public sealed class ScrollBarSurfaceTests
     public async Task Keyboard_WhenRangeCommandsArePressed_AppliesExactChangesAndCausesAsync()
     {
         // Arrange
-        var causes = new List<Cause>();
+        var causes = new List<ScrollCause>();
         var bar = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
@@ -244,7 +244,7 @@ public sealed class ScrollBarSurfaceTests
 
         // Assert
         bar.Value.ShouldBe(78);
-        causes.ShouldBe(Enumerable.Repeat(Cause.Keyboard, 6));
+        causes.ShouldBe(Enumerable.Repeat(ScrollCause.Keyboard, 6));
         surface.ShouldHaveState(bar, VisualState.Focused);
         surface.ShouldRender("<.....#..>");
     }
@@ -255,7 +255,7 @@ public sealed class ScrollBarSurfaceTests
     public async Task Pointer_WhenButtonsTrackAndWheelAreUsed_ReportsExactRangeCausesAsync()
     {
         // Arrange
-        var changes = new List<(int Value, Cause Cause)>();
+        var changes = new List<(int Value, ScrollCause Cause)>();
         var bar = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
@@ -288,11 +288,11 @@ public sealed class ScrollBarSurfaceTests
         // Assert changed paths
         bar.Value.ShouldBe(48);
         changes.ShouldBe([
-            (48, Cause.Pointer),
-            (50, Cause.Pointer),
-            (30, Cause.Pointer),
-            (50, Cause.Pointer),
-            (48, Cause.Wheel)
+            (48, ScrollCause.Pointer),
+            (50, ScrollCause.Pointer),
+            (30, ScrollCause.Pointer),
+            (50, ScrollCause.Pointer),
+            (48, ScrollCause.Wheel)
         ]);
         surface.ShouldRender("<....##....>");
 

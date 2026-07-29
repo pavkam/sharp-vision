@@ -51,6 +51,7 @@ All controls derive from the
 | `SharpVision.Controls.Input`       | Buttons, editors, pickers, and value controls.               |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.             |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization. |
+| `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.        |
 | `SharpVision.Menus`                | Menus, menu entries, and context menus.                      |
 | `SharpVision.Navigation`           | Sidebar navigation controls and entries.                     |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle and modality seams.        |
@@ -107,16 +108,19 @@ renderer paints configured chrome around `OnRenderContent`. See the
 - [TextInput](input/text-input.md#textinput-contract)
 - [TimeInput](input/time-input.md#timeinput-contract)
 
-### Layout and scrolling
+### Layout
 
 - [Stack](layout/stack.md#stack-contract)
 - [Grid](layout/grid.md#grid-contract)
 - [Dock](layout/dock.md#dock-contract)
 - [Overlay](layout/overlay.md#overlay-contract)
 - [Table](layout/table.md#table-contract)
-- [ScrollBar](layout/scroll-bar.md#scrollbar-contract)
 - [GroupBox](layout/group-box.md#groupbox-contract)
 - [Expander](layout/expander.md#expander-contract)
+
+### Scrolling
+
+- [ScrollBar](scrolling/scroll-bar.md#scrollbar-contract)
 
 ### Collections
 

@@ -16,6 +16,7 @@ using Popups;
 
 using SharpVision.Tests.Controls.Input;
 using SharpVision.Tests.Controls.Layout;
+using SharpVision.Tests.Controls.Scrolling;
 
 using Windows;
 

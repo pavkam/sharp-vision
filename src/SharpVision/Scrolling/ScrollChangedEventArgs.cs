@@ -1,9 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Input;
-
-using Scrolling;
+namespace SharpVision.Scrolling;
 
 /// <summary>Reports one committed two-axis scroll host geometry or offset transition.</summary>
 [PublicAPI]
@@ -21,7 +19,7 @@ public sealed class ScrollChangedEventArgs: EventArgs
         Point offset,
         Size extent,
         Size viewport,
-        Cause cause)
+        ScrollCause cause)
     {
         Validate(previousOffset, nameof(previousOffset));
         Validate(offset, nameof(offset));
@@ -51,7 +49,7 @@ public sealed class ScrollChangedEventArgs: EventArgs
     public Size Viewport { get; }
 
     /// <summary>Gets the transition path.</summary>
-    public Cause Cause { get; }
+    public ScrollCause Cause { get; }
 
     private static void Validate(Point value, string name)
     {

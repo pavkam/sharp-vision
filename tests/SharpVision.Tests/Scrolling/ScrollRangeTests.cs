@@ -3,10 +3,8 @@
 
 namespace SharpVision.Tests.Scrolling;
 
-using ScrollRange = SharpVision.Scrolling.Range;
-
 /// <summary>Verifies immutable scroll ranges, clamping, and thumb geometry.</summary>
-public sealed class RangeTests
+public sealed class ScrollRangeTests
 {
     /// <summary>Verifies constructor validation rejects every invalid relationship.</summary>
     [Fact]
@@ -34,8 +32,8 @@ public sealed class RangeTests
     [Fact]
     public void Resolve_WhenRangeIsStationary_FillsTrack()
     {
-        Thumb.Resolve(new ScrollRange(0, 0, 0, viewport: 0), trackLength: 7)
-            .ShouldBe(new Thumb(0, 7));
+        ScrollThumb.Resolve(new ScrollRange(0, 0, 0, viewport: 0), trackLength: 7)
+            .ShouldBe(new ScrollThumb(0, 7));
     }
 
     /// <summary>Verifies viewport ratio and value position use deterministic rounding.</summary>
@@ -44,17 +42,17 @@ public sealed class RangeTests
     {
         var range = new ScrollRange(0, 80, 40, viewport: 20);
 
-        var thumb = Thumb.Resolve(range, trackLength: 10);
+        var thumb = ScrollThumb.Resolve(range, trackLength: 10);
 
-        thumb.ShouldBe(new Thumb(4, 2));
-        Thumb.ValueAt(range, trackLength: 10, thumbStart: 4).ShouldBe(40);
+        thumb.ShouldBe(new ScrollThumb(4, 2));
+        ScrollThumb.ValueAt(range, trackLength: 10, thumbStart: 4).ShouldBe(40);
     }
 
     /// <summary>Verifies a scrolling zero-viewport range still has a one-cell thumb.</summary>
     [Fact]
     public void Resolve_WhenViewportIsZero_UsesOneCellMinimum()
     {
-        Thumb.Resolve(new ScrollRange(0, 100, 50, viewport: 0), trackLength: 5)
+        ScrollThumb.Resolve(new ScrollRange(0, 100, 50, viewport: 0), trackLength: 5)
             .Length.ShouldBe(1);
     }
 
@@ -64,10 +62,10 @@ public sealed class RangeTests
     {
         var range = new ScrollRange(0, int.MaxValue, int.MaxValue, int.MaxValue);
 
-        var thumb = Thumb.Resolve(range, trackLength: 500);
+        var thumb = ScrollThumb.Resolve(range, trackLength: 500);
 
-        thumb.ShouldBe(new Thumb(250, 250));
-        Thumb.ValueAt(range, trackLength: 500, thumb.Start).ShouldBe(int.MaxValue);
+        thumb.ShouldBe(new ScrollThumb(250, 250));
+        ScrollThumb.ValueAt(range, trackLength: 500, thumb.Start).ShouldBe(int.MaxValue);
     }
 
     /// <summary>Verifies a viewport larger than its range yields a stable proportional thumb.</summary>
@@ -76,7 +74,7 @@ public sealed class RangeTests
     {
         var range = new ScrollRange(0, 10, 5, viewport: 100);
 
-        Thumb.Resolve(range, trackLength: 11).ShouldBe(new Thumb(1, 10));
+        ScrollThumb.Resolve(range, trackLength: 11).ShouldBe(new ScrollThumb(1, 10));
     }
 
     /// <summary>Verifies resizing recomputes contained geometry without changing range endpoints.</summary>
@@ -88,10 +86,10 @@ public sealed class RangeTests
     {
         var range = new ScrollRange(3, 103, 103, viewport: 25);
 
-        var thumb = Thumb.Resolve(range, trackLength);
+        var thumb = ScrollThumb.Resolve(range, trackLength);
 
         (thumb.Start + thumb.Length).ShouldBe(trackLength);
-        Thumb.ValueAt(range, trackLength, thumb.Start).ShouldBe(103);
+        ScrollThumb.ValueAt(range, trackLength, thumb.Start).ShouldBe(103);
     }
 
     /// <summary>Verifies zero and one-cell tracks remain contained and invert endpoints.</summary>
@@ -101,11 +99,11 @@ public sealed class RangeTests
     public void Resolve_WhenTrackIsTiny_RemainsContained(int trackLength)
     {
         var range = new ScrollRange(3, 9, 9, viewport: 2);
-        var thumb = Thumb.Resolve(range, trackLength);
+        var thumb = ScrollThumb.Resolve(range, trackLength);
 
         thumb.Start.ShouldBeGreaterThanOrEqualTo(0);
         thumb.Start.ShouldBeLessThanOrEqualTo(trackLength);
         thumb.Length.ShouldBeLessThanOrEqualTo(trackLength);
-        Thumb.ValueAt(range, trackLength, thumb.Start).ShouldBeInRange(3, 9);
+        ScrollThumb.ValueAt(range, trackLength, thumb.Start).ShouldBeInRange(3, 9);
     }
 }

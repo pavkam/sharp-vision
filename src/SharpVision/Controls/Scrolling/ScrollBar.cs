@@ -1,13 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Controls;
-
-using Scrolling;
+namespace SharpVision.Controls.Scrolling;
 
 using SharpVision.Terminal.Input;
-
-using ScrollRange = Scrolling.Range;
 
 /// <summary>Defines a focusable integer range with buttons, track, and draggable thumb.</summary>
 [PublicAPI]
@@ -125,7 +121,7 @@ public sealed class ScrollBar: Control
                     "Value must be inside the inclusive range.");
             }
 
-            _ = Commit(value, Cause.Programmatic);
+            _ = Commit(value, ScrollCause.Programmatic);
         }
     }
 
@@ -239,7 +235,7 @@ public sealed class ScrollBar: Control
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool ScrollBy(int delta, Cause cause = Cause.Programmatic)
+    public bool ScrollBy(int delta, ScrollCause cause = ScrollCause.Programmatic)
     {
         EnumValidation.ValidateDefined(cause);
         VerifyMutable();
@@ -318,7 +314,7 @@ public sealed class ScrollBar: Control
 
         var buttons = ButtonCount(length);
         var trackLength = Math.Max(0, length - (buttons * 2));
-        var thumb = Thumb.Resolve(CurrentRange(), trackLength);
+        var thumb = ScrollThumb.Resolve(CurrentRange(), trackLength);
         var inherited = ResolvedStyle;
         var style = ActualStyle;
         var trackStyle = inherited.WithForeground(ResolveColor(style.TrackColor));
@@ -341,7 +337,7 @@ public sealed class ScrollBar: Control
         }
     }
 
-    private bool Commit(int value, Cause cause)
+    private bool Commit(int value, ScrollCause cause)
     {
         value = Math.Clamp(value, Minimum, Maximum);
         var previous = _value;
@@ -369,27 +365,27 @@ public sealed class ScrollBar: Control
 
         if (code == decrement)
         {
-            _ = ScrollBy(LayoutMath.Negate(SmallChange), Cause.Keyboard);
+            _ = ScrollBy(LayoutMath.Negate(SmallChange), ScrollCause.Keyboard);
         }
         else if (code == increment)
         {
-            _ = ScrollBy(SmallChange, Cause.Keyboard);
+            _ = ScrollBy(SmallChange, ScrollCause.Keyboard);
         }
         else if (code == Code.PageUp)
         {
-            _ = ScrollBy(LayoutMath.Negate(LargeChange), Cause.Keyboard);
+            _ = ScrollBy(LayoutMath.Negate(LargeChange), ScrollCause.Keyboard);
         }
         else if (code == Code.PageDown)
         {
-            _ = ScrollBy(LargeChange, Cause.Keyboard);
+            _ = ScrollBy(LargeChange, ScrollCause.Keyboard);
         }
         else if (code == Code.Home)
         {
-            _ = Commit(Minimum, Cause.Keyboard);
+            _ = Commit(Minimum, ScrollCause.Keyboard);
         }
         else if (code == Code.End)
         {
-            _ = Commit(Maximum, Cause.Keyboard);
+            _ = Commit(Maximum, ScrollCause.Keyboard);
         }
         else
         {
@@ -439,28 +435,28 @@ public sealed class ScrollBar: Control
 
         if (buttons != 0 && position == 0)
         {
-            _ = ScrollBy(LayoutMath.Negate(SmallChange), Cause.Pointer);
+            _ = ScrollBy(LayoutMath.Negate(SmallChange), ScrollCause.Pointer);
             return;
         }
 
         if (buttons != 0 && position == length - 1)
         {
-            _ = ScrollBy(SmallChange, Cause.Pointer);
+            _ = ScrollBy(SmallChange, ScrollCause.Pointer);
             return;
         }
 
         var trackLength = Math.Max(0, length - (buttons * 2));
         var trackPosition = position - buttons;
         var range = CurrentRange();
-        var thumb = Thumb.Resolve(range, trackLength);
+        var thumb = ScrollThumb.Resolve(range, trackLength);
 
         if (trackPosition < thumb.Start)
         {
-            _ = ScrollBy(LayoutMath.Negate(LargeChange), Cause.Pointer);
+            _ = ScrollBy(LayoutMath.Negate(LargeChange), ScrollCause.Pointer);
         }
         else if (trackPosition >= thumb.Start + thumb.Length)
         {
-            _ = ScrollBy(LargeChange, Cause.Pointer);
+            _ = ScrollBy(LargeChange, ScrollCause.Pointer);
         }
         else
         {
@@ -484,7 +480,7 @@ public sealed class ScrollBar: Control
 
         // A pinned rail must not swallow the next viewport's wheel gesture.
         // The unchanged routed event can continue to an enclosing scroll host.
-        eventArgs.Handled = ScrollBy(delta, Cause.Wheel);
+        eventArgs.Handled = ScrollBy(delta, ScrollCause.Wheel);
     }
 
     private void BeginDrag(
@@ -492,7 +488,7 @@ public sealed class ScrollBar: Control
         Point cells,
         int trackPosition,
         int trackLength,
-        Thumb thumb,
+        ScrollThumb thumb,
         ScrollRange range)
     {
         if (!_drag.TryStart(cells))
@@ -538,8 +534,8 @@ public sealed class ScrollBar: Control
         }
 
         var start = LayoutMath.SaturatingAdd(_dragThumbStart, delta);
-        var value = Thumb.ValueAt(_dragRange, _dragTrackLength, start);
-        _ = Commit(value, Cause.Pointer);
+        var value = ScrollThumb.ValueAt(_dragRange, _dragTrackLength, start);
+        _ = Commit(value, ScrollCause.Pointer);
         eventArgs.Handled = true;
 
         if (pointer.Action is PointerAction.Release or PointerAction.Leave)
@@ -553,7 +549,7 @@ public sealed class ScrollBar: Control
 
     private ScrollRange CurrentRange() => new(Minimum, Maximum, Value, ViewportSize);
 
-    private Rune ResolveGlyph(int position, int length, int buttons, Thumb thumb)
+    private Rune ResolveGlyph(int position, int length, int buttons, ScrollThumb thumb)
     {
         var trackPosition = position - buttons;
 

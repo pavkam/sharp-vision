@@ -1,7 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Controls;
+namespace SharpVision.Controls.Scrolling;
 
 /// <summary>Defines optional member-wise contributions to a complete scrollbar presentation.</summary>
 [PublicAPI]

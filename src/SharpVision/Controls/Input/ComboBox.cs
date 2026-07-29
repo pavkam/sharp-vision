@@ -9,6 +9,8 @@ using Collections;
 
 using Popups;
 
+using Scrolling;
+
 using SharpVision.Terminal.Input;
 
 /// <summary>Displays one selected value and composes a private popup list for choosing another.</summary>
@@ -298,7 +300,7 @@ public sealed class ComboBox: Control
 
     /// <summary>Gets the resolved drop-down scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Controls.ScrollBarStyle.Default;
+        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>

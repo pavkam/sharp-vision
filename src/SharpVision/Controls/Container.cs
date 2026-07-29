@@ -381,7 +381,7 @@ public abstract class Container: Control
 
     /// <summary>Gets the complete local or library-default generated-bar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Controls.ScrollBarStyle.Default;
+        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
 
     /// <inheritdoc/>
     protected override InvalidationImpact GetThemeChangeImpact(
@@ -453,7 +453,7 @@ public abstract class Container: Control
         set
         {
             ValidateOffset(value, MaximumX(), nameof(value));
-            _ = Apply(value, VerticalOffset, Cause.Programmatic);
+            _ = Apply(value, VerticalOffset, ScrollCause.Programmatic);
         }
     }
 
@@ -467,7 +467,7 @@ public abstract class Container: Control
         set
         {
             ValidateOffset(value, MaximumY(), nameof(value));
-            _ = Apply(HorizontalOffset, value, Cause.Programmatic);
+            _ = Apply(HorizontalOffset, value, ScrollCause.Programmatic);
         }
     }
 
@@ -479,7 +479,7 @@ public abstract class Container: Control
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached container is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
-    public bool ScrollBy(int x, int y, Cause cause = Cause.Programmatic)
+    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic)
     {
         EnumValidation.ValidateDefined(cause);
         VerifyMutable();
@@ -507,7 +507,7 @@ public abstract class Container: Control
         var logicalY = LayoutMath.Add(Difference(descendant.Bounds.Y, _scroll.ViewportBounds.Y), VerticalOffset);
         var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, descendant.Bounds.Width);
         var y = Reveal(VerticalOffset, Viewport.Height, logicalY, descendant.Bounds.Height);
-        return Apply(x, y, Cause.BringIntoView);
+        return Apply(x, y, ScrollCause.BringIntoView);
     }
 
     /// <inheritdoc/>
@@ -559,35 +559,35 @@ public abstract class Container: Control
 
         if (code == Code.Left)
         {
-            _ = ScrollBy(-LineSize, 0, Cause.Keyboard);
+            _ = ScrollBy(-LineSize, 0, ScrollCause.Keyboard);
         }
         else if (code == Code.Right)
         {
-            _ = ScrollBy(LineSize, 0, Cause.Keyboard);
+            _ = ScrollBy(LineSize, 0, ScrollCause.Keyboard);
         }
         else if (code == Code.Up)
         {
-            _ = ScrollBy(0, -LineSize, Cause.Keyboard);
+            _ = ScrollBy(0, -LineSize, ScrollCause.Keyboard);
         }
         else if (code == Code.Down)
         {
-            _ = ScrollBy(0, LineSize, Cause.Keyboard);
+            _ = ScrollBy(0, LineSize, ScrollCause.Keyboard);
         }
         else if (code == Code.PageUp)
         {
-            _ = ScrollBy(0, -page, Cause.Keyboard);
+            _ = ScrollBy(0, -page, ScrollCause.Keyboard);
         }
         else if (code == Code.PageDown)
         {
-            _ = ScrollBy(0, page, Cause.Keyboard);
+            _ = ScrollBy(0, page, ScrollCause.Keyboard);
         }
         else if (code == Code.Home)
         {
-            _ = Apply(HorizontalOffset, 0, Cause.Keyboard);
+            _ = Apply(HorizontalOffset, 0, ScrollCause.Keyboard);
         }
         else if (code == Code.End)
         {
-            _ = Apply(HorizontalOffset, MaximumY(), Cause.Keyboard);
+            _ = Apply(HorizontalOffset, MaximumY(), ScrollCause.Keyboard);
         }
         else
         {
@@ -617,7 +617,7 @@ public abstract class Container: Control
         {
             var previousX = current.HorizontalOffset;
             var previousY = current.VerticalOffset;
-            _ = current.ScrollBy(remainingX, remainingY, Cause.Wheel);
+            _ = current.ScrollBy(remainingX, remainingY, ScrollCause.Wheel);
             remainingX = Difference(remainingX, current.HorizontalOffset - previousX);
             remainingY = Difference(remainingY, current.VerticalOffset - previousY);
         }
@@ -676,7 +676,7 @@ public abstract class Container: Control
         _ = Apply(
             Math.Min(HorizontalOffset, MaximumX()),
             Math.Min(VerticalOffset, MaximumY()),
-            extentChanged ? Cause.Content : Cause.Resize);
+            extentChanged ? ScrollCause.Content : ScrollCause.Resize);
 
         var scrollsHorizontally = (ScrollBars & ScrollBars.Horizontal) != 0;
         var scrollsVertically = (ScrollBars & ScrollBars.Vertical) != 0;
@@ -833,7 +833,7 @@ public abstract class Container: Control
     private static void SetVisibility(Control control, bool visible) =>
         control.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
-    private bool Apply(int x, int y, Cause cause)
+    private bool Apply(int x, int y, ScrollCause cause)
     {
         Debug.Assert(Enum.IsDefined(cause), "Scroll changes require a defined cause.");
 

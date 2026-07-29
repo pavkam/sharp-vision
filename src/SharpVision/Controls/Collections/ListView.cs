@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Collections;
 
 using System.Collections.ObjectModel;
 
+using Scrolling;
+
 using SharpVision.Terminal.Input;
 
 using GenericList = List<object?>;
@@ -262,7 +264,7 @@ public sealed class ListView: ItemsControl
 
     /// <summary>Gets the resolved generated-scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Controls.ScrollBarStyle.Default;
+        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
 
     /// <inheritdoc/>
     protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>

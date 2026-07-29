@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using Scrolling;
+
 using SharpVision.Terminal.Input;
 
 using Terminal.Rendering;
@@ -336,7 +338,7 @@ public sealed class TextInput: Control
 
     /// <summary>Gets the resolved editor-rail style.</summary>
     public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? Controls.ScrollBarStyle.Default;
+        ScrollBarStyle ?? Scrolling.ScrollBarStyle.Default;
 
     /// <summary>Gets or sets the maximum retained undo snapshots.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>

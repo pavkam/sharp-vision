@@ -5,7 +5,7 @@ namespace SharpVision.Scrolling;
 
 /// <summary>Defines one immutable validated integer scroll range.</summary>
 [PublicAPI]
-public readonly record struct Range
+public readonly record struct ScrollRange
 {
     /// <summary>Initializes a non-negative ordered range, current value, and viewport.</summary>
     /// <param name="minimum">The non-negative inclusive lower endpoint.</param>
@@ -14,7 +14,7 @@ public readonly record struct Range
     /// <param name="viewport">The non-negative visible extent.</param>
     /// <exception cref="ArgumentOutOfRangeException">A value is negative or outside the range.</exception>
     /// <exception cref="ArgumentException"><paramref name="maximum"/> is below minimum.</exception>
-    public Range(int minimum, int maximum, int value, int viewport)
+    public ScrollRange(int minimum, int maximum, int value, int viewport)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(minimum);
         ArgumentOutOfRangeException.ThrowIfNegative(maximum);

@@ -12,6 +12,7 @@ global using SharpVision.Controls.Collections;
 global using SharpVision.Controls.Display;
 global using SharpVision.Controls.Input;
 global using SharpVision.Controls.Layout;
+global using SharpVision.Controls.Scrolling;
 global using SharpVision.Dialogs;
 global using SharpVision.Fonts;
 global using SharpVision.Input;

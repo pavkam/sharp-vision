@@ -20,10 +20,6 @@ public sealed class NamespaceArchitectureTests
                 "InvalidationImpact",
                 "ItemsControl",
                 "Pressable",
-                "ScrollBar",
-                "ScrollBarGlyphs",
-                "ScrollBarStyle",
-                "ScrollBarStyleSet",
                 "Screen"
             ],
             ["SharpVision.Controls.Collections"] =
@@ -122,6 +118,13 @@ public sealed class NamespaceArchitectureTests
                 ,"TableSelectionMode"
                 ,"TableSortChangedEventArgs"
                 ,"TableSortDirection"
+            ],
+            ["SharpVision.Controls.Scrolling"] =
+            [
+                "ScrollBar",
+                "ScrollBarGlyphs",
+                "ScrollBarStyle",
+                "ScrollBarStyleSet"
             ],
             ["SharpVision.Menus"] =
             [

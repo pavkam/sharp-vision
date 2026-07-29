@@ -9,6 +9,7 @@ using System.Windows.Input;
 
 using Controls.Collections;
 using Controls.Display;
+using Controls.Scrolling;
 
 using Menus;
 

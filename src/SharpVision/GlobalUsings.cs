@@ -15,6 +15,7 @@ global using System.Text.Json;
 global using SharpVision.Controls;
 global using SharpVision.Input;
 global using SharpVision.Layout;
+global using SharpVision.Scrolling;
 global using SharpVision.Styling;
 global using SharpVision.Terminal.Abstractions;
 global using SharpVision.Terminal.Clipboard;

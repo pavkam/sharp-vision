@@ -82,7 +82,7 @@ details.ShowScrollBars = ShowScrollBars.WhenNeeded;
 The container measures content, computes the viewport, resolves scrollbar
 feedback, and routes wheel and keyboard input through the common
 [scrolling algorithm](../concepts/scrolling.md#automatic-scrollbar-algorithm).
-Use [`ScrollBar`](../controls/layout/scroll-bar.md#scrollbar-contract) directly
-only when the range itself is part of the application's UI.
+Use [`ScrollBar`](../controls/scrolling/scroll-bar.md#scrollbar-contract)
+directly only when the range itself is part of the application's UI.
 
 Next, [connect state and events](state-and-events.md#state-input-and-events).

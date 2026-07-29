@@ -1,7 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Tests.Controls.Layout;
+namespace SharpVision.Tests.Controls.Scrolling;
 
 /// <summary>Verifies ScrollBar range, input, capture, geometry, and semantic rendering.</summary>
 public sealed class ScrollBarTests
@@ -45,7 +45,7 @@ public sealed class ScrollBarTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.SmallChange = -1);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.LargeChange = -1);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.Orientation = (Orientation) 99);
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBy(1, (Cause) 99));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBy(1, (ScrollCause) 99));
 
         control.Minimum.ShouldBe(0);
         control.Maximum.ShouldBe(100);
@@ -65,9 +65,9 @@ public sealed class ScrollBarTests
         control.ValueChanged += (_, eventArgs) =>
             changes.Add($"{eventArgs.PreviousValue}>{eventArgs.Value}:{eventArgs.Cause}:{control.Value}");
 
-        control.ScrollBy(int.MaxValue, Cause.Wheel).ShouldBeTrue();
-        control.ScrollBy(1, Cause.Keyboard).ShouldBeFalse();
-        control.ScrollBy(int.MinValue, Cause.Pointer).ShouldBeTrue();
+        control.ScrollBy(int.MaxValue, ScrollCause.Wheel).ShouldBeTrue();
+        control.ScrollBy(1, ScrollCause.Keyboard).ShouldBeFalse();
+        control.ScrollBy(int.MinValue, ScrollCause.Pointer).ShouldBeTrue();
         control.Value = 25;
 
         changes.ShouldBe([
@@ -317,7 +317,7 @@ public sealed class ScrollBarTests
     public void Dispatch_WhenWheelMoves_AppliesAxisSpecificSmallChange()
     {
         var control = new ScrollBar { Maximum = 100, Value = 50, SmallChange = 2 };
-        List<Cause> causes = [];
+        List<ScrollCause> causes = [];
         control.ValueChanged += (_, eventArgs) => causes.Add(eventArgs.Cause);
 
         Route(control, Wheel(wheelX: 0, wheelY: 3));
@@ -326,7 +326,7 @@ public sealed class ScrollBarTests
         Route(control, Wheel(wheelX: -4, wheelY: 0));
 
         control.Value.ShouldBe(52);
-        causes.ShouldBe([Cause.Wheel, Cause.Wheel]);
+        causes.ShouldBe([ScrollCause.Wheel, ScrollCause.Wheel]);
     }
 
     /// <summary>Verifies a wheel at an endpoint remains available to an enclosing overflow host.</summary>
@@ -406,8 +406,8 @@ public sealed class ScrollBarTests
     [Fact]
     public void Constructor_WhenScrollEventDataIsInvalid_Throws()
     {
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ScrollEventArgs(-1, 0, Cause.Programmatic));
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ScrollEventArgs(0, 0, (Cause) 99));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ScrollEventArgs(-1, 0, ScrollCause.Programmatic));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new ScrollEventArgs(0, 0, (ScrollCause) 99));
     }
 
     private static string Cells(Frame frame, int width, int y)

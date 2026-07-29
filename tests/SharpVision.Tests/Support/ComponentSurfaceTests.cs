@@ -183,7 +183,7 @@ public sealed class ComponentSurfaceTests
     public async Task Pointer_WhenRelativeActionsDriveScrollBar_CommitsCausesAndReleasesDragAsync()
     {
         // Arrange
-        var causes = new List<Cause>();
+        var causes = new List<ScrollCause>();
         var bar = new ScrollBar
         {
             Orientation = Orientation.Horizontal,
@@ -208,7 +208,7 @@ public sealed class ComponentSurfaceTests
         // Assert
         bar.Value.ShouldBe(100);
         bar.IsPressed.ShouldBeFalse();
-        causes.ShouldBe([Cause.Pointer, Cause.Wheel, Cause.Pointer]);
+        causes.ShouldBe([ScrollCause.Pointer, ScrollCause.Wheel, ScrollCause.Pointer]);
         surface.ShouldHaveState(bar, VisualState.Focused | VisualState.PointerOver);
     }
 

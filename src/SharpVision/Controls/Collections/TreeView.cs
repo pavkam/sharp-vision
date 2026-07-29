@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Collections;
 
 using Layout;
 
+using Scrolling;
+
 using SharpVision.Controls.Input;
 using SharpVision.Terminal.Input;
 

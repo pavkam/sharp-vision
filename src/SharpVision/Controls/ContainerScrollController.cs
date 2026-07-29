@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls;
 
+using Scrolling;
+
 /// <summary>Owns the mutable scroll geometry and generated scrollbar parts for one container.</summary>
 /// <remarks><see cref="Container"/> retains its public scrolling API and layout role. This collaborator
 /// owns the committed extent, viewport, offsets, reservation flags, and the private generated bars so

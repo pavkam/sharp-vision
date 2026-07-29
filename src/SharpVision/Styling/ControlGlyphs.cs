@@ -3,6 +3,8 @@
 
 namespace SharpVision.Styling;
 
+using SharpVision.Controls.Scrolling;
+
 /// <summary>Provides stable code-owned glyph defaults shared by built-in controls.</summary>
 internal static class ControlGlyphs
 {

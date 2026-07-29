@@ -14,16 +14,16 @@ namespace SharpVision.Controls.Collections
     {
         public ListView() { }
         public int ActiveIndex { get; }
-        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
-        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Layout.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public int SelectedIndex { get; set; }
         public object? SelectedItem { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> SelectedItems { get; }
         public SharpVision.Controls.Collections.ListSelectionMode SelectionMode { get; set; }
-        public SharpVision.Layout.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public int VerticalOffset { get; }
         public event System.EventHandler<SharpVision.Input.ItemInvokedEventArgs>? ItemInvoked;
         public event System.EventHandler<SharpVision.Input.ListSelectionChangedEventArgs>? SelectionChanged;
@@ -98,11 +98,11 @@ namespace SharpVision.Controls.Collections
     {
         public TreeView() { }
         public SharpVision.Controls.Input.CheckMark ActualCheckMark { get; }
-        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Controls.Input.CheckMark? CheckMark { get; set; }
         public int Indent { get; set; }
         public SharpVision.Controls.Collections.TreeViewItemCollection Items { get; }
-        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Controls.Collections.TreeViewItem? SelectedItem { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> SelectedItems { get; }
         public SharpVision.Controls.Collections.TreeSelectionMode SelectionMode { get; set; }
@@ -190,23 +190,23 @@ namespace SharpVision.Controls
     {
         protected Container() { }
         protected Container(int capacity) { }
-        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public bool AutoScroll { get; set; }
         public bool AutoSize { get; set; }
         public SharpVision.Layout.AutoSizeMode AutoSizeMode { get; set; }
         public SharpVision.Controls.ControlCollection Children { get; }
         public SharpVision.Terminal.Geometry.Size Extent { get; }
-        public SharpVision.Layout.ScrollBarVisibility HorizontalBarVisibility { get; set; }
+        public SharpVision.Scrolling.ScrollBarVisibility HorizontalBarVisibility { get; set; }
         public int HorizontalOffset { get; set; }
         public int LineSize { get; set; }
         public int PageOverlap { get; set; }
-        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Layout.ScrollBars ScrollBars { get; set; }
-        public SharpVision.Layout.ShowScrollBars ShowScrollBars { get; set; }
-        public SharpVision.Layout.ScrollBarVisibility VerticalBarVisibility { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Scrolling.ScrollBarVisibility VerticalBarVisibility { get; set; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
-        public event System.EventHandler<SharpVision.Input.ScrollChangedEventArgs>? ScrollChanged;
+        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(SharpVision.Controls.Control descendant) { }
         protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
@@ -214,7 +214,7 @@ namespace SharpVision.Controls
         protected abstract override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        public bool ScrollBy(int x, int y, SharpVision.Scrolling.Cause cause = 0) { }
+        public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
     }
     public abstract class ContentControl : SharpVision.Controls.Control
     {
@@ -425,84 +425,6 @@ namespace SharpVision.Controls
         protected virtual void OnDispose() { }
         protected virtual void OnStarted(SharpVision.Runtime.Application application) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-    }
-    public sealed class ScrollBar : SharpVision.Controls.Control
-    {
-        public ScrollBar() { }
-        public SharpVision.Controls.ScrollBarStyle ActualStyle { get; }
-        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
-        public int LargeChange { get; set; }
-        public int Maximum { get; set; }
-        public int Minimum { get; set; }
-        public SharpVision.Layout.Orientation Orientation { get; set; }
-        public int SmallChange { get; set; }
-        public SharpVision.Controls.ScrollBarStyle? Style { get; set; }
-        public int Value { get; set; }
-        public int ViewportSize { get; set; }
-        public event System.EventHandler<SharpVision.Input.ScrollEventArgs>? ValueChanged;
-        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
-        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
-        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
-        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        public bool ScrollBy(int delta, SharpVision.Scrolling.Cause cause = 0) { }
-    }
-    public readonly struct ScrollBarGlyphs : System.IEquatable<SharpVision.Controls.ScrollBarGlyphs>
-    {
-        public ScrollBarGlyphs(System.Text.Rune verticalDecrement, System.Text.Rune verticalIncrement, System.Text.Rune horizontalDecrement, System.Text.Rune horizontalIncrement, System.Text.Rune blockTrack, System.Text.Rune blockThumb, System.Text.Rune horizontalLineTrack, System.Text.Rune horizontalLineThumb, System.Text.Rune verticalLineTrack, System.Text.Rune verticalLineThumb) { }
-        public System.Text.Rune BlockThumb { get; }
-        public System.Text.Rune BlockTrack { get; }
-        public System.Text.Rune HorizontalDecrement { get; }
-        public System.Text.Rune HorizontalIncrement { get; }
-        public System.Text.Rune HorizontalLineThumb { get; }
-        public System.Text.Rune HorizontalLineTrack { get; }
-        public System.Text.Rune VerticalDecrement { get; }
-        public System.Text.Rune VerticalIncrement { get; }
-        public System.Text.Rune VerticalLineThumb { get; }
-        public System.Text.Rune VerticalLineTrack { get; }
-        public static SharpVision.Controls.ScrollBarGlyphs Default { get; }
-        public bool Equals(SharpVision.Controls.ScrollBarGlyphs other) { }
-        public override bool Equals(object? obj) { }
-        public override int GetHashCode() { }
-        public static bool operator !=(SharpVision.Controls.ScrollBarGlyphs left, SharpVision.Controls.ScrollBarGlyphs right) { }
-        public static bool operator ==(SharpVision.Controls.ScrollBarGlyphs left, SharpVision.Controls.ScrollBarGlyphs right) { }
-    }
-    public readonly struct ScrollBarStyle : System.IEquatable<SharpVision.Controls.ScrollBarStyle>
-    {
-        public ScrollBarStyle(SharpVision.Layout.ScrollBarChrome chrome, SharpVision.Layout.ScrollBarFill fill, SharpVision.Controls.ScrollBarGlyphs glyphs, SharpVision.Styling.ColorValue trackColor, SharpVision.Styling.ColorValue thumbColor, SharpVision.Styling.ColorValue buttonColor, SharpVision.Styling.ThemeProfile appearance) { }
-        public SharpVision.Styling.ThemeProfile Appearance { get; }
-        public SharpVision.Styling.ColorValue ButtonColor { get; }
-        public SharpVision.Layout.ScrollBarChrome Chrome { get; }
-        public SharpVision.Layout.ScrollBarFill Fill { get; }
-        public SharpVision.Controls.ScrollBarGlyphs Glyphs { get; }
-        public SharpVision.Styling.ColorValue ThumbColor { get; }
-        public SharpVision.Styling.ColorValue TrackColor { get; }
-        public static SharpVision.Controls.ScrollBarStyle Default { get; }
-        public static SharpVision.Controls.ScrollBarStyle FullBlock { get; }
-        public static SharpVision.Controls.ScrollBarStyle FullLine { get; }
-        public static SharpVision.Controls.ScrollBarStyle ThinBlock { get; }
-        public static SharpVision.Controls.ScrollBarStyle ThinLine { get; }
-        public bool Equals(SharpVision.Controls.ScrollBarStyle other) { }
-        public override bool Equals(object? obj) { }
-        public override int GetHashCode() { }
-        public static bool operator !=(SharpVision.Controls.ScrollBarStyle left, SharpVision.Controls.ScrollBarStyle right) { }
-        public static bool operator ==(SharpVision.Controls.ScrollBarStyle left, SharpVision.Controls.ScrollBarStyle right) { }
-    }
-    public readonly struct ScrollBarStyleSet : System.IEquatable<SharpVision.Controls.ScrollBarStyleSet>
-    {
-        public ScrollBarStyleSet(SharpVision.Layout.ScrollBarChrome? chrome = default, SharpVision.Layout.ScrollBarFill? fill = default, SharpVision.Controls.ScrollBarGlyphs? glyphs = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? thumbColor = default, SharpVision.Styling.ColorValue? buttonColor = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
-        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
-        public SharpVision.Styling.ColorValue? ButtonColor { get; }
-        public SharpVision.Layout.ScrollBarChrome? Chrome { get; }
-        public SharpVision.Layout.ScrollBarFill? Fill { get; }
-        public SharpVision.Controls.ScrollBarGlyphs? Glyphs { get; }
-        public SharpVision.Styling.ColorValue? ThumbColor { get; }
-        public SharpVision.Styling.ColorValue? TrackColor { get; }
-        public SharpVision.Controls.ScrollBarStyle Apply(SharpVision.Controls.ScrollBarStyle baseline) { }
     }
 }
 namespace SharpVision.Controls.Display
@@ -935,7 +857,7 @@ namespace SharpVision.Controls.Input
     public sealed class ComboBox : SharpVision.Controls.Control
     {
         public ComboBox() { }
-        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public bool AllowNull { get; set; }
         public System.Text.Rune DropDownGlyph { get; set; }
         public int DropDownHeight { get; set; }
@@ -943,11 +865,11 @@ namespace SharpVision.Controls.Input
         public bool IsOpen { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
         public string Placeholder { get; set; }
-        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Layout.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public int SelectedIndex { get; set; }
         public object? SelectedItem { get; set; }
-        public SharpVision.Layout.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler? DropDownClosed;
         public event System.EventHandler? DropDownOpened;
@@ -1134,7 +1056,7 @@ namespace SharpVision.Controls.Input
         public TextInput() { }
         public bool AcceptsReturn { get; set; }
         public bool AcceptsTab { get; set; }
-        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public bool CanRedo { get; }
         public bool CanUndo { get; }
         public int CaretIndex { get; set; }
@@ -1144,12 +1066,12 @@ namespace SharpVision.Controls.Input
         public int MaxLength { get; set; }
         public System.Text.Rune? PasswordCharacter { get; set; }
         public string? Placeholder { get; set; }
-        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Layout.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public string SelectedText { get; }
         public int SelectionLength { get; set; }
         public int SelectionStart { get; set; }
-        public SharpVision.Layout.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public string Text { get; set; }
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public int UndoLimit { get; set; }
@@ -1312,7 +1234,7 @@ namespace SharpVision.Controls.Layout
         public SharpVision.Controls.Layout.TableCellReference? ActiveCell { get; }
         public int ActiveColumnIndex { get; }
         public SharpVision.Controls.Layout.TableRow? ActiveRow { get; }
-        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Layout.Thickness CellPadding { get; set; }
         public int ColumnSpacing { get; set; }
         public SharpVision.Controls.Layout.TableColumnCollection Columns { get; }
@@ -1328,21 +1250,21 @@ namespace SharpVision.Controls.Layout
         public int PageOverlap { get; set; }
         public int RowSpacing { get; set; }
         public SharpVision.Controls.Layout.TableRowCollection Rows { get; }
-        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Layout.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Layout.TableCellReference> SelectedCells { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Layout.TableRow> SelectedRows { get; }
         public SharpVision.Controls.Layout.TableSelectionMode SelectionMode { get; set; }
         public bool ShowGridLines { get; set; }
         public bool ShowHeader { get; set; }
-        public SharpVision.Layout.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public int SortColumnIndex { get; }
         public SharpVision.Controls.Layout.TableSortDirection SortDirection { get; }
         public System.Text.Rune VerticalGridGlyph { get; set; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Controls.Layout.TableRowInvokedEventArgs>? RowInvoked;
-        public event System.EventHandler<SharpVision.Input.ScrollChangedEventArgs> ScrollChanged;
+        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs> ScrollChanged;
         public event System.EventHandler<SharpVision.Controls.Layout.TableSelectionChangedEventArgs>? SelectionChanged;
         public event System.EventHandler<SharpVision.Controls.Layout.TableSortChangedEventArgs>? SortChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
@@ -1357,7 +1279,7 @@ namespace SharpVision.Controls.Layout
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         public void ResetGridGlyphs() { }
         public void ResetSort() { }
-        public bool ScrollBy(int x, int y, SharpVision.Scrolling.Cause cause = 0) { }
+        public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public void SelectAll() { }
         public void SelectCell(SharpVision.Controls.Layout.TableRow row, int columnIndex, SharpVision.Terminal.Input.Modifiers modifiers = 0) { }
         public void SelectRow(SharpVision.Controls.Layout.TableRow row, SharpVision.Terminal.Input.Modifiers modifiers = 0) { }
@@ -1461,6 +1383,87 @@ namespace SharpVision.Controls.Layout
         Descending = 2,
     }
 }
+namespace SharpVision.Controls.Scrolling
+{
+    public sealed class ScrollBar : SharpVision.Controls.Control
+    {
+        public ScrollBar() { }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualStyle { get; }
+        protected override SharpVision.Styling.ThemeProfile AppearanceProfile { get; }
+        public int LargeChange { get; set; }
+        public int Maximum { get; set; }
+        public int Minimum { get; set; }
+        public SharpVision.Layout.Orientation Orientation { get; set; }
+        public int SmallChange { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? Style { get; set; }
+        public int Value { get; set; }
+        public int ViewportSize { get; set; }
+        public event System.EventHandler<SharpVision.Scrolling.ScrollEventArgs>? ValueChanged;
+        protected override SharpVision.Styling.ThemeProfile GetAppearanceProfile(SharpVision.Styling.Theme? theme) { }
+        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
+        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnFocusChanged(bool focused) { }
+        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public bool ScrollBy(int delta, SharpVision.Scrolling.ScrollCause cause = 0) { }
+    }
+    public readonly struct ScrollBarGlyphs : System.IEquatable<SharpVision.Controls.Scrolling.ScrollBarGlyphs>
+    {
+        public ScrollBarGlyphs(System.Text.Rune verticalDecrement, System.Text.Rune verticalIncrement, System.Text.Rune horizontalDecrement, System.Text.Rune horizontalIncrement, System.Text.Rune blockTrack, System.Text.Rune blockThumb, System.Text.Rune horizontalLineTrack, System.Text.Rune horizontalLineThumb, System.Text.Rune verticalLineTrack, System.Text.Rune verticalLineThumb) { }
+        public System.Text.Rune BlockThumb { get; }
+        public System.Text.Rune BlockTrack { get; }
+        public System.Text.Rune HorizontalDecrement { get; }
+        public System.Text.Rune HorizontalIncrement { get; }
+        public System.Text.Rune HorizontalLineThumb { get; }
+        public System.Text.Rune HorizontalLineTrack { get; }
+        public System.Text.Rune VerticalDecrement { get; }
+        public System.Text.Rune VerticalIncrement { get; }
+        public System.Text.Rune VerticalLineThumb { get; }
+        public System.Text.Rune VerticalLineTrack { get; }
+        public static SharpVision.Controls.Scrolling.ScrollBarGlyphs Default { get; }
+        public bool Equals(SharpVision.Controls.Scrolling.ScrollBarGlyphs other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public static bool operator !=(SharpVision.Controls.Scrolling.ScrollBarGlyphs left, SharpVision.Controls.Scrolling.ScrollBarGlyphs right) { }
+        public static bool operator ==(SharpVision.Controls.Scrolling.ScrollBarGlyphs left, SharpVision.Controls.Scrolling.ScrollBarGlyphs right) { }
+    }
+    public readonly struct ScrollBarStyle : System.IEquatable<SharpVision.Controls.Scrolling.ScrollBarStyle>
+    {
+        public ScrollBarStyle(SharpVision.Scrolling.ScrollBarChrome chrome, SharpVision.Scrolling.ScrollBarFill fill, SharpVision.Controls.Scrolling.ScrollBarGlyphs glyphs, SharpVision.Styling.ColorValue trackColor, SharpVision.Styling.ColorValue thumbColor, SharpVision.Styling.ColorValue buttonColor, SharpVision.Styling.ThemeProfile appearance) { }
+        public SharpVision.Styling.ThemeProfile Appearance { get; }
+        public SharpVision.Styling.ColorValue ButtonColor { get; }
+        public SharpVision.Scrolling.ScrollBarChrome Chrome { get; }
+        public SharpVision.Scrolling.ScrollBarFill Fill { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarGlyphs Glyphs { get; }
+        public SharpVision.Styling.ColorValue ThumbColor { get; }
+        public SharpVision.Styling.ColorValue TrackColor { get; }
+        public static SharpVision.Controls.Scrolling.ScrollBarStyle Default { get; }
+        public static SharpVision.Controls.Scrolling.ScrollBarStyle FullBlock { get; }
+        public static SharpVision.Controls.Scrolling.ScrollBarStyle FullLine { get; }
+        public static SharpVision.Controls.Scrolling.ScrollBarStyle ThinBlock { get; }
+        public static SharpVision.Controls.Scrolling.ScrollBarStyle ThinLine { get; }
+        public bool Equals(SharpVision.Controls.Scrolling.ScrollBarStyle other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public static bool operator !=(SharpVision.Controls.Scrolling.ScrollBarStyle left, SharpVision.Controls.Scrolling.ScrollBarStyle right) { }
+        public static bool operator ==(SharpVision.Controls.Scrolling.ScrollBarStyle left, SharpVision.Controls.Scrolling.ScrollBarStyle right) { }
+    }
+    public readonly struct ScrollBarStyleSet : System.IEquatable<SharpVision.Controls.Scrolling.ScrollBarStyleSet>
+    {
+        public ScrollBarStyleSet(SharpVision.Scrolling.ScrollBarChrome? chrome = default, SharpVision.Scrolling.ScrollBarFill? fill = default, SharpVision.Controls.Scrolling.ScrollBarGlyphs? glyphs = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? thumbColor = default, SharpVision.Styling.ColorValue? buttonColor = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
+        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
+        public SharpVision.Styling.ColorValue? ButtonColor { get; }
+        public SharpVision.Scrolling.ScrollBarChrome? Chrome { get; }
+        public SharpVision.Scrolling.ScrollBarFill? Fill { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarGlyphs? Glyphs { get; }
+        public SharpVision.Styling.ColorValue? ThumbColor { get; }
+        public SharpVision.Styling.ColorValue? TrackColor { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle Apply(SharpVision.Controls.Scrolling.ScrollBarStyle baseline) { }
+    }
+}
 namespace SharpVision.DataBinding
 {
     public sealed class Binding : System.IDisposable
@@ -1500,7 +1503,7 @@ namespace SharpVision.DataBinding
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Layout.Expander target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, bool>> sourceProperty)
             where TModel :  class { }
-        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.ScrollBar target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
+        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Scrolling.ScrollBar target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Menus.Menu target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
             where TModel :  class { }
@@ -1971,22 +1974,6 @@ namespace SharpVision.Input
         public static SharpVision.Input.RouteResult Route<TArgs>(SharpVision.Controls.Control target, SharpVision.Input.Event<TArgs> routedEvent, TArgs eventArgs)
             where TArgs : SharpVision.Input.RoutedEventArgs { }
     }
-    public sealed class ScrollChangedEventArgs : System.EventArgs
-    {
-        public ScrollChangedEventArgs(SharpVision.Terminal.Geometry.Point previousOffset, SharpVision.Terminal.Geometry.Point offset, SharpVision.Terminal.Geometry.Size extent, SharpVision.Terminal.Geometry.Size viewport, SharpVision.Scrolling.Cause cause) { }
-        public SharpVision.Scrolling.Cause Cause { get; }
-        public SharpVision.Terminal.Geometry.Size Extent { get; }
-        public SharpVision.Terminal.Geometry.Point Offset { get; }
-        public SharpVision.Terminal.Geometry.Point PreviousOffset { get; }
-        public SharpVision.Terminal.Geometry.Size Viewport { get; }
-    }
-    public sealed class ScrollEventArgs : System.EventArgs
-    {
-        public ScrollEventArgs(int previousValue, int value, SharpVision.Scrolling.Cause cause) { }
-        public SharpVision.Scrolling.Cause Cause { get; }
-        public int PreviousValue { get; }
-        public int Value { get; }
-    }
     public sealed class SliderValueChangedEventArgs : System.EventArgs
     {
         public SliderValueChangedEventArgs(int previousValue, int value) { }
@@ -2099,36 +2086,6 @@ namespace SharpVision.Layout
         Width = 1,
         Height = 2,
         Both = 3,
-    }
-    public enum ScrollBarChrome
-    {
-        Thin = 0,
-        Full = 1,
-    }
-    public enum ScrollBarFill
-    {
-        Line = 0,
-        Block = 1,
-    }
-    public enum ScrollBarVisibility
-    {
-        Hidden = 0,
-        Auto = 1,
-        Always = 2,
-    }
-    [System.Flags]
-    public enum ScrollBars
-    {
-        None = 0,
-        Horizontal = 1,
-        Vertical = 2,
-        Both = 3,
-    }
-    public enum ShowScrollBars
-    {
-        Never = 0,
-        WhenNeeded = 1,
-        Always = 2,
     }
     public enum Side
     {
@@ -2299,11 +2256,11 @@ namespace SharpVision.Navigation
     {
         public NavigationView() { }
         protected override string? AccessKeyText { get; }
-        public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Navigation.NavigationViewEntryCollection FooterItems { get; }
         public string? Header { get; set; }
         public SharpVision.Navigation.NavigationViewEntryCollection Items { get; }
-        public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Navigation.NavigationViewItem? SelectedItem { get; }
         public event System.EventHandler<SharpVision.Navigation.NavigationViewSelectionChangedEventArgs>? SelectionChanged;
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -2656,7 +2613,31 @@ namespace SharpVision.Runtime
 }
 namespace SharpVision.Scrolling
 {
-    public enum Cause
+    public enum ScrollBarChrome
+    {
+        Thin = 0,
+        Full = 1,
+    }
+    public enum ScrollBarFill
+    {
+        Line = 0,
+        Block = 1,
+    }
+    public enum ScrollBarVisibility
+    {
+        Hidden = 0,
+        Auto = 1,
+        Always = 2,
+    }
+    [System.Flags]
+    public enum ScrollBars
+    {
+        None = 0,
+        Horizontal = 1,
+        Vertical = 2,
+        Both = 3,
+    }
+    public enum ScrollCause
     {
         Programmatic = 0,
         Keyboard = 1,
@@ -2666,9 +2647,25 @@ namespace SharpVision.Scrolling
         Content = 5,
         Resize = 6,
     }
-    public readonly struct Range : System.IEquatable<SharpVision.Scrolling.Range>
+    public sealed class ScrollChangedEventArgs : System.EventArgs
     {
-        public Range(int minimum, int maximum, int value, int viewport) { }
+        public ScrollChangedEventArgs(SharpVision.Terminal.Geometry.Point previousOffset, SharpVision.Terminal.Geometry.Point offset, SharpVision.Terminal.Geometry.Size extent, SharpVision.Terminal.Geometry.Size viewport, SharpVision.Scrolling.ScrollCause cause) { }
+        public SharpVision.Scrolling.ScrollCause Cause { get; }
+        public SharpVision.Terminal.Geometry.Size Extent { get; }
+        public SharpVision.Terminal.Geometry.Point Offset { get; }
+        public SharpVision.Terminal.Geometry.Point PreviousOffset { get; }
+        public SharpVision.Terminal.Geometry.Size Viewport { get; }
+    }
+    public sealed class ScrollEventArgs : System.EventArgs
+    {
+        public ScrollEventArgs(int previousValue, int value, SharpVision.Scrolling.ScrollCause cause) { }
+        public SharpVision.Scrolling.ScrollCause Cause { get; }
+        public int PreviousValue { get; }
+        public int Value { get; }
+    }
+    public readonly struct ScrollRange : System.IEquatable<SharpVision.Scrolling.ScrollRange>
+    {
+        public ScrollRange(int minimum, int maximum, int value, int viewport) { }
         public int Maximum { get; }
         public int Minimum { get; }
         public int Span { get; }
@@ -2677,13 +2674,19 @@ namespace SharpVision.Scrolling
         public int Clamp(int value) { }
         public int Move(int delta) { }
     }
-    public readonly struct Thumb : System.IEquatable<SharpVision.Scrolling.Thumb>
+    public readonly struct ScrollThumb : System.IEquatable<SharpVision.Scrolling.ScrollThumb>
     {
-        public Thumb(int start, int length) { }
+        public ScrollThumb(int start, int length) { }
         public int Length { get; }
         public int Start { get; }
-        public static SharpVision.Scrolling.Thumb Resolve(SharpVision.Scrolling.Range range, int trackLength) { }
-        public static int ValueAt(SharpVision.Scrolling.Range range, int trackLength, int thumbStart) { }
+        public static SharpVision.Scrolling.ScrollThumb Resolve(SharpVision.Scrolling.ScrollRange range, int trackLength) { }
+        public static int ValueAt(SharpVision.Scrolling.ScrollRange range, int trackLength, int thumbStart) { }
+    }
+    public enum ShowScrollBars
+    {
+        Never = 0,
+        WhenNeeded = 1,
+        Always = 2,
     }
 }
 namespace SharpVision.Styling

@@ -9,7 +9,7 @@ namespace SharpVision.Scrolling;
     "CA1720:Identifier contains type name",
     Justification = "Pointer is the conventional scrolling input path name.")]
 [PublicAPI]
-public enum Cause
+public enum ScrollCause
 {
     /// <summary>A direct API requested the change.</summary>
     Programmatic,

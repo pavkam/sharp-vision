@@ -20,15 +20,16 @@ being clamped to the current viewport. `Control.MeasureOverride`'s
 any axis not selected by `ScrollBars` remains bounded and cannot overflow
 silently.
 
-The allocation-free [`Range`](../../src/SharpVision/Scrolling/Range.cs) value
-stores non-negative inclusive `Minimum` and `Maximum` endpoints, a contained
-`Value`, and a non-negative `Viewport`. Its constructor rejects an unordered or
+The allocation-free
+[`ScrollRange`](../../src/SharpVision/Scrolling/ScrollRange.cs) value stores
+non-negative inclusive `Minimum` and `Maximum` endpoints, a contained `Value`,
+and a non-negative `Viewport`. Its constructor rejects an unordered or
 out-of-range state before assignment. `Clamp` contains an arbitrary value and
 `Move` applies a signed delta with `long` saturation, so even `int.MinValue` and
 `int.MaxValue` commands cannot wrap.
 
-[`Cause`](../../src/SharpVision/Scrolling/Cause.cs) records whether a committed
-change came from the programmatic API, keyboard, pointer, wheel,
+[`ScrollCause`](../../src/SharpVision/Scrolling/ScrollCause.cs) records whether
+a committed change came from the programmatic API, keyboard, pointer, wheel,
 bring-into-view, content mutation, or resize. Controls use that typed cause in
 their change events instead of inferring intent from the resulting value.
 
@@ -63,18 +64,18 @@ while completing Theme files.
 
 ## Thumb geometry
 
-[`Thumb.Resolve`](../../src/SharpVision/Scrolling/Thumb.cs) maps a range to a
-non-negative track using integer arithmetic only. A zero-length track yields an
-empty thumb; a stationary range fills the track; a scrolling range gets at least
-one cell. The proportional length is
+[`ScrollThumb.Resolve`](../../src/SharpVision/Scrolling/ScrollThumb.cs) maps a
+range to a non-negative track using integer arithmetic only. A zero-length track
+yields an empty thumb; a stationary range fills the track; a scrolling range
+gets at least one cell. The proportional length is
 `round(track * viewport / (range span + viewport))`, clamped to the track, and
 the start is `round(travel * value offset / range span)`. Every product uses
 `long`, including an `int.MaxValue` range and viewport.
 
-[`Thumb.ValueAt`](../../src/SharpVision/Scrolling/Thumb.cs) is the inverse used
-by dragging. It clamps a requested start to available travel, maps both
-endpoints exactly whenever the track can represent movement, and rounds to the
-nearest range value. Resizing always recomputes geometry from the immutable
+[`ScrollThumb.ValueAt`](../../src/SharpVision/Scrolling/ScrollThumb.cs) is the
+inverse used by dragging. It clamps a requested start to available travel, maps
+both endpoints exactly whenever the track can represent movement, and rounds to
+the nearest range value. Resizing always recomputes geometry from the immutable
 range; it never scales a previously rounded thumb.
 
 `ScrollBarVisibility.Hidden`, `Auto`, and `Always` define layout policy.
@@ -93,15 +94,16 @@ close, or cancellation.
 
 An armed [`Container`](../controls/container.md#container-contract) implements
 the automatic algorithm with two privately owned framework-part
-[`ScrollBar`](../../src/SharpVision/Controls/ScrollBar.cs) controls configured
-through their public orientation, chrome, and fill APIs. The reservation probe
-runs against `ScrollBars` and the per-axis `HorizontalBarVisibility`/
-`VerticalBarVisibility`: an automatic bar on one axis can consume space that
-forces the other axis over its threshold too, so both bars can induce each other
-before the probe stabilizes. Once the viewport is settled, content is translated
-by the committed offsets and rendered through a canvas hard-clipped to the
-viewport. Intrinsic shadow overflow never contributes to `Extent`, changes
-scrollbar visibility, enlarges an offset range, or escapes that viewport.
+[`ScrollBar`](../../src/SharpVision/Controls/Scrolling/ScrollBar.cs) controls
+configured through their public orientation, chrome, and fill APIs. The
+reservation probe runs against `ScrollBars` and the per-axis
+`HorizontalBarVisibility`/ `VerticalBarVisibility`: an automatic bar on one axis
+can consume space that forces the other axis over its threshold too, so both
+bars can induce each other before the probe stabilizes. Once the viewport is
+settled, content is translated by the committed offsets and rendered through a
+canvas hard-clipped to the viewport. Intrinsic shadow overflow never contributes
+to `Extent`, changes scrollbar visibility, enlarges an offset range, or escapes
+that viewport.
 
 Wheel input first offers the leaf control its normal default behavior; a child
 that moves handles the event. Once that child reaches an endpoint, it leaves the
@@ -116,7 +118,7 @@ PageUp/PageDown, and Home/End drive the same typed commands.
 `Control.Parent` edges and makes the smallest two-axis offset change that
 exposes its arranged bounds. Content and resize changes clamp offsets before the
 typed `ScrollChanged` event (carrying the previous/committed offset, `Extent`,
-`Viewport`, and typed `Cause`) and before translated arrangement.
+`Viewport`, and typed `ScrollCause`) and before translated arrangement.
 
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after offset and never targets clipped content.

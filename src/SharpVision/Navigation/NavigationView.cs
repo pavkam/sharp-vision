@@ -4,6 +4,7 @@
 namespace SharpVision.Navigation;
 
 using SharpVision.Controls.Layout;
+using SharpVision.Controls.Scrolling;
 using SharpVision.Terminal.Input;
 
 using DisplayText = Controls.Display.Text;
