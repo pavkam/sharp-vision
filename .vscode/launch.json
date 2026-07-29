@@ -6,8 +6,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/src/SharpVision.Showcase/bin/Debug/net10.0/SharpVision.Showcase.dll",
-      "cwd": "${workspaceFolder}/src/SharpVision.Showcase",
+      "program": "${workspaceFolder}/examples/Showcase/bin/Debug/net10.0/SharpVision.Showcase.dll",
+      "cwd": "${workspaceFolder}/examples/Showcase",
       "console": "integratedTerminal",
       "stopAtEntry": false
     },

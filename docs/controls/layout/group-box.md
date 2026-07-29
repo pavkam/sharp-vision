@@ -69,6 +69,6 @@ Mounted cross-layer coverage in
 [`GroupBoxSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/GroupBoxSurfaceTests.cs)
 proves continuous and interrupted frames, wide-header continuation ownership,
 tiny clipping, resize reveal, once-inset content, and scoped style inheritance.
-The [`GroupBoxPane`](../../../src/SharpVision.Showcase/Panes/GroupBoxPane.cs)
+The [`GroupBoxPane`](../../../examples/Showcase/Panes/GroupBoxPane.cs)
 demonstrates empty, titled, Unicode, styled, ASCII, nested-content, and tiny
 specimens in the gallery.

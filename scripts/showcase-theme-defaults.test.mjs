@@ -6,8 +6,8 @@ import test from "node:test";
 const showcaseRoot = resolve(
     import.meta.dirname,
     "..",
-    "src",
-    "SharpVision.Showcase",
+    "examples",
+    "Showcase",
 );
 const appearanceAssignment =
     /\b(?:Foreground|Background|BorderColor|ShadowForeground|ShadowBackground|UnderlineColor|FillColor|TrackColor|ThumbColor|ButtonColor|HeaderForeground|HeaderBackground|GridLineColor|DividerColor|SelectionIndicatorColor|HeadColor|TrailColor|IndeterminateColor)\s*=|\bValue\s*=\s*Color\.|\.SetAppearance\s*\(|\bAppearance\s*=/gu;

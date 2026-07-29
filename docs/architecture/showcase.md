@@ -31,13 +31,13 @@ flowchart LR
     Example --> Specimen["Live control specimen"]
 ```
 
-Each control or concept page lives in `src/SharpVision.Showcase/Panes/` as a
+Each control or concept page lives in `examples/Showcase/Panes/` as a
 `*Pane : CompositeControl`. Its constructor creates a retained page root and
 installs it once through `InitializeContent` before any layout. There is no
 measure-time construction, shared showcase base class, or mandatory metadata: a
 pane composes public `Stack`, marked `Text`, `Dock`, and layout APIs directly.
-`src/SharpVision.Showcase/Controls/` holds the small composition controls every
-pane shares: `DocPage(name, overview, sections...)` builds the bold heading and
+`examples/Showcase/Controls/` holds the small composition controls every pane
+shares: `DocPage(name, overview, sections...)` builds the bold heading and
 overview inside a complete intrinsic light frame, then stacks the given sections
 beneath it; `DocExample(heading, description, specimen)` builds one labeled
 block and places every live specimen in a standard `GroupBox`. The controls

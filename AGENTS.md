@@ -16,7 +16,7 @@ documentation, tests, and showcase example agree.
   capabilities, Unicode cell geometry, buffers, and rendering.
 - `src/SharpVision/` contains the dispatcher, mutable controls, layout, input
   routing, focus, styling, scrolling, menus, popups, and windows.
-- `src/SharpVision.Showcase/` demonstrates every shipped control and state.
+- `examples/Showcase/` demonstrates every shipped control and state.
 - `tests/` contains the terminal and UI suites plus the unprivileged consumer
   contract suite. The showcase is compiled as a production example and has no
   dedicated test project.

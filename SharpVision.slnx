@@ -1,10 +1,10 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/SharpVision.Showcase/SharpVision.Showcase.csproj"/>
     <Project Path="src/SharpVision.Terminal/SharpVision.Terminal.csproj"/>
     <Project Path="src/SharpVision/SharpVision.csproj"/>
   </Folder>
   <Folder Name="/examples/">
+    <Project Path="examples/Showcase/SharpVision.Showcase.csproj"/>
     <Project Path="examples/Snake/Snake.csproj"/>
     <Project Path="examples/TextEditor/TextEditor.csproj"/>
   </Folder>

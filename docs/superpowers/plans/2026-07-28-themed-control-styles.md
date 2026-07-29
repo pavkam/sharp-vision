@@ -664,9 +664,9 @@ git commit -m "refactor: protect specialized control chrome"
 
 **Files:**
 
-- Modify: `src/SharpVision.Showcase/Panes/ButtonPane.cs`, `ScrollBarPane.cs`, `CheckBoxPane.cs`, `RadioButtonPane.cs`, `SpinnerPane.cs`, `ChaseIndicatorPane.cs`
-- Modify: `src/SharpVision.Showcase/Panes/ListViewPane.cs`, `TextInputPane.cs`, `ComboBoxPane.cs`, `TablePane.cs`, `WindowPane.cs`, `PopupPane.cs`, `ShadowPane.cs`, `BorderPane.cs`
-- Modify: `src/SharpVision.Showcase/Controls/DocCard.cs`, `DocExample.cs`, `DocPage.cs`, `src/SharpVision.Showcase/Doc.cs`
+- Modify: `examples/Showcase/Panes/ButtonPane.cs`, `ScrollBarPane.cs`, `CheckBoxPane.cs`, `RadioButtonPane.cs`, `SpinnerPane.cs`, `ChaseIndicatorPane.cs`
+- Modify: `examples/Showcase/Panes/ListViewPane.cs`, `TextInputPane.cs`, `ComboBoxPane.cs`, `TablePane.cs`, `WindowPane.cs`, `PopupPane.cs`, `ShadowPane.cs`, `BorderPane.cs`
+- Modify: `examples/Showcase/Controls/DocCard.cs`, `DocExample.cs`, `DocPage.cs`, `examples/Showcase/Doc.cs`
 - Modify: `docs/concepts/styling.md`, `themes.md`, `intrinsic-chrome.md`, `theming-new-controls.md`, `custom-components.md`, `box-model.md`, `scrolling.md`
 - Modify: `docs/controls/control.md`, `input/button.md`, `input/check-box.md`, `input/radio-button.md`, `input/combo-box.md`, `input/text-input.md`
 - Modify: `docs/controls/layout/scroll-bar.md`, `docs/controls/collections/list-view.md`, `docs/controls/display/spinner.md`, `docs/controls/display/chase-indicator.md`, `docs/controls/windows/window.md`, `docs/controls/popups/popup.md`
@@ -688,7 +688,7 @@ var thin = new ScrollBar { Style = ScrollBarStyle.ThinLine };
 Audit compile references before editing and after migration:
 
 ```bash
-rg -n 'ButtonKind|CheckBoxMarkStyle|ScrollBarChrome|ScrollBarFill|SpinnerPattern|ChasePattern|MarkGlyphs|UncheckedGlyph|CheckedGlyph|TrackColor|ThumbColor|ButtonColor|SetAppearance' src/SharpVision.Showcase docs
+rg -n 'ButtonKind|CheckBoxMarkStyle|ScrollBarChrome|ScrollBarFill|SpinnerPattern|ChasePattern|MarkGlyphs|UncheckedGlyph|CheckedGlyph|TrackColor|ThumbColor|ButtonColor|SetAppearance' examples/Showcase docs
 ```
 
 Expected after migration: no obsolete control-property references; `CheckBoxMarkStyle`, `ScrollBarChrome`, and `ScrollBarFill` may appear only as members documented inside complete style values.
@@ -710,13 +710,13 @@ Expected: formatting is stable, Markdown has zero errors, and links resolve.
 - [ ] **Step 4: Build showcase and commit**
 
 ```bash
-dotnet build src/SharpVision.Showcase/SharpVision.Showcase.csproj --no-restore
+dotnet build examples/Showcase/SharpVision.Showcase.csproj --no-restore
 ```
 
 Expected: zero warnings and errors.
 
 ```bash
-git add src/SharpVision.Showcase docs
+git add examples/Showcase docs
 git commit -m "docs: document themed control styles"
 ```
 
@@ -764,7 +764,7 @@ Expected: zero warnings, zero errors, minimum discovered tests satisfied, and no
 
 ```bash
 tmux new-session -d -s sharpvision-style-validation -x 120 -y 40 \
-  'dotnet run --project src/SharpVision.Showcase'
+  'dotnet run --project examples/Showcase'
 sleep 3
 tmux capture-pane -t sharpvision-style-validation -p
 ```

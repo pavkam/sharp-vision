@@ -34,8 +34,8 @@ FIGlet text, theme-aware styling, scrolling, and the control catalog:
   Unicode cell geometry, input, buffers, and rendering.
 - `SharpVision` supplies dispatcher-affine mutable controls, layout, focus,
   routed input, styling, scrolling, menus, popups, and windows.
-- `SharpVision.Showcase` is the runnable gallery for shipped controls and
-  interaction states.
+- `examples/Showcase` contains the `SharpVision.Showcase` runnable gallery for
+  shipped controls and interaction states.
 - `tests/` contains the terminal and UI verification suites.
 
 The

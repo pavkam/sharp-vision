@@ -134,7 +134,7 @@ done
 mkdir -p "$(dirname -- "$output")"
 dotnet build "$root/SharpVision.slnx" --configuration Release --no-restore --verbosity minimal
 tmux new-session -d -x 120 -y 40 -s "$session" -c "$root" \
-  "dotnet run --project src/SharpVision.Showcase/SharpVision.Showcase.csproj --configuration Release --no-build"
+  "dotnet run --project examples/Showcase/SharpVision.Showcase.csproj --configuration Release --no-build"
 tmux set-option -t "$session" status off
 
 ready=false

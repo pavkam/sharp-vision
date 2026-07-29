@@ -149,7 +149,7 @@ Run the real showcase app, navigate to the pane, and verify the visual output.
 ```bash
 # Start the showcase in a named tmux session
 tmux new-session -d -s showcase -x 120 -y 40 \
-  'dotnet run --project src/SharpVision.Showcase'
+  'dotnet run --project examples/Showcase'
 
 # Wait for the app to render
 sleep 3
@@ -204,7 +204,7 @@ iterate:
    ```bash
    # Kill and restart (or use dotnet watch)
    tmux send-keys -t showcase C-c && sleep 1
-   tmux send-keys -t showcase 'dotnet run --project src/SharpVision.Showcase' Enter
+   tmux send-keys -t showcase 'dotnet run --project examples/Showcase' Enter
    sleep 3
    ```
 
