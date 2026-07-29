@@ -146,6 +146,66 @@ public sealed class KittyTransactionTests
     }
 
     /// <summary>
+    /// Verifies an ID-bound transaction ignores a malformed packet safely
+    /// attributed to a different id, rather than failing itself.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenMalformedPacketHasDifferentId_IgnoresPacket()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        var result = transaction.Accept(Packet("5522;type=read:id=other:status=***"));
+
+        result.ShouldBe(KittyAcceptResult.Ignored);
+        transaction.State.ShouldBe(KittyTransactionState.Created);
+    }
+
+    /// <summary>
+    /// Verifies an ID-bound transaction ignores a malformed packet whose id
+    /// could not be safely and unambiguously attributed at all.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenMalformedPacketHasNoUsableId_IgnoresPacket()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        var result = transaction.Accept(Packet("5522;type=read:status=***"));
+
+        result.ShouldBe(KittyAcceptResult.Ignored);
+        transaction.State.ShouldBe(KittyTransactionState.Created);
+    }
+
+    /// <summary>
+    /// Verifies an ID-bound transaction ignores a malformed packet carrying a
+    /// duplicated, ambiguous id assertion even when both copies would match.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenMalformedPacketHasDuplicatedId_IgnoresPacket()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        var result = transaction.Accept(Packet("5522;type=read:id=req-1:id=req-1"));
+
+        result.ShouldBe(KittyAcceptResult.Ignored);
+        transaction.State.ShouldBe(KittyTransactionState.Created);
+    }
+
+    /// <summary>
+    /// Verifies an ID-bound transaction still fails when the malformed
+    /// packet's safely parsed id matches the active request.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenMalformedPacketHasMatchingId_Fails()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        var result = transaction.Accept(Packet("5522;type=read:id=req-1:status=***"));
+
+        result.ShouldBe(KittyAcceptResult.Failed);
+        transaction.State.ShouldBe(KittyTransactionState.Failed);
+    }
+
+    /// <summary>
     /// Verifies malformed packets and data limits fail with redacted diagnostics.
     /// </summary>
     [Fact]

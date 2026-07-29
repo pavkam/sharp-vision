@@ -120,7 +120,16 @@ public sealed class KittyTransaction: IDisposable
 
         if (!packet.IsValid)
         {
-            return Fail(packet.Diagnostic ?? Unexpected());
+            // An ID-bound transaction can only safely attribute a malformed
+            // packet to itself through an unambiguous, validly parsed id on
+            // that packet. No id, or a different id, means the malformed
+            // traffic belongs to something else and must be ignored rather
+            // than retiring this transaction. An ID-less transaction has no
+            // such signal to rely on, so it stays strict and fails on any
+            // malformed packet.
+            return _id is null || string.Equals(_id, packet.Id, StringComparison.Ordinal)
+                ? Fail(packet.Diagnostic ?? Unexpected())
+                : KittyAcceptResult.Ignored;
         }
 
         if (!string.Equals(_id, packet.Id, StringComparison.Ordinal))

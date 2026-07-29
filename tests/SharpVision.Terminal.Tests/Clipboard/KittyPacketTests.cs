@@ -137,4 +137,90 @@ public sealed class KittyPacketTests
         packet.IsValid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidMetadata);
     }
+
+    /// <summary>
+    /// Verifies a validly parsed id survives an unrelated later parsing
+    /// failure so an ID-bound transaction can still correlate the packet.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenIdIsValidButALaterFieldFails_RetainsId()
+    {
+        var packet = KittyPacket.Parse("5522;type=read:id=req-1:status=***"u8);
+
+        packet.IsValid.ShouldBeFalse();
+        packet.Id.ShouldBe("req-1");
+    }
+
+    /// <summary>
+    /// Verifies a duplicated id field is ambiguous and is not retained, even
+    /// when both occurrences agree.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenIdFieldIsDuplicated_DiscardsId()
+    {
+        var packet = KittyPacket.Parse("5522;type=read:id=req-1:id=req-1"u8);
+
+        packet.IsValid.ShouldBeFalse();
+        packet.Id.ShouldBeNull();
+    }
+
+    /// <summary>
+    /// Verifies a malformed packet with no id field carries no id.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenNoIdFieldIsPresent_MalformedPacketHasNoId()
+    {
+        var packet = KittyPacket.Parse("5522;type=read:status=***"u8);
+
+        packet.IsValid.ShouldBeFalse();
+        packet.Id.ShouldBeNull();
+    }
+
+    /// <summary>
+    /// Verifies payload validity does not depend on whether the caller
+    /// requests an owned decoded copy.
+    /// </summary>
+    /// <param name="payload">The Base64 payload under test.</param>
+    [Theory]
+    [InlineData("AQ==")]
+    [InlineData("AR==")]
+    [InlineData("AAEC")]
+    [InlineData("***")]
+    public void Parse_WhenPayloadIsParsed_ValidityIsIndependentOfDecodePayload(string payload)
+    {
+        var wire = Encoding.ASCII.GetBytes($"5522;type=wdata;{payload}");
+
+        var decoded = KittyPacket.Parse(wire, decodePayload: true);
+        var validatedOnly = KittyPacket.Parse(wire, decodePayload: false);
+
+        validatedOnly.IsValid.ShouldBe(decoded.IsValid);
+    }
+
+    /// <summary>
+    /// Verifies a payload with non-zero unused Base64 pad bits is rejected
+    /// even when the caller only wants allocation-free validation.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenPayloadHasNonCanonicalPadBits_IsInvalidWithoutDecoding()
+    {
+        var packet = KittyPacket.Parse("5522;type=wdata;AR=="u8, decodePayload: false);
+
+        packet.IsValid.ShouldBeFalse();
+        packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
+    }
+
+    /// <summary>
+    /// Verifies the configured decoded-size limit is enforced even when the
+    /// caller only wants allocation-free validation.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenPayloadExceedsClipboardLimit_IsInvalidWithoutDecoding()
+    {
+        var limits = Limits.Default with { MaxClipboardBytes = 1 };
+
+        var packet = KittyPacket.Parse("5522;type=wdata;AAEC"u8, limits, decodePayload: false);
+
+        packet.IsValid.ShouldBeFalse();
+        packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
+    }
 }

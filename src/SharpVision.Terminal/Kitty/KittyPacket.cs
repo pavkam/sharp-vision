@@ -147,7 +147,7 @@ public sealed class KittyPacket
 
             if (equals <= 0 || equals == field.Length - 1)
             {
-                return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
             }
 
             var key = field[..equals];
@@ -155,14 +155,14 @@ public sealed class KittyPacket
 
             if (!IsMetadataAscii(key) || !IsMetadataAscii(fieldValue))
             {
-                return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
             }
 
             if (key.SequenceEqual("type"u8))
             {
                 if (seenType || !TryParseOperation(fieldValue, out operation))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
 
                 seenType = true;
@@ -171,7 +171,7 @@ public sealed class KittyPacket
             {
                 if (seenStatus || !TryParseStatus(fieldValue, out replyStatus))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
 
                 seenStatus = true;
@@ -180,7 +180,7 @@ public sealed class KittyPacket
             {
                 if (seenLocation || !TryParseSelection(fieldValue, out selection))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
 
                 seenLocation = true;
@@ -189,7 +189,10 @@ public sealed class KittyPacket
             {
                 if (seenId || !IsIdentifier(fieldValue))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    // The packet's own id assertion is what's in question here
+                    // (malformed or a conflicting duplicate) — it cannot be
+                    // trusted for correlation, so it is not retained.
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id: null);
                 }
 
                 id = Encoding.ASCII.GetString(fieldValue);
@@ -199,7 +202,7 @@ public sealed class KittyPacket
             {
                 if (seenMime || !TryDecodeUtf8(fieldValue, effectiveLimits.MaxMetadataBytes, out mime))
                 {
-                    return Invalid(DiagnosticCode.InvalidBase64, value.Length);
+                    return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
                 }
 
                 seenMime = true;
@@ -209,7 +212,7 @@ public sealed class KittyPacket
                 if (seenPassword ||
                     !TryDecodeUtf8(fieldValue, effectiveLimits.MaxMetadataBytes, out password))
                 {
-                    return Invalid(DiagnosticCode.InvalidBase64, value.Length);
+                    return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
                 }
 
                 seenPassword = true;
@@ -222,7 +225,8 @@ public sealed class KittyPacket
                         IsCanonicalBase64(fieldValue)
                             ? DiagnosticCode.InvalidMetadata
                             : DiagnosticCode.InvalidBase64,
-                        value.Length);
+                        value.Length,
+                        id);
                 }
 
                 seenName = true;
@@ -235,22 +239,16 @@ public sealed class KittyPacket
 
         if (!seenType)
         {
-            return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+            return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
         }
 
         byte[] data = [];
 
         if (hasPayload)
         {
-            if (!IsCanonicalBase64(payload))
+            if (!TryDecode(payload, effectiveLimits.MaxClipboardBytes, decodePayload, out data))
             {
-                return Invalid(DiagnosticCode.InvalidBase64, value.Length);
-            }
-
-            if (decodePayload &&
-                !TryDecode(payload, effectiveLimits.MaxClipboardBytes, out data))
-            {
-                return Invalid(DiagnosticCode.InvalidBase64, value.Length);
+                return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
             }
         }
 
@@ -288,7 +286,7 @@ public sealed class KittyPacket
                $"mimeBytes={Mime.Length} payloadBytes={Data.Length} unknown={unknown}";
     }
 
-    private static KittyPacket Invalid(DiagnosticCode code, int discarded)
+    private static KittyPacket Invalid(DiagnosticCode code, int discarded, string? id = null)
     {
         Debug.Assert(Enum.IsDefined(code), "Invalid packets require a defined diagnostic code.");
         Debug.Assert(discarded >= 0, "Discarded packet byte counts are non-negative.");
@@ -300,7 +298,7 @@ public sealed class KittyPacket
             KittyOperation.None,
             KittyReplyStatus.None,
             Selection.Clipboard,
-            id: null,
+            id,
             ReadOnlyMemory<byte>.Empty,
             ReadOnlyMemory<byte>.Empty,
             ReadOnlyMemory<byte>.Empty,
@@ -401,6 +399,7 @@ public sealed class KittyPacket
     private static bool TryDecode(
         ReadOnlySpan<byte> encoded,
         int maximum,
+        bool decodePayload,
         out byte[] decoded)
     {
         Debug.Assert(maximum >= 0, "Decoded clipboard limits are validated before parsing.");
@@ -434,7 +433,12 @@ public sealed class KittyPacket
                 return false;
             }
 
-            decoded = buffer.AsSpan(0, written).ToArray();
+            // decodePayload controls ownership/allocation only; validation above
+            // (canonical encoding, decoded-size limit) always runs the same way.
+            if (decodePayload)
+            {
+                decoded = buffer.AsSpan(0, written).ToArray();
+            }
 
             return true;
         }
@@ -448,7 +452,7 @@ public sealed class KittyPacket
         ReadOnlySpan<byte> encoded,
         int maximum,
         out byte[] decoded) =>
-        TryDecode(encoded, maximum, out decoded) && IsValidUtf8(decoded);
+        TryDecode(encoded, maximum, decodePayload: true, out decoded) && IsValidUtf8(decoded);
 
     private static bool TryParseOperation(
         ReadOnlySpan<byte> value,
