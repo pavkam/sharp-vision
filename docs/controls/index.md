@@ -44,18 +44,18 @@ All controls derive from the
 
 ### Public namespaces
 
-| Namespace                          | Responsibility                                         |
-| ---------------------------------- | ------------------------------------------------------ |
-| `SharpVision.Controls`             | Foundational roles, ownership, overlay, and scrolling. |
-| `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation.    |
-| `SharpVision.Controls.Input`       | Buttons, editors, pickers, and value controls.         |
-| `SharpVision.Controls.Layout`      | Panels, structural chrome, and tables.                 |
-| `SharpVision.Controls.Collections` | Lists, tabs, trees, and their typed collections.       |
-| `SharpVision.Menus`                | Menus, menu entries, and context menus.                |
-| `SharpVision.Navigation`           | Sidebar navigation controls and entries.               |
-| `SharpVision.Surfaces`             | Shared elevated-surface lifecycle and modality seams.  |
-| `SharpVision.Popups`               | Anchored popup, flyout, and tooltip surfaces.          |
-| `SharpVision.Windows`              | Free-standing retained window surfaces.                |
+| Namespace                          | Responsibility                                               |
+| ---------------------------------- | ------------------------------------------------------------ |
+| `SharpVision.Controls`             | Foundational roles, ownership, overlay, and scrolling.       |
+| `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation.          |
+| `SharpVision.Controls.Input`       | Buttons, editors, pickers, and value controls.               |
+| `SharpVision.Controls.Layout`      | Panels, structural chrome, and tables.                       |
+| `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization. |
+| `SharpVision.Menus`                | Menus, menu entries, and context menus.                      |
+| `SharpVision.Navigation`           | Sidebar navigation controls and entries.                     |
+| `SharpVision.Surfaces`             | Shared elevated-surface lifecycle and modality seams.        |
+| `SharpVision.Popups`               | Anchored popup, flyout, and tooltip surfaces.                |
+| `SharpVision.Windows`              | Free-standing retained window surfaces.                      |
 
 Complete modal tasks such as `MessageBox` live in
 [`SharpVision.Dialogs`](../dialogs/index.md#dialog-catalog).

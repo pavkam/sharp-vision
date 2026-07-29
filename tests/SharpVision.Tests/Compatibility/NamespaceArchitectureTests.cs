@@ -18,7 +18,6 @@ public sealed class NamespaceArchitectureTests
                 "ControlCollection",
                 "IContextMenu",
                 "InvalidationImpact",
-                "ItemTemplate",
                 "ItemsControl",
                 "Overlay",
                 "Pressable",
@@ -30,6 +29,7 @@ public sealed class NamespaceArchitectureTests
             ],
             ["SharpVision.Controls.Collections"] =
             [
+                "ItemTemplate",
                 "ListSelectionMode",
                 "ListView",
                 "TabCloseRequestedEventArgs",

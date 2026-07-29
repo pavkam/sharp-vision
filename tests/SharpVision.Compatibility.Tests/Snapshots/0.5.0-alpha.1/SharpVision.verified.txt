@@ -3,6 +3,7 @@
 [assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v10.0", FrameworkDisplayName=".NET 10.0")]
 namespace SharpVision.Controls.Collections
 {
+    public delegate SharpVision.Controls.Control ItemTemplate(object? item);
     public enum ListSelectionMode
     {
         None = 0,
@@ -14,7 +15,7 @@ namespace SharpVision.Controls.Collections
         public ListView() { }
         public int ActiveIndex { get; }
         public SharpVision.Controls.ScrollBarStyle ActualScrollBarStyle { get; }
-        public SharpVision.Controls.ItemTemplate ItemTemplate { get; set; }
+        public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
         public SharpVision.Controls.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Layout.ScrollBars ScrollBars { get; set; }
@@ -385,7 +386,6 @@ namespace SharpVision.Controls
         Arrange = 2,
         Measure = 3,
     }
-    public delegate SharpVision.Controls.Control ItemTemplate(object? item);
     public abstract class ItemsControl : SharpVision.Controls.Control
     {
         protected ItemsControl() { }
