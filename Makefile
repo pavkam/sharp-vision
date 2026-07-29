@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := help
 
 SOLUTION := SharpVision.slnx
-SHOWCASE := src/SharpVision.Showcase/SharpVision.Showcase.csproj
+SHOWCASE := examples/Showcase/SharpVision.Showcase.csproj
 
 help:
 	@echo "SharpVision - Available Make Targets"

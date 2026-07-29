@@ -74,8 +74,9 @@ private filesystem or workflow collaborators, but its visible tree still follows
 ordinary control ownership, layout, modality, styling, input, and dispatcher
 contracts.
 
-`SharpVision.Showcase` owns no library behavior. It composes public APIs into a
-responsive gallery. Production projects never reference the showcase or tests.
+`examples/Showcase` contains `SharpVision.Showcase`, which owns no library
+behavior and composes public APIs into a responsive gallery. Production projects
+never reference the showcase or tests.
 
 `SharpVision.Compatibility.Tests` owns the versioned public API baselines for
 both libraries. It references production projects only from the test layer and

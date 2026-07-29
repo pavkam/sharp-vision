@@ -33,7 +33,7 @@
       "args": [
         "watch",
         "--project",
-        "${workspaceFolder}/src/SharpVision.Showcase/SharpVision.Showcase.csproj",
+        "${workspaceFolder}/examples/Showcase/SharpVision.Showcase.csproj",
         "run"
       ],
       "problemMatcher": "$msCompile"
