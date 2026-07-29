@@ -1,4 +1,0 @@
-interface:
-  display_name: "Terminal Rendering"
-  short_description: "Prove frame diffs and emitted terminal state"
-  default_prompt: "Use $terminal-rendering to implement or review SharpVision cell buffers, damage tracking, and frame output."

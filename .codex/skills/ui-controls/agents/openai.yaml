@@ -1,4 +1,0 @@
-interface:
-  display_name: "UI Controls"
-  short_description: "Build traditional controls with deterministic behavior"
-  default_prompt: "Use $ui-controls to implement or review a SharpVision control and its showcase page."
