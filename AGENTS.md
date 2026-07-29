@@ -22,7 +22,10 @@ documentation, tests, and showcase example agree.
   dedicated test project.
 - `docs/` contains normative architecture, protocol, concept, control, and test
   specifications.
-- `.codex/skills/` contains focused routing and invariants for each domain.
+- `.agents/skills/` contains focused routing and invariants for each domain. It
+  is the single real location; `.claude/skills` and `.codex/skills` are relative
+  symlinks to it, so every agent reads one copy. Add or edit skills only under
+  `.agents/skills/`.
 
 `SharpVision` may reference `SharpVision.Terminal`. The showcase may reference
 both libraries. Dependencies must never point from a lower layer to a higher
