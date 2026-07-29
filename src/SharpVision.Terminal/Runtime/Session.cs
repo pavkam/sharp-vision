@@ -24,9 +24,12 @@ public sealed class Session: IAsyncDisposable
     private readonly Interpreter _programInterpreter;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<Lease> _leases = [];
+    private readonly Lock _lifecycle = new();
     private TerminalContext _context;
-    private int _disposed;
-    private int _running;
+    private TaskCompletionSource? _completion;
+    private Task? _disposal;
+    private bool _disposed;
+    private bool _running;
 
     #region Construction and lifecycle
 
@@ -124,17 +127,35 @@ public sealed class Session: IAsyncDisposable
     internal TerminalBackend Backend => _context.Backend;
 
     /// <summary>Runs startup, ordered event delivery, and guaranteed reverse cleanup.</summary>
+    /// <remarks>
+    /// Claiming the run slot and observing disposal are one atomic step. A run that starts
+    /// therefore always reaches reverse cleanup with a live transport, and a run requested after
+    /// <see cref="DisposeAsync"/> has begun is rejected from the guard rather than failing later
+    /// from inside the loop against already-disposed lifetime state.
+    /// </remarks>
     /// <param name="cancellationToken">Cancels pending reads and resize waits.</param>
     /// <returns>The complete session operation.</returns>
     /// <exception cref="InvalidOperationException">The session is already running.</exception>
-    /// <exception cref="ObjectDisposedException">The session is disposed.</exception>
+    /// <exception cref="ObjectDisposedException">The session is disposed or disposal has begun.</exception>
     public async ValueTask RunAsync(CancellationToken cancellationToken)
     {
-        ThrowIfDisposed();
+        TaskCompletionSource completion;
 
-        if (Interlocked.CompareExchange(ref _running, 1, 0) != 0)
+        lock (_lifecycle)
         {
-            throw new InvalidOperationException("The terminal session is already running.");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (_running)
+            {
+                throw new InvalidOperationException("The terminal session is already running.");
+            }
+
+            // Publishing the completion source under the same lock that disposal takes is what
+            // makes reverse cleanup ordered: a concurrent DisposeAsync either sees this run and
+            // waits for it, or wins the lock and this call never starts.
+            completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _completion = completion;
+            _running = true;
         }
 
         Exception? primary = null;
@@ -167,7 +188,16 @@ public sealed class Session: IAsyncDisposable
         finally
         {
             await CleanupAsync().ConfigureAwait(false);
-            Volatile.Write(ref _running, 0);
+
+            lock (_lifecycle)
+            {
+                _completion = null;
+                _running = false;
+            }
+
+            // Signalled only after every reverse-mode byte was written and flushed, so a waiting
+            // DisposeAsync can safely tear down the transport from here on.
+            _ = completion.TrySetResult();
         }
 
         if (primary is not null)
@@ -181,15 +211,88 @@ public sealed class Session: IAsyncDisposable
         }
     }
 
-    /// <summary>Cancels active work and disposes owned resize and transport resources.</summary>
+    /// <summary>
+    /// Cancels active work, awaits reverse-mode cleanup, and disposes the owned resize source,
+    /// transport, and lifetime state.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Reverse mode restoration writes through the transport, so disposal cannot tear the
+    /// transport down while a run is still unwinding its mode leases. This call cancels the
+    /// session lifetime, waits for the active run to finish writing and flushing every disable
+    /// sequence, and only then releases owned resources. A caller that never started a run, or
+    /// whose run already completed, observes no additional wait.
+    /// </para>
+    /// <para>
+    /// Disposal is idempotent and safe to call concurrently. Every caller awaits the same
+    /// underlying teardown and returns only after it finished, so no caller observes a
+    /// half-disposed session. Reverse cleanup runs exactly once.
+    /// </para>
+    /// <para>
+    /// This call must not be awaited from an <see cref="ISink"/> callback raised by its own run.
+    /// Doing so asks the run to complete from inside itself and deadlocks; dispose the session
+    /// from the code that owns <see cref="RunAsync"/> instead.
+    /// </para>
+    /// </remarks>
+    /// <returns>The complete teardown operation.</returns>
     public async ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        TaskCompletionSource? owner = null;
+        Task disposal;
+
+        lock (_lifecycle)
         {
+            // Marking disposal before releasing the lock closes the window in which a new run
+            // could start against lifetime state this call is about to dispose.
+            _disposed = true;
+
+            if (_disposal is null)
+            {
+                owner = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _disposal = owner.Task;
+            }
+
+            disposal = _disposal;
+        }
+
+        if (owner is null)
+        {
+            await disposal.ConfigureAwait(false);
             return;
         }
 
+        try
+        {
+            await DisposeCoreAsync().ConfigureAwait(false);
+            owner.SetResult();
+        }
+        catch (Exception exception)
+        {
+            owner.SetException(exception);
+            throw;
+        }
+    }
+
+    private async ValueTask DisposeCoreAsync()
+    {
         _lifetime.Cancel();
+
+        Task? completion;
+
+        lock (_lifecycle)
+        {
+            completion = _completion?.Task;
+        }
+
+        if (completion is not null)
+        {
+            // RunAsync fulfils this only after CleanupAsync wrote and flushed every disable
+            // sequence, which is the boundary that keeps the terminal restorable. The wait is
+            // already bounded: the event loop drains its read within the cleanup budget and
+            // CleanupAsync writes under its own finite timeout.
+            await completion.ConfigureAwait(false);
+        }
+
         await _resize.DisposeAsync().ConfigureAwait(false);
         await _transport.DisposeAsync().ConfigureAwait(false);
         _lifetime.Dispose();
@@ -691,9 +794,6 @@ public sealed class Session: IAsyncDisposable
             ? capabilities.PixelMouse.IsSupported
             : capabilities.CellMouse.IsSupported;
     }
-
-    private void ThrowIfDisposed() =>
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
     private static Options RequireOptions(Options options)
     {

@@ -223,6 +223,12 @@ the host lease _last_, after the session's reverse DEC-mode cleanup, so VT modes
 are undone only after cooked/echoed input has already been restored underneath
 them.
 
+`Application` awaits the session run before disposing the session, so the
+framework hosting path never interleaves the two. A direct `Session` consumer
+that disposes concurrently with an active run is covered by the normative
+[run and disposal interleaving](../architecture/runtime-event-loop.md#run-and-disposal-interleaving)
+rules, which that document owns.
+
 ### Unix
 
 `UnixConsoleHost.Open` enters raw mode through `UnixConsoleMode.Enter`, which

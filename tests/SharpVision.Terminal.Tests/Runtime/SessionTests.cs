@@ -945,6 +945,81 @@ public sealed class SessionTests
     }
 
     /// <summary>
+    /// Verifies disposal during an active run completes reverse mode restoration before it tears
+    /// down the transport those restoration writes depend on.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenRunIsActive_WritesReverseModeBytesBeforeDisposingTransportAsync()
+    {
+        var transport = new SessionTransport();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var session = new Session(
+            transport,
+            resize,
+            sink,
+            new RuntimeOptions { Capabilities = Supported() });
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await session.DisposeAsync();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+        transport.DisposeCount.ShouldBe(1);
+        transport.WritesAtDisposal.ShouldEndWith("\u001b[?25h\u001b[?1049l");
+        session.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>
+    /// Verifies two concurrent disposal callers share one teardown, restore terminal modes exactly
+    /// once, and both return only after that teardown finished.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenCalledConcurrentlyByTwoCallers_RestoresModesExactlyOnceAsync()
+    {
+        var transport = new SessionTransport();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var session = new Session(
+            transport,
+            resize,
+            sink,
+            new RuntimeOptions { Capabilities = Supported() });
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        var first = session.DisposeAsync().AsTask();
+        var second = session.DisposeAsync().AsTask();
+        await Task.WhenAll(first, second).WaitAsync(TestContext.Current.CancellationToken);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+        transport.DisposeCount.ShouldBe(1);
+        transport.WritesAtDisposal.ShouldEndWith("\u001b[?25h\u001b[?1049l");
+        transport.JoinedWrites.Split("\u001b[?1049l").Length.ShouldBe(2);
+        session.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>
+    /// Verifies a run requested once disposal has begun is rejected by the lifecycle guard instead
+    /// of failing later against disposed lifetime state.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenStartedAfterDisposalBegins_ThrowsObjectDisposedExceptionAsync()
+    {
+        var transport = new SessionTransport();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var session = new Session(transport, resize, sink, RuntimeOptions.Minimal);
+        await session.DisposeAsync();
+
+        var thrown = await Should.ThrowAsync<ObjectDisposedException>(async () =>
+            await session.RunAsync(TestContext.Current.CancellationToken));
+
+        thrown.ObjectName.ShouldBe(typeof(Session).FullName);
+        transport.JoinedWrites.ShouldBeEmpty();
+    }
+
+    /// <summary>
     /// Verifies a sink failure raised while a read still borrows the rental never clears or
     /// releases that pooled array.
     /// </summary>

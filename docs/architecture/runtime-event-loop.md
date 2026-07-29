@@ -215,6 +215,35 @@ cancellation, or handler exception. Lifecycle programs expand with one
 session-owned bounded interpreter. A pair is one static-variable transaction:
 both zero-parameter expansions succeed before output or neither commits.
 
+### Run and disposal interleaving
+
+This section is normative for how `Session.RunAsync` and `Session.DisposeAsync`
+interleave; `docs/concepts/hosting.md` describes only the console host's own
+ownership of that session.
+
+Reverse mode restoration writes through the transport, so disposal must never
+tear the transport down while a run is still unwinding its leases. Claiming the
+run slot and marking disposal are one atomic step under a single session lock,
+which yields exactly two orderings:
+
+1. A run is active when disposal begins. `DisposeAsync` cancels the session
+   lifetime, waits for that run to finish writing and flushing every disable
+   sequence, and only then disposes the resize source, the transport, and the
+   lifetime source.
+2. Disposal begins first. A later `RunAsync` throws `ObjectDisposedException`
+   from its lifecycle guard, never from inside the loop against disposed
+   lifetime state, and acquires no mode lease.
+
+Disposal is idempotent and safe to call concurrently. Every caller awaits the
+same underlying teardown and returns only after it completed, so reverse cleanup
+runs exactly once and no caller observes a half-disposed session. The wait stays
+bounded because the event loop drains its read within the cleanup budget and
+restoration writes run under their own finite timeout.
+
+`DisposeAsync` must not be awaited from an `ISink` callback raised by its own
+run. That asks the run to complete from inside itself and deadlocks; the owner
+of `RunAsync` disposes the session instead.
+
 ## Test obligations
 
 | Layer          | Required evidence                                                                               |

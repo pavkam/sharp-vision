@@ -41,6 +41,19 @@ internal sealed class SessionTransport: ITransport
     /// <summary>Gets the number of flush attempts.</summary>
     internal int FlushCount { get; private set; }
 
+    /// <summary>
+    /// Gets the number of times the owner disposed this transport. Session disposal is idempotent,
+    /// so concurrent callers must still produce exactly one teardown.
+    /// </summary>
+    internal int DisposeCount { get; private set; }
+
+    /// <summary>
+    /// Gets <see cref="JoinedWrites"/> captured at the instant of the first disposal, or null when
+    /// the transport was never disposed. Reverse mode restoration writes through this transport, so
+    /// this snapshot is the evidence that cleanup completed before the owner tore it down.
+    /// </summary>
+    internal string? WritesAtDisposal { get; private set; }
+
     /// <summary>Queues one owned input chunk.</summary>
     /// <param name="value">The input bytes.</param>
     internal void Input(byte[] value) => _input.Writer.TryWrite(value);
@@ -75,6 +88,9 @@ internal sealed class SessionTransport: ITransport
     /// <inheritdoc/>
     public ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken)
     {
+        // StreamTransport rejects post-disposal writes, so the fake must too. Otherwise a session
+        // that restores terminal modes through an already-disposed transport still looks correct.
+        ObjectDisposedException.ThrowIf(DisposeCount != 0, this);
         cancellationToken.ThrowIfCancellationRequested();
         _writeCount++;
 
@@ -99,6 +115,7 @@ internal sealed class SessionTransport: ITransport
     /// <inheritdoc/>
     public ValueTask FlushAsync(CancellationToken cancellationToken)
     {
+        ObjectDisposedException.ThrowIf(DisposeCount != 0, this);
         cancellationToken.ThrowIfCancellationRequested();
         FlushCount++;
 
@@ -110,6 +127,8 @@ internal sealed class SessionTransport: ITransport
     /// <inheritdoc/>
     public ValueTask DisposeAsync()
     {
+        WritesAtDisposal ??= JoinedWrites;
+        DisposeCount++;
         _ = _input.Writer.TryComplete();
         return ValueTask.CompletedTask;
     }
