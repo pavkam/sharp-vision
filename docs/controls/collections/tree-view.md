@@ -27,7 +27,20 @@ ranges over enabled visible items, `SelectAll`, `ClearSelection`, and Control+A.
 `None` keeps navigation and invocation but commits no selection. Selection
 belongs to the item model and remains selected when its branch is collapsed;
 removing an item removes it from the selection. Disabled items are never
-selected.
+selected. Changing `SelectionMode` publishes its own property notification
+before any selection it normalizes, so a two-way observer sees the new
+configuration first.
+
+Hierarchy depth is caller-controlled and has no fixed limit. Ownership
+propagation, cycle detection, flattening, expand and collapse, item collection,
+and check-state propagation all traverse iteratively, so a deep valid tree
+cannot exhaust the process stack. Check-state snapshots are evaluated once per
+mutation through a shared memo rather than once per affected item, which keeps a
+single toggle linear in the nodes it touches instead of quadratic.
+
+A structural change replaces the visible presentation as one validated snapshot
+rather than clearing it and re-adding every item, and an unchanged flat list
+costs nothing.
 
 Set `TreeViewItem.IsCheckable` to display a check mark. Setting `IsChecked` on a
 checkable parent propagates to checkable descendants. A parent becomes

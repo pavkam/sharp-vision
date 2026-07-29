@@ -18,6 +18,59 @@ public sealed class TreeViewTests
         tree.Face.Background.ShouldBe(ThemeColor.Surface);
     }
 
+    /// <summary>
+    /// Verifies changing the selection mode publishes its own property notification, which a
+    /// two-way binding needs and the selection notifications cannot substitute for.
+    /// </summary>
+    [Fact]
+    public void SelectionMode_WhenChanged_RaisesPropertyChanged()
+    {
+        var tree = new TreeView();
+        List<string?> changed = [];
+        tree.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+
+        tree.SelectionMode.ShouldBe(TreeSelectionMode.Multiple);
+        changed.ShouldContain(nameof(TreeView.SelectionMode));
+    }
+
+    /// <summary>
+    /// Verifies narrowing the mode publishes the mode change alongside the selection it normalized,
+    /// and publishes the mode first so an observer already sees the new configuration.
+    /// </summary>
+    [Fact]
+    public void SelectionMode_WhenNarrowedWithSelection_RaisesModeBeforeSelection()
+    {
+        var tree = new TreeView { SelectionMode = TreeSelectionMode.Multiple };
+        var first = new TreeViewItem { Header = "a" };
+        var second = new TreeViewItem { Header = "b" };
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+        tree.SelectAll();
+        List<string?> changed = [];
+        tree.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        tree.SelectionMode = TreeSelectionMode.Single;
+
+        changed.ShouldContain(nameof(TreeView.SelectionMode));
+        changed.IndexOf(nameof(TreeView.SelectionMode))
+            .ShouldBeLessThan(changed.IndexOf(nameof(TreeView.SelectedItems)));
+    }
+
+    /// <summary>Verifies assigning the same selection mode publishes nothing.</summary>
+    [Fact]
+    public void SelectionMode_WhenUnchanged_RaisesNothing()
+    {
+        var tree = new TreeView { SelectionMode = TreeSelectionMode.Multiple };
+        List<string?> changed = [];
+        tree.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+
+        changed.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies items are added through the typed collection.</summary>
     [Fact]
     public void Items_WhenAdded_IncreasesCount()

@@ -20,7 +20,12 @@ public sealed class TreeViewItem: Control
     private const int _defaultIndentCells = 2;
 
     private bool _isSelected;
+#pragma warning disable IDE0032 // Propagation assigns this field across instances.
     private bool? _isChecked = false;
+#pragma warning restore IDE0032
+
+    /// <summary>Gets this item's own stored check state, ignoring any descendant aggregate.</summary>
+    internal bool? OwnCheckState => _isChecked;
     private CheckBoxGlyphs? _checkGlyphs;
 
     /// <summary>Initializes a tree view item with a fixed one-cell height.</summary>
@@ -341,39 +346,136 @@ public sealed class TreeViewItem: Control
         FindTreeView()?.NotifyItemEnabledChanged(this);
     }
 
+    [ThreadStatic]
+    private static List<CheckStateFrame>? _checkStateWalk;
+
     internal Modifiers LastModifiers { get; private set; }
 
     internal void SetCheckState(bool? value, ActivationCause cause, bool propagate)
     {
         var affected = CollectAffectedCheckStateItems(propagate);
-        var previousStates = affected.ToDictionary(item => item, item => item.GetEffectiveCheckState());
+
+        // One memoized pass per snapshot. Evaluating each affected item independently re-walked its
+        // whole subtree, so a chain-shaped tree cost O(n^2) aggregations for a single toggle.
+        var previousStates = EvaluateStates(affected);
 
         SetCheckStateCore(value, propagate);
+        var currentStates = EvaluateStates(affected);
 
         foreach (var item in affected)
         {
-            var current = item.GetEffectiveCheckState();
-            if (previousStates[item] == current)
+            var previous = previousStates[item];
+            var current = currentStates[item];
+
+            if (previous == current)
             {
                 continue;
             }
 
-            item.RaiseCheckStateChanged(previousStates[item], current, cause);
+            item.RaiseCheckStateChanged(previous, current, cause);
             item.FindTreeView()?.NotifyCheckStateChanged(item);
         }
+    }
+
+    private static Dictionary<TreeViewItem, bool?> EvaluateStates(List<TreeViewItem> affected)
+    {
+        var memo = new Dictionary<TreeViewItem, bool?>(affected.Count);
+
+        foreach (var item in affected)
+        {
+            _ = EvaluateEffective(item, memo);
+        }
+
+        return memo;
+    }
+
+    private static bool? EvaluateEffective(TreeViewItem item, Dictionary<TreeViewItem, bool?> memo)
+    {
+        if (memo.TryGetValue(item, out var cached))
+        {
+            return cached;
+        }
+
+        if (!item.IsCheckable || !item.HasChildren)
+        {
+            memo[item] = item._isChecked;
+
+            return item._isChecked;
+        }
+
+        // Iterative post-order sharing one memo across every affected item, so the whole snapshot
+        // costs one pass over the touched nodes instead of one pass per node.
+        List<CheckStateFrame> walk = [new CheckStateFrame(item)];
+        bool? resolved = null;
+
+        while (walk.Count > 0)
+        {
+            var index = walk.Count - 1;
+            var frame = walk[index];
+
+            if (frame.TryTakeNextCheckableChild(out var child))
+            {
+                walk[index] = frame;
+
+                if (memo.TryGetValue(child, out var known))
+                {
+                    frame = walk[index];
+                    frame.Accumulate(known);
+                    walk[index] = frame;
+                }
+                else if (child.HasChildren)
+                {
+                    walk.Add(new CheckStateFrame(child));
+                }
+                else
+                {
+                    memo[child] = child._isChecked;
+                    frame = walk[index];
+                    frame.Accumulate(child._isChecked);
+                    walk[index] = frame;
+                }
+
+                continue;
+            }
+
+            resolved = frame.Resolve();
+            memo[frame.Item] = resolved;
+            walk.RemoveAt(index);
+
+            if (walk.Count > 0)
+            {
+                var parent = walk[^1];
+                parent.Accumulate(resolved);
+                walk[^1] = parent;
+            }
+        }
+
+        return resolved;
     }
 
     private void SetCheckStateCore(bool? value, bool propagate)
     {
         _isChecked = value;
 
-        if (propagate)
+        if (!propagate)
         {
-            foreach (var child in Children)
+            return;
+        }
+
+        // Iterative: propagation descends a caller-controlled hierarchy.
+        List<TreeViewItem> pending = [this];
+
+        while (pending.Count > 0)
+        {
+            var current = pending[^1];
+            pending.RemoveAt(pending.Count - 1);
+
+            foreach (var child in current.Children)
             {
                 if (child.IsCheckable)
                 {
-                    child.SetCheckStateCore(value, propagate: true);
+                    child._isChecked = value;
+                    pending.Add(child);
                 }
             }
         }
@@ -382,42 +484,46 @@ public sealed class TreeViewItem: Control
     private List<TreeViewItem> CollectAffectedCheckStateItems(bool propagate)
     {
         var affected = new List<TreeViewItem>();
-        AddAffectedCheckStateItem(this, affected);
+        var seen = new HashSet<TreeViewItem>();
+        AddAffectedCheckStateItem(this, affected, seen);
 
         if (propagate)
         {
-            foreach (var child in Children)
+            // Iterative: the checkable subtree is caller-controlled and can be arbitrarily deep.
+            List<TreeViewItem> pending = [this];
+
+            while (pending.Count > 0)
             {
-                if (child.IsCheckable)
+                var current = pending[^1];
+                pending.RemoveAt(pending.Count - 1);
+
+                foreach (var child in current.Children)
                 {
-                    child.AddCheckStateSubtree(affected);
+                    if (child.IsCheckable)
+                    {
+                        AddAffectedCheckStateItem(child, affected, seen);
+                        pending.Add(child);
+                    }
                 }
             }
         }
 
         for (var parent = ParentCollection?.ParentItem; parent is not null; parent = parent.ParentCollection?.ParentItem)
         {
-            AddAffectedCheckStateItem(parent, affected);
+            AddAffectedCheckStateItem(parent, affected, seen);
         }
 
         return affected;
     }
 
-    private void AddCheckStateSubtree(List<TreeViewItem> affected)
+    private static void AddAffectedCheckStateItem(
+        TreeViewItem item,
+        List<TreeViewItem> affected,
+        HashSet<TreeViewItem> seen)
     {
-        AddAffectedCheckStateItem(this, affected);
-        foreach (var child in Children)
-        {
-            if (child.IsCheckable)
-            {
-                child.AddCheckStateSubtree(affected);
-            }
-        }
-    }
-
-    private static void AddAffectedCheckStateItem(TreeViewItem item, List<TreeViewItem> affected)
-    {
-        if (!affected.Contains(item))
+        // A set instead of List.Contains: the affected set is proportional to the subtree, so the
+        // linear scan made propagation quadratic in the number of checkable descendants.
+        if (seen.Add(item))
         {
             affected.Add(item);
         }
@@ -432,38 +538,59 @@ public sealed class TreeViewItem: Control
 
     internal bool? GetEffectiveCheckState()
     {
+        // Leaves and non-checkable items answer without touching the walk buffer at all, which is
+        // the overwhelmingly common case for the IsChecked getter.
         if (!IsCheckable || !HasChildren)
         {
             return _isChecked;
         }
 
-        bool? common = null;
-        var hasCheckableChild = false;
-        var hasState = false;
+        // Iterative post-order. A checkable chain is exactly the deep case, so recursion here is
+        // the same unrecoverable stack hazard as the other traversals. The buffer is thread-static
+        // because controls are dispatcher-affine, so aggregation stays allocation-free once warm.
+        var walk = _checkStateWalk ??= [];
+        var depth = walk.Count;
+        walk.Add(new CheckStateFrame(this));
 
-        foreach (var child in Children)
+        while (walk.Count > depth)
         {
-            if (!child.IsCheckable)
+            var index = walk.Count - 1;
+            var frame = walk[index];
+
+            if (frame.TryTakeNextCheckableChild(out var child))
             {
+                walk[index] = frame;
+
+                if (child.IsCheckable && child.HasChildren)
+                {
+                    walk.Add(new CheckStateFrame(child));
+                }
+                else
+                {
+                    frame = walk[index];
+                    frame.Accumulate(child._isChecked);
+                    walk[index] = frame;
+                }
+
                 continue;
             }
 
-            var childState = child.GetEffectiveCheckState();
-            hasCheckableChild = true;
+            var resolved = frame.Resolve();
+            walk.RemoveAt(index);
 
-            if (childState is null || (hasState && common != childState))
+            if (walk.Count > depth)
             {
-                return null;
+                var parent = walk[^1];
+                parent.Accumulate(resolved);
+                walk[^1] = parent;
             }
-
-            if (!hasState)
+            else
             {
-                common = childState;
-                hasState = true;
+                return resolved;
             }
         }
 
-        return hasCheckableChild ? common : _isChecked;
+        return _isChecked;
     }
 
     private static bool SetOptionalValue(ref CheckBoxGlyphs? field, CheckBoxGlyphs value, CheckBoxGlyphs defaultValue)

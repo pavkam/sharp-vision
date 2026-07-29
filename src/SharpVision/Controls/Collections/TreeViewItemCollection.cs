@@ -8,23 +8,44 @@ namespace SharpVision.Controls.Collections;
 public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
 {
     private readonly List<TreeViewItem> _items = [];
+#pragma warning disable IDE0032 // Cross-instance propagation assigns this field directly.
+    private TreeView? _owner;
+#pragma warning restore IDE0032
 
     /// <summary>Gets or sets the owner that receives structural change notifications.</summary>
     internal TreeView? Owner
     {
-        get;
+        get => _owner;
         set
         {
-            if (ReferenceEquals(field, value))
+            if (ReferenceEquals(_owner, value))
             {
                 return;
             }
 
-            field = value;
+            // Iterative: a caller may attach a prebuilt detached chain of arbitrary depth to a
+            // root, and ownership has to reach every descendant. Recursion here turned a valid
+            // deep tree into an unrecoverable StackOverflowException on a single Add. A subtree
+            // that already carries the new owner cannot contain one that does not, so pruning
+            // there keeps repeated attach and detach cycles linear.
+            List<TreeViewItemCollection> pending = [this];
 
-            foreach (var item in _items)
+            while (pending.Count > 0)
             {
-                item.Children.Owner = value;
+                var current = pending[^1];
+                pending.RemoveAt(pending.Count - 1);
+
+                if (ReferenceEquals(current._owner, value))
+                {
+                    continue;
+                }
+
+                current._owner = value;
+
+                foreach (var item in current._items)
+                {
+                    pending.Add(item.Children);
+                }
             }
         }
     }
@@ -55,12 +76,13 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
             throw new InvalidOperationException("The item already belongs to a tree item collection.");
         }
 
-        for (var ancestor = ParentItem; ancestor is not null; ancestor = ancestor.ParentCollection?.ParentItem)
+        // The item is detached, so it can only be an ancestor of this insertion point by
+        // containing it, which the descendant walk below already detects from the other end. Only
+        // self-insertion needs its own test. The previous upward walk cost O(depth) on every add,
+        // which made building a chain-shaped tree quadratic before any node was even owned.
+        if (ReferenceEquals(ParentItem, item))
         {
-            if (ReferenceEquals(ancestor, item))
-            {
-                throw new InvalidOperationException("A tree item cannot contain itself or one of its ancestors.");
-            }
+            throw new InvalidOperationException("A tree item cannot contain itself or one of its ancestors.");
         }
 
         if (ParentItem is not null && ContainsDescendant(item, ParentItem))
@@ -76,11 +98,22 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
 
     private static bool ContainsDescendant(TreeViewItem root, TreeViewItem candidate)
     {
-        foreach (var child in root.Children)
+        // Iterative: cycle detection runs before every add, over a caller-controlled hierarchy.
+        List<TreeViewItem> pending = [root];
+
+        while (pending.Count > 0)
         {
-            if (ReferenceEquals(child, candidate) || ContainsDescendant(child, candidate))
+            var current = pending[^1];
+            pending.RemoveAt(pending.Count - 1);
+
+            foreach (var child in current.Children)
             {
-                return true;
+                if (ReferenceEquals(child, candidate))
+                {
+                    return true;
+                }
+
+                pending.Add(child);
             }
         }
 

@@ -19,6 +19,11 @@ public sealed class TreeView: CompositeControl
     private readonly CurrentItemNavigator _navigator;
     private readonly HashSet<TreeViewItem> _selectedItems = [];
     private TreeViewItem? _selectionAnchor;
+    private readonly List<Control> _flatBuffer = [];
+    private readonly List<TreeViewItemCollection> _walkItems = [];
+    private readonly List<int> _walkIndex = [];
+    private HashSet<TreeViewItem> _hooked = [];
+    private HashSet<TreeViewItem> _hookedNext = [];
     private bool _rebuildScheduled;
     private bool _batchUpdate;
 
@@ -81,7 +86,10 @@ public sealed class TreeView: CompositeControl
                 return;
             }
 
-            field = value;
+            // Publish the mode itself before normalizing, so an observer that reacts to the
+            // selection notifications below already sees the new mode. Selection notifications are
+            // not a substitute for the property name a two-way binding needs.
+            _ = SetProperty(ref field, value, InvalidationImpact.Render);
 
             if (value == TreeSelectionMode.None)
             {
@@ -158,7 +166,7 @@ public sealed class TreeView: CompositeControl
 
         try
         {
-            ExpandAllRecursive(Items);
+            SetExpandedForAll(Items, expanded: true);
         }
         finally
         {
@@ -175,7 +183,7 @@ public sealed class TreeView: CompositeControl
 
         try
         {
-            CollapseAllRecursive(Items);
+            SetExpandedForAll(Items, expanded: false);
         }
         finally
         {
@@ -509,18 +517,37 @@ public sealed class TreeView: CompositeControl
     private void RebuildFlatList()
     {
         _rebuildScheduled = false;
+        _flatBuffer.Clear();
+        FlattenVisible(_flatBuffer);
 
-        // Detach invoked handlers from existing items
-        foreach (var child in _itemsStack.Children)
+        // Hook only the difference. Detaching every handler and reattaching it on every rebuild
+        // made a single item mutation proportional to the whole visible list.
+        _hookedNext.Clear();
+
+        foreach (var control in _flatBuffer)
         {
-            if (child is TreeViewItem item)
+            var item = (TreeViewItem) control;
+            _ = _hookedNext.Add(item);
+
+            if (!_hooked.Contains(item))
+            {
+                item.Invoked += OnItemInvoked;
+            }
+        }
+
+        foreach (var item in _hooked)
+        {
+            if (!_hookedNext.Contains(item))
             {
                 item.Invoked -= OnItemInvoked;
             }
         }
 
-        _itemsStack.Children.Clear();
-        AddItemsToStack(Items, depth: 0);
+        (_hooked, _hookedNext) = (_hookedNext, _hooked);
+
+        // One validated snapshot instead of a clear plus one validated add per item. The registry
+        // also short-circuits an identical order, so a rebuild that changes nothing costs nothing.
+        _itemsStack.Children.ReplaceAll(_flatBuffer);
 
         // Repair navigator current if it was removed from the visible list
         if (_navigator.Current is TreeViewItem currentItem)
@@ -544,20 +571,50 @@ public sealed class TreeView: CompositeControl
         CommitSelection(retained);
     }
 
-    private void AddItemsToStack(TreeViewItemCollection items, int depth)
+    private void FlattenVisible(List<Control> destination)
     {
-        foreach (var item in items)
+        // An explicit stack, because the hierarchy depth is caller-controlled and recursion here
+        // would turn a valid deep tree into an unrecoverable StackOverflowException.
+        _walkItems.Clear();
+        _walkIndex.Clear();
+        _walkItems.Add(Items);
+        _walkIndex.Add(0);
+
+        while (_walkItems.Count > 0)
         {
+            var depth = _walkItems.Count - 1;
+            var items = _walkItems[depth];
+            var index = _walkIndex[depth];
+
+            if (index >= items.Count)
+            {
+                _walkItems.RemoveAt(depth);
+                _walkIndex.RemoveAt(depth);
+                continue;
+            }
+
+            _walkIndex[depth] = index + 1;
+            var item = items[index];
             item.Depth = depth;
             item.Focusable = false;
             item.TabStop = false;
-            item.Invoked += OnItemInvoked;
-            _itemsStack.Children.Add(item);
+            destination.Add(item);
 
             if (item.HasChildren && item.IsExpanded)
             {
-                AddItemsToStack(item.Children, depth + 1);
+                _walkItems.Add(item.Children);
+                _walkIndex.Add(0);
             }
+        }
+    }
+
+    private void OnItemInvoked(object? sender, ActivationEventArgs eventArgs)
+    {
+        _ = eventArgs;
+
+        if (sender is TreeViewItem item)
+        {
+            NotifyItemInvoked(item, eventArgs.Cause, item.LastModifiers);
         }
     }
 
@@ -576,62 +633,29 @@ public sealed class TreeView: CompositeControl
         return result;
     }
 
-    private TreeViewItem? FindParentItem(TreeViewItem target) =>
-        FindParentIn(Items, target);
+    private static TreeViewItem? FindParentItem(TreeViewItem target) =>
+        // The item already knows its owning collection, and that collection knows its owning item,
+        // so the parent is a direct lookup. Walking the whole hierarchy to rediscover it was both
+        // recursive and quadratic.
+        target.ParentCollection?.ParentItem;
 
-    private static TreeViewItem? FindParentIn(TreeViewItemCollection items, TreeViewItem target)
+    private static void SetExpandedForAll(TreeViewItemCollection items, bool expanded)
     {
-        foreach (var item in items)
+        // Iterative for the same reason as the flatten walk: depth is caller-controlled.
+        List<TreeViewItemCollection> pending = [items];
+
+        while (pending.Count > 0)
         {
-            foreach (var child in item.Children)
+            var current = pending[^1];
+            pending.RemoveAt(pending.Count - 1);
+
+            foreach (var item in current)
             {
-                if (ReferenceEquals(child, target))
+                if (item.HasChildren)
                 {
-                    return item;
+                    item.IsExpanded = expanded;
+                    pending.Add(item.Children);
                 }
-            }
-
-            var found = FindParentIn(item.Children, target);
-
-            if (found is not null)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
-
-    private void OnItemInvoked(object? sender, ActivationEventArgs eventArgs)
-    {
-        _ = eventArgs;
-
-        if (sender is TreeViewItem item)
-        {
-            NotifyItemInvoked(item, eventArgs.Cause, item.LastModifiers);
-        }
-    }
-
-    private static void ExpandAllRecursive(TreeViewItemCollection items)
-    {
-        foreach (var item in items)
-        {
-            if (item.HasChildren)
-            {
-                item.IsExpanded = true;
-                ExpandAllRecursive(item.Children);
-            }
-        }
-    }
-
-    private static void CollapseAllRecursive(TreeViewItemCollection items)
-    {
-        foreach (var item in items)
-        {
-            if (item.HasChildren)
-            {
-                item.IsExpanded = false;
-                CollapseAllRecursive(item.Children);
             }
         }
     }
@@ -652,17 +676,31 @@ public sealed class TreeView: CompositeControl
     private List<TreeViewItem> CollectAllItems()
     {
         List<TreeViewItem> result = [];
-        AddAllItems(Items, result);
-        return result;
-    }
+        List<TreeViewItemCollection> pending = [Items];
+        List<int> cursors = [0];
 
-    private static void AddAllItems(TreeViewItemCollection items, List<TreeViewItem> result)
-    {
-        foreach (var item in items)
+        // Preorder without recursion so a deep caller hierarchy cannot exhaust the stack.
+        while (pending.Count > 0)
         {
+            var depth = pending.Count - 1;
+            var items = pending[depth];
+            var index = cursors[depth];
+
+            if (index >= items.Count)
+            {
+                pending.RemoveAt(depth);
+                cursors.RemoveAt(depth);
+                continue;
+            }
+
+            cursors[depth] = index + 1;
+            var item = items[index];
             result.Add(item);
-            AddAllItems(item.Children, result);
+            pending.Add(item.Children);
+            cursors.Add(0);
         }
+
+        return result;
     }
 
     private List<TreeViewItem> CollectSelectedItems() =>
