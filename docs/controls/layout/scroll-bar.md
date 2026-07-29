@@ -28,11 +28,13 @@ bars; null lets the current Theme supply it. Raw per-part colors, glyphs,
 `ScrollBarChrome`, and `ScrollBarFill` are not independent control properties.
 
 `TreeView` and `NavigationView` retain their scrolling stack privately, so those
-proxies are the only way to reach the bar they generate. Null resolves to the
-control's documented default rather than pinning one: `ThinBlock` for `TreeView`
-and `ThinLine` for `NavigationView`. A change that alters `Chrome` invalidates
-measure because the reserved extent moves; every other difference is render
-only.
+proxies are the only way to reach the bar they generate. Neither pins a style
+onto that bar: a local complete style permanently outranks the Theme, and a
+private child offers no way to reset it, so a pin would make the bar both
+unreachable and unthemeable. Null therefore leaves the bar to the Theme and the
+library default exactly like every other host. A change that alters `Chrome`
+invalidates measure because the reserved extent moves; every other difference is
+render only.
 
 ## Behavior
 

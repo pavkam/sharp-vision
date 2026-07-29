@@ -8,22 +8,22 @@ items.
 
 ## API
 
-| Member                         | Default                    | Contract                                                 |
-| ------------------------------ | -------------------------- | -------------------------------------------------------- |
-| `Items`                        | empty                      | Typed owned root-item collection.                        |
-| `SelectedItem`                 | `null`                     | First selected item in stable tree order.                |
-| `SelectedItems`                | empty                      | Read-only snapshot in stable tree order.                 |
-| `SelectionMode`                | `TreeSelectionMode.Single` | Allows no, one, or multiple selected items.              |
-| `Indent`                       | `2` cells                  | Non-negative horizontal extent per visible depth level.  |
-| `SetSelected(item, selected)`  | —                          | Adds or removes one item without replacing the rest.     |
-| `ScrollBarStyle`               | `null`                     | Local generated-bar style; null resolves to `ThinBlock`. |
-| `ActualScrollBarStyle`         | `ThinBlock`, read-only     | Reports the style applied to the generated bar.          |
-| `SelectionChanged`             | no subscribers             | Raised after a committed selection change.               |
-| `ItemInvoked`                  | no subscribers             | Raised after pointer or keyboard activation.             |
-| `SelectItem(TreeViewItem)`     | —                          | Selects an item owned by this tree.                      |
-| `SelectAll()`                  | —                          | Selects every enabled item in multiple-selection mode.   |
-| `ClearSelection()`             | —                          | Clears the current selection.                            |
-| `ExpandAll()`, `CollapseAll()` | —                          | Changes expansion for the complete hierarchy.            |
+| Member                         | Default                    | Contract                                                |
+| ------------------------------ | -------------------------- | ------------------------------------------------------- |
+| `Items`                        | empty                      | Typed owned root-item collection.                       |
+| `SelectedItem`                 | `null`                     | First selected item in stable tree order.               |
+| `SelectedItems`                | empty                      | Read-only snapshot in stable tree order.                |
+| `SelectionMode`                | `TreeSelectionMode.Single` | Allows no, one, or multiple selected items.             |
+| `Indent`                       | `2` cells                  | Non-negative horizontal extent per visible depth level. |
+| `SetSelected(item, selected)`  | —                          | Adds or removes one item without replacing the rest.    |
+| `ScrollBarStyle`               | `null`                     | Local generated-bar style; null leaves it to the Theme. |
+| `ActualScrollBarStyle`         | `ThinBlock`, read-only     | Reports the style applied to the generated bar.         |
+| `SelectionChanged`             | no subscribers             | Raised after a committed selection change.              |
+| `ItemInvoked`                  | no subscribers             | Raised after pointer or keyboard activation.            |
+| `SelectItem(TreeViewItem)`     | —                          | Selects an item owned by this tree.                     |
+| `SelectAll()`                  | —                          | Selects every enabled item in multiple-selection mode.  |
+| `ClearSelection()`             | —                          | Clears the current selection.                           |
+| `ExpandAll()`, `CollapseAll()` | —                          | Changes expansion for the complete hierarchy.           |
 
 `SelectionMode` defaults to `Single`. `Multiple` supports Control toggles, Shift
 ranges over enabled visible items, `SelectAll`, `ClearSelection`, and Control+A.
@@ -48,13 +48,28 @@ costs nothing.
 `SetSelected(TreeViewItem, bool)` adds or removes one item without replacing the
 rest, which `SelectItem` cannot do. In `Single` mode selecting through it
 replaces the selection exactly as input does; deselecting is always permitted.
-`SelectionChanged` carries owned `AddedItems` and `RemovedItems` snapshots in
-stable tree order, because `PreviousItem` and `CurrentItem` describe only the
-first selected identity and cannot express a range, `SelectAll`, a removal
-repair, or a mode change.
+Selecting a disabled item returns `false` and leaves the selection unchanged;
+selecting in `None` mode is rejected.
+
+Selection follows the same transaction contract as
+[`ListView`](list-view.md#behavior). `SelectionChanging` receives owned
+`AddedItems` and `RemovedItems` snapshots in stable tree order and may cancel
+before commit. `SelectionChanged` reports the same committed delta after every
+selected view and visual state updates, because `PreviousItem` and `CurrentItem`
+describe only the first selected identity and cannot express a range,
+`SelectAll`, a removal repair, or a mode change. Reentrant changes advance a
+transaction version so a stale outer proposal cannot overwrite them. Mode
+narrowing and structural rebuilds invalidate pending proposals, and a reentrant
+change to `None` mode rejects any pending non-empty proposal.
+
+Only caller- and input-driven changes are cancellable. Normalization the control
+performs on its own behalf — narrowing `SelectionMode`, or repairing selection
+after items are detached or disabled — commits regardless, because refusing it
+would leave the control in a state its own configuration forbids.
 
 The generated scrollbar is reached through nullable `ScrollBarStyle` and
-resolved `ActualScrollBarStyle`; null resolves to `ThinBlock`.
+resolved `ActualScrollBarStyle`. The control pins nothing on the bar it owns, so
+null leaves the choice to the active Theme and the library default.
 
 Set `TreeViewItem.IsCheckable` to display a check mark. Setting `IsChecked` on a
 checkable parent propagates to checkable descendants. A parent becomes

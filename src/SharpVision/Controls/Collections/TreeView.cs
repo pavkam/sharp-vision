@@ -24,6 +24,7 @@ public sealed class TreeView: CompositeControl
     private readonly List<int> _walkIndex = [];
     private HashSet<TreeViewItem> _hooked = [];
     private HashSet<TreeViewItem> _hookedNext = [];
+    private int _selectionVersion;
     private bool _rebuildScheduled;
     private bool _batchUpdate;
 
@@ -49,16 +50,21 @@ public sealed class TreeView: CompositeControl
 
             var previous = ActualScrollBarStyle;
             field = value;
+
+            // Forward the nullable value, never a substitute. Assigning a concrete style here
+            // would consume the bar's theming slot permanently, and the stack is private so no
+            // caller could reset it. The resolved value must be read back afterwards, because the
+            // bar is what resolves null.
+            _itemsStack.ScrollBarStyle = field;
             var current = ActualScrollBarStyle;
 
-            // Chrome changes the reserved extent, so they need a measure pass; everything else is
+            // Chrome changes the reserved extent, so it needs a measure pass; everything else is
             // appearance only.
             var impact = previous.Chrome != current.Chrome
                 ? InvalidationImpact.Measure
                 : previous == current
                     ? InvalidationImpact.None
                     : InvalidationImpact.Render;
-            _itemsStack.ScrollBarStyle = current;
             NotifyPropertyChanged(nameof(ScrollBarStyle), impact);
 
             if (previous != current)
@@ -68,12 +74,12 @@ public sealed class TreeView: CompositeControl
         }
     }
 
-    private static ScrollBarStyle DefaultScrollBarStyle =>
-        Controls.ScrollBarStyle.ThinBlock;
-
     /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
-    public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? DefaultScrollBarStyle;
+    /// <remarks>
+    /// Resolved by the bar itself, so a null local value reports whatever the active Theme or the
+    /// library default supplies rather than an opinion this control baked in.
+    /// </remarks>
+    public ScrollBarStyle ActualScrollBarStyle => _itemsStack.ActualScrollBarStyle;
 
     /// <summary>Initializes a framed focusable tree view with an empty root item collection.</summary>
     public TreeView()
@@ -82,8 +88,7 @@ public sealed class TreeView: CompositeControl
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
-            ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarStyle = DefaultScrollBarStyle
+            ShowScrollBars = ShowScrollBars.WhenNeeded
         };
         _navigator = new CurrentItemNavigator(CollectVisibleItems);
 
@@ -97,6 +102,15 @@ public sealed class TreeView: CompositeControl
         TabNavigation = TabNavigation.None;
         _ = AddHandler(Events.Key, OnKeyRouted);
     }
+
+    /// <summary>Raised before a caller- or input-driven selection change is committed.</summary>
+    /// <remarks>
+    /// Setting <see cref="System.ComponentModel.CancelEventArgs.Cancel"/> abandons the proposal. A
+    /// handler that changes the selection itself also abandons it, because the proposal it was
+    /// asked about no longer describes the current state. Normalization the control performs on
+    /// its own behalf is not cancellable.
+    /// </remarks>
+    public event EventHandler<TreeViewSelectionChangingEventArgs>? SelectionChanging;
 
     /// <summary>Raised after the selected item changes.</summary>
     public event EventHandler<TreeViewSelectionChangedEventArgs>? SelectionChanged;
@@ -139,14 +153,18 @@ public sealed class TreeView: CompositeControl
             // not a substitute for the property name a two-way binding needs.
             _ = SetProperty(ref field, value, InvalidationImpact.Render);
 
+            // Mode transitions invalidate pending proposals even when normalization leaves the
+            // selection unchanged.
+            _selectionVersion++;
+
             if (value == TreeSelectionMode.None)
             {
-                CommitSelection([]);
+                _ = CommitSelection([]);
             }
             else if (value == TreeSelectionMode.Single && _selectedItems.Count > 1)
             {
                 var first = CollectSelectedItems().FirstOrDefault();
-                CommitSelection(first is null ? [] : [first]);
+                _ = CommitSelection(first is null ? [] : [first]);
             }
         }
     } = TreeSelectionMode.Single;
@@ -245,7 +263,10 @@ public sealed class TreeView: CompositeControl
             return false;
         }
 
-        CommitSelection(next);
+        if (!CommitSelection(next, cancellable: true))
+        {
+            return false;
+        }
 
         if (selected)
         {
@@ -266,14 +287,14 @@ public sealed class TreeView: CompositeControl
             throw new InvalidOperationException("SelectAll requires multiple selection mode.");
         }
 
-        CommitSelection(CollectAllItems().Where(static item => item.IsEnabled));
+        _ = CommitSelection(CollectAllItems().Where(static item => item.IsEnabled), cancellable: true);
     }
 
     /// <summary>Clears the current selection.</summary>
     public void ClearSelection()
     {
         VerifyMutable();
-        CommitSelection([]);
+        _ = CommitSelection([], cancellable: true);
     }
 
     /// <summary>Expands every item in the tree.</summary>
@@ -574,11 +595,10 @@ public sealed class TreeView: CompositeControl
             _selectionAnchor ??= item;
         }
 
-        CommitSelection(next);
-        return true;
+        return CommitSelection(next, cancellable: true);
     }
 
-    private void CommitSelection(IEnumerable<TreeViewItem> items)
+    private bool CommitSelection(IEnumerable<TreeViewItem> items, bool cancellable = false)
     {
         var next = new HashSet<TreeViewItem>(items);
         var ownedItems = CollectAllItems();
@@ -597,34 +617,55 @@ public sealed class TreeView: CompositeControl
         var previous = SelectedItem;
         var changed = !_selectedItems.SetEquals(next);
 
+        if (!changed)
+        {
+            return false;
+        }
+
         // Capture the delta against the previous set before it is replaced. Ordering both
         // snapshots by the tree walk keeps them stable and comparable to SelectedItems.
         List<TreeViewItem> added = [];
         List<TreeViewItem> removed = [];
 
-        if (changed)
+        foreach (var item in ownedItems)
         {
-            foreach (var item in ownedItems)
+            if (next.Contains(item) && !_selectedItems.Contains(item))
             {
-                if (next.Contains(item) && !_selectedItems.Contains(item))
-                {
-                    added.Add(item);
-                }
-                else if (!next.Contains(item) && _selectedItems.Contains(item))
-                {
-                    removed.Add(item);
-                }
+                added.Add(item);
             }
-
-            // A detached item leaves the owned walk, so it can only be reported as removed here.
-            foreach (var item in _selectedItems)
+            else if (!next.Contains(item) && _selectedItems.Contains(item))
             {
-                if (!next.Contains(item) && !ownedItems.Contains(item))
-                {
-                    removed.Add(item);
-                }
+                removed.Add(item);
             }
         }
+
+        // A detached item leaves the owned walk, so it can only be reported as removed here.
+        foreach (var item in _selectedItems)
+        {
+            if (!next.Contains(item) && !ownedItems.Contains(item))
+            {
+                removed.Add(item);
+            }
+        }
+
+        var version = _selectionVersion;
+
+        if (cancellable)
+        {
+            var changing = new TreeViewSelectionChangingEventArgs(added, removed);
+            SelectionChanging?.Invoke(this, changing);
+
+            // A handler that mutated the selection invalidated the proposal it was shown, so the
+            // stale delta must not be committed on top of whatever it decided.
+            if (changing.Cancel ||
+                version != _selectionVersion ||
+                (SelectionMode == TreeSelectionMode.None && next.Count > 0))
+            {
+                return false;
+            }
+        }
+
+        _selectionVersion++;
 
         foreach (var item in _selectedItems)
         {
@@ -639,15 +680,13 @@ public sealed class TreeView: CompositeControl
         _selectedItems.Clear();
         _selectedItems.UnionWith(next);
         SelectedItem = CollectSelectedItems().FirstOrDefault();
+        NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+        NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
+        SelectionChanged?.Invoke(
+            this,
+            new TreeViewSelectionChangedEventArgs(previous, SelectedItem, added, removed));
 
-        if (changed)
-        {
-            NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
-            NotifyPropertyChanged(nameof(SelectedItems), InvalidationImpact.Render);
-            SelectionChanged?.Invoke(
-                this,
-                new TreeViewSelectionChangedEventArgs(previous, SelectedItem, added, removed));
-        }
+        return true;
     }
 
     internal void NotifyCheckStateChanged(TreeViewItem item)
@@ -716,7 +755,9 @@ public sealed class TreeView: CompositeControl
             _selectionAnchor = retained.FirstOrDefault();
         }
 
-        CommitSelection(retained);
+        // A structural rebuild may detach items a pending proposal still references.
+        _selectionVersion++;
+        _ = CommitSelection(retained);
     }
 
     private void FlattenVisible(List<Control> destination)
@@ -861,6 +902,7 @@ public sealed class TreeView: CompositeControl
 
         if (reason == ReleaseReason.Disposed)
         {
+            SelectionChanging = null;
             SelectionChanged = null;
             ItemInvoked = null;
         }

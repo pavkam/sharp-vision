@@ -106,6 +106,7 @@ namespace SharpVision.Controls.Collections
         protected override SharpVision.Styling.ThemeRole ThemeRole { get; }
         public event System.EventHandler<SharpVision.Controls.Collections.TreeViewItemInvokedEventArgs>? ItemInvoked;
         public event System.EventHandler<SharpVision.Controls.Collections.TreeViewSelectionChangedEventArgs>? SelectionChanged;
+        public event System.EventHandler<SharpVision.Controls.Collections.TreeViewSelectionChangingEventArgs>? SelectionChanging;
         public void ClearSelection() { }
         public void CollapseAll() { }
         public void ExpandAll() { }
@@ -161,6 +162,12 @@ namespace SharpVision.Controls.Collections
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> AddedItems { get; }
         public SharpVision.Controls.Collections.TreeViewItem? CurrentItem { get; }
         public SharpVision.Controls.Collections.TreeViewItem? PreviousItem { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> RemovedItems { get; }
+    }
+    public sealed class TreeViewSelectionChangingEventArgs : System.ComponentModel.CancelEventArgs
+    {
+        public TreeViewSelectionChangingEventArgs(System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> addedItems, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> removedItems) { }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> AddedItems { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TreeViewItem> RemovedItems { get; }
     }
 }

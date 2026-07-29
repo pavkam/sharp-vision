@@ -371,15 +371,16 @@ public sealed class NavigationViewSurfaceTests
             await surface.Keyboard.PressAsync(Code.Down);
         }
 
-        // Assert overflow and footer pinning
+        // Assert overflow and footer pinning. The generated bar is unpinned, so it renders the
+        // library default including its arrow buttons rather than a control-imposed thin line.
         view.SelectedItem.ShouldBeSameAs(items[^1]);
         surface.ShouldRender("""
                               NAV
-                              · Page 4  │
-                              · Page 5  │
-                              · Page 6  ┃
-                              · Page 7  ┃
-                              › Page 8  ┃
+                              · Page 4  ▲
+                              · Page 5  ░
+                              · Page 6  ▓
+                              · Page 7  ▓
+                              › Page 8  ▼
                               · Footer
                              """);
 

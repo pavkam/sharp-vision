@@ -40,16 +40,21 @@ public sealed class NavigationView: CompositeControl
 
             var previous = ActualScrollBarStyle;
             field = value;
+
+            // Forward the nullable value, never a substitute. Assigning a concrete style here
+            // would consume the bar's theming slot permanently, and the stack is private so no
+            // caller could reset it. The resolved value must be read back afterwards, because the
+            // bar is what resolves null.
+            _itemsStack.ScrollBarStyle = field;
             var current = ActualScrollBarStyle;
 
-            // Chrome changes the reserved extent, so they need a measure pass; everything else is
+            // Chrome changes the reserved extent, so it needs a measure pass; everything else is
             // appearance only.
             var impact = previous.Chrome != current.Chrome
                 ? InvalidationImpact.Measure
                 : previous == current
                     ? InvalidationImpact.None
                     : InvalidationImpact.Render;
-            _itemsStack.ScrollBarStyle = current;
             NotifyPropertyChanged(nameof(ScrollBarStyle), impact);
 
             if (previous != current)
@@ -59,12 +64,12 @@ public sealed class NavigationView: CompositeControl
         }
     }
 
-    private static ScrollBarStyle DefaultScrollBarStyle =>
-        Controls.ScrollBarStyle.ThinLine;
-
     /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
-    public ScrollBarStyle ActualScrollBarStyle =>
-        ScrollBarStyle ?? DefaultScrollBarStyle;
+    /// <remarks>
+    /// Resolved by the bar itself, so a null local value reports whatever the active Theme or the
+    /// library default supplies rather than an opinion this control baked in.
+    /// </remarks>
+    public ScrollBarStyle ActualScrollBarStyle => _itemsStack.ActualScrollBarStyle;
 
     /// <summary>Initializes a quiet square navigation background with an empty item collection.</summary>
     public NavigationView()
@@ -87,8 +92,7 @@ public sealed class NavigationView: CompositeControl
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
-            ShowScrollBars = ShowScrollBars.WhenNeeded,
-            ScrollBarStyle = DefaultScrollBarStyle
+            ShowScrollBars = ShowScrollBars.WhenNeeded
         };
         _navigator = new CurrentItemNavigator(CollectNavigableEntries);
 

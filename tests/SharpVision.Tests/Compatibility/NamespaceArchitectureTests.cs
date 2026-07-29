@@ -43,7 +43,8 @@ public sealed class NamespaceArchitectureTests
                 "TreeViewItem",
                 "TreeViewItemCollection",
                 "TreeViewItemInvokedEventArgs",
-                "TreeViewSelectionChangedEventArgs"
+                "TreeViewSelectionChangedEventArgs",
+                "TreeViewSelectionChangingEventArgs"
             ],
             ["SharpVision.Controls.Display"] =
             [

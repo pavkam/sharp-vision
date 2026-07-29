@@ -170,6 +170,98 @@ public sealed class TreeViewSelectionDeltaTests
         tree.SelectedItems.ShouldBe([first]);
     }
 
+
+    /// <summary>
+    /// Verifies a cancelled proposal precedes no commit and leaves the previous selection intact,
+    /// matching the ListView transaction contract.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenChangingIsCancelled_PreservesState()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        List<string> order = [];
+        tree.SelectionChanging += (_, eventArgs) =>
+        {
+            order.Add($"changing:{Names(eventArgs.AddedItems)}:{Names(eventArgs.RemovedItems)}");
+            eventArgs.Cancel = eventArgs.AddedItems.Any(item => ReferenceEquals(item, second));
+        };
+        tree.SelectionChanged += (_, eventArgs) =>
+            order.Add($"changed:{Names(eventArgs.AddedItems)}:{Names(eventArgs.RemovedItems)}");
+
+        var accepted = tree.SetSelected(first, true);
+        var refused = tree.SetSelected(second, true);
+
+        accepted.ShouldBeTrue();
+        refused.ShouldBeFalse();
+        tree.SelectedItems.ShouldBe([first]);
+        order.ShouldBe([
+            "changing:first:",
+            "changed:first:",
+            "changing:second:"
+        ]);
+    }
+
+    /// <summary>
+    /// Verifies a handler that changes the selection itself abandons the proposal it was shown,
+    /// so a stale delta is never committed on top of the handler's own decision.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenHandlerReentersAndChangesSelection_AbandonsTheProposal()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        var reentered = false;
+        tree.SelectionChanging += (_, _) =>
+        {
+            if (reentered)
+            {
+                return;
+            }
+
+            reentered = true;
+            _ = tree.SetSelected(first, true);
+        };
+
+        var accepted = tree.SetSelected(second, true);
+
+        accepted.ShouldBeFalse();
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies normalization the control performs on its own behalf is not cancellable.</summary>
+    [Fact]
+    public void SelectionMode_WhenNarrowed_IgnoresCancellation()
+    {
+        var tree = Build(out var first, out _, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        tree.SelectAll();
+        tree.SelectionChanging += (_, eventArgs) => eventArgs.Cancel = true;
+
+        tree.SelectionMode = TreeSelectionMode.Single;
+
+        // Honouring the cancel would leave several items selected under Single mode.
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    /// <summary>Verifies structural repair is not cancellable either.</summary>
+    [Fact]
+    public void Remove_WhenSelectedItemIsDetached_IgnoresCancellation()
+    {
+        var tree = Build(out var first, out var second, out _);
+        tree.SelectionMode = TreeSelectionMode.Multiple;
+        _ = tree.SetSelected(first, true);
+        _ = tree.SetSelected(second, true);
+        tree.SelectionChanging += (_, eventArgs) => eventArgs.Cancel = true;
+
+        _ = tree.Items.Remove(second);
+
+        tree.SelectedItems.ShouldBe([first]);
+    }
+
+    private static string Names(IReadOnlyList<TreeViewItem> items) =>
+        string.Join(',', items.Select(static item => item.Header));
+
     private static TreeView Build(out TreeViewItem first, out TreeViewItem second, out TreeViewItem child)
     {
         var tree = new TreeView();

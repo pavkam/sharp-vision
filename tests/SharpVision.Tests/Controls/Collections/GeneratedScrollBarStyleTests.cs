@@ -14,17 +14,22 @@ using System.Reflection;
 /// </remarks>
 public sealed class GeneratedScrollBarStyleTests
 {
-    /// <summary>Verifies each composite starts unassigned and resolves to its documented default.</summary>
+    /// <summary>
+    /// Verifies neither composite pins a style onto the bar it owns, so an unassigned control
+    /// resolves the library default and leaves the theming slot free.
+    /// </summary>
     [Fact]
-    public void ActualScrollBarStyle_WhenUnassigned_ResolvesTheControlDefault()
+    public void ActualScrollBarStyle_WhenUnassigned_LeavesTheBarUnpinned()
     {
         var tree = new TreeView();
         var navigation = new NavigationView();
 
         tree.ScrollBarStyle.ShouldBeNull();
-        tree.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
         navigation.ScrollBarStyle.ShouldBeNull();
-        navigation.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinLine);
+        GeneratedStyle(tree).ShouldBeNull();
+        GeneratedStyle(navigation).ShouldBeNull();
+        tree.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
+        navigation.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
     }
 
     /// <summary>Verifies a local assignment resolves and publishes both surfaces.</summary>
@@ -35,35 +40,36 @@ public sealed class GeneratedScrollBarStyleTests
         List<string?> changed = [];
         tree.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
 
-        tree.ScrollBarStyle = ScrollBarStyle.Default;
+        tree.ScrollBarStyle = ScrollBarStyle.ThinBlock;
 
-        tree.ScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
-        tree.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
+        tree.ScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
+        tree.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
         changed.ShouldContain(nameof(TreeView.ScrollBarStyle));
         changed.ShouldContain(nameof(TreeView.ActualScrollBarStyle));
     }
 
-    /// <summary>Verifies clearing the local value returns the bar to the control default.</summary>
+    /// <summary>Verifies clearing the local value releases the bar back to the Theme.</summary>
     [Fact]
-    public void ScrollBarStyle_WhenReset_ReturnsToTheControlDefault()
+    public void ScrollBarStyle_WhenReset_ReleasesTheBar()
     {
-        var navigation = new NavigationView { ScrollBarStyle = ScrollBarStyle.Default };
+        var navigation = new NavigationView { ScrollBarStyle = ScrollBarStyle.ThinLine };
 
         navigation.ScrollBarStyle = null;
 
         navigation.ScrollBarStyle.ShouldBeNull();
-        navigation.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinLine);
+        GeneratedStyle(navigation).ShouldBeNull();
+        navigation.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.Default);
     }
 
     /// <summary>Verifies assigning the same value publishes nothing.</summary>
     [Fact]
     public void ScrollBarStyle_WhenUnchanged_RaisesNothing()
     {
-        var tree = new TreeView { ScrollBarStyle = ScrollBarStyle.Default };
+        var tree = new TreeView { ScrollBarStyle = ScrollBarStyle.ThinBlock };
         List<string?> changed = [];
         tree.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
 
-        tree.ScrollBarStyle = ScrollBarStyle.Default;
+        tree.ScrollBarStyle = ScrollBarStyle.ThinBlock;
 
         changed.ShouldBeEmpty();
     }
@@ -78,15 +84,15 @@ public sealed class GeneratedScrollBarStyleTests
         var tree = new TreeView();
         var navigation = new NavigationView();
 
-        tree.ScrollBarStyle = ScrollBarStyle.Default;
-        navigation.ScrollBarStyle = ScrollBarStyle.ThinBlock;
+        tree.ScrollBarStyle = ScrollBarStyle.ThinBlock;
+        navigation.ScrollBarStyle = ScrollBarStyle.ThinLine;
 
-        GeneratedStyle(tree).ShouldBe(ScrollBarStyle.Default);
-        GeneratedStyle(navigation).ShouldBe(ScrollBarStyle.ThinBlock);
+        GeneratedStyle(tree).ShouldBe(ScrollBarStyle.ThinBlock);
+        GeneratedStyle(navigation).ShouldBe(ScrollBarStyle.ThinLine);
 
         tree.ScrollBarStyle = null;
 
-        GeneratedStyle(tree).ShouldBe(ScrollBarStyle.ThinBlock);
+        GeneratedStyle(tree).ShouldBeNull();
     }
 
     private static ScrollBarStyle? GeneratedStyle(Control composite)
