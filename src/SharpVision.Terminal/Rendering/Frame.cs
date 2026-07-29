@@ -101,10 +101,15 @@ public sealed class Frame: IDisposable
     /// <summary>Gets or sets the previous committed frame for on-demand cell copying.</summary>
     /// <remarks>
     /// When set, render-clean control subtrees can copy their cells from this reference
-    /// instead of re-executing their render pass. The reference is borrowed; the caller
-    /// retains ownership and must ensure it remains alive for the duration of rendering.
+    /// instead of re-executing their render pass. The reference is borrowed; the renderer
+    /// retains ownership and must keep it alive for the duration of rendering. This is
+    /// deliberately not public: the committed frame is renderer-owned, and handing it to callers
+    /// would let them mutate or dispose the baseline that damage tracking compares against.
+    /// Use <see cref="Renderer.AttachCommittedFrame"/> to establish the link and the
+    /// <see cref="Canvas.HasPreviousFrame"/> and <see cref="Canvas.CopyFromPrevious"/> pair to
+    /// consume it.
     /// </remarks>
-    public Frame? PreviousFrame { get; set; }
+    internal Frame? PreviousFrame { get; set; }
 
     /// <summary>Gets the desired cursor state committed with this frame.</summary>
     public Cursor Cursor { get; private set; }
@@ -380,13 +385,39 @@ public sealed class Frame: IDisposable
     /// <param name="source">The compatible active source frame with the same dimensions.</param>
     /// <param name="region">The region to copy, intersected with the frame bounds.</param>
     /// <remarks>
-    /// Grapheme data is re-appended to this frame's text arena with updated offsets.
-    /// Continuation cells are copied verbatim since absolute lead indices are stable
-    /// across same-sized frames. Blank cells are copied without text arena interaction.
+    /// <para>
+    /// Grapheme data is re-appended to this frame's text arena with updated offsets. Blank cells
+    /// are copied without text arena interaction.
+    /// </para>
+    /// <para>
+    /// The region is a boundary, not a suggestion. A wide cluster that straddles it would leave an
+    /// orphan lead or an orphan continuation behind, so any cell whose complete owner does not fit
+    /// inside the region is written blank instead of copied. That keeps the destination a valid
+    /// frame without writing a single cell outside the caller's region, which a neighbouring dirty
+    /// branch may own.
+    /// </para>
+    /// <para>
+    /// Compatibility and the arena bound are checked before the first write, so a rejected copy
+    /// never leaves the destination partially mutated.
+    /// </para>
     /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The source geometry or width policy differs, or the copy would exceed the finite arena.
+    /// </exception>
     internal void CopyRegionFrom(Frame source, Rect region)
     {
-        Debug.Assert(source.Size == Size, "Region copy requires equal frame dimensions.");
+        Debug.Assert(source is not null, "A region copy always has a source frame.");
+        ThrowIfDisposed();
+        source.ThrowIfDisposed();
+
+        if (source.Size != Size || source.AmbiguousWidth != AmbiguousWidth)
+        {
+            // Using this frame's stride against a differently sized source would silently read
+            // the wrong row, so reject before touching any destination cell.
+            throw new InvalidOperationException(
+                "The previous frame geometry and width policy must match this frame.");
+        }
+
         var target = Bounds.Intersect(region).Intersect(source.Bounds);
 
         if (target.Width == 0 || target.Height == 0)
@@ -394,18 +425,30 @@ public sealed class Frame: IDisposable
             return;
         }
 
+        var required = MeasureRegionText(source, target);
+        EnsureAppendable(required);
+        EnsureCapacity(checked(TextLength + required));
         var revision = NextMutationRevision();
 
         for (var y = target.Y; y < target.Bottom; y++)
         {
+            var rowStart = checked(y * Size.Width);
+
             for (var x = target.X; x < target.Right; x++)
             {
-                var index = checked((y * Size.Width) + x);
+                var index = checked(rowStart + x);
                 var cell = source.Cells[index];
+
+                if (!IsCompleteWithinRow(cell, x, rowStart, target))
+                {
+                    Cells[index] = Cell.Blank(cell.Style, revision);
+                    continue;
+                }
 
                 if (cell.IsContinuation || cell.Length == 0)
                 {
-                    // Blank or continuation: no grapheme data to copy.
+                    // Blank or continuation: no grapheme data to copy. Absolute lead indices are
+                    // stable across same-sized frames, so the reference stays correct.
                     cell.MutationRevision = revision;
                     Cells[index] = cell;
                 }
@@ -413,7 +456,6 @@ public sealed class Frame: IDisposable
                 {
                     // Lead cell: re-append grapheme bytes and adjust offset.
                     var grapheme = source.Text.Slice(cell.Offset, cell.Length);
-                    EnsureCapacity(checked(TextLength + cell.Length));
                     grapheme.CopyTo(Text[TextLength..]);
                     cell.Offset = TextLength;
                     cell.MutationRevision = revision;
@@ -422,6 +464,44 @@ public sealed class Frame: IDisposable
                 }
             }
         }
+    }
+
+    private static bool IsCompleteWithinRow(in Cell cell, int x, int rowStart, Rect target)
+    {
+        // A continuation owns nothing itself; it is only valid while its lead travels with it.
+        if (cell.IsContinuation)
+        {
+            return cell.LeadIndex >= checked(rowStart + target.X);
+        }
+
+        // A lead must bring all of its continuation columns along.
+        return cell.Length == 0 || checked(x + cell.Width) <= target.Right;
+    }
+
+    private static int MeasureRegionText(Frame source, Rect target)
+    {
+        // Counting first is what makes the arena bound enforceable: an over-budget region is
+        // rejected whole instead of appending until it runs out midway through a row.
+        var total = 0;
+
+        for (var y = target.Y; y < target.Bottom; y++)
+        {
+            var rowStart = checked(y * source.Size.Width);
+
+            for (var x = target.X; x < target.Right; x++)
+            {
+                var cell = source.Cells[checked(rowStart + x)];
+
+                if (!cell.IsContinuation &&
+                    cell.Length != 0 &&
+                    IsCompleteWithinRow(cell, x, rowStart, target))
+                {
+                    total = checked(total + cell.Length);
+                }
+            }
+        }
+
+        return total;
     }
 
     /// <summary>Gets a copied internal cell by absolute row-major index.</summary>

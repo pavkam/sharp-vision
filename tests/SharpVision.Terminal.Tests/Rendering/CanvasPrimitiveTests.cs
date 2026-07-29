@@ -755,7 +755,10 @@ public sealed class CanvasPrimitiveTests
         actual.UnderlineColor.ShouldBe(original.UnderlineColor);
     }
 
-    private static void AssertRows(Frame frame, params string[] expected)
+    /// <summary>Asserts the exact rendered text of every frame row.</summary>
+    /// <param name="frame">The rendered frame under test.</param>
+    /// <param name="expected">One expected string per row, in top-to-bottom order.</param>
+    internal static void AssertRows(Frame frame, params string[] expected)
     {
         expected.Length.ShouldBe(frame.Size.Height);
 

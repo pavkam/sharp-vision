@@ -348,7 +348,7 @@ public static class Encoder
         Interpreter interpreter)
     {
         if (style.Underline != Underline.None &&
-            profile.Capabilities.StyledUnderlines.IsSupported &&
+            profile.Capabilities.StyledUnderlines.IsAuthoritative &&
             profile.Programs.TryWrite("Smulx", [(int) style.Underline], interpreter, destination))
         {
             return (Attributes.None, style.Underline);
@@ -423,7 +423,7 @@ public static class Encoder
     {
         if (color == Color.Default ||
             !hasUnderline ||
-            !profile.Capabilities.UnderlineColor.IsSupported ||
+            !profile.Capabilities.UnderlineColor.IsAuthoritative ||
             !profile.Programs.Has("Setulc"))
         {
             return Color.Default;
@@ -479,13 +479,13 @@ public static class Encoder
         attributes = programs.Has("rev") ? attributes : attributes & ~Attributes.Reverse;
         attributes = programs.Has("invis") ? attributes : attributes & ~Attributes.Hidden;
         attributes = programs.Has("smxx") ? attributes : attributes & ~Attributes.Strike;
-        attributes = programs.Has("Smol") && profile.Capabilities.Overline.IsSupported
+        attributes = programs.Has("Smol") && profile.Capabilities.Overline.IsAuthoritative
             ? attributes
             : attributes & ~Attributes.Overline;
         var underline = value.Underline;
 
         if (underline != Underline.None &&
-            (!profile.Capabilities.StyledUnderlines.IsSupported || !programs.Has("Smulx")))
+            (!profile.Capabilities.StyledUnderlines.IsAuthoritative || !programs.Has("Smulx")))
         {
             attributes |= Attributes.Underline;
             underline = Underline.None;
@@ -496,7 +496,7 @@ public static class Encoder
             attributes &= ~Attributes.Underline;
         }
 
-        var underlineColor = profile.Capabilities.UnderlineColor.IsSupported && programs.Has("Setulc")
+        var underlineColor = profile.Capabilities.UnderlineColor.IsAuthoritative && programs.Has("Setulc")
             ? Palette.Project(value.UnderlineColor, profile.RenderingColorDepth)
             : Color.Default;
         return new CellStyle(
@@ -652,18 +652,18 @@ public static class Encoder
 
     private static CellStyle ProjectAnsi(CellStyle value, TerminalCapabilities capabilities)
     {
-        var attributes = capabilities.Overline.IsSupported
+        var attributes = capabilities.Overline.IsAuthoritative
             ? value.Attributes
             : value.Attributes & ~Attributes.Overline;
         var underline = value.Underline;
 
-        if (underline != Underline.None && !capabilities.StyledUnderlines.IsSupported)
+        if (underline != Underline.None && !capabilities.StyledUnderlines.IsAuthoritative)
         {
             attributes |= Attributes.Underline;
             underline = Underline.None;
         }
 
-        var underlineColor = capabilities.UnderlineColor.IsSupported
+        var underlineColor = capabilities.UnderlineColor.IsAuthoritative
             ? Palette.Project(value.UnderlineColor, capabilities.ColorDepth)
             : Color.Default;
         return new CellStyle(

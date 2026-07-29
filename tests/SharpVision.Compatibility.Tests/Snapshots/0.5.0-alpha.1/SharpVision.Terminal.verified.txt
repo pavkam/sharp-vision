@@ -148,6 +148,7 @@ namespace SharpVision.Terminal.Capabilities
     public readonly struct Feature : System.IEquatable<SharpVision.Terminal.Capabilities.Feature>
     {
         public Feature(SharpVision.Terminal.Capabilities.Support state, SharpVision.Terminal.Capabilities.Origin origin) { }
+        public bool IsAuthoritative { get; }
         public bool IsSupported { get; }
         public SharpVision.Terminal.Capabilities.Origin Origin { get; }
         public SharpVision.Terminal.Capabilities.Support State { get; }
@@ -1309,7 +1310,6 @@ namespace SharpVision.Terminal.Rendering
         public int MaxPlacements { get; }
         public int MaxTextBytes { get; }
         public int PlacementCount { get; }
-        public SharpVision.Terminal.Rendering.Frame? PreviousFrame { get; set; }
         public SharpVision.Terminal.Geometry.Size Size { get; }
         public void Clear(SharpVision.Terminal.Rendering.CellStyle style = default) { }
         public int CopyGrapheme(SharpVision.Terminal.Geometry.Point point, System.Span<byte> destination) { }
@@ -1386,8 +1386,8 @@ namespace SharpVision.Terminal.Rendering
     {
         public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null) { }
         public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.Route? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null) { }
-        public SharpVision.Terminal.Rendering.Frame? FrontFrame { get; }
         public System.Exception? LastCleanupException { get; }
+        public bool AttachCommittedFrame(SharpVision.Terminal.Rendering.Frame back) { }
         public void Dispose() { }
         public void Invalidate() { }
         public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.Metrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.Capabilities capabilities, System.Threading.CancellationToken cancellationToken) { }

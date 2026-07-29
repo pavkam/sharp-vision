@@ -91,3 +91,14 @@ retained-memory assertions are mandatory.
 
 Allocation and retained-memory assertions gate ordinary CI. Wall-clock
 thresholds require a dedicated benchmark environment.
+
+Geometry bounds are the one wall-clock family that does gate ordinary CI,
+because the failure mode is a frozen render thread rather than a slow one.
+`Canvas` primitives reject geometry disjoint from the clip in constant time,
+clip axis-aligned spans before iterating, and fast-forward Bresenham traversal
+to the first visible step while preserving its exact error and tie behavior.
+Ellipse intermediates use `Int128`, because the cubic products overflow `Int64`
+at roughly 1.3 million cells per axis and a wrapped error term can stop the
+horizontal bounds advancing entirely. Regressions assert extreme coordinates,
+maximum radii, and past-overflow bounds all complete inside a budget that a
+per-coordinate loop cannot meet.

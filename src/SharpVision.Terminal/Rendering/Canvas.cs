@@ -40,9 +40,25 @@ public readonly struct Canvas
     /// <summary>Copies cells from the previous frame within the given region.</summary>
     /// <param name="region">The region to copy, intersected with this canvas's clip.</param>
     /// <remarks>
+    /// <para>
     /// Used to restore cells for render-clean subtrees. Does nothing when no previous
     /// frame is set or the region is empty after clipping.
+    /// </para>
+    /// <para>
+    /// Only complete grapheme owners are copied. A wide cluster straddling the clipped region is
+    /// written blank rather than copied, so the frame never gains an orphan lead or an orphan
+    /// continuation, and no cell outside the region is touched.
+    /// </para>
+    /// <para>
+    /// Geometry compatibility and the destination arena bound are checked before the first write,
+    /// so a rejected copy leaves this canvas unchanged.
+    /// </para>
     /// </remarks>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The previous frame geometry or width policy differs, or the copy would exceed the finite
+    /// text arena of this frame.
+    /// </exception>
     public void CopyFromPrevious(Rect region)
     {
         _frame.ThrowIfDisposed();
@@ -156,7 +172,7 @@ public readonly struct Canvas
         Span<char> buffer = stackalloc char[2];
         var length = ValidateRune(value, buffer);
 
-        if (bounds.Width == 0 || bounds.Height == 0)
+        if (bounds.Width == 0 || bounds.Height == 0 || IsDisjointFromClip(bounds))
         {
             return;
         }
@@ -188,14 +204,19 @@ public readonly struct Canvas
         var width = right - left;
         var height = bottom - top;
         var oddHeight = height & 1;
-        var horizontalError = 4 * (1 - width) * height * height;
-        var verticalError = 4 * (oddHeight + 1) * width * width;
-        var error = horizontalError + verticalError + (oddHeight * width * width);
+
+        // These intermediates are cubic in the axis length. A roughly square rect overflows Int64
+        // at about 1.3 million cells per axis, and a wrapped error term can stop advancing the
+        // horizontal bounds entirely, turning the loop below into an infinite one. Int128 keeps
+        // every product exact across the whole valid Rect range.
+        var horizontalError = (Int128) 4 * (1 - width) * height * height;
+        var verticalError = (Int128) 4 * (oddHeight + 1) * width * width;
+        var error = horizontalError + verticalError + ((Int128) oddHeight * width * width);
 
         top += (height + 1) / 2;
         bottom = top - oddHeight;
-        width *= 8 * width;
-        oddHeight = 8 * height * height;
+        var horizontalStep = (Int128) 8 * width * width;
+        var verticalStep = (Int128) 8 * height * height;
 
         do
         {
@@ -209,14 +230,14 @@ public readonly struct Canvas
             {
                 top++;
                 bottom--;
-                error += verticalError += width;
+                error += verticalError += horizontalStep;
             }
 
             if (doubled >= horizontalError || 2 * error > verticalError)
             {
                 left++;
                 right--;
-                error += horizontalError += oddHeight;
+                error += horizontalError += verticalStep;
             }
         } while (left <= right);
 
@@ -248,6 +269,12 @@ public readonly struct Canvas
         ArgumentOutOfRangeException.ThrowIfNegative(radius);
         Span<char> buffer = stackalloc char[2];
         var length = ValidateRune(value, buffer);
+
+        if (IsOutlineDisjointFromClip(center, radius))
+        {
+            return;
+        }
+
         var x = (long) radius;
         var y = 0L;
         var error = 1L - radius;
@@ -493,6 +520,11 @@ public readonly struct Canvas
     /// <param name="length">The non-negative cell count.</param>
     /// <param name="line">The validated line family.</param>
     /// <param name="style">The semantic cell style.</param>
+    /// <remarks>
+    /// The visible span is computed before iterating, so a length or origin far outside the clip
+    /// costs constant time instead of one iteration per requested cell. Coordinates are resolved in
+    /// 64-bit space, so an origin plus length beyond the integer range clips rather than throwing.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="length"/> is negative.</exception>
     /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
     public void DrawHorizontalLine(Point origin, int length, LineStyle line, CellStyle style = default)
@@ -500,10 +532,18 @@ public readonly struct Canvas
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         _frame.ThrowIfDisposed();
 
-        for (var offset = 0; offset < length; offset++)
+        if (origin.Y < _clip.Y || origin.Y >= _clip.Bottom)
+        {
+            return;
+        }
+
+        var first = Math.Max((long) origin.X, _clip.X);
+        var limit = Math.Min((long) origin.X + length, _clip.Right);
+
+        for (var x = first; x < limit; x++)
         {
             DrawLineCellCore(
-                new Point(checked(origin.X + offset), origin.Y),
+                new Point((int) x, origin.Y),
                 LineConnections.Left | LineConnections.Right,
                 line,
                 style,
@@ -523,10 +563,18 @@ public readonly struct Canvas
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         _frame.ThrowIfDisposed();
 
-        for (var offset = 0; offset < length; offset++)
+        if (origin.X < _clip.X || origin.X >= _clip.Right)
+        {
+            return;
+        }
+
+        var first = Math.Max((long) origin.Y, _clip.Y);
+        var limit = Math.Min((long) origin.Y + length, _clip.Bottom);
+
+        for (var y = first; y < limit; y++)
         {
             DrawLineCellCore(
-                new Point(origin.X, checked(origin.Y + offset)),
+                new Point(origin.X, (int) y),
                 LineConnections.Up | LineConnections.Down,
                 line,
                 style,
@@ -580,10 +628,13 @@ public readonly struct Canvas
     {
         _frame.ThrowIfDisposed();
 
-        if (bounds.Width == 0 || bounds.Height == 0)
+        if (bounds.Width == 0 || bounds.Height == 0 || IsDisjointFromClip(bounds))
         {
             return;
         }
+
+        // Past the disjointness reject the box overlaps the clip, so its origin is below the clip
+        // edge and the inset arithmetic below cannot wrap past int.MaxValue.
 
         if (bounds.Width == 1)
         {
@@ -915,6 +966,47 @@ public readonly struct Canvas
         DrawGeometryPoint(center.X + x, center.Y - y, value, style);
     }
 
+    private bool IsDisjointFromClip(Rect bounds)
+    {
+        // Rect.Right and Rect.Bottom saturate, so this comparison is safe for any valid rect.
+        return bounds.Right <= _clip.X ||
+               bounds.X >= _clip.Right ||
+               bounds.Bottom <= _clip.Y ||
+               bounds.Y >= _clip.Bottom;
+    }
+
+    private bool IsOutlineDisjointFromClip(Point center, int radius)
+    {
+        // An outline is visible only where the clip meets the ring itself. Testing the bounding
+        // box alone would still walk a radius that swallows the whole clip, so compare the radius
+        // against the nearest and farthest clip distances. Squared distances need more than 64
+        // bits once coordinates approach the integer extremes.
+        if (_clip.Width == 0 || _clip.Height == 0)
+        {
+            return true;
+        }
+
+        var left = (long) _clip.X;
+        var top = (long) _clip.Y;
+        var right = (long) _clip.Right - 1;
+        var bottom = (long) _clip.Bottom - 1;
+        var x = (long) center.X;
+        var y = (long) center.Y;
+        var nearX = Math.Max(0L, Math.Max(left - x, x - right));
+        var nearY = Math.Max(0L, Math.Max(top - y, y - bottom));
+        var farX = Math.Max(Math.Abs(x - left), Math.Abs(x - right));
+        var farY = Math.Max(Math.Abs(y - top), Math.Abs(y - bottom));
+
+        // One cell of slack on each side keeps the reject conservative against the rasterizer's
+        // own rounding, so a genuinely grazing arc is never discarded.
+        var near = ((Int128) nearX * nearX) + ((Int128) nearY * nearY);
+        var far = ((Int128) farX * farX) + ((Int128) farY * farY);
+        var inner = (Int128) Math.Max(0L, radius - 2L);
+        var outer = (Int128) radius + 2;
+
+        return (outer * outer) < near || (inner * inner) > far;
+    }
+
     private void DrawGeometryPoint(long x, long y, ReadOnlySpan<char> value, CellStyle style)
     {
         if (x < _clip.X || x >= _clip.Right || y < _clip.Y || y >= _clip.Bottom)
@@ -943,17 +1035,49 @@ public readonly struct Canvas
         var y = (long) start.Y;
         var endX = (long) end.X;
         var endY = (long) end.Y;
+
+        // Constant-time reject. A segment whose bounding box misses the clip cannot contribute a
+        // single cell, so it must not cost one iteration per integer step between its endpoints.
+        if (Math.Max(x, endX) < _clip.X ||
+            Math.Min(x, endX) >= _clip.Right ||
+            Math.Max(y, endY) < _clip.Y ||
+            Math.Min(y, endY) >= _clip.Bottom)
+        {
+            return;
+        }
+
         var dx = Math.Abs(endX - x);
         var stepX = x < endX ? 1L : -1L;
         var dy = -Math.Abs(endY - y);
         var stepY = y < endY ? 1L : -1L;
         var error = dx + dy;
+        var steps = Math.Max(dx, -dy);
+        var skip = FirstVisibleStep(x, y, stepX, stepY, dx, -dy, steps);
 
-        while (true)
+        if (skip > 0)
+        {
+            // Fast-forward the recurrence instead of iterating an invisible prefix. The major axis
+            // advances once per iteration and the minor axis advances a closed-form number of
+            // times, so the resumed state is bit-identical to the state the loop would have
+            // reached, preserving Bresenham's exact error and tie behavior.
+            var (advancedX, advancedY) = AdvanceCounts(dx, -dy, skip);
+            x += advancedX * stepX;
+            y += advancedY * stepY;
+            error = dx + dy - (advancedX * -dy) + (advancedY * dx);
+        }
+
+        for (var step = skip; ; step++)
         {
             DrawGeometryPoint(x, y, value, style);
 
             if (x == endX && y == endY)
+            {
+                return;
+            }
+
+            // Every later point is on the far side of the clip along the major axis, so no
+            // remaining iteration can draw anything.
+            if (step >= steps || IsPastClip(x, y, stepX, stepY, dx, -dy))
             {
                 return;
             }
@@ -973,6 +1097,45 @@ public readonly struct Canvas
             }
         }
     }
+
+    private static (long X, long Y) AdvanceCounts(long dx, long dy, long step)
+    {
+        // The major axis advances on every iteration. The minor axis advance count after `step`
+        // iterations is the exact integer the recurrence produces.
+        Debug.Assert(step >= 0, "A fast-forward never runs backwards.");
+
+        return dx >= dy
+            ? (step, dx == 0 ? 0 : ((2 * dy * step) + dx) / (2 * dx))
+            : (dy == 0 ? 0 : ((2 * dx * step) + dy) / (2 * dy), step);
+    }
+
+    private long FirstVisibleStep(
+        long x,
+        long y,
+        long stepX,
+        long stepY,
+        long dx,
+        long dy,
+        long steps)
+    {
+        // Only the major axis is a strict function of the iteration index, so it alone can bound
+        // the invisible prefix exactly. The minor axis is handled by ordinary per-point clipping.
+        var skip = dx >= dy
+            ? StepsUntilInRange(x, stepX, _clip.X, _clip.Right)
+            : StepsUntilInRange(y, stepY, _clip.Y, _clip.Bottom);
+
+        return Math.Clamp(skip, 0, steps);
+    }
+
+    private static long StepsUntilInRange(long value, long step, long minimum, long limit) =>
+        step > 0
+            ? value < minimum ? minimum - value : 0
+            : value >= limit ? value - limit + 1 : 0;
+
+    private bool IsPastClip(long x, long y, long stepX, long stepY, long dx, long dy) =>
+        dx >= dy
+            ? stepX > 0 ? x >= _clip.Right : x < _clip.X
+            : stepY > 0 ? y >= _clip.Bottom : y < _clip.Y;
 
     private void DrawLineCellCore(
         Point point,

@@ -134,17 +134,53 @@ public sealed class Renderer: IDisposable
 
     /// <summary>Gets the last committed front buffer, or null before the first successful render.</summary>
     /// <remarks>
-    /// The caller must ensure no concurrent
-    /// <see cref="RenderAsync(Frame, ITransport, TerminalProfile, CancellationToken)"/> is in progress.
-    /// The reference is valid until the next completed render replaces or disposes it.
+    /// Renderer-owned and therefore not public. Damage tracking compares every target against this
+    /// baseline, so external mutation would silently desynchronize the frame from the physical
+    /// terminal, and external disposal would permanently break a live renderer.
     /// </remarks>
-    public Frame? FrontFrame
+    internal Frame? FrontFrame
     {
         get
         {
             ThrowIfDisposed();
             return _front;
         }
+    }
+
+    /// <summary>
+    /// Lets a target frame copy render-clean regions from the last committed frame.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This replaces handing out the committed frame itself. The baseline stays renderer-owned and
+    /// is reachable only through <see cref="Canvas.HasPreviousFrame"/> and
+    /// <see cref="Canvas.CopyFromPrevious"/>, which read cells without exposing the frame object,
+    /// so a caller can neither mutate nor dispose the state damage tracking depends on.
+    /// </para>
+    /// <para>
+    /// Attach only when cell positions did not move. After a layout pass the previous cells belong
+    /// to different coordinates and copying them would render stale content.
+    /// </para>
+    /// <para>
+    /// The link is borrowed for one render. The caller must not start a concurrent render, and the
+    /// attachment lapses when the next completed render replaces the committed frame.
+    /// </para>
+    /// </remarks>
+    /// <param name="back">The non-null target frame that will consume clean regions.</param>
+    /// <returns>
+    /// <see langword="true"/> when a committed frame was attached; <see langword="false"/> before
+    /// the first successful render, when there is nothing to copy.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="back"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The renderer or the target frame is disposed.</exception>
+    public bool AttachCommittedFrame(Frame back)
+    {
+        ArgumentNullException.ThrowIfNull(back);
+        ThrowIfDisposed();
+        back.ThrowIfDisposed();
+        back.PreviousFrame = _front;
+
+        return _front is not null;
     }
 
     /// <summary>Forces the next render to redraw the complete target frame.</summary>
@@ -244,7 +280,7 @@ public sealed class Renderer: IDisposable
         Interpreter? transactionInterpreter = null;
         GraphicsBackendResult backendResult = default;
         var backendPrepared = false;
-        var synchronized = profile.Capabilities.SynchronizedOutput.IsSupported;
+        var synchronized = profile.Capabilities.SynchronizedOutput.IsAuthoritative;
         var started = Stopwatch.GetTimestamp();
         try
         {

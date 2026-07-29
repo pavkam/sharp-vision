@@ -449,11 +449,7 @@ public sealed class Session: IAsyncDisposable
         return true;
     }
 
-    private static bool IsPermitted(Feature feature)
-    {
-        return feature.IsSupported &&
-            feature.Origin is Origin.Database or Origin.Query or Origin.Override;
-    }
+    private static bool IsPermitted(Feature feature) => feature.IsAuthoritative;
 
     private static Lease CreateFocusLease()
     {

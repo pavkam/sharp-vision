@@ -67,13 +67,22 @@ disposed. `Frame.Clear` clears active text bytes for reuse, while disposal
 clears the full rented arrays—including hyperlink references—before pool return.
 
 `Renderer` owns its committed front-frame copy, one finite pooled byte buffer,
-and one bounded description-program interpreter. Its preallocated transaction
-snapshot retains only owned immutable static-variable values and rolls back on
-failed encoding or output. The caller retains ownership of every back frame and
-transport. Back frame memory is borrowed until `RenderAsync` completes;
-`ITransport.WriteAsync` borrows renderer memory until its returned operation
-completes and must either transfer the complete memory or throw. Renderer
-disposal never disposes a borrowed transport.
+and one bounded description-program interpreter. That committed frame is never
+handed to a caller: damage tracking compares every target against it, so
+external mutation would desynchronize the frame from the physical terminal and
+external disposal would permanently break a live renderer.
+`Renderer.AttachCommittedFrame` instead links it to a target frame, which reads
+it only through `Canvas.HasPreviousFrame` and `Canvas.CopyFromPrevious`. That
+copy takes complete grapheme owners only — a wide cluster straddling the region
+is written blank rather than split — validates geometry compatibility, and
+preflights the destination arena, so a rejected copy leaves the target unchanged
+and repeated copies cannot exceed the advertised bound. Its preallocated
+transaction snapshot retains only owned immutable static-variable values and
+rolls back on failed encoding or output. The caller retains ownership of every
+back frame and transport. Back frame memory is borrowed until `RenderAsync`
+completes; `ITransport.WriteAsync` borrows renderer memory until its returned
+operation completes and must either transfer the complete memory or throw.
+Renderer disposal never disposes a borrowed transport.
 
 `Terminal.Graphics.Image` copies RGBA or structurally validated PNG bytes into
 private immutable storage. Public callers recover bytes only through a complete

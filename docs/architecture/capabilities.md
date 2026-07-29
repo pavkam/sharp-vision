@@ -16,11 +16,15 @@ source precedence, adapters, resolution, and immutable publication.
 The Phase 2 profile represents each optional protocol as a `Feature` containing
 `Support` and `Origin`. `Support` is unknown, unsupported, tentative, or
 supported. Active protocol output requires both `Feature.IsSupported` and an
-authoritative database, bounded-query, or explicit-override origin. Default and
-environment origins never authorize output, even if a caller constructs the
-otherwise inconsistent `Supported` state. Environment evidence remains
-observable but cannot silently enable a feature. `ColorDepth` separately records
-monochrome, 16-color, indexed-256, or true-color fidelity and its origin.
+authoritative database, bounded-query, or explicit-override origin, which
+`Feature.IsAuthoritative` reports as one predicate. Default and environment
+origins never authorize output, even if a caller constructs the otherwise
+inconsistent `Supported` state. Session mode leases, `Renderer` synchronized
+output, and both encoder paths gate on that predicate, so environment-only
+evidence emits no mode-2026 wrapping, no overline, no typed underline, and no
+underline color. Environment evidence remains observable but cannot silently
+enable a feature. `ColorDepth` separately records monochrome, 16-color,
+indexed-256, or true-color fidelity and its origin.
 
 The profile reports `UnicodeVersion` as the library's pinned Unicode 17.0.0 data
 and carries an explicit `AmbiguousWidth` policy. It defaults to narrow, never

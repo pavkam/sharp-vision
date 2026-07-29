@@ -45,6 +45,17 @@ public readonly record struct Feature
     /// <summary>Gets whether safe behavior may actively use the feature.</summary>
     public bool IsSupported => State == Support.Supported;
 
+    /// <summary>Gets whether this evidence authorizes emitting optional terminal output.</summary>
+    /// <remarks>
+    /// Support alone is not enough. <see cref="Origin.Default"/> and
+    /// <see cref="Origin.Environment"/> are guesses — a terminal name or a defaulted profile — and
+    /// a caller can construct a supported value from either. Only a terminal description, a
+    /// correlated query reply, or an explicit caller override is authoritative, so only those may
+    /// put optional bytes on the wire.
+    /// </remarks>
+    public bool IsAuthoritative =>
+        IsSupported && Origin is Origin.Database or Origin.Query or Origin.Override;
+
     /// <summary>Deconstructs the feature evidence.</summary>
     /// <param name="state">Receives the support confidence.</param>
     /// <param name="origin">Receives the evidence origin.</param>
