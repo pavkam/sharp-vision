@@ -31,15 +31,20 @@ children.
 - `FillGlyph`, `TrackGlyph`, and `IndeterminateGlyph` are validated one-cell
   local overrides. `ResetGlyphs()` clears all three overrides.
 
-`ValueChanged` fires after a committed `Value` change through the public setter.
-Endpoint clamping updates `Value` silently through `PropertyChanged` without
-raising `ValueChanged`.
+`ValueChanged` fires for every committed `Value` transition regardless of which
+public setter caused it — `Value` directly, or `Minimum`/`Maximum` clamping it.
+`PropertyChanged(Value)` and `ValueChanged` always agree: both observe the same
+history, and a clamp that leaves `Value` unchanged raises neither. The event
+args expose the committed value as `Value`, matching the other range controls.
 
 Non-finite values throw `ArgumentOutOfRangeException`. An endpoint that would
 make the range empty or reversed throws `ArgumentException`. All validation
 occurs before mutation. Changing an endpoint clamps the current value in the
-same transaction; endpoint observers already see the clamped value, followed by
-`Value` notification when clamping changed it.
+same transaction before any notification fires, so `Minimum`/`Maximum`'s own
+`PropertyChanged` and the subsequent `Value` notifications all observe coherent,
+already-clamped state; `PropertyChanged(Minimum)` or `PropertyChanged(Maximum)`
+fires first, followed by `PropertyChanged(Value)` and `ValueChanged` when
+clamping changed it.
 
 Determinate rendering normalizes `(Value - Minimum) / (Maximum - Minimum)` and
 fills `floor(normalized * axisCells)` complete cells. The maximum fills every

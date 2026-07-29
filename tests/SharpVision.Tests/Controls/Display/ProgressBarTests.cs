@@ -117,7 +117,7 @@ public sealed class ProgressBarTests
         bar.ValueChanged += (_, eventArgs) =>
         {
             previousValue = eventArgs.PreviousValue;
-            newValue = eventArgs.NewValue;
+            newValue = eventArgs.Value;
             raised++;
         };
 
@@ -170,38 +170,82 @@ public sealed class ProgressBarTests
         FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("░");
     }
 
-    /// <summary>Verifies ValueChanged does not fire when Minimum clamping changes the value through an endpoint shift.</summary>
+    /// <summary>Verifies ValueChanged fires when Minimum clamping actually changes the value through an endpoint shift.</summary>
     [Fact]
-    public void ValueChanged_WhenMinimumClampsValue_DoesNotFire()
+    public void ValueChanged_WhenMinimumClampsValue_FiresWithPreviousAndClampedValues()
     {
         // Arrange
         var bar = new ProgressBar { Maximum = 100, Value = 30 };
+        var previousValue = double.NaN;
+        var newValue = double.NaN;
         var raised = 0;
-        bar.ValueChanged += (_, _) => raised++;
+        bar.ValueChanged += (_, eventArgs) =>
+        {
+            previousValue = eventArgs.PreviousValue;
+            newValue = eventArgs.Value;
+            raised++;
+        };
 
         // Act
         bar.Minimum = 50;
 
         // Assert
-        raised.ShouldBe(0);
+        raised.ShouldBe(1);
+        previousValue.ShouldBe(30);
+        newValue.ShouldBe(50);
         bar.Value.ShouldBe(50);
     }
 
-    /// <summary>Verifies ValueChanged does not fire when Maximum clamping changes the value through an endpoint shift.</summary>
+    /// <summary>Verifies ValueChanged fires when Maximum clamping actually changes the value through an endpoint shift.</summary>
     [Fact]
-    public void ValueChanged_WhenMaximumClampsValue_DoesNotFire()
+    public void ValueChanged_WhenMaximumClampsValue_FiresWithPreviousAndClampedValues()
     {
         // Arrange
         var bar = new ProgressBar { Maximum = 100, Value = 80 };
+        var previousValue = double.NaN;
+        var newValue = double.NaN;
         var raised = 0;
-        bar.ValueChanged += (_, _) => raised++;
+        bar.ValueChanged += (_, eventArgs) =>
+        {
+            previousValue = eventArgs.PreviousValue;
+            newValue = eventArgs.Value;
+            raised++;
+        };
 
         // Act
         bar.Maximum = 60;
 
         // Assert
-        raised.ShouldBe(0);
+        raised.ShouldBe(1);
+        previousValue.ShouldBe(80);
+        newValue.ShouldBe(60);
         bar.Value.ShouldBe(60);
+    }
+
+    /// <summary>Verifies PropertyChanged(Value) and ValueChanged report the same clamped value
+    /// when Minimum clamping changes it, keeping both notification channels consistent.</summary>
+    [Fact]
+    public void ValueChanged_WhenMinimumClampsValue_MatchesPropertyChangedValue()
+    {
+        // Arrange
+        var bar = new ProgressBar { Maximum = 100, Value = 30 };
+        double? propertyChangedValue = null;
+        double? valueChangedValue = null;
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ProgressBar.Value))
+            {
+                propertyChangedValue = bar.Value;
+            }
+        };
+        bar.ValueChanged += (_, eventArgs) => valueChangedValue = eventArgs.Value;
+
+        // Act
+        bar.Minimum = 50;
+
+        // Assert
+        propertyChangedValue.ShouldBe(50);
+        valueChangedValue.ShouldBe(50);
     }
 
     /// <summary>Verifies ValueChanged does not fire when endpoint changes leave the current value in range.</summary>
@@ -220,6 +264,30 @@ public sealed class ProgressBarTests
         // Assert
         raised.ShouldBe(0);
         bar.Value.ShouldBe(50);
+    }
+
+    /// <summary>Verifies Minimum's own PropertyChanged fires before ValueChanged, and
+    /// that Value already reports its coherent clamped result inside both callbacks.</summary>
+    [Fact]
+    public void ValueChanged_WhenMinimumClampsValue_FiresAfterMinimumPropertyChangedWithCoherentValue()
+    {
+        // Arrange
+        var bar = new ProgressBar { Maximum = 100, Value = 30 };
+        List<string> order = [];
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(ProgressBar.Minimum))
+            {
+                order.Add($"Minimum:{bar.Value}");
+            }
+        };
+        bar.ValueChanged += (_, eventArgs) => order.Add($"ValueChanged:{eventArgs.Value}");
+
+        // Act
+        bar.Minimum = 50;
+
+        // Assert
+        order.ShouldBe(["Minimum:50", "ValueChanged:50"]);
     }
 
     /// <summary>Verifies horizontal and vertical measure uses a 10-cell extent along the main axis.</summary>

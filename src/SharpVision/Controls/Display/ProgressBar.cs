@@ -47,15 +47,11 @@ public sealed class ProgressBar: Control
             }
 
             field = value;
-            var valueChanged = Math.Abs(_value - clamped) > float.Epsilon;
+            var previousValue = _value;
             _value = clamped;
 
             NotifyPropertyChanged(nameof(Minimum), InvalidationImpact.Render);
-
-            if (valueChanged)
-            {
-                NotifyPropertyChanged(nameof(Value), InvalidationImpact.Render);
-            }
+            NotifyValueChanged(previousValue, clamped);
         }
     }
 
@@ -83,15 +79,11 @@ public sealed class ProgressBar: Control
             }
 
             field = value;
-            var valueChanged = Math.Abs(_value - clamped) > float.Epsilon;
+            var previousValue = _value;
             _value = clamped;
 
             NotifyPropertyChanged(nameof(Maximum), InvalidationImpact.Render);
-
-            if (valueChanged)
-            {
-                NotifyPropertyChanged(nameof(Value), InvalidationImpact.Render);
-            }
+            NotifyValueChanged(previousValue, clamped);
         }
     } = 1;
 
@@ -104,13 +96,12 @@ public sealed class ProgressBar: Control
         set
         {
             ValidateFinite(value, nameof(value));
+            VerifyMutable();
             var clamped = Math.Clamp(value, Minimum, Maximum);
-            var previous = _value;
+            var previousValue = _value;
+            _value = clamped;
 
-            if (SetProperty(ref _value, clamped, InvalidationImpact.Render))
-            {
-                ValueChanged?.Invoke(this, new ProgressValueChangedEventArgs(previous, clamped));
-            }
+            NotifyValueChanged(previousValue, clamped);
         }
     }
 
@@ -383,6 +374,23 @@ public sealed class ProgressBar: Control
 
     private Rune ResolveConfiguredGlyph(Rune value, ControlGlyph themed) =>
         CellGlyphResolver.Resolve(value, themed.Fallback, CellPolicy.AmbiguousWidth);
+
+    // Raised for every committed Value transition regardless of which public
+    // setter caused it — Value directly, or Minimum/Maximum clamping it — so
+    // PropertyChanged(Value) and ValueChanged subscribers observe the same
+    // history. Callers commit _value before calling this, so every endpoint
+    // and Value are already coherent for both notifications raised here. A
+    // clamp that leaves Value unchanged stays silent.
+    private void NotifyValueChanged(double previousValue, double currentValue)
+    {
+        if (previousValue.Equals(currentValue))
+        {
+            return;
+        }
+
+        NotifyPropertyChanged(nameof(Value), InvalidationImpact.Render);
+        ValueChanged?.Invoke(this, new ProgressValueChangedEventArgs(previousValue, currentValue));
+    }
 
     private static void ValidateFinite(double value, string name)
     {

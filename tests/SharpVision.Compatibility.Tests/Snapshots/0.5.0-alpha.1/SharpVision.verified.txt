@@ -553,9 +553,9 @@ namespace SharpVision.Controls.Display
     }
     public sealed class ProgressValueChangedEventArgs : System.EventArgs
     {
-        public ProgressValueChangedEventArgs(double previousValue, double newValue) { }
-        public double NewValue { get; }
+        public ProgressValueChangedEventArgs(double previousValue, double value) { }
         public double PreviousValue { get; }
+        public double Value { get; }
     }
     public sealed class Separator : SharpVision.Controls.Control
     {
