@@ -66,7 +66,7 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert
         surface.ShouldRender("""
-                              界 NAV
+                             界 NAV
                               · ◆ Home
                               ▼ Tools
                                 · Edit
@@ -76,8 +76,8 @@ public sealed class NavigationViewSurfaceTests
                              ────────────────────
                               · 界 About
                              """);
-        surface.Cell(new Point(1, 0)).Text.ShouldBe("界");
-        surface.Cell(new Point(2, 0)).IsContinuation.ShouldBeTrue();
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("界");
+        surface.Cell(new Point(1, 0)).IsContinuation.ShouldBeTrue();
         surface.Cell(new Point(3, 8)).Text.ShouldBe("界");
         surface.Cell(new Point(4, 8)).IsContinuation.ShouldBeTrue();
         home.GetResolvedAppearance(VisualState.Normal).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
@@ -375,7 +375,7 @@ public sealed class NavigationViewSurfaceTests
         // library default including its arrow buttons rather than a control-imposed thin line.
         view.SelectedItem.ShouldBeSameAs(items[^1]);
         surface.ShouldRender("""
-                              NAV
+                             NAV
                               · Page 4  ▲
                               · Page 5  ░
                               · Page 6  ▓
@@ -391,7 +391,7 @@ public sealed class NavigationViewSurfaceTests
         // Assert nearest repair, clamp, and stale clearing
         view.SelectedItem.ShouldBeSameAs(footer);
         surface.ShouldRender("""
-                              NAV
+                             NAV
                               · Page 1
                               · Page 2
                               · Page 3

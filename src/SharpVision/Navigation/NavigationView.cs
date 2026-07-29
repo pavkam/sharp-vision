@@ -80,13 +80,6 @@ public sealed class NavigationView: CompositeControl
         {
             UseMnemonic = true,
             Visibility = Visibility.Collapsed,
-            Padding = new Thickness(1, 0),
-            Face = new Face(
-                ThemeColor.ControlText,
-                Color.Transparent,
-                TerminalAttributes.Bold,
-                Underline.None,
-                Color.Default)
         };
 
         _footerStack = new LayoutStack();

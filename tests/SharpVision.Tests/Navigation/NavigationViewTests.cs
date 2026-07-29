@@ -262,7 +262,7 @@ public sealed class NavigationViewTests
 
         nav.Render(frame.Canvas);
 
-        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("M");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("M");
     }
 
     /// <summary>Verifies removing an item clears selection if it was selected.</summary>

@@ -418,7 +418,7 @@ public sealed class MenuTests
         // Assert horizontal
         horizontalPopup.Placement.ShouldBe(PopupPlacement.Below);
         horizontalPopup.SurfaceBounds.Y.ShouldBe(horizontalItem.Bounds.Bottom);
-        horizontalPopup.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Light);
+        horizontalPopup.Border.GlyphStyle.ShouldBe(BorderGlyphStyle.Rounded);
         horizontalPopup.Face.Background.ShouldBe(ThemeColor.Surface);
 
         // Arrange vertical menu
@@ -438,6 +438,29 @@ public sealed class MenuTests
         // Assert vertical
         verticalPopup.Placement.ShouldBe(PopupPlacement.Right);
         verticalPopup.SurfaceBounds.X.ShouldBe(verticalItem.Bounds.Right);
+    }
+
+    /// <summary>Verifies a MenuItem submenu popup pins no presentation, so it resolves the same
+    /// theme-role chrome as a standalone ContextMenu popup instead of a divergent local override.</summary>
+    [Fact]
+    public void Submenu_WhenOpened_RendersIdenticalChromeToContextMenu()
+    {
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        var item = new MenuItem { Content = new ControlText("File"), Submenu = submenu };
+        var owner = new Menu { Orientation = Orientation.Horizontal };
+        owner.Items.Add(item);
+        _ = new Overlay { Children = { owner } };
+        item.PerformInvoke();
+        var submenuPopup = OwnedTree.Find<Popup>(item).ShouldNotBeNull();
+
+        var contextMenu = new ContextMenu();
+        contextMenu.Items.Add(new MenuItem { Content = new ControlText("Open") });
+        var contextMenuPopup = (Popup) contextMenu.Presentation;
+
+        submenuPopup.Border.GlyphStyle.ShouldBe(contextMenuPopup.Border.GlyphStyle);
+        submenuPopup.Border.Sides.ShouldBe(contextMenuPopup.Border.Sides);
+        submenuPopup.Face.Background.ShouldBe(contextMenuPopup.Face.Background);
     }
 
     /// <summary>Verifies every vertical row shares one trailing shortcut edge.</summary>

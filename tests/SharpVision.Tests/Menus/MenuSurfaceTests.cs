@@ -31,9 +31,9 @@ public sealed class MenuSurfaceTests
         popup.SurfaceBounds.Width.ShouldBe(12);
         surface.ShouldRender("""
             Help
-            ┌──────────┐
+            ╭──────────╮
             │About     │
-            └──────────┘
+            ╰──────────╯
 
             """);
     }

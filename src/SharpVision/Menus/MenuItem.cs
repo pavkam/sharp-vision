@@ -99,12 +99,6 @@ public sealed class MenuItem: Pressable
             {
                 Anchor = this,
                 ConstrainToRoot = false,
-                Border = new Border(
-                    BorderSide.All,
-                    BorderGlyphStyle.Light,
-                    ThemeColor.ControlBorder,
-                    Color.Transparent,
-                    ThemeDecoration.Border),
                 ModalBehavior = PopupModalBehavior.None,
                 Placement = PopupPlacement.Below,
                 Content = value,
