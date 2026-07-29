@@ -192,10 +192,10 @@ does not consume the next bounded query slot.
 
 Terminal-description provider tests use process-isolated fixture terminfo
 directories and termcap files rather than mutating the test runner environment.
-The implemented probe proves `TERMINFO`, ordered `TERMINFO_DIRS`, inline
-`TERMCAP` when supported by the native build, a `TERMCAP` file, and ordered
-`TERMPATH` through the one native `setupterm` path. Remaining host-selection
-tests MUST prove `$HOME/.terminfo`, configured directory, `TERMCAP`, `TERMPATH`,
+The implemented probe proves `TERMINFO`, ordered `TERMINFO_DIRS`, and inline
+`TERMCAP`, a `TERMCAP` file, and ordered `TERMPATH` when supported by the native
+build through the one `setupterm` path. Remaining host-selection tests MUST
+prove `$HOME/.terminfo`, configured directory, `TERMCAP`, `TERMPATH`,
 `/etc/termcap`, `/usr/share/misc/termcap`, and `$HOME/.termcap` source order
 through the single
 [lookup and fallback contract](../protocols/terminfo.md#lookup-and-fallback).

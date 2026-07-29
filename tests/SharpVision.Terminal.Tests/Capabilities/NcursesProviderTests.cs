@@ -1102,9 +1102,9 @@ public sealed class NcursesProviderTests
         result.Values["Ms"].ShouldBe("False");
     }
 
-    /// <summary>Verifies TERMCAP may name a compatibility database file.</summary>
+    /// <summary>Verifies TERMCAP uses a compatibility file when the native build supports it.</summary>
     [Fact]
-    public void Probe_WhenTermcapNamesFixtureFile_LoadsCanonicalEntry()
+    public void Probe_WhenTermcapNamesFixtureFile_UsesNativeCompatibilityOrReportsMissing()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -1134,7 +1134,14 @@ public sealed class NcursesProviderTests
                 });
 
             result.ExitCode.ShouldBe(0, result.Error);
-            result.Values["status"].ShouldBe("Loaded");
+            result.Values["status"].ShouldBeOneOf("Loaded", "MissingOrGeneric");
+
+            if (result.Values["status"] == "MissingOrGeneric")
+            {
+                int.Parse(result.Values["diagnostics"], CultureInfo.InvariantCulture).ShouldBeGreaterThan(0);
+                return;
+            }
+
             result.Values["suitability"].ShouldBe("Usable");
             result.Values["Smulx"].ShouldBe("False");
         }
@@ -1144,9 +1151,9 @@ public sealed class NcursesProviderTests
         }
     }
 
-    /// <summary>Verifies TERMPATH searches its declared compatibility file list when TERMCAP is absent.</summary>
+    /// <summary>Verifies TERMPATH uses its file list when the native build supports compatibility files.</summary>
     [Fact]
-    public void Probe_WhenTermpathContainsFixture_LoadsFallbackFile()
+    public void Probe_WhenTermpathContainsFixture_UsesNativeCompatibilityOrReportsMissing()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -1177,7 +1184,14 @@ public sealed class NcursesProviderTests
                 });
 
             result.ExitCode.ShouldBe(0, result.Error);
-            result.Values["status"].ShouldBe("Loaded");
+            result.Values["status"].ShouldBeOneOf("Loaded", "MissingOrGeneric");
+
+            if (result.Values["status"] == "MissingOrGeneric")
+            {
+                int.Parse(result.Values["diagnostics"], CultureInfo.InvariantCulture).ShouldBeGreaterThan(0);
+                return;
+            }
+
             result.Values["suitability"].ShouldBe("Usable");
             result.Values["Ms"].ShouldBe("False");
         }

@@ -40,7 +40,7 @@ test: build
 	@echo "✅ Tests complete."
 
 test-ci: build
-	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --coverage --coverage-output-format cobertura --report-xunit-trx || echo "⚠️  Terminal tests exited with non-zero status"
+	@dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --coverage --coverage-output-format cobertura --report-xunit-trx
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --coverage --coverage-output-format cobertura --report-xunit-trx
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85
 
