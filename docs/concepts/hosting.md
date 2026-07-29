@@ -229,6 +229,16 @@ that disposes concurrently with an active run is covered by the normative
 [run and disposal interleaving](../architecture/runtime-event-loop.md#run-and-disposal-interleaving)
 rules, which that document owns.
 
+Platform restoration failure is reported, never discarded. Both mode leases
+always attempt every restore — Unix replays the captured `stty -g` state, and
+Windows restores the input handle and then the output handle even when the input
+restore failed — and then throw the first failure.
+`ConsoleConnection.DisposeAsync` lets that failure propagate, and `Application`
+folds it into `LastCleanupException` without replacing the primary `Failure`. So
+a terminal left raw, without echo, or with modified Windows console modes is
+observable instead of being reported as a clean shutdown. Repeated disposal
+stays quiet and retries nothing, so a failed restore is never attempted twice.
+
 ### Unix
 
 `UnixConsoleHost.Open` enters raw mode through `UnixConsoleMode.Enter`, which
