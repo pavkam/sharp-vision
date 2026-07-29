@@ -23,7 +23,7 @@ global using SharpVision.Terminal.Rendering;
 global using SharpVision.Text;
 global using SharpVision.Windows;
 
-global using ControlOverlay = SharpVision.Controls.Overlay;
+global using ControlOverlay = SharpVision.Controls.Layout.Overlay;
 global using KeyAction = SharpVision.Terminal.Input.Action;
 global using Screen = SharpVision.Controls.Screen;
 global using TerminalAttributes = SharpVision.Terminal.Rendering.Attributes;

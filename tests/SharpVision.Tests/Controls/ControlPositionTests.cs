@@ -111,7 +111,7 @@ public sealed class ControlPositionTests
         _ = Should.Throw<InvalidOperationException>(() => child.Left = Length.Cells(5));
     }
 
-    /// <summary>Verifies SharpVision.Controls.Overlay.SetLeft delegates to Control.Left.</summary>
+    /// <summary>Verifies SharpVision.Controls.Layout.Overlay.SetLeft delegates to Control.Left.</summary>
     [Fact]
     public void OverlaySetLeft_WhenCalled_DelegatesToControlProperty()
     {
@@ -123,7 +123,7 @@ public sealed class ControlPositionTests
         Overlay.GetLeft(control).ShouldBe(Length.Cells(7));
     }
 
-    /// <summary>Verifies SharpVision.Controls.Overlay.SetTop delegates to Control.Top.</summary>
+    /// <summary>Verifies SharpVision.Controls.Layout.Overlay.SetTop delegates to Control.Top.</summary>
     [Fact]
     public void OverlaySetTop_WhenCalled_DelegatesToControlProperty()
     {

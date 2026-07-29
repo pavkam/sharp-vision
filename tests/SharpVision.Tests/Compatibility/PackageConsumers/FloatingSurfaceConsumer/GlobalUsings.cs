@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 global using SharpVision.Controls;
+global using SharpVision.Controls.Layout;
 global using SharpVision.Layout;
 global using SharpVision.Runtime;
 global using SharpVision.Styling;

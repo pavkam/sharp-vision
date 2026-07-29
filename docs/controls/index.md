@@ -46,10 +46,10 @@ All controls derive from the
 
 | Namespace                          | Responsibility                                               |
 | ---------------------------------- | ------------------------------------------------------------ |
-| `SharpVision.Controls`             | Foundational roles, ownership, overlay, and scrolling.       |
+| `SharpVision.Controls`             | Foundational roles, ownership, and intrinsic chrome.         |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation.          |
 | `SharpVision.Controls.Input`       | Buttons, editors, pickers, and value controls.               |
-| `SharpVision.Controls.Layout`      | Panels, structural chrome, and tables.                       |
+| `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.             |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization. |
 | `SharpVision.Menus`                | Menus, menu entries, and context menus.                      |
 | `SharpVision.Navigation`           | Sidebar navigation controls and entries.                     |

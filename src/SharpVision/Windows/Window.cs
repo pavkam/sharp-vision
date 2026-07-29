@@ -7,6 +7,7 @@ namespace SharpVision.Windows;
 using System.Runtime.ExceptionServices;
 
 using SharpVision.Controls.Input;
+using SharpVision.Controls.Layout;
 using SharpVision.Surfaces;
 using SharpVision.Terminal.Input;
 

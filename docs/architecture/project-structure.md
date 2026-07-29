@@ -67,8 +67,8 @@ infrastructure namespaces:
 | `SharpVision.Controls`             | Foundational mutable control tree, ownership, invalidation, and drawing.       |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation controls.                   |
 | `SharpVision.Controls.Input`       | Buttons, editors, pickers, calendars, and value controls.                      |
-| `SharpVision.Controls.Layout`      | Panels, structural chrome, tables, and scrollbars.                             |
-| `SharpVision.Controls.Collections` | Lists, tabs, trees, and their typed collections.                               |
+| `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.                               |
+| `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization.                   |
 | `SharpVision.Menus`                | Menus, typed menu entries, and context menus.                                  |
 | `SharpVision.Navigation`           | Sidebar navigation controls and entries.                                       |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle, bounds, and modality coordination.          |
@@ -90,6 +90,22 @@ model. The sealed control render pipeline always paints configured intrinsic
 chrome around `OnRenderContent`; specialized controls select narrow chrome
 options rather than bypassing the pipeline. Neither feature requires a dedicated
 wrapper type or moves terminal protocol or renderer behavior into the UI layer.
+
+`SharpVision.Controls` is foundational in the sense that every feature namespace
+derives from and depends on it, not in the sense that it depends on nothing. It
+may reference a feature namespace when a foundational type genuinely _is_ one of
+that feature's controls. Two such references are deliberate and permanent:
+
+| Root type                   | Feature dependency             | Why it is not a layering violation                                               |
+| --------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| `Screen`/`PresentationHost` | `Controls.Layout.Overlay`      | A screen's presentation root is a layering panel; nothing else it could be.      |
+| `Container`                 | `Controls.Scrolling.ScrollBar` | Intrinsic `AutoScroll` chrome is the shipped scrollbar, not a private lookalike. |
+
+Both are ordinary same-assembly references with no cycle. The alternative —
+root-level lookalike panels kept only so a dependency arrow points one way —
+would duplicate shipped behavior to satisfy a diagram. Feature namespaces must
+not acquire further root privileges on the strength of this rule; it covers
+these two compositions and nothing else.
 
 The separate [dialog catalog](../dialogs/index.md#dialog-catalog) derives typed
 tasks from Window without moving them into the Controls folder or namespace. The

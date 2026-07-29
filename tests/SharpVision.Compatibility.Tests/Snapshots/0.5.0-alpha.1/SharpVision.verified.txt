@@ -404,28 +404,6 @@ namespace SharpVision.Controls
         protected void ReplaceItemControl(int index, SharpVision.Controls.Control control) { }
         protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.Control> controls) { }
     }
-    public sealed class Overlay : SharpVision.Controls.Container
-    {
-        public Overlay() { }
-        public new SharpVision.Styling.Border Border { get; set; }
-        public bool ClipToBounds { get; set; }
-        protected override bool ClipsChildren { get; }
-        public new SharpVision.Styling.Shadow Shadow { get; set; }
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        public new void ResetBorder() { }
-        public new void ResetShadow() { }
-        public static SharpVision.Layout.Length? GetBottom(SharpVision.Controls.Control control) { }
-        public static SharpVision.Layout.Length? GetLeft(SharpVision.Controls.Control control) { }
-        public static SharpVision.Layout.Length? GetRight(SharpVision.Controls.Control control) { }
-        public static SharpVision.Layout.Length? GetTop(SharpVision.Controls.Control control) { }
-        public static int GetZIndex(SharpVision.Controls.Control control) { }
-        public static void SetBottom(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetLeft(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetRight(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetTop(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
-        public static void SetZIndex(SharpVision.Controls.Control control, int value) { }
-    }
     public abstract class Pressable : SharpVision.Controls.ContentControl
     {
         protected Pressable() { }
@@ -1292,6 +1270,28 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
+    }
+    public sealed class Overlay : SharpVision.Controls.Container
+    {
+        public Overlay() { }
+        public new SharpVision.Styling.Border Border { get; set; }
+        public bool ClipToBounds { get; set; }
+        protected override bool ClipsChildren { get; }
+        public new SharpVision.Styling.Shadow Shadow { get; set; }
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        public new void ResetBorder() { }
+        public new void ResetShadow() { }
+        public static SharpVision.Layout.Length? GetBottom(SharpVision.Controls.Control control) { }
+        public static SharpVision.Layout.Length? GetLeft(SharpVision.Controls.Control control) { }
+        public static SharpVision.Layout.Length? GetRight(SharpVision.Controls.Control control) { }
+        public static SharpVision.Layout.Length? GetTop(SharpVision.Controls.Control control) { }
+        public static int GetZIndex(SharpVision.Controls.Control control) { }
+        public static void SetBottom(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
+        public static void SetLeft(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
+        public static void SetRight(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
+        public static void SetTop(SharpVision.Controls.Control control, SharpVision.Layout.Length? value) { }
+        public static void SetZIndex(SharpVision.Controls.Control control, int value) { }
     }
     public sealed class Stack : SharpVision.Controls.Container
     {

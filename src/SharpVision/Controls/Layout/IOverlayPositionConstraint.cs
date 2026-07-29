@@ -1,7 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Controls;
+namespace SharpVision.Controls.Layout;
 
 /// <summary>Constrains one specialized child's resolved Overlay slot without changing its requested offsets.</summary>
 internal interface IOverlayPositionConstraint
