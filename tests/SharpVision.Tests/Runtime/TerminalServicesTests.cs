@@ -235,6 +235,90 @@ public sealed class TerminalServicesTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// Verifies a Kitty-only clipboard profile reports no support and stays byte-quiet, instead of
+    /// advertising support and then emitting an unproven OSC 52 sequence.
+    /// </summary>
+    [Fact]
+    public async Task Clipboard_WhenOnlyKittyIsSupported_IsUnsupportedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = Capabilities.Conservative with { KittyClipboard = supported }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Clipboard.IsSupported.ShouldBeFalse();
+        application.Terminal.Clipboard.Write("hello");
+        application.Terminal.Clipboard.Request();
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Verifies environment-only OSC 52 evidence never authorizes clipboard output, matching the
+    /// authoritative-origin rule every other optional protocol follows.
+    /// </summary>
+    [Fact]
+    public async Task Clipboard_WhenOsc52EvidenceIsEnvironmentOnly_IsUnsupportedAndByteQuietAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var guessed = new Feature(Terminal.Capabilities.Support.Supported, Origin.Environment);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = Capabilities.Conservative with { Osc52 = guessed }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var before = terminal.Writes.Count;
+
+        application.Terminal.Clipboard.IsSupported.ShouldBeFalse();
+        application.Terminal.Clipboard.Write("hello");
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+
+        terminal.Writes.Count.ShouldBe(before);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Verifies authoritative OSC 52 still writes and requests the exact documented bytes, so the
+    /// tightened gate rejected the origin rather than disabling the protocol.
+    /// </summary>
+    [Fact]
+    public async Task Clipboard_WhenOsc52IsAuthoritative_EmitsExactBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var supported = new Feature(Terminal.Capabilities.Support.Supported, Origin.Override);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = Capabilities.Conservative with { Osc52 = supported }
+        };
+        List<string> written = [];
+        terminal.Written += memory => written.Add(Encoding.ASCII.GetString(memory.Span));
+        await using Application application = new(new ProbeControl(), terminal, terminal, options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.Clipboard.IsSupported.ShouldBeTrue();
+        application.Terminal.Clipboard.Write("hello");
+        application.Terminal.Clipboard.Request();
+        await Task.Delay(80, TestContext.Current.CancellationToken);
+
+        // Out-of-band posts may be coalesced into a single transport write.
+        var joined = string.Concat(written);
+        joined.ShouldContain("\u001b]52;c;aGVsbG8=\u001b\\");
+        joined.ShouldContain("\u001b]52;c;?\u001b\\");
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies ringing the bell posts the BEL byte through the out-of-band write path.</summary>
     [Fact]
     public async Task Bell_WhenRung_EmitsBelByteAsync()

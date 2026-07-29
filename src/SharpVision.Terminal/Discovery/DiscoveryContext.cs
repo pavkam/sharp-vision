@@ -30,49 +30,8 @@ internal sealed class DiscoveryContext
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(environment);
 
-        var snapshot = new Dictionary<string, string?>(environment.Count, StringComparer.Ordinal);
-
-        foreach (var pair in environment)
-        {
-            snapshot.Add(pair.Key, pair.Value);
-        }
-
-        // Preserve the caller dictionary's lookup semantics for the exact
-        // allowlisted keys consumed by discovery adapters and
-        // Multiplexing.Policy. The published snapshot remains ordinal and does
-        // not retain the mutable caller dictionary.
-        if (environment.TryGetValue("TERM", out var term))
-        {
-            snapshot["TERM"] = term;
-        }
-
-        if (environment.TryGetValue("COLORTERM", out var colorTerm))
-        {
-            snapshot["COLORTERM"] = colorTerm;
-        }
-
-        if (environment.TryGetValue("TERM_PROGRAM", out var program))
-        {
-            snapshot["TERM_PROGRAM"] = program;
-        }
-
-        if (environment.TryGetValue("TMUX", out var tmux))
-        {
-            snapshot["TMUX"] = tmux;
-        }
-
-        if (environment.TryGetValue("SSH_CONNECTION", out var sshConnection))
-        {
-            snapshot["SSH_CONNECTION"] = sshConnection;
-        }
-
-        if (environment.TryGetValue("SSH_TTY", out var sshTty))
-        {
-            snapshot["SSH_TTY"] = sshTty;
-        }
-
         Baseline = baseline;
-        _environment = new ReadOnlyDictionary<string, string?>(snapshot);
+        _environment = EnvironmentSnapshot.Create(environment);
         Queries = queries;
         Overrides = overrides;
     }

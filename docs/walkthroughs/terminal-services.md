@@ -30,8 +30,8 @@ protected override void OnStarted(Application application)
 | --------------------------------- | --------------------------------------------- | ------------------------------------------------------ |
 | `Terminal.Bell.Ring()`            | Executable zero-parameter described `bel`     | No-op when unsupported                                 |
 | `Terminal.SetTitle(string)`       | Proven built-in OSC 2 or described `TS`/`fsl` | No-op when unsupported                                 |
-| `Terminal.Clipboard.Write(...)`   | OSC 52 or Kitty clipboard                     | No-op when unsupported                                 |
-| `Terminal.Clipboard.Request(...)` | Capability-gated clipboard request            | No-op when unsupported; replies use `ResponseReceived` |
+| `Terminal.Clipboard.Write(...)`   | Authoritative OSC 52                          | No-op when unsupported                                 |
+| `Terminal.Clipboard.Request(...)` | Authoritative OSC 52                          | No-op when unsupported; replies use `ResponseReceived` |
 
 Title support is proven either by a library-owned built-in OSC 2 profile or by a
 complete, parameterless described `TS` prefix and `fsl` suffix. The described
@@ -41,6 +41,13 @@ zero-parameter output. Database OSC 52 support additionally requires an
 executable `Ms` program with exactly two string parameters and non-empty
 representative output; an absent, wrong-arity, or outputless `Ms` leaves
 clipboard calls byte-quiet.
+
+`Clipboard.IsSupported` reports authoritative OSC 52 only. Kitty OSC 5522 is
+implemented at the protocol layer but is not reachable through this facade,
+because nothing routes its inbound replies yet. Reporting it here would claim
+support for an operation that cannot complete, which the
+[safe-degradation contract](../concepts/safe-degradation.md) forbids, so the
+facade stays byte-quiet on a Kitty-only profile instead.
 
 Do not concatenate escape sequences in control or application code. Typed
 services validate data, respect the active capability profile, and keep writes

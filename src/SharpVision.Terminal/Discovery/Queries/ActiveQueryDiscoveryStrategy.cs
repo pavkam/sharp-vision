@@ -228,7 +228,13 @@ internal sealed class ActiveQueryDiscoveryStrategy
             XtermDecrqss.Query(writer, StatusName.ModifyOtherKeys);
         }
 
+        // Only an approved route can carry an APC probe across a multiplexer. A detected but
+        // unroutable multiplexer consumes it instead: tmux parses a bare APC string as a pane
+        // title, so the probe would overwrite the user's pane title and could never be answered.
+        // Skipping it also avoids spending a query deadline on a reply that cannot arrive.
+        var canDeliverApc = route is not null || _options.Multiplexing.Layers.Count == 0;
         var graphics = supportsStringQueries &&
+                       canDeliverApc &&
                        remaining != 0 &&
                        ShouldQuery(_baseline.KittyGraphics, _options.Overrides?.KittyGraphics);
 

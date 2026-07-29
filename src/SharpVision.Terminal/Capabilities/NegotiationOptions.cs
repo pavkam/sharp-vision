@@ -38,14 +38,12 @@ public sealed class NegotiationOptions
         MultiplexingPolicy? multiplexing)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        var copy = new Dictionary<string, string?>(StringComparer.Ordinal);
 
-        foreach (var pair in environment)
-        {
-            copy.Add(pair.Key, pair.Value);
-        }
-
-        Environment = new ReadOnlyDictionary<string, string?>(copy);
+        // Canonicalize recognized keys through the caller's comparer. An ordinal copy alone would
+        // keep a case-insensitive caller's lowercase entries while making every later canonical
+        // lookup miss, so negotiation would publish weaker evidence than passive detection for the
+        // same input.
+        Environment = EnvironmentSnapshot.Create(environment);
         Overrides = overrides;
         Limits = limits ?? Limits.Default;
         Multiplexing = multiplexing ?? MultiplexingPolicy.Detect(Environment);

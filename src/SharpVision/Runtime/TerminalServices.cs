@@ -45,8 +45,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
     }
 
     /// <inheritdoc/>
-    bool IClipboard.IsSupported =>
-        _application.Capabilities.Osc52.IsSupported || _application.Capabilities.KittyClipboard.IsSupported;
+    /// <remarks>
+    /// Reports only OSC 52, because that is the sole clipboard protocol this facade can currently
+    /// service. Kitty OSC 5522 is implemented at the protocol layer but has no inbound routing, so
+    /// advertising it here would claim support for an operation that cannot happen. Environment
+    /// and default evidence never authorize clipboard output.
+    /// </remarks>
+    bool IClipboard.IsSupported => _application.Capabilities.Osc52.IsAuthoritative;
 
     /// <inheritdoc/>
     bool IBell.IsSupported
