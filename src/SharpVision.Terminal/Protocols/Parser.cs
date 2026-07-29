@@ -755,14 +755,39 @@ public sealed class Parser: IDisposable
         {
             if (value == (byte) '\\')
             {
+                // The tentative count on entry assumed the ESC might be
+                // discarded payload; it instead completed an accepted ST
+                // terminator, so it was never actually discarded.
+                _discarded--;
                 ReportPending(ref sink);
                 EnterGround();
                 return;
             }
 
-            _state = value == _escape
-                ? State.StringIgnoreEscape
-                : State.StringIgnore;
+            // The tentatively counted ESC was ordinary payload after all.
+            // The current byte gets the same terminator handling any other
+            // ignore-state byte would: a fresh ESC starts a new terminator
+            // candidate, otherwise BEL/enabled C1 ST can still end recovery
+            // here rather than being silently skipped.
+            if (value == _escape)
+            {
+                _state = State.StringIgnoreEscape;
+                _discarded++;
+                return;
+            }
+
+            _state = State.StringIgnore;
+
+            if ((_limits.AcceptEightBitControls && value == _eightBitSt) ||
+                (_pendingKind == SequenceKind.Osc &&
+                 _limits.AcceptBellTerminatedOsc &&
+                 value == _bell))
+            {
+                ReportPending(ref sink);
+                EnterGround();
+                return;
+            }
+
             _discarded++;
             return;
         }
@@ -770,6 +795,7 @@ public sealed class Parser: IDisposable
         if (value == _escape)
         {
             _state = State.StringIgnoreEscape;
+            _discarded++;
             return;
         }
 
