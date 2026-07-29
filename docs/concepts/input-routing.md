@@ -71,6 +71,12 @@ Handlers explicitly registered for handled events still run. Tree mutation
 during dispatch does not alter the current route; invalidation waits until
 dispatch completes.
 
+`Handled` never truncates the route itself. Both phases always walk the full
+captured ancestry, and each registration decides for itself whether it runs, so
+an opted-in ancestor handler still observes an event that a descendant already
+handled. Default control behavior remains gated on unhandled state, so an
+ancestor default cannot claim an event a descendant consumed.
+
 An active modal scope replaces the application root with the matching plane root
 as the preview/bubble boundary. Direct `Router.Route` calls enforce the same
 restriction, and an in-progress route keeps its captured ancestry. The

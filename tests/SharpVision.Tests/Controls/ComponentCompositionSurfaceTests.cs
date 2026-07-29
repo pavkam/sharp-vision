@@ -120,7 +120,9 @@ public sealed class ComponentCompositionSurfaceTests
         // Act complete leaf click
         await surface.Pointer.ClickAsync(leaf);
 
-        // Assert routed press order and semantic result
+        // Assert routed press order and semantic result. CheckBox handles the press, which ends
+        // ordinary handling and ancestor defaults but never truncates the route: every opted-in
+        // ancestor handler still observes the full bubble walk.
         route.ShouldBe([
             "root-Preview",
             "window-Preview",
@@ -128,7 +130,12 @@ public sealed class ComponentCompositionSurfaceTests
             "expander-Preview",
             "inner-Preview",
             "leaf-Preview",
-            "leaf-Bubble"
+            "leaf-Bubble",
+            "inner-Bubble",
+            "expander-Bubble",
+            "group-Bubble",
+            "window-Bubble",
+            "root-Bubble"
         ]);
         leaf.IsChecked.ShouldBe(true);
         leaf.IsPointerOver.ShouldBeTrue();

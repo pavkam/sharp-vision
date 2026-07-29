@@ -103,9 +103,12 @@ public sealed class RoutingTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies handled state suppresses ordinary handlers and default behavior.</summary>
+    /// <summary>
+    /// Verifies handled state suppresses ordinary handlers and default behavior while opted-in
+    /// handlers still run at every remaining node, in preview and in bubble.
+    /// </summary>
     [Fact]
-    public void Route_WhenHandled_InvokesOnlyOptedInHandlersAfterward()
+    public void Route_WhenHandledDuringPreview_InvokesOptedInHandlersInEveryLaterPhase()
     {
         List<string> order = [];
         var root = new RecordingControl("root", order);
@@ -135,8 +138,97 @@ public sealed class RoutingTests
             "root-ordinary-Preview",
             "root-always-Preview",
             "target-handle-Preview",
-            "target-always-Preview"
+            "target-always-Preview",
+            "target-always-Bubble",
+            "root-always-Bubble"
         ]);
+    }
+
+    /// <summary>
+    /// Verifies a target that handles during bubble still lets opted-in ancestor handlers run.
+    /// Handled ends ordinary handling, not ancestry traversal.
+    /// </summary>
+    [Fact]
+    public void Route_WhenTargetHandlesDuringBubble_StillInvokesOptedInAncestorHandlers()
+    {
+        List<string> order = [];
+        var root = new RecordingControl("root", order);
+        var middle = new RecordingControl("middle", order);
+        var target = new RecordingControl("target", order);
+        root.Children.Add(middle);
+        middle.Children.Add(target);
+        _ = target.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == Phase.Bubble)
+            {
+                order.Add("target-handle-Bubble");
+                eventArgs.Handled = true;
+            }
+        });
+        _ = middle.AddHandler(
+            Events.Key,
+            (_, eventArgs) => order.Add($"middle-always-{eventArgs.Phase}"),
+            handledEventsToo: true);
+        _ = middle.AddHandler(Events.Key, (_, eventArgs) =>
+            order.Add($"middle-ordinary-{eventArgs.Phase}"));
+        _ = root.AddHandler(
+            Events.Key,
+            (_, eventArgs) => order.Add($"root-always-{eventArgs.Phase}"),
+            handledEventsToo: true);
+
+        var result = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+
+        result.Handled.ShouldBeTrue();
+        order.ShouldBe([
+            "root-always-Preview",
+            "middle-always-Preview",
+            "middle-ordinary-Preview",
+            "target-handle-Bubble",
+            "middle-always-Bubble",
+            "root-always-Bubble"
+        ]);
+    }
+
+    /// <summary>
+    /// Verifies handled state still suppresses ancestor default behavior even though ancestry is
+    /// now always walked, so an ancestor default cannot steal an already-handled event.
+    /// </summary>
+    [Fact]
+    public void Route_WhenHandledDuringBubble_SkipsAncestorDefaultBehavior()
+    {
+        List<string> order = [];
+        var root = new RecordingControl("root", order);
+        var target = new RecordingControl("target", order);
+        root.Children.Add(target);
+        _ = target.AddHandler(Events.Key, (_, eventArgs) =>
+        {
+            if (eventArgs.Phase == Phase.Bubble)
+            {
+                eventArgs.Handled = true;
+            }
+        });
+
+        _ = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+
+        order.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies an unhandled route still runs every ancestor default in bubble order, so always
+    /// walking the ancestry did not change unhandled behavior.
+    /// </summary>
+    [Fact]
+    public void Route_WhenNeverHandled_InvokesEveryDefaultInBubbleOrder()
+    {
+        List<string> order = [];
+        var root = new RecordingControl("root", order);
+        var target = new RecordingControl("target", order);
+        root.Children.Add(target);
+
+        var result = Router.Route(target, Events.Key, new KeyEventArgs(CreateStroke()));
+
+        result.Handled.ShouldBeFalse();
+        order.ShouldBe(["target-default", "root-default"]);
     }
 
     /// <summary>Verifies duplicate registration fails and disposal is idempotent.</summary>

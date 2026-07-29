@@ -120,7 +120,13 @@ public static class Router
 
             var bubbleCount = routedEvent.Strategy == Strategy.Direct ? 1 : depth;
 
-            for (index = 0; index < bubbleCount && !eventArgs.Handled; index++)
+            // Ancestry traversal is never cut short. Handled suppresses ordinary handlers and
+            // default behavior, but handlers explicitly registered for handled events must still
+            // run at every remaining node -- the per-registration filter decides that, not the
+            // walk. The preview loop above already walks the full route, and stopping here was
+            // the asymmetry. Nodes without handlers bail out inside InvokeHandlers, so walking
+            // the rest of the ancestry stays allocation-free.
+            for (index = 0; index < bubbleCount; index++)
             {
                 var current = route[index];
                 current.InvokeHandlers(routedEvent, eventArgs, sequence);

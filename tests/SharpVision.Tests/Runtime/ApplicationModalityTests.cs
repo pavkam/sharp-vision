@@ -501,7 +501,7 @@ public sealed class ApplicationModalityTests
         root.Children.Add(plane);
         var ordinaryRoutes = 0;
         var outsideRoutes = 0;
-        var handledPreviews = new List<KeyEventArgs>();
+        var handled = new List<(Phase Phase, KeyEventArgs EventArgs)>();
         _ = plane.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         _ = input.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         _ = plane.AddHandler(
@@ -509,10 +509,9 @@ public sealed class ApplicationModalityTests
             (_, eventArgs) =>
             {
                 eventArgs.Handled.ShouldBeTrue();
-                eventArgs.Phase.ShouldBe(Phase.Preview);
                 eventArgs.OriginalSource.ShouldBeSameAs(input);
                 eventArgs.Source.ShouldBeSameAs(input);
-                handledPreviews.Add(eventArgs);
+                handled.Add((eventArgs.Phase, eventArgs));
             },
             handledEventsToo: true);
         _ = root.AddHandler(Events.Key, (_, _) => outsideRoutes++, handledEventsToo: true);
@@ -547,14 +546,34 @@ public sealed class ApplicationModalityTests
             () => input.Text.ShouldBe("modal"),
             TestContext.Current.CancellationToken);
 
-        handledPreviews.Count.ShouldBe(4);
-        handledPreviews.Select(eventArgs => eventArgs.Stroke.Character).ShouldBe([
+        // Handled ends ordinary handling, not the route, so the opted-in plane handler observes
+        // each shortcut once in preview and once again in bubble.
+        handled.Count.ShouldBe(8);
+        handled.Select(entry => entry.Phase).ShouldBe([
+            Phase.Preview,
+            Phase.Bubble,
+            Phase.Preview,
+            Phase.Bubble,
+            Phase.Preview,
+            Phase.Bubble,
+            Phase.Preview,
+            Phase.Bubble,
+        ]);
+        handled.Select(entry => entry.EventArgs.Stroke.Character).ShouldBe([
+            new Rune('c'),
             new Rune('c'),
             new Rune('v'),
+            new Rune('v'),
+            new Rune('x'),
             new Rune('x'),
             new Rune('v'),
+            new Rune('v'),
         ]);
-        handledPreviews.Distinct(ReferenceEqualityComparer.Instance).Count().ShouldBe(4);
+        handled
+            .Select(entry => entry.EventArgs)
+            .Distinct(ReferenceEqualityComparer.Instance)
+            .Count()
+            .ShouldBe(4);
         ordinaryRoutes.ShouldBe(0);
         outsideRoutes.ShouldBe(0);
         defaults.ShouldBeEmpty();
@@ -592,7 +611,7 @@ public sealed class ApplicationModalityTests
         root.Children.Add(plane);
         var ordinaryRoutes = 0;
         var outsideRoutes = 0;
-        var observed = new List<(Control Sender, KeyEventArgs EventArgs)>();
+        var observed = new List<(Control Sender, Phase Phase, KeyEventArgs EventArgs)>();
         _ = plane.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         _ = input.AddHandler(Events.Key, (_, _) => ordinaryRoutes++);
         RecordHandled(plane);
@@ -629,8 +648,20 @@ public sealed class ApplicationModalityTests
         outer.ShouldNotBeNull().IsActive.ShouldBeTrue();
         inner.ShouldNotBeNull().IsActive.ShouldBeTrue();
         application.Modality.Active.ShouldBeSameAs(inner);
-        observed.Select(item => item.Sender).ShouldBe([plane, input]);
-        observed[0].EventArgs.ShouldBeSameAs(observed[1].EventArgs);
+        // The route captured before the callback removed the input from the plane is reused for
+        // both phases, so bubble walks the same ancestry in reverse even though the tree changed.
+        observed.Select(item => item.Sender).ShouldBe([plane, input, input, plane]);
+        observed.Select(item => item.Phase).ShouldBe([
+            Phase.Preview,
+            Phase.Preview,
+            Phase.Bubble,
+            Phase.Bubble
+        ]);
+        observed
+            .Select(item => (object) item.EventArgs)
+            .Distinct(ReferenceEqualityComparer.Instance)
+            .ShouldHaveSingleItem()
+            .ShouldBeSameAs(observed[0].EventArgs);
         observed[0].EventArgs.OriginalSource.ShouldBeSameAs(input);
         ordinaryRoutes.ShouldBe(0);
         outsideRoutes.ShouldBe(0);
@@ -646,8 +677,7 @@ public sealed class ApplicationModalityTests
                 {
                     sender.ShouldBeSameAs(control);
                     eventArgs.Handled.ShouldBeTrue();
-                    eventArgs.Phase.ShouldBe(Phase.Preview);
-                    observed.Add((control, eventArgs));
+                    observed.Add((control, eventArgs.Phase, eventArgs));
                 },
                 handledEventsToo: true);
     }
