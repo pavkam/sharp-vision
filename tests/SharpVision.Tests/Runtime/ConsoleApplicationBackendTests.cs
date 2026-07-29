@@ -10,6 +10,10 @@ using Terminal.Backends;
 using CapabilitySupport = Terminal.Capabilities.Support;
 
 /// <summary>Proves console hosting retains one terminal-context lineage through discovery and cleanup.</summary>
+/// <remarks>
+/// The session owns the only terminal context. The application keeps just the immutable profile,
+/// so there is no second lineage that could drift from the resolved backend identity.
+/// </remarks>
 public sealed class ConsoleApplicationBackendTests
 {
     /// <summary>Verifies one resolved Kitty context owns capability refinement and complete host cleanup.</summary>
@@ -63,13 +67,12 @@ public sealed class ConsoleApplicationBackendTests
                 _ = capabilitiesChanged.TrySetResult();
             }
         };
-        var initialContext = GetApplicationContext(application);
         var session = GetSession(application);
+        var initialBackend = GetSessionContext(session).Backend;
 
         try
         {
-            initialContext.Backend.ShouldBeSameAs(KittyBackend.Instance);
-            GetSessionContext(session).ShouldBeSameAs(initialContext);
+            initialBackend.ShouldBeSameAs(KittyBackend.Instance);
 
             // Act
             var starting = application.StartAsync(TestContext.Current.CancellationToken).AsTask();
@@ -98,8 +101,7 @@ public sealed class ConsoleApplicationBackendTests
             application.TerminalProfile.Description.Name.ShouldBe("xterm-256color");
             application.Capabilities.KittyGraphics.ShouldBe(
                 new Feature(CapabilitySupport.Supported, Origin.Query));
-            GetApplicationContext(application).Backend.ShouldBeSameAs(initialContext.Backend);
-            GetSessionContext(session).Backend.ShouldBeSameAs(initialContext.Backend);
+            GetSessionContext(session).Backend.ShouldBeSameAs(initialBackend);
             JoinedWrites(transport).ShouldEndWith(
                 "\u001b[<u\u001b[?1006l\u001b[?1003l\u001b[?2004l" +
                 "\u001b[?1004l\u001b[?25h\u001b[?1049l");
@@ -129,11 +131,6 @@ public sealed class ConsoleApplicationBackendTests
             ansi.Programs,
             ansi.KeyMap);
     }
-
-    private static TerminalContext GetApplicationContext(Application application) =>
-        (TerminalContext) typeof(Application)
-            .GetField("_terminalContext", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(application)!;
 
     private static Session GetSession(Application application) =>
         (Session) typeof(Application)

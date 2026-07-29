@@ -32,6 +32,30 @@ and `Renderer` for semantic output, `Transport.ITransport` for bounded I/O, and
 `Runtime.Session` for mode leases plus ordered input/resize/closure/fault
 delivery. Internal pooled storage never becomes a cross-project contract.
 
+### Friend access
+
+`SharpVision.Terminal` grants `InternalsVisibleTo` only to its own test and
+probe assemblies and to the UI test assembly. It deliberately does **not** grant
+it to `SharpVision`.
+
+The UI project consumes the terminal project exactly like any external consumer,
+through public API only. That constraint is load-bearing: whenever the UI layer
+needs something, the answer is a designed public seam, not friend access. If a
+capability is not expressible publicly without leaking low-level machinery, the
+terminal project publishes a focused facade that owns that machinery instead.
+
+Two such seams exist today:
+
+| UI need                          | Public seam                             | Stays internal                                                    |
+| -------------------------------- | --------------------------------------- | ----------------------------------------------------------------- |
+| Expand named terminfo programs   | `TerminalProfile.CreateProgramExpander` | `Programs`, `Program`, `Interpreter`, `Limits`                    |
+| Obtain graphics-capable renderer | `Renderer(Capabilities, Route?, …)`     | `IGraphicsBackend`, `GraphicsBackendSelector`, backend identities |
+
+`TerminalContext` and the whole `Backends` namespace also stay internal. The
+session owns the only terminal context; the application retains just the
+immutable `TerminalProfile`, so no second context lineage can drift from the
+resolved backend identity.
+
 `SharpVision` owns the dispatcher, application lifecycle, traditional mutable
 controls, layout, styling, focus, and routed input. It draws to the terminal
 project's cell canvas and never emits escape bytes. Phase 4 provides these

@@ -48,6 +48,39 @@ public sealed class Renderer: IDisposable
     {
     }
 
+    /// <summary>
+    /// Initializes a renderer that selects and owns the graphics backend authorized by the given
+    /// capability evidence.
+    /// </summary>
+    /// <remarks>
+    /// This is the supported way for a host to obtain graphics support without naming a protocol.
+    /// Kitty, sixel, and iTerm2 backends are chosen only from authoritative evidence, and a route
+    /// that cannot carry graphics suppresses all of them. When nothing is proven safe the renderer
+    /// silently degrades to cell-only output, matching the parameterless overload.
+    /// </remarks>
+    /// <param name="capabilities">The non-null negotiated capability evidence.</param>
+    /// <param name="route">An optional multiplexer route the graphics protocol must survive.</param>
+    /// <param name="maxOutputBytes">The positive maximum encoded batch size.</param>
+    /// <param name="cleanupTimeout">The positive synchronized-mode recovery timeout.</param>
+    /// <param name="timeProvider">The clock used to enforce recovery timeout.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A size or timeout is invalid.</exception>
+    public Renderer(
+        TerminalCapabilities capabilities,
+        Multiplexing.Route? route = null,
+        int maxOutputBytes = 16 * 1024 * 1024,
+        TimeSpan? cleanupTimeout = null,
+        TimeProvider? timeProvider = null)
+        : this(
+            maxOutputBytes,
+            cleanupTimeout,
+            timeProvider,
+            GraphicsBackendSelector.Create(
+                capabilities ?? throw new ArgumentNullException(nameof(capabilities)),
+                route))
+    {
+    }
+
     /// <summary>Initializes a renderer owning one protocol-specific graphics backend.</summary>
     /// <param name="backend">The backend owned until renderer disposal.</param>
     /// <param name="maxOutputBytes">The positive maximum encoded batch size.</param>
@@ -175,6 +208,11 @@ public sealed class Renderer: IDisposable
         cancellationToken);
 
     /// <summary>Renders through the active profile and exact measured cell-pixel geometry.</summary>
+    /// <remarks>
+    /// A host that has established real cell-pixel geometry passes it here so graphics placement
+    /// and pixel-accurate pointer inference use measured values instead of derived estimates.
+    /// Passing null keeps the behavior of the profile-only overload.
+    /// </remarks>
     /// <param name="back">The active target frame borrowed until completion.</param>
     /// <param name="transport">The transport borrowed until completion.</param>
     /// <param name="profile">The immutable description, programs, and semantic capabilities.</param>
@@ -184,7 +222,7 @@ public sealed class Renderer: IDisposable
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     /// <exception cref="InvalidOperationException">Another render is in progress or a program cannot expand.</exception>
     /// <exception cref="ObjectDisposedException">A supplied owner is disposed.</exception>
-    internal ValueTask<Metrics> RenderAsync(
+    public ValueTask<Metrics> RenderAsync(
         Frame back,
         ITransport transport,
         TerminalProfile profile,

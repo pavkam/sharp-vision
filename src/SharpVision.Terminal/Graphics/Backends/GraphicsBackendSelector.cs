@@ -11,26 +11,24 @@ using MultiplexerRoute = Multiplexing.Route;
 internal static class GraphicsBackendSelector
 {
     /// <summary>Creates Kitty or a frame-ordered mixed non-retained backend, or null for fallback.</summary>
-    /// <param name="context">The non-null terminal context with final negotiated profile evidence.</param>
+    /// <param name="capabilities">The non-null final negotiated capability evidence.</param>
     /// <param name="route">An optional explicit graphics route.</param>
     /// <param name="maxPreparedBytes">The positive complete prepared transaction bound.</param>
     /// <returns>An owned backend, or null when no safe protocol is proven.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxPreparedBytes"/> is not positive.</exception>
     public static IGraphicsBackend? Create(
-        TerminalContext context,
+        TerminalCapabilities capabilities,
         MultiplexerRoute? route = null,
         int maxPreparedBytes = 16 * 1024 * 1024)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxPreparedBytes);
 
         if (route is not null && !route.CanRouteGraphics)
         {
             return null;
         }
-
-        var capabilities = context.Profile.Capabilities;
 
         if (IsAuthoritative(capabilities.KittyGraphics, allowQuery: true))
         {

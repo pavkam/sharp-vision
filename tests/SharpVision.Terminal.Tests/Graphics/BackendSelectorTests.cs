@@ -5,7 +5,6 @@ namespace SharpVision.Terminal.Tests.Graphics;
 
 using System.Buffers.Binary;
 
-using SharpVision.Terminal.Backends;
 using SharpVision.Terminal.Capabilities;
 using SharpVision.Terminal.Graphics;
 using SharpVision.Terminal.Multiplexing;
@@ -24,7 +23,7 @@ public sealed class BackendSelectorTests
             sixel: new Feature(CapabilitySupport.Supported, Origin.Query),
             iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
 
-        using var backend = GraphicsBackendSelector.Create(Context(profile));
+        using var backend = GraphicsBackendSelector.Create(profile.Capabilities);
 
         _ = backend.ShouldBeOfType<KittyGraphicsBackend>();
     }
@@ -40,7 +39,7 @@ public sealed class BackendSelectorTests
     {
         var profile = Profile(iterm: new Feature(state, origin));
 
-        var backend = GraphicsBackendSelector.Create(Context(profile));
+        var backend = GraphicsBackendSelector.Create(profile.Capabilities);
 
         backend.ShouldBeNull();
     }
@@ -53,23 +52,23 @@ public sealed class BackendSelectorTests
     {
         var supported = new Feature(CapabilitySupport.Supported, origin);
 
-        GraphicsBackendSelector.Create(Context(Profile(kitty: supported))).ShouldBeNull();
-        GraphicsBackendSelector.Create(Context(Profile(sixel: supported))).ShouldBeNull();
+        GraphicsBackendSelector.Create(Profile(kitty: supported).Capabilities).ShouldBeNull();
+        GraphicsBackendSelector.Create(Profile(sixel: supported).Capabilities).ShouldBeNull();
     }
 
-    /// <summary>Verifies terminal identity alone cannot authorize tentative graphics output.</summary>
+    /// <summary>
+    /// Verifies weak evidence never authorizes graphics even for a terminal whose identity
+    /// implements the protocol. Selection reads capability evidence only, so identity cannot
+    /// promote tentative environment evidence or non-authoritative iTerm2 query evidence.
+    /// </summary>
     [Fact]
-    public void Create_WhenBackendIdentityExceedsTentativeGraphicsEvidence_ReturnsFallback()
+    public void Create_WhenEvidenceIsBelowAuthoritative_ReturnsFallback()
     {
-        var kitty = new TerminalContext(
-            Profile(kitty: new Feature(CapabilitySupport.Tentative, Origin.Environment)),
-            KittyBackend.Instance);
-        var iterm = new TerminalContext(
-            Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Query)),
-            ItermBackend.Instance);
+        var kitty = Profile(kitty: new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        var iterm = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Query));
 
-        GraphicsBackendSelector.Create(kitty).ShouldBeNull();
-        GraphicsBackendSelector.Create(iterm).ShouldBeNull();
+        GraphicsBackendSelector.Create(kitty.Capabilities).ShouldBeNull();
+        GraphicsBackendSelector.Create(iterm.Capabilities).ShouldBeNull();
     }
 
     /// <summary>Verifies a Screen route disables graphics selection before backend construction.</summary>
@@ -84,7 +83,7 @@ public sealed class BackendSelectorTests
             paneVisible: true,
             MultiplexingOperation.Graphics));
 
-        var backend = GraphicsBackendSelector.Create(Context(profile), route);
+        var backend = GraphicsBackendSelector.Create(profile.Capabilities, route);
 
         backend.ShouldBeNull();
     }
@@ -101,7 +100,7 @@ public sealed class BackendSelectorTests
             paneVisible: true,
             MultiplexingOperation.Graphics));
 
-        GraphicsBackendSelector.Create(Context(profile), route).ShouldBeNull();
+        GraphicsBackendSelector.Create(profile.Capabilities, route).ShouldBeNull();
     }
 
     /// <summary>Verifies missing operation authorization or pane visibility disables tmux output.</summary>
@@ -123,8 +122,8 @@ public sealed class BackendSelectorTests
             paneVisible: false,
             MultiplexingOperation.Graphics));
 
-        GraphicsBackendSelector.Create(Context(profile), unauthorized).ShouldBeNull();
-        GraphicsBackendSelector.Create(Context(profile), hidden).ShouldBeNull();
+        GraphicsBackendSelector.Create(profile.Capabilities, unauthorized).ShouldBeNull();
+        GraphicsBackendSelector.Create(profile.Capabilities, hidden).ShouldBeNull();
     }
 
     /// <summary>Verifies mixed RGBA and PNG placements retain original paint order in one stream.</summary>
@@ -134,7 +133,7 @@ public sealed class BackendSelectorTests
         var profile = Profile(
             sixel: new Feature(CapabilitySupport.Supported, Origin.Query),
             iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
-        using var backend = GraphicsBackendSelector.Create(Context(profile))!;
+        using var backend = GraphicsBackendSelector.Create(profile.Capabilities)!;
         using var frame = new Frame(new Size(3, 1));
         var rgba = GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]);
         var png = Png();
@@ -167,7 +166,7 @@ public sealed class BackendSelectorTests
         var profile = Profile(
             sixel: new Feature(CapabilitySupport.Supported, Origin.Query),
             iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
-        using var backend = GraphicsBackendSelector.Create(Context(profile))!;
+        using var backend = GraphicsBackendSelector.Create(profile.Capabilities)!;
         var rgba = GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]);
         var png = Png();
         using var first = new Frame(new Size(3, 1));
@@ -199,7 +198,7 @@ public sealed class BackendSelectorTests
         var profile = Profile(
             sixel: new Feature(CapabilitySupport.Supported, Origin.Override),
             iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
-        using var backend = GraphicsBackendSelector.Create(Context(profile))!;
+        using var backend = GraphicsBackendSelector.Create(profile.Capabilities)!;
         using var frame = new Frame(new Size(2, 1));
         frame.Canvas.DrawImage(
             GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]),
@@ -226,7 +225,7 @@ public sealed class BackendSelectorTests
         var supported = Profile(
             sixel: new Feature(CapabilitySupport.Supported, Origin.Query),
             iterm: new Feature(CapabilitySupport.Supported, Origin.Override));
-        using var backend = GraphicsBackendSelector.Create(Context(supported))!;
+        using var backend = GraphicsBackendSelector.Create(supported.Capabilities)!;
         using var front = new Frame(new Size(2, 1));
         front.Canvas.DrawImage(
             GraphicsImage.FromRgba(new Size(1, 1), [255, 0, 0, 255]),
@@ -268,8 +267,6 @@ public sealed class BackendSelectorTests
             ItermImages = iterm ?? Feature.Unknown
         });
 
-    private static TerminalContext Context(TerminalProfile profile) =>
-        new(profile, VtBackend.Instance);
 
     private static GraphicsImage Png()
     {

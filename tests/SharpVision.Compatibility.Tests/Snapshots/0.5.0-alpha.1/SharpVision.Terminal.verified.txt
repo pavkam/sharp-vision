@@ -1,5 +1,4 @@
 ﻿[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/pavkam/sharp-vision.git")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Terminal.Probe")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Terminal.Tests")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Tests")]
@@ -311,7 +310,9 @@ namespace SharpVision.Terminal.Capabilities
         public TerminalProfile(SharpVision.Terminal.Capabilities.Description description, SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
         public SharpVision.Terminal.Capabilities.Capabilities Capabilities { get; }
         public SharpVision.Terminal.Capabilities.Description Description { get; }
+        public bool IsAnsiCompatibility { get; }
         public static SharpVision.Terminal.Capabilities.TerminalProfile Conservative { get; }
+        public SharpVision.Terminal.Terminfo.ProgramExpander CreateProgramExpander() { }
         public SharpVision.Terminal.Capabilities.TerminalProfile WithCapabilities(SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
         public static SharpVision.Terminal.Capabilities.TerminalProfile CreateAnsi(SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
     }
@@ -1384,12 +1385,14 @@ namespace SharpVision.Terminal.Rendering
     public sealed class Renderer : System.IDisposable
     {
         public Renderer(int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null) { }
+        public Renderer(SharpVision.Terminal.Capabilities.Capabilities capabilities, SharpVision.Terminal.Multiplexing.Route? route = null, int maxOutputBytes = 16777216, System.TimeSpan? cleanupTimeout = default, System.TimeProvider? timeProvider = null) { }
         public SharpVision.Terminal.Rendering.Frame? FrontFrame { get; }
         public System.Exception? LastCleanupException { get; }
         public void Dispose() { }
         public void Invalidate() { }
         public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.Metrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.Capabilities capabilities, System.Threading.CancellationToken cancellationToken) { }
         public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.Metrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.TerminalProfile profile, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<SharpVision.Terminal.Rendering.Metrics> RenderAsync(SharpVision.Terminal.Rendering.Frame back, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Capabilities.TerminalProfile profile, SharpVision.Terminal.Geometry.Metrics? cellMetrics, System.Threading.CancellationToken cancellationToken) { }
         public System.Threading.Tasks.ValueTask ShutdownAsync(SharpVision.Terminal.Abstractions.ITransport transport, System.Threading.CancellationToken cancellationToken = default) { }
     }
     public enum Shade
@@ -1518,6 +1521,14 @@ namespace SharpVision.Terminal.Terminfo
         public int MaxTerminalNameBytes { get; init; }
         public System.TimeSpan QueryTimeout { get; init; }
         public static SharpVision.Terminal.Terminfo.Limits Default { get; }
+    }
+    public sealed class ProgramExpander
+    {
+        public bool AppliesTo(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
+        public bool Has(string name) { }
+        public bool HasPair(string prefixName, string suffixName) { }
+        public bool TryExpandPair(string enableName, string disableName, out System.ReadOnlyMemory<byte> enable, out System.ReadOnlyMemory<byte> disable) { }
+        public bool TryWrite(string name, System.ReadOnlySpan<int> parameters, System.Buffers.IBufferWriter<byte> destination) { }
     }
 }
 namespace SharpVision.Terminal.Unicode

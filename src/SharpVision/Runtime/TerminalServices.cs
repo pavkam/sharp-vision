@@ -10,8 +10,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
 {
     private readonly Application _application;
     private readonly Lock _programGate = new();
-    private Interpreter _interpreter = new(Limits.Default);
-    private TerminalProfile? _programProfile;
+    private ProgramExpander? _expander;
 
     public TerminalServices(Application application)
     {
@@ -29,18 +28,37 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
     public IClipboard Clipboard => this;
 
     /// <inheritdoc/>
-    public bool IsTitleSupported =>
-        _application.TerminalProfile.IsAnsiCompatibility ||
-        (Description.Origin == DescriptionOrigin.BuiltIn &&
-         string.Equals(Description.Name, "windows-vt", StringComparison.Ordinal)) ||
-        _application.TerminalProfile.Programs.HasZeroParameterPair("TS", "fsl");
+    public bool IsTitleSupported
+    {
+        get
+        {
+            if (UsesAnsiTitle)
+            {
+                return true;
+            }
+
+            lock (_programGate)
+            {
+                return Expander().HasPair("TS", "fsl");
+            }
+        }
+    }
 
     /// <inheritdoc/>
     bool IClipboard.IsSupported =>
         _application.Capabilities.Osc52.IsSupported || _application.Capabilities.KittyClipboard.IsSupported;
 
     /// <inheritdoc/>
-    bool IBell.IsSupported => _application.TerminalProfile.Programs.Has("bel");
+    bool IBell.IsSupported
+    {
+        get
+        {
+            lock (_programGate)
+            {
+                return Expander().Has("bel");
+            }
+        }
+    }
 
     /// <inheritdoc/>
     public void Ring()
@@ -49,10 +67,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
 
         lock (_programGate)
         {
-            var profile = _application.TerminalProfile;
-            PrepareInterpreter(profile);
-
-            if (!profile.Programs.TryWrite("bel", [], _interpreter, destination))
+            if (!Expander().TryWrite("bel", [], destination))
             {
                 return;
             }
@@ -80,9 +95,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
             var written = Encoding.UTF8.GetBytes(title, rented);
             Osc.Title(new Writer(destination), rented.AsSpan(0, written));
 
-            if (!_application.TerminalProfile.IsAnsiCompatibility &&
-                !(Description.Origin == DescriptionOrigin.BuiltIn &&
-                  string.Equals(Description.Name, "windows-vt", StringComparison.Ordinal)))
+            if (!UsesAnsiTitle)
             {
                 WriteDescribedTitle(rented.AsSpan(0, written));
             }
@@ -104,15 +117,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
 
         lock (_programGate)
         {
-            var profile = _application.TerminalProfile;
-            PrepareInterpreter(profile);
-
-            if (!profile.Programs.TryExpandPair(
-                    "TS",
-                    "fsl",
-                    _interpreter,
-                    out prefix,
-                    out suffix))
+            if (!Expander().TryExpandPair("TS", "fsl", out prefix, out suffix))
             {
                 return;
             }
@@ -125,14 +130,26 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard
         _application.PostOutOfBand(destination.WrittenMemory);
     }
 
-    private void PrepareInterpreter(TerminalProfile profile)
+    private ProgramExpander Expander()
     {
-        if (_programProfile is null || !_programProfile.IsRenderingEquivalentTo(profile))
+        // The expander owns bounded interpreter state, so it is rebuilt only when the active
+        // profile would actually produce different output. Capability refinement replaces the
+        // profile object on every negotiation step without touching the compiled description.
+        Debug.Assert(_programGate.IsHeldByCurrentThread, "Program expansion is serialized by its owner.");
+        var profile = _application.TerminalProfile;
+
+        if (_expander is null || !_expander.AppliesTo(profile))
         {
-            _interpreter = new Interpreter(Limits.Default);
-            _programProfile = profile;
+            _expander = profile.CreateProgramExpander();
         }
+
+        return _expander;
     }
+
+    private bool UsesAnsiTitle =>
+        _application.TerminalProfile.IsAnsiCompatibility ||
+        (Description.Origin == DescriptionOrigin.BuiltIn &&
+         string.Equals(Description.Name, "windows-vt", StringComparison.Ordinal));
 
     /// <inheritdoc/>
     public void Write(ReadOnlySpan<char> text, Selection selection = Selection.Clipboard)

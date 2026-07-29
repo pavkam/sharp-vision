@@ -135,7 +135,12 @@ public sealed class TerminalProfile
     internal KeyMap KeyMap { get; }
 
     /// <summary>Gets whether this profile uses the built-in ANSI compatibility program set.</summary>
-    internal bool IsAnsiCompatibility =>
+    /// <remarks>
+    /// A compatibility profile carries no real terminal description, so description-driven output
+    /// such as the <c>TS</c>/<c>fsl</c> title pair is unavailable and callers must fall back to the
+    /// equivalent ANSI escape sequence.
+    /// </remarks>
+    public bool IsAnsiCompatibility =>
         ReferenceEquals(Description, _ansiDescription) && ReferenceEquals(Programs, _ansiPrograms);
 
     /// <summary>Gets whether the explicit built-in ANSI grammar supplements exact described keys.</summary>
@@ -160,6 +165,15 @@ public sealed class TerminalProfile
             KeyMap.Empty,
             preserveExactCapabilities: true);
     }
+
+    /// <summary>Creates an expander over this profile's compiled terminfo programs.</summary>
+    /// <remarks>
+    /// The returned expander owns bounded interpreter state and is therefore single-owner: its
+    /// calls must be serialized and never overlap. Create one per owner instead of sharing it, and
+    /// rebuild it when <see cref="ProgramExpander.AppliesTo"/> reports it is no longer current.
+    /// </remarks>
+    /// <returns>A new expander bound to this profile.</returns>
+    public ProgramExpander CreateProgramExpander() => new(this);
 
     /// <summary>Creates a profile retaining this description, programs, and key map with replacement semantics.</summary>
     /// <param name="capabilities">The non-null immutable semantic capabilities to publish.</param>

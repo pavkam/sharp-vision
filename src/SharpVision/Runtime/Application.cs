@@ -11,7 +11,6 @@ using SharpVision.Terminal.Runtime;
 using SharpVision.Windows;
 
 using Terminal.Capabilities;
-using Terminal.Graphics.Backends;
 using Terminal.Rendering;
 
 using MultiplexerRoute = Terminal.Multiplexing.Route;
@@ -36,7 +35,6 @@ public sealed class Application: ISink, IAsyncDisposable
     private readonly Queue<Record> _input = new();
     private readonly ITransport _transport;
     private readonly TerminalOptions _options;
-    private TerminalContext _terminalContext;
     private readonly IAsyncDisposable? _hostLease;
     private readonly TimeProvider _timeProvider;
     private readonly Session _session;
@@ -135,10 +133,9 @@ public sealed class Application: ISink, IAsyncDisposable
         Root = root;
         _transport = transport;
         _options = resolvedOptions;
-        _terminalContext = _options.CreateContext();
         _hostLease = hostLease;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        TerminalProfile = _terminalContext.Profile;
+        TerminalProfile = _options.Profile;
         Capabilities = TerminalProfile.Capabilities;
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI", timeProvider: _timeProvider);
@@ -149,7 +146,6 @@ public sealed class Application: ISink, IAsyncDisposable
             resize,
             this,
             _options,
-            _terminalContext,
             _timeProvider);
         _initializeModalKey = InitializeModalKey;
         Dispatcher.Idle += OnIdle;
@@ -1008,9 +1004,8 @@ public sealed class Application: ISink, IAsyncDisposable
         }
 
         var previous = Capabilities;
-        _terminalContext = _terminalContext.WithCapabilities(value);
-        TerminalProfile = _terminalContext.Profile;
-        Capabilities = _terminalContext.Profile.Capabilities;
+        TerminalProfile = TerminalProfile.WithCapabilities(value);
+        Capabilities = TerminalProfile.Capabilities;
         var measure = previous.AmbiguousWidth != Capabilities.AmbiguousWidth;
         CellPolicy = new UnicodePolicy(Capabilities.AmbiguousWidth);
         if (_renderer is not null)
@@ -1473,16 +1468,11 @@ public sealed class Application: ISink, IAsyncDisposable
         var route = policy is { Layers.Count: > 0 }
             ? new MultiplexerRoute(policy)
             : null;
-        var backend = GraphicsBackendSelector.Create(_terminalContext, route);
-
-        return backend is null
-            ? new Renderer(
-                cleanupTimeout: _options.CleanupTimeout,
-                timeProvider: _timeProvider)
-            : new Renderer(
-                backend,
-                cleanupTimeout: _options.CleanupTimeout,
-                timeProvider: _timeProvider);
+        return new Renderer(
+            Capabilities,
+            route,
+            cleanupTimeout: _options.CleanupTimeout,
+            timeProvider: _timeProvider);
     }
 
     private async Task<Exception?> DisposeTerminalResourcesAsync()
