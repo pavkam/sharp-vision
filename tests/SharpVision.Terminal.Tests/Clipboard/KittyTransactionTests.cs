@@ -168,6 +168,75 @@ public sealed class KittyTransactionTests
     }
 
     /// <summary>
+    /// Verifies an invalid packet whose recovered id belongs to another
+    /// correlation does not fail an ID-bound transaction.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenInvalidPacketCarriesDifferentId_IgnoresPacket()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        // id= parses before the later unknown-type failure, so the packet is
+        // attributed to "other" and must not be treated as ours.
+        transaction.Accept(KittyPacket.Parse("5522;id=other:type=***"u8)).ShouldBe(
+            KittyAcceptResult.Ignored);
+
+        transaction.State.ShouldBe(KittyTransactionState.Created);
+    }
+
+    /// <summary>
+    /// Verifies an invalid packet whose recovered id matches the bound
+    /// transaction still fails it.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenInvalidPacketCarriesMatchingId_Fails()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        transaction.Accept(KittyPacket.Parse("5522;id=req-1:type=***"u8)).ShouldBe(
+            KittyAcceptResult.Failed);
+
+        transaction.State.ShouldBe(KittyTransactionState.Failed);
+    }
+
+    /// <summary>
+    /// Verifies an invalid packet with no attributable id (the failure occurs
+    /// before any id field is parsed) is ignored by an ID-bound transaction
+    /// rather than treated as a match.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenInvalidPacketHasNoAttributableId_IgnoresIdBoundTransaction()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        // Fails at the "5522;" prefix check, before any metadata is parsed.
+        transaction.Accept(KittyPacket.Parse("not-kitty"u8)).ShouldBe(
+            KittyAcceptResult.Ignored);
+
+        transaction.State.ShouldBe(KittyTransactionState.Created);
+    }
+
+    /// <summary>
+    /// Verifies unrelated malformed traffic interleaved with a matching
+    /// correlation stream does not disturb the transaction in progress.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenUnrelatedMalformedTrafficInterleaves_CompletesMatchingStream()
+    {
+        using var transaction = KittyTransaction.Read(id: "req-1");
+
+        transaction.Accept(Packet("5522;type=read:status=OK:id=req-1")).ShouldBe(
+            KittyAcceptResult.Accepted);
+        transaction.Accept(KittyPacket.Parse("5522;id=other:type=***"u8)).ShouldBe(
+            KittyAcceptResult.Ignored);
+        transaction.Accept(Packet("5522;type=read:status=DONE:id=req-1")).ShouldBe(
+            KittyAcceptResult.Completed);
+
+        transaction.State.ShouldBe(KittyTransactionState.Completed);
+        transaction.Result!.Dispose();
+    }
+
+    /// <summary>
     /// Verifies a terminal cannot bypass the protocol's per-packet chunk bound.
     /// </summary>
     [Fact]

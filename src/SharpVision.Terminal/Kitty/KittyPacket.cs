@@ -147,7 +147,7 @@ public sealed class KittyPacket
 
             if (equals <= 0 || equals == field.Length - 1)
             {
-                return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
             }
 
             var key = field[..equals];
@@ -155,14 +155,14 @@ public sealed class KittyPacket
 
             if (!IsMetadataAscii(key) || !IsMetadataAscii(fieldValue))
             {
-                return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
             }
 
             if (key.SequenceEqual("type"u8))
             {
                 if (seenType || !TryParseOperation(fieldValue, out operation))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
 
                 seenType = true;
@@ -171,7 +171,7 @@ public sealed class KittyPacket
             {
                 if (seenStatus || !TryParseStatus(fieldValue, out replyStatus))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
 
                 seenStatus = true;
@@ -180,7 +180,7 @@ public sealed class KittyPacket
             {
                 if (seenLocation || !TryParseSelection(fieldValue, out selection))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
 
                 seenLocation = true;
@@ -189,7 +189,7 @@ public sealed class KittyPacket
             {
                 if (seenId || !IsIdentifier(fieldValue))
                 {
-                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+                    return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
                 }
 
                 id = Encoding.ASCII.GetString(fieldValue);
@@ -199,7 +199,7 @@ public sealed class KittyPacket
             {
                 if (seenMime || !TryDecodeUtf8(fieldValue, effectiveLimits.MaxMetadataBytes, out mime))
                 {
-                    return Invalid(DiagnosticCode.InvalidBase64, value.Length);
+                    return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
                 }
 
                 seenMime = true;
@@ -209,7 +209,7 @@ public sealed class KittyPacket
                 if (seenPassword ||
                     !TryDecodeUtf8(fieldValue, effectiveLimits.MaxMetadataBytes, out password))
                 {
-                    return Invalid(DiagnosticCode.InvalidBase64, value.Length);
+                    return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
                 }
 
                 seenPassword = true;
@@ -222,7 +222,8 @@ public sealed class KittyPacket
                         IsCanonicalBase64(fieldValue)
                             ? DiagnosticCode.InvalidMetadata
                             : DiagnosticCode.InvalidBase64,
-                        value.Length);
+                        value.Length,
+                        id);
                 }
 
                 seenName = true;
@@ -235,23 +236,18 @@ public sealed class KittyPacket
 
         if (!seenType)
         {
-            return Invalid(DiagnosticCode.InvalidMetadata, value.Length);
+            return Invalid(DiagnosticCode.InvalidMetadata, value.Length, id);
         }
 
-        byte[] data = [];
+        byte[] data;
 
-        if (hasPayload)
+        if (!hasPayload)
         {
-            if (!IsCanonicalBase64(payload))
-            {
-                return Invalid(DiagnosticCode.InvalidBase64, value.Length);
-            }
-
-            if (decodePayload &&
-                !TryDecode(payload, effectiveLimits.MaxClipboardBytes, out data))
-            {
-                return Invalid(DiagnosticCode.InvalidBase64, value.Length);
-            }
+            data = [];
+        }
+        else if (!TryDecode(payload, effectiveLimits.MaxClipboardBytes, out data, materialize: decodePayload))
+        {
+            return Invalid(DiagnosticCode.InvalidBase64, value.Length, id);
         }
 
         return new KittyPacket(
@@ -288,19 +284,24 @@ public sealed class KittyPacket
                $"mimeBytes={Mime.Length} payloadBytes={Data.Length} unknown={unknown}";
     }
 
-    private static KittyPacket Invalid(DiagnosticCode code, int discarded)
+    private static KittyPacket Invalid(DiagnosticCode code, int discarded, string? id = null)
     {
         Debug.Assert(Enum.IsDefined(code), "Invalid packets require a defined diagnostic code.");
         Debug.Assert(discarded >= 0, "Discarded packet byte counts are non-negative.");
 
         var diagnostic = new Diagnostic(code, SequenceKind.Osc, 0, discarded);
 
+        // The id field is order-independent on the wire, so a later structural
+        // failure can still carry an already-parsed, already-validated id. An
+        // ID-bound KittyTransaction uses this to ignore unrelated malformed
+        // traffic instead of failing on every stray packet; a failure whose id
+        // could not be recovered before the error correctly stays unattributed.
         return new KittyPacket(
             isValid: false,
             KittyOperation.None,
             KittyReplyStatus.None,
             Selection.Clipboard,
-            id: null,
+            id,
             ReadOnlyMemory<byte>.Empty,
             ReadOnlyMemory<byte>.Empty,
             ReadOnlyMemory<byte>.Empty,
@@ -401,7 +402,8 @@ public sealed class KittyPacket
     private static bool TryDecode(
         ReadOnlySpan<byte> encoded,
         int maximum,
-        out byte[] decoded)
+        out byte[] decoded,
+        bool materialize = true)
     {
         Debug.Assert(maximum >= 0, "Decoded clipboard limits are validated before parsing.");
 
@@ -423,6 +425,11 @@ public sealed class KittyPacket
 
         try
         {
+            // The BCL decoder rejects nonzero unused pad bits per RFC 4648 §3.5,
+            // a check IsCanonicalBase64 does not perform. Running the decode is
+            // therefore required for correctness, not just for the eventual
+            // array — validity must never depend on whether the caller wants
+            // the decoded bytes materialized.
             var status = Base64.DecodeFromUtf8(
                 encoded,
                 buffer,
@@ -434,7 +441,10 @@ public sealed class KittyPacket
                 return false;
             }
 
-            decoded = buffer.AsSpan(0, written).ToArray();
+            if (materialize)
+            {
+                decoded = buffer.AsSpan(0, written).ToArray();
+            }
 
             return true;
         }

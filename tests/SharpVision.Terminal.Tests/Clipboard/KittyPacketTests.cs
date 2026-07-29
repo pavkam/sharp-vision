@@ -102,6 +102,73 @@ public sealed class KittyPacketTests
     }
 
     /// <summary>
+    /// Verifies a payload with nonzero unused Base64 pad bits is rejected even
+    /// when decoding is disabled, matching the decoding-enabled result.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenPayloadHasNonZeroPadBitsAndDecodeIsDisabled_ReturnsInvalidBase64()
+    {
+        var packet = KittyPacket.Parse("5522;type=wdata;AR=="u8, decodePayload: false);
+
+        packet.IsValid.ShouldBeFalse();
+        packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
+    }
+
+    /// <summary>
+    /// Verifies a payload that decodes past the configured clipboard limit is
+    /// rejected even when decoding is disabled, matching the decoding-enabled
+    /// result.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenPayloadExceedsClipboardLimitAndDecodeIsDisabled_ReturnsInvalid()
+    {
+        var limits = Limits.Default with { MaxClipboardBytes = 1 };
+
+        var packet = KittyPacket.Parse(
+            "5522;type=wdata;AAEC"u8,
+            limits,
+            decodePayload: false);
+
+        packet.IsValid.ShouldBeFalse();
+        packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
+    }
+
+    /// <summary>
+    /// Verifies a payload at exactly the clipboard limit boundary remains
+    /// valid regardless of whether decoding is enabled.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Parse_WhenPayloadIsAtClipboardLimitBoundary_RemainsValidInBothModes(bool decodePayload)
+    {
+        var limits = Limits.Default with { MaxClipboardBytes = 3 };
+
+        var packet = KittyPacket.Parse("5522;type=wdata;AAEC"u8, limits, decodePayload);
+
+        packet.IsValid.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies validity never depends on whether the payload is materialized.
+    /// </summary>
+    /// <param name="input">A representative valid or malformed packet.</param>
+    [Theory]
+    [InlineData("5522;type=wdata;AAEC")]
+    [InlineData("5522;type=wdata;AR==")]
+    [InlineData("5522;type=wdata;***=")]
+    [InlineData("5522;type=wdata;")]
+    public void Parse_WhenPayloadIsArbitrary_ValidityIsIndependentOfDecodePayload(string input)
+    {
+        var bytes = Encoding.ASCII.GetBytes(input);
+
+        var decoded = KittyPacket.Parse(bytes, decodePayload: true);
+        var validatedOnly = KittyPacket.Parse(bytes, decodePayload: false);
+
+        validatedOnly.IsValid.ShouldBe(decoded.IsValid);
+    }
+
+    /// <summary>
     /// Verifies malformed wire input returns a redacted diagnostic result.
     /// </summary>
     /// <param name="input">The malformed packet.</param>

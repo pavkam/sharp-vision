@@ -118,14 +118,19 @@ public sealed class KittyTransaction: IDisposable
             return KittyAcceptResult.Ignored;
         }
 
-        if (!packet.IsValid)
-        {
-            return Fail(packet.Diagnostic ?? Unexpected());
-        }
-
+        // Correlation is checked before validity so that unrelated malformed
+        // traffic cannot fail an ID-bound transaction: a structural failure
+        // whose id was already parsed before the error is attributed exactly
+        // like a valid packet; one with no recoverable id never matches a
+        // bound transaction and is ignored rather than treated as ours.
         if (!string.Equals(_id, packet.Id, StringComparison.Ordinal))
         {
             return KittyAcceptResult.Ignored;
+        }
+
+        if (!packet.IsValid)
+        {
+            return Fail(packet.Diagnostic ?? Unexpected());
         }
 
         if (packet.Operation != _operation)

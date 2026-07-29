@@ -33,6 +33,14 @@ type at a time, 4096-byte chunks, total-size limits, cancellation, and
 fake-clock deadlines. Successful data transfers into an owned `KittyResult`
 whose disposal clears every data buffer.
 
+Correlation is checked before validity. An ID-bound transaction ignores any
+packet — malformed or well-formed — whose `id` does not match its own, including
+a malformed packet whose `id` could not be recovered before its structural
+error. Only a packet that both fails validation and carries a matching `id`
+fails the transaction; an unbound transaction (no `id` supplied) fails on any
+malformed packet, since it has no correlation basis to discriminate unrelated
+traffic.
+
 ## First milestone contract
 
 Implement OSC 52 text plus typed OSC 5522 MIME reads/writes, aliases,
