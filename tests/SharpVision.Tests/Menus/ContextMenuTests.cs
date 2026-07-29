@@ -109,6 +109,20 @@ public sealed class ContextMenuTests
         menu.Presentation.Parent.ShouldBeNull();
     }
 
+    /// <summary>Verifies Close() after an indirect detach-driven close does not throw.</summary>
+    [Fact]
+    public void Close_WhenPopupAlreadyClosedIndirectly_DoesNotThrow()
+    {
+        using var button = new Button { Content = new ControlText("Test") };
+        var menu = new ContextMenu();
+        button.ContextMenu = menu;
+        button.ContextMenu = null;
+
+        Should.NotThrow(menu.Close);
+
+        menu.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies setting the same instance is a no-op.</summary>
     [Fact]
     public void ContextMenu_WhenSetToSameInstance_DoesNothing()

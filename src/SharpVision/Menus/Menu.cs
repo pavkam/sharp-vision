@@ -14,6 +14,7 @@ using LayoutStack = Controls.Layout.Stack;
 public sealed class Menu: ItemsControl
 {
     private int _selectedIndex = -1;
+    private readonly Dictionary<Control, MenuEntryPresentation> _requestedPresentations = [];
     private readonly LayoutStack _stack;
     private bool _closeChainAfterInvocation;
     private bool _closeChainPending;
@@ -296,13 +297,22 @@ public sealed class Menu: ItemsControl
     private void AddEntry(Control item)
     {
         Debug.Assert(item is MenuItem or MenuSeparator, "Menu entries are constrained by typed collection overloads.");
+
+        // Ownership is secured before any authored property is captured or
+        // overwritten. InsertItemControl can throw for a duplicate, already
+        // attached, or disposed candidate; a rejected insertion must leave the
+        // caller's object exactly as it found it.
+        InsertItemControl(ItemControlCount, item);
+        _requestedPresentations.Add(
+            item,
+            new MenuEntryPresentation(item.Focusable, item.TabStop, item.Width, item.Height));
+
         if (item is MenuItem menuItem)
         {
             menuItem.Focusable = false;
             menuItem.TabStop = false;
         }
 
-        InsertItemControl(ItemControlCount, item);
         ApplyItemSizing(item);
 
         if (_selectedIndex < 0 && item is MenuItem)
@@ -344,6 +354,7 @@ public sealed class Menu: ItemsControl
             return false;
         }
 
+        RestorePresentation(item);
         _ = RemoveItemControl(item);
         Select(FindAvailable(Math.Min(index, ItemControlCount - 1), 1), focus: false);
         return true;
@@ -352,8 +363,32 @@ public sealed class Menu: ItemsControl
     /// <summary>Clears items and subscriptions.</summary>
     internal void ClearItems()
     {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            RestorePresentation(ItemAt(index));
+        }
+
         ClearItemControls();
         Select(-1, focus: false);
+    }
+
+    // Runs before the item is detached so callers observe restored values
+    // immediately, not private policy defaults still in effect.
+    private void RestorePresentation(Control item)
+    {
+        if (!_requestedPresentations.Remove(item, out var presentation))
+        {
+            return;
+        }
+
+        if (item is MenuItem menuItem)
+        {
+            menuItem.Focusable = presentation.Focusable;
+            menuItem.TabStop = presentation.TabStop;
+        }
+
+        item.Width = presentation.Width;
+        item.Height = presentation.Height;
     }
 
     /// <inheritdoc/>

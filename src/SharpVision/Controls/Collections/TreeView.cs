@@ -379,6 +379,11 @@ public sealed class TreeView: CompositeControl
         RebuildFlatList();
     }
 
+    /// <summary>Verifies the owning tree is mutable on the current dispatcher.</summary>
+    /// <exception cref="InvalidOperationException">The tree is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree is disposed.</exception>
+    internal void VerifyTreeMutable() => VerifyMutable();
+
     /// <summary>Notifies the tree that a structural change requires rebuilding the flat list.</summary>
     internal void NotifyStructureChanged()
     {

@@ -344,6 +344,83 @@ public sealed class ContextMenuSurfaceTests
         second.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>
+    /// Verifies replacing an open ContextMenu disposes its light-dismiss
+    /// registration rather than leaving a stale handler retained on the root:
+    /// a pointer press that would have dismissed the old (now replaced) menu
+    /// must not throw and must leave the new menu's own state untouched.
+    /// </summary>
+    [Fact]
+    public async Task Pointer_WhenMenuReplacedWhileOpen_DisposesOldLightDismissWithoutThrowingAsync()
+    {
+        var first = new ContextMenu();
+        first.Items.Add(new MenuItem { Content = new ControlText("First") });
+        var second = new ContextMenu();
+        second.Items.Add(new MenuItem { Content = new ControlText("Second") });
+        var button = new Button
+        {
+            Content = new ControlText("Host"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = first
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            button, new Size(30, 10), TestContext.Current.CancellationToken);
+
+        await surface.Pointer.RightClickAsync(button);
+        first.IsOpen.ShouldBeTrue();
+
+        await surface.UpdateAsync(() => button.ContextMenu = second, "replace context menu");
+
+        first.IsOpen.ShouldBeFalse();
+
+        // A press anywhere on the surface would have run the old menu's
+        // now-disposed light-dismiss registration had it survived detachment.
+        await surface.Pointer.ClickAsync(button);
+
+        first.IsOpen.ShouldBeFalse();
+        second.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies disposing the owning control while its ContextMenu is open
+    /// still closes the popup and disposes the light-dismiss registration,
+    /// rather than leaving it open against a control the owner no longer has.
+    /// </summary>
+    [Fact]
+    public async Task Pointer_WhenOwnerIsDisposedWhileMenuIsOpen_ClosesTheMenuAsync()
+    {
+        var stack = new Stack();
+
+        await using var surface = await ComponentSurface.MountAsync(
+            stack, new Size(30, 10), TestContext.Current.CancellationToken);
+
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("Item") });
+        var button = new Button
+        {
+            Content = new ControlText("Host"),
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+
+        await surface.UpdateAsync(() => stack.Children.Add(button), "attach button");
+        await surface.Pointer.RightClickAsync(button);
+        menu.IsOpen.ShouldBeTrue();
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                _ = stack.Children.Remove(button);
+                button.Dispose();
+            },
+            "remove and dispose owner");
+
+        menu.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies Opening fires before IsOpen becomes true.</summary>
     [Fact]
     public async Task Pointer_WhenOpeningEventFires_FiresBeforeIsOpenChangesAsync()

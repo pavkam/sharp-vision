@@ -21,14 +21,25 @@ internal sealed class CollectionObserver: IDisposable
         _invalidated = invalidated;
     }
 
-    /// <summary>Gets the single pending collection change, or null when coalesced or absent.</summary>
-    public NotifyCollectionChangedEventArgs? PendingChange => _coalesced ? null : _pendingChange;
-
-    /// <summary>Clears the stored pending change after the binding applies it.</summary>
-    public void ConsumePendingChange()
+    /// <summary>
+    /// Atomically takes and clears the single pending collection change,
+    /// including any coalesced (unusable) state. A coalesced burst clears on
+    /// this call rather than persisting until a future single change happens
+    /// to arrive: the caller falls back to a full read on a coalesced miss, so
+    /// the accumulator must not stay stuck reporting "coalesced" against a
+    /// value the caller has already resynchronized past.
+    /// </summary>
+    /// <param name="change">The pending change, when one is available and not coalesced.</param>
+    /// <returns>Whether an applicable pending change was available.</returns>
+    public bool TryTakePendingChange([NotNullWhen(true)] out NotifyCollectionChangedEventArgs? change)
     {
-        _pendingChange = null;
-        _coalesced = false;
+        lock (_gate)
+        {
+            change = _coalesced ? null : _pendingChange;
+            _pendingChange = null;
+            _coalesced = false;
+            return change is not null;
+        }
     }
 
     /// <summary>Replaces the currently observed collection identity.</summary>
@@ -65,15 +76,36 @@ internal sealed class CollectionObserver: IDisposable
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs eventArgs)
     {
-        _ = sender;
         ArgumentNullException.ThrowIfNull(eventArgs);
+        bool shouldInvalidate;
 
-        if (_pendingChange is not null)
+        // .NET events snapshot their invocation list before any handler in it
+        // runs. Observe() can therefore resubscribe this same instance method
+        // to a new collection while an already-snapshotted invocation from the
+        // *old* collection is still queued; unsubscription alone cannot stop
+        // it. Comparing the delivered sender against the collection Observe()
+        // currently tracks — under the same lock Observe() mutates it under —
+        // is what rejects that stale delivery instead of corrupting the target
+        // with a change from a source the binding has already moved past.
+        lock (_gate)
         {
-            _coalesced = true;
+            if (!ReferenceEquals(sender, _current))
+            {
+                return;
+            }
+
+            if (_pendingChange is not null)
+            {
+                _coalesced = true;
+            }
+
+            _pendingChange = eventArgs;
+            shouldInvalidate = true;
         }
 
-        _pendingChange = eventArgs;
-        _invalidated();
+        if (shouldInvalidate)
+        {
+            _invalidated();
+        }
     }
 }

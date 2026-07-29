@@ -18,6 +18,7 @@ public sealed class NavigationView: CompositeControl
     private readonly LayoutStack _footerStack;
     private readonly DisplayText _headerText;
     private readonly CurrentItemNavigator _navigator;
+    private readonly Dictionary<Control, NavigationEntryPresentation> _requestedPresentations = [];
 
     /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
     /// <remarks>
@@ -177,12 +178,18 @@ public sealed class NavigationView: CompositeControl
             "Navigation view entries are constrained by typed collection overloads.");
         var stack = isFooter ? _footerStack : _itemsStack;
 
+        // Ownership is secured before any authored property is captured or
+        // overwritten. A rejected insertion must leave the caller's object
+        // exactly as it found it.
+        stack.Children.Add(entry);
+        _requestedPresentations.Add(
+            entry,
+            new NavigationEntryPresentation(entry.Width, entry.Focusable, entry.TabStop));
+
         if (entry is NavigationViewSeparator)
         {
             entry.Width = Length.Percent(100);
         }
-
-        stack.Children.Add(entry);
 
         if (entry is NavigationViewItem item)
         {
@@ -202,28 +209,49 @@ public sealed class NavigationView: CompositeControl
             ? CollectSelectableItems().IndexOf(selected)
             : -1;
 
-        if (!stack.Children.Remove(entry))
+        if (!stack.Children.Contains(entry))
         {
             return false;
         }
+
+        if (entry is NavigationViewItem item)
+        {
+            item.Invoked -= OnItemInvoked;
+        }
+
+        RestorePresentation(entry);
+        _ = stack.Children.Remove(entry);
 
         if (currentRemoved)
         {
             _ = _navigator.SetCurrent(null);
         }
 
-        if (entry is NavigationViewItem item)
+        if (entry is NavigationViewItem selectedCandidate && ReferenceEquals(SelectedItem, selectedCandidate))
         {
-            item.Invoked -= OnItemInvoked;
-
-            if (ReferenceEquals(SelectedItem, item))
-            {
-                var remaining = CollectSelectableItems();
-                Select(remaining.Count == 0 ? null : remaining[Math.Min(selectedIndex, remaining.Count - 1)]);
-            }
+            var remaining = CollectSelectableItems();
+            Select(remaining.Count == 0 ? null : remaining[Math.Min(selectedIndex, remaining.Count - 1)]);
         }
 
         return true;
+    }
+
+    // Runs before the entry is detached so callers observe restored values
+    // immediately, not this view's private presentation policy.
+    private void RestorePresentation(Control entry)
+    {
+        if (!_requestedPresentations.Remove(entry, out var presentation))
+        {
+            return;
+        }
+
+        entry.Width = presentation.Width;
+
+        if (entry is NavigationViewItem item)
+        {
+            item.Focusable = presentation.Focusable;
+            item.TabStop = presentation.TabStop;
+        }
     }
 
     /// <summary>Clears all entries in a section.</summary>
@@ -242,6 +270,8 @@ public sealed class NavigationView: CompositeControl
             {
                 item.Invoked -= OnItemInvoked;
             }
+
+            RestorePresentation(child);
         }
 
         stack.Children.Clear();

@@ -130,8 +130,19 @@ list.BindSelection(viewModel, model => model.SelectedResult);
 `BindItems` connects a finite `IReadOnlyList<T>` to `ListView` or `ComboBox`.
 Property replacement uses `INotifyPropertyChanged`; a current
 `INotifyCollectionChanged` collection observes add, remove, replace, move, and
-reset. Each action requests one latest complete snapshot. Null projects empty,
-and replacement detaches the old collection.
+reset. A caller that supplies an incremental-apply delegate has each supported
+single-item action applied directly to the target instead of re-reading a
+complete snapshot; unsupported or coalesced actions still fall back to one
+latest complete read. Null projects empty, and replacement detaches the old
+collection.
+
+Incremental application tracks the identity of the collection it is currently
+observing. A change notification delivered from a collection the binding has
+already replaced is discarded rather than applied to the new target snapshot —
+this can happen even on a single thread when an earlier-registered handler on
+the same collection replaces the bound source from within its own
+`CollectionChanged` callback, because the runtime's event invocation list is
+captured before any handler in it runs.
 
 Snapshot construction is `O(n)` because `ListView` currently realizes every
 item. The collection remains stable while `Count` and its indexer are read on

@@ -489,4 +489,44 @@ public sealed class MenuTests
 
         observed.ShouldBeTrue();
     }
+
+    /// <summary>Verifies a rejected insertion leaves the candidate's Focusable and TabStop unchanged.</summary>
+    [Fact]
+    public void Items_WhenMenuItemInsertionFails_LeavesCandidateFocusableAndTabStopUnchanged()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Content = new ControlText("Open") };
+        item.Dispose();
+
+        // A disposed candidate fails insertion before any of this menu's
+        // private presentation policy applies.
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.Add(item));
+
+        item.Focusable.ShouldBeTrue();
+        item.TabStop.ShouldBeTrue();
+        menu.ItemCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies removal restores the item's authored Focusable, TabStop, Width, and Height.</summary>
+    [Fact]
+    public void Items_WhenMenuItemIsRemoved_RestoresAuthoredWidthHeightFocusableAndTabStop()
+    {
+        var menu = new Menu();
+        var item = new MenuItem
+        {
+            Content = new ControlText("Open"),
+            Width = Length.Cells(30),
+            Height = Length.Cells(3),
+            Focusable = false,
+            TabStop = false
+        };
+        menu.Items.Add(item);
+
+        _ = menu.Items.Remove(item);
+
+        item.Width.ShouldBe(Length.Cells(30));
+        item.Height.ShouldBe(Length.Cells(3));
+        item.Focusable.ShouldBeFalse();
+        item.TabStop.ShouldBeFalse();
+    }
 }

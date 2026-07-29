@@ -13,6 +13,7 @@ public sealed class NavigationViewGroup: Control
 {
     private readonly LayoutStack _stack;
     private readonly OwnedControlSlot _childrenSlot;
+    private readonly Dictionary<NavigationViewItem, NavigationItemPresentation> _requestedPresentations = [];
     private Rune? _collapsedGlyph;
     private Rune? _expandedGlyph;
 
@@ -98,26 +99,39 @@ public sealed class NavigationViewGroup: Control
     internal NavigationViewItem ItemAt(int index) => (NavigationViewItem) _stack.Children[index];
 
     /// <summary>Adds one sub-item to this group.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     public void AddItem(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
+
+        // Ownership is secured before any authored property is captured or
+        // overwritten. A rejected insertion (duplicate, already attached,
+        // disposed) must leave the caller's object exactly as it found it.
+        _stack.Children.Add(item);
+        _requestedPresentations.Add(
+            item,
+            new NavigationItemPresentation(item.Padding, item.Focusable, item.TabStop));
+
         item.Padding = new Thickness(2, 0, 0, 0);
         item.Focusable = false;
         item.TabStop = false;
-        _stack.Children.Add(item);
         item.Invoked += OnItemInvoked;
     }
 
     /// <summary>Removes one sub-item from this group.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     public bool RemoveItem(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        if (!_stack.Children.Remove(item))
+
+        if (!_stack.Children.Contains(item))
         {
             return false;
         }
 
         item.Invoked -= OnItemInvoked;
+        RestorePresentation(item);
+        _ = _stack.Children.Remove(item);
         return true;
     }
 
@@ -129,10 +143,25 @@ public sealed class NavigationViewGroup: Control
             if (child is NavigationViewItem item)
             {
                 item.Invoked -= OnItemInvoked;
+                RestorePresentation(item);
             }
         }
 
         _stack.Children.Clear();
+    }
+
+    // Runs before the item is detached so callers observe restored values
+    // immediately, not this group's private indentation and focus policy.
+    private void RestorePresentation(NavigationViewItem item)
+    {
+        if (!_requestedPresentations.Remove(item, out var presentation))
+        {
+            return;
+        }
+
+        item.Padding = presentation.Padding;
+        item.Focusable = presentation.Focusable;
+        item.TabStop = presentation.TabStop;
     }
 
     /// <inheritdoc/>

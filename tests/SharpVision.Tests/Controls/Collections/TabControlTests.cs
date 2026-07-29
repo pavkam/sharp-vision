@@ -330,6 +330,62 @@ public sealed class TabControlTests
         selected.IsDisposed.ShouldBeFalse();
     }
 
+    /// <summary>Verifies removal restores the item's authored Width, Height, and Visibility.</summary>
+    [Fact]
+    public void Items_WhenTabIsRemoved_RestoresAuthoredWidthHeightAndVisibility()
+    {
+        var item = Create("First", "One");
+        item.Width = Length.Cells(12);
+        item.Height = Length.Cells(4);
+        item.Visibility = Visibility.Hidden;
+        var tabs = Create(item);
+
+        _ = tabs.Items.Remove(item);
+
+        item.Width.ShouldBe(Length.Cells(12));
+        item.Height.ShouldBe(Length.Cells(4));
+        item.Visibility.ShouldBe(Visibility.Hidden);
+    }
+
+    /// <summary>Verifies clearing restores the authored visibility of every detached item.</summary>
+    [Fact]
+    public void Items_WhenTabsAreCleared_RestoresAuthoredVisibilityOnEveryDetachedItem()
+    {
+        var visible = Create("Visible", "One");
+        var hidden = Create("Hidden", "Two");
+        hidden.Visibility = Visibility.Hidden;
+        var tabs = Create(visible, hidden);
+
+        tabs.Items.Clear();
+
+        visible.Visibility.ShouldBe(Visibility.Visible);
+        hidden.Visibility.ShouldBe(Visibility.Hidden);
+    }
+
+    /// <summary>
+    /// Verifies a tab removed while unselected (and therefore Collapsed by this
+    /// control's private presentation policy) is selectable again after moving
+    /// to a different TabControl. Before the restore-on-detach fix, AddItem
+    /// captured the item's leftover Collapsed visibility as its next owner's
+    /// requested visibility, making the item permanently unselectable anywhere.
+    /// </summary>
+    [Fact]
+    public void Items_WhenRemovedTabIsAddedToAnotherTabControl_IsSelectableAndRendersItsContent()
+    {
+        var selected = Create("Selected", "One");
+        var moved = Create("Moved", "Two");
+        var first = Create(selected, moved);
+        first.SelectedIndex = 0;
+
+        _ = first.Items.Remove(moved);
+
+        var second = Create(moved);
+
+        second.SelectedIndex.ShouldBe(0);
+        second.Items[second.SelectedIndex].ShouldBeSameAs(moved);
+        IsHeaderSelected(second, 0).ShouldBeTrue();
+    }
+
     /// <summary>Verifies invalid selected indexes and unavailable targets preserve the committed page.</summary>
     [Fact]
     public void SelectedIndex_WhenTargetIsInvalid_PreservesSelectionBeforeThrowing()

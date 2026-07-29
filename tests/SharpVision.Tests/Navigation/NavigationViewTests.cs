@@ -184,6 +184,47 @@ public sealed class NavigationViewTests
         cleared.IsSelected.ShouldBeFalse();
     }
 
+    /// <summary>Verifies removal from a group restores the item's authored Padding, Focusable, and TabStop.</summary>
+    [Fact]
+    public void Group_WhenItemIsRemoved_RestoresAuthoredPaddingFocusableAndTabStop()
+    {
+        var item = new NavigationViewItem
+        {
+            Header = "Item",
+            Padding = new Thickness(5, 1, 5, 1),
+            Focusable = false,
+            TabStop = false
+        };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.AddItem(item);
+
+        group.RemoveItem(item).ShouldBeTrue();
+
+        item.Padding.ShouldBe(new Thickness(5, 1, 5, 1));
+        item.Focusable.ShouldBeFalse();
+        item.TabStop.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies an item moved from a group to the top level renders without the
+    /// group's indentation, rather than retaining a leaked private padding
+    /// value that has no explanation at the top level.
+    /// </summary>
+    [Fact]
+    public void Items_WhenGroupedItemMovesToTopLevel_DoesNotRetainGroupPadding()
+    {
+        var item = new NavigationViewItem { Header = "Item" };
+        var authoredPadding = item.Padding;
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.AddItem(item);
+
+        group.RemoveItem(item).ShouldBeTrue();
+        var navigation = new NavigationView();
+        navigation.Items.Add(item);
+
+        item.Padding.ShouldBe(authoredPadding);
+    }
+
     /// <summary>Verifies separator is non-focusable and non-hit-testable.</summary>
     [Fact]
     public void Separator_WhenCreated_IsNonInteractive()

@@ -165,4 +165,54 @@ public sealed class BindingIncrementalCollectionTests
 
         target.Items.Select(static item => item!.ToString()).ShouldBe(["X", "Y", "Z", "W"]);
     }
+
+    /// <summary>
+    /// Verifies a collection-changed notification from a source the binding has
+    /// already moved past does not apply to the replacement target. The
+    /// interleaving is deterministic: an application handler registered on the
+    /// original collection before the binding subscribes replaces the bound
+    /// source from within its own callback, so .NET's already-snapshotted
+    /// invocation list still delivers the stale notification to the binding
+    /// after it has re-observed the new source.
+    /// </summary>
+    [Fact]
+    public void BindItems_WhenStaleAddArrivesAfterSourceReplacement_KeepsOnlyReplacementItems()
+    {
+        var first = new ObservableCollection<BindingItem> { new("A") };
+        var replacementItem = new BindingItem("X");
+        var second = new ObservableCollection<BindingItem> { replacementItem };
+        var model = new BindingModel { Items = first };
+        var target = new UiListView();
+
+        first.CollectionChanged += (_, _) => model.Items = second;
+
+        using var binding = target.BindItems(model, value => value.Items);
+
+        first.Add(new BindingItem("stale"));
+
+        target.Items.ShouldBe(new object?[] { replacementItem });
+    }
+
+    /// <summary>
+    /// Verifies the same stale-source interleaving does not mutate the target
+    /// after the binding has been disposed.
+    /// </summary>
+    [Fact]
+    public void BindItems_WhenStaleAddArrivesAfterDisposal_DoesNotMutateTarget()
+    {
+        var first = new ObservableCollection<BindingItem> { new("A") };
+        var model = new BindingModel { Items = first };
+        var target = new UiListView();
+        Binding? binding = null;
+
+        // Registered before the binding subscribes, so it runs first in the
+        // snapshotted invocation list and disposes before the binding's own
+        // handler (later in that same already-captured list) is reached.
+        first.CollectionChanged += (_, _) => binding!.Dispose();
+        binding = target.BindItems(model, value => value.Items);
+
+        first.Add(new BindingItem("stale"));
+
+        target.Items.Count.ShouldBe(1);
+    }
 }

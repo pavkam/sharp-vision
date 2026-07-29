@@ -216,12 +216,10 @@ public sealed class Binding: IDisposable
     {
         if (_collectionObserver is not { } observer ||
             _applyIncrementalChange is not { } applyIncremental ||
-            observer.PendingChange is not { } change)
+            !observer.TryTakePendingChange(out var change))
         {
             return false;
         }
-
-        observer.ConsumePendingChange();
 
         _direction = BindingDirection.SourceToTarget;
         var coordinated = _coordinatesItems;

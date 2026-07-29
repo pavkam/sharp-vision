@@ -25,6 +25,7 @@ public class ContextMenu: Control, IContextMenu
         };
         _popup.Closing += OnPopupClosing;
         _popup.Closed += OnPopupClosed;
+        _popup.PropertyChanged += OnPopupPropertyChanged;
     }
 
     /// <summary>Raised immediately before the menu is shown, allowing dynamic item updates.</summary>
@@ -61,27 +62,15 @@ public class ContextMenu: Control, IContextMenu
 
         _popup.FixedOrigin = new Point(col, row);
         _popup.IsOpen = true;
-        _lightDismiss?.Dispose();
-        _lightDismiss = new LightDismiss(
-            _popup,
-            anchor: null,
-            () => _popup.IsOpen,
-            () => _popup.SurfaceBounds,
-            Close);
     }
 
     /// <summary>Programmatically closes the context menu.</summary>
     public void Close()
     {
-        if (!_popup.IsOpen)
+        if (_popup.IsOpen)
         {
-            return;
+            _popup.IsOpen = false;
         }
-
-        _lightDismiss?.Dispose();
-        _lightDismiss = null;
-        _popup.IsOpen = false;
-        _popup.FixedOrigin = null;
     }
 
     /// <inheritdoc/>
@@ -92,6 +81,7 @@ public class ContextMenu: Control, IContextMenu
             _lightDismiss?.Dispose();
             _popup.Closing -= OnPopupClosing;
             _popup.Closed -= OnPopupClosed;
+            _popup.PropertyChanged -= OnPopupPropertyChanged;
             Menu.ItemInvoked -= OnMenuItemInvoked;
             Opening = null;
             Closing = null;
@@ -107,4 +97,36 @@ public class ContextMenu: Control, IContextMenu
 
     private void OnPopupClosed(object? sender, EventArgs e) => Closed?.Invoke(this, EventArgs.Empty);
 
+    // IsOpen changes on every closure path, including indirect ones the popup
+    // reaches on its own — detachment (a caller replaces or clears
+    // Control.ContextMenu while open) and disposal never raise Closing/Closed,
+    // but they do flip IsOpen through CommitClosedState. Reacting here instead
+    // of only inside Close() is what stops the root light-dismiss handler from
+    // outliving a popup that closed itself.
+    private void OnPopupPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        _ = sender;
+
+        if (e.PropertyName != nameof(Popup.IsOpen))
+        {
+            return;
+        }
+
+        if (_popup.IsOpen)
+        {
+            _lightDismiss?.Dispose();
+            _lightDismiss = new LightDismiss(
+                _popup,
+                anchor: null,
+                () => _popup.IsOpen,
+                () => _popup.SurfaceBounds,
+                Close);
+        }
+        else
+        {
+            _lightDismiss?.Dispose();
+            _lightDismiss = null;
+            _popup.FixedOrigin = null;
+        }
+    }
 }

@@ -62,9 +62,17 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     public int Count => _items.Count;
 
     /// <summary>Adds one detached tree view item.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentException">The item already belongs to this collection.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The item already belongs to another collection, would create a cycle, or an attached owner
+    /// is mutated off its dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
     public void Add(TreeViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
+        Owner?.VerifyTreeMutable();
 
         if (_items.Contains(item))
         {
@@ -121,28 +129,36 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     }
 
     /// <summary>Removes one owned tree view item.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
     public bool Remove(TreeViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
+        Owner?.VerifyTreeMutable();
 
         if (!_items.Remove(item))
         {
             return false;
         }
 
-        Owner?.NotifyStructureChanged();
         item.ParentCollection = null;
         item.Children.Owner = null;
+        Owner?.NotifyStructureChanged();
         return true;
     }
 
     /// <summary>Removes every owned tree view item.</summary>
+    /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
     public void Clear()
     {
         if (_items.Count == 0)
         {
             return;
         }
+
+        Owner?.VerifyTreeMutable();
 
         foreach (var item in _items)
         {

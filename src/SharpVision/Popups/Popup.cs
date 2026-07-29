@@ -560,15 +560,15 @@ public class Popup: FloatingSurface
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
 
-        if (reason is ReleaseReason.Hidden or ReleaseReason.Detached && IsOpen)
+        // Disposal joins Hidden/Detached here rather than only clearing the backing
+        // field: a disposed-while-open popup (for example, a whole owner control
+        // disposing with its context menu still open) must still raise the IsOpen
+        // transition so subscribers — light-dismiss handlers chief among them —
+        // can release resources they attached to an unrelated root control.
+        if (reason is ReleaseReason.Hidden or ReleaseReason.Detached or ReleaseReason.Disposed && IsOpen)
         {
             ExceptionAggregation.Capture(CommitClosedState, ref failure);
             ExceptionAggregation.Capture(CollapseContent, ref failure);
-        }
-
-        if (reason == ReleaseReason.Disposed)
-        {
-            _isOpen = false;
         }
 
         failure?.Throw();

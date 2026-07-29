@@ -17,7 +17,7 @@ public sealed class TabControl: ItemsControl
     private const int _selectionIndicatorRowHeight = 1;
     private const int _headerStripHeight = _headerRowHeight + _selectionIndicatorRowHeight;
     private const int _headerSeparatorWidth = 1;
-    private readonly Dictionary<TabItem, Visibility> _requestedVisibilities = [];
+    private readonly Dictionary<TabItem, TabItemPresentation> _requestedPresentations = [];
     private readonly LayoutStack _headers;
     private readonly LayoutStack _stack;
     private bool _updatingPresentation;
@@ -272,11 +272,11 @@ public sealed class TabControl: ItemsControl
     {
         ArgumentNullException.ThrowIfNull(item);
         VerifyMutable();
-        var requestedVisibility = item.Visibility;
+        var requestedPresentation = new TabItemPresentation(item.Visibility, item.Width, item.Height);
         var header = new TabHeader(item.Header)
         {
             IsEnabled = item.IsEnabled,
-            Visibility = requestedVisibility,
+            Visibility = requestedPresentation.Visibility,
         };
         header.Activated += OnHeaderActivated;
         InsertItemControl(ItemControlCount, item);
@@ -292,7 +292,7 @@ public sealed class TabControl: ItemsControl
             throw;
         }
 
-        _requestedVisibilities.Add(item, requestedVisibility);
+        _requestedPresentations.Add(item, requestedPresentation);
         item.PropertyChanged += OnItemPropertyChanged;
         item.Width = Length.Percent(100);
         item.Height = Length.Percent(100);
@@ -323,7 +323,7 @@ public sealed class TabControl: ItemsControl
         var header = HeaderAt(idx);
         item.PropertyChanged -= OnItemPropertyChanged;
         header.Activated -= OnHeaderActivated;
-        _ = _requestedVisibilities.Remove(item);
+        RestorePresentation(item);
         header.CommitSelection(false);
         _ = RemoveItemControl(item);
         _ = _headers.Children.Remove(header);
@@ -386,19 +386,39 @@ public sealed class TabControl: ItemsControl
             var header = HeaderAt(index);
             item.PropertyChanged -= OnItemPropertyChanged;
             header.Activated -= OnHeaderActivated;
+            RestorePresentation(item);
             header.CommitSelection(false);
             headers[index] = header;
         }
 
         ClearItemControls();
         _headers.Children.Clear();
-        _requestedVisibilities.Clear();
         Select(-1);
 
         foreach (var header in headers)
         {
             header.Dispose();
         }
+    }
+
+    // Runs before the item is detached so the restored values are the ones
+    // observed by the caller immediately afterward, not an intermediate state
+    // still overwritten by this control's private presentation policy. Without
+    // this, a detached item kept Width/Height pinned to Percent(100) and
+    // Visibility pinned to whatever page happened to be selected last — and
+    // because AddItem captures an item's *current* Visibility as its next
+    // owner's requested visibility, a Collapsed leftover made the item
+    // permanently unselectable in any later TabControl.
+    private void RestorePresentation(TabItem item)
+    {
+        if (!_requestedPresentations.Remove(item, out var presentation))
+        {
+            return;
+        }
+
+        item.Visibility = presentation.Visibility;
+        item.Width = presentation.Width;
+        item.Height = presentation.Height;
     }
 
     /// <inheritdoc/>
@@ -592,7 +612,7 @@ public sealed class TabControl: ItemsControl
     }
 
     private Visibility RequestedVisibility(TabItem item) =>
-        _requestedVisibilities.TryGetValue(item, out var visibility) ? visibility : item.Visibility;
+        _requestedPresentations.TryGetValue(item, out var presentation) ? presentation.Visibility : item.Visibility;
 
     private void SelectNearest(int index)
     {
@@ -640,7 +660,12 @@ public sealed class TabControl: ItemsControl
                 return;
             }
 
-            _requestedVisibilities[item] = item.Visibility;
+            if (_requestedPresentations.TryGetValue(item, out var presentation))
+            {
+                _requestedPresentations[item] =
+                    new TabItemPresentation(item.Visibility, presentation.Width, presentation.Height);
+            }
+
             header.Visibility = item.Visibility;
         }
         else if (eventArgs.PropertyName == nameof(IsEnabled))
