@@ -196,11 +196,7 @@ public sealed class NavigationView: CompositeControl
     internal bool RemoveEntry(Control entry, bool isFooter)
     {
         var stack = isFooter ? _footerStack : _itemsStack;
-        var currentRemoved = _navigator.Current is { } current &&
-                             (ReferenceEquals(current, entry) || IsDescendantOf(current, entry));
-        var selectedIndex = SelectedItem is { } selected
-            ? CollectSelectableItems().IndexOf(selected)
-            : -1;
+        var repair = PrepareRemoval(entry);
 
         if (!stack.Children.Contains(entry))
         {
@@ -215,18 +211,43 @@ public sealed class NavigationView: CompositeControl
         RestorePresentation(entry);
         _ = stack.Children.Remove(entry);
 
-        if (currentRemoved)
+        CompleteRemoval(repair);
+
+        return true;
+    }
+
+    // Captures whether the current-navigation or selected item is the root
+    // being removed or one of its descendants, before detachment makes the
+    // ancestor walk impossible. A group counts as its own root, so removing
+    // an entire group (or clearing one) repairs a selected descendant the
+    // same way removing that descendant directly would — this is also the
+    // seam NavigationViewGroup uses to repair selection for removals that
+    // never pass through RemoveEntry/ClearEntries at all.
+    internal NavigationViewRemovalRepair PrepareRemoval(Control root)
+    {
+        var currentRemoved = _navigator.Current is { } current &&
+                             (ReferenceEquals(current, root) || IsDescendantOf(current, root));
+        var selectedRemoved = SelectedItem is { } selected &&
+                              (ReferenceEquals(selected, root) || IsDescendantOf(selected, root));
+        var selectedIndex = selectedRemoved ? CollectSelectableItems().IndexOf(SelectedItem!) : -1;
+
+        return new NavigationViewRemovalRepair(currentRemoved, selectedRemoved, selectedIndex);
+    }
+
+    // Runs after detachment, using state captured by PrepareRemoval before
+    // the removed subtree left the tree.
+    internal void CompleteRemoval(NavigationViewRemovalRepair repair)
+    {
+        if (repair.CurrentRemoved)
         {
             _ = _navigator.SetCurrent(null);
         }
 
-        if (entry is NavigationViewItem selectedCandidate && ReferenceEquals(SelectedItem, selectedCandidate))
+        if (repair.SelectedRemoved)
         {
             var remaining = CollectSelectableItems();
-            Select(remaining.Count == 0 ? null : remaining[Math.Min(selectedIndex, remaining.Count - 1)]);
+            Select(remaining.Count == 0 ? null : remaining[Math.Min(repair.SelectedIndex, remaining.Count - 1)]);
         }
-
-        return true;
     }
 
     // Runs before the entry is detached so callers observe restored values
@@ -251,11 +272,7 @@ public sealed class NavigationView: CompositeControl
     internal void ClearEntries(bool isFooter)
     {
         var stack = isFooter ? _footerStack : _itemsStack;
-
-        if (_navigator.Current is { } current && IsDescendantOf(current, stack))
-        {
-            _ = _navigator.SetCurrent(null);
-        }
+        var repair = PrepareRemoval(stack);
 
         foreach (var child in stack.Children)
         {
@@ -268,7 +285,8 @@ public sealed class NavigationView: CompositeControl
         }
 
         stack.Children.Clear();
-        Select(null);
+
+        CompleteRemoval(repair);
     }
 
     /// <summary>Updates the selected item when a child receives focus externally.</summary>

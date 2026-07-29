@@ -184,6 +184,130 @@ public sealed class NavigationViewTests
         cleared.IsSelected.ShouldBeFalse();
     }
 
+    /// <summary>Verifies removing the selected item directly from its group repairs
+    /// selection through the owning view and raises exactly one SelectionChanged.</summary>
+    [Fact]
+    public void Group_WhenSelectedChildIsRemoved_RepairsSelectionAndRaisesEventOnce()
+    {
+        var other = new NavigationViewItem { Header = "Other" };
+        var selected = new NavigationViewItem { Header = "Selected" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.AddItem(other);
+        group.AddItem(selected);
+        var navigation = new NavigationView();
+        navigation.Items.Add(group);
+        navigation.SelectItem(selected);
+        var changes = new List<NavigationViewSelectionChangedEventArgs>();
+        navigation.SelectionChanged += (_, args) => changes.Add(args);
+
+        group.RemoveItem(selected).ShouldBeTrue();
+
+        navigation.SelectedItem.ShouldBeSameAs(other);
+        selected.IsSelected.ShouldBeFalse();
+        other.IsSelected.ShouldBeTrue();
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            args => args.PreviousItem.ShouldBeSameAs(selected),
+            args => args.CurrentItem.ShouldBeSameAs(other));
+    }
+
+    /// <summary>Verifies clearing a group containing the selected item repairs
+    /// selection to the nearest remaining item outside the group.</summary>
+    [Fact]
+    public void Group_WhenClearedWithSelectedChild_RepairsSelectionToNearestRemainingItem()
+    {
+        var before = new NavigationViewItem { Header = "Before" };
+        var selected = new NavigationViewItem { Header = "Selected" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.AddItem(selected);
+        var navigation = new NavigationView();
+        navigation.Items.Add(before);
+        navigation.Items.Add(group);
+        navigation.SelectItem(selected);
+
+        group.ClearItems();
+
+        navigation.SelectedItem.ShouldBeSameAs(before);
+        selected.IsSelected.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies removing an entire group repairs selection when the
+    /// selected item is a descendant rather than the group entry itself.</summary>
+    [Fact]
+    public void Items_WhenGroupContainingSelectedItemIsRemoved_RepairsSelection()
+    {
+        var remaining = new NavigationViewItem { Header = "Remaining" };
+        var selected = new NavigationViewItem { Header = "Selected" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.AddItem(selected);
+        var navigation = new NavigationView();
+        navigation.Items.Add(remaining);
+        navigation.Items.Add(group);
+        navigation.SelectItem(selected);
+
+        navigation.Items.Remove(group).ShouldBeTrue();
+
+        navigation.SelectedItem.ShouldBeSameAs(remaining);
+        selected.IsSelected.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies removing every remaining descendant of the selected item's
+    /// group clears selection entirely rather than leaving a stale reference.</summary>
+    [Fact]
+    public void Items_WhenGroupContainingSelectedItemIsRemovedAndNoneRemain_ClearsSelection()
+    {
+        var selected = new NavigationViewItem { Header = "Selected" };
+        var group = new NavigationViewGroup { Header = "Group" };
+        group.AddItem(selected);
+        var navigation = new NavigationView();
+        navigation.Items.Add(group);
+        navigation.SelectItem(selected);
+
+        navigation.Items.Remove(group).ShouldBeTrue();
+
+        navigation.SelectedItem.ShouldBeNull();
+        selected.IsSelected.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a group's selected item survives moving into another
+    /// navigation view without carrying ghost selection state from its former owner.</summary>
+    [Fact]
+    public void Group_WhenSelectedItemReparentsIntoAnotherView_DoesNotLeakOwnerSelectionState()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+        var item = new NavigationViewItem { Header = "Item" };
+        group.AddItem(item);
+        var first = new NavigationView();
+        first.Items.Add(group);
+        first.SelectItem(item);
+
+        group.RemoveItem(item).ShouldBeTrue();
+        var second = new NavigationView();
+        second.Items.Add(item);
+
+        first.SelectedItem.ShouldBeNull();
+        second.SelectedItem.ShouldBeNull();
+        item.IsSelected.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies clearing a footer group's selected item does not clear a
+    /// main-section selection, and vice versa.</summary>
+    [Fact]
+    public void ClearEntries_WhenSectionDoesNotOwnSelection_LeavesOtherSectionSelectionIntact()
+    {
+        var mainSelected = new NavigationViewItem { Header = "Main" };
+        var footerGroup = new NavigationViewGroup { Header = "Footer group" };
+        footerGroup.AddItem(new NavigationViewItem { Header = "Footer item" });
+        var navigation = new NavigationView();
+        navigation.Items.Add(mainSelected);
+        navigation.FooterItems.Add(footerGroup);
+        navigation.SelectItem(mainSelected);
+
+        navigation.FooterItems.Clear();
+
+        navigation.SelectedItem.ShouldBeSameAs(mainSelected);
+        mainSelected.IsSelected.ShouldBeTrue();
+    }
+
     /// <summary>Verifies removal from a group restores the item's authored Padding, Focusable, and TabStop.</summary>
     [Fact]
     public void Group_WhenItemIsRemoved_RestoresAuthoredPaddingFocusableAndTabStop()

@@ -129,15 +129,30 @@ public sealed class NavigationViewGroup: Control
             return false;
         }
 
+        // Captured before detachment: FindNavigationView walks the still-attached
+        // ancestor chain, and PrepareRemoval needs that chain intact to tell
+        // whether the removed item is (or owns) the view's current selection.
+        var owner = FindNavigationView();
+        var repair = owner?.PrepareRemoval(item);
+
         item.Invoked -= OnItemInvoked;
         RestorePresentation(item);
         _ = _stack.Children.Remove(item);
+
+        if (repair is { } value)
+        {
+            owner!.CompleteRemoval(value);
+        }
+
         return true;
     }
 
     /// <summary>Clears all sub-items.</summary>
     public void ClearItems()
     {
+        var owner = FindNavigationView();
+        var repair = owner?.PrepareRemoval(this);
+
         foreach (var child in _stack.Children)
         {
             if (child is NavigationViewItem item)
@@ -148,6 +163,11 @@ public sealed class NavigationViewGroup: Control
         }
 
         _stack.Children.Clear();
+
+        if (repair is { } value)
+        {
+            owner!.CompleteRemoval(value);
+        }
     }
 
     // Runs before the item is detached so callers observe restored values
