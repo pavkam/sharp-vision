@@ -1,0 +1,26 @@
+name: Documentation improvement
+description: Report missing, unclear, or incorrect documentation and examples.
+title: "[Docs]: "
+labels:
+  - "kind: documentation"
+  - "state: needs triage"
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Documentation location
+      description: Link the page, source file, API member, or example.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is unclear or incorrect?
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Suggested improvement
+    validations:
+      required: true
