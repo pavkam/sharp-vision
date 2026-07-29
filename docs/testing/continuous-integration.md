@@ -25,8 +25,10 @@ instrumented UI classes under `src/SharpVision/Controls/`, `Dialogs/`, `Menus/`,
 `Navigation/`, `Popups/`, and `Windows/`. The scoped floor supplements the
 behavioral catalogs; it does not allow line coverage to replace mounted pointer,
 keyboard, focus, hover, pressed-state, box-model, frame, resize, or tiny-bound
-assertions. Neither job waits for the other; a workflow succeeds only when both
-complete successfully. The workflow badge in the
+assertions. The coverage-instrumented UI run disables collection parallelization
+so profiler callbacks remain deterministic; the ordinary test target retains the
+suite's normal parallel execution. Neither job waits for the other; a workflow
+succeeds only when both complete successfully. The workflow badge in the
 [README](../../README.md#sharpvision) reflects that automation.
 
 ## Local command mapping
