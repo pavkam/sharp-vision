@@ -19,6 +19,7 @@ public sealed class NavigationView: CompositeControl
     private readonly DisplayText _headerText;
     private readonly CurrentItemNavigator _navigator;
     private readonly Dictionary<Control, NavigationEntryPresentation> _requestedPresentations = [];
+    private bool _isHandlingKnownRemoval;
 
     /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
     /// <remarks>
@@ -97,6 +98,9 @@ public sealed class NavigationView: CompositeControl
         Dock.SetSide(_footerStack, Side.Bottom);
         root.Children.Add(_footerStack);
         root.Children.Add(_itemsStack);
+
+        _itemsStack.Children.Changed += OnEntryHostChanged;
+        _footerStack.Children.Changed += OnEntryHostChanged;
 
         InitializeContent(root);
         Items = new NavigationViewEntryCollection(this, isFooter: false);
@@ -209,11 +213,49 @@ public sealed class NavigationView: CompositeControl
         }
 
         RestorePresentation(entry);
-        _ = stack.Children.Remove(entry);
+
+        _isHandlingKnownRemoval = true;
+
+        try
+        {
+            _ = stack.Children.Remove(entry);
+        }
+        finally
+        {
+            _isHandlingKnownRemoval = false;
+        }
 
         CompleteRemoval(repair);
 
         return true;
+    }
+
+    // Repairs selection/current-item state for a top-level entry that left the tree without
+    // going through RemoveEntry/ClearEntries — most notably a direct Dispose() call, which
+    // Control.DisposeCore removes from its owning slot as ordinary disposal, publishing this
+    // same notification. RemoveEntry/ClearEntries already run the precise, position-aware
+    // repair themselves and suppress this handler for their own mutation via
+    // _isHandlingKnownRemoval, so this only ever reconciles the otherwise-unhandled path.
+    private void OnEntryHostChanged()
+    {
+        if (_isHandlingKnownRemoval)
+        {
+            return;
+        }
+
+        // This notification publishes from inside DisposeCore, which removes the item from
+        // its owning slot before IsDisposed itself flips true — IsDisposing is what's already
+        // set at this point.
+        if (_navigator.Current is { IsDisposing: true } or { IsDisposed: true })
+        {
+            _ = _navigator.SetCurrent(null);
+        }
+
+        if (SelectedItem is { IsDisposing: true } or { IsDisposed: true })
+        {
+            var remaining = CollectSelectableItems();
+            Select(remaining.Count == 0 ? null : remaining[0]);
+        }
     }
 
     // Captures whether the current-navigation or selected item is the root
@@ -284,7 +326,16 @@ public sealed class NavigationView: CompositeControl
             RestorePresentation(child);
         }
 
-        stack.Children.Clear();
+        _isHandlingKnownRemoval = true;
+
+        try
+        {
+            stack.Children.Clear();
+        }
+        finally
+        {
+            _isHandlingKnownRemoval = false;
+        }
 
         CompleteRemoval(repair);
     }

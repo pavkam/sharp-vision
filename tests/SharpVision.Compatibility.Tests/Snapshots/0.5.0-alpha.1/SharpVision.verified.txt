@@ -2188,6 +2188,7 @@ namespace SharpVision.Menus
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? ItemInvoked;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnItemControlsChanged() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public sealed class MenuBuilder

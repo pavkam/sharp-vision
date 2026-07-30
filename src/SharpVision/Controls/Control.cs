@@ -632,7 +632,8 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
 
     private bool IsRendering { get; set; }
 
-    private bool IsDisposing { get; set; }
+    /// <summary>Gets whether disposal is currently unwinding this control, before <see cref="IsDisposed"/> flips true.</summary>
+    internal bool IsDisposing { get; private set; }
 
     private bool OwnedDisposalRequested { get; set; }
 

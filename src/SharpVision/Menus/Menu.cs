@@ -21,6 +21,7 @@ public sealed class Menu: ItemsControl
     private bool _discardPendingSubmenuTransitionOnClose;
     private bool _isClosingChain;
     private bool _isEnteringModalScope;
+    private bool _isHandlingKnownMutation;
     private int _itemInvocationDepth;
     private ModalScope? _modalScope;
     private ModalityManager? _pendingSubmenuModalityOwner;
@@ -312,7 +313,16 @@ public sealed class Menu: ItemsControl
         // overwritten. InsertItemControl can throw for a duplicate, already
         // attached, or disposed candidate; a rejected insertion must leave the
         // caller's object exactly as it found it.
-        InsertItemControl(ItemControlCount, item);
+        _isHandlingKnownMutation = true;
+
+        try
+        {
+            InsertItemControl(ItemControlCount, item);
+        }
+        finally
+        {
+            _isHandlingKnownMutation = false;
+        }
         _requestedPresentations.Add(
             item,
             new MenuEntryPresentation(item.Focusable, item.TabStop, item.Width, item.Height));
@@ -365,7 +375,18 @@ public sealed class Menu: ItemsControl
         }
 
         RestorePresentation(item);
-        _ = RemoveItemControl(item);
+
+        _isHandlingKnownMutation = true;
+
+        try
+        {
+            _ = RemoveItemControl(item);
+        }
+        finally
+        {
+            _isHandlingKnownMutation = false;
+        }
+
         Select(FindAvailable(Math.Min(index, ItemControlCount - 1), 1), focus: false);
         return true;
     }
@@ -378,7 +399,17 @@ public sealed class Menu: ItemsControl
             RestorePresentation(ItemAt(index));
         }
 
-        ClearItemControls();
+        _isHandlingKnownMutation = true;
+
+        try
+        {
+            ClearItemControls();
+        }
+        finally
+        {
+            _isHandlingKnownMutation = false;
+        }
+
         Select(-1, focus: false);
     }
 
@@ -399,6 +430,48 @@ public sealed class Menu: ItemsControl
 
         item.Width = presentation.Width;
         item.Height = presentation.Height;
+    }
+
+    // Reconciles _selectedIndex and _spacePressedItem for an items-collection change that
+    // didn't go through AddEntry/RemoveEntry/ClearItems — most notably a direct Dispose() call
+    // on an owned item, which the base ItemsControl already reports through this same hook.
+    // Add/Remove/Clear guard their own mutation via _isHandlingKnownMutation since they already
+    // run their own precise Select(...) call afterward.
+    /// <inheritdoc/>
+    protected override void OnItemControlsChanged()
+    {
+        base.OnItemControlsChanged();
+
+        if (_isHandlingKnownMutation)
+        {
+            return;
+        }
+
+        // This notification publishes from inside DisposeCore, which removes the item from
+        // its owning slot before IsDisposed itself flips true — IsDisposing is what's already
+        // set at this point.
+        if (_spacePressedItem is { IsDisposing: true } or { IsDisposed: true })
+        {
+            _spacePressedItem = null;
+        }
+
+        if (_selectedIndex < 0)
+        {
+            return;
+        }
+
+        if (_selectedIndex >= ItemControlCount)
+        {
+            _selectedIndex = -1;
+            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+            NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+            return;
+        }
+
+        if (ItemAt(_selectedIndex) is MenuItem item)
+        {
+            item.CommitSelection(ContainsFocus);
+        }
     }
 
     /// <inheritdoc/>

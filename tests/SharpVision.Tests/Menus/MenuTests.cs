@@ -337,6 +337,31 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies disposing the currently space-pressed item directly clears the held
+    /// reference so the next Space release does not crash with ObjectDisposedException.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpacePressedItemDisposedDirectly_ReleaseDoesNotThrowAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Content = new ControlText("Run") };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+            press.Handled.ShouldBeTrue();
+
+            item.Dispose();
+
+            _ = Should.NotThrow(() => Router.Route(menu, Events.Key, Space(KeyAction.Release)));
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies private menu items reject external focus.</summary>
     [Fact]
     public async Task Focus_WhenMenuItemReceivesExternalFocus_SyncsSelectedIndexAsync()

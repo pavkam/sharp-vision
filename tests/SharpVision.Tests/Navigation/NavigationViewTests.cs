@@ -184,6 +184,24 @@ public sealed class NavigationViewTests
         cleared.IsSelected.ShouldBeFalse();
     }
 
+    /// <summary>Verifies disposing the selected item directly (bypassing Items.Remove) repairs
+    /// selection so subsequent navigation does not crash with ObjectDisposedException.</summary>
+    [Fact]
+    public void Items_WhenSelectedItemDisposedDirectly_RepairsSelectionWithoutThrowing()
+    {
+        var selected = new NavigationViewItem { Header = "Selected" };
+        var other = new NavigationViewItem { Header = "Other" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(selected);
+        navigation.Items.Add(other);
+        navigation.SelectItem(selected);
+
+        selected.Dispose();
+
+        navigation.SelectedItem.ShouldBeSameAs(other);
+        Should.NotThrow(() => navigation.SelectItem(other));
+    }
+
     /// <summary>Verifies removing the selected item directly from its group repairs
     /// selection through the owning view and raises exactly one SelectionChanged.</summary>
     [Fact]
