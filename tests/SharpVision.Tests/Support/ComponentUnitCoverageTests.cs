@@ -74,7 +74,7 @@ public sealed class ComponentUnitCoverageTests
         [typeof(Popup)] = typeof(PopupTests),
         [typeof(Flyout)] = typeof(PopupTests),
         [typeof(Tooltip)] = typeof(PopupTests),
-        [typeof(HyperlinkButton)] = typeof(ButtonTests),
+        [typeof(HyperlinkButton)] = typeof(HyperlinkButtonTests),
         [typeof(Window)] = typeof(WindowTests),
         [typeof(MessageBox)] = typeof(MessageBoxTests),
         [typeof(FilePickerDialog)] = typeof(FilePickerDialogTests),

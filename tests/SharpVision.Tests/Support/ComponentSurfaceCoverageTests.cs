@@ -299,15 +299,6 @@ public sealed class ComponentSurfaceCoverageTests
             ComponentBehavior.KeyboardActivation |
             ComponentBehavior.UnavailableCleanup |
             ComponentBehavior.Transient |
-            ComponentBehavior.Composition),
-        [typeof(SaveFileDialog)] = Requirement<SaveFileDialogTests>(
-            _interactive |
-            ComponentBehavior.DirectionalExcluded |
-            ComponentBehavior.PressReleaseExcluded |
-            ComponentBehavior.Activation |
-            ComponentBehavior.KeyboardActivation |
-            ComponentBehavior.UnavailableCleanup |
-            ComponentBehavior.Transient |
             ComponentBehavior.Composition)
     };
 
