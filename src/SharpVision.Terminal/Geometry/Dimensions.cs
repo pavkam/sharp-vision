@@ -1,7 +1,7 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Terminal.Runtime;
+namespace SharpVision.Terminal.Geometry;
 
 /// <summary>Represents terminal cell dimensions and optional pixel dimensions.</summary>
 [PublicAPI]
