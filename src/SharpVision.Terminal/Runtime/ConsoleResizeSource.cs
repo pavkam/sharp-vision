@@ -9,6 +9,7 @@ public sealed class ConsoleResizeSource: IResizeSource
 {
     private readonly TimeSpan _interval;
     private readonly TimeProvider _timeProvider;
+    private readonly Func<Size?> _readCells;
     private Size? _last;
     private int _disposed;
     private int _reading;
@@ -18,6 +19,17 @@ public sealed class ConsoleResizeSource: IResizeSource
     /// <param name="timeProvider">The polling clock, or null for system time.</param>
     /// <exception cref="ArgumentOutOfRangeException">The interval is not positive and finite.</exception>
     public ConsoleResizeSource(TimeSpan interval, TimeProvider? timeProvider = null)
+        : this(interval, timeProvider, readCells: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a portable cell-only resize source with a substitutable measurement boundary.
+    /// Internal because production callers always measure the real console; tests use this to
+    /// prove that a measurement failure (readCells returning null) is never published as a
+    /// resize, without needing to force a real Console.WindowWidth/Height exception.
+    /// </summary>
+    internal ConsoleResizeSource(TimeSpan interval, TimeProvider? timeProvider, Func<Size?>? readCells)
     {
         if (interval <= TimeSpan.Zero || interval == Timeout.InfiniteTimeSpan)
         {
@@ -29,6 +41,7 @@ public sealed class ConsoleResizeSource: IResizeSource
 
         _interval = interval;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _readCells = readCells ?? ReadConsoleCells;
     }
 
     /// <inheritdoc/>
@@ -47,9 +60,11 @@ public sealed class ConsoleResizeSource: IResizeSource
         {
             while (true)
             {
-                var current = ReadCells();
-
-                if (_last != current)
+                // A failed measurement is distinct from an actual 0x0 suspend: ReadCells
+                // returns null only when the console API itself threw, never when it
+                // successfully reported zero cells. Treating a transient measurement failure
+                // as a real resize would publish a spurious suspend to the sink (see #98).
+                if (_readCells() is { } current && _last != current)
                 {
                     _last = current;
                     return new Dimensions(current);
@@ -69,8 +84,15 @@ public sealed class ConsoleResizeSource: IResizeSource
     public bool TryReadCurrent(out Dimensions value)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-        value = new Dimensions(ReadCells());
-        return true;
+
+        if (_readCells() is { } current)
+        {
+            value = new Dimensions(current);
+            return true;
+        }
+
+        value = default;
+        return false;
     }
 
     /// <summary>Marks the source disposed. Any caller token still owns pending-read cancellation.</summary>
@@ -80,7 +102,8 @@ public sealed class ConsoleResizeSource: IResizeSource
         return ValueTask.CompletedTask;
     }
 
-    private static Size ReadCells()
+    /// <summary>Reads the current cell dimensions, or null when the console API itself failed.</summary>
+    private static Size? ReadConsoleCells()
     {
         try
         {
@@ -90,11 +113,11 @@ public sealed class ConsoleResizeSource: IResizeSource
         }
         catch (IOException)
         {
-            return default;
+            return null;
         }
         catch (PlatformNotSupportedException)
         {
-            return default;
+            return null;
         }
     }
 }

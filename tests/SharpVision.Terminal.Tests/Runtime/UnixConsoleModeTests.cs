@@ -7,6 +7,65 @@ namespace SharpVision.Terminal.Tests.Runtime;
 /// <summary>Verifies the Unix raw-input lease and its restoration reporting.</summary>
 public sealed class UnixConsoleModeTests
 {
+    /// <summary>Verifies a hung terminal-utility process fails with a bounded timeout rather than
+    /// blocking indefinitely, and that the timed-out process is not left running (see #98).</summary>
+    [Fact]
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    public void Run_WhenTheProcessHangs_TimesOutAndKillsIt()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires a POSIX shell.");
+        var script = Path.Combine(Path.GetTempPath(), $"sharpvision-hang-{Guid.NewGuid():N}.sh");
+
+        try
+        {
+            File.WriteAllText(script, "#!/bin/sh\nsleep 30\n");
+            File.SetUnixFileMode(
+                script,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            var watch = Stopwatch.StartNew();
+
+            var thrown = Should.Throw<IOException>(
+                () => UnixConsoleMode.Run(["-g"], script, TimeSpan.FromMilliseconds(200)));
+
+            watch.Stop();
+            thrown.Message.ShouldContain("timed out");
+            watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            File.Delete(script);
+        }
+    }
+
+    /// <summary>Verifies a fast-failing terminal-utility process still surfaces its own diagnostic
+    /// rather than the timeout path.</summary>
+    [Fact]
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    public void Run_WhenTheProcessExitsNonZero_ThrowsWithStandardErrorContent()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires a POSIX shell.");
+        var script = Path.Combine(Path.GetTempPath(), $"sharpvision-fail-{Guid.NewGuid():N}.sh");
+
+        try
+        {
+            File.WriteAllText(script, "#!/bin/sh\necho 'synthetic failure' >&2\nexit 1\n");
+            File.SetUnixFileMode(
+                script,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+            var thrown = Should.Throw<IOException>(
+                () => UnixConsoleMode.Run(["-g"], script, TimeSpan.FromSeconds(5)));
+
+            thrown.Message.ShouldContain("synthetic failure");
+        }
+        finally
+        {
+            File.Delete(script);
+        }
+    }
+
     /// <summary>Verifies unsupported hosts receive a no-op raw-input lease.</summary>
     [Fact]
     public void Enter_WhenHostIsUnsupported_DisposesWithoutThrowing()

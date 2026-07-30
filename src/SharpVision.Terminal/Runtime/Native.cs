@@ -46,6 +46,10 @@ internal static partial class Native
     [LibraryImport("libc", EntryPoint = "ioctl", SetLastError = true)]
     private static partial int Ioctl(int fileDescriptor, nuint request, nint value);
 
+    /// <summary>The POSIX standard-output file descriptor, used when no more specific terminal
+    /// descriptor (such as an opened /dev/tty) is available for description resolution.</summary>
+    public const int StandardOutputFileDescriptor = 1;
+
     // Windows console-mode boundary. Bit-math is factored out so it is unit
     // testable without a real console handle.
     public const int StdInputHandle = -10;

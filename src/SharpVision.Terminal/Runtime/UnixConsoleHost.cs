@@ -74,7 +74,12 @@ internal static class UnixConsoleHost
                 resize,
                 mode,
                 DescriptionPlatform.Unix,
-                outputFileDescriptor: 1,
+                // The descriptor this host actually opened and verified refers to a terminal,
+                // rather than an assumed standard-output descriptor: when stdout is redirected —
+                // precisely the case the /dev/tty open above exists to handle — description
+                // resolution against a hardcoded 1 would query a descriptor that is not a
+                // terminal at all (see #98).
+                outputFileDescriptor: (int) input.SafeFileHandle.DangerousGetHandle(),
                 windowsVirtualTerminal: false);
         }
         catch

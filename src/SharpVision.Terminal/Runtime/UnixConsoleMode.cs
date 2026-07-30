@@ -102,10 +102,23 @@ internal sealed class UnixConsoleMode: IDisposable
 
     #region Process boundary
 
-    private static string Run(string[] arguments)
+    // Bounds a hung stty from blocking application startup or shutdown indefinitely (see #98).
+    private static readonly TimeSpan _defaultTimeout = TimeSpan.FromSeconds(5);
+
+    private static string Run(string[] arguments) => Run(arguments, "stty", _defaultTimeout);
+
+    /// <summary>
+    /// Runs the terminal-utility process. Internal so tests can substitute an explicit executable
+    /// path and a short timeout without mutating process-wide PATH or waiting out the production
+    /// timeout; production calls always go through the single-argument overload above.
+    /// </summary>
+    internal static string Run(string[] arguments, string executable, TimeSpan timeout)
     {
-        var start = new ProcessStartInfo("/bin/stty")
+        var start = new ProcessStartInfo(executable)
         {
+            // No hardcoded absolute path in the production caller: several distributions place
+            // stty outside /bin, and a literal path silently breaks on those. A bare file name
+            // resolves through PATH the same way a shell would (see #98).
             RedirectStandardError = true,
             RedirectStandardOutput = true,
             UseShellExecute = false
@@ -118,9 +131,30 @@ internal sealed class UnixConsoleMode: IDisposable
 
         using var process = Process.Start(start)
                             ?? throw new IOException("The terminal raw-mode utility could not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
+
+        // Both pipes are drained concurrently with the wait below, not sequentially after it.
+        // stty's own output is small enough that the classic redirected-pipe deadlock (a child
+        // blocked writing to a full pipe the parent has not started reading) does not trigger
+        // today, but sequential ReadToEnd-then-WaitForExit is exactly that deadlock shape.
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+
+        if (!process.WaitForExit(timeout))
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between the timeout check and the kill attempt.
+            }
+
+            throw new IOException("The terminal raw-mode utility timed out.");
+        }
+
+        var output = outputTask.GetAwaiter().GetResult();
+        var error = errorTask.GetAwaiter().GetResult();
 
         return process.ExitCode == 0
             ? output

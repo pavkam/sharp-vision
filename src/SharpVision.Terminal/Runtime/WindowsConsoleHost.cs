@@ -32,7 +32,7 @@ internal static class WindowsConsoleHost
                 resize,
                 mode,
                 DescriptionPlatform.Windows,
-                outputFileDescriptor: 1,
+                outputFileDescriptor: Native.StandardOutputFileDescriptor,
                 windowsVirtualTerminal: true);
         }
         catch
