@@ -54,6 +54,30 @@ public sealed class BindingConversionTests
         model.Number.ShouldBe(34);
     }
 
+    /// <summary>Verifies a target property that validates rather than clamps (e.g. Slider.Value
+    /// outside its Minimum/Maximum) falls back to the declared fallback value instead of
+    /// letting the write's own exception escape ApplySourceToTarget uncaught.</summary>
+    [Fact]
+    public void BindProperty_WhenTargetWriteThrows_AppliesFallback()
+    {
+        var model = new BindingModel { Number = 25 };
+        var target = new Slider { Maximum = 50 };
+        using var binding = target.BindProperty(
+            control => control.Value,
+            model,
+            source => source.Number,
+            value => value,
+            convertBack: null,
+            BindingMode.OneWay,
+            0);
+
+        target.Value.ShouldBe(25);
+
+        _ = Should.NotThrow(() => model.Number = 999);
+
+        target.Value.ShouldBe(0);
+    }
+
     /// <summary>Verifies an unavailable nested path uses only the declared fallback.</summary>
     [Fact]
     public void BindProperty_WhenPathIsUnavailable_UsesFallback()

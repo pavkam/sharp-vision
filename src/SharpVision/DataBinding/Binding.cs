@@ -198,8 +198,23 @@ public sealed class Binding: IDisposable
 
         try
         {
-            _targetPath.Write(Target, targetValue);
-            succeeded = true;
+            try
+            {
+                _targetPath.Write(Target, targetValue);
+                succeeded = true;
+            }
+            catch when (!Equals(targetValue, _fallbackValue))
+            {
+                // A target property that validates rather than clamps (e.g. Slider.Value
+                // outside Minimum/Maximum) can reject an ordinary identity-converted value
+                // with no conversion step to soft-fail. Fall back the same way a conversion
+                // failure already does, instead of letting the exception escape to the
+                // dispatcher and stop the whole loop over one out-of-range mutation. Skipped
+                // when the write already attempted the fallback value itself, since a retry
+                // would fail identically — that failure propagates as-is.
+                _targetPath.Write(Target, _fallbackValue);
+                succeeded = true;
+            }
         }
         finally
         {
@@ -340,8 +355,6 @@ public sealed class Binding: IDisposable
                     }
                 }
             }
-
-            dispatcher.Post(() => DrainSourceUpdates(dispatcher));
         }
         catch
         {
@@ -351,6 +364,22 @@ public sealed class Binding: IDisposable
             }
 
             throw;
+        }
+
+        // A target whose dispatcher is stopping or whose queue is momentarily full is going
+        // away regardless; drop the pending update instead of rethrowing into this dispatcher
+        // work item, matching DispatcherSynchronizationContext.Post's contract for the same
+        // underlying race.
+        try
+        {
+            dispatcher.Post(() => DrainSourceUpdates(dispatcher));
+        }
+        catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
+        {
+            lock (_gate)
+            {
+                _sourceScheduled = false;
+            }
         }
     }
 
@@ -381,18 +410,19 @@ public sealed class Binding: IDisposable
             _sourceScheduled = true;
         }
 
+        // A dispatcher that is stopping or whose queue is momentarily full is going away
+        // regardless; drop the pending update instead of rethrowing into whatever thread
+        // mutated the source model — that thread never expected binding internals to fail.
         try
         {
             dispatcher.Post(() => DrainSourceUpdates(dispatcher));
         }
-        catch
+        catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
         {
             lock (_gate)
             {
                 _sourceScheduled = false;
             }
-
-            throw;
         }
     }
 

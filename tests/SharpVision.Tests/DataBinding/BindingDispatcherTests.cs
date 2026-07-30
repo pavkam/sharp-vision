@@ -30,6 +30,30 @@ public sealed class BindingDispatcherTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a source change that races the owning dispatcher stopping is dropped
+    /// instead of throwing into the thread that mutated the source model.</summary>
+    [Fact]
+    public async Task Source_WhenOwningDispatcherIsStopping_DropsUpdateWithoutThrowingAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        var model = new BindingModel { Name = "Before" };
+        var target = new ControlText();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            target.Attach(dispatcher);
+            _ = target.Bind(model, source => source.Name);
+        }, TestContext.Current.CancellationToken);
+
+        await dispatcher.DisposeAsync();
+
+        // The binding's own post-back-to-dispatcher path — not this test — is what must
+        // tolerate the dispatcher already being disposed (see #122); a stopping dispatcher
+        // is going away regardless, so the pending update is dropped, not surfaced here.
+        _ = Should.NotThrow(() => model.Name = "After");
+        target.Content.ShouldBe("Before");
+    }
+
     /// <summary>Verifies explicit disposal of an attached binding is dispatcher-affine.</summary>
     [Fact]
     public async Task Dispose_WhenCalledFromWorker_ThrowsBeforeReleasingBindingAsync()
@@ -93,7 +117,7 @@ public sealed class BindingDispatcherTests
 
     /// <summary>Verifies queue saturation propagates and a later notification can retry.</summary>
     [Fact]
-    public async Task Source_WhenDispatcherQueueIsFull_ThrowsAndPermitsRetryAsync()
+    public async Task Source_WhenDispatcherQueueIsFull_DropsUpdateAndPermitsRetryAsync()
     {
         await using var dispatcher = Dispatcher.Start(capacity: 1);
         var model = new BindingModel { Name = "Before" };
@@ -121,11 +145,23 @@ public sealed class BindingDispatcherTests
             release.Wait(TestContext.Current.CancellationToken);
         });
         entered.Wait(TestContext.Current.CancellationToken);
-        dispatcher.Post(queuedCompleted.Set);
 
-        _ = Should.Throw<InvalidOperationException>(() => model.Name = "Rejected");
-        release.Set();
+        try
+        {
+            dispatcher.Post(queuedCompleted.Set);
+
+            // A binding whose target dispatcher queue is momentarily full drops the pending
+            // update instead of throwing into the thread that mutated the source model —
+            // the same soft-fail contract as a stopping dispatcher (see #122).
+            _ = Should.NotThrow(() => model.Name = "Rejected");
+        }
+        finally
+        {
+            release.Set();
+        }
+
         queuedCompleted.Wait(TestContext.Current.CancellationToken);
+        target.Content.ShouldNotBe("Rejected");
 
         model.Name = "Retried";
         updated.Wait(TestContext.Current.CancellationToken);
