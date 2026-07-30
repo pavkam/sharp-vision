@@ -101,3 +101,4 @@ terminal, Unicode, rendering, and control behavior.
 | Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                               |
 | Test            | Minimum discovery is met and every discovered test passes without retries.                                              |
 | Package         | The UI package and symbols use the approved version and validated metadata; its terminal dependency is published first. |
+
