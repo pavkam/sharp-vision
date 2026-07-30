@@ -167,7 +167,7 @@ var popup = new Popup
 popup.IsOpen = true;
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover closed and detached-staged opening, rendering/hit testing, opaque framed
 cells, promotion above later siblings, exactly-once promotion from ordinary and

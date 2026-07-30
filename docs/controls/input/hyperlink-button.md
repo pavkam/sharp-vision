@@ -22,7 +22,7 @@ var link = new HyperlinkButton { Content = new Text("Visit site") };
 link.Click += (_, _) => OpenUrl("https://example.com");
 ```
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                                  |
 | ----------- | -------------------------------------------------------------------------------------------------- |

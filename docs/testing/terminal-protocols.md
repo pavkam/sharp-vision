@@ -48,8 +48,9 @@ publication, authorized optional-mode startup, router delivery, first renderer
 output, and reverse cleanup. It proves one `TerminalContext` lineage, no
 repeated identity resolution, exact query and lifecycle bytes, and single
 disposal of transport, resize source, graphics backend, and platform lease. The
-[terminal backend contract](../architecture/terminal-backends.md#test-obligations)
-and [discovery contract](../architecture/discovery-pipeline.md#test-obligations)
+[terminal backend contract](../architecture/terminal-backends.md#expected-behavior)
+and
+[discovery contract](../architecture/discovery-pipeline.md#expected-behavior)
 own the architecture-specific assertions.
 
 ## Parser matrix

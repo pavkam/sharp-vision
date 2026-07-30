@@ -119,7 +119,7 @@ public sealed class StatusCard: CompositeControl
 }
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover reflection shape, valid and repeated initialization, every candidate
 rejection, recovery after pre-commit rejection, callback failure after commit,

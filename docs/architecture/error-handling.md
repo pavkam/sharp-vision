@@ -34,6 +34,19 @@ are not falsely claimed by the protocol value.
 
 ## Exception preservation
 
+```mermaid
+sequenceDiagram
+    participant Operation
+    participant Owner
+    participant Resource
+    participant Caller
+    Operation--xOwner: Primary failure
+    Owner->>Resource: Attempt every required cleanup step
+    Resource--xOwner: Optional cleanup failure
+    Owner->>Owner: Preserve primary failure and record cleanup diagnostic
+    Owner--xCaller: Report or rethrow primary failure
+```
+
 Mode restoration and disposal execute in `finally`. When cleanup also fails, the
 original exception remains primary and cleanup is attached diagnostically.
 Unhandled application callbacks raise `Application.UnhandledException` at the
@@ -58,7 +71,7 @@ is restored before the exception escapes, so a caught diagnostic never leaves a
 silently clean but incomplete tree. Routed handler snapshots are always returned
 to their pools from `finally` cleanup.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------------------- |

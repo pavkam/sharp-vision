@@ -53,7 +53,7 @@ var separator = new Separator
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover horizontal and vertical rendering, zero bounds, orientation changes,
 resize, appearance inheritance, non-interactive hit testing, and final cells.

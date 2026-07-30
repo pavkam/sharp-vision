@@ -45,7 +45,7 @@ Tooltip.SetText(
     TimeSpan.FromMilliseconds(500));
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover direct Popup inheritance and absence of a nested Popup; text and rich
 content ownership; attached Set/Get/Clear/Set reuse; argument and interval

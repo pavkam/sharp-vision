@@ -139,7 +139,7 @@ owns typed dispatch and recovery.
   transport/resize resources, and restores the platform console lease last.
 - A cleanup failure never replaces an earlier application or transport failure.
 
-## Test obligations
+## Expected behavior
 
 | Layer          | Required evidence                                                                                                                          |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |

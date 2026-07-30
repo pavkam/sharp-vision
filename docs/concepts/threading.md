@@ -86,7 +86,7 @@ are posted back first and run on the owner. The bounded input queue and
 newest-resize slot use short locks only to copy records and schedule one wake;
 no user callback or terminal I/O runs under them.
 
-## Test obligations
+## Expected behavior
 
 Cover off-thread failure before mutation, posted/invoked success, exception and
 cancellation propagation, FIFO ordering within priority, resize coalescing,

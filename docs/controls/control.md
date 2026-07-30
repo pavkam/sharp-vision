@@ -188,43 +188,28 @@ container.Children.Add(control);
 Debug.Assert(control.Parent == container);
 ```
 
-## Invalidation
+## Invalidation API
 
-Dirty phases form a dependency closure: measure implies arrange and render,
-arrange implies render, and render stands alone. Ordinary CLR property setters
-request the earliest affected phase and coalesce repeated requests while they
-bubble to the root. `InvalidationImpact.None`, `Render`, `Arrange`, and
-`Measure` express that impact.
+The shared
+[invalidation contract](../concepts/invalidation.md#invalidation-contract) owns
+phase dependencies, ancestor propagation, dispatcher scheduling, retries, and
+frame coordination. `Control` exposes the authoring seams that let derived
+controls participate without exposing pending phase flags.
 
-| Change                                                              | Dirty phases                 |
-| ------------------------------------------------------------------- | ---------------------------- |
-| Width, height, min/max, margin, border thickness, padding, collapse | Measure, arrange, and render |
-| Horizontal or vertical alignment                                    | Arrange and render           |
-| Enabled state or visible/hidden transition                          | Render                       |
-| Hit-test visibility                                                 | No layout or render phase    |
-| Direct appearance or visual-state change                            | Render                       |
+| Seam                                       | Use                                                             |
+| ------------------------------------------ | --------------------------------------------------------------- |
+| `SetProperty(ref field, value, impact)`    | Commit one ordinary CLR property and raise `PropertyChanged`.   |
+| `NotifyPropertyChanged(name, impact)`      | Publish a coordinated mutation after all related fields commit. |
+| `Invalidate(InvalidationImpact)`           | Request phase work without a property notification.             |
+| `InvalidateVisualState()`                  | Clear resolved appearance caches after semantic state changes.  |
+| `SetVisualStateProperty(ref field, value)` | Commit a property that changes `GetAppearanceState()`.          |
 
-The `Arrange` impact always requests arrange plus render, while `Measure`
-requests all three phases. Assigning an equivalent direct property value is a
-no-op. Semantic visual state changes are render-only; structural properties
-declare their own measure or arrange impact.
-
-Third-party controls use the same phase vocabulary for ordinary CLR state. The
-public setter validates its domain value before calling
-`SetProperty(ref field, value, impact)`. The helper validates impact, property
-name, dispatcher access, and lifetime before checking equivalence; a changed
-value commits, invalidates, and then raises `PropertyChanged` once. A
-coordinated mutation that has already committed all of its fields uses
-`NotifyPropertyChanged(name, impact)`, which applies the same name, impact,
-access, and lifetime validation. `Invalidate(impact)` validates the impact and
-requests work without a property notification, while `InvalidateVisualState()`
-clears resolved appearance caches and requests the strongest phase required by
-active render-only visual states. A CLR property that changes
-`GetAppearanceState()` uses `SetVisualStateProperty(ref field, value)`: it
-performs access and lifetime validation before equivalence, commits the state,
-clears resolved caches, calculates the dynamic aggregate style impact, and
-publishes exactly one property notification. None of these seams exposes the
-framework's pending phase flags.
+Each seam validates dispatcher access, lifetime, arguments, and the selected
+impact before changing observable state. Equivalent assignments are no-ops. A
+real property change commits and requests work before notifying observers, so
+callbacks see both the new value and its pending update. Specialized visual
+state changes calculate their strongest impact from the active style rather than
+assuming that every state transition is render-only.
 
 ## Access-key extension points
 
@@ -363,7 +348,7 @@ using var registration = control.AddHandler(
     (_, args) => args.Handled = true);
 ```
 
-## Test obligations
+## Expected behavior
 
 Every concrete control tests validation-before-mutation, phase-specific
 invalidation, dispatcher affinity, attach/detach ownership, visibility, enabled

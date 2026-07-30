@@ -6,13 +6,17 @@ The Unix provider calls only `setupterm`. When the loaded ncurses build includes
 full termcap compatibility, that one call owns `TERMCAP`, `TERMPATH`, aliases,
 and `tc` resolution and exposes canonical `tiget*` results. A build without
 usable matching inline `TERMCAP` support returns a typed provider failure with a
-structured diagnostic. Host selection and command emission remain outside this
-milestone.
+structured diagnostic. The
+[terminal integration contract](../architecture/terminal-integration.md#terminal-integration-contract)
+owns host selection, while the
+[rendering pipeline](../architecture/rendering-pipeline.md#rendering-pipeline-contract)
+owns command emission from the normalized profile.
 
-## Current boundary
+## Native provider boundary
 
-The provider requirements below apply to the implemented ncurses fallback. Host
-and renderer requirements remain prospective.
+The provider requirements below apply to the ncurses compatibility path.
+SharpVision bounds and validates its inputs and copied results; ncurses owns
+termcap source lookup, inheritance, and normalization.
 
 ## Sources
 
@@ -82,12 +86,15 @@ ncurses normalization. Missing optional values degrade safely. Missing required
 cursor addressing, rendition reset, or usable clearing rejects before output; a
 requested cursor or alternate-screen change still requires its matched fallback.
 
-## Test obligations
+## Expected behavior
 
 Provider fixtures prove the single `setupterm` path with the native build's
 `TERMCAP` file and ordered `TERMPATH`; the required raw-to-canonical mappings;
 optional normalization without guessed aliases; inline 1023-byte rejection;
 provider-failure handling; absent extended-capability evidence; and no output
-before a required capability failure. Default `/etc/termcap`,
-`/usr/share/misc/termcap`, and `$HOME/.termcap` ordering remains a future
-platform-fixture obligation.
+before a required capability failure.
+
+> [!NOTE] The installed ncurses library, rather than SharpVision, owns fallback
+> among `/etc/termcap`, `/usr/share/misc/termcap`, and `$HOME/.termcap`.
+> Repository fixtures cover explicit `TERMCAP` and `TERMPATH` sources; they do
+> not replace platform-specific verification of ncurses' default file ordering.

@@ -1,8 +1,8 @@
-# Continuous integration contract
+# Continuous integration
 
 ## Continuous integration contract
 
-The pull-request workflow verifies changes proposed to `main`. The alpha
+The pull-request workflow verifies changes proposed to `main`. The package
 publication workflow repeats the same build-and-test action on pushes to `main`
 before it packs or publishes anything. These workflows reproduce the repository
 quality surface; they do not replace focused local proof while developing.
@@ -16,11 +16,12 @@ documentation-tooling tests. Microsoft Testing Platform tests enforce a
 discovery minimum and produce xUnit TRX plus Cobertura output. The action
 publishes the test-result check and uploads both the raw TRX files and an
 HTML/Cobertura/badge coverage report as workflow artifacts.
-`make test-binding-coverage` additionally isolates binding production files and
-requires 95% line plus 90% branch coverage. It fails when binding files are
-absent from the report.
+`make test-binding-coverage` is a separate local supplemental gate. It isolates
+binding production files, requires 95% line plus 90% branch coverage, and fails
+when binding files are absent from the report. The shared workflow does not
+currently invoke it.
 
-`make test-ci` additionally requires at least 90 percent line coverage across
+`make test-ci` additionally requires at least 85 percent line coverage across
 instrumented UI classes under `src/SharpVision/Controls/`, `Dialogs/`, `Menus/`,
 `Navigation/`, `Popups/`, and `Windows/`. The scoped floor supplements the
 behavioral catalogs; it does not allow line coverage to replace mounted pointer,
@@ -28,8 +29,8 @@ keyboard, focus, hover, pressed-state, box-model, frame, resize, or tiny-bound
 assertions. The coverage-instrumented UI run uses static managed instrumentation
 and disables collection parallelization so coverage remains complete and
 deterministic across runners; the ordinary test target retains the suite's
-normal parallel execution. Neither job waits for the other; a workflow succeeds
-only when both complete successfully. The workflow badge in the
+normal parallel execution. The terminal and UI coverage commands run
+sequentially, and either failure stops the target. The workflow badge in the
 [README](../../README.md#sharpvision) reflects that automation.
 
 ## Local command mapping
@@ -55,20 +56,24 @@ Its [versioned approval workflow](correctness-model.md#public-api-compatibility)
 requires an intentional package-version change and review of both library
 surfaces before a compatibility change becomes green.
 
-## Alpha package publication
+## Package publication
 
 The `sharpvision-publish.yml` workflow runs the same build-and-test action
-before reading the shared `OverallVersion`. Publication accepts only versions in
-`major.minor.patch-alpha.number` form and requires the terminal and UI projects
-to resolve the same value.
+before reading `OverallVersion` from `SharpVision`. Publication accepts a
+three-part semantic version with an optional prerelease suffix.
 
-The workflow packs `SharpVision.Terminal` and `SharpVision` together, verifies
-that each produced exactly one NuGet package and one symbol package, then
-publishes the terminal dependency before the UI package. Existing versions are
-detected independently, so a partially completed publication can safely resume
-without skipping its missing package. Every run repacks both projects and
-retries all package and symbol pushes with duplicate skipping, so a failed
-symbol upload is repaired even when its main package already exists.
+The workflow checks whether the `SharpVision` package version already exists.
+When it does not, it packs exactly one main package and one symbol package and
+pushes both with duplicate skipping. When the main package already exists, the
+workflow skips packing and both pushes; it therefore cannot repair a missing
+symbol package independently.
+
+> [!IMPORTANT] `SharpVision.Terminal` is currently non-packable, while
+> `SharpVision` declares an exact package dependency on it. NuGet contains
+> `SharpVision` `0.5.0-alpha.1` but no matching `SharpVision.Terminal` package,
+> so package installation cannot resolve the dependency. Repository builds and
+> project references remain usable. Publication must ship the terminal
+> dependency before the UI package can be considered installable.
 
 `Directory.Build.targets` rejects a packable project before NuGet manifest
 generation when any required public metadata is empty: identity, version, title,
@@ -86,9 +91,9 @@ terminal, Unicode, rendering, and control behavior.
 
 ## Required evidence
 
-| Gate            | Pass condition                                                                            |
-| --------------- | ----------------------------------------------------------------------------------------- |
-| Format and lint | No C#, Markdown, link, structure, workflow, or external-resource violations.              |
-| Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation. |
-| Test            | Minimum discovery is met and every discovered test passes without retries.                |
-| Package         | Both packages and symbols use one approved version and validated metadata.                |
+| Gate            | Pass condition                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Format and lint | No C#, Markdown, link, structure, workflow, or external-resource violations.                                            |
+| Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                               |
+| Test            | Minimum discovery is met and every discovered test passes without retries.                                              |
+| Package         | The UI package and symbols use the approved version and validated metadata; its terminal dependency is published first. |

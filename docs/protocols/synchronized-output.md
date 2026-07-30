@@ -15,17 +15,18 @@ output.
 The library never holds mode 2026 while waiting for input, timers, application
 callbacks, or backpressure beyond the current bounded write operation.
 
-## First milestone contract
+## Supported features
 
 Use synchronized output when explicitly detected or overridden. Otherwise emit
 the same frame without the wrapper. Safe degradation changes presentation
 atomicity, never screen contents.
 
-## Tests
+## Failure recovery
 
-Exact bytes cover enabled/disabled profiles, empty/no-op frames, exceptions,
-cancellation, partial writes, flush failure, and cleanup failure. A terminal
-model proves wrapped and unwrapped frames end in identical semantic state.
+The output contract covers enabled and disabled profiles, empty frames,
+exceptions, cancellation, partial writes, flush failure, and cleanup failure. A
+terminal model proves wrapped and unwrapped frames end in identical semantic
+state.
 
 ## Sources
 
@@ -37,7 +38,7 @@ model proves wrapped and unwrapped frames end in identical semantic state.
 
 Sources accessed 2026-07-17.
 
-## Test obligations
+## Expected behavior
 
 | Layer      | Required evidence                                                             |
 | ---------- | ----------------------------------------------------------------------------- |

@@ -2,7 +2,10 @@
 
 ## Rendering pipeline contract
 
-Controls produce semantic cells; the terminal layer owns byte emission.
+Controls produce semantic cells; the terminal layer owns byte emission. The
+[invalidation contract](../concepts/invalidation.md#invalidation-contract) owns
+which control-tree phases run before a target frame is built. This page owns
+semantic cell generation, terminal-state comparison, output, and commit.
 
 ```mermaid
 flowchart LR
@@ -173,11 +176,11 @@ no foreground pass begins and the same exception propagates after capture
 cleanup. If selection throws, the already transformed prefix remains valid and
 the failing and later owners remain unchanged.
 
-Wide leads own exactly one continuation in the current implementation.
-Overwriting or clearing either cell first repairs the complete previous owner.
-`Edge.Clip`, `Edge.Wrap`, and `Edge.Replace` skip, move, or replace the whole
-cluster at the right edge; none emits or stores half a glyph. Child canvases use
-the geometric intersection of their requested clip, parent clip, and frame.
+Wide leads own exactly one continuation. Overwriting or clearing either cell
+first repairs the complete previous owner. `Edge.Clip`, `Edge.Wrap`, and
+`Edge.Replace` skip, move, or replace the whole cluster at the right edge; none
+emits or stores half a glyph. Child canvases use the geometric intersection of
+their requested clip, parent clip, and frame.
 
 The encoder minimizes cursor moves and style transitions only after correctness
 is known. When synchronized output is available, one complete frame is wrapped
@@ -236,7 +239,7 @@ Derived controls draw only through semantic `Canvas` operations and use their
 border-and-padding-deflated `ContentBounds`. They never write ANSI, split
 graphemes, repeat base box-model deflation, or touch pooled frame storage.
 
-## Commit and invalidation
+## Commit and terminal-state invalidation
 
 `Renderer.RenderAsync` accepts a borrowed back `Frame`, `ITransport`, immutable
 `TerminalProfile`, and cancellation token. The compatibility overload wraps an
@@ -374,7 +377,7 @@ graphics reconstruction.
 
 ## Correctness oracle
 
-Phase 5A panels commit geometry and child order. Text draws committed
+Layout panels commit geometry and child order. Text draws committed
 grapheme-aligned slices and a typed ellipsis, while intrinsic control chrome
 fills the body and draws validated one-cell border glyphs through the same
 semantic canvas. Composite shadow preserves the destination grapheme and
@@ -392,7 +395,7 @@ classification, and elapsed time only for completed operations. An unchanged
 frame reports zero bytes and writes and follows a synchronous zero-allocation
 fast path.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                               |
 | ----------- | ----------------------------------------------------------------------------------------------- |

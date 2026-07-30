@@ -40,7 +40,7 @@ test("validateDocumentationStructure_WhenControlUsesCanonicalSpine_ReturnsNoErro
                 "",
                 "## Example",
                 "",
-                "## Test obligations",
+                "## Expected behavior",
                 "",
             ].join("\n"),
         },
@@ -80,12 +80,12 @@ test("validateDocumentationStructure_WhenHeadingIsInsideFence_IgnoresIt", async 
                 "| `Value` | Observable value. |",
                 "",
                 "```markdown",
-                "## Test obligations",
+                "## Expected behavior",
                 "```",
                 "",
                 "## Example",
                 "",
-                "## Test obligations",
+                "## Expected behavior",
                 "",
             ].join("\n"),
         },
@@ -95,7 +95,7 @@ test("validateDocumentationStructure_WhenHeadingIsInsideFence_IgnoresIt", async 
     );
 });
 
-test("validateDocumentationStructure_WhenConceptLacksProofSection_ReportsFile", async () => {
+test("validateDocumentationStructure_WhenConceptLacksExpectedBehavior_ReportsFile", async () => {
     await withDocs(
         {
             "docs/concepts/sample.md": "# Sample\n\n## Sample contract\n",
@@ -104,7 +104,7 @@ test("validateDocumentationStructure_WhenConceptLacksProofSection_ReportsFile", 
             const errors = await validateDocumentationStructure(root);
             assert.equal(errors.length, 1);
             assert.match(errors[0], /docs\/concepts\/sample\.md/u);
-            assert.match(errors[0], /Test obligations/u);
+            assert.match(errors[0], /Expected behavior/u);
         },
     );
 });
@@ -117,7 +117,7 @@ test("validateDocumentationStructure_WhenProtocolLacksSources_ReportsFile", asyn
                 "",
                 "## Sample contract",
                 "",
-                "## Test obligations",
+                "## Expected behavior",
                 "",
             ].join("\n"),
         },
@@ -144,7 +144,7 @@ test("validateDocumentationStructure_WhenDialogSectionsAreOutOfOrder_ReportsFile
                 "",
                 "## Interaction",
                 "",
-                "## Test obligations",
+                "## Expected behavior",
                 "",
             ].join("\n"),
         },
@@ -153,6 +153,63 @@ test("validateDocumentationStructure_WhenDialogSectionsAreOutOfOrder_ReportsFile
             assert.equal(errors.length, 1);
             assert.match(errors[0], /docs\/dialogs\/sample\.md/u);
             assert.match(errors[0], /Example/u);
+        },
+    );
+});
+
+test("validateDocumentationStructure_WhenInternalWorkflowArtifactIsPublished_ReportsFile", async () => {
+    await withDocs(
+        {
+            "docs/superpowers/specs/sample.md":
+                "# Internal design\n\nFor agentic workers: execute this plan.\n",
+        },
+        async (root) => {
+            const errors = await validateDocumentationStructure(root);
+            assert.equal(errors.length, 1);
+            assert.match(errors[0], /docs\/superpowers\/specs\/sample\.md/u);
+            assert.match(errors[0], /public product documentation/u);
+        },
+    );
+});
+
+test("validateDocumentationStructure_WhenInternalWorkflowLanguageAppears_ReportsFile", async () => {
+    await withDocs(
+        {
+            "docs/walkthroughs/sample.md":
+                "# Sample\n\nFor agentic workers: use the required sub-skill.\n",
+        },
+        async (root) => {
+            const errors = await validateDocumentationStructure(root);
+            assert.equal(errors.length, 1);
+            assert.match(errors[0], /internal workflow language/u);
+        },
+    );
+});
+
+test("validateDocumentationStructure_WhenHeadingUsesInternalDeliveryPhase_ReportsFile", async () => {
+    await withDocs(
+        {
+            "docs/walkthroughs/sample.md":
+                "# Sample\n\n## Phase 2 implementation\n\nBehavior.\n",
+        },
+        async (root) => {
+            const errors = await validateDocumentationStructure(root);
+            assert.equal(errors.length, 1);
+            assert.match(errors[0], /Phase 2 implementation/u);
+        },
+    );
+});
+
+test("validateDocumentationStructure_WhenPlaceholderAppearsOutsideCode_ReportsFile", async () => {
+    await withDocs(
+        {
+            "docs/walkthroughs/sample.md":
+                "# Sample\n\nTODO: explain the public behavior.\n",
+        },
+        async (root) => {
+            const errors = await validateDocumentationStructure(root);
+            assert.equal(errors.length, 1);
+            assert.match(errors[0], /placeholder 'TODO'/u);
         },
     );
 });

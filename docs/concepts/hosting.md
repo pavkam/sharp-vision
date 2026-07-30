@@ -285,10 +285,10 @@ or write failure throws `IOException` wrapping a `Win32Exception`
 (`Marshal.GetLastPInvokeError()`), mirroring the existing Unix
 `Native.GetDimensions` failure shape.
 
-**The Windows path is unit-tested for the console mode-flag computation and the
-P/Invoke boundary shape, but has not been validated against a real Windows
-console or in Windows CI.** Treat it as implemented-but-unverified until
-hardware or CI coverage exists.
+> [!IMPORTANT] The Windows path is unit-tested for console mode-flag computation
+> and the P/Invoke boundary shape, but has not been validated against a real
+> Windows console or in Windows CI. Treat it as implemented but unverified until
+> that platform coverage exists.
 
 ## `TreatControlCAsInput`
 
@@ -304,7 +304,7 @@ otherwise translate Ctrl+C into cooperative shutdown
 commands, including TextInput copy. A host that sets this option owns a separate
 decoded exit chord when it still needs a global keyboard exit path.
 
-## Test obligations
+## Expected behavior
 
 | Layer          | Required evidence                                                                                             |
 | -------------- | ------------------------------------------------------------------------------------------------------------- |

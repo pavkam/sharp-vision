@@ -6,7 +6,7 @@ const canonicalControlSections = [
     /^## .+ contract$/u,
     /^## API$/u,
     /^## Example$/u,
-    /^## Test obligations$/u,
+    /^## Expected behavior$/u,
 ];
 
 const canonicalDialogSections = [
@@ -14,13 +14,13 @@ const canonicalDialogSections = [
     /^## API$/u,
     /^## Interaction$/u,
     /^## Example$/u,
-    /^## Test obligations$/u,
+    /^## Expected behavior$/u,
 ];
 
 const categorySpines = new Map([
-    ["docs/concepts/", [/^## .+ contract$/u, /^## Test obligations$/u]],
-    ["docs/architecture/", [/^## .+ contract$/u, /^## Test obligations$/u]],
-    ["docs/protocols/", [/^## .+ contract$/u, /^## Test obligations$/u]],
+    ["docs/concepts/", [/^## .+ contract$/u, /^## Expected behavior$/u]],
+    ["docs/architecture/", [/^## .+ contract$/u, /^## Expected behavior$/u]],
+    ["docs/protocols/", [/^## .+ contract$/u, /^## Expected behavior$/u]],
     ["docs/testing/", [/^## .+ contract$/u, /^## Required evidence$/u]],
 ]);
 
@@ -51,7 +51,7 @@ function headings(content) {
             continue;
         }
 
-        if (!fenced && /^#{1,2} /u.test(line)) {
+        if (!fenced && /^#{1,6} /u.test(line)) {
             result.push({ line, number: index + 1 });
         }
     }
@@ -82,8 +82,8 @@ function validateControl(relativePath, documentHeadings, content, errors) {
         previous = found;
     }
 
-    if (h2.at(-1)?.line !== "## Test obligations") {
-        errors.push(`${relativePath} must end with '## Test obligations'`);
+    if (h2.at(-1)?.line !== "## Expected behavior") {
+        errors.push(`${relativePath} must end with '## Expected behavior'`);
     }
 
     const lines = content.split(/\r?\n/u);
@@ -152,13 +152,13 @@ function validateCategory(relativePath, documentHeadings, required, errors) {
 
     if (relativePath.startsWith("docs/protocols/")) {
         const sources = h2.findIndex(({ line }) => line === "## Sources");
-        const tests = h2.findIndex(
-            ({ line }) => line === "## Test obligations",
+        const expectedBehavior = h2.findIndex(
+            ({ line }) => line === "## Expected behavior",
         );
 
-        if (sources < 0 || sources >= tests) {
+        if (sources < 0 || sources >= expectedBehavior) {
             errors.push(
-                `${relativePath} must contain '## Sources' before '## Test obligations'`,
+                `${relativePath} must contain '## Sources' before '## Expected behavior'`,
             );
         }
     }
@@ -177,8 +177,60 @@ export async function validateDocumentationStructure(root) {
         const documentHeadings = headings(content);
         const h1 = documentHeadings.filter(({ line }) => line.startsWith("# "));
 
+        if (relativePath.startsWith("docs/superpowers/")) {
+            errors.push(
+                `${relativePath} is an internal workflow artifact, not public product documentation`,
+            );
+            continue;
+        }
+
         if (h1.length !== 1 || h1[0]?.number !== 1) {
             errors.push(`${relativePath} must have exactly one H1 on line 1`);
+        }
+
+        const internalHeading = documentHeadings.find(({ line }) =>
+            /^(?:#{1,6}) (?:Test obligations|.*\bPhase\s+\d.*|.*\bmilestone\b.*|Delivery gates|Acceptance criteria)$/iu.test(
+                line,
+            ),
+        );
+
+        if (internalHeading) {
+            errors.push(
+                `${relativePath}:${internalHeading.number} uses internal delivery heading '${internalHeading.line.replace(/^#{1,6} /u, "")}'`,
+            );
+        }
+
+        let fenced = false;
+
+        for (const [index, line] of content.split(/\r?\n/u).entries()) {
+            if (/^\s*```/u.test(line)) {
+                fenced = !fenced;
+                continue;
+            }
+
+            if (fenced) {
+                continue;
+            }
+
+            if (
+                /(?:For agentic workers|REQUIRED SUB-SKILL|superpowers:)/iu.test(
+                    line,
+                )
+            ) {
+                errors.push(
+                    `${relativePath}:${index + 1} contains internal workflow language`,
+                );
+                break;
+            }
+
+            const placeholder = /\b(TODO|TBD)\b/u.exec(line);
+
+            if (placeholder) {
+                errors.push(
+                    `${relativePath}:${index + 1} contains placeholder '${placeholder[1]}'`,
+                );
+                break;
+            }
         }
 
         if (relativePath.startsWith("docs/controls/")) {

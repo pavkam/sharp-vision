@@ -1,7 +1,5 @@
 # Feature support
 
-## Feature support
-
 This page maps application needs to the section that proves current behavior. It
 is a navigation surface, not a second coverage ledger. Terminal support states
 are owned exclusively by the
@@ -23,7 +21,7 @@ are owned exclusively by the
 | Menus, popups, and windows                       | Retained controls and popup render layer                     | [Control catalog](../controls/index.md#control-catalog)                                 |
 | Images                                           | `Image`, `ImageStretch`, and immutable graphics sources      | [Image control](../controls/display/image.md#image-contract)                            |
 
-Every shipped concrete control has a C# example and test obligations on its
+Every shipped concrete control has a C# example and expected behavior on its
 individual page. The
 [layout-and-controls walkthrough](../walkthroughs/layout-and-controls.md#compose-layout-and-controls)
 shows how the surfaces combine.

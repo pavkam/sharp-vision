@@ -89,7 +89,7 @@ public sealed class ActionChip : Pressable
 }
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover inheritance and absence of `Children`, replaceable content
 ownership, Space/Enter transitions, content-originated pointer routes, focus and

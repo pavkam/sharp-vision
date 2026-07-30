@@ -10,7 +10,7 @@ box-model surface tests mount an opaque child on a distinct opaque parent and
 assert that every margin edge retains the parent background, every padding edge
 uses the child background, and an intervening border preserves both planes.
 Captioned controls additionally prove
-[access-key syntax and dispatch](../concepts/access-keys.md#test-obligations):
+[access-key syntax and dispatch](../concepts/access-keys.md#expected-behavior):
 exact marker-free cells, grapheme underline style, routed precedence, semantic
 access-key foreground, disabled-state preservation, keyboard action, unavailable
 filtering, duplicate order, modal confinement, and legacy Alt stroke/text
@@ -94,18 +94,19 @@ cover intermediate typed boundaries only when they are public contracts; final
 bytes and virtual screen are mandatory.
 
 `ModalityIntegrationTests` applies that complete path to the
-[modal interaction contract](../concepts/modality.md#test-obligations). One real
-Application receives UTF-8 text, bracketed paste, Tab, terminal-focus reports,
-SGR movement, primary press/release, wheel, and pixel-aware resize. The test
-requires only in-plane routes while active, physical outside coordinates without
-background hover, one dismiss callback, no replay to the exposed Button, a fresh
-post-dismissal input route, final semantic cells, and emitted UTF-8 bytes.
-`ApplicationModalityTests` separately proves first-resize service publication,
-resize identity, raw record targeting, and shutdown unwind when callbacks fail.
-Its clipboard cases drive modal Control+C, Control+X, and Control+V through the
-application, require the same handled arguments at only `handledEventsToo`
-preview observers inside the captured plane, and mutate both target ancestry and
-scope state during the edit to prove the current route remains stable.
+[modal interaction contract](../concepts/modality.md#expected-behavior). One
+real Application receives UTF-8 text, bracketed paste, Tab, terminal-focus
+reports, SGR movement, primary press/release, wheel, and pixel-aware resize. The
+test requires only in-plane routes while active, physical outside coordinates
+without background hover, one dismiss callback, no replay to the exposed Button,
+a fresh post-dismissal input route, final semantic cells, and emitted UTF-8
+bytes. `ApplicationModalityTests` separately proves first-resize service
+publication, resize identity, raw record targeting, and shutdown unwind when
+callbacks fail. Its clipboard cases drive modal Control+C, Control+X, and
+Control+V through the application, require the same handled arguments at only
+`handledEventsToo` preview observers inside the captured plane, and mutate both
+target ancestry and scope state during the edit to prove the current route
+remains stable.
 
 `ModalityManagerTests` attempts modal reentry and inclusion from detach, hide,
 disable, and disposal callbacks after temporarily restoring the affected

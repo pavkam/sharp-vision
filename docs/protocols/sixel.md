@@ -76,9 +76,9 @@ semantic placement. Missing metrics, incompatible PNG, conservative occlusion,
 or rejected multiplexer routing therefore leaves that fallback visible without
 direct DCS leakage.
 
-## Tests
+## Encoding and runtime coverage
 
-Exact-byte tests freeze DCS parameters, raster attributes, palette ordering,
+The encoder preserves exact DCS parameters, raster attributes, palette ordering,
 transparency, repeat runs, source clipping, six-row bands, graphics carriage
 return/newline, and canonical ST. They prove PNG rejection, destination failure
 fidelity, atomic output-limit rejection, checked large bounds, and one source
@@ -101,7 +101,7 @@ exact uneven pixel grid in raster geometry.
 
 Sources accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer     | Required evidence                                                                       |
 | --------- | --------------------------------------------------------------------------------------- |

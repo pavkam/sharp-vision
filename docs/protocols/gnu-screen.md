@@ -21,7 +21,7 @@ consumes the inner ST as its own terminator. A real Screen 4.00.03
 the host as the exact CSI query, while wrapped XTGETTCAP and DECRQSS reach the
 host as unterminated DCS bodies. SharpVision does not invent an escaping form.
 
-## Current implementation
+## Implemented passthrough behavior
 
 [`Screen.WritePassthrough`](../../src/SharpVision.Terminal/Protocols/Screen.cs)
 writes a typed DCS envelope around one already-validated outer-terminal
@@ -56,14 +56,14 @@ envelope cannot be encoded atomically, startup publishes conservative absent
 evidence immediately and performs no transport write, flush, optional-mode
 lease, cleanup sequence, or deadline wait.
 
-## First milestone contract
+## Supported features
 
 Support the documented VT/ANSI subset, bounded DCS passthrough for approved CSI
 queries, and safe omission of string-terminated or otherwise unsupported modern
 extensions. Do not emit OSC 83 screen commands or other session-control
 operations.
 
-## Tests
+## Compatibility evidence
 
 Pure tests cover exact CSI batches, omitted OSC/DCS registration, every split,
 safe and rejected mixed topologies, complete and oversized recovery, explicit
@@ -79,7 +79,7 @@ skip.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer          | Required evidence                                                               |
 | -------------- | ------------------------------------------------------------------------------- |

@@ -41,20 +41,29 @@ fails the transaction; an unbound transaction (no `id` supplied) fails on any
 malformed packet, since it has no correlation basis to discriminate unrelated
 traffic.
 
-## First milestone contract
+## Supported features
 
 Implement OSC 52 text plus typed OSC 5522 MIME reads/writes, aliases,
 permissions/errors, passwords/names, paste events, detection, and multiplexer
 correlation. Unsupported terminals fall back to OSC 52 text when safe, then to
 an unavailable result rather than an exception.
 
-## Tests
+> [!IMPORTANT] **Implementation gap:** The terminal protocol layer provides
+> bounded OSC 5522 packets, writers, transactions, capability evidence, and mode
+> controls, but startup negotiation does not issue the mode-5522 query and
+> `Application.Terminal.Clipboard` currently authorizes and emits only OSC 52. A
+> terminal profile with authoritative Kitty clipboard support but no OSC 52
+> support is therefore reported unavailable and remains byte-quiet; inbound OSC
+> 5522 results and paste events are not yet connected to runtime routing or the
+> application service.
 
-Exact bytes cover 0, 1, 4095, 4096, 4097, and 8192 bytes; reads, list, aliases,
-primary selection, credentials, permissions, every status, and terminators.
-Parser tests use all split points, malformed metadata/Base64/order, recovery,
-cancellation, limits, binary data, and writer-to-parser-to-transaction
-integration.
+## Bounds and recovery
+
+Chunking preserves exact behavior at 0, 1, 4095, 4096, 4097, and 8192 bytes;
+reads, list, aliases, primary selection, credentials, permissions, every status,
+and terminators. The parser accepts all split points and rejects malformed
+metadata, Base64, or ordering before recovery; cancellation, limits, binary
+data, and writer-to-parser-to-transaction integration.
 
 ## Sources
 
@@ -63,10 +72,10 @@ integration.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
-| Layer       | Required evidence                                                                            |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| Writer      | Exact boundary-size chunks, metadata, selection, MIME, terminator, and final empty write.    |
-| Parser      | Every split, malformed Base64/order/status, limits, cancellation, and resynchronization.     |
-| Transaction | Correlation, timeout, permissions, binary payload ownership, redaction, and runtime routing. |
+| Layer       | Required evidence                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| Writer      | Exact boundary-size chunks, metadata, selection, MIME, terminator, and final empty write.      |
+| Parser      | Every split, malformed Base64/order/status, limits, cancellation, and resynchronization.       |
+| Transaction | Correlation, timeout, permissions, binary payload ownership, redaction, and typed integration. |

@@ -10,8 +10,10 @@ location bar, a scrolling `ListView`, a filter selector, a hidden-entry toggle,
 status text, and Open and Cancel actions. Directories are navigation targets and
 never appear in accepted results.
 
-The picker does not create, rename, delete, save, or select directories. A save
-picker and a directory picker require separate result and validation contracts.
+The picker does not create, rename, delete, save, or select directories. Use
+[`SaveFileDialog`](save-file-dialog.md#savefiledialog-contract) when the user
+must choose a path for a later write. A directory picker requires a separate
+result and validation contract.
 
 ## API
 
@@ -196,7 +198,7 @@ if (result.Accepted)
 }
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover filter and option validation, copied ownership, result immutability,
 canonical paths, deterministic ordering, filters, dot and attribute hidden

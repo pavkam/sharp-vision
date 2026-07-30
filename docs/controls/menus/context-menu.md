@@ -22,7 +22,7 @@ dismiss.
 var contextMenu = new ContextMenu();
 ```
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                            |
 | ----------- | -------------------------------------------------------------------------------------------- |

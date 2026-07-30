@@ -160,7 +160,7 @@ booking.SetMarkup(new DateOnly(2026, 7, 19), "<accent><b>19★ </b></accent>");
 booking.SelectionChanged += (_, change) => SaveBooking(change.Selection);
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover value and enum validation before mutation, interval transitions and
 event order, range coalescing/splitting, blocked selection invalidation, bounds,

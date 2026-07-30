@@ -165,6 +165,16 @@ already ended it, and the background remains blocked.
 
 ## Nested scopes and lifetime
 
+```mermaid
+stateDiagram-v2
+    [*] --> Unrestricted
+    Unrestricted --> ParentScope: Enter parent plane
+    ParentScope --> ChildScope: Enter nested plane
+    ChildScope --> ParentScope: Exit child and restore eligible focus
+    ParentScope --> Unrestricted: Exit parent
+    ChildScope --> Unrestricted: Dispose parent; unwind child then parent
+```
+
 Scopes form a LIFO stack. Disposing the active scope exits it. Disposing an
 older scope first unwinds every younger scope in reverse order, then exits the
 requested scope. Repeated disposal is harmless. Each exited scope publishes
@@ -268,7 +278,7 @@ changing logical ownership. The shared
 defines surface identity and lifecycle; modality only defines input-plane
 membership.
 
-## Test obligations
+## Expected behavior
 
 Focused tests cover entry and inclusion validation, route boundaries, in-route
 scope changes, multi-root traversal, nested restoration, unavailable roots,

@@ -1,7 +1,8 @@
 # SharpVision Text Editor
 
-A terminal text editor built with the SharpVision TUI framework. Demonstrates
-multiline editing, menus, keyboard shortcuts, find/replace, and context menus.
+A terminal text editor built with SharpVision. It demonstrates multiline
+editing, file open/save workflows, dirty-state confirmation, menus, keyboard
+shortcuts, find/replace, context menus, dialogs, and status chrome.
 
 ## Run
 
@@ -24,13 +25,21 @@ A horizontal menu bar at the top provides grouped commands:
 
 | Group  | Items                                    |
 | ------ | ---------------------------------------- |
-| File   | New (Ctrl+N), Quit (Ctrl+Q)              |
+| File   | New, Open, Save, Save As, Quit           |
 | Edit   | Undo, Redo, Cut, Copy, Paste, Select All |
-| Search | Find (Ctrl+F), Replace (Ctrl+H)          |
+| View   | Word Wrap                                |
+| Search | Find, Replace                            |
 
 Opening a dropdown creates one dismissing modal menu plane for the complete
 submenu chain. Invoking a command closes that plane before the editor command or
 another modal surface begins.
+
+### File workflows
+
+Open uses `FilePickerDialog`; Save As uses `SaveFileDialog` with overwrite
+confirmation. New, Open, and Quit ask whether to save a dirty document through
+`MessageBox`. Failed reads and writes preserve the current document state and
+surface the error in a message box.
 
 ### Find and replace
 
@@ -63,28 +72,33 @@ Outside input dismisses the popup without replaying that input into the editor.
 The bottom bar shows:
 
 - Current document state (`Ready`).
-- Current line and column (`Ln 1, Col 1`).
-- Selection length when text is selected (`Sel 42`).
-- Encoding indicator (`UTF-8`).
+- Current line, column, and optional selection length.
+- Word-wrap state (`Wrap`).
+- Encoding (`UTF-8`).
+- Current file name (`Untitled` until a file is selected).
 
-The example uses `StatusBar` with one leading `StatusBarItem` and two
-right-aligned items, so the compact position and encoding context remains
-anchored while the document message uses the available leading space.
+The example uses one leading `StatusBarItem` and four right-aligned items, so
+the document message uses the available space while compact context remains
+anchored.
 
 ### Keyboard shortcuts
 
-| Shortcut | Action           |
-| -------- | ---------------- |
-| Ctrl+N   | New file         |
-| Ctrl+Z   | Undo             |
-| Ctrl+Y   | Redo             |
-| Ctrl+X   | Cut              |
-| Ctrl+C   | Copy             |
-| Ctrl+V   | Paste            |
-| Ctrl+A   | Select all       |
-| Ctrl+F   | Find             |
-| Ctrl+H   | Find and replace |
-| Ctrl+Q   | Quit             |
+| Shortcut     | Action           |
+| ------------ | ---------------- |
+| Ctrl+N       | New file         |
+| Ctrl+O       | Open file        |
+| Ctrl+S       | Save             |
+| Ctrl+Shift+S | Save as          |
+| Ctrl+Z       | Undo             |
+| Ctrl+Y       | Redo             |
+| Ctrl+X       | Cut              |
+| Ctrl+C       | Copy             |
+| Ctrl+V       | Paste            |
+| Ctrl+A       | Select all       |
+| Ctrl+F       | Find             |
+| Ctrl+H       | Find and replace |
+| Alt+Z        | Toggle word wrap |
+| Ctrl+Q       | Quit             |
 
 ## Architecture
 

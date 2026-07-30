@@ -120,7 +120,7 @@ var density = new ComboBox
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover item copying, index validation, connected below and above popup cells,
 opaque rendering, hit testing, popup arrangement, Escape, mouse selection

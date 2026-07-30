@@ -42,7 +42,7 @@ var indicator = new ChaseIndicator
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover all movement sequences, style validation and precedence, Theme
 replacement, phase reset/preservation, bounded history, RGB fade interpolation,

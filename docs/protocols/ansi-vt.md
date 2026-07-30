@@ -24,7 +24,7 @@ description cursor addressing, erase, rendition, color/default, reset, and
 optional cursor-shape programs; description-key decoding is profile-driven. VT52
 mode is documented and decoded diagnostically but is not an output target.
 
-## First milestone contract
+## Supported features
 
 Typed output covers the VT100/VT220-compatible subset required by screen
 rendering and input. Conflicting DEC, ANSI, and xterm interpretations are named
@@ -137,7 +137,7 @@ virtual terminal in the
 
 Sources accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                  |
 | ----------- | ---------------------------------------------------------------------------------- |

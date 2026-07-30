@@ -167,7 +167,7 @@ var status = new Text
 status.Content = $"<info>User:</info> {Text.Escape(userName)}";
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover every tag and concrete or named color form, named and generic closes,
 overlap, auto-close, complete-fragment malformed recovery, invalid links,

@@ -15,20 +15,19 @@ Reset 22 clears bold and faint together in common terminals. The encoder must
 not pretend it can independently clear one without an extension such as the
 [Kitty independent intensity controls](https://sw.kovidgoyal.net/kitty/misc-protocol/).
 
-## First milestone contract
+## Supported features
 
 Provide deterministic full-style and transition encoders, semantic equality, and
 a conservative reset path. Colon and semicolon extended-color forms are decoded;
 output uses the profile's preferred form.
 
-## Phase 2 implementation
+## Typed API and behavior
 
-`Sgr` currently emits reset, bold, dim, italic, underline, slow/rapid blink,
-reverse, hidden, strike, and their standard group resets. Public `Color`
-supports default and RGB foreground/background output. `BasicColor` separately
-models the sixteen ANSI/aixterm wire entries and emits 30-37, 40-47, 90-97, or
-100-107. Bounded 256-color positions exist only in internal encoder-to-SGR
-methods.
+`Sgr` emits reset, bold, dim, italic, underline, slow/rapid blink, reverse,
+hidden, strike, and their standard group resets. Public `Color` supports default
+and RGB foreground/background output. `BasicColor` separately models the sixteen
+ANSI/aixterm wire entries and emits 30-37, 40-47, 90-97, or 100-107. Bounded
+256-color positions exist only in internal encoder-to-SGR methods.
 
 The frame encoder consumes one immutable capability snapshot. Cells retain RGB.
 True-color output preserves RGB, indexed-256 output privately projects RGB into
@@ -67,14 +66,14 @@ Rapid blink is standard ECMA-48 output and does not require extension evidence.
 Projection affects only emitted bytes: cells retain their richer semantic style
 so a later capability refresh and full redraw can improve presentation.
 
-## Tests
+## Rendition coverage
 
-Exact bytes cover every attribute on/off pair, typed underline variant,
-default/RGB and internally projected underline color, unsupported fallback,
-reset interaction, and frame transition. The independent virtual-terminal model
-parses `4:x`, 58, 59, 53, 55, slow/rapid blink, and their resets. Targeted and
-fixed-seed random frame transitions prove the resulting complete semantic style
-state.
+The encoder preserves exact bytes for every attribute on/off pair, typed
+underline variant, default/RGB and internally projected underline color,
+unsupported fallback, reset interaction, and frame transition. The independent
+virtual-terminal model parses `4:x`, 58, 59, 53, 55, slow/rapid blink, and their
+resets. Targeted and fixed-seed random frame transitions prove the resulting
+complete semantic style state.
 
 ## Sources
 
@@ -86,7 +85,7 @@ state.
   configurable first-sixteen entries, 6x6x6 cube, grayscale ramp, and the lack
   of a universal physical terminal palette.
 
-## Test obligations
+## Expected behavior
 
 | Layer     | Required evidence                                                                               |
 | --------- | ----------------------------------------------------------------------------------------------- |

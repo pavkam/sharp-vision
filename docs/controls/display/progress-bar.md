@@ -78,7 +78,7 @@ var bar = new ProgressBar
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover finite validation, range ordering, value clamping, endpoint notification
 visibility, horizontal and vertical fill direction, empty/partial/full values,

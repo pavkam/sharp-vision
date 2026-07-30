@@ -97,7 +97,7 @@ complete Style. A custom `OnRenderContent` draws through `ContentBounds`;
 framework-owned chrome runs around it, so it must not repeat border or padding
 deflation. Public `ActualBorder` and `ActualShadow` expose the resolved result.
 
-## Test obligations
+## Expected behavior
 
 Prove the public role, absence of leaked `Children` or private parts,
 constructor-time one-shot initialization, rejected ownership candidates, first

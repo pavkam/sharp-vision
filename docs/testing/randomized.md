@@ -57,7 +57,7 @@ the full pixel domain, and compares exact rational mapping. It also generates
 missing, suspended, smaller-than-cell, and out-of-domain geometry and proves
 those cases cannot fabricate a cell coordinate.
 
-The [modal-state test contract](../concepts/modality.md#test-obligations) uses
+The [modal-state test contract](../concepts/modality.md#expected-behavior) uses
 fixed seeds `0x51A480D1`, `0x27D15C0D`, and `0x0D15C0DE`. Each seed runs 16
 cases of 48 valid enter, include, focus, capture, pointer, dismissal, hide, and
 dispose operations: 2,304 operations in the pull request corpus. The independent

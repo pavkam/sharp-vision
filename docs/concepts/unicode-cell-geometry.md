@@ -121,7 +121,7 @@ testing, selection, marked `Text`, canvas operations, damage tracking, and
 terminal encoding use this single geometry service. Password-mask measurement
 and rendering use the same inherited ambiguous-width policy.
 
-## Test obligations
+## Expected behavior
 
 Use Unicode grapheme conformance data, emoji data, generated-table boundaries,
 ASCII/CJK/ambiguous policies, decomposed text, selectors, keycaps, flags, ZWJ

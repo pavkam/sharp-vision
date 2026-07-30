@@ -128,7 +128,7 @@ public sealed class Card: ContentControl
 }
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover null/assignment/equivalence/replacement/clear, every ownership
 rejection, dispatcher affinity including equivalent assignment, callback and

@@ -17,22 +17,26 @@ Terminal replies are untrusted input. Numeric, textual, Base64, and color fields
 are bounded and validated before use. Replies cannot enable behavior outside the
 query's declared feature.
 
-## First milestone contract
+## Supported features
 
 Support DA1/DA2, relevant DECRQM modes, cell/pixel metrics, and the Kitty
-keyboard/clipboard/graphics probes needed by implemented features, plus the
+keyboard and graphics probes needed by implemented runtime features, plus the
 finite
 [xterm DECRQSS and XTGETTCAP subset](xterm.md#status-and-capability-queries).
 Callers may override every detected value for SSH, tmux, GNU screen, CI, and
-known lies.
+known lies. Kitty OSC 5522 defines a DECRQM probe and typed correlation family,
+but the startup batch does not issue it; the
+[Kitty clipboard implementation gap](kitty-clipboard.md#supported-features) owns
+that boundary.
 
-## Tests
+## Detection outcomes
 
-Cover no response, partial/late/duplicate/conflicting responses, spoofed values,
-timeouts with a fake clock, multiplexer hints, explicit overrides, immutability,
-and conservative unknown-terminal defaults.
+No response, partial, late, duplicate, conflicting, or spoofed responses leave
+the profile conservative. Multiplexer hints remain subordinate to explicit
+overrides, published capability values stay immutable, and timeouts never
+promote unknown support.
 
-## Phase 2 implementation
+## Typed API and behavior
 
 `Responses.TryCsi` owns validated DA1, DA2, cursor-position DSR, and DECRPM
 values. `Responses.TryMetricsCsi` accepts only the xterm window-operation
@@ -66,7 +70,7 @@ publishes unsupported query evidence. Explicit `Settings.Sixel` true or false
 retains override precedence. No new `QueryKind` ordinal is required because the
 evidence belongs to the existing append-only primary-attributes transaction.
 
-## Phase 3 Kitty detection
+## Kitty keyboard detection
 
 `Responses.TryCsi` recognizes a bounded `CSI ? flags u` reply as
 `ResponseKind.Keyboard`, accepting only the defined five-bit range.
@@ -135,7 +139,7 @@ is added.
 
 Sources accessed 2026-07-20.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                         |
 | ----------- | ----------------------------------------------------------------------------------------- |

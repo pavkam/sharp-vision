@@ -22,7 +22,7 @@ so a database string cannot shadow enhanced keyboard input. When Kitty is not
 active, the selected profile's exact key map is authoritative; only the explicit
 built-in ANSI profile supplements it with generic VT/xterm grammar.
 
-## First milestone contract
+## Supported features
 
 Enable the minimum flags needed for unambiguous modified keys and event types,
 decode press/repeat/release plus associated text, and restore the previous mode
@@ -52,16 +52,16 @@ have named logical codes. Other valid PUA functional values remain
 outside 1-256, event values outside 1-3, extra groups, control characters in
 associated text, and excessive text fields report one redacted diagnostic and
 recover to the next input. Legacy decoding remains active for terminals where
-[`QueryTracker`](device-attributes.md#phase-3-kitty-detection) does not prove
+[`QueryTracker`](device-attributes.md#kitty-keyboard-detection) does not prove
 support.
 
-## Tests
+## Input coverage
 
-Tests use official full-field examples plus every modifier/event kind,
-Enter/Tab/Backspace/Escape, known and unknown functional keys, pure Unicode
-text, alternate keys, malformed fields, all split points, exact negotiation
-bytes, query ordering, and legacy coexistence. Runtime lifecycle tests own
-nesting and cleanup.
+Supported decoding includes the official full-field examples plus every
+modifier/event kind, Enter/Tab/Backspace/Escape, known and unknown functional
+keys, pure Unicode text, alternate keys, malformed fields, all split points,
+exact negotiation bytes, query ordering, and legacy coexistence. Runtime
+lifecycle tests own nesting and cleanup.
 
 ## Sources
 
@@ -70,7 +70,7 @@ nesting and cleanup.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                        |
 | ----------- | ---------------------------------------------------------------------------------------- |

@@ -11,7 +11,7 @@ Description key strings are compiled into typed parser signatures or a bounded
 longest-match trie and drive the active input decoder. The
 [coverage matrix](coverage-matrix.md#coverage) is the current support claim.
 
-## Current boundary
+## Native description boundary
 
 The provider, host, renderer, and terminal-service requirements below describe
 the implemented boundary; the coverage matrix remains the support authority.
@@ -86,7 +86,7 @@ emitted.
 
 ## Implemented parameter-program boundary
 
-`Compiler` currently accepts raw program bytes and compiles `%p1`–`%p9`, `%i`,
+`Compiler` accepts raw program bytes and compiles `%p1`–`%p9`, `%i`,
 `%{number}`, `%'c'`, `%P`/`%g` variables, raw-byte string length `%l`,
 arithmetic, bitwise and logical operators, comparisons, nested and chained
 `%?`/`%t`/`%e`/`%;` conditionals, `%%`, and `printf`-style `%d`, `%o`, `%x`,
@@ -372,7 +372,7 @@ explicit semantic settings or an explicit replacement `TerminalProfile`. The
 detailed cross-layer ownership is in the
 [capability contract](../architecture/capabilities.md#terminal-description-profile).
 
-## Test obligations
+## Expected behavior
 
 Fixture databases and runtime tests prove the lookup order, every
 `Protocols.Limits` boundary, provider-failure distinction, `gn`/`hc` rejection,

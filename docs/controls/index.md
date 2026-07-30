@@ -39,6 +39,7 @@ type. Choose the role with the
 All controls derive from the
 [base control contract](control.md#control-contract) and use the shared
 [layout](../concepts/layout.md#layout-contract),
+[invalidation](../concepts/invalidation.md#invalidation-contract),
 [styling](../concepts/styling.md#styling-contract), and
 [input](../concepts/input-routing.md#input-routing-contract) rules.
 

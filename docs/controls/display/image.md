@@ -74,7 +74,7 @@ overlay, and another cell badge overlapping an image. Its live status reports
 the inherited Kitty, sixel, and iTerm2 support state plus evidence origin; it
 does not guess which backend the host selected.
 
-## Test obligations
+## Expected behavior
 
 `ImageTests` covers defaults, validation atomicity, precise invalidation,
 dispatcher affinity, borrowed ownership, uniform and uneven metric measurement,

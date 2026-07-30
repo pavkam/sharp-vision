@@ -37,7 +37,7 @@ var title = new FigletText(FigletCatalog.Default.Load("Standard"))
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover null validation, cache invalidation, every catalog font, scalar fallback,
 hardblanks, direction, fitting, smushing, clipping, resize, style inheritance,

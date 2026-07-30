@@ -88,7 +88,7 @@ An ampersand in `Header` declares an
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions). Visible
 width excludes the marker, and Alt plus the key focuses and toggles expansion.
 
-## Test obligations
+## Expected behavior
 
 Cover expanded and collapsed measurement, ownership-preserving exclusion, toggle
 event order, exact borderless header glyph/text cells, keyboard and pointer

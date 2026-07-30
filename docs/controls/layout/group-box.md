@@ -59,7 +59,7 @@ An ampersand in `Header` declares an
 marker occupies no cells, its grapheme is underlined, and Alt plus the key
 focuses the first eligible descendant in hierarchical tab order.
 
-## Test obligations
+## Expected behavior
 
 Cover header rendering, empty header, content arrangement inside border, measure
 width expansion for wide headers, zero bounds, glyph families, style states,

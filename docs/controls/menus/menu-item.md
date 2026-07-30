@@ -112,7 +112,7 @@ menu.Items.Add(new MenuItem
 });
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover each item kind, invalid checked-state assignment, atomic radio observers,
 item-before-menu invocation, inherited content ownership and Unicode layout,

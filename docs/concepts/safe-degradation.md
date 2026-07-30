@@ -6,18 +6,22 @@ Unsupported or uncertain environmental features choose a deterministic lower
 capability without throwing by default. Programmer contract violations still
 throw before mutation.
 
-| Feature             | Preferred                     | Safe fallback                            |
-| ------------------- | ----------------------------- | ---------------------------------------- |
-| RGB color           | 24-bit color                  | 256-color SGR, then basic/default colors |
-| Styled underline    | Variant/color                 | Plain underline, then omission           |
-| Synchronized output | Mode 2026 frame               | Same frame without atomic presentation   |
-| Kitty keyboard      | Typed enhanced events         | Legacy VT/xterm key decoding             |
-| Pixel mouse         | Pixel plus cell coordinates   | Cell SGR mouse, then keyboard only       |
-| Kitty clipboard     | OSC 5522 MIME (not yet wired) | OSC 52 text, then unavailable result     |
-| Graphics            | Kitty/sixel/iTerm2 extension  | Text or cell-based representation        |
+| Feature             | Preferred                    | Safe fallback                            |
+| ------------------- | ---------------------------- | ---------------------------------------- |
+| RGB color           | 24-bit color                 | 256-color SGR, then basic/default colors |
+| Styled underline    | Variant/color                | Plain underline, then omission           |
+| Synchronized output | Mode 2026 frame              | Same frame without atomic presentation   |
+| Kitty keyboard      | Typed enhanced events        | Legacy VT/xterm key decoding             |
+| Pixel mouse         | Pixel plus cell coordinates  | Cell SGR mouse, then keyboard only       |
+| Kitty clipboard     | OSC 5522 MIME                | OSC 52 text, then unavailable result     |
+| Graphics            | Kitty/sixel/iTerm2 extension | Text or cell-based representation        |
 
 Fallback never changes logical control state or silently reports success for an
 operation that did not occur.
+
+The
+[Kitty clipboard contract](../protocols/kitty-clipboard.md#supported-features)
+owns its application-integration status and exact fallback boundary.
 
 `Capabilities.Feature` distinguishes supported, unsupported, and tentative
 evidence plus its origin. `Runtime.Session` enables optional focus, paste,
@@ -32,7 +36,7 @@ requested feature, inconsistent terminal reply, fallback use, or cleanup
 failure—to exceptions at safe boundaries. It does not change valid wire bytes,
 parser grammar, timeouts, or capability detection.
 
-## Test obligations
+## Expected behavior
 
 Each capability-dependent feature tests preferred, every fallback step, strict
 promotion, diagnostics, caller override, misleading environment hints, missing

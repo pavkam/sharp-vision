@@ -1,7 +1,5 @@
 # Background work and the dispatcher
 
-## Background work and the dispatcher
-
 An attached control tree has one owner: `Application.Dispatcher`. Terminal
 readers and background tasks may compute or perform I/O elsewhere, but they must
 return immutable results to that dispatcher before touching controls.

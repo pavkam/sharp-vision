@@ -36,10 +36,25 @@ corresponding enums in `SharpVision.Layout`.
 
 ## Passes and rounding
 
+```mermaid
+sequenceDiagram
+    participant Parent
+    participant Control
+    Parent->>Control: MeasureChild(constraint)
+    Control->>Control: MeasureOverride(content constraint)
+    Control-->>Parent: DesiredSize
+    Parent->>Control: ArrangeChild(final slot)
+    Control->>Control: Commit Bounds
+    Control->>Control: ArrangeOverride(content rectangle)
+    Control-->>Parent: Arrangement complete
+```
+
 Measure receives available size and returns desired size without assigning
 coordinates. Arrange receives the final slot, resolves deferred/percentage and
-proportional lengths, and commits bounds. Invalidation during either pass queues
-another pass; it never recursively re-enters layout.
+proportional lengths, and commits bounds. The
+[invalidation contract](invalidation.md#phase-completion-and-retry) owns how
+work requested during either pass remains pending for a later transaction;
+direct layout reentry is rejected.
 
 When an arranging parent remeasures a child against a final finite slot, the
 child's resulting arrange request remains local because that parent commits the
@@ -163,7 +178,7 @@ padding cells, including when one automatic bar induces the other. A
 theme-resolved `Border` change has `Measure` impact, so publishing a new
 geometric theme value remeasures and rearranges this complete box model.
 
-## Test obligations
+## Expected behavior
 
 Cover every length combination, nested percentages, min/max, zero/tiny sizes,
 margins/borders/padding, partial edges, saturated combined insets, alignment,

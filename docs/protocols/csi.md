@@ -11,7 +11,7 @@ protocol-defined default; an absent list is not always equivalent to a literal
 zero. The parser bounds parameter count and numeric accumulation before integer
 overflow. Unsupported private forms become diagnostic events.
 
-## First milestone contract
+## Supported features
 
 Typed commands cover cursor movement/position, erase, insert/delete, scroll
 regions, tabulation, mode set/reset/query, SGR, device attributes, and terminal
@@ -20,22 +20,22 @@ size/cell reports required by the renderer and capability detector.
 The encoder omits optional defaults only when byte equivalence is specified. It
 never accepts negative parameters or writes locale-formatted digits.
 
-## Phase 2 implementation
+## Typed API and behavior
 
 `Parameters` enumerates semicolon fields and colon subparameters without
 allocating or flattening their meaning. It exposes an initial private marker and
 reports default, value, invalid, overflow, count-limit, and end states.
 
-`Csi` currently encodes relative movement, absolute position, display/line
-erase, character/line insert and delete, scroll up/down, ANSI cursor save and
-restore, DA1/DA2, cursor-position DSR, DECRQM, and xterm window-operation
-queries 14, 16, and 18 for text-area pixels, character-cell pixels, and
-text-area cells. `Responses.TryMetricsCsi` accepts only matching 4/6/8 reports
-with positive dimensions no greater than 65535. `Modes` encodes cursor
-visibility, alternate screen 1049, focus 1004, bracketed paste 2004,
-synchronized output 2026, and Kitty clipboard mode 5522. Tabulation, scroll
-regions, terminal-size reports, mouse modes, and lifecycle leases remain in
-later roadmap phases and are not claimed as implemented here.
+`Csi` encodes relative movement, absolute position, display/line erase,
+character/line insert and delete, scroll up/down, ANSI cursor save and restore,
+DA1/DA2, cursor-position DSR, DECRQM, and xterm window-operation queries 14, 16,
+and 18 for text-area pixels, character-cell pixels, and text-area cells.
+`Responses.TryMetricsCsi` accepts only matching 4/6/8 reports with positive
+dimensions no greater than 65535. `Modes` encodes cursor visibility, alternate
+screen 1049, focus 1004, bracketed paste 2004, synchronized output 2026, and
+Kitty clipboard mode 5522. Tabulation, scroll regions, terminal-size reports,
+mouse modes, and lifecycle leases remain in later roadmap phases and are not
+claimed as implemented here.
 
 ## Recovery and tests
 
@@ -54,7 +54,7 @@ cover absent, zero, default, maximum, and rejected values.
 
 Sources accessed 2026-07-20.
 
-## Test obligations
+## Expected behavior
 
 | Layer   | Required evidence                                                                             |
 | ------- | --------------------------------------------------------------------------------------------- |

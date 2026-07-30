@@ -73,7 +73,7 @@ implements the exact one-layer grammar. `TryUnwrap` validates parser-delivered
 `tmux;` payloads; `TryUnwrapEnvelope` additionally validates the complete DCS
 and ST boundary. Both reject malformed input before destination mutation.
 
-## First milestone contract
+## Supported features
 
 Provide typed passthrough wrapping for approved query, clipboard, and graphics
 operations, bounded unwrapping of replies, correct ESC doubling, nested-depth
@@ -81,7 +81,7 @@ limits, and explicit policy when passthrough is disabled. Capability queries and
 Kitty/sixel/iTerm2 graphics are implemented. Clipboard opts in only through its
 typed backend. Do not tunnel arbitrary payloads from controls.
 
-## Tests
+## Compatibility evidence
 
 Pure tests cover single and safely mixed nested wrapping, rejected unsafe Screen
 topologies, every reply split, repeated ESC doubling, disabled and hidden-pane
@@ -97,7 +97,7 @@ executable is an explicit platform skip.
 
 Sources accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer          | Required evidence                                                                         |
 | -------------- | ----------------------------------------------------------------------------------------- |

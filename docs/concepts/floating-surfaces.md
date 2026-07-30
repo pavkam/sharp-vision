@@ -88,7 +88,7 @@ styles; it is not a `Container`, owns no children, and performs no layout. To
 put controls above custom drawing, compose the drawing control and those
 controls in an Overlay.
 
-## Test obligations
+## Expected behavior
 
 Proof covers exact public inheritance, absence of the retired layout Canvas and
 proxy surface fields, family-specific attachment rules including detached-staged

@@ -153,7 +153,7 @@ Unknown identity keeps the VT backend; absent optional evidence keeps safe
 fallback. Strict mode may promote an existing diagnostic where specified, but
 does not change valid output.
 
-## Test obligations
+## Expected behavior
 
 Tests MUST freeze description, environment, query, and override precedence;
 strategy sorting and undefined/duplicate/missing rejection; adapter absence,

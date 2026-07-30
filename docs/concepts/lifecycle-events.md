@@ -20,6 +20,33 @@ notification under the
 
 ## Ordering
 
+```mermaid
+sequenceDiagram
+    participant Host
+    participant Application
+    participant Session
+    participant Root
+    participant Renderer
+
+    Host->>Application: StartAsync
+    Application-->>Host: Starting
+    Application->>Session: Start input, resize, and mode leases
+    Session-->>Application: Capability profile and first resize
+    Application-->>Host: CapabilitiesChanged
+    Application->>Root: Attach, measure, and arrange
+    Application-->>Host: Resize
+    Application->>Renderer: Render, write, and flush first frame
+    Renderer-->>Application: Frame committed
+    Application-->>Host: FrameRendered
+    Application-->>Host: Started
+    Application-->>Host: Idle when no work remains
+
+    Host->>Application: StopAsync
+    Application-->>Host: Stopping
+    Application->>Session: Reverse cleanup and dispose ownership
+    Application-->>Host: Stopped
+```
+
 Starting occurs before terminal modes are exposed to controls. Started occurs
 after initial capabilities, root layout, and first committed frame. A
 cancellable stopping request occurs once; stopped occurs after cleanup attempts
@@ -75,7 +102,7 @@ is followed by the normal render and frame-completion order before the next
 application idle transition.
 
 The dispatcher primitive enforces the empty ready/pending transition and
-handler-posted-work rule. `Application` now connects terminal input, layout, and
+handler-posted-work rule. `Application` connects terminal input, layout, and
 renderer pending leases to that primitive. A render holds one pending lease
 until its completion callback runs on the dispatcher, so `Idle` cannot precede
 flush, `FrameRendered`, or `Started`.
@@ -91,7 +118,7 @@ Positive cell and pixel dimensions derive `Geometry.Metrics` only when both axes
 produce a positive cell size. `Application` coalesces those terminal records
 into committed layout and the public resize event ordering described above.
 
-## Test obligations
+## Expected behavior
 
 Record exact startup/shutdown, resize, timer, frame, exception, and idle order.
 Cover cancellation, handler exceptions, work queued from events, timer-driven

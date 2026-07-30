@@ -27,10 +27,27 @@ after return, frame completion, or disposal.
 | UI input record         | `Application`                | Until dispatcher delivery        |
 | UI back frame           | `Application`                | Until render completion/disposal |
 
-The Phase 2 `Parser` invokes `ISequenceSink` synchronously. Every span supplied
-to a sink is borrowed only until that callback returns. A sink that queues or
-retains a value must copy it. Parser disposal clears and returns its pooled
-terminal-string storage.
+```mermaid
+flowchart LR
+    Transport["Session-owned read buffer"] -->|borrowed span| Parser["Parser and decoder"]
+    Parser -->|copy before return| Record["Owned immutable record"]
+    Record --> Queue["Bounded application queue"]
+    Queue --> Dispatcher["Synchronous dispatcher delivery"]
+    Dispatcher --> Controls["Retained control tree"]
+
+    Back["Application-owned back frame"] -->|borrowed until completion| Renderer
+    Renderer --> Front["Renderer-owned committed front frame"]
+    Renderer -->|borrowed until write completes| TransportWrite["Transport output"]
+```
+
+Every asynchronous boundary receives owned storage or a copy. Borrowed spans end
+with their synchronous call, and borrowed frame or transport memory remains
+alive until the returned asynchronous operation completes.
+
+`Parser` invokes `ISequenceSink` synchronously. Every span supplied to a sink is
+borrowed only until that callback returns. A sink that queues or retains a value
+must copy it. Parser disposal clears and returns its pooled terminal-string
+storage.
 
 `Input.Decoder` borrows each transport span only until `Decode` returns. Key,
 text, pointer, and focus callbacks contain values only. During bracketed paste,
@@ -210,12 +227,12 @@ leases; public APIs still throw for caller misuse.
 Steady-state parsing, unchanged measure/arrange, routed-event delivery, damage
 scanning, and frame encoding allocate no object per byte, Rune, grapheme, or
 cell. A warmed unchanged or profile-driven cursor/style
-[`Renderer.RenderAsync`](rendering-pipeline.md#commit-and-invalidation) call
-allocates zero managed bytes. Performance tests measure allocation and peak
+[`Renderer.RenderAsync`](rendering-pipeline.md#commit-and-terminal-state-invalidation)
+call allocates zero managed bytes. Performance tests measure allocation and peak
 retained memory for representative frames, control trees, routes, dispatcher
 posts, and bounded large payloads.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                               |
 | ----------- | ----------------------------------------------------------------------------------------------- |

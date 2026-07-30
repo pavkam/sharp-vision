@@ -15,14 +15,14 @@ invalid Base64, invalid color syntax, and unterminated payloads generate
 diagnostics and deterministic recovery. Diagnostics redact clipboard data and
 sensitive query responses.
 
-## First milestone contract
+## Supported features
 
 Typed support covers selectors 0/2 for titles, 4/10/11 for palette/default color
 queries where capabilities allow, 8 for hyperlinks, 52 for clipboard text, and
 5522 through the dedicated
 [Kitty clipboard contract](kitty-clipboard.md#kitty-clipboard-contract).
 
-## Phase 2 implementation
+## Typed API and behavior
 
 `Osc` implements selectors 0 and 2 for titles, selector 8 hyperlink open/close,
 selector 4 palette queries, and selectors 10 and 11 default-color queries. The
@@ -58,7 +58,7 @@ text/control events.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer    | Required evidence                                                             |
 | -------- | ----------------------------------------------------------------------------- |

@@ -83,7 +83,7 @@ Overlay.SetTop(statusPopup, Length.Cells(0));
 Overlay.SetZIndex(statusPopup, 10);
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover unpositioned shared layout; every leading, trailing, and opposing-edge
 combination; cells and percentages; invalid values; explicit-size precedence;

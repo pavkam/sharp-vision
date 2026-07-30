@@ -12,12 +12,14 @@ flowchart TB
     Threading --> Input["Input routing and focus"]
     Input --> Controls["Retained controls"]
     Controls --> Surfaces["Floating surfaces"]
-    Controls --> Layout["Measure, arrange, scrolling"]
+    Controls --> Invalidation["Invalidation and UI updates"]
+    Invalidation --> Layout["Measure, arrange, scrolling"]
+    Invalidation --> Rendering["Cell rendering"]
     Controls --> Styling["Styles and themes"]
     Layout --> Box["Margin, border, padding, content"]
     Styling --> Chrome["Intrinsic border and shadow"]
     Layout --> Geometry["Unicode cell geometry"]
-    Styling --> Rendering["Cell rendering"]
+    Styling --> Rendering
     Geometry --> Rendering
 ```
 
@@ -27,6 +29,7 @@ flowchart TB
 - [Intrinsic chrome](intrinsic-chrome.md#intrinsic-chrome-contract)
 - [Themes](themes.md#theme-file-contract)
 - [Layout](layout.md#layout-contract)
+- [Invalidation and UI updates](invalidation.md#invalidation-contract)
 - [Box model](box-model.md#box-model-contract)
 - [Scrolling](scrolling.md#scrolling-contract)
 - [Focus](focus.md#focus-contract)

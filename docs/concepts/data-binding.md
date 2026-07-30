@@ -18,6 +18,19 @@ The returned `Binding` keeps the relationship alive and implements
 `IDisposable`. The target also owns it, so retain the return value only when the
 application must stop synchronization early.
 
+```mermaid
+flowchart LR
+    Model["Caller-owned model"] -->|INotifyPropertyChanged| Observer["Binding path observer"]
+    Observer -->|latest value| Dispatcher["Target dispatcher"]
+    Dispatcher --> Adapter["Typed conversion and fallback"]
+    Adapter --> Target["Retained control property"]
+    Target -->|TwoWay or OneWayToSource| Guard["Direction and equality guard"]
+    Guard -->|validated reverse conversion| Model
+
+    Target -. owns lifetime .-> Binding
+    Binding -. owns subscriptions .-> Observer
+```
+
 ## Notification model
 
 Initial synchronization works with any non-null reference-type model. Live
@@ -158,7 +171,7 @@ selection. Replacing items cannot overwrite the model with a temporary empty or
 first-item selection. Multiple selection remains explicit application logic
 because it requires collection-diff and cancellation semantics.
 
-## Test obligations
+## Expected behavior
 
 The target owns each binding, and a binding owns its model. `Binding.Dispose`
 removes source, target, nested-path, and collection subscriptions. Target

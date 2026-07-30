@@ -140,7 +140,7 @@ status.Items.Add(new StatusBarItem
 Dock.SetSide(status, Side.Bottom);
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover defaults, validation-before-mutation, typed ownership and detached
 reuse, mixed collection order, left/right edge anchoring, spacing, alignment

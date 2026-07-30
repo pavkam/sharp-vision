@@ -124,7 +124,7 @@ public properties, layout effects, and rendering order. The
 global values. The exact border and shadow value surfaces live in
 [Intrinsic chrome](intrinsic-chrome.md#intrinsic-chrome-contract).
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                                                     |
 | ----------- | --------------------------------------------------------------------------------------------------------------------- |

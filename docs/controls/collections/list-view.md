@@ -3,8 +3,8 @@
 ## ListView contract
 
 `ListView` is a focusable selection control over an owned item snapshot and
-caller-configurable template. The first milestone deliberately realizes every
-item into a private vertical `Stack` armed with the intrinsic
+caller-configurable template. The control realizes every item into a private
+vertical `Stack` armed with the intrinsic
 [`AutoScroll`](../../concepts/scrolling.md) contract. It makes no virtualization
 or recycling claim.
 
@@ -134,7 +134,7 @@ var list = new ListView
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover empty/items changes, selection modes/events/cancellation, keyboard and
 pointer modifiers, invoke, scrolling/bring-into-view, resize, disabled items,

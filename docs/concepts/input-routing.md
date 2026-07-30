@@ -42,7 +42,7 @@ it only after `Options.EscapeTimeout` on the injected `TimeProvider`, and
 bytes handled outside the protocol parser so later diagnostic offsets remain
 absolute. Bracketed paste, focus, and mouse decoding build on these values in
 the [paste/focus](../protocols/paste-focus.md#paste-and-focus-contract) and
-[mouse](../protocols/mouse.md#mouse-reporting-contract) milestones.
+[mouse](../protocols/mouse.md#mouse-reporting-contract) contracts.
 
 ## Route construction
 
@@ -234,7 +234,7 @@ snapshots for code that wants "where is the mouse" or "are we focused" without
 subscribing to routed events; push-style consumers continue to use `Router`
 pointer and focus events as described above.
 
-## Test obligations
+## Expected behavior
 
 Use recording controls to assert route order, handled semantics, default action,
 capture, focus, coordinates, clipping, z-order, disabled/hidden targets,

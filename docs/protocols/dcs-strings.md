@@ -11,14 +11,14 @@ Unregistered strings are skipped with bounded diagnostics. A split `ESC \`
 terminator is recognized across reads. CAN and SUB abort where the compatibility
 profile specifies; end-of-stream reports truncation without synthesizing ST.
 
-## First milestone contract
+## Supported features
 
 DCS supports terminal queries and a bounded raw extension boundary used by
-multiplexer passthrough and future graphics. APC recognizes the Kitty graphics
-introducer diagnostically. SOS and PM are observable but have no public
-high-level behavior.
+multiplexer passthrough. APC recognizes the Kitty graphics introducer
+diagnostically. SOS and PM are observable but have no public high-level
+behavior.
 
-## Phase 2 implementation
+## Typed API and behavior
 
 `Parser` recognizes DCS, SOS, OSC, PM, and APC across arbitrary read
 fragmentation, including split `ESC \\` terminators. CAN/SUB cancel active
@@ -27,8 +27,10 @@ valid terminator and then resumes ground-state parsing. `Complete` reports one
 truncation diagnostic for unfinished input. `Writer` emits validated DCS, APC,
 PM, and SOS commands with ST termination. The
 [runtime router](runtime-routing.md#runtime-routing-contract) owns copied
-observation after framing. Typed DCS consumers remain extension work;
-multiplexer framing is governed by the tmux and GNU screen contracts.
+observation after framing. Known query families are decoded through their
+protocol-specific typed parsers; generic DCS consumer registration is not a
+public API. Multiplexer framing is governed by the tmux and GNU screen
+contracts.
 
 ## Security and tests
 
@@ -46,7 +48,7 @@ recovery.
 
 Sources accessed 2026-07-17.
 
-## Test obligations
+## Expected behavior
 
 | Layer         | Required evidence                                                                            |
 | ------------- | -------------------------------------------------------------------------------------------- |

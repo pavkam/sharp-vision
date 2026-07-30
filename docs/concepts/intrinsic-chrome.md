@@ -117,7 +117,7 @@ On an approved chrome host, assigning either complete value makes it local and
 authoritative. Call `ResetBorder()` or `ResetShadow()` to resume semantic-theme
 ownership.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                                                 |
 | ----------- | ----------------------------------------------------------------------------------------------------------------- |

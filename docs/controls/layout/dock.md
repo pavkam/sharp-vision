@@ -45,7 +45,7 @@ shell.Children.Add(sidebar);
 shell.Children.Add(main);
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover all sides, ordering, fill on/off, spacing, fixed/percent/auto sizes,
 over-consumption, collapsed children, zero/tiny bounds, resize, ownership,

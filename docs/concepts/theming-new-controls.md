@@ -89,7 +89,7 @@ without internals access, argument validation, invalidation, role resolution
 after a theme swap, state-specific local overrides, glyph fallback, and final
 cells rather than private resolver calls.
 
-## Test obligations
+## Expected behavior
 
 | Layer    | Required evidence                                                                                  |
 | -------- | -------------------------------------------------------------------------------------------------- |

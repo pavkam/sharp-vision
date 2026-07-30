@@ -147,7 +147,7 @@ This architecture is organizational. It changes no wire grammar or support
 state. The [coverage matrix](../protocols/coverage-matrix.md#coverage) remains
 the sole support summary.
 
-## Test obligations
+## Expected behavior
 
 Tests MUST prove hierarchy inheritance, immutable inherited-before-local
 extension order, duplicate rejection, and resolver specificity. They MUST prove

@@ -39,7 +39,7 @@ destination is unchanged. Internal synchronous encoders may borrow the immutable
 source bytes only for the duration of the call; no span may cross an
 asynchronous transport or dispatcher boundary.
 
-## Current support boundary
+## Supported backends
 
 Owned image values, semantic frame placements, transactional renderer lifecycle,
 Kitty/sixel/iTerm2 backends, and evidence-based protocol selection are
@@ -66,7 +66,7 @@ selected backend family; constructing a new Application performs fresh
 selection. If authoritative evidence for the already-selected family returns,
 that family may resume through its ordinary full-repair path.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                                      |
 | ----------- | ------------------------------------------------------------------------------------------------------ |

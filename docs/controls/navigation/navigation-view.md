@@ -110,7 +110,7 @@ Ampersands in item and group headers declare
 mnemonic focuses the view, makes that item current, and invokes/selects it. A
 group mnemonic focuses the view, makes the group current, and toggles expansion.
 
-## Test obligations
+## Expected behavior
 
 Cover typed item addition, owned and foreign programmatic selection, retained
 owner focus with group-and-item keyboard navigation, Enter/Space group

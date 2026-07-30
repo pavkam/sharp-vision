@@ -1,7 +1,5 @@
 # State, input, and events
 
-## State, input, and events
-
 SharpVision controls are ordinary retained CLR objects. Bind persistent model
 state through strongly typed expressions; use typed events for imperative
 actions and assign controls on the dispatcher thread.

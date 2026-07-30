@@ -7,17 +7,18 @@ indices are valid grapheme boundaries.
 
 ## API
 
-| Member group                                                   | Default              | Purpose                                                                 |
-| -------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------- |
-| `Text`, `Placeholder`                                          | Empty, `null`        | Store committed text and optional empty and unfocused hint text.        |
-| `IsReadOnly`, `AcceptsReturn`, `AcceptsTab`                    | `false`              | Control mutation, multiline Enter, and local Tab insertion.             |
-| `PasswordCharacter`                                            | `null`               | Masks one display Rune per source grapheme and suppresses copy or cut.  |
-| `MaxLength`                                                    | `0`                  | Limits grapheme count; zero is unlimited.                               |
-| `CaretIndex`, `SelectionStart`, `SelectionLength`              | `0`                  | Address only valid Unicode grapheme boundaries.                         |
-| `CursorShape`                                                  | `Block`              | Requests a protocol-neutral block, underline, or bar cursor.            |
-| `ScrollBars`, `ShowScrollBars`                                 | `Both`, `WhenNeeded` | Configure owned horizontal and vertical overflow rails.                 |
-| `UndoLimit`, `CanUndo`, `CanRedo`                              | `100`, read-only     | Bound and inspect immutable edit history.                               |
-| `TextChanging`, `TextChanged`, `SelectionChanged`, `Submitted` | No subscribers       | Cancel a proposal or observe committed text, selection, and submission. |
+| Member group                                                   | Default                | Purpose                                                                 |
+| -------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------- |
+| `Text`, `Placeholder`                                          | Empty, `null`          | Store committed text and optional empty and unfocused hint text.        |
+| `IsReadOnly`, `AcceptsReturn`, `AcceptsTab`                    | `false`                | Control mutation, multiline Enter, and local Tab insertion.             |
+| `PasswordCharacter`                                            | `null`                 | Masks one display Rune per source grapheme and suppresses copy or cut.  |
+| `MaxLength`                                                    | `0`                    | Limits grapheme count; zero is unlimited.                               |
+| `CaretIndex`, `SelectionStart`, `SelectionLength`              | `0`                    | Address only valid Unicode grapheme boundaries.                         |
+| `CursorShape`                                                  | `Block`                | Requests a protocol-neutral block, underline, or bar cursor.            |
+| `ScrollBars`, `ShowScrollBars`                                 | `Both`, `WhenNeeded`   | Configure owned horizontal and vertical overflow rails.                 |
+| inherited `ContextMenu`                                        | `TextInputContextMenu` | Provides Undo, Redo, Cut, Copy, Paste, and Select All.                  |
+| `UndoLimit`, `CanUndo`, `CanRedo`                              | `100`, read-only       | Bound and inspect immutable edit history.                               |
+| `TextChanging`, `TextChanged`, `SelectionChanged`, `Submitted` | No subscribers         | Cancel a proposal or observe committed text, selection, and submission. |
 
 ## Default field chrome
 
@@ -94,6 +95,13 @@ direction.
 - `CopySelection()` returns owned selected text and `CutSelection()` deletes it
   when mutable. Password mode returns empty and performs no cut, while read-only
   mode permits copying but never deletes.
+- Construction installs one `TextInputContextMenu`, a public specialized
+  `ContextMenu` whose instance is obtained through the inherited `ContextMenu`
+  property. It orders Undo, Redo, a separator, Cut, Copy, Paste, another
+  separator, and Select All. Opening recomputes enablement from selection,
+  password/read-only policy, application clipboard content, text length, and
+  undo/redo availability. Callers may replace or clear it through the ordinary
+  context-menu ownership contract.
 - `UndoLimit` defaults to 100; zero disables retained undo. `CanUndo`,
   `CanRedo`, `Undo()`, and `Redo()` operate on immutable text-and-selection
   snapshots and never retain more than the configured number per stack.
@@ -182,7 +190,7 @@ var name = new TextInput
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover empty/Unicode editing, combining/emoji movement and deletion, selection,
 read-only/password/max length, events/cancellation, paste limits, clipboard

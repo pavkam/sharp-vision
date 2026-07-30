@@ -34,7 +34,10 @@ posted by `Idle` starts another drain without a polling delay.
 
 No application callback runs while an internal lock is held. Event dispatch uses
 a snapshot route so tree mutations affect later events, not the current
-preview/bubble path. Reentrant layout and render calls queue invalidation.
+preview/bubble path. State changes during layout or control rendering retain
+pending work for the next transaction, while direct phase reentry is rejected.
+The [invalidation update cycle](../concepts/invalidation.md#update-cycle) owns
+the complete mutation-to-frame sequence.
 
 `SharpVision.Runtime.Application` owns the dispatcher, root, terminal `Session`,
 renderer, focus, capture, and modality managers, and active back frame. Session
@@ -276,7 +279,7 @@ restoration writes run under their own finite timeout.
 run. That asks the run to complete from inside itself and deadlocks; the owner
 of `RunAsync` disposes the session instead.
 
-## Test obligations
+## Expected behavior
 
 | Layer          | Required evidence                                                                               |
 | -------------- | ----------------------------------------------------------------------------------------------- |

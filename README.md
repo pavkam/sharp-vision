@@ -42,18 +42,19 @@ The
 [project structure contract](docs/architecture/project-structure.md#project-structure-contract)
 defines the one-way dependency graph and ownership boundaries.
 
-## Install the alpha
+## Package status
 
-SharpVision `0.2.0-alpha.1` is a prerelease and may change before the stable
-API. Add the retained UI package to a .NET 10 application with:
+SharpVision `0.5.0-alpha.1` is a prerelease and may change before the stable
+API.
 
-```bash
-dotnet add package SharpVision --version 0.2.0-alpha.1
-```
+> [!IMPORTANT] The published UI package currently has an unresolved exact
+> dependency because the matching `SharpVision.Terminal` package is not
+> published. It is not currently installable. Build this repository or use
+> project references until the terminal package is available.
 
-`SharpVision.Terminal` is installed transitively. Reference that lower-level
-package directly only when building terminal infrastructure without the UI
-control layer. The
+Once published, `SharpVision.Terminal` is installed transitively. Reference that
+lower-level package directly only when building terminal infrastructure without
+the UI control layer. The
 [first-application walkthrough](docs/walkthroughs/first-application.md#build-your-first-application)
 contains a complete hosted example.
 

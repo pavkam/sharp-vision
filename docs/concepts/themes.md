@@ -269,7 +269,7 @@ control tree on the dispatcher. Controls are not reconstructed. The resolver
 caches each semantic role and exact visual-state combination; theme replacement,
 local appearance changes, and relevant state changes invalidate those entries.
 
-## Test obligations
+## Expected behavior
 
 | Layer      | Required evidence                                                                                         |
 | ---------- | --------------------------------------------------------------------------------------------------------- |

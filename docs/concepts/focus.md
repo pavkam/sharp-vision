@@ -118,7 +118,7 @@ manager: focusable captions target themselves, captioned scopes target their
 first eligible descendant in hierarchical tab order, and label-like leaves
 advance from their stable tree anchor. Modal eligibility remains authoritative.
 
-## Test obligations
+## Expected behavior
 
 Cover traversal order, cancellation, event order, disabled/hidden/detached
 targets, [nested modal restoration](modality.md#modal-focus), popup restoration,

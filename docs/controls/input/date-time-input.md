@@ -30,7 +30,7 @@ date navigation options as `Calendar`.
 var dateTimeInput = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 ```
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                            |
 | ----------- | -------------------------------------------------------------------------------------------- |

@@ -18,13 +18,13 @@ Buttons, wheel directions, modifiers, press/release/move, and leave-window
 events are distinct typed values. Numeric parameters and coordinates are bounded
 before conversion.
 
-## First milestone contract
+## Supported features
 
 Decode X10 and VT200 compatibility, SGR cell/pixel, wheel, motion, extra
 buttons, modifiers, and Kitty's pixel-mode leave notification. Encode safe mode
 leases and restore previous tracking on shutdown.
 
-`Input.Decoder` now accepts three compatibility families: the three UTF-8 scalar
+`Input.Decoder` accepts three compatibility families: the three UTF-8 scalar
 fields following X10 `CSI M`, urxvt decimal reports, and SGR reports with `<`.
 All fragmented fields remain bounded. Button codes preserve primary, middle,
 secondary, back, and forward buttons; modifier bits, motion, release, four wheel
@@ -50,19 +50,19 @@ Pointer leave has neither coordinate. Ordinary hit testing requires cells; an
 existing capture may receive pixel-only motion or release for a documented
 pixel-aware behavior. Missing metrics never fabricate top-left cell zero.
 
-## Tests
+## Input and lifecycle coverage
 
-Decoder tests cover every button/modifier/action family, vertical and horizontal
-wheel deltas, cell and pixel conversion, maximum coordinates, leave, malformed
-values, X10 UTF-8 coordinates, and every split. Mode combinations and cleanup
-are proved by the runtime session; Phase 4 routes these values through pointer
-capture and hit testing to final control output.
+Supported decoding covers every button/modifier/action family, vertical and
+horizontal wheel deltas, cell and pixel conversion, maximum coordinates, leave,
+malformed values, X10 UTF-8 coordinates, and every split. Mode combinations and
+cleanup are proved by the runtime session; the UI layer routes these values
+through pointer capture and hit testing to final control output.
 
-`Modes.Mouse` now owns exact mode 9/1000/1002/1003 tracking and
-1005/1006/1015/1016 coordinate commands. `Runtime.Options` selects the pair;
-`Runtime.Session` enables cell input only with proven `CellMouse` support and
-pixel input only with proven `PixelMouse` support, then restores coordinate and
-tracking modes in reverse. Tentative terminal-name hints never activate them.
+`Modes.Mouse` owns exact mode 9/1000/1002/1003 tracking and 1005/1006/1015/1016
+coordinate commands. `Runtime.Options` selects the pair; `Runtime.Session`
+enables cell input only with proven `CellMouse` support and pixel input only
+with proven `PixelMouse` support, then restores coordinate and tracking modes in
+reverse. Tentative terminal-name hints never activate them.
 
 ## Sources
 
@@ -71,7 +71,7 @@ tracking modes in reverse. Tentative terminal-name hints never activate them.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                    |
 | ----------- | ------------------------------------------------------------------------------------ |

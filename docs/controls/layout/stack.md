@@ -46,7 +46,7 @@ actions.Children.Add(primaryAction);
 actions.Children.Add(cancelAction);
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover every orientation, spacing, reverse, fixed/percent/auto/proportional mix,
 collapsed children, alignment, zero/tiny sizes, overflow, resize, ownership,

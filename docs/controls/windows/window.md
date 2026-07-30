@@ -127,7 +127,7 @@ var scope = window.ShowModal(
     initialFocus: firstField);
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover inheritance and absence of role enums; caller defaults and overrides;
 Application and Window activation identity; primary chrome, background, content,

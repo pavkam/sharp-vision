@@ -13,9 +13,9 @@ fixed VT/xterm/Kitty/iTerm2 identity, while the
 [discovery pipeline](discovery-pipeline.md#discovery-pipeline-contract) owns
 source precedence, adapters, resolution, and immutable publication.
 
-The Phase 2 profile represents each optional protocol as a `Feature` containing
-`Support` and `Origin`. `Support` is unknown, unsupported, tentative, or
-supported. Active protocol output requires both `Feature.IsSupported` and an
+The capability profile represents each optional protocol as a `Feature`
+containing `Support` and `Origin`. `Support` is unknown, unsupported, tentative,
+or supported. Active protocol output requires both `Feature.IsSupported` and an
 authoritative database, bounded-query, or explicit-override origin, which
 `Feature.IsAuthoritative` reports as one predicate. Default and environment
 origins never authorize output, even if a caller constructs the otherwise
@@ -31,7 +31,23 @@ and carries an explicit `AmbiguousWidth` policy. It defaults to narrow, never
 changes from locale or terminal-name hints, and may be set to wide only by
 caller `Settings` applied at the final precedence step.
 
-## Current terminal-description boundary
+```mermaid
+flowchart LR
+    Description["Validated terminal description"] --> Profile["Immutable TerminalProfile"]
+    Environment["Environment hints and narrowing"] --> Profile
+    Queries["Bounded correlated query evidence"] --> Profile
+    Overrides["Explicit caller settings"] --> Profile
+    Profile --> Modes["Session mode leases"]
+    Profile --> Input["Input decoder and key map"]
+    Profile --> Renderer["Renderer and output projection"]
+    Profile --> Services["Terminal services"]
+```
+
+The arrows describe evidence flow, not equal authority. The
+[discovery pipeline](discovery-pipeline.md#discovery-pipeline-contract) owns the
+ordered precedence and publication rules.
+
+## Terminal-description boundary
 
 The terminal assembly has an internal ncurses provider which loads one requested
 Unix terminfo/termcap description and a deterministic Windows VT provider which
@@ -60,14 +76,14 @@ that boundary.
 
 ## Terminal-description profile
 
-Immutable `TerminalProfile` now owns `Description`, semantic `Capabilities`,
-opaque compiled-program values, and the key map as immutable snapshots. The
-ncurses provider loads a database and compiles programs. Session lifecycle
-consumes the matched base and keypad pairs, and renderer routing consumes exact
-cursor, erase, rendition, color, default, and cursor-shape programs. Input
-routing consumes the same profile's described key map. Built-in ANSI programs
-are intrinsic markers for operations already owned by the existing ANSI encoder,
-not placeholder output bytecode.
+Immutable `TerminalProfile` owns `Description`, semantic `Capabilities`, opaque
+compiled-program values, and the key map as immutable snapshots. The ncurses
+provider loads a database and compiles programs. Session lifecycle consumes the
+matched base and keypad pairs, and renderer routing consumes exact cursor,
+erase, rendition, color, default, and cursor-shape programs. Input routing
+consumes the same profile's described key map. Built-in ANSI programs are
+intrinsic markers for operations already owned by the existing ANSI encoder, not
+placeholder output bytecode.
 
 `TerminalProfile.CreateAnsi` is a deliberate trusted compatibility boundary: it
 retains the exact caller `Capabilities` instance and value, including explicit
@@ -155,10 +171,12 @@ the terminal backend identity, and never enables passthrough.
 `Multiplexing.Policy` keeps the active inner profile and an explicit outer
 profile separate, owns a nearest-to-farthest route with finite depth and bytes,
 and approves only typed capability-query, clipboard, or graphics families. The
-current runtime connects capability queries, clipboard, and graphics through
-their typed implementations. Graphics selection receives the complete detected
-route even when passthrough is unauthorized, preventing a direct-output fallback
-around multiplexer policy.
+runtime routes its implemented startup-query batch, OSC 52 clipboard writes and
+requests, and graphics transactions through those typed paths. Kitty OSC 5522
+remains a low-level extension as documented by its
+[implementation gap](../protocols/kitty-clipboard.md#supported-features).
+Graphics selection receives the complete detected route even when passthrough is
+unauthorized, preventing a direct-output fallback around multiplexer policy.
 
 tmux may carry the complete approved query set. A route containing GNU screen
 permits one farthest Screen layer and surrounding tmux layers, and carries CSI
@@ -305,7 +323,7 @@ keyboard/mouse modes are absent, and return an unavailable result for operations
 such as clipboard reads that lack a safe alternative. Strict mode promotes
 selected diagnostics without changing valid encodings.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                                            |
 | ----------- | ------------------------------------------------------------------------------------------------------------ |

@@ -38,7 +38,7 @@ var spinner = new Spinner
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover style validation/copying, local/Theme precedence, phase reset versus
 appearance-only repaint, timer lifecycle, visibility pause, attachment,

@@ -63,7 +63,7 @@ public sealed class TagCloud : ItemsControl
 An application interacts with the semantic `TagCloud` API. It cannot replace the
 host or insert arbitrary presentation children.
 
-## Test obligations
+## Expected behavior
 
 | Layer    | Required evidence                                                                                          |
 | -------- | ---------------------------------------------------------------------------------------------------------- |

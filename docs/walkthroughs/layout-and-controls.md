@@ -1,7 +1,5 @@
 # Compose layout and controls
 
-## Compose layout and controls
-
 SharpVision layout has two passes. Measure computes each control's desired
 terminal-cell size; arrange commits its final rectangle. `Length.Auto` follows
 content, `Length.Cells(n)` requests a fixed count, percentages use available

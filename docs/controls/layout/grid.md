@@ -76,7 +76,7 @@ var grid = new Grid
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover all track kinds/mixes, min/max, spacing, spans, competing intrinsic
 requirements, rounding/remainders, collapsed children, invalid attached values,

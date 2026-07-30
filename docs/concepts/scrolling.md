@@ -123,7 +123,7 @@ typed `ScrollChanged` event (carrying the previous/committed offset, `Extent`,
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after offset and never targets clipped content.
 
-## Test obligations
+## Expected behavior
 
 Cover no/one/both bars, one bar inducing the other, all visibility policies,
 exact fit, zero/tiny viewport, resize appearance/removal, content changes,

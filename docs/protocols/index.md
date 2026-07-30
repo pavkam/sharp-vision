@@ -101,11 +101,13 @@ zero-parameter `bel` program with proven non-empty output, and `Ring()` expands
 it. `IsTitleSupported` gates OSC 2 to a library-proven built-in profile or gates
 a database description to a complete, parameterless `TS` prefix plus `fsl`
 suffix. A lone or parameterized terminfo `TS` status-line program is not treated
-as OSC 2. `IClipboard` writes and requests OSC 52/Kitty clipboard selections
-when `IsSupported` (`Osc52.IsSupported || KittyClipboard.IsSupported`) is
-`true`. Database OSC 52 evidence requires a non-empty executable `Ms` program
-with exactly two string parameters. Unsupported bell, title, and clipboard calls
-are byte-quiet no-ops. All three post encoded bytes through the
+as OSC 2. `IClipboard` writes and requests OSC 52 selections when authoritative
+`Osc52` evidence makes `IsSupported` true. Database OSC 52 evidence requires a
+non-empty executable `Ms` program with exactly two string parameters. The typed
+Kitty OSC 5522 extension is not yet connected to this application facade; its
+[protocol page](kitty-clipboard.md#supported-features) owns that implementation
+gap. Unsupported bell, title, and clipboard calls are byte-quiet no-ops. All
+three post encoded bytes through the
 [ordered out-of-band write path](../architecture/runtime-event-loop.md#out-of-band-protocol-writes)
 so they never interleave a frame. Kitty graphics is not exposed by this facade;
 semantic image placements flow through renderer-owned `IGraphicsBackend` and its

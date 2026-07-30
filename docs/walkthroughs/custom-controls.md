@@ -1,7 +1,5 @@
 # Build a custom control
 
-## Build a custom control
-
 Custom controls are retained mutable objects. Do not introduce virtual trees,
 function components, reconciliation, or hook-style state.
 

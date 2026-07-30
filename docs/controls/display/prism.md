@@ -162,7 +162,7 @@ var title = new Prism
 title.Phase = (title.Phase + (1d / 60d)) % 1d;
 ```
 
-## Test obligations
+## Expected behavior
 
 Automated proof is split across focused Prism, canvas-primitive, and shared
 base-control suites:

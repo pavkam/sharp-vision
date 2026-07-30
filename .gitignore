@@ -30,6 +30,6 @@ node_modules/
 *.log
 *.tmp
 
-# Subagent-driven-development scratch (ledger, briefs, reports)
+# Local planning and scratch artifacts
 .superpowers/
 docs/superpowers/

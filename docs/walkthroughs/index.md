@@ -1,7 +1,5 @@
 # Walkthroughs
 
-## Walkthroughs
-
 Walkthroughs assemble public SharpVision APIs into complete tasks. They explain
 why each property is set, show runnable C#, and link every deeper rule to the
 section that owns it.
@@ -29,7 +27,7 @@ the interactive gallery doubles as executable API documentation.
 ## Reference after the walkthroughs
 
 - Use the [control catalog](../controls/index.md#control-catalog) for component
-  properties, defaults, input, layout, examples, and test obligations.
+  properties, defaults, input, layout, examples, and expected behavior.
 - Use the [concept map](../concepts/index.md#concept-map) for behavior shared by
   several controls.
 - Use [feature support](../features/index.md#feature-support) before relying on

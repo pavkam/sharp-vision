@@ -56,7 +56,7 @@ var add = new Button
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover local/Theme style precedence, null restoration, Theme replacement,
 validation, exact standard and filled cells, hover border-background isolation,

@@ -17,17 +17,17 @@ Focus reports are typed terminal events and are distinct from control focus
 inside the UI tree. Terminal focus loss may clear hover/pressed state according
 to UI policy but does not synthesize arbitrary key releases.
 
-## First milestone contract
+## Supported features
 
 Manage both modes through lifecycle leases, decode fragmented begin/end markers,
 emit immutable paste/focus events on the dispatcher, and restore modes at exit.
 
-`Input.Decoder` now recognizes CSI 200~/201~ and switches to raw paste mode
-after the begin marker. A six-byte exact matcher holds only a possible
-end-marker prefix; mismatches return the held bytes to payload, so embedded ESC
-and every proper marker prefix remain data. Parser callbacks are bypassed until
-the exact terminator, meaning paste content can never trigger keys, focus,
-mouse, OSC, or CSI handling.
+`Input.Decoder` recognizes CSI 200~/201~ and switches to raw paste mode after
+the begin marker. A six-byte exact matcher holds only a possible end-marker
+prefix; mismatches return the held bytes to payload, so embedded ESC and every
+proper marker prefix remain data. Parser callbacks are bypassed until the exact
+terminator, meaning paste content can never trigger keys, focus, mouse, OSC, or
+CSI handling.
 
 Payload retention is capped by `Input.Options.MaxPasteBytes`. Overflow clears
 retained bytes, discards through the terminator, reports one structural
@@ -40,14 +40,14 @@ CSI I/O emit immutable gained/lost `Focus` values. They are terminal focus only;
 application routing applies the separate
 [UI focus policy](../concepts/input-routing.md#route-construction).
 
-## Tests
+## Bounds and lifecycle
 
-Tests cover empty, multiline, Unicode, invalid UTF-8, embedded ESC, every proper
-marker prefix, owned retention, megabyte overflow, truncation, every byte split,
-adjacent focus/text events, and terminal focus transitions. Lifecycle cleanup is
-proved by `Runtime.Session`, which enables only supported modes and restores
-them in reverse even after startup, input, handler, cancellation, or cleanup
-failure.
+Supported input covers empty, multiline, Unicode, invalid UTF-8, embedded ESC,
+every proper marker prefix, owned retention, megabyte overflow, truncation,
+every byte split, adjacent focus/text events, and terminal focus transitions.
+Lifecycle cleanup is proved by `Runtime.Session`, which enables only supported
+modes and restores them in reverse even after startup, input, handler,
+cancellation, or cleanup failure.
 
 ## Sources
 
@@ -56,7 +56,7 @@ failure.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer     | Required evidence                                                                        |
 | --------- | ---------------------------------------------------------------------------------------- |

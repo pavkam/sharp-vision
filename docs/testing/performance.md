@@ -25,13 +25,14 @@ Optimization is rejected when it breaks model equivalence, increases unbounded
 memory, or improves one synthetic case while materially regressing the common
 dense/sparse counterpart without an approved tradeoff.
 
-Phase 5A warms representative 80×24 and 200×60 display trees, then measures five
-500-iteration layout/render windows. At least one window must allocate exactly
-zero managed bytes. A separate 1,000-child Grid/Stack tree measures five
-1,000-iteration unchanged-layout windows with the same requirement. Elapsed
-times are diagnostic output rather than flaky wall-clock gates.
+The display-tree scenario warms representative 80×24 and 200×60 trees, then
+measures five 500-iteration layout/render windows. At least one window must
+allocate exactly zero managed bytes. A separate 1,000-child Grid/Stack tree
+measures five 1,000-iteration unchanged-layout windows with the same
+requirement. Elapsed times are diagnostic output rather than flaky wall-clock
+gates.
 
-## Current Phase 3 gates
+## Renderer and protocol gates
 
 The warmed unchanged-frame path performs 10,000 measured calls and requires zero
 thread-local managed allocation. Sparse and dense encodes reuse the
@@ -41,18 +42,19 @@ render stays pending without queue growth, while partial write, flush,
 cancellation, and synchronized cleanup failures prove that only a complete
 write-and-flush commits front state. These guarantees implement the ownership
 rules in the
-[rendering pipeline](../architecture/rendering-pipeline.md#commit-and-invalidation).
+[rendering pipeline](../architecture/rendering-pipeline.md#commit-and-terminal-state-invalidation).
 
-`PhaseThreePerformanceTests` warms and measures representative ASCII, mixed, and
-emoji segmentation; unchanged, sparse, and dense 80×24 encoding; and legacy
-text, SGR mouse, and Kitty keyboard decoding. Five 10,000-iteration allocation
-windows must include a zero-byte sample after tiered compilation has crossed its
-warm-up. The allocation class belongs to a non-parallel test collection so
-unrelated terminal tests cannot pollute its thread-local measurements. Test
-output records elapsed time, .NET runtime, OS, and process architecture, but
-elapsed time is intentionally informational on local and ordinary CI machines.
+The renderer and protocol performance suite warms and measures representative
+ASCII, mixed, and emoji segmentation; unchanged, sparse, and dense 80×24
+encoding; and legacy text, SGR mouse, and Kitty keyboard decoding. Five
+10,000-iteration allocation windows must include a zero-byte sample after tiered
+compilation has crossed its warm-up. The allocation class belongs to a
+non-parallel test collection so unrelated terminal tests cannot pollute its
+thread-local measurements. Test output records elapsed time, .NET runtime, OS,
+and process architecture, but elapsed time is intentionally informational on
+local and ordinary CI machines.
 
-## Current Phase 4 gates
+## UI infrastructure gates
 
 `InfrastructurePerformanceTests` warms and samples unchanged box layout, reused
 80×24 semantic control rendering, and stable depth-20 routed events. The minimum
@@ -64,7 +66,7 @@ Reports include .NET runtime, OS, process architecture, elapsed time, and
 iteration count. Only deterministic allocation budgets gate local/ordinary CI;
 wall-clock values remain informational.
 
-## Current Phase 5B gates
+## Interactive control gates
 
 `InteractivePerformanceTests` renders a representative ListView, TextInput,
 ScrollBar, and intrinsically scrollable Stack tree at 80×24 and 200×60. Five

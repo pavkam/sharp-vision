@@ -114,7 +114,7 @@ public sealed class SharedSlot : Container
 }
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests prove the abstract public shape, child capacity and ownership rejection,
 dispatcher affinity, stable order, layout invalidation, measure and arrange

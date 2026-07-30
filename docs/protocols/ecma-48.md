@@ -25,7 +25,7 @@ Default limits bound parameter count, parameter magnitude, intermediate bytes,
 and string payload length. Options may lower or raise limits but may not disable
 boundedness.
 
-The Phase 2 API is `SharpVision.Terminal.Protocols.Parser`. It reports borrowed
+The typed API is `SharpVision.Terminal.Protocols.Parser`. It reports borrowed
 spans synchronously through `ISequenceSink`; a sink must copy any value retained
 after its callback. `Complete` reports one truncated sequence and returns to
 ground, `Reset` discards partial state, and disposal returns cleared pooled
@@ -38,12 +38,12 @@ metadata, 32 concurrent queries, and a 750 ms query deadline. OSC accepts BEL by
 default. Eight-bit C1 controls are opt-in so UTF-8 continuation bytes are text
 unless the caller explicitly selects an eight-bit control stream.
 
-## First milestone contract
+## Supported features
 
-Phase 2 implements raw bounded framing, typed renderer-required CSI/SGR/OSC
-encoders, typed DA/DSR/DECRPM and OSC color responses, and raw observation of
-unknown valid functions. Unsupported functions do not corrupt parser
-synchronization or throw in normal mode.
+The implementation provides raw bounded framing, typed renderer-required
+CSI/SGR/OSC encoders, typed DA/DSR/DECRPM and OSC color responses, and raw
+observation of unknown valid functions. Unsupported functions do not corrupt
+parser synchronization or throw in normal mode.
 
 ## Sources
 
@@ -52,7 +52,7 @@ synchronization or throw in normal mode.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 Every representative sequence is tested whole, at every read split, adjacent to
 text and other controls, malformed, truncated, cancelled, and followed by a

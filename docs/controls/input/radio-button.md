@@ -59,7 +59,7 @@ var glyph = new RadioButton
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover exclusivity, regroup/reparent, event order, arrows, disabled skipping,
 unnamed/named scope, style validation and precedence, null restoration, Theme

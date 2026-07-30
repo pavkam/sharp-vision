@@ -62,7 +62,7 @@ var position = new ScrollBar
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover range validation, thumb geometry, local/Theme style precedence, Theme
 replacement, all presets, glyph validation and width fallback, keyboard,

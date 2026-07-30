@@ -79,10 +79,15 @@ sixel metrics are absent.
 
 `ItermImages=true` is an explicit assertion that the destination implements the
 iTerm2 3.5-or-newer multipart contract. Query, database, and tentative
-`TERM_PROGRAM` evidence do not authorize output. The repository does not yet
-implement `Capabilities`/`TERM_FEATURES` FILE negotiation. Application host
-selection is implemented: it creates the backend lazily after profile and resize
-publication and consumes semantic placements from the public Image control.
+`TERM_PROGRAM` evidence do not authorize output. Application host selection
+creates the backend lazily after profile and resize publication and consumes
+semantic placements from the public Image control.
+
+> [!IMPORTANT] **Implementation gap:** Capability discovery does not consume
+> iTerm2 `Capabilities` or `TERM_FEATURES` `FILE` evidence. Direct iTerm2 image
+> output therefore requires an explicit `ItermImages=true` override even when a
+> local terminal could provide authoritative FILE support evidence.
+
 Unsupported source, fitting, route, or evidence keeps the control's previously
 painted cell fallback.
 
@@ -114,7 +119,7 @@ tests with the other graphics backends.
 
 Sources accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer     | Required evidence                                                             |
 | --------- | ----------------------------------------------------------------------------- |

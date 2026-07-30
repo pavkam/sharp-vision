@@ -143,7 +143,7 @@ surface.
 - [Terminal integration](../architecture/terminal-integration.md#protocol-routing)
   owns the application-facing end-to-end path.
 
-## Test obligations
+## Expected behavior
 
 Test each recognized reply and each string family whole and at every read split.
 Mutate the source buffer after routing to prove ownership. Test adjacent input

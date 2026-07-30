@@ -100,7 +100,7 @@ if (result == MessageBoxResult.Yes)
 }
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover enum stability, argument validation, title/message retention,
 dialog-role composition, message wrapping under a small viewport, all four

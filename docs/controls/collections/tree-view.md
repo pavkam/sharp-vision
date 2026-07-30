@@ -106,7 +106,7 @@ source.Children.Add(new TreeViewItem("Program.cs") { IsCheckable = true });
 tree.Items.Add(source);
 ```
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                             |
 | ----------- | --------------------------------------------------------------------------------------------- |

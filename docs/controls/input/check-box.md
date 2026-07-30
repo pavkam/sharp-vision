@@ -47,7 +47,7 @@ var option = new CheckBox
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover both cycles, event order, invalid null assignment, style validation and
 precedence, null restoration, Theme replacement, Space/pointer parity, disabled

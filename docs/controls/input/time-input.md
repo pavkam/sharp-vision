@@ -27,7 +27,7 @@ basic display and editing options.
 var timeInput = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 ```
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                               |
 | ----------- | ----------------------------------------------------------------------------------------------- |

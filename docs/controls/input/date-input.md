@@ -24,7 +24,7 @@ optional Calendar popup.
 var dateInput = new DateInput();
 ```
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                           |
 | ----------- | ------------------------------------------------------------------------------------------- |

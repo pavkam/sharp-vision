@@ -16,9 +16,9 @@ unsupported values. File, temporary-file, and shared-memory media are rejected
 before output because they cross path and external-lifetime trust boundaries.
 Animation and Unicode placeholder presentation are outside this contract.
 
-## First milestone contract
+## Supported features
 
-The typed and implemented milestone contains:
+Typed and implemented behavior includes:
 
 - the official one-pixel direct RGB query;
 - strict bounded typed response parsing and numeric correlation;
@@ -157,7 +157,7 @@ this change.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer         | Required evidence                                                                       |
 | ------------- | --------------------------------------------------------------------------------------- |

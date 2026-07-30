@@ -95,7 +95,7 @@ public sealed class MainScreen : Screen
 }
 ```
 
-## Test obligations
+## Expected behavior
 
 Prove direct construction-time root ownership, private presentation-slot
 ownership, root identity across first layout, attach and started ordering,

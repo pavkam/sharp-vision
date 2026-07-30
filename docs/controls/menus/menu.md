@@ -126,7 +126,7 @@ menu.Items.Add(new MenuItem
 });
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover constrained mixed ownership, zero-spacing compact layout, shared row
 width, default and configured minimum and maximum widths, live width

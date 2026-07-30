@@ -1,7 +1,5 @@
 # Use terminal services
 
-## Use terminal services
-
 Controls render cells; they never emit escape bytes. Application code reaches
 implemented output protocols through `Application.Terminal`, which orders
 out-of-band writes between frames and applies safe fallback.

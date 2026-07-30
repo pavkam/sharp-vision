@@ -126,7 +126,7 @@ private retained header renders the marker-free underlined caption; Alt plus the
 key focuses the `TabControl` and selects that page. Page body text is not the
 tab caption.
 
-## Test obligations
+## Expected behavior
 
 Cover typed ownership and validation, default/cleared selection, event order,
 deterministic removal and availability repair, exact header/divider/rule

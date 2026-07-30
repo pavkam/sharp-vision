@@ -92,7 +92,7 @@ The parent reserves the margin. `panel.Bounds` begins inside that reservation;
 its border occupies one cell on each enabled edge, and its children are arranged
 inside the remaining padded `ContentBounds`.
 
-## Test obligations
+## Expected behavior
 
 | Layer      | Required evidence                                                                                           |
 | ---------- | ----------------------------------------------------------------------------------------------------------- |

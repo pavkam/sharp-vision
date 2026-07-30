@@ -13,7 +13,7 @@ They are not arbitrary integers passed from controls. Enabling a mode records
 the restoration action. Nested owners use leases so one component cannot disable
 a mode still needed by another.
 
-## First milestone contract
+## Supported features
 
 Track cursor-key/application keypad behavior, origin/wrap, cursor visibility,
 alternate screen, mouse families, focus 1004, bracketed paste 2004, synchronized
@@ -38,7 +38,7 @@ cancellation, or failed flush receives the exact conservative restoration
 attempt. Cleanup continues through later leases in reverse order and preserves
 the original exception.
 
-## Phase 2 implementation
+## Typed API and behavior
 
 `Modes` provides exact DECSET/DECRST bytes for modes 9, 25, 1000, 1002, 1003,
 1004, 1005, 1006, 1015, 1016, 1049, 2004, 2026, and 5522. `Csi.QueryPrivateMode`
@@ -61,7 +61,7 @@ for invalid combinations.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer     | Required evidence                                                               |
 | --------- | ------------------------------------------------------------------------------- |

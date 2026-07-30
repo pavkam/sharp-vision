@@ -1,7 +1,5 @@
 # Build your first application
 
-## Build your first application
-
 This walkthrough creates a .NET 10 console application with one retained screen,
 text, and a button. SharpVision owns the terminal session and restores terminal
 modes when the application exits.
@@ -9,14 +7,15 @@ modes when the application exits.
 ## Create the project
 
 ```bash
+git clone https://github.com/pavkam/sharp-vision.git sharp-vision
 dotnet new console --framework net10.0 --name HelloSharpVision
 cd HelloSharpVision
-dotnet add package SharpVision --version 0.2.0-alpha.1
+dotnet add reference ../sharp-vision/src/SharpVision/SharpVision.csproj
 ```
 
-Contributors working inside this repository can replace the package command with
-`dotnet add reference ../sharp-vision/src/SharpVision/SharpVision.csproj` to
-exercise the current checkout.
+> [!IMPORTANT] The published UI package currently cannot resolve its unpublished
+> `SharpVision.Terminal` dependency. The project reference above is the
+> supported path until the terminal package exists.
 
 ## Add the screen
 

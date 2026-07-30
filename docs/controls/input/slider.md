@@ -79,7 +79,7 @@ var volume = new Slider
 volume.ValueChanged += (_, change) => SaveVolume(change.Value);
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover validation before mutation, signed extremes, event order, exact
 horizontal and vertical cells, zero/tiny bounds, keyboard and wheel semantics,

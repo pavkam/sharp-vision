@@ -8,7 +8,7 @@ correctness, clear contracts, and proof over drive-by cleverness.
 Install the prerequisites listed in the
 [README](README.md#build-the-repository), then run `make restore`. Read the
 relevant document under `docs/`, the nearest tests, and the matching skill in
-`.codex/skills/` before changing behavior.
+`.agents/skills/` before changing behavior.
 
 SharpVision is documentation-first: a behavior is complete only when its
 specification, public XML documentation, tests, and showcase example agree. Keep

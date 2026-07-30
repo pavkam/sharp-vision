@@ -46,7 +46,7 @@ task-oriented walkthrough to the section that owns the detailed contract.
   C# examples and then link to the relevant contracts.
 - [Control API specifications](controls/index.md#control-catalog) explain each
   component's purpose, properties, defaults, validation, events, layout,
-  interaction, example, and proof obligations.
+  interaction, example, and expected behavior.
 - [Dialog API specifications](dialogs/index.md#dialog-catalog) define complete
   modal tasks, typed options and results, ownership, interaction, and cleanup.
 - [Shared concepts](concepts/index.md#concept-map) define layout, focus, input,
@@ -76,6 +76,8 @@ separates physical connections, fixed emulator identity, protocol extensions,
 capability authorization, and renderer-owned graphics, and the
 [discovery pipeline](architecture/discovery-pipeline.md#discovery-pipeline-contract)
 owns evidence precedence and backend resolution. The
+[invalidation contract](concepts/invalidation.md#invalidation-contract) owns
+phase dependencies, propagation, coalescing, update scheduling, and retry. The
 [rendering pipeline](architecture/rendering-pipeline.md#rendering-pipeline-contract)
 owns cell drawing, damage, and terminal output.
 
@@ -88,7 +90,7 @@ examples illustrate those rules; they do not silently create new behavior.
   defines the required section spine, API tables, proof formatting, ownership,
   and validation rules for every document kind.
 - Protocol documents define sources, grammar, limits, detection, fallback,
-  security, typed surfaces, support state, and test obligations.
+  security, typed surfaces, support state, and expected behavior.
 - Architecture documents define ownership and cross-layer flow.
 - Concept documents define behavior shared by several controls or layers.
 - Control documents define one public control API or authoring role each.

@@ -70,7 +70,7 @@ picker.ValueChanged += (_, change) =>
 };
 ```
 
-## Test obligations
+## Expected behavior
 
 Tests cover detached assignment, every capability tier, RGB preservation across
 attachment and runtime changes, committed event order, RGB/HSV synchronization,

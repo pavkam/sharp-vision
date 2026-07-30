@@ -45,7 +45,7 @@ owner.Children.Add(flyout);
 flyout.ShowAt(triggerButton);
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover direct Popup inheritance and absence of a nested Popup; `ShowAt`
 validation and exact anchor; inherited placement, rendering, and

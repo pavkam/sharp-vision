@@ -108,7 +108,7 @@ remain authoritative. Only the marked grapheme receives the resolved
 `Theme.Hotkey` foreground. A disabled owner retains its disabled foreground
 while marker collapse and underline remain visible.
 
-## Test obligations
+## Expected behavior
 
 Tests cover marker removal, `&&`, trailing markers, disabled parsing, invariant
 Rune matching, combining and wide graphemes, exact cells, underline style,

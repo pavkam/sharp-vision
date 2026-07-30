@@ -12,7 +12,7 @@ paste, focus reporting, SGR mouse including pixel mode, OSC colors/titles,
 hyperlinks, device attributes, and selected mode queries. A `TERM` value
 containing `xterm` is a hint, not proof of every extension.
 
-## First milestone contract
+## Supported features
 
 Implement only sequences used by the renderer, input decoder, and capability
 detector. Obsolete X10/UTF-8/urxvt mouse encodings are decoded where safe but
@@ -89,7 +89,7 @@ values.
 
 Source accessed 2026-07-28.
 
-## Test obligations
+## Expected behavior
 
 | Layer     | Required evidence                                                               |
 | --------- | ------------------------------------------------------------------------------- |

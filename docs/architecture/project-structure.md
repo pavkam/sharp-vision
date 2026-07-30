@@ -2,22 +2,32 @@
 
 ## Project structure contract
 
-The solution contains three production projects and matching test projects for
-the terminal and UI libraries. The showcase is compiled as a production example
-and has no dedicated test project.
+The solution contains two production libraries, three executable examples, and
+four top-level validation projects. The UI test project also exercises all three
+examples; examples do not need duplicate test projects of their own.
 
 ```mermaid
 flowchart LR
     Terminal["SharpVision.Terminal"]
     UI["SharpVision"]
     Showcase["SharpVision.Showcase"]
+    Snake["Snake"]
+    TextEditor["TextEditor"]
     TerminalTests["SharpVision.Terminal.Tests"]
+    Probe["SharpVision.Terminal.Probe"]
     UITests["SharpVision.Tests"]
     CompatibilityTests["SharpVision.Compatibility.Tests"]
     UI --> Terminal
     Showcase --> UI
+    Snake --> UI
+    TextEditor --> UI
     TerminalTests -. tests .-> Terminal
+    TerminalTests -. launches .-> Probe
+    Probe --> Terminal
     UITests -. tests .-> UI
+    UITests -. tests .-> Showcase
+    UITests -. tests .-> Snake
+    UITests -. tests .-> TextEditor
     CompatibilityTests -. public API snapshot .-> Terminal
     CompatibilityTests -. public API snapshot .-> UI
 ```
@@ -26,9 +36,9 @@ flowchart LR
 Unicode cell geometry, screen buffers, damage, and terminal output. It has no
 reference to the UI project.
 
-Its current public runtime boundaries are `Protocols` for exact encoders and
-streaming framing, `Input.Decoder` for typed values, `Rendering.Frame`/`Canvas`
-and `Renderer` for semantic output, `Transport.ITransport` for bounded I/O, and
+Its public runtime boundaries are `Protocols` for exact encoders and streaming
+framing, `Input.Decoder` for typed values, `Rendering.Frame`/`Canvas` and
+`Renderer` for semantic output, `Transport.ITransport` for bounded I/O, and
 `Runtime.Session` for mode leases plus ordered input/resize/closure/fault
 delivery. Internal pooled storage never becomes a cross-project contract.
 
@@ -44,7 +54,7 @@ needs something, the answer is a designed public seam, not friend access. If a
 capability is not expressible publicly without leaking low-level machinery, the
 terminal project publishes a focused facade that owns that machinery instead.
 
-Two such seams exist today:
+Two such seams provide this boundary:
 
 | UI need                          | Public seam                             | Stays internal                                                    |
 | -------------------------------- | --------------------------------------- | ----------------------------------------------------------------- |
@@ -58,8 +68,8 @@ resolved backend identity.
 
 `SharpVision` owns the dispatcher, application lifecycle, traditional mutable
 controls, layout, styling, focus, and routed input. It draws to the terminal
-project's cell canvas and never emits escape bytes. Phase 4 provides these
-infrastructure namespaces:
+project's cell canvas and never emits escape bytes. The UI project provides
+these infrastructure namespaces:
 
 | Namespace                          | Shipped responsibility                                                         |
 | ---------------------------------- | ------------------------------------------------------------------------------ |
@@ -82,7 +92,7 @@ infrastructure namespaces:
 | `SharpVision.Styling`              | Shared style resources, chrome contracts, and visual-state resolution.         |
 | `SharpVision.Runtime`              | Terminal session ownership, application lifecycle, and console host bootstrap. |
 
-The current UI project ships the complete
+The UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and
 editing, selection and item controls, menus, context menus, popups, tooltips,
 flyouts, windows, intrinsic container scrolling, styling, focus, and routed
@@ -117,8 +127,13 @@ ordinary control ownership, layout, modality, styling, input, and dispatcher
 contracts.
 
 `examples/Showcase` contains `SharpVision.Showcase`, which owns no library
-behavior and composes public APIs into a responsive gallery. Production projects
-never reference the showcase or tests.
+behavior and composes public APIs into a responsive gallery. `examples/Snake`
+and `examples/TextEditor` are smaller application examples. The production
+libraries never reference an example or test project.
+
+`SharpVision.Terminal.Probe` is a test support executable for process-level
+terminal checks. `SharpVision.Terminal.Tests` owns its lifecycle and assertions;
+production code does not use it.
 
 `SharpVision.Compatibility.Tests` owns the versioned public API baselines for
 both libraries. It references production projects only from the test layer and
@@ -134,14 +149,16 @@ Internal helpers stay inside the lowest layer that owns their invariant.
 
 ## Change rule
 
-A cross-layer feature starts with terminal typed behavior, then UI consumption,
-then showcase proof. Tests at each layer assert that the dependency direction
-remains one-way.
+A feature begins in the lowest layer that owns its invariant. Terminal behavior
+starts with a typed terminal seam before UI consumption; UI-only behavior stays
+in `SharpVision`. User-visible APIs then receive example proof at the
+appropriate scale. Tests at each layer assert that dependency direction remains
+one-way.
 
-## Test obligations
+## Expected behavior
 
 | Layer        | Required evidence                                                                                   |
 | ------------ | --------------------------------------------------------------------------------------------------- |
-| Build        | Production projects compile without test/showcase references and preserve terminal-to-UI direction. |
+| Build        | Production libraries compile without example/test references and preserve terminal-to-UI direction. |
 | Architecture | Namespace, one-type-per-file, public API, and forbidden-type tests cover declared boundaries.       |
 | Consumer     | Public examples compile without friend access or production dependency inversion.                   |

@@ -8,7 +8,7 @@ unique across the active shell and selected page, and across every
 simultaneously open menu/submenu path. The shell advertises `Alt+key`, while
 Menu and GroupBox pages demonstrate invocation and focus transfer.
 
-The sidebar remains one arrow-key `NavigationView`; its heading, groups, and 38
+The sidebar remains one arrow-key `NavigationView`; its heading, groups, and 47
 catalog items set `UseMnemonic = false` because no useful single-character
 assignment can be globally unique. Repeated `DocExample` and `C# recipe`
 structural chrome also opts out. Body prose and generated list data remain
@@ -62,19 +62,19 @@ styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControl> Create)[]`). The sidebar
-organizes its 38 entries by primary use:
+organizes its 47 entries by primary use:
 
 - Concepts: Control, Border, Shadow, Data Binding, and Styling.
-- Input: Button, Calendar, CheckBox, ColorPicker, ComboBox, RadioButton, Slider,
-  and TextInput.
-- Collections: ListView, TabControl, and Table.
+- Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
+  ColorPicker, ComboBox, RadioButton, Slider, TextInput, and TimeInput.
+- Collections: ListView, TabControl, Table, and TreeView.
 - Navigation: Menu and NavigationView.
 - Layout: Dock, Expander, Grid, GroupBox, Overlay, ScrollBar, and Stack.
 - Display: Canvas drawing, FigletText, Image, Prism, Separator, StatusBar, and
   Text.
 - Progress: ChaseIndicator, ProgressBar, and Spinner.
-- Dialogs: FilePicker.
-- Windows: MessageBox, Popup, and Window.
+- Dialogs: FilePicker and MessageBox.
+- Windows: Popup, ContextMenu, Tooltip, Flyout, and Window.
 
 Each purpose group is expanded initially and can be collapsed through the
 standard `NavigationViewGroup` interaction. The first Concepts group owns
@@ -125,12 +125,13 @@ sibling switching and the nested Open Recent path remain one
 selection and invocation events rather than internal state.
 
 The FilePicker page keeps a bounded workspace as inert backdrop but launches the
-real `SharpVision.Dialogs.FilePickerDialog` from its Button, so the temporary
-modal surface resolves the application-level host instead of becoming a child of
-the specimen stage. Single and multiple variants expose source, document, and
-all-file filters; the multiple variant begins with hidden entries visible. The
-retained result label reports accepted basenames or cancellation only after the
-temporary modal surface has restored focus and removed itself.
+real `SharpVision.Dialogs.FilePickerDialog` and `SaveFileDialog` from its
+Buttons, so each temporary modal surface resolves the application-level host
+instead of becoming a child of the specimen stage. Single, multiple, and save
+variants expose source, document, and all-file filters; the multiple variant
+begins with hidden entries visible. The retained result label reports accepted
+basenames, the confirmed save basename, or cancellation only after the temporary
+modal surface has restored focus and removed itself.
 
 The StatusBar page presents the control at application scale inside a bordered
 72-by-11-cell editor workspace. The pretend editor uses the same semantic
@@ -246,22 +247,22 @@ The showcase compiles with the solution as production code and uses only public
 library APIs. Behavioral, input, layout, rendering, and Unicode guarantees are
 proved by the terminal and UI suites at the library boundaries that own them.
 The checked-in live image demonstrates the runnable gallery but does not replace
-those automated contracts. Showcase tests assert the exact 38-page inventory,
-Control as the initial page, marked `Text` documentation coverage, fresh
-detached composite ownership, stable composition-root identity across first
-layout, no pane inheriting `Container`, and matching runtime control type. They
-render every page at 30 by 8, 80 by 24, and 140 by 40 cells, validate wide-cell
-continuation structure, and prove automatic scrolling. A full Application test
-drives SGR pointer selection, keyboard sidebar navigation and button activation,
-wheel scrolling, text editing, and pixel-aware resize through terminal bytes.
-Dedicated tests prove cooperative exit through both the application-bar `Quit`
-button and a decoded `Ctrl+C` key. Startup coverage requires the exact SGR
-mouse-mode lease before the first frame. The live tmux smoke test then proves a
-normal Down/Up keyboard round trip between Control and Border, passive Canvas
-hover and leave, separate complete SGR clicks for Canvas and Button, Figlet
-dropdown opening and font selection, and a captured ScrollBar thumb drag. Each
-completes without a trailing flushing key. The live image supplements these
-assertions; it cannot replace them.
+those automated contracts. Showcase tests enumerate the complete 47-page
+catalog, Control as the initial page, marked `Text` documentation coverage,
+fresh detached composite ownership, stable composition-root identity across
+first layout, no pane inheriting `Container`, and matching runtime control type.
+They render every page at 30 by 8, 80 by 24, and 140 by 40 cells, validate
+wide-cell continuation structure, and prove automatic scrolling. A full
+Application test drives SGR pointer selection, keyboard sidebar navigation and
+button activation, wheel scrolling, text editing, and pixel-aware resize through
+terminal bytes. Dedicated tests prove cooperative exit through both the
+application-bar `Quit` button and a decoded `Ctrl+C` key. Startup coverage
+requires the exact SGR mouse-mode lease before the first frame. The live tmux
+smoke test then proves a normal Down/Up keyboard round trip between Control and
+Border, passive Canvas hover and leave, separate complete SGR clicks for Canvas
+and Button, Figlet dropdown opening and font selection, and a captured ScrollBar
+thumb drag. Each completes without a trailing flushing key. The live image
+supplements these assertions; it cannot replace them.
 
 `ModalityPaneTests` mounts each real pane under `Application` and
 `FakeTerminal`. Raw Enter, Tab, Kitty Escape, SGR move, press, and release
@@ -269,7 +270,7 @@ records prove Window Ignore isolation and focus restoration, Popup Dismiss
 without backdrop replay, and exact `ModalScope` identity through Menu sibling
 and nested-submenu transitions.
 
-## Test obligations
+## Expected behavior
 
 | Layer       | Required evidence                                                                                    |
 | ----------- | ---------------------------------------------------------------------------------------------------- |

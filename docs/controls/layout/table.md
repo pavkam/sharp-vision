@@ -122,7 +122,7 @@ table.Rows.Add(new TableRow([
 ]));
 ```
 
-## Test obligations
+## Expected behavior
 
 Cover column/row ownership and atomic rejection, fixed/percentage/fill/auto
 resolution, intrinsic and stretched cell alignment, header and grid cells, cell
