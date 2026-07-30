@@ -106,7 +106,80 @@ public sealed class DateInputTests
 
     #endregion
 
+    #region Typing
+
+    /// <summary>Verifies typing four digits on the Year segment produces a year above 99
+    /// instead of committing after two digits and misapplying the rest to Month.</summary>
+    [Fact]
+    public void TypeDigit_WhenFourDigitsTypedOnYearSegment_ProducesFullYear()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2020, 1, 1),
+            Culture = CultureInfo.InvariantCulture
+        };
+
+        // Act: focus starts on Month (segment 0); InvariantCulture's short date pattern
+        // orders segments Month/Day/Year, so two Right presses reach Year.
+        PressKey(control, Code.Right);
+        PressKey(control, Code.Right);
+        TypeCharacter(control, '2');
+        TypeCharacter(control, '0');
+        TypeCharacter(control, '2');
+        TypeCharacter(control, '6');
+
+        // Assert
+        control.Value.ShouldNotBeNull().Year.ShouldBe(2026);
+    }
+
+    private static void TypeCharacter(DateInput control, char digit) =>
+        Router.Route(
+            control,
+            Events.Key,
+            new KeyEventArgs(new Stroke(
+                Code.Character,
+                new Rune(digit),
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+    private static void PressKey(DateInput control, Code code) =>
+        Router.Route(
+            control,
+            Events.Key,
+            new KeyEventArgs(new Stroke(
+                code,
+                character: null,
+                nativeCode: 0,
+                Modifiers.None,
+                KeyAction.Press)));
+
+    #endregion
+
     #region Rendering
+
+    /// <summary>Verifies a custom Format starting with a literal character (not a bare
+    /// standard specifier) renders instead of crashing GetAllDateTimePatterns.</summary>
+    [Fact]
+    public void Render_WhenFormatStartsWithLiteralCharacter_DoesNotThrow()
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture,
+            Format = "(dd/MM/yyyy)"
+        };
+        new Engine().Layout(control, new Size(24, 3));
+        using Frame frame = new(new Size(24, 3));
+
+        // Act and assert
+        Should.NotThrow(() => control.Render(frame.Canvas));
+        Row(frame, 1).ShouldContain("19");
+        Row(frame, 1).ShouldContain("07");
+        Row(frame, 1).ShouldContain("2026");
+    }
 
     /// <summary>Verifies a set date is rendered as formatted text inside the border.</summary>
     [Fact]

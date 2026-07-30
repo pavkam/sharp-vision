@@ -54,6 +54,7 @@ public sealed class DateTimeInput: Control
 
     private int _activeSegment;
     private int? _digitBuffer;
+    private int _yearDigitCount;
     private Rune? _dropDownGlyph;
 
     #region Construction and properties
@@ -178,6 +179,7 @@ public sealed class DateTimeInput: Control
             {
                 _activeSegment = Math.Min(_activeSegment, LastSegment());
                 _digitBuffer = null;
+                _yearDigitCount = 0;
             }
         }
     } = true;
@@ -194,6 +196,7 @@ public sealed class DateTimeInput: Control
             {
                 _activeSegment = Math.Min(_activeSegment, LastSegment());
                 _digitBuffer = null;
+                _yearDigitCount = 0;
             }
         }
     }
@@ -459,6 +462,7 @@ public sealed class DateTimeInput: Control
         if (!focused)
         {
             _digitBuffer = null;
+            _yearDigitCount = 0;
         }
 
         Invalidate(InvalidationImpact.Render);
@@ -568,6 +572,7 @@ public sealed class DateTimeInput: Control
         {
             _activeSegment = segment;
             _digitBuffer = null;
+            _yearDigitCount = 0;
             Invalidate(InvalidationImpact.Render);
         }
 
@@ -599,6 +604,7 @@ public sealed class DateTimeInput: Control
 
         _activeSegment = target;
         _digitBuffer = null;
+        _yearDigitCount = 0;
         Invalidate(InvalidationImpact.Render);
         return true;
     }
@@ -614,6 +620,7 @@ public sealed class DateTimeInput: Control
 
         _activeSegment = target;
         _digitBuffer = null;
+        _yearDigitCount = 0;
         Invalidate(InvalidationImpact.Render);
         return true;
     }
@@ -640,6 +647,7 @@ public sealed class DateTimeInput: Control
         };
 
         _digitBuffer = null;
+        _yearDigitCount = 0;
         return Commit(result);
     }
 
@@ -665,7 +673,17 @@ public sealed class DateTimeInput: Control
         if (_digitBuffer.HasValue)
         {
             var newValue = (_digitBuffer.Value * 10) + digit;
+
+            // Year needs four digits, not two: keep buffering and stay on the segment
+            // until the count reaches four instead of committing after the second.
+            if (_activeSegment == _segmentYear && ++_yearDigitCount < 4)
+            {
+                _digitBuffer = newValue;
+                return ApplySegmentValue(dt, _activeSegment, newValue);
+            }
+
             _digitBuffer = null;
+            _yearDigitCount = 0;
 
             var committed = ApplySegmentValue(dt, _activeSegment, newValue);
 
@@ -704,6 +722,7 @@ public sealed class DateTimeInput: Control
         }
 
         _digitBuffer = digit;
+        _yearDigitCount = _activeSegment == _segmentYear ? 1 : 0;
         return ApplySegmentValue(dt, _activeSegment, digit);
     }
 
@@ -760,6 +779,7 @@ public sealed class DateTimeInput: Control
         }
 
         _digitBuffer = null;
+        _yearDigitCount = 0;
         var dt = _value.Value;
 
         try

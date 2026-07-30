@@ -153,5 +153,37 @@ public sealed class DateTimeInputTests
         Modifiers.None,
         KeyAction.Press));
 
+    private static KeyEventArgs CharacterKey(char character) => new(new Stroke(
+        Code.Character,
+        new Rune(character),
+        nativeCode: 0,
+        Modifiers.None,
+        KeyAction.Press));
+
+    #endregion
+
+    #region Typing
+
+    /// <summary>Verifies typing four digits on the Year segment produces a year above 99
+    /// instead of committing after two digits and misapplying the rest to Hour.</summary>
+    [Fact]
+    public void TypeDigit_WhenFourDigitsTypedOnYearSegment_ProducesFullYear()
+    {
+        // Arrange
+        using var control = new DateTimeInput { Value = new DateTime(2020, 1, 1, 0, 0, 0) };
+
+        // Act: focus starts on Month (segment 0); Month/Day/Year ordering means two
+        // Right presses reach Year.
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, CharacterKey('2'));
+        _ = Router.Route(control, Events.Key, CharacterKey('0'));
+        _ = Router.Route(control, Events.Key, CharacterKey('2'));
+        _ = Router.Route(control, Events.Key, CharacterKey('6'));
+
+        // Assert
+        control.Value.ShouldNotBeNull().Year.ShouldBe(2026);
+    }
+
     #endregion
 }

@@ -542,6 +542,7 @@ public sealed class DateInput: Control
     }
 
     private int? _digitBuffer;
+    private int _yearDigitCount;
 
     private void TypeDigit(int digit)
     {
@@ -555,7 +556,18 @@ public sealed class DateInput: Control
         if (_digitBuffer.HasValue)
         {
             var combined = (_digitBuffer.Value * 10) + digit;
+
+            // Year needs four digits, not two: keep buffering and stay on the segment
+            // until the count reaches four instead of committing after the second.
+            if (kind == SegmentKind.Year && ++_yearDigitCount < 4)
+            {
+                _digitBuffer = combined;
+                ApplySegmentDigit(date, kind, combined);
+                return;
+            }
+
             _digitBuffer = null;
+            _yearDigitCount = 0;
             ApplySegmentDigit(date, kind, combined);
 
             if (_activeSegment < SegmentCount() - 1)
@@ -589,6 +601,7 @@ public sealed class DateInput: Control
         }
 
         _digitBuffer = digit;
+        _yearDigitCount = kind == SegmentKind.Year ? 1 : 0;
         ApplySegmentDigit(date, kind, digit);
     }
 
@@ -622,6 +635,7 @@ public sealed class DateInput: Control
         }
 
         _digitBuffer = null;
+        _yearDigitCount = 0;
         var kind = ResolveSegmentKind(_activeSegment);
 
         try
@@ -732,13 +746,20 @@ public sealed class DateInput: Control
             return BuildPlaceholderSegments();
         }
 
-        var pattern = _culture.DateTimeFormat.GetAllDateTimePatterns(Format[0]);
-        var expanded = pattern.Length > 0
-            ? date.ToString(Format, _culture)
-            : date.ToString("d", _culture);
+        // A single-character Format is a standard specifier that DateTime.ToString requires
+        // to be one of a fixed set — anything else throws FormatException. A multi-character
+        // Format is always a custom composite pattern, valid regardless of its first
+        // character (including one starting with a literal), so only the single-character
+        // case needs the fallback below.
+        var expanded = Format.Length == 1 && !IsStandardDateTimeSpecifier(Format[0])
+            ? date.ToString("d", _culture)
+            : date.ToString(Format, _culture);
 
         return ParseSegments(expanded);
     }
+
+    private static bool IsStandardDateTimeSpecifier(char specifier) =>
+        "dDMmOoRrYy".Contains(specifier);
 
     private static DisplaySegment[] ParseSegments(string formatted)
     {
