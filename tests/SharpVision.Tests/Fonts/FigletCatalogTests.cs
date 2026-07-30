@@ -60,6 +60,19 @@ public sealed class FigletCatalogTests
             "         ");
     }
 
+    /// <summary>Verifies caller-supplied limits reach the loaded font and are re-enforced on render,
+    /// letting callers tighten bounds for untrusted caller-supplied text (see #136).</summary>
+    [Fact]
+    public void Load_WhenLimitsAreExplicit_RetainsThemAndEnforcesThemOnRender()
+    {
+        var limits = new FigletLimits(maxOutputChars: 4);
+
+        var font = FigletCatalog.Default.Load("Standard", limits);
+
+        font.Limits.ShouldBe(limits);
+        _ = Should.Throw<InvalidOperationException>(() => font.Render("Hi"));
+    }
+
     /// <summary>Verifies every archived font can be opened and parsed safely.</summary>
     [Fact]
     public void Load_WhenEveryCatalogEntryIsSelected_ParsesAllFonts()

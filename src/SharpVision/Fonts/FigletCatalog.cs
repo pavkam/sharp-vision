@@ -48,14 +48,24 @@ public sealed class FigletCatalog
             : throw new KeyNotFoundException($"The FIGlet catalog does not contain '{name}'.");
     }
 
-    /// <summary>Loads and validates one named font from the embedded archive.</summary>
+    /// <summary>Loads and validates one named font from the embedded archive using default finite limits.</summary>
     /// <param name="name">The non-null exact case-sensitive name.</param>
     /// <returns>A new immutable parsed font instance.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is null.</exception>
     /// <exception cref="KeyNotFoundException">The exact name is absent.</exception>
     /// <exception cref="InvalidDataException">Archive bytes disagree with the audited manifest.</exception>
     /// <exception cref="FormatException">The selected entry is not a supported FIGfont.</exception>
-    public FigletFont Load(string name)
+    public FigletFont Load(string name) => Load(name, FigletLimits.Default);
+
+    /// <summary>Loads and validates one named font from the embedded archive using explicit finite limits.</summary>
+    /// <param name="name">The non-null exact case-sensitive name.</param>
+    /// <param name="limits">The finite parser and renderer limits retained on the returned font.</param>
+    /// <returns>A new immutable parsed font instance.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="name"/> is null.</exception>
+    /// <exception cref="KeyNotFoundException">The exact name is absent.</exception>
+    /// <exception cref="InvalidDataException">Archive bytes disagree with the audited manifest.</exception>
+    /// <exception cref="FormatException">The selected entry is not a supported FIGfont.</exception>
+    public FigletFont Load(string name, FigletLimits limits)
     {
         var info = GetInfo(name);
         using ZipArchive archive = new(
@@ -65,7 +75,7 @@ public sealed class FigletCatalog
         var entry = archive.GetEntry(info.File) ??
                     throw new InvalidDataException($"The archive is missing audited entry '{info.File}'.");
 
-        if (entry.Length != info.Bytes || entry.Length > FigletLimits.Default.MaxInputBytes)
+        if (entry.Length != info.Bytes || entry.Length > limits.MaxInputBytes)
         {
             throw new InvalidDataException($"The archive length for '{info.File}' is invalid.");
         }
@@ -78,8 +88,8 @@ public sealed class FigletCatalog
             throw new InvalidDataException($"The archive hash for '{info.File}' does not match its audit.");
         }
 
-        bytes = Unwrap(bytes, info.File);
-        return FigletFont.Load(new MemoryStream(bytes, writable: false), info.Name);
+        bytes = Unwrap(bytes, info.File, limits);
+        return FigletFont.Load(new MemoryStream(bytes, writable: false), info.Name, limits);
     }
 
     private static byte[] ReadResource(Assembly assembly, string name)
@@ -103,7 +113,7 @@ public sealed class FigletCatalog
                 $"Archive entry '{entry.FullName}' exceeds its declared length.");
     }
 
-    private static byte[] Unwrap(byte[] bytes, string file)
+    private static byte[] Unwrap(byte[] bytes, string file, FigletLimits limits)
     {
         if (bytes.Length < 4 ||
             bytes[0] != (byte) 'P' ||
@@ -126,7 +136,7 @@ public sealed class FigletCatalog
 
         var entry = nested.Entries[0];
 
-        return entry.Length > 0 && entry.Length <= FigletLimits.Default.MaxInputBytes
+        return entry.Length > 0 && entry.Length <= limits.MaxInputBytes
             ? ReadEntry(entry, checked((int) entry.Length))
             : throw new InvalidDataException(
                 $"Nested font archive '{file}' has an invalid entry length.");
