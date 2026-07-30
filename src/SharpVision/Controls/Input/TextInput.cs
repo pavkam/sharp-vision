@@ -409,6 +409,32 @@ public sealed class TextInput: Control
         return copied;
     }
 
+    /// <summary>Replaces the current selection, or inserts at the caret when there is none, through
+    /// the same edit transaction every other edit path uses.</summary>
+    /// <param name="value">The non-null replacement text.</param>
+    /// <returns>
+    /// True when the edit committed; false when read-only, rejected by policy (a disallowed control
+    /// character, or retained length exceeding <see cref="MaxLength"/>), or cancelled by
+    /// <see cref="TextChanging"/>.
+    /// </returns>
+    /// <remarks>
+    /// Reuses the control's ordinary validation, <see cref="MaxLength"/> truncation, grapheme-safe
+    /// boundaries, undo recording, <see cref="TextChanging"/>/<see cref="TextChanged"/> sequencing,
+    /// and scroll repair — the same primitive keyboard input, bracketed paste, context-menu paste,
+    /// and cut already route through. This is the composition seam for virtual keyboards, clipboard
+    /// adapters, input-method components, and find/replace UI that need to edit content without
+    /// reconstructing <see cref="Text"/> externally and bypassing those guarantees.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool ReplaceSelection(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        VerifyMutable();
+        return Insert(value);
+    }
+
     /// <summary>Inserts application-owned clipboard text through the normal edit transaction.</summary>
     /// <param name="value">The non-null clipboard text.</param>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
@@ -418,7 +444,7 @@ public sealed class TextInput: Control
     {
         ArgumentNullException.ThrowIfNull(value);
         VerifyMutable();
-        Insert(value);
+        _ = Insert(value);
     }
 
     /// <summary>Restores the newest retained undo snapshot.</summary>
@@ -662,11 +688,11 @@ public sealed class TextInput: Control
                 Handle(key);
                 break;
             case TextEventArgs text:
-                Insert(text.Text.Value.ToString());
+                _ = Insert(text.Text.Value.ToString());
                 text.Handled = true;
                 break;
             case PasteEventArgs paste:
-                Insert(Encoding.UTF8.GetString(paste.Paste.Utf8.Span));
+                _ = Insert(Encoding.UTF8.GetString(paste.Paste.Utf8.Span));
                 paste.Handled = true;
                 break;
             case PointerEventArgs pointer:
@@ -787,11 +813,11 @@ public sealed class TextInput: Control
         _ = Commit(new EditResult(Text, selection, selection != _selection), false);
     }
 
-    private void Insert(string value)
+    private bool Insert(string value)
     {
         if (IsReadOnly)
         {
-            return;
+            return false;
         }
 
         EditResult result;
@@ -809,12 +835,12 @@ public sealed class TextInput: Control
         catch (ArgumentException)
         {
             // Terminal text that policy rejects is ignored as one complete input transaction.
-            return;
+            return false;
         }
 
         // Observer exceptions happen after a valid proposal and must propagate;
         // they are never edit-policy rejections.
-        _ = Commit(result, true);
+        return Commit(result, true);
     }
 
     private void Handle(KeyEventArgs eventArgs)
@@ -903,7 +929,7 @@ public sealed class TextInput: Control
         {
             if (AcceptsReturn && !IsReadOnly)
             {
-                Insert("\n");
+                _ = Insert("\n");
             }
             else
             {
@@ -914,7 +940,7 @@ public sealed class TextInput: Control
         }
         else if (eventArgs.Stroke.Code == Code.Tab && AcceptsTab && !IsReadOnly)
         {
-            Insert("\t");
+            _ = Insert("\t");
             eventArgs.Handled = true;
         }
     }

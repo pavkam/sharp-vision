@@ -512,6 +512,118 @@ public sealed class TextInputTests
         control.Text.ShouldBe("secret");
     }
 
+    /// <summary>Verifies a consumer can replace a selection through the public primitive and reach
+    /// the same undo/redo history as ordinary keyboard-driven edits (see #68).</summary>
+    [Fact]
+    public void ReplaceSelection_WhenSelectionExists_ReplacesAndParticipatesInUndoHistory()
+    {
+        var control = new TextInput { Text = "Hello World" };
+        control.Select(6, 5);
+
+        control.ReplaceSelection("there").ShouldBeTrue();
+
+        control.Text.ShouldBe("Hello there");
+        control.CaretIndex.ShouldBe("Hello there".Length);
+        control.SelectionLength.ShouldBe(0);
+        control.CanUndo.ShouldBeTrue();
+        control.Undo().ShouldBeTrue();
+        control.Text.ShouldBe("Hello World");
+    }
+
+    /// <summary>Verifies replacement inserts at the caret when there is no selection, and that
+    /// grapheme-unsafe Unicode (combining marks, ZWJ emoji sequences) commits as complete clusters
+    /// rather than splitting them.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenNoSelection_InsertsCompleteGraphemeClustersAtCaret()
+    {
+        var control = new TextInput { Text = "AZ", CaretIndex = 1 };
+
+        control.ReplaceSelection("é👩‍💻").ShouldBeTrue();
+
+        control.Text.ShouldBe("Aé👩‍💻Z");
+        Edit.IsBoundary(control.Text, control.CaretIndex).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a read-only control declines the edit and reports no commit.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenReadOnly_DeclinesAndPreservesText()
+    {
+        var control = new TextInput { Text = "value", IsReadOnly = true };
+        control.Select(0, control.Text.Length);
+
+        control.ReplaceSelection("changed").ShouldBeFalse();
+
+        control.Text.ShouldBe("value");
+    }
+
+    /// <summary>Verifies a TextChanging cancellation declines the edit exactly as it does for
+    /// keyboard-driven edits, preserving the prior text and reporting no commit.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenTextChangingCancels_DeclinesAndPreservesText()
+    {
+        var control = new TextInput { Text = "A" };
+        control.TextChanging += (_, eventArgs) => eventArgs.Cancel = true;
+
+        control.ReplaceSelection("B").ShouldBeFalse();
+
+        control.Text.ShouldBe("A");
+    }
+
+    /// <summary>Verifies content that would exceed MaxLength after retaining the untouched prefix
+    /// and suffix declines the edit rather than silently truncating.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenRetainedTextAlreadyMeetsMaxLength_Declines()
+    {
+        var control = new TextInput { Text = "ABC", MaxLength = 3, CaretIndex = 3 };
+
+        control.ReplaceSelection("D").ShouldBeFalse();
+
+        control.Text.ShouldBe("ABC");
+    }
+
+    /// <summary>Verifies a multiline control accepts an embedded line break through the same
+    /// primitive used for AcceptsReturn-gated Enter handling.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenMultilineAcceptsReturn_InsertsEmbeddedLineBreak()
+    {
+        var control = new TextInput { Text = "AB", AcceptsReturn = true, CaretIndex = 1 };
+
+        control.ReplaceSelection("\n").ShouldBeTrue();
+
+        control.Text.ShouldBe("A\nB");
+    }
+
+    /// <summary>Verifies password masking does not block editing through the public primitive —
+    /// only CopySelection/CutSelection source disclosure is suppressed.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenPasswordMasked_StillCommitsTheEdit()
+    {
+        var control = new TextInput { Text = "secret", PasswordCharacter = new Rune('*') };
+        control.Select(0, control.Text.Length);
+
+        control.ReplaceSelection("hunter2").ShouldBeTrue();
+
+        control.Text.ShouldBe("hunter2");
+    }
+
+    /// <summary>Verifies a mounted, focused control reflects a programmatic replacement in its
+    /// rendered content exactly as a keyboard-driven edit would.</summary>
+    [Fact]
+    public void ReplaceSelection_WhenMounted_RendersReplacedContent()
+    {
+        var control = new TextInput { Text = "Hello", Width = Length.Cells(8) };
+        control.SetTheme(TestThemes.BorderlessInput);
+        control.SetFocused(true);
+        control.Select(0, control.Text.Length);
+        new Engine().Layout(control, new Size(8, 1));
+        using Frame frame = new(new Size(8, 1));
+
+        control.ReplaceSelection("Bye").ShouldBeTrue();
+        control.Render(frame.Canvas);
+
+        Cells(frame, 3).ShouldBe("Bye");
+    }
+
     /// <summary>Verifies vertical navigation maps the current rendered column to an adjacent line.</summary>
     [Fact]
     public void Dispatch_WhenUpArrives_MovesToNearestBoundaryOnPreviousLine()
