@@ -294,6 +294,62 @@ public sealed class DialogTests
         }
     }
 
+    /// <summary>Verifies completing a dialog whose owning dispatcher has already begun
+    /// stopping settles the result task directly instead of leaving it to hang forever,
+    /// since the deferred completion Post that would normally settle it is rejected.</summary>
+    [Fact]
+    public async Task Complete_WhenOwningDispatcherIsStopping_SettlesInsteadOfHangingAsync()
+    {
+        var opener = new Button { Content = new ControlText("Open") };
+        var host = new Overlay { Children = { opener } };
+        var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            TestContext.Current.CancellationToken);
+        Task<MessageBoxResult>? pending = null;
+
+        try
+        {
+            await surface.UpdateAsync(
+                () => pending = MessageBox.ShowAsync(opener, "Ready.", "Status"),
+                "present dialog to complete during dispatcher shutdown");
+            var dialog = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+            var ok = OwnedTree.FindAll<Button>(dialog).Single(static candidate => candidate.IsDefault);
+
+            // Invoked directly rather than through surface.UpdateAsync: that helper awaits
+            // the next Application.Idle after the callback runs, which never arrives once
+            // this callback kills the dispatcher partway through.
+            await surface.Application.Dispatcher.InvokeAsync(
+                () =>
+                {
+                    // Dispatcher.DisposeAsync sets its stopping flag synchronously before
+                    // anything it owns actually tears down; calling it without awaiting from
+                    // its own thread reproduces that exact window deterministically instead
+                    // of racing a real shutdown against this click.
+                    _ = surface.Application.Dispatcher.DisposeAsync().AsTask();
+
+                    Should.NotThrow(ok.PerformClick);
+                },
+                TestContext.Current.CancellationToken);
+
+            var result = await pending!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            result.ShouldBe(MessageBoxResult.Ok);
+        }
+        finally
+        {
+            // The dispatcher was already force-disposed above to deterministically
+            // reproduce the stopping race, so the surface's own shutdown — which posts
+            // through that same now-disposed dispatcher — is expected to fail here too.
+            try
+            {
+                await surface.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
     /// <summary>Verifies successful completion publishes the common close lifecycle before task settlement.</summary>
     [Fact]
     public async Task Complete_WhenDialogIsPresented_PublishesOrderedCloseLifecycleAsync()

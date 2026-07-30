@@ -255,13 +255,22 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>
 
             // The MessageBox completion resumes on a background thread. Post back to the
             // owning dispatcher so that Complete can safely modify attached control state.
-            dispatcher.Post(() =>
+            // This is an async void method, so an unhandled exception here is unobservable
+            // by any caller and becomes process-fatal; the dispatcher may already be
+            // stopping by the time this continuation resumes.
+            try
             {
-                if (confirmation == MessageBoxResult.Yes)
+                dispatcher.Post(() =>
                 {
-                    _ = Complete(SaveFileResult.FromPath(fullPath));
-                }
-            });
+                    if (confirmation == MessageBoxResult.Yes)
+                    {
+                        _ = Complete(SaveFileResult.FromPath(fullPath));
+                    }
+                });
+            }
+            catch (ObjectDisposedException)
+            {
+            }
 
             return;
         }

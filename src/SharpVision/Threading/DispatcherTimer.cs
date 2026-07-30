@@ -198,7 +198,7 @@ public sealed class DispatcherTimer: IDisposable
         {
             _dispatcher.Post(() => Deliver(generation));
         }
-        catch (InvalidOperationException)
+        catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
         {
             _ = Interlocked.Exchange(ref _pending, 0);
         }

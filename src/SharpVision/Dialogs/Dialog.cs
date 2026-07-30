@@ -500,6 +500,10 @@ public abstract class Dialog<TResult>: Window
         FinishCompletion();
     }
 
+    // Runs when the owning dispatcher was already stopping by the time Post itself
+    // rejected the scheduled completion. Unlike RunScheduledCompletion's FinishCompletion
+    // call, this settles the result directly instead of also attempting the dispatcher-
+    // dependent close/cleanup FinishCompletion performs, which would fail the same way.
     private void CancelScheduledCompletion()
     {
         Dispatcher? dispatcher;
@@ -518,6 +522,8 @@ public abstract class Dialog<TResult>: Window
         {
             dispatcher.Idle -= idle;
         }
+
+        SettleCompletion();
     }
 
     #endregion
