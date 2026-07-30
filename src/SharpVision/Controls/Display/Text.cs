@@ -226,6 +226,30 @@ public sealed class Text: Control, IAccessKeyCaption
     /// <inheritdoc/>
     protected override string? AccessKeyText => Content;
 
+    /// <summary>Gets or sets the control this label's access key focuses directly.</summary>
+    /// <remarks>
+    /// When unset, a standalone label-like <see cref="Text"/> (not owned as a <see cref="Pressable"/>
+    /// caption) falls back to moving focus to the next tab stop, per the documented default. When
+    /// set, the access key focuses this target instead — independent of tree position, ownership,
+    /// or intervening tab stops. The target is validated at dispatch time: it must belong to the
+    /// same focus tree and be an eligible focus target in the active modal plane, or the access key
+    /// is declined rather than falling back to tab-stop traversal.
+    /// </remarks>
+    public Control? AccessKeyTarget { get; set; }
+
+    /// <inheritdoc/>
+    protected override bool OnAccessKey(Rune key)
+    {
+        _ = key;
+
+        return AccessKeyTarget is { } target
+            ? FocusOwner is { } focus &&
+              target.FocusOwner is not null &&
+              ReferenceEquals(target.FocusOwner, focus) &&
+              focus.Focus(target, FocusReason.Keyboard, cancellable: true)
+            : FocusAccessKeyTarget();
+    }
+
     private void EnsureLayout(int width)
     {
         Debug.Assert(width >= 0, "Control layout provides a non-negative content width.");
