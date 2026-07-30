@@ -8,6 +8,9 @@ namespace SharpVision.Controls.Collections;
 public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
 {
     private readonly List<TreeViewItem> _items = [];
+    // Membership testing alongside the ordered list. Add() must reject a duplicate on every
+    // call, and a List<T>.Contains scan made populating an n-item collection O(n^2).
+    private readonly HashSet<TreeViewItem> _itemSet = new(ReferenceEqualityComparer.Instance);
 #pragma warning disable IDE0032 // Cross-instance propagation assigns this field directly.
     private TreeView? _owner;
 #pragma warning restore IDE0032
@@ -74,7 +77,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         ArgumentNullException.ThrowIfNull(item);
         Owner?.VerifyTreeMutable();
 
-        if (_items.Contains(item))
+        if (_itemSet.Contains(item))
         {
             throw new ArgumentException("The item is already in this collection.", nameof(item));
         }
@@ -99,6 +102,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         }
 
         _items.Add(item);
+        _ = _itemSet.Add(item);
         item.ParentCollection = this;
         item.Children.Owner = Owner;
         Owner?.NotifyStructureChanged();
@@ -142,6 +146,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
             return false;
         }
 
+        _ = _itemSet.Remove(item);
         item.ParentCollection = null;
         item.Children.Owner = null;
         Owner?.NotifyStructureChanged();
@@ -167,6 +172,7 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         }
 
         _items.Clear();
+        _itemSet.Clear();
         Owner?.NotifyStructureChanged();
     }
 

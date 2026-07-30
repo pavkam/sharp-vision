@@ -29,7 +29,7 @@ public sealed class TreeView: CompositeControl
     private HashSet<TreeViewItem> _hookedNext = [];
     private int _selectionVersion;
     private bool _rebuildScheduled;
-    private bool _batchUpdate;
+    private int _batchUpdateDepth;
 
     /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
     /// <remarks>
@@ -348,7 +348,7 @@ public sealed class TreeView: CompositeControl
     /// <summary>Expands every item in the tree.</summary>
     public void ExpandAll()
     {
-        _batchUpdate = true;
+        BeginUpdate();
 
         try
         {
@@ -356,16 +356,14 @@ public sealed class TreeView: CompositeControl
         }
         finally
         {
-            _batchUpdate = false;
+            EndUpdate();
         }
-
-        RebuildFlatList();
     }
 
     /// <summary>Collapses every item in the tree.</summary>
     public void CollapseAll()
     {
-        _batchUpdate = true;
+        BeginUpdate();
 
         try
         {
@@ -373,10 +371,49 @@ public sealed class TreeView: CompositeControl
         }
         finally
         {
-            _batchUpdate = false;
+            EndUpdate();
+        }
+    }
+
+    /// <summary>Begins a batch of structural changes, deferring the flat-list rebuild until the
+    /// matching <see cref="EndUpdate"/>. Calls may nest; the rebuild happens once, when the
+    /// outermost <see cref="EndUpdate"/> returns.</summary>
+    /// <remarks>
+    /// Every individual item mutation otherwise triggers its own complete flat-list rebuild.
+    /// Wrapping a sequence of additions (for example, populating a tree from a filesystem walk
+    /// or a data source) in <see cref="BeginUpdate"/>/<see cref="EndUpdate"/> replaces that
+    /// per-mutation cost with a single rebuild after the whole batch commits.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public void BeginUpdate()
+    {
+        VerifyMutable();
+        _batchUpdateDepth++;
+    }
+
+    /// <summary>Ends a batch begun by <see cref="BeginUpdate"/>. Rebuilds the flat list once,
+    /// only when this call closes the outermost pending batch.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// The attached tree view is mutated off-dispatcher, or this call has no matching
+    /// <see cref="BeginUpdate"/>.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public void EndUpdate()
+    {
+        VerifyMutable();
+
+        if (_batchUpdateDepth == 0)
+        {
+            throw new InvalidOperationException("EndUpdate was called without a matching BeginUpdate.");
         }
 
-        RebuildFlatList();
+        _batchUpdateDepth--;
+
+        if (_batchUpdateDepth == 0)
+        {
+            RebuildFlatList();
+        }
     }
 
     /// <summary>Verifies the owning tree is mutable on the current dispatcher.</summary>
@@ -387,7 +424,7 @@ public sealed class TreeView: CompositeControl
     /// <summary>Notifies the tree that a structural change requires rebuilding the flat list.</summary>
     internal void NotifyStructureChanged()
     {
-        if (_rebuildScheduled || _batchUpdate)
+        if (_rebuildScheduled || _batchUpdateDepth > 0)
         {
             return;
         }

@@ -362,6 +362,57 @@ public sealed class TreeViewTests
         b.IsExpanded.ShouldBeFalse();
     }
 
+    /// <summary>Verifies items added inside a batch do not appear in the visible tree until the
+    /// matching EndUpdate, which then commits every addition in one rebuild.</summary>
+    [Fact]
+    public void BeginUpdate_WhenItemsAreAddedDuringABatch_DefersTheVisibleRebuildUntilEndUpdate()
+    {
+        var tree = new TreeView();
+        var a = new TreeViewItem { Header = "A" };
+        var b = new TreeViewItem { Header = "B" };
+        var c = new TreeViewItem { Header = "C" };
+
+        tree.BeginUpdate();
+        tree.Items.Add(a);
+        tree.Items.Add(b);
+        tree.Items.Add(c);
+
+        OwnedTree.FindAll<TreeViewItem>(tree).ShouldBeEmpty();
+
+        tree.EndUpdate();
+
+        OwnedTree.FindAll<TreeViewItem>(tree).ShouldBe([a, b, c]);
+    }
+
+    /// <summary>Verifies nested BeginUpdate/EndUpdate pairs defer the rebuild until the outermost
+    /// EndUpdate returns, matching common nesting conventions.</summary>
+    [Fact]
+    public void BeginUpdate_WhenCallsAreNested_RebuildsOnlyAtTheOutermostEndUpdate()
+    {
+        var tree = new TreeView();
+        var a = new TreeViewItem { Header = "A" };
+
+        tree.BeginUpdate();
+        tree.BeginUpdate();
+        tree.Items.Add(a);
+        tree.EndUpdate();
+
+        OwnedTree.FindAll<TreeViewItem>(tree).ShouldBeEmpty("the outer batch is still active");
+
+        tree.EndUpdate();
+
+        OwnedTree.FindAll<TreeViewItem>(tree).ShouldBe([a]);
+    }
+
+    /// <summary>Verifies an unmatched EndUpdate is rejected rather than silently ignored.</summary>
+    [Fact]
+    public void EndUpdate_WhenCalledWithoutBeginUpdate_ThrowsInvalidOperationException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<InvalidOperationException>(tree.EndUpdate);
+    }
+
     /// <summary>Verifies removing a selected item clears the selection.</summary>
     [Fact]
     public async Task Items_WhenSelectedItemRemoved_ClearsSelectionAsync()

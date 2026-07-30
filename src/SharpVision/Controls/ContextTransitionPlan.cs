@@ -50,9 +50,13 @@ internal sealed class ContextTransitionPlan
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(cellPolicy);
         ArgumentNullException.ThrowIfNull(previousAppearance);
-        var entries = new List<ControlContextTransition>(previousAppearance.Count);
+        // Sized to this call's own root subtree, not previousAppearance.Count: a batch commit
+        // shares one previousAppearance map across every changing root, so that count reflects
+        // the whole transaction. Using it here made every single-item plan in an n-item batch
+        // allocate and zero an O(n)-capacity list and dictionary, turning the batch O(n^2).
+        var entries = new List<ControlContextTransition>();
         var themeTransitions = new List<ThemeTransition>();
-        var currentAppearance = new Dictionary<Control, AppearanceSnapshot>(previousAppearance.Count);
+        var currentAppearance = new Dictionary<Control, AppearanceSnapshot>();
         var attached = new List<Control>();
         var detached = new List<Control>();
         var stack = new Stack<(Control Control, Face? ParentAmbient, bool IsRoot)>();
