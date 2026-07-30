@@ -1550,11 +1550,6 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             return;
         }
 
-        if (eventArgs is PointerEventArgs pointer)
-        {
-            pointer.SetLocal(this);
-        }
-
         var snapshot = ArrayPool<IHandler>.Shared.Rent(handlers.Count);
         handlers.CopyTo(snapshot);
         var count = handlers.Count;

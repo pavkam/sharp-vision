@@ -112,6 +112,11 @@ public static class Router
 
                 for (index = depth - 1; index >= 0; index--)
                 {
+                    if (eventArgs is PointerEventArgs previewPointer)
+                    {
+                        previewPointer.SetLocal(route[index]);
+                    }
+
                     route[index].InvokeHandlers(routedEvent, eventArgs, sequence);
                 }
             }
@@ -129,6 +134,17 @@ public static class Router
             for (index = 0; index < bubbleCount; index++)
             {
                 var current = route[index];
+
+                // Rebased for every visited node, not only ones with registered handlers —
+                // InvokeDefault (and therefore OnEvent) below runs unconditionally regardless of
+                // Handlers.Count, so a handler-less override reading LocalCells must still see
+                // its own local coordinates rather than whatever the last handler-bearing
+                // ancestor left behind (see #134).
+                if (eventArgs is PointerEventArgs bubblePointer)
+                {
+                    bubblePointer.SetLocal(current);
+                }
+
                 current.InvokeHandlers(routedEvent, eventArgs, sequence);
 
                 if (!eventArgs.Handled)

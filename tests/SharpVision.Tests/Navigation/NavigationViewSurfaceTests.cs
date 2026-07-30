@@ -270,6 +270,39 @@ public sealed class NavigationViewSurfaceTests
                              """);
     }
 
+    /// <summary>Verifies clicking a group's own header row toggles it regardless of which group it
+    /// is — NavigationViewGroup.OnEvent reads LocalCells without registering its own handler, so
+    /// only the router itself rebasing LocalCells for every visited node (not only handler-bearing
+    /// ones) lets a group other than the one aligned with the nearest handler-bearing ancestor
+    /// respond to its own header click (see #134).</summary>
+    [Fact]
+    public async Task Pointer_WhenSecondGroupHeaderIsClicked_TogglesThatGroupIndependentlyAsync()
+    {
+        // Arrange
+        var firstItem = new NavigationViewItem { Header = "First" };
+        var first = new NavigationViewGroup { Header = "First group" };
+        first.AddItem(firstItem);
+        var secondItem = new NavigationViewItem { Header = "Second" };
+        var second = new NavigationViewGroup { Header = "Second group" };
+        second.AddItem(secondItem);
+        var view = CreateView(header: null, 16);
+        view.Items.Add(first);
+        view.Items.Add(second);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(16, 6),
+            TestContext.Current.CancellationToken);
+        first.IsExpanded.ShouldBeTrue();
+        second.IsExpanded.ShouldBeTrue();
+
+        // Act: click the second group's own header row, not the first group's.
+        await surface.Pointer.ClickAsync(second, new Point(1, 0));
+
+        // Assert: only the clicked group toggles.
+        second.IsExpanded.ShouldBeFalse();
+        first.IsExpanded.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a pointer click on a grouped item commits selection through the owning view.</summary>
     [ComponentBehaviorEvidence(typeof(NavigationView), ComponentBehavior.RetainedPointerActivation)]
     [Fact]
