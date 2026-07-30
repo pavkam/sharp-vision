@@ -38,6 +38,40 @@ public sealed class AppearanceCacheTests
         control.UncachedAppearanceResolutionCount.ShouldBe(2);
     }
 
+    /// <summary>Verifies the sparse cache grows past its small inline capacity and still resolves
+    /// every distinct state exactly once — the cache starts at 4 slots rather than the full
+    /// 512-combination VisualState space (see #114).</summary>
+    [Fact]
+    public void GetActualFace_WhenMoreStatesThanInlineCapacityAreUsed_StillCachesEachExactly()
+    {
+        var control = new ProbeControl();
+        control.SetTheme(Themes.Dark);
+        VisualState[] states =
+        [
+            VisualState.Normal,
+            VisualState.PointerOver,
+            VisualState.Focused,
+            VisualState.Selected,
+            VisualState.Checked,
+            VisualState.Pressed,
+            VisualState.Disabled
+        ];
+
+        foreach (var state in states)
+        {
+            _ = control.GetActualFace(state);
+        }
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(states.Length);
+
+        foreach (var state in states)
+        {
+            _ = control.GetActualFace(state);
+        }
+
+        control.UncachedAppearanceResolutionCount.ShouldBe(states.Length);
+    }
+
     /// <summary>Verifies changing a local state set clears previously resolved entries.</summary>
     [Fact]
     public void SetAppearance_WhenCacheExists_ClearsResolvedEntries()

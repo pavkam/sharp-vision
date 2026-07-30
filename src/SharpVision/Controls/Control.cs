@@ -3002,7 +3002,12 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     #region Theme values
 
     private readonly Dictionary<VisualState, AppearanceSet> _appearanceSets = [];
-    private ResolvedAppearance?[]? _resolvedAppearanceCache;
+
+    // A real control reaches only a handful of distinct VisualState combinations, so this grows
+    // from a small inline capacity rather than allocating the full 512-slot combinatorial space
+    // (see #114). Linear scan is cheap at this size and avoids Dictionary's per-entry overhead.
+    private ResolvedAppearanceCacheSlot[]? _resolvedAppearanceCache;
+    private int _resolvedAppearanceCacheCount;
 
     /// <summary>Gets the immutable theme inherited from the owning application.</summary>
     public Theme? Theme => InheritedTheme;
@@ -3245,17 +3250,35 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
             throw new ArgumentOutOfRangeException(nameof(state), state, "The visual state contains unknown flags.");
         }
 
-        _resolvedAppearanceCache ??= new ResolvedAppearance?[stateCount];
-        if (_resolvedAppearanceCache[index] is { } cached)
+        var cache = _resolvedAppearanceCache;
+
+        for (var slot = 0; slot < _resolvedAppearanceCacheCount; slot++)
         {
-            return cached;
+            if (cache![slot].State == state)
+            {
+                return cache[slot].Appearance;
+            }
         }
 
         UncachedAppearanceResolutionCount++;
         var resolved = AppearanceResolver.Resolve(this, state);
-        _resolvedAppearanceCache[index] = resolved;
+
+        if (cache is null)
+        {
+            cache = new ResolvedAppearanceCacheSlot[4];
+            _resolvedAppearanceCache = cache;
+        }
+        else if (_resolvedAppearanceCacheCount == cache.Length)
+        {
+            Array.Resize(ref cache, cache.Length * 2);
+            _resolvedAppearanceCache = cache;
+        }
+
+        cache[_resolvedAppearanceCacheCount++] = new ResolvedAppearanceCacheSlot(state, resolved);
         return resolved;
     }
+
+    private readonly record struct ResolvedAppearanceCacheSlot(VisualState State, ResolvedAppearance Appearance);
 
     internal Face GetActualFace(VisualState state) => GetResolvedAppearance(state).Face;
 
@@ -3307,6 +3330,7 @@ public abstract partial class Control: INotifyPropertyChanged, IDisposable
     {
         ResolvedAppearanceCacheInvalidationCount++;
         _resolvedAppearanceCache = null;
+        _resolvedAppearanceCacheCount = 0;
     }
 
     private void InvalidateVisualStateCore()
