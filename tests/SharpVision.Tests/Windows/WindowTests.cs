@@ -78,6 +78,27 @@ public sealed class WindowTests
         fired.ShouldBe(1);
     }
 
+    /// <summary>Verifies Shown fires when a default-visible Window attaches, not just on an explicit transition.</summary>
+    [Fact]
+    public async Task Shown_WhenDefaultVisibleWindowAttaches_FiresOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            using var root = new Overlay();
+            var window = new Window();
+            var fired = 0;
+            window.Shown += (_, _) => fired++;
+            root.Children.Add(window);
+            new Engine().Layout(root, new Size(30, 12));
+
+            root.Attach(dispatcher);
+
+            fired.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies undefined close placement is rejected before the current value changes.</summary>
     [Fact]
     public void ClosePlacement_WhenValueIsUndefined_ThrowsBeforeMutation()
@@ -710,6 +731,34 @@ public sealed class WindowTests
 
         closing.ShouldBe(0);
         key.Handled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Closed still fires when a Closing handler disposes the window synchronously.</summary>
+    [Fact]
+    public async Task Closed_WhenClosingHandlerDisposesWindowSynchronously_FiresOnceAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var closed = 0;
+            var window = new Window
+            {
+                CanMove = false,
+                CanClose = true,
+                CloseOnEscape = true,
+                HeaderPlacement = WindowTitlePlacement.Center
+            };
+            window.Closing += (_, _) => window.Dispose();
+            window.Closed += (_, _) => closed++;
+            var root = new Overlay { Children = { window } };
+            new Engine().Layout(root, new Size(20, 8));
+            root.Attach(dispatcher);
+
+            _ = Router.Route(window, Events.Key, Key(Code.Escape));
+
+            closed.ShouldBe(1);
+        }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies close activation waits for an armed primary release.</summary>

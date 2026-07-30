@@ -46,6 +46,13 @@ public abstract class FloatingSurface: ContentControl
     /// <summary>Raises the inherited closed notification after a family confirms presentation unavailability.</summary>
     protected void RaiseSurfaceClosed() => Closed?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>
+    /// Captures the current <see cref="Closed"/> invocation list so it can still be raised after a
+    /// synchronous <see cref="Closing"/> handler disposes the surface, which otherwise nulls the field
+    /// before the caller gets a chance to raise it.
+    /// </summary>
+    protected EventHandler? CaptureClosedHandlers() => Closed;
+
     /// <summary>Atomically commits family-specific open state and marks the surface as presented.</summary>
     /// <param name="commitOpenState">The non-null family-specific state commit.</param>
     /// <remarks>

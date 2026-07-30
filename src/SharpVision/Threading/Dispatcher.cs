@@ -24,7 +24,7 @@ public sealed class Dispatcher: IAsyncDisposable
 
     private readonly Thread _thread;
     private int _disposed;
-    private bool _idleRaised = true;
+    private bool _idleRaised;
     private int _ownerThreadId;
     private int _pending;
     private bool _stopping;

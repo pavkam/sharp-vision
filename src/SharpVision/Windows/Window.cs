@@ -659,6 +659,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
         _isRequestingClose = true;
         var wasPresented = IsSurfacePresented;
+        var closedHandlers = CaptureClosedHandlers();
         ExceptionDispatchInfo? failure = null;
 
         try
@@ -667,7 +668,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
             if (wasPresented && !IsSurfacePresented)
             {
-                ExceptionAggregation.Capture(RaiseSurfaceClosed, ref failure);
+                ExceptionAggregation.Capture(() => closedHandlers?.Invoke(this, EventArgs.Empty), ref failure);
             }
         }
         finally
@@ -774,6 +775,14 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
         if (Visibility == Visibility.Visible && !IsSurfacePresented)
         {
             OpenSurface(() => SurfaceBounds = Bounds);
+
+            // Mirrors the Shown notification OnWindowPropertyChanged raises for an explicit
+            // Visibility transition: the default-Visible field initializer never runs the
+            // property's set block, so this attach path is otherwise the only one that opens
+            // the surface without ever raising Shown. Initial focus assignment stays out of
+            // this path — it's already owned by ShowModal's background-focus snapshot for
+            // windows that become modal right after attaching.
+            Shown?.Invoke(this, EventArgs.Empty);
         }
     }
 
