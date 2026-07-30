@@ -1031,7 +1031,7 @@ namespace SharpVision.Controls.Input
         public SharpVision.Controls.Input.RadioButtonMarkStyle? MarkStyle { get; }
         public SharpVision.Controls.Input.RadioButtonStyle Apply(SharpVision.Controls.Input.RadioButtonStyle baseline) { }
     }
-    public class Slider : SharpVision.Controls.Control
+    public sealed class Slider : SharpVision.Controls.Control
     {
         public Slider() { }
         public SharpVision.Terminal.Protocols.Color? FillColor { get; set; }

@@ -7,7 +7,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Edits one signed integer value along a focusable horizontal or vertical rail.</summary>
 [PublicAPI]
-public class Slider: Control
+public sealed class Slider: Control
 {
     private static readonly Rune _horizontalTrack = new('─');
     private static readonly Rune _horizontalFill = new('━');
