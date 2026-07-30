@@ -27,6 +27,15 @@ internal static class Encoder
         IBufferWriter<byte> output,
         int maxOutputBytes)
     {
+        // The bound is monotone in palette size, so the zero-color bound is a valid lower bound
+        // for any actual content. When even that already exceeds policy, rejection is certain
+        // regardless of what the raster contains — reject before renting or sampling anything
+        // (see #40).
+        if (CalculateMaximumBytes(destination, colorCount: 0) > maxOutputBytes)
+        {
+            throw new InvalidOperationException("The sixel worst-case output exceeds policy.");
+        }
+
         var pixelCount = checked(destination.Width * destination.Height);
         var rentedRaster = ArrayPool<byte>.Shared.Rent(pixelCount);
 
