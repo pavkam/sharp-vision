@@ -86,6 +86,7 @@ internal sealed class Provider: IDescriptionProvider
         var hasPreviousTerminal = false;
         var extendedNames = false;
         var hasExtendedNamesState = false;
+        var attemptedSetup = false;
 
         try
         {
@@ -106,6 +107,11 @@ internal sealed class Provider: IDescriptionProvider
             }
             else
             {
+                // Setup is the call that actually mutates ncurses' process-global cur_term, so it
+                // marks the point past which rollback becomes relevant — set before the call
+                // itself in case Setup throws, since the mutation risk exists as soon as it's
+                // attempted (see #143).
+                attemptedSetup = true;
                 var setupStatus = native.Setup(
                     request.TerminalName,
                     request.OutputFileDescriptor,
@@ -169,6 +175,7 @@ internal sealed class Provider: IDescriptionProvider
                 native,
                 previousTerminal,
                 hasPreviousTerminal,
+                attemptedSetup,
                 extendedNames,
                 hasExtendedNamesState,
                 diagnostics);
@@ -490,33 +497,26 @@ internal sealed class Provider: IDescriptionProvider
         INative native,
         nint previousTerminal,
         bool hasPreviousTerminal,
+        bool attemptedSetup,
         bool extendedNames,
         bool hasExtendedNamesState,
         List<DescriptionDiagnostic> diagnostics)
     {
-        var safeToDispose = hasPreviousTerminal;
-        var currentTerminal = (nint) 0;
+        // Freeing the native library handle is unsafe only once a call that could have mutated
+        // ncurses' process-global cur_term was actually attempted and its rollback isn't
+        // confirmed. Before that point — most notably when the very first native call
+        // (CurrentTerminal) fails before Setup ever runs — nothing was mutated, so disposal stays
+        // safe regardless of whether that first read itself succeeded (see #143).
+        var safeToDispose = true;
 
-        try
+        if (attemptedSetup)
         {
-            currentTerminal = native.CurrentTerminal;
-        }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            diagnostics.Add(new DescriptionDiagnostic(DescriptionDiagnosticCode.CleanupFailure));
-            safeToDispose = false;
-        }
+            safeToDispose = hasPreviousTerminal;
+            var currentTerminal = (nint) 0;
 
-        if (safeToDispose && currentTerminal != previousTerminal)
-        {
             try
             {
-                var replaced = native.SetCurrentTerminal(previousTerminal);
-
-                if (replaced != currentTerminal)
-                {
-                    throw new InvalidOperationException("ncurses restored a terminal other than the active lookup terminal.");
-                }
+                currentTerminal = native.CurrentTerminal;
             }
             catch (Exception exception) when (exception is not OutOfMemoryException)
             {
@@ -524,15 +524,33 @@ internal sealed class Provider: IDescriptionProvider
                 safeToDispose = false;
             }
 
-            if (safeToDispose && currentTerminal != 0)
+            if (safeToDispose && currentTerminal != previousTerminal)
             {
                 try
                 {
-                    native.DeleteTerminal(currentTerminal);
+                    var replaced = native.SetCurrentTerminal(previousTerminal);
+
+                    if (replaced != currentTerminal)
+                    {
+                        throw new InvalidOperationException("ncurses restored a terminal other than the active lookup terminal.");
+                    }
                 }
                 catch (Exception exception) when (exception is not OutOfMemoryException)
                 {
                     diagnostics.Add(new DescriptionDiagnostic(DescriptionDiagnosticCode.CleanupFailure));
+                    safeToDispose = false;
+                }
+
+                if (safeToDispose && currentTerminal != 0)
+                {
+                    try
+                    {
+                        native.DeleteTerminal(currentTerminal);
+                    }
+                    catch (Exception exception) when (exception is not OutOfMemoryException)
+                    {
+                        diagnostics.Add(new DescriptionDiagnostic(DescriptionDiagnosticCode.CleanupFailure));
+                    }
                 }
             }
         }

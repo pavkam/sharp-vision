@@ -244,6 +244,23 @@ public sealed class NcursesProviderTests
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.CleanupFailure);
     }
 
+    /// <summary>Verifies a failure reading the active terminal before Setup ever runs still frees the
+    /// native library handle — nothing has mutated ncurses' process-global cur_term at that point,
+    /// so refusing to unload would leak the handle for no safety benefit (see #143).</summary>
+    [Fact]
+    public void Load_WhenCurrentTerminalReadFailsBeforeSetup_StillDisposesNativeLibrary()
+    {
+        var native = ReadyNative();
+        native.CurrentTerminalException = new InvalidOperationException("current terminal");
+        var provider = new Provider(() => native);
+
+        var result = provider.Load(Request("fixture"));
+
+        result.Status.ShouldBe(DescriptionLoadStatus.ProviderFailed);
+        native.SetupCalls.ShouldBe(0);
+        native.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies setup exceptions after state change still restore and release the new terminal.</summary>
     [Fact]
     public void Load_WhenSetupThrowsAfterChangingTerminal_RestoresAndDeletesNewTerminal()

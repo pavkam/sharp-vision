@@ -10,7 +10,14 @@ internal sealed class FakeNcursesNative: INative
     private readonly Dictionary<string, NativeString> _strings = new(StringComparer.Ordinal);
 
     /// <summary>Gets or sets the terminal active before setup.</summary>
-    public nint CurrentTerminal { get; set; } = 41;
+    public nint CurrentTerminal
+    {
+        get => CurrentTerminalException is { } exception ? throw exception : field;
+        set;
+    } = 41;
+
+    /// <summary>Gets or sets an exception raised while reading the active terminal.</summary>
+    internal Exception? CurrentTerminalException { get; set; }
 
     /// <summary>Gets or sets the terminal installed by setup.</summary>
     internal nint LoadedTerminal { get; set; } = 73;
