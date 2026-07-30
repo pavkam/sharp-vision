@@ -5,7 +5,7 @@
 
 High-performance, specification-first terminal UI for .NET 10.
 
-[![CI](https://github.com/pavkam/sharp-vision/actions/workflows/sharpvision-pr.yml/badge.svg)](https://github.com/pavkam/sharp-vision/actions/workflows/sharpvision-pr.yml)
+[![CI](https://github.com/pavkam/sharp-vision/actions/workflows/sharpvision-publish.yml/badge.svg)](https://github.com/pavkam/sharp-vision/actions/workflows/sharpvision-publish.yml)
 [![License](https://img.shields.io/github/license/pavkam/sharp-vision)](LICENSE)
 [![Issues](https://img.shields.io/github/issues/pavkam/sharp-vision)](https://github.com/pavkam/sharp-vision/issues)
 [![NuGet alpha](https://img.shields.io/nuget/vpre/SharpVision?label=NuGet)](https://www.nuget.org/packages/SharpVision)

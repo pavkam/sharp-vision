@@ -2,10 +2,14 @@
 
 ## Continuous integration contract
 
-The pull-request workflow verifies changes proposed to `main`. The package
-publication workflow repeats the same build-and-test action on pushes to `main`
-before it packs or publishes anything. These workflows reproduce the repository
-quality surface; they do not replace focused local proof while developing.
+The pull-request workflow verifies changes proposed to `main` by running the
+shared build-and-test action on Linux, Windows, and macOS in three independent
+jobs, followed by a summary job that fails the workflow unless all three
+platforms pass. The package publication workflow repeats the same build-and-test
+action once on Linux for pushes to `main`, before it packs or publishes
+anything; cross-platform verification happens at the pull-request gate, not
+again at publication. These workflows reproduce the repository quality surface;
+they do not replace focused local proof while developing.
 
 The shared composite action runs `make lint`, the Release build, tests with
 coverage, coverage-report generation, and artifact publication in sequence.
