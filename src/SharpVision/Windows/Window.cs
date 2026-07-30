@@ -10,6 +10,7 @@ using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 using SharpVision.Surfaces;
 using SharpVision.Terminal.Input;
+using SharpVision.Text;
 
 using Terminal.Rendering;
 
@@ -420,9 +421,24 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
             if (cells > titleLane.Width && titleLane.Width >= 4)
             {
-                var budget = titleLane.Width - 3;
-                headerText = string.Concat(headerText.AsSpan(0, Math.Min(budget, headerText.Length)), "…");
-                cells = LayoutMath.Add(2, Input.AccessKeyText.Measure(headerText, CellPolicy.AmbiguousWidth, useMnemonic: false));
+                // Truncate by cell width, not UTF-16 char count: a char-count
+                // slice takes too many code units for wide (CJK/fullwidth)
+                // glyphs and can split a surrogate pair mid-codepoint. Reuse
+                // the grapheme/cell-aware ellipsis truncation Text.Layout
+                // already implements for wrapped text instead of re-deriving
+                // it here.
+                Span<Line> lines = stackalloc Line[1];
+                _ = Layout.Format(
+                    headerText,
+                    Math.Max(0, titleLane.Width - 2),
+                    Overflow.Ellipsis,
+                    Alignment.Start,
+                    CellPolicy.AmbiguousWidth,
+                    lines);
+                var line = lines[0];
+                var truncated = headerText.AsSpan(line.Offset, line.Length);
+                headerText = line.HasEllipsis ? string.Concat(truncated, "…") : truncated.ToString();
+                cells = LayoutMath.Add(2, line.Cells);
             }
 
             var fullInterior = Math.Max(0, Bounds.Width - 2);

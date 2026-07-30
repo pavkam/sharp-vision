@@ -261,6 +261,31 @@ public sealed class WindowTests
         FrameOracle.Get(frame, new Point(0, 3)).ShouldBe("╚");
     }
 
+    /// <summary>Verifies wide-glyph (CJK) headers truncate by cell width, not UTF-16 char
+    /// count, so the title never overflows past its lane into the border corner.</summary>
+    [Fact]
+    public void Render_WhenHeaderContainsWideGlyphsAndOverflows_TruncatesByCellWidthNotCharCount()
+    {
+        var window = new Window
+        {
+            Header = "中中中中中中中中中中",
+            Width = Length.Cells(12),
+            Height = Length.Cells(3)
+        };
+        var size = new Size(12, 3);
+        new Engine().Layout(window, size);
+        using Frame frame = new(size);
+
+        window.Render(frame.Canvas);
+
+        var row = string.Concat(Enumerable.Range(0, 12).Select(x => FrameOracle.Get(frame, new Point(x, 0))));
+        row.ShouldBe("╔ 中中中中中中… ═╗");
+        row.ShouldContain("…");
+        row.ShouldNotContain("中中中中中中中中");
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("╔");
+        FrameOracle.Get(frame, new Point(11, 0)).ShouldBe("╗");
+    }
+
     /// <summary>Verifies the Turbo Vision block shadow occupies only translated cells outside the window body.</summary>
     [Fact]
     public void Render_WhenBlockShadowIsEnabled_DrawsOutsideBodyWithoutCoveringContent()
