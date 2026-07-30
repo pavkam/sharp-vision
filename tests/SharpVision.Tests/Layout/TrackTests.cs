@@ -121,4 +121,42 @@ public sealed class TrackTests
 
         tracks.ShouldBe([2, 1, 2]);
     }
+
+    /// <summary>Verifies new Track() reaches the declared constructor and matches
+    /// Track.Auto()'s defaults, unlike the CLR's implicit zero-initialized state.</summary>
+    [Fact]
+    public void Constructor_WhenParameterless_MatchesAutoDefaults()
+    {
+        var track = new Track();
+
+        track.ShouldBe(Track.Auto());
+        track.Length.ShouldBe(Length.Auto);
+        track.Minimum.ShouldBe(0);
+        track.Maximum.ShouldBe(int.MaxValue);
+    }
+
+    /// <summary>
+    /// Documents the remaining struct hazard this issue cannot fix at the library level:
+    /// default(Track) and an unassigned Track[] slot bypass every declared constructor,
+    /// including the explicit parameterless one, and zero-initialize every field. A
+    /// (Minimum: 0, Maximum: 0) track then resolves to exactly 0 cells — a permanently
+    /// invisible track. Track's XML remarks document this; callers managing their own
+    /// Track[] must always explicitly initialize every element.
+    /// </summary>
+    [Fact]
+    public void Constructor_WhenDefaultOrArraySlot_RemainsZeroInitializedNotAuto()
+    {
+        var defaultTrack = default(Track);
+        var arraySlot = (new Track[1])[0];
+
+        defaultTrack.Minimum.ShouldBe(0);
+        defaultTrack.Maximum.ShouldBe(0);
+        arraySlot.Minimum.ShouldBe(0);
+        arraySlot.Maximum.ShouldBe(0);
+
+        var result = new int[1];
+        Tracks.Resolve(10, [defaultTrack.Length], [0], [defaultTrack.Minimum], [defaultTrack.Maximum], result);
+
+        result.ShouldBe([0]);
+    }
 }

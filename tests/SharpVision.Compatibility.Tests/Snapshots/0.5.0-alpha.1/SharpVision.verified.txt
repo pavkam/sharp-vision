@@ -2116,6 +2116,7 @@ namespace SharpVision.Layout
     [System.Diagnostics.DebuggerDisplay("{ToString(),nq}")]
     public readonly struct Track : System.IEquatable<SharpVision.Layout.Track>
     {
+        public Track() { }
         public Track(SharpVision.Layout.Length length, int minimum = 0, int maximum = 2147483647) { }
         public SharpVision.Layout.Length Length { get; }
         public int Maximum { get; }

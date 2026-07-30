@@ -4,10 +4,33 @@
 namespace SharpVision.Layout;
 
 /// <summary>Defines one immutable Grid track length and cell limits.</summary>
+/// <remarks>
+/// This is a struct. <c>new Track()</c> now matches <see cref="Auto(int, int)"/> via the
+/// explicit parameterless constructor below, but <c>default(Track)</c> and any
+/// unassigned <c>Track[]</c> slot still bypass every declared constructor and
+/// zero-initialize every field — the CLR guarantees this for <c>default</c> and
+/// array allocation regardless of what constructors a struct declares, and no
+/// library-side fix can intercept it. Both give <see cref="Minimum"/> == 0 and
+/// <see cref="Maximum"/> == 0, not <see cref="Auto(int, int)"/>'s int.MaxValue maximum,
+/// so <see cref="Tracks"/> resolution forces that slot to exactly 0 cells — a
+/// permanently invisible track with no diagnostic. Always explicitly initialize
+/// every element of a caller-managed <c>Track[]</c>.
+/// </remarks>
 [DebuggerDisplay("{ToString(),nq}")]
 [PublicAPI]
 public readonly record struct Track
 {
+    /// <summary>Initializes an automatic track, matching <see cref="Auto(int, int)"/>'s defaults.</summary>
+    /// <remarks>
+    /// Unlike <c>default(Track)</c> or an unassigned <c>Track[]</c> slot, which the CLR
+    /// zero-initializes regardless of this constructor, <c>new Track()</c> reaches this
+    /// and resolves the same way <see cref="Auto(int, int)"/> does.
+    /// </remarks>
+    public Track()
+        : this(Length.Auto)
+    {
+    }
+
     /// <summary>Initializes one validated track.</summary>
     /// <param name="length">The fixed, percentage, automatic, or proportional length.</param>
     /// <param name="minimum">The non-negative minimum cells.</param>
