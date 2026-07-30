@@ -179,23 +179,21 @@ public sealed class DispatcherTests
 
     /// <summary>Verifies Idle fires for a freshly started dispatcher that never receives any work.</summary>
     /// <remarks>
-    /// Subscribing happens strictly after <see cref="Dispatcher.Start"/> returns, so the
-    /// background thread can race ahead and raise the one-shot Idle notification before the
-    /// handler attaches, permanently starving this test since no other work ever posts to
-    /// reset it. That race in observing a one-shot event from outside is unrelated to the fix
-    /// itself, which was independently verified via direct source stash/revert: with the fix
-    /// reverted, this test always times out; with it applied, this test passes reliably when
-    /// run alone or in most groupings, but has shown scheduling-sensitive timeouts when run
-    /// alongside many other Dispatcher-thread-creating tests in this project's CI-known-flaky
-    /// Threading suite. Skipped pending a testability seam on Dispatcher that would let a test
-    /// observe idle without racing thread startup.
+    /// Ordinary <see cref="Dispatcher.Start"/> returns as soon as the background thread exists,
+    /// which races that thread's own near-immediate first idle-detection attempt against this
+    /// test subscribing to <see cref="Dispatcher.Idle"/>. <see cref="Dispatcher.StartPaused"/>
+    /// closes that race deterministically: the dispatcher thread blocks immediately before its
+    /// first attempt until the test explicitly releases it, guaranteeing the subscription below
+    /// happens-before the one-shot notification it observes.
     /// </remarks>
-    [Fact(Skip = "Timing-sensitive against the full Threading suite — observing a fresh dispatcher's one-shot Idle event races background thread startup; see remarks")]
+    [Fact]
     public async Task Idle_WhenDispatcherStartsWithNoPriorWork_FiresAsync()
     {
-        await using var dispatcher = Dispatcher.Start();
+        using var releaseGate = new ManualResetEventSlim(initialState: false);
+        await using var dispatcher = Dispatcher.StartPaused(releaseGate);
         var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.Idle += (_, _) => idle.TrySetResult();
+        releaseGate.Set();
 
         await idle.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }

@@ -29,14 +29,14 @@ public sealed class Dispatcher: IAsyncDisposable
     private int _pending;
     private bool _stopping;
 
-    private Dispatcher(int capacity, string name, TimeProvider timeProvider)
+    private Dispatcher(int capacity, string name, TimeProvider timeProvider, ManualResetEventSlim? releaseGate)
     {
         _capacity = capacity;
         TimeProvider = timeProvider;
 
         using ManualResetEventSlim started = new();
 
-        _thread = new Thread(() => Run(started)) { IsBackground = true, Name = name };
+        _thread = new Thread(() => Run(started, releaseGate)) { IsBackground = true, Name = name };
         _thread.Start();
 
         started.Wait();
@@ -77,7 +77,41 @@ public sealed class Dispatcher: IAsyncDisposable
                 : throw new ArgumentException(
                     "The dispatcher thread name cannot be blank.",
                     nameof(name));
-        return new Dispatcher(capacity, threadName, timeProvider ?? TimeProvider.System);
+        return new Dispatcher(capacity, threadName, timeProvider ?? TimeProvider.System, releaseGate: null);
+    }
+
+    /// <summary>Starts one dispatcher whose thread blocks after startup until <paramref
+    /// name="releaseGate"/> is signaled, immediately before its first idle-detection attempt.</summary>
+    /// <remarks>
+    /// A testability seam only: it lets a test subscribe to <see cref="Idle"/> before the
+    /// dispatcher can possibly raise its one-shot no-prior-work notification, closing the race
+    /// between <see cref="Start"/> returning and the background thread reaching that check.
+    /// </remarks>
+    /// <param name="releaseGate">The non-null gate the caller signals once ready to proceed.</param>
+    /// <param name="capacity">The positive maximum queued callback count.</param>
+    /// <param name="name">The optional non-blank thread name.</param>
+    /// <param name="timeProvider">The optional clock used by dispatcher-owned timers.</param>
+    /// <returns>The running, currently paused dispatcher.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="releaseGate"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is blank.</exception>
+    internal static Dispatcher StartPaused(
+        ManualResetEventSlim releaseGate,
+        int capacity = 4096,
+        string? name = null,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(releaseGate);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
+
+        var threadName = name is null
+            ? "SharpVision.Dispatcher"
+            : !string.IsNullOrWhiteSpace(name)
+                ? name
+                : throw new ArgumentException(
+                    "The dispatcher thread name cannot be blank.",
+                    nameof(name));
+        return new Dispatcher(capacity, threadName, timeProvider ?? TimeProvider.System, releaseGate);
     }
 
     /// <summary>Gets the shared clock used by timers associated with this dispatcher.</summary>
@@ -246,12 +280,13 @@ public sealed class Dispatcher: IAsyncDisposable
         }
     }
 
-    private void Run(ManualResetEventSlim started)
+    private void Run(ManualResetEventSlim started, ManualResetEventSlim? releaseGate)
     {
         Volatile.Write(ref _ownerThreadId, Environment.CurrentManagedThreadId);
         var previousContext = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(this));
         started.Set();
+        releaseGate?.Wait();
 
         try
         {
