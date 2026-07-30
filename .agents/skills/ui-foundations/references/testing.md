@@ -12,6 +12,7 @@ modality, styling, theme, or binding behavior complete.
 - [Randomized testing](../../../../docs/testing/randomized.md#randomized-testing-contract)
 - [Performance evidence](../../../../docs/testing/performance.md#ui-infrastructure-gates)
 - [Continuous integration](../../../../docs/testing/continuous-integration.md#continuous-integration-contract)
+- [Shape and reflection](../../../../docs/testing/correctness-model.md#shape-and-reflection)
 
 ## Evidence ladder
 
@@ -27,6 +28,13 @@ modality, styling, theme, or binding behavior complete.
 
 Every `dotnet test` command must use supported filter grammar and
 `--minimum-expected-tests 1`, including exact-class refinements.
+
+Assert observable output and state, not private call graphs or member shape.
+`SharpVision.Compatibility.Tests` already freezes both public surfaces; a
+hand-written shape assertion duplicates it and covers less. When a test needs
+state a control does not expose, add a documented `internal` seam rather than
+reflecting into private state — see
+[Shape and reflection](../../../../docs/testing/correctness-model.md#shape-and-reflection).
 
 ## Completion verification
 

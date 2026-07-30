@@ -72,6 +72,35 @@ directories as API history. Never accept a received file without reviewing its
 signature changes; generated snapshots are approval artifacts, not disposable
 test output.
 
+## Shape and reflection
+
+`SharpVision.Compatibility.Tests` is the shape oracle for both public surfaces;
+see [Public API compatibility](#public-api-compatibility) above. A hand-written
+test that asserts a member exists, is absent, or has a given accessibility
+duplicates that snapshot and covers less than it does, since the snapshot
+compares the complete surface on every run rather than one asserted member.
+
+Reflecting into production state — `BindingFlags`, `GetField`, `GetMethod`,
+`GetProperty`, `Activator`, or walking a private call graph — has the same
+defect from the other direction: it reaches state a consumer cannot reach, so it
+proves nothing about the public contract, and it defers a rename error from
+compile time (a broken reference) to run time (a `null` reflection result or a
+silently stale assertion).
+
+When a test genuinely needs state a type does not expose, add a documented
+`internal` member instead. Both test assemblies are already friend assemblies,
+so the member is directly readable without reflection. An `internal` seam is not
+production surface: `PublicApiGenerator` excludes it, it is absent from both
+`.verified.txt` snapshots, and no consumer can observe it. Document on the
+member which invariant it exists to prove — for example
+`KeySequenceMatcher.RetainsStorage`, `Frame.CurrentMutationRevision`, and
+`Session.Backend` are established uses of this pattern.
+
+A shape assertion is allowed only inside a test that exercises the behavior the
+shape protects, and only for a fact the snapshot cannot express, such as
+`internal` or `private protected` accessibility on a seam like the ones above. A
+standalone `Type_WhenInspected_*` test that only walks members is not allowed.
+
 ## Required evidence
 
 | Claim                | Minimum proof                                                        |

@@ -168,6 +168,21 @@ in the protocol document.
 - Name tests `MethodName_WhenThis_ThatIsExpected`.
 - Watch each new test fail for the expected reason before implementation.
 - Test observable output and state rather than private calls.
+- Do not use reflection to reach production state or behavior. `BindingFlags`,
+  `GetField`, `GetMethod`, `GetProperty`, and `Activator` are not testing tools.
+  A rename must break the build, not a test at runtime.
+- When a test needs state the type does not expose, add an `internal` member and
+  document on it which invariant it exists to prove. Both test assemblies are
+  already friend assemblies. An `internal` seam is not public surface: it never
+  appears in the API snapshot and no consumer can see it.
+- Do not assert API shape. The versioned Verify snapshot already freezes every
+  public and protected member of both assemblies. A test asserting that a member
+  exists, is absent, or has a given accessibility duplicates the snapshot and
+  covers less than it does.
+- A shape assertion may appear only inside a test that exercises the behavior
+  the shape protects, and only for a fact the snapshot cannot express, such as
+  `internal` or `private protected` accessibility. A standalone
+  `Type_WhenInspected_*` test is not allowed.
 - Protocol encoders require exact-byte tests.
 - Streaming decoders require every possible read-fragment boundary for each
   representative sequence.

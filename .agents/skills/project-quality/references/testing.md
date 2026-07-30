@@ -14,6 +14,7 @@ wiring, or repository-wide evidence policy.
 - [Continuous integration](../../../../docs/testing/continuous-integration.md#continuous-integration-contract)
 - [Local commands](../../../../docs/testing/continuous-integration.md#local-command-mapping)
 - [Randomized testing](../../../../docs/testing/randomized.md#randomized-testing-contract)
+- [Shape and reflection](../../../../docs/testing/correctness-model.md#shape-and-reflection)
 
 ## Code map
 
@@ -42,6 +43,15 @@ wiring, or repository-wide evidence policy.
   namespace or one leading/trailing wildcard.
 - A snapshot is supplemental evidence, never the only oracle.
 - Platform skips must be explicit and cannot hide missing portable evidence.
+- Do not assert private call graphs, and do not reach production state through
+  reflection (`BindingFlags`, `GetField`, `GetMethod`, `GetProperty`,
+  `Activator`). Prefer a documented `internal` seam: both test assemblies are
+  friend assemblies, and an `internal` member is excluded from the API snapshot,
+  so it is not production surface.
+- Do not hand-write API-shape assertions. `SharpVision.Compatibility.Tests`
+  already freezes both public surfaces; a shape test duplicates it and covers
+  less. Assert shape only alongside the behavior it protects, and only for
+  accessibility the snapshot cannot express.
 
 ## Focused verification
 

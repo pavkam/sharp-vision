@@ -12,6 +12,7 @@ showcase verification, rendering assertions, or interaction evidence.
 - [State machines](../../../../docs/testing/controls-integration.md#controls-with-state-machines)
 - [Required evidence](../../../../docs/testing/controls-integration.md#required-evidence)
 - [Showcase verification](../../../../docs/architecture/showcase.md#verification-contract)
+- [Shape and reflection](../../../../docs/testing/correctness-model.md#shape-and-reflection)
 
 ## Evidence levels
 
@@ -33,6 +34,12 @@ showcase verification, rendering assertions, or interaction evidence.
 Use xUnit v3, Shouldly, Arrange/Act/Assert, real public behavior, and
 deterministic fakes. Every focused command must include
 `--minimum-expected-tests 1`.
+
+Do not assert private call graphs or hand-write API-shape assertions —
+`SharpVision.Compatibility.Tests` already freezes both public surfaces, so a
+shape test duplicates it and covers less. When a test needs state a control does
+not expose, add a documented `internal` seam instead of reflecting into private
+state.
 
 ## Focused verification
 
