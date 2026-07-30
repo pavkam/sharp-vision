@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Components"
+  short_description: "Build controls, surfaces, dialogs, and showcase pages"
+  default_prompt: "Use $ui-components to implement or review a SharpVision control, floating surface, or showcase experience."

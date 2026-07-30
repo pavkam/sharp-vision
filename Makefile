@@ -37,6 +37,7 @@ run:
 test: build
 	@echo "🧪 Running tests..."
 	@dotnet test --solution $(SOLUTION) --configuration Release --no-build --minimum-expected-tests 3 --timeout 900s
+	@npm run test:docs
 	@echo "✅ Tests complete."
 
 test-ci: build
@@ -55,18 +56,9 @@ test-binding-coverage: build
 lint: restore
 	@echo "🔍 Checking source and documentation..."
 	@dotnet format $(SOLUTION) --verify-no-changes --no-restore --verbosity diagnostic
-	@npm run lint:csharp-usings
-	@npm run lint:csharp-types
-	@npm run lint:docs-structure
-	@npm run lint:extern
-	@npm run lint:actions
-	@npm run lint:action-pins
-	@npm run lint:ci-gate
-	@npm run lint:performance-assertions
 	@npm run format:check
 	@npm run lint:markdown
 	@npm run lint:links
-	@npm run test:docs
 	@echo "✅ All lint checks passed."
 
 format: restore

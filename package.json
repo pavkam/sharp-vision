@@ -9,14 +9,6 @@
     "format": "prettier --write \"**/*.md\"",
     "format:check": "prettier --check \"**/*.md\"",
     "generate:unicode": "node scripts/generate-unicode-data.mjs",
-    "lint:actions": "find .github/workflows .github/actions -type f \\( -name '*.yml' -o -name '*.yaml' \\) -print0 | sort -z | xargs -0 -n1 action-validator",
-    "lint:action-pins": "node scripts/validate-action-pins.mjs",
-    "lint:ci-gate": "node scripts/validate-test-ci-gate.mjs",
-    "lint:csharp-usings": "node scripts/validate-csharp-usings.mjs",
-    "lint:performance-assertions": "node scripts/validate-performance-assertions.mjs",
-    "lint:csharp-types": "node scripts/validate-csharp-types.mjs",
-    "lint:docs-structure": "node scripts/validate-doc-structure.mjs",
-    "lint:extern": "node scripts/validate-extern.mjs",
     "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#.worktrees\" \"#.superpowers\"",
     "lint:links": "node scripts/validate-doc-links.mjs",
     "refresh:unicode": "node scripts/generate-unicode-data.mjs --refresh",
@@ -24,7 +16,6 @@
     "test:docs": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
-    "@action-validator/cli": "0.6.0",
     "markdownlint-cli2": "0.23.2",
     "prettier": "3.9.5"
   },

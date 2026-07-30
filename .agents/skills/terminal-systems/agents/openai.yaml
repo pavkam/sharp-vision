@@ -1,0 +1,4 @@
+interface:
+  display_name: "Terminal Systems"
+  short_description: "Own terminal protocols, discovery, and backends"
+  default_prompt: "Use $terminal-systems to implement or review a SharpVision terminal-system change."

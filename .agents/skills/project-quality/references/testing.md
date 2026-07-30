@@ -1,0 +1,52 @@
+# Test Infrastructure
+
+## Load this reference when
+
+Changing xUnit or Microsoft Testing Platform configuration, shared fixtures,
+test discovery, filters, minimum counts, randomization, coverage, CI test
+wiring, or repository-wide evidence policy.
+
+## Normative documentation
+
+- [Correctness model](../../../../docs/testing/correctness-model.md#correctness-model-contract)
+- [Proof levels](../../../../docs/testing/correctness-model.md#proof-levels)
+- [Discovery gate](../../../../docs/testing/correctness-model.md#discovery-gate)
+- [Continuous integration](../../../../docs/testing/continuous-integration.md#continuous-integration-contract)
+- [Local commands](../../../../docs/testing/continuous-integration.md#local-command-mapping)
+- [Randomized testing](../../../../docs/testing/randomized.md#randomized-testing-contract)
+
+## Code map
+
+- Test projects: `tests/SharpVision.Terminal.Tests`, `SharpVision.Tests`, and
+  `SharpVision.Compatibility.Tests`
+- Shared build configuration: `Directory.Build.props`,
+  `Directory.Packages.props`
+- Local gates: `Makefile` and `package.json`
+- CI: `.github/workflows/` and `.github/actions/`
+- Coverage result checks: `scripts/validate-*-coverage.mjs`
+
+## Workflow
+
+1. Write a failing fixture for the missing or bypassable gate.
+2. Preserve xUnit v3, Shouldly, Arrange/Act/Assert, deterministic fakes, and
+   observable behavior.
+3. Require `--minimum-expected-tests`; use supported prefix/suffix class or
+   namespace filters.
+4. Record random seeds and promote failures to named regressions.
+5. Keep local and CI project lists, configurations, coverage, and failure
+   semantics aligned.
+
+## Project-specific traps
+
+- `*Layout*Tests` is invalid Microsoft Testing Platform filter grammar; use a
+  namespace or one leading/trailing wildcard.
+- A snapshot is supplemental evidence, never the only oracle.
+- Platform skips must be explicit and cannot hide missing portable evidence.
+
+## Focused verification
+
+```bash
+node --test scripts/*.test.mjs
+dotnet test --solution SharpVision.slnx --configuration Release --no-build \
+  --minimum-expected-tests 3 --timeout 900s
+```

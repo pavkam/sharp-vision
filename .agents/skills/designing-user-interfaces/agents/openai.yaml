@@ -1,4 +1,0 @@
-interface:
-  display_name: "Designing User Interfaces"
-  short_description: "Compose polished responsive SharpVision interfaces"
-  default_prompt: "Use $designing-user-interfaces to design or polish a responsive SharpVision application interface."

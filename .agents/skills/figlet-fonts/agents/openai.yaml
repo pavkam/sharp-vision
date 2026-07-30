@@ -1,4 +1,0 @@
-interface:
-  display_name: "FIGlet Fonts"
-  short_description: "Maintain the audited FIGlet engine and catalog"
-  default_prompt: "Use $figlet-fonts to update SharpVision FIGfont parsing, rendering, or the compressed font catalog safely."

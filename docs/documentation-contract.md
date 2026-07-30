@@ -138,9 +138,8 @@ Documentation changes run, in increasing scope:
 1. `npm run format:check`
 2. `npm run lint:markdown`
 3. `npm run lint:links`
-4. `npm run lint:docs-structure`
-5. `npm run test:docs`
-6. `make lint`
+4. `npm run test:docs`
+5. `make lint`
 
 The repository gate also compiles XML documentation, examples, and the showcase,
 so prose-only success is not evidence that a public surface is coherent.

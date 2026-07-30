@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Quality"
+  short_description: "Own docs, tests, compatibility, packaging, and skills"
+  default_prompt: "Use $project-quality to maintain SharpVision repository quality infrastructure and release gates."

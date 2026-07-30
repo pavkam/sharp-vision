@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Foundations"
+  short_description: "Own UI trees, layout, input, themes, and binding"
+  default_prompt: "Use $ui-foundations to implement or review SharpVision UI foundation behavior."

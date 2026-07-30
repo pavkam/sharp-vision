@@ -10,4 +10,4 @@ logical resource names, but vendored bytes do not live beside product source.
   Unicode 17.0.0 inputs used to generate terminal grapheme and width tables.
 
 Every immediate package directory contains provenance and its applicable license
-or notice. `npm run lint:extern` enforces this boundary.
+or notice.
