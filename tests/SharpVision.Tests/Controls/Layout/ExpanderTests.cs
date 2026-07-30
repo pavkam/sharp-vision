@@ -80,6 +80,68 @@ public sealed class ExpanderTests
         states.ShouldBe([false, true]);
     }
 
+    /// <summary>Verifies collapsing hides content from the Visibility chain, not only from arranged size,
+    /// so a focusable control inside it stops being reachable by keyboard focus.</summary>
+    [Fact]
+    public void IsExpanded_WhenFalse_CollapsesContentVisibilityAndExcludesItFromFocus()
+    {
+        var content = new ProbeControl(new Size(4, 2)) { Focusable = true };
+        var expander = new Expander { Header = "Details", Content = content };
+        content.CanFocus.ShouldBeTrue();
+
+        expander.IsExpanded = false;
+
+        content.Visibility.ShouldBe(Visibility.Collapsed);
+        content.EffectiveIsVisible.ShouldBeFalse();
+        content.CanFocus.ShouldBeFalse();
+
+        expander.IsExpanded = true;
+
+        content.Visibility.ShouldBe(Visibility.Visible);
+        content.CanFocus.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Tab traversal skips a focusable control inside collapsed Expander content.</summary>
+    [Fact]
+    public async Task Focus_WhenExpanderIsCollapsed_TabTraversalSkipsHiddenContentAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var before = new ProbeControl(new Size(1, 1)) { Focusable = true };
+            var hidden = new ProbeControl(new Size(1, 1)) { Focusable = true };
+            var expander = new Expander { Header = "Details", Content = hidden, IsExpanded = false };
+            var after = new ProbeControl(new Size(1, 1)) { Focusable = true };
+            var panel = new Stack();
+            panel.Children.Add(before);
+            panel.Children.Add(expander);
+            panel.Children.Add(after);
+            panel.Attach(dispatcher);
+            using FocusManager focus = new(panel);
+
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(before);
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(expander);
+            focus.MoveNext().ShouldBeTrue();
+            focus.Focused.ShouldBeSameAs(after);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a caller-collapsed content control stays collapsed after re-expanding,
+    /// rather than being forced back to Visible.</summary>
+    [Fact]
+    public void IsExpanded_WhenContentWasAuthoredCollapsed_StaysCollapsedAfterReExpanding()
+    {
+        var content = new ProbeControl(new Size(4, 2)) { Visibility = Visibility.Collapsed };
+        var expander = new Expander { Header = "Details", Content = content, IsExpanded = false };
+
+        expander.IsExpanded = true;
+
+        content.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
     /// <summary>Verifies replacing collapsed content releases the previous child and retains only the replacement.</summary>
     [Fact]
     public void Content_WhenReplacedWhileCollapsed_TransfersOwnershipWithoutExpanding()

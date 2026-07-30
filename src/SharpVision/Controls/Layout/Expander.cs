@@ -16,6 +16,7 @@ public sealed class Expander: ContentControl
     private Rune? _collapsedGlyph;
     private Rune? _expandedGlyph;
     private bool _isHeaderPointerOver;
+    private Visibility? _requestedContentVisibility;
 
     /// <summary>Initializes an expanded borderless section with an empty header.</summary>
     public Expander()
@@ -72,6 +73,7 @@ public sealed class Expander: ContentControl
         {
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
+                ApplyContentVisibility();
                 ExpandedChanged?.Invoke(this, new ExpandedChangedEventArgs(value));
             }
         }
@@ -100,6 +102,35 @@ public sealed class Expander: ContentControl
         VerifyMutable();
         _ = ResetOptionalGlyph(ref _collapsedGlyph, nameof(CollapsedGlyph));
         _ = ResetOptionalGlyph(ref _expandedGlyph, nameof(ExpandedGlyph));
+    }
+
+    /// <inheritdoc/>
+    protected override void OnContentChanged(Control? previous, Control? current)
+    {
+        if (previous is not null && _requestedContentVisibility is { } requested)
+        {
+            previous.Visibility = requested;
+        }
+
+        _requestedContentVisibility = current?.Visibility;
+        ApplyContentVisibility();
+    }
+
+    // Collapsed content stays Tab-focusable and hit-testable if only its
+    // arranged size shrinks to zero, since focus eligibility is driven by
+    // the Visibility chain, not arranged size — mirroring the pattern
+    // TabControl uses to hide non-selected pages. The caller's authored
+    // Visibility (captured in OnContentChanged) is restored, not assumed to
+    // be Visible, so content the caller already collapsed for its own
+    // reasons stays collapsed after re-expanding.
+    private void ApplyContentVisibility()
+    {
+        if (Content is not { } content || _requestedContentVisibility is not { } requested)
+        {
+            return;
+        }
+
+        content.Visibility = IsExpanded ? requested : Visibility.Collapsed;
     }
 
     /// <inheritdoc/>
