@@ -86,7 +86,13 @@ public class Popup: FloatingSurface
     public bool SuppressCloseOtherPopups { get; init; }
 
     /// <summary>Gets or sets whether the frame draws a directional arrow toward the anchor.</summary>
-    public bool ShowAnchorIndicator { get; set; }
+    /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
+    public bool ShowAnchorIndicator
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+    }
 
     /// <summary>Gets or sets an optional fixed origin that overrides anchor-based positioning.</summary>
     internal Point? FixedOrigin { get; set; }

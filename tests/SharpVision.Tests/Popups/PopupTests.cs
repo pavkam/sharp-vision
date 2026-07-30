@@ -18,6 +18,30 @@ public sealed class PopupTests
         popup.Border.Foreground.ShouldBe(ThemeColor.ControlBorder);
     }
 
+    /// <summary>Verifies changing ShowAnchorIndicator after the popup is already rendered
+    /// publishes PropertyChanged, matching every other live-mutable Popup property, instead
+    /// of silently doing nothing until an unrelated change forces a repaint.</summary>
+    [Fact]
+    public void ShowAnchorIndicator_WhenChanged_PublishesPropertyChanged()
+    {
+        using var popup = new Popup();
+        var notifications = 0;
+        popup.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Popup.ShowAnchorIndicator))
+            {
+                notifications++;
+            }
+        };
+
+        popup.ShowAnchorIndicator = true;
+        popup.ShowAnchorIndicator = true;
+        popup.ShowAnchorIndicator = false;
+
+        popup.ShowAnchorIndicator.ShouldBeFalse();
+        notifications.ShouldBe(2);
+    }
+
     /// <summary>Verifies unknown modal policies are rejected before observable Popup state changes.</summary>
     [Fact]
     public void ModalBehavior_WhenValueIsUnknown_ThrowsBeforeMutation()
