@@ -557,13 +557,24 @@ public sealed class Table: ItemsControl
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) Columns.Count);
         SortColumnIndex = columnIndex;
         SortDirection = direction;
+
+        // _sourceRows.IndexOf costs O(n) per row, turning this tie-break into an O(n^2) scan on
+        // top of the O(n log n) sort; a position precomputed once resolves the same tie-break in
+        // O(1) per comparison (see #118).
+        var position = new Dictionary<TableRow, int>(_sourceRows.Count);
+
+        for (var index = 0; index < _sourceRows.Count; index++)
+        {
+            position[_sourceRows[index]] = index;
+        }
+
         var ordered = Rows.OrderBy(row => GetSortKey(row, columnIndex), Comparer<object?>.Create(CompareKeys))
-            .ThenBy(_sourceRows.IndexOf)
+            .ThenBy(row => position[row])
             .ToArray();
 
         if (direction == TableSortDirection.Descending)
         {
-            ordered = [.. Rows.OrderByDescending(row => GetSortKey(row, columnIndex), Comparer<object?>.Create(CompareKeys)).ThenBy(_sourceRows.IndexOf)];
+            ordered = [.. Rows.OrderByDescending(row => GetSortKey(row, columnIndex), Comparer<object?>.Create(CompareKeys)).ThenBy(row => position[row])];
         }
 
         ReorderRows(ordered);
