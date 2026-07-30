@@ -304,4 +304,143 @@ public sealed class MessageBoxTests
         messageBox.DesiredSize.Width.ShouldBeGreaterThan(0);
         messageBox.DesiredSize.Height.ShouldBeGreaterThan(0);
     }
+
+    /// <summary>Verifies the resolved Button style defaults to the shared semantic input profile
+    /// until an explicit local style is assigned.</summary>
+    [Fact]
+    public void ButtonStyle_WhenUnset_FollowsTheThemeLikeAnOrdinaryButton()
+    {
+        using var messageBox = new MessageBox("Continue?", "Confirm");
+        using var expected = new Button();
+
+        messageBox.ButtonStyle.ShouldBeNull();
+        messageBox.ActualButtonStyle.ShouldBe(expected.ActualStyle);
+    }
+
+    /// <summary>Verifies an explicit local style propagates to every generated action across every
+    /// standard button layout, and clearing it reverts every action to the semantic profile.</summary>
+    [Theory]
+    [InlineData(MessageBoxButtons.Ok)]
+    [InlineData(MessageBoxButtons.OkCancel)]
+    [InlineData(MessageBoxButtons.YesNo)]
+    [InlineData(MessageBoxButtons.YesNoCancel)]
+    public void ButtonStyle_WhenSet_PropagatesToEveryGeneratedAction(MessageBoxButtons buttons)
+    {
+        using var messageBox = new MessageBox("Choose an action.", "Action", buttons);
+        var style = new ButtonStyle(
+            new Thickness(horizontal: 2, vertical: 1),
+            new ThemeProfile(
+                new ThemeAppearance(
+                    AppearanceTestValues.Face(foreground: Color.Rgb(1, 2, 3)),
+                    AppearanceTestValues.Border(BorderSide.All),
+                    AppearanceTestValues.Shadow(visible: false))));
+
+        messageBox.ButtonStyle = style;
+
+        messageBox.ActualButtonStyle.ShouldBe(style);
+
+        foreach (var button in OwnedTree.FindAll<Button>(messageBox))
+        {
+            button.Style.ShouldBe(style);
+            button.ActualStyle.ShouldBe(style);
+        }
+
+        messageBox.ButtonStyle = null;
+
+        messageBox.ButtonStyle.ShouldBeNull();
+
+        foreach (var button in OwnedTree.FindAll<Button>(messageBox))
+        {
+            button.Style.ShouldBeNull();
+        }
+    }
+
+    /// <summary>Verifies replacing the Button style notifies observers exactly once per distinct value
+    /// and reports no change for an equal resubmission.</summary>
+    [Fact]
+    public void ButtonStyle_WhenReplaced_RaisesPropertyChangedOnceForEachDistinctValue()
+    {
+        using var messageBox = new MessageBox("Continue?", "Confirm");
+        var style = new ButtonStyle(
+            new Thickness(horizontal: 3, vertical: 0),
+            new ThemeProfile(
+                new ThemeAppearance(
+                    AppearanceTestValues.Face(),
+                    AppearanceTestValues.Border(BorderSide.None),
+                    AppearanceTestValues.Shadow(visible: false))));
+        var notifications = new List<string?>();
+        messageBox.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        messageBox.ButtonStyle = style;
+        messageBox.ButtonStyle = style;
+
+        notifications.ShouldBe([nameof(MessageBox.ButtonStyle)]);
+    }
+
+    /// <summary>Verifies a padding change through the Button style changes the measured button
+    /// height — MessageBox pins every generated action to an explicit computed Width, so only
+    /// vertical padding remains free to change the measured box.</summary>
+    [Fact]
+    public void ButtonStyle_WhenPaddingChanges_ChangesGeneratedButtonHeight()
+    {
+        using var flat = new MessageBox("OK", "Notice");
+        using var tall = new MessageBox("OK", "Notice")
+        {
+            ButtonStyle = new ButtonStyle(
+                new Thickness(horizontal: 1, vertical: 3),
+                ButtonStyle.Standard.Appearance)
+        };
+        var engine = new Engine();
+
+        engine.Layout(flat, new Size(60, 20));
+        engine.Layout(tall, new Size(60, 20));
+
+        var flatButton = OwnedTree.Find<Button>(flat).ShouldNotBeNull();
+        var tallButton = OwnedTree.Find<Button>(tall).ShouldNotBeNull();
+        tallButton.DesiredSize.Height.ShouldBeGreaterThan(flatButton.DesiredSize.Height);
+    }
+
+    /// <summary>Verifies ShowAsync forwards an explicit Button style to the presented dialog's actions
+    /// without exposing the underlying Button instances.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenButtonStyleIsSupplied_AppliesItToEveryPresentedActionAsync()
+    {
+        // Arrange
+        var opener = new Button { Content = new ControlText("Open") };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        var style = new ButtonStyle(
+            new Thickness(horizontal: 2, vertical: 1),
+            new ThemeProfile(
+                new ThemeAppearance(
+                    AppearanceTestValues.Face(foreground: Color.Rgb(4, 5, 6)),
+                    AppearanceTestValues.Border(BorderSide.All),
+                    AppearanceTestValues.Shadow(visible: false))));
+        Task<MessageBoxResult>? pending = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(
+                opener,
+                "Saved successfully.",
+                "Status",
+                MessageBoxButtons.Ok,
+                style),
+            "show MessageBox with an explicit Button style");
+        var messageBox = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+
+        // Assert
+        messageBox.ActualButtonStyle.ShouldBe(style);
+
+        foreach (var button in OwnedTree.FindAll<Button>(messageBox))
+        {
+            button.ActualStyle.ShouldBe(style);
+        }
+
+        await surface.Keyboard.PressAsync(Code.Enter);
+        (await pending!).ShouldBe(MessageBoxResult.Ok);
+    }
 }

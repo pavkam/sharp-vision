@@ -11,15 +11,17 @@ when shown asynchronously; there is no nested proxy Window.
 
 ## API
 
-| Member              | Default                | Contract                                                                 |
-| ------------------- | ---------------------- | ------------------------------------------------------------------------ |
-| `Message`           | required               | Non-null message rendered as grapheme-safe wrapped `Text`.               |
-| `Title`             | `"Message"`            | Non-null Window title.                                                   |
-| `Buttons`           | `MessageBoxButtons.Ok` | Defined semantic action layout.                                          |
-| `SelectedResult`    | default enum value     | Last directly mounted selection.                                         |
-| `HasSelectedResult` | `false`                | Distinguishes no modeless selection from an enum default.                |
-| `ResultSelected`    | no subscribers         | Publishes a directly mounted keyboard or pointer choice.                 |
-| `ShowAsync(...)`    | —                      | Presents one temporary modal MessageBox and returns its semantic result. |
+| Member              | Default                | Contract                                                                                                          |
+| ------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `Message`           | required               | Non-null message rendered as grapheme-safe wrapped `Text`.                                                        |
+| `Title`             | `"Message"`            | Non-null Window title.                                                                                            |
+| `Buttons`           | `MessageBoxButtons.Ok` | Defined semantic action layout.                                                                                   |
+| `ButtonStyle`       | `null`                 | Complete local `ButtonStyle` applied to every generated action, or `null` for each Button's own semantic profile. |
+| `ActualButtonStyle` | resolved               | The resolved `ButtonStyle` currently applied to every generated action.                                           |
+| `SelectedResult`    | default enum value     | Last directly mounted selection.                                                                                  |
+| `HasSelectedResult` | `false`                | Distinguishes no modeless selection from an enum default.                                                         |
+| `ResultSelected`    | no subscribers         | Publishes a directly mounted keyboard or pointer choice.                                                          |
+| `ShowAsync(...)`    | —                      | Presents one temporary modal MessageBox and returns its semantic result.                                          |
 
 `MessageBoxButtons` defines the supported layouts:
 
@@ -45,6 +47,12 @@ var result = await MessageBox.ShowAsync(
     "Delete the draft?",
     "Confirm",
     MessageBoxButtons.YesNoCancel);
+var result = await MessageBox.ShowAsync(
+    owner,
+    "Delete the draft?",
+    "Confirm",
+    MessageBoxButtons.YesNoCancel,
+    buttonStyle);
 ```
 
 `owner` must resolve to an owning Screen, an explicit container, or an outermost
@@ -73,7 +81,11 @@ intrinsic action row separated by three cells. Moving the Window therefore adds
 placement offsets without changing its measured height. The button group is
 centered horizontally and its buttons share the widest label width. Button
 captions use the Button default centered text alignment, and dialog composition
-does not override their kind, face, border, or shadow. Message text is measured
+does not select a Button kind. `ButtonStyle` overrides face, border, shadow, and
+padding for every generated action while `null` follows the active Theme;
+assigning it after construction updates every retained button coherently and
+remeasures when padding or chrome changes. `ShowAsync` accepts the same style
+without exposing the underlying Button instances. Message text is measured
 against the application host's available width and wraps without a hard-coded
 box width. The window has a 32-by-8-cell minimum footprint for consistent dialog
 proportions, and is centered on both axes across that host. Focus enters the
@@ -107,4 +119,7 @@ dialog-role composition, message wrapping under a small viewport, all four
 button layouts, application-wide centering from a bounded owner, deliberate
 message offset, centered captions, modal default and Escape activation, modeless
 keyboard and pointer result publication, modeless Escape propagation, ordered
-close lifecycle, result completion, host cleanup, and focus restoration.
+close lifecycle, result completion, host cleanup, focus restoration,
+`ButtonStyle` propagation and Theme fallback across every button layout, change
+notification, remeasurement on padding change, and `ShowAsync` forwarding an
+explicit style to every presented action.

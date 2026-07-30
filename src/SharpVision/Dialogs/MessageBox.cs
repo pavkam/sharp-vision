@@ -72,6 +72,30 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     /// <summary>Gets the standard button layout rendered by this box.</summary>
     public MessageBoxButtons Buttons { get; }
 
+    /// <summary>Gets or sets the complete local presentation applied to every generated action
+    /// Button, or null to let each Button use its own semantic input profile.</summary>
+    /// <exception cref="InvalidOperationException">The attached MessageBox is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The MessageBox is disposed.</exception>
+    public ButtonStyle? ButtonStyle
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value, InvalidationImpact.Measure))
+            {
+                return;
+            }
+
+            foreach (var button in _buttons)
+            {
+                button.Style = value;
+            }
+        }
+    }
+
+    /// <summary>Gets the resolved Button style applied to every generated action.</summary>
+    public ButtonStyle ActualButtonStyle => _buttons[0].ActualStyle;
+
     #endregion
 
     #region Static presentation helpers
@@ -114,6 +138,8 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
     /// <param name="message">The non-null message text.</param>
     /// <param name="title">The non-null window title.</param>
     /// <param name="buttons">The defined standard button layout.</param>
+    /// <param name="buttonStyle">The complete local Button presentation, or null to use each
+    /// generated Button's own semantic input profile.</param>
     /// <returns>A task completing when a button or dismissal selects a result.</returns>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="buttons"/> is undefined.</exception>
@@ -123,7 +149,8 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
         Control owner,
         string message,
         string title,
-        MessageBoxButtons buttons)
+        MessageBoxButtons buttons,
+        ButtonStyle? buttonStyle = null)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(message);
@@ -132,7 +159,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>
 
         var host = PresentationHost.Resolve(owner) ??
             throw new ArgumentException("The owner must be attached beneath a presentation host.", nameof(owner));
-        var messageBox = new MessageBox(message, title, buttons);
+        var messageBox = new MessageBox(message, title, buttons) { ButtonStyle = buttonStyle };
         host.Add(messageBox);
 
         try
