@@ -299,17 +299,21 @@ public static class Layout
             }
             else
             {
+                // The cluster is too wide to fit even alone on an empty line. Emit it on its own
+                // line anyway, accepting the overflow, rather than advancing past it without ever
+                // including it in an emitted Line — the grapheme must not be silently dropped
+                // from the output (see #125).
                 position += grapheme.Length;
-                lineStart = position;
                 Emit(
-                    sourceOffset + position,
-                    0,
-                    0,
+                    sourceOffset + lineStart,
+                    position - lineStart,
+                    clusterCells,
                     width,
                     alignment,
                     ellipsis: false,
                     destination,
                     ref count);
+                lineStart = position;
             }
 
             cells = 0;

@@ -120,13 +120,14 @@ public sealed class LayoutTests
         lines[0].Cells.ShouldBe(3);
     }
 
-    /// <summary>Verifies zero width consumes no partial or wide source cluster.</summary>
+    /// <summary>Verifies zero width still emits the sole cluster on its own line rather than
+    /// dropping it — there is no narrower line it could ever fit on (see #125).</summary>
     [Fact]
-    public void Format_WhenWidthIsZero_ReturnsEmptyClippedLine()
+    public void Format_WhenWidthIsZero_StillEmitsSoleClusterRatherThanDroppingIt()
     {
         var lines = Format("界", width: 0, overflow: Overflow.WrapAnywhere);
 
-        lines.ShouldBe([new Line(1, 0, 0, 0, false)]);
+        lines.ShouldBe([new Line(0, 1, 2, 0, false)]);
     }
 
     /// <summary>Verifies the returned count reports capacity beyond caller storage.</summary>
@@ -179,7 +180,9 @@ public sealed class LayoutTests
         lines[1].ShouldBe(new Line(4, 3, 3, 0, false));
     }
 
-    /// <summary>Verifies anywhere overflow breaks only between complete grapheme clusters.</summary>
+    /// <summary>Verifies anywhere overflow breaks only between complete grapheme clusters, and that a
+    /// cluster too wide to fit alone on an empty line is still emitted on its own line — accepting
+    /// the overflow — rather than silently dropped (see #125).</summary>
     [Fact]
     public void Format_WhenOverflowWrapAnywhereIsUsed_PreservesGraphemes()
     {
@@ -195,7 +198,7 @@ public sealed class LayoutTests
 
         count.ShouldBe(2);
         lines[0].ShouldBe(new Line(0, 2, 1, 0, false));
-        lines[1].ShouldBe(new Line(3, 0, 0, 0, false));
+        lines[1].ShouldBe(new Line(2, 1, 2, 0, false));
     }
 
     /// <summary>Verifies clip overflow keeps one line ending at a complete grapheme.</summary>

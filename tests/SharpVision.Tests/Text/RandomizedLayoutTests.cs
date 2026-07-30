@@ -47,7 +47,13 @@ public sealed class RandomizedLayoutTests
                                     (line.HasEllipsis ? 1 : 0), context);
                 line.Leading.ShouldBeGreaterThanOrEqualTo(0, context);
 
-                if (width > 0 && overflow != Overflow.Visible)
+                // A single grapheme cluster too wide to fit even alone is still emitted on its
+                // own line under Wrap/WrapAnywhere, accepting the overflow, rather than dropped
+                // (see #125) — that line is the sole documented exception to the width bound.
+                var isSingleOverflowingCluster = overflow is Overflow.Wrap or Overflow.WrapAnywhere &&
+                    GraphemeCount(content.AsSpan(line.Offset, line.Length)) == 1;
+
+                if (width > 0 && overflow != Overflow.Visible && !isSingleOverflowingCluster)
                 {
                     line.Cells.ShouldBeLessThanOrEqualTo(width, context);
                 }
@@ -68,6 +74,18 @@ public sealed class RandomizedLayoutTests
         }
 
         return result;
+    }
+
+    private static int GraphemeCount(ReadOnlySpan<char> value)
+    {
+        var count = 0;
+
+        foreach (var _ in Graphemes.Enumerate(value))
+        {
+            count++;
+        }
+
+        return count;
     }
 
     private static int Cells(ReadOnlySpan<char> value, Ambiguous ambiguous)
