@@ -1049,6 +1049,84 @@ public sealed class WindowTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a Release still ends an active drag and releases capture even when
+    /// CanMove was toggled off mid-drag, instead of leaking capture permanently.</summary>
+    [Fact]
+    public async Task Drag_WhenCanMoveBecomesFalseDuringDrag_StillReleasesCaptureOnReleaseAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Header = "Release",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                Left = Length.Cells(0),
+                Top = Length.Cells(0)
+            };
+            canvas.Children.Add(window);
+            new Engine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+
+            _ = capture.Dispatch(Pointer(new Point(3, 0), PointerAction.Press));
+            capture.Captured.ShouldBeSameAs(window);
+
+            window.CanMove = false;
+            _ = capture.Dispatch(Pointer(new Point(5, 2), PointerAction.Release));
+
+            capture.Captured.ShouldBeNull();
+            window.HasPointerCapture.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a Release still ends an active drag and releases capture even when the
+    /// event carries no cell coordinates (a legitimate state in SGR-pixel mouse mode without
+    /// cell-metrics mapping), instead of leaking capture permanently.</summary>
+    [Fact]
+    public async Task Drag_WhenReleaseHasNoCellCoordinates_StillReleasesCaptureAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Header = "Release",
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                Left = Length.Cells(0),
+                Top = Length.Cells(0)
+            };
+            canvas.Children.Add(window);
+            new Engine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+
+            _ = capture.Dispatch(Pointer(new Point(3, 0), PointerAction.Press));
+            capture.Captured.ShouldBeSameAs(window);
+
+            var releaseWithoutCells = new Pointer(
+                cells: null,
+                pixels: new Point(50, 20),
+                Buttons.None,
+                PointerAction.Release,
+                wheelX: 0,
+                wheelY: 0,
+                Modifiers.None,
+                isMotion: false,
+                isCellPositionInferred: false);
+            _ = capture.Dispatch(releaseWithoutCells);
+
+            capture.Captured.ShouldBeNull();
+            window.HasPointerCapture.ShouldBeFalse();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies dragging past the top-left edge clamps to zero instead of throwing.</summary>
     [Fact]
     public async Task Drag_WhenDraggedPastOrigin_ClampsToZeroAsync()

@@ -700,12 +700,25 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     {
         Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
 
+        var action = eventArgs.Pointer.Action;
+
+        // A Release must always be able to end an active drag and release
+        // capture, regardless of whether CanMove was toggled off mid-drag or
+        // this particular event has no cell coordinates (a legitimate state
+        // in SGR-pixel mouse mode without cell-metrics mapping). Otherwise
+        // the Window keeps pointer capture and _dragging stuck true forever.
+        if (action == PointerAction.Release && _dragging)
+        {
+            _dragging = false;
+            ReleasePointerCapture();
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (!CanMove || eventArgs.Pointer.Cells is not { } cells)
         {
             return;
         }
-
-        var action = eventArgs.Pointer.Action;
 
         if (action == PointerAction.Press &&
             eventArgs.Pointer.Buttons == Buttons.Primary &&
@@ -726,12 +739,6 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
             var maximumTop = Math.Max(0, clientBounds.Height - LocalBounds.Height);
             Overlay.SetLeft(this, Length.Cells(Math.Clamp(_dragWindowOrigin.X + deltaX, 0, maximumLeft)));
             Overlay.SetTop(this, Length.Cells(Math.Clamp(_dragWindowOrigin.Y + deltaY, 0, maximumTop)));
-            eventArgs.Handled = true;
-        }
-        else if (action == PointerAction.Release && _dragging)
-        {
-            _dragging = false;
-            ReleasePointerCapture();
             eventArgs.Handled = true;
         }
     }
