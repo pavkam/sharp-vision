@@ -140,6 +140,63 @@ public sealed class ComboBoxTests
         order.ShouldBe(["property", "event"]);
     }
 
+    /// <summary>Verifies assigning Items auto-selects index 0 through the normal selection-change
+    /// path, raising SelectionChanged and PropertyChanged(SelectedIndex) like any other change.</summary>
+    [Fact]
+    public void Items_WhenAssignedWithNoPriorSelection_PublishesAutoSelectedIndexZero()
+    {
+        var box = new ComboBox();
+        var propertyChanges = new List<string>();
+        var selectionChanges = 0;
+        box.PropertyChanged += (_, eventArgs) => propertyChanges.Add(eventArgs.PropertyName!);
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.Items = ["a", "b", "c"];
+
+        box.SelectedIndex.ShouldBe(0);
+        box.SelectedItem.ShouldBe("a");
+        propertyChanges.ShouldContain(nameof(ComboBox.SelectedIndex));
+        selectionChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies setting SelectedIndex while the drop-down is open to a genuinely
+    /// available item publishes exactly one SelectionChanged, not a duplicate from both the
+    /// internal list's own notification and an unconditional explicit publish.</summary>
+    [Fact]
+    public void SelectedIndex_WhenSetWhileOpenToAvailableItem_FiresSelectionChangedExactlyOnce()
+    {
+        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
+        new Engine().Layout(box, new Size(24, 12));
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.SelectedIndex = 1;
+
+        box.SelectedIndex.ShouldBe(1);
+        box.SelectedItem.ShouldBe("Two");
+        selectionChanges.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a SelectedIndex assignment silently vetoed by the internal list's own
+    /// SelectionChanging handler (while the drop-down is open, so the veto is genuine) is
+    /// rolled back rather than reported through SelectionChanged as if it had taken effect.</summary>
+    [Fact]
+    public void SelectedIndex_WhenListVetoesWhileOpen_RollsBackWithoutPublishing()
+    {
+        var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
+        new Engine().Layout(box, new Size(24, 12));
+        var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
+        var list = popup.Content.ShouldBeOfType<ListView>();
+        list.SelectionChanging += (_, eventArgs) => eventArgs.Cancel = true;
+        var selectionChanges = 0;
+        box.SelectionChanged += (_, _) => selectionChanges++;
+
+        box.SelectedIndex = 1;
+
+        box.SelectedIndex.ShouldBe(0);
+        selectionChanges.ShouldBe(0);
+    }
+
     /// <summary>Verifies the framed popup preserves the first visible choices instead of exposing the underlying page.</summary>
     [Fact]
     public void Render_WhenOpen_RendersChoicesInsideFramedSurface()

@@ -110,7 +110,7 @@ public sealed class ComboBox: Control
 
             if (_selectedIndex < 0 && value.Count > 0)
             {
-                _selectedIndex = 0;
+                SetSelectedIndex(0);
             }
             else if (_selectedIndex >= value.Count)
             {
@@ -601,9 +601,25 @@ public sealed class ComboBox: Control
 
         if (_list.SelectedIndex == value)
         {
+            // The list's own SelectionChanged already fired synchronously from inside the
+            // assignment above, publishing this change through OnSelectionChanged.
             return;
         }
 
+        if (IsOpen)
+        {
+            // ListView.SelectedIndex's own availability check factors in ancestor
+            // visibility, so a rejection is only a genuine veto (an unavailable item, or a
+            // SelectionChanging handler cancelling it) while the drop-down's items are
+            // actually visible. Roll back instead of reporting a selection the drop-down
+            // never adopted.
+            _selectedIndex = previous;
+            return;
+        }
+
+        // The drop-down is closed, so every item is effectively invisible and the list
+        // always silently rejects the assignment regardless of real availability — the
+        // list's own notification never fires in that case, so publish explicitly here.
         PublishSelectionChanged(value, previous);
     }
 
