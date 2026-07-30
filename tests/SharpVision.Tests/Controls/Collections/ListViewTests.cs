@@ -542,6 +542,59 @@ public sealed class ListViewTests
                 KeyAction.Release)));
     }
 
+    /// <summary>Verifies the composed scroll container's contract is reachable directly on
+    /// ListView, without a caller needing to know about the private items Stack (see #75).</summary>
+    [Fact]
+    public void ScrollBy_WhenContentExceedsViewport_MovesVerticalOffsetAndRaisesScrollChanged()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new Engine().Layout(control, new Size(10, 4));
+        List<ScrollChangedEventArgs> changes = [];
+        control.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        control.Extent.Height.ShouldBeGreaterThan(control.Viewport.Height);
+        var moved = control.ScrollBy(0, 3);
+
+        moved.ShouldBeTrue();
+        control.VerticalOffset.ShouldBe(3);
+        _ = changes.ShouldHaveSingleItem();
+    }
+
+    /// <summary>Verifies BringIntoView(index) scrolls minimally to reveal an item below the
+    /// viewport, addressed by position rather than a realized private control.</summary>
+    [Fact]
+    public void BringIntoView_WhenIndexIsBelowViewport_ScrollsToRevealIt()
+    {
+        List<Label> realized = [];
+        var control = new UiListView
+        {
+            ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
+            Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
+        };
+        new Engine().Layout(control, new Size(10, 4));
+
+        var moved = control.BringIntoView(19);
+
+        moved.ShouldBeTrue();
+        control.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies BringIntoView validates its index like the underlying realized-control
+    /// lookup does.</summary>
+    [Fact]
+    public void BringIntoView_WhenIndexIsOutOfRange_ThrowsArgumentOutOfRangeException()
+    {
+        var control = Create("A", "B", "C");
+        new Engine().Layout(control, new Size(10, 4));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => control.BringIntoView(3));
+    }
+
     private static void Click(PointerManager capture, Point point, Modifiers modifiers)
     {
         _ = capture.Dispatch(Pointer(point, PointerAction.Press, modifiers));

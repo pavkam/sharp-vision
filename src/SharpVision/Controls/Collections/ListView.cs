@@ -190,8 +190,64 @@ public sealed class ListView: ItemsControl
     /// <summary>Gets the active navigation and keyboard-selection index, or -1 when no item is active.</summary>
     public int ActiveIndex { get; private set; } = -1;
 
-    /// <summary>Gets the composed vertical scroll offset.</summary>
-    public int VerticalOffset => _stack.VerticalOffset;
+    /// <summary>Raised after the composed scroll container's offset commits.</summary>
+    /// <remarks>
+    /// The scrolling items host is a private retained part; this forwards its
+    /// <see cref="Container.ScrollChanged"/> so a consumer can observe scroll position without
+    /// reaching into private presentation trees (see #75).
+    /// </remarks>
+    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
+    {
+        add => _stack.ScrollChanged += value;
+        remove => _stack.ScrollChanged -= value;
+    }
+
+    /// <summary>Gets the committed non-negative content extent of the composed scroll container.</summary>
+    public Size Extent => _stack.Extent;
+
+    /// <summary>Gets the committed non-negative visible extent of the composed scroll container.</summary>
+    public Size Viewport => _stack.Viewport;
+
+    /// <summary>Gets or sets the composed horizontal scroll offset.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public int HorizontalOffset
+    {
+        get => _stack.HorizontalOffset;
+        set => _stack.HorizontalOffset = value;
+    }
+
+    /// <summary>Gets or sets the composed vertical scroll offset.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public int VerticalOffset
+    {
+        get => _stack.VerticalOffset;
+        set => _stack.VerticalOffset = value;
+    }
+
+    /// <summary>Scrolls the composed scroll container by signed cell deltas with saturation and
+    /// endpoint clamping.</summary>
+    /// <param name="x">The requested horizontal delta.</param>
+    /// <param name="y">The requested vertical delta.</param>
+    /// <param name="cause">The defined input path.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
+        _stack.ScrollBy(x, y, cause);
+
+    /// <summary>Scrolls minimally to expose one item by position, without requiring the caller to
+    /// know about the private realized visual tree.</summary>
+    /// <param name="index">The valid zero-based item position.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the realized items.</exception>
+    /// <exception cref="InvalidOperationException">The attached ListView is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public bool BringIntoView(int index) => _stack.BringIntoView(GetItemControl(index));
 
     /// <summary>Gets or sets the axes available to the composed overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>

@@ -476,4 +476,58 @@ public sealed class NavigationViewTests
             focus.Focus(nav).ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies the generated scroll container's contract is reachable directly on
+    /// NavigationView, without a caller needing to know about the private items Stack (see #75).</summary>
+    [Fact]
+    public void ScrollBy_WhenContentExceedsViewport_MovesVerticalOffsetAndRaisesScrollChanged()
+    {
+        var nav = new NavigationView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            nav.Items.Add(new NavigationViewItem { Header = $"Item {index}" });
+        }
+
+        new Engine().Layout(nav, new Size(10, 4));
+        List<ScrollChangedEventArgs> changes = [];
+        nav.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        nav.Extent.Height.ShouldBeGreaterThan(nav.Viewport.Height);
+        var moved = nav.ScrollBy(0, 3);
+
+        moved.ShouldBeTrue();
+        nav.VerticalOffset.ShouldBe(3);
+        _ = changes.ShouldHaveSingleItem();
+    }
+
+    /// <summary>Verifies BringItemIntoView scrolls minimally to reveal an item below the viewport.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenItemIsBelowViewport_ScrollsToRevealIt()
+    {
+        var nav = new NavigationView();
+        NavigationViewItem? last = null;
+
+        for (var index = 0; index < 20; index++)
+        {
+            last = new NavigationViewItem { Header = $"Item {index}" };
+            nav.Items.Add(last);
+        }
+
+        new Engine().Layout(nav, new Size(10, 4));
+
+        var moved = nav.BringItemIntoView(last!);
+
+        moved.ShouldBeTrue();
+        nav.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies BringItemIntoView validates its argument like the underlying container does.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenItemIsNull_ThrowsArgumentNullException()
+    {
+        var nav = new NavigationView();
+
+        _ = Should.Throw<ArgumentNullException>(() => nav.BringItemIntoView(null!));
+    }
 }
