@@ -759,6 +759,75 @@ public sealed class SessionTests
     }
 
     /// <summary>
+    /// Verifies a resize that is already ready is forwarded promptly even while a transport keeps
+    /// completing reads synchronously — a fixed-order Task.WhenAny that always resolves to the
+    /// first already-completed task previously let a synchronous read burst monopolize the loop
+    /// and starve resize indefinitely (see #21).
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeIsReadyDuringASynchronousReadBurst_ForwardsResizePromptlyAsync()
+    {
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var readCountAtResize = -1;
+        var sink = new RuntimeSink { OnResize = () => readCountAtResize = transport.ReadCount };
+
+        // Every read completes synchronously once queued input is already buffered in the
+        // channel; queuing far more than any reasonable fairness bound before the resize is
+        // observed reproduces the reported burst.
+        for (var index = 0; index < 500; index++)
+        {
+            transport.Input("a"u8.ToArray());
+        }
+
+        var expected = new Dimensions(new Size(120, 40), new Size(1200, 800));
+        resize.Resize(expected);
+
+        await using Session session = new(transport, resize, sink, RuntimeOptions.Minimal);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+
+        await sink.ResizeReceived.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+
+        // Bounded alternation guarantees resize is serviced within a handful of iterations, not
+        // after draining the whole 500-item burst. Captured synchronously inside the Resize
+        // callback itself, since ResizeReceived's continuation runs asynchronously and the loop
+        // keeps consuming the burst concurrently while that continuation is merely scheduled.
+        readCountAtResize.ShouldBeLessThan(20);
+
+        transport.Close();
+        await running;
+
+        sink.Resizes.ShouldBe([expected]);
+    }
+
+    /// <summary>
+    /// Verifies a resize that becomes ready in the same tick as a closing (EOF) read is still
+    /// forwarded rather than silently dropped by the read's early-return closure path (see #21).
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenResizeIsReadyAtTheSameTickAsEof_StillForwardsResizeAsync()
+    {
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var expected = new Dimensions(new Size(120, 40), new Size(1200, 800));
+
+        // No input is ever queued, so the very first read resolves directly to EOF; the resize
+        // is queued before the loop starts so it races that EOF read on the very first iteration.
+        transport.Close();
+        resize.Resize(expected);
+
+        await using Session session = new(transport, resize, sink, RuntimeOptions.Minimal);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.Resizes.ShouldBe([expected]);
+        sink.ClosedCount.ShouldBe(1);
+    }
+
+    /// <summary>
     /// Verifies partial startup failure restores attempted modes and preserves identity.
     /// </summary>
     [Fact]

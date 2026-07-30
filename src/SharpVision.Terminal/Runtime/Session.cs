@@ -589,6 +589,7 @@ public sealed class Session: IAsyncDisposable
         // that still borrows the rented buffer and observe every abandoned task.
         Task<int>? read = null;
         Task<Dimensions>? resize = null;
+        var preferResize = false;
 
         // Capability publication is the startup barrier. Input may refine the
         // negotiator immediately, while only the newest pre-publication resize
@@ -602,9 +603,40 @@ public sealed class Session: IAsyncDisposable
 
             while (true)
             {
-                var completed = deadline is null
-                    ? await Task.WhenAny(read, resize).ConfigureAwait(false)
-                    : await Task.WhenAny(read, resize, deadline).ConfigureAwait(false);
+                // Task.WhenAny returns whichever awaited task the runtime observes complete
+                // first; when read and resize are both already complete at the moment it is
+                // called (a transport or resize source that completes synchronously), it always
+                // resolved to whichever was passed first — read here — regardless of the other's
+                // readiness. A synchronous read burst could then monopolize the loop forever,
+                // starving resize and an elapsed negotiation deadline (see #21). Re-checking the
+                // ready set explicitly on every iteration, instead of trusting WhenAny's pick
+                // among already-completed tasks, restores bounded fairness: an elapsed deadline
+                // always wins outright, and read/resize alternate when both are simultaneously
+                // ready, so neither can starve the other for more than one iteration.
+                var deadlineReady = deadline is not null && deadline.IsCompleted;
+                Task completed;
+
+                if (!deadlineReady && !read.IsCompleted && !resize.IsCompleted)
+                {
+                    completed = deadline is null
+                        ? await Task.WhenAny(read, resize).ConfigureAwait(false)
+                        : await Task.WhenAny(read, resize, deadline).ConfigureAwait(false);
+                }
+                else
+                {
+                    completed = deadlineReady switch
+                    {
+                        true => deadline!,
+                        false when read.IsCompleted && resize.IsCompleted => preferResize ? resize : read,
+                        false when read.IsCompleted => read,
+                        _ => resize
+                    };
+
+                    if (read.IsCompleted && resize.IsCompleted)
+                    {
+                        preferResize = !preferResize;
+                    }
+                }
 
                 if (deadline is not null && ReferenceEquals(completed, deadline))
                 {
@@ -677,6 +709,17 @@ public sealed class Session: IAsyncDisposable
                             _sink.Resize(in pendingResize);
                             hasPendingResize = false;
                         }
+                    }
+                    else if (resize.IsCompleted)
+                    {
+                        // A resize that becomes ready in the same tick as this EOF read must
+                        // still be observed. Once ready, resize events forward immediately
+                        // rather than buffering into hasPendingResize/pendingResize above, so
+                        // without this check a resize that only ever wins a tie against a
+                        // closing read would be silently dropped by the early return below (see #21).
+                        var dimensions = await resize.ConfigureAwait(false);
+                        router.SetGeometry(dimensions.Cells, dimensions.Pixels);
+                        _sink.Resize(in dimensions);
                     }
 
                     _sink.Closed();

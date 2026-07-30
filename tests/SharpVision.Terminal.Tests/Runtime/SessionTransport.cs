@@ -35,6 +35,9 @@ internal sealed class SessionTransport: ITransport
     internal TaskCompletionSource FirstRead { get; } =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>Gets the number of completed reads, including empty EOF reads.</summary>
+    internal int ReadCount { get; private set; }
+
     /// <summary>Gets ASCII-decoded concatenated writes.</summary>
     internal string JoinedWrites => string.Concat(_writes.Select(Encoding.ASCII.GetString));
 
@@ -77,10 +80,12 @@ internal sealed class SessionTransport: ITransport
         {
             var value = await _input.Reader.ReadAsync(cancellationToken);
             value.AsMemory().CopyTo(destination);
+            ReadCount++;
             return value.Length;
         }
         catch (ChannelClosedException)
         {
+            ReadCount++;
             return 0;
         }
     }

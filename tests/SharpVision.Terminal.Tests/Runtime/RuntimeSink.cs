@@ -56,6 +56,11 @@ internal sealed class RuntimeSink: ISink
     /// <summary>Gets an optional exact resize callback failure.</summary>
     internal Exception? ResizeFailure { get; init; }
 
+    /// <summary>Gets an optional hook invoked synchronously before a resize is recorded, so a
+    /// caller can capture state exactly at the point of delivery without an async continuation
+    /// race.</summary>
+    internal System.Action? OnResize { get; init; }
+
     /// <summary>Gets reported runtime faults.</summary>
     internal List<Exception> Faults { get; } = [];
 
@@ -132,6 +137,7 @@ internal sealed class RuntimeSink: ISink
             throw ResizeFailure;
         }
 
+        OnResize?.Invoke();
         Resizes.Add(value);
         Order.Add("resize");
         _ = ResizeReceived.TrySetResult();
