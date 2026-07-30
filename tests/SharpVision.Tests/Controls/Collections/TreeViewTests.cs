@@ -676,4 +676,58 @@ public sealed class TreeViewTests
             focus.Focus(tree).ShouldBeTrue();
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies the generated scroll container's contract is reachable directly on
+    /// TreeView, without a caller needing to know about the private items Stack (see #75).</summary>
+    [Fact]
+    public void ScrollBy_WhenContentExceedsViewport_MovesVerticalOffsetAndRaisesScrollChanged()
+    {
+        var tree = new TreeView();
+
+        for (var index = 0; index < 20; index++)
+        {
+            tree.Items.Add(new TreeViewItem { Header = $"Item {index}" });
+        }
+
+        new Engine().Layout(tree, new Size(10, 4));
+        List<ScrollChangedEventArgs> changes = [];
+        tree.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
+
+        tree.Extent.Height.ShouldBeGreaterThan(tree.Viewport.Height);
+        var moved = tree.ScrollBy(0, 3);
+
+        moved.ShouldBeTrue();
+        tree.VerticalOffset.ShouldBe(3);
+        _ = changes.ShouldHaveSingleItem();
+    }
+
+    /// <summary>Verifies BringItemIntoView scrolls minimally to reveal an item below the viewport.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenItemIsBelowViewport_ScrollsToRevealIt()
+    {
+        var tree = new TreeView();
+        TreeViewItem? last = null;
+
+        for (var index = 0; index < 20; index++)
+        {
+            last = new TreeViewItem { Header = $"Item {index}" };
+            tree.Items.Add(last);
+        }
+
+        new Engine().Layout(tree, new Size(10, 4));
+
+        var moved = tree.BringItemIntoView(last!);
+
+        moved.ShouldBeTrue();
+        tree.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies BringItemIntoView validates its argument like the underlying container does.</summary>
+    [Fact]
+    public void BringItemIntoView_WhenItemIsNull_ThrowsArgumentNullException()
+    {
+        var tree = new TreeView();
+
+        _ = Should.Throw<ArgumentNullException>(() => tree.BringItemIntoView(null!));
+    }
 }

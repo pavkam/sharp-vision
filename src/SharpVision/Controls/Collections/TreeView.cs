@@ -84,6 +84,70 @@ public sealed class TreeView: CompositeControl
     /// </remarks>
     public ScrollBarStyle ActualScrollBarStyle => _itemsStack.ActualScrollBarStyle;
 
+    /// <summary>Raised after the generated scroll container's offset commits.</summary>
+    /// <remarks>
+    /// The scrolling items container is a private retained part; this forwards its
+    /// <see cref="Container.ScrollChanged"/> so a consumer can observe scroll position without
+    /// reaching into private presentation trees (see #75).
+    /// </remarks>
+    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
+    {
+        add => _itemsStack.ScrollChanged += value;
+        remove => _itemsStack.ScrollChanged -= value;
+    }
+
+    /// <summary>Gets the committed non-negative content extent of the generated scroll container.</summary>
+    public Size Extent => _itemsStack.Extent;
+
+    /// <summary>Gets the committed non-negative visible extent of the generated scroll container.</summary>
+    public Size Viewport => _itemsStack.Viewport;
+
+    /// <summary>Gets or sets the valid horizontal content offset of the generated scroll container.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public int HorizontalOffset
+    {
+        get => _itemsStack.HorizontalOffset;
+        set => _itemsStack.HorizontalOffset = value;
+    }
+
+    /// <summary>Gets or sets the valid vertical content offset of the generated scroll container.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public int VerticalOffset
+    {
+        get => _itemsStack.VerticalOffset;
+        set => _itemsStack.VerticalOffset = value;
+    }
+
+    /// <summary>Scrolls the generated scroll container by signed cell deltas with saturation and
+    /// endpoint clamping.</summary>
+    /// <param name="x">The requested horizontal delta.</param>
+    /// <param name="y">The requested vertical delta.</param>
+    /// <param name="cause">The defined input path.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
+        _itemsStack.ScrollBy(x, y, cause);
+
+    /// <summary>Scrolls minimally to expose one owned item, without requiring the caller to know
+    /// about the private realized visual tree.</summary>
+    /// <param name="item">The non-null owned item.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentException">The item is not currently realized as a visible descendant.</exception>
+    /// <exception cref="InvalidOperationException">The attached tree view is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public bool BringItemIntoView(TreeViewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return _itemsStack.BringIntoView(item);
+    }
+
     /// <summary>Initializes a framed focusable tree view with an empty root item collection.</summary>
     public TreeView()
     {
