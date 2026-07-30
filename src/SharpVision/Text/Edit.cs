@@ -52,11 +52,26 @@ public static class Edit
             return true;
         }
 
+        // Stops once a cluster starts past index instead of always enumerating the whole source.
+        // Grapheme offsets are strictly increasing, so once a cluster starts past index no later
+        // cluster can start at index either. The enumerator still sees the full source (only the
+        // loop exits early), so lookahead-dependent boundary rules near index — regional-indicator
+        // pairs, extended-pictographic ZWJ sequences — resolve exactly as they would scanning to
+        // the end; only the wasted work past the answer is skipped. Previously this always scanned
+        // the whole source regardless of index, so a single boundary check near the start of a
+        // large document cost the same as one at the end, and every caller that validates one
+        // endpoint near the caret (Validate, above, on every navigation and edit call) paid for the
+        // whole document each time (see #42).
         foreach (var grapheme in Graphemes.Enumerate(text))
         {
             if (grapheme.Offset == index)
             {
                 return true;
+            }
+
+            if (grapheme.Offset > index)
+            {
+                return false;
             }
         }
 

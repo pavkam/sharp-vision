@@ -34,6 +34,30 @@ public sealed class EditTests
             Edit.Validate(value, new Selection(value.Length + 1, value.Length + 1)));
     }
 
+    /// <summary>Verifies IsBoundary still resolves lookahead-dependent breaks correctly once it stops
+    /// scanning past the candidate index instead of always scanning to the source end (see #42):
+    /// regional-indicator pairing needs to see whether a run has odd or even parity, and ZWJ
+    /// emoji sequences need to see whether an extended-pictographic run follows the joiner.</summary>
+    [Fact]
+    public void IsBoundary_WhenCandidateIndexIsInsideALookaheadDependentCluster_ReturnsFalse()
+    {
+        // Two flag emoji: each is a pair of regional indicators forming one cluster.
+        const string flags = "\U0001F1EB\U0001F1F7\U0001F1E9\U0001F1EA";
+        Edit.IsBoundary(flags, 0).ShouldBeTrue();
+        Edit.IsBoundary(flags, 2).ShouldBeFalse();
+        Edit.IsBoundary(flags, 4).ShouldBeTrue();
+        Edit.IsBoundary(flags, 6).ShouldBeFalse();
+        Edit.IsBoundary(flags, 8).ShouldBeTrue();
+
+        // Woman + ZWJ + laptop: one cluster joined through the zero-width joiner.
+        const string zwj = "A👩‍💻Z";
+        Edit.IsBoundary(zwj, 0).ShouldBeTrue();
+        Edit.IsBoundary(zwj, 1).ShouldBeTrue();
+        Edit.IsBoundary(zwj, 3).ShouldBeFalse();
+        Edit.IsBoundary(zwj, 4).ShouldBeFalse();
+        Edit.IsBoundary(zwj, 6).ShouldBeTrue();
+    }
+
     /// <summary>Verifies invalid UTF-16 source units remain individually addressable replacement clusters.</summary>
     [Fact]
     public void MoveNext_WhenTextHasInvalidUtf16_PreservesSourceUnitBoundaries()
