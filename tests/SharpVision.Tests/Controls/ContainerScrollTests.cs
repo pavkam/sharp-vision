@@ -69,6 +69,36 @@ public sealed class ContainerScrollTests
         container.ScrollBy(0, 5).ShouldBeFalse();
     }
 
+    /// <summary>Verifies disarming AutoScroll on a scrolled container raises ScrollChanged and
+    /// resynchronizes the generated ScrollBar parts instead of silently zeroing the internal
+    /// offset fields (see #139).</summary>
+    [Fact]
+    public void AutoScroll_WhenDisarmedAfterScrolling_RaisesScrollChangedAndResynchronizesBars()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always,
+            VerticalBarVisibility = ScrollBarVisibility.Always
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new Engine().Layout(container, new Size(4, 10));
+        _ = container.ScrollBy(0, 1000);
+        container.VerticalOffset.ShouldBe(31);
+        var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
+        ScrollChangedEventArgs? captured = null;
+        container.ScrollChanged += (_, e) => captured = e;
+
+        container.AutoScroll = false;
+
+        container.VerticalOffset.ShouldBe(0);
+        var change = captured.ShouldNotBeNull();
+        change.PreviousOffset.ShouldBe(new Point(0, 31));
+        change.Offset.ShouldBe(new Point(0, 0));
+        bar.Value.ShouldBe(0);
+    }
+
     /// <summary>
     /// Verifies generated scrollbar chrome never changes public tab traversal,
     /// including while a previously visible scrolling container is disarmed.

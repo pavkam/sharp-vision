@@ -261,8 +261,12 @@ public abstract class Container: Control
             }
             else
             {
-                _scroll.HorizontalOffset = 0;
-                _scroll.VerticalOffset = 0;
+                // Routed through Apply rather than writing the internal offset fields directly,
+                // so this reset honors the same clamp/notify/synchronize contract every other
+                // offset change goes through — a subscriber tracking ScrollChanged must not
+                // silently miss this change, and the generated ScrollBar parts must not go stale
+                // (see #139).
+                _ = Apply(0, 0, ScrollCause.Programmatic);
 
                 if (_scroll.Bars is not null)
                 {
@@ -654,8 +658,7 @@ public abstract class Container: Control
             _ = SetProperty(ref _scroll.Extent, box, InvalidationImpact.None, nameof(Extent));
             _ = SetProperty(ref _scroll.Viewport, box, InvalidationImpact.None, nameof(Viewport));
             _scroll.ViewportBounds = padded;
-            _scroll.HorizontalOffset = 0;
-            _scroll.VerticalOffset = 0;
+            _ = Apply(0, 0, ScrollCause.Programmatic);
             return padded;
         }
 
