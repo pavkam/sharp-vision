@@ -17,13 +17,35 @@ public sealed class FigletRendererPerformanceTests
         var font = FigletFont.Load(stream, "one-row");
         var options = new FigletOptions(layout: FigletLayout.VerticalFitting);
 
-        var small = Elapsed(font, options, lineCount: 500);
-        var large = Elapsed(font, options, lineCount: 8_000);
+        // A single sample on a shared CI runner is noisy enough to false-fail even a correct
+        // linear implementation; taking the minimum of several trials for each size keeps a
+        // true O(K^2) regression clearly visible (it still grows ~256x at best case) while
+        // filtering out scheduler-jitter outliers that a single measurement cannot distinguish
+        // from a real regression.
+        var small = MinimumElapsed(font, options, lineCount: 500, samples: 5);
+        var large = MinimumElapsed(font, options, lineCount: 8_000, samples: 5);
 
         // A quadratic scan grows by ~256x (16^2) for a 16x larger line count; a linear scan
         // grows by ~16x. A 40x budget comfortably clears linear noise while still rejecting
         // the O(K^2) shape well before it reaches 256x.
         large.TotalMilliseconds.ShouldBeLessThan((small.TotalMilliseconds * 40) + 20);
+    }
+
+    private static TimeSpan MinimumElapsed(FigletFont font, FigletOptions options, int lineCount, int samples)
+    {
+        var minimum = TimeSpan.MaxValue;
+
+        for (var sample = 0; sample < samples; sample++)
+        {
+            var elapsed = Elapsed(font, options, lineCount);
+
+            if (elapsed < minimum)
+            {
+                minimum = elapsed;
+            }
+        }
+
+        return minimum;
     }
 
     private static TimeSpan Elapsed(FigletFont font, FigletOptions options, int lineCount)

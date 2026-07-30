@@ -103,20 +103,25 @@ public sealed class FilePickerContractTests
     [Fact]
     public void Create_WhenResultIsProduced_OwnsPathsAndExposesSinglePathConvenience()
     {
-        // Arrange
-        var paths = new[] { "/workspace/a.cs", "/workspace/b.cs" };
+        // Arrange: fully qualified paths must be constructed per platform — a bare "/workspace/a.cs"
+        // is fully qualified on Unix but only rooted (not fully qualified) on Windows, which
+        // Path.IsPathFullyQualified requires a drive or UNC root to satisfy.
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-result-contract"));
+        var first = Path.Combine(root, "a.cs");
+        var second = Path.Combine(root, "b.cs");
+        var paths = new[] { first, second };
 
         // Act
         var accepted = FilePickerResult.Accept(paths);
-        paths[0] = "/changed";
+        paths[0] = Path.Combine(root, "changed.cs");
         var cancelled = FilePickerResult.Cancelled;
 
         // Assert
         accepted.Accepted.ShouldBeTrue();
         accepted.Paths.Count.ShouldBe(2);
-        accepted.Paths[0].ShouldBe("/workspace/a.cs");
-        accepted.Paths[1].ShouldBe("/workspace/b.cs");
-        accepted.SelectedPath.ShouldBe("/workspace/a.cs");
+        accepted.Paths[0].ShouldBe(first);
+        accepted.Paths[1].ShouldBe(second);
+        accepted.SelectedPath.ShouldBe(first);
         cancelled.Accepted.ShouldBeFalse();
         cancelled.Paths.ShouldBeEmpty();
         cancelled.SelectedPath.ShouldBeNull();
