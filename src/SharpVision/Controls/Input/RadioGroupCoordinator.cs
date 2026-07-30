@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Input;
 
 using System.Runtime.ExceptionServices;
 
+using SharpVision.Surfaces;
+
 /// <summary>Coordinates radio membership, exclusive selection, and roving tab entry.</summary>
 /// <remarks>Membership is resolved from the current ownership root for named groups and from the
 /// exact owning slot for unnamed groups. This keeps mutually exclusive behavior independent from
@@ -178,9 +180,16 @@ internal static class RadioGroupCoordinator
             return result;
         }
 
+        // Every window/popup/dialog ultimately attaches under the one process-wide Screen
+        // (directly, or via PresentationHost walking up to it), so climbing all the way to the
+        // true root would resolve a named group across every currently open top-level surface
+        // instead of scoping it to the one that owns the group — stop at the nearest enclosing
+        // FloatingSurface (Window or Popup) instead, mirroring how Menu.SelectRadio scopes to
+        // its own Items (see #113). A control with no enclosing surface (content attached
+        // directly to the Screen) keeps the prior root-of-tree behavior.
         Control root = value;
 
-        while (root.Parent is { } parent)
+        while (root is not FloatingSurface && root.Parent is { } parent)
         {
             root = parent;
         }

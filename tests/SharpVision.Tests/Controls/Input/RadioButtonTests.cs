@@ -126,6 +126,31 @@ public sealed class RadioButtonTests
         unrelated.IsChecked.ShouldBeTrue();
     }
 
+    /// <summary>Verifies named groups scope to the nearest enclosing Window instead of resolving
+    /// across every independently-opened top-level window that ultimately shares one process-wide
+    /// Screen root — two windows reusing the same reusable dialog template with the same
+    /// GroupName must not corrupt each other's selection (see #113).</summary>
+    [Fact]
+    public void IsChecked_WhenNamedMembersAreInDifferentWindows_ScopesToOwningWindow()
+    {
+        var firstFirst = new RadioButton { GroupName = "alignment", IsChecked = true };
+        var firstSecond = new RadioButton { GroupName = "alignment" };
+        var firstWindow = new Window { Content = new Stack { Children = { firstFirst, firstSecond } } };
+
+        var secondFirst = new RadioButton { GroupName = "alignment", IsChecked = true };
+        var secondSecond = new RadioButton { GroupName = "alignment" };
+        var secondWindow = new Window { Content = new Stack { Children = { secondFirst, secondSecond } } };
+        var screen = new ProbeScreen();
+        screen.AddPresentation(firstWindow);
+        screen.AddPresentation(secondWindow);
+
+        secondSecond.IsChecked = true;
+
+        firstFirst.IsChecked.ShouldBeTrue();
+        secondFirst.IsChecked.ShouldBeFalse();
+        secondSecond.IsChecked.ShouldBeTrue();
+    }
+
     /// <summary>Verifies named groups span every owned slot even when no owner is a Container.</summary>
     [Fact]
     public void IsChecked_WhenNamedMembersUseNonContainerSlots_UsesCompleteOwnedRoot()
