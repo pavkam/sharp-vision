@@ -25,6 +25,7 @@ internal static class FigletRenderer
         var layout = options.Layout ?? font.Layout;
         var logicalLines = text.ReplaceLineEndings("\n").Split('\n');
         List<StringBuilder> composed = [];
+        var composedWidth = 0;
 
         foreach (var t in logicalLines)
         {
@@ -37,7 +38,7 @@ internal static class FigletRenderer
 
             var rows = RenderLine(font, runes, layout);
             TrimLeading(rows);
-            AppendVertical(composed, rows, layout, font.HardBlank);
+            AppendVertical(composed, ref composedWidth, rows, layout, font.HardBlank);
         }
 
         var output = new StringBuilder();
@@ -283,13 +284,17 @@ internal static class FigletRenderer
 
     private static void AppendVertical(
         List<StringBuilder> output,
+        ref int outputWidth,
         StringBuilder[] rows,
         FigletLayout layout,
         char hardblank)
     {
+        var rowsWidth = rows.Length == 0 ? 0 : rows.Max(row => row.Length);
+
         if (output.Count == 0)
         {
             output.AddRange(rows);
+            outputWidth = rowsWidth;
             return;
         }
 
@@ -298,10 +303,11 @@ internal static class FigletRenderer
         if (vertical == 0)
         {
             output.AddRange(rows);
+            outputWidth = Math.Max(outputWidth, rowsWidth);
             return;
         }
 
-        var overlap = GetVerticalOverlap(output, rows, layout, hardblank);
+        var overlap = GetVerticalOverlap(output, outputWidth, rows, rowsWidth, layout, hardblank);
         var start = output.Count - overlap;
 
         for (var row = 0; row < overlap; row++)
@@ -313,25 +319,27 @@ internal static class FigletRenderer
         {
             output.Add(rows[row]);
         }
+
+        outputWidth = Math.Max(outputWidth, rowsWidth);
     }
 
     private static int GetVerticalOverlap(
         List<StringBuilder> top,
+        int topWidth,
         StringBuilder[] bottom,
+        int bottomWidth,
         FigletLayout layout,
         char hardBlank)
     {
         var maximum = Math.Min(top.Count, bottom.Length);
-        var width = Math.Max(
-            top.Count == 0 ? 0 : top.Max(row => row.Length),
-            bottom.Length == 0 ? 0 : bottom.Max(row => row.Length));
+        var width = Math.Max(topWidth, bottomWidth);
         var result = maximum;
 
         for (var column = 0; column < width; column++)
         {
             var trailing = 0;
 
-            while (trailing < top.Count &&
+            while (trailing < maximum &&
                    IsVerticalBlank(Get(top[top.Count - trailing - 1], column), hardBlank))
             {
                 trailing++;
