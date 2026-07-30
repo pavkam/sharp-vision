@@ -170,6 +170,63 @@ public sealed class TooltipTests
         tooltip.SurfaceBounds.ShouldBe(default);
     }
 
+    /// <summary>Verifies a pending show timer does not fire after its anchor detaches (e.g. a
+    /// virtualized row being recycled), and that reattaching the anchor does not silently
+    /// re-present the tooltip with no actual hover/focus interaction from the user.</summary>
+    [Fact]
+    public async Task Pointer_WhenAnchorDetachesDuringShowDelay_CancelsTimerAndStaysClosedAsync()
+    {
+        var anchor = new Button
+        {
+            Content = new ControlText("Anchor"),
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        Tooltip.SetText(anchor, "Save");
+        var tooltip = Tooltip.GetTooltip(anchor).ShouldNotBeNull();
+        tooltip.ShowDelay = TimeSpan.FromMilliseconds(10);
+        var container = new Stack { Children = { anchor } };
+        var clock = new ManualTimeProvider();
+        await using var surface = await ComponentSurface.MountAsync(
+            container,
+            new Size(18, 7),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Started directly rather than through a real hover/focus interaction:
+        // PointerManager and FocusManager both re-validate their tracked
+        // control on detachment and synthesize an exit that already cancels
+        // a timer started through the normal path, which would make this
+        // regression pass regardless of the fix under test. Reflection
+        // isolates the scenario the issue actually describes — a timer
+        // pending when the anchor detaches by whatever means.
+        var startShowTimer = typeof(Tooltip).GetMethod(
+            "StartShowTimer",
+            ReflectionBindingFlags.Instance | ReflectionBindingFlags.NonPublic).ShouldNotBeNull();
+        await surface.UpdateAsync(() => startShowTimer.Invoke(tooltip, null), "start the show timer directly");
+
+        var timerField = typeof(Tooltip).GetField(
+            "_showTimer",
+            ReflectionBindingFlags.Instance | ReflectionBindingFlags.NonPublic).ShouldNotBeNull();
+        timerField.GetValue(tooltip).ShouldBeOfType<DispatcherTimer>().IsRunning.ShouldBeTrue();
+
+        await surface.UpdateAsync(
+            () => container.Children.Remove(anchor).ShouldBeTrue(),
+            "detach the anchor while its show timer is still pending");
+
+        timerField.GetValue(tooltip).ShouldBeOfType<DispatcherTimer>().IsRunning.ShouldBeFalse();
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "let the cancelled show delay elapse");
+
+        tooltip.IsOpen.ShouldBeFalse();
+
+        await surface.UpdateAsync(
+            () => container.Children.Add(anchor),
+            "reattach the anchor without any new hover/focus interaction");
+
+        tooltip.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies overlapping show and hide requests retain one timer callback per transition.</summary>
     [Fact]
     public async Task PointerAndFocus_WhenRequestsOverlap_UseOneTimerSubscriptionPerTransitionAsync()

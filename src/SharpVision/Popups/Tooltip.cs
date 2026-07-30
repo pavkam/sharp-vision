@@ -407,6 +407,27 @@ public sealed class Tooltip: Popup
     #region Lifecycle
 
     /// <inheritdoc/>
+    protected override void OnDetached()
+    {
+        // Cancel here, not only in OnUnavailable(Disposed): OnUnavailable is
+        // only raised for the removed subtree's root (the anchor itself, not
+        // this tooltip, its owned popup-layer child), but OnDetached cascades
+        // to every owned-slot descendant on any detachment — including the
+        // anchor merely detaching from its own parent (e.g. a virtualized
+        // list row being recycled), not just this tooltip being disposed
+        // outright. A pending show/hide timer must not survive that and fire
+        // afterward: Show() would commit IsOpen=true while this popup's
+        // Dispatcher is null, and a later reattachment (the recycled row
+        // reused) would silently re-present the tooltip with no actual
+        // hover/focus interaction from the user. Popup's own OnDetached
+        // already force-closes an already-open popup; this only needs to
+        // additionally stop a timer that hasn't fired yet.
+        CancelShowTimer();
+        CancelHideTimer();
+        base.OnDetached();
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         if (reason == ReleaseReason.Disposed)

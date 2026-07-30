@@ -2395,6 +2395,7 @@ namespace SharpVision.Popups
         public System.TimeSpan ShowDelay { get; set; }
         public string? Text { get; set; }
         protected override void OnContentChanged(SharpVision.Controls.Control? previous, SharpVision.Controls.Control? current) { }
+        protected override void OnDetached() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public static void ClearTooltip(SharpVision.Controls.Control anchor) { }
         public static SharpVision.Popups.Tooltip? GetTooltip(SharpVision.Controls.Control anchor) { }
