@@ -124,16 +124,30 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                     continue;
                 }
 
-                if (TryGetSixelPixels(placement, metrics, enableSixel, out var pixels))
+                // Each placement is validated against what's actually left in the shared frame
+                // buffer, not the full budget — a pre-flight check against the full constant can
+                // pass in isolation while still overflowing the buffer once combined with bytes
+                // earlier placements in this same frame already consumed (see #117).
+                var remaining = _maxPreparedBytes - output.WrittenCount;
+
+                if (remaining <= 0)
                 {
-                    WriteSixel(placement, pixels, output);
-                    placementCount++;
                     continue;
                 }
 
-                if (CanEncodeIterm(placement, enableIterm))
+                if (TryGetSixelPixels(placement, metrics, enableSixel, out var pixels))
                 {
-                    WriteIterm(placement, output);
+                    if (TryWriteSixel(placement, pixels, output, remaining))
+                    {
+                        placementCount++;
+                    }
+
+                    continue;
+                }
+
+                if (CanEncodeIterm(placement, enableIterm, remaining))
+                {
+                    WriteIterm(placement, output, remaining);
                     placementCount++;
                 }
             }
@@ -266,7 +280,24 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
     #region Protocol encoding
 
-    private void WriteSixel(Placement placement, Rect pixels, IBufferWriter<byte> destination)
+    // Skips a placement whose encoded size exceeds the shared buffer's remaining budget instead
+    // of letting the write throw mid-frame — the caller has already re-checked maxOutputBytes
+    // against what's actually left, not the full constant, so this is the deterministic
+    // degrade path the full-budget pre-check couldn't provide on its own (see #117).
+    private bool TryWriteSixel(Placement placement, Rect pixels, IBufferWriter<byte> destination, int maxOutputBytes)
+    {
+        try
+        {
+            WriteSixel(placement, pixels, destination, maxOutputBytes);
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
+    private void WriteSixel(Placement placement, Rect pixels, IBufferWriter<byte> destination, int maxOutputBytes)
     {
         WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
 
@@ -278,7 +309,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 new Size(pixels.Width, pixels.Height),
                 placement.Mode,
                 destination,
-                _maxPreparedBytes);
+                maxOutputBytes);
             return;
         }
 
@@ -289,11 +320,11 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             new Size(pixels.Width, pixels.Height),
             placement.Mode,
             dcs,
-            _maxPreparedBytes);
+            maxOutputBytes);
         WriteRoutedFrame(dcs.WrittenSpan, destination);
     }
 
-    private void WriteIterm(Placement placement, IBufferWriter<byte> destination)
+    private void WriteIterm(Placement placement, IBufferWriter<byte> destination, int maxOutputBytes)
     {
         WriteCursor(new Point(placement.Destination.X, placement.Destination.Y), destination);
         var destinationCells = new Size(
@@ -307,7 +338,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                 destinationCells,
                 placement.Mode,
                 destination,
-                maxOutputBytes: _maxPreparedBytes);
+                maxOutputBytes: maxOutputBytes);
             return;
         }
 
@@ -327,7 +358,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             placement.Mode,
             transaction,
             maxSequenceBytes,
-            maxOutputBytes: _maxPreparedBytes);
+            maxOutputBytes: maxOutputBytes);
         var remaining = transaction.WrittenSpan;
 
         while (!remaining.IsEmpty)
@@ -507,7 +538,10 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
                available.TryMapCells(placement.Destination, out pixels);
     }
 
-    private bool CanEncodeIterm(Placement placement, bool enableIterm)
+    private bool CanEncodeIterm(Placement placement, bool enableIterm) =>
+        CanEncodeIterm(placement, enableIterm, _maxPreparedBytes);
+
+    private bool CanEncodeIterm(Placement placement, bool enableIterm, int maxOutputBytes)
     {
         Debug.Assert(!placement.IsEmpty, "Active frame placements cannot be empty.");
         var image = placement.Image!;
@@ -529,7 +563,7 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
             new Size(placement.Destination.Width, placement.Destination.Height),
             placement.Mode,
             maxSequenceBytes,
-            _maxPreparedBytes);
+            maxOutputBytes);
     }
 
     private static bool IntersectsDamage(Frame? front, Frame back, Rect placement)
