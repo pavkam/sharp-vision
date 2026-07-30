@@ -196,12 +196,29 @@ internal static class AppearanceResolver
                 : InvalidationImpact.None;
     }
 
-    private static Face ResolveFace(Theme? theme, Face face) => new(
-        Resolve(theme, face.Foreground),
-        Resolve(theme, face.Background),
-        Resolve(theme, face.Attributes),
-        face.Underline,
-        Resolve(theme, face.UnderlineColor));
+    private static Face ResolveFace(Theme? theme, Face face)
+    {
+        try
+        {
+            return new Face(
+                Resolve(theme, face.Foreground),
+                Resolve(theme, face.Background),
+                Resolve(theme, face.Attributes),
+                face.Underline,
+                Resolve(theme, face.UnderlineColor));
+        }
+        catch (ArgumentException exception)
+        {
+            // The Face constructor only validates decoration conflicts once every channel is a
+            // literal (see #107): a theme-referenced attribute or underline color defers the
+            // check to here, where the semantic roles that produced the conflict are still known.
+            throw new ArgumentException(
+                $"Resolving this face against the active theme produced a decoration conflict: " +
+                $"attributes '{face.Attributes}', underline '{face.Underline}', underline color " +
+                $"'{face.UnderlineColor}'. {exception.Message}",
+                exception);
+        }
+    }
 
     private static Border ResolveBorder(Theme? theme, Border border) => new(
         border.Sides,

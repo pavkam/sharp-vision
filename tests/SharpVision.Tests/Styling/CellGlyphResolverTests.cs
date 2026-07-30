@@ -3,8 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
-/// <summary>Verifies <see cref="CellGlyphResolver.ValidateSingleCell"/> accepts narrow printable runes
-/// and rejects wide or control runes.</summary>
+/// <summary>Verifies <see cref="CellGlyphResolver.ValidateSingleCell(Rune, string)"/> accepts narrow
+/// printable runes and rejects wide or control runes.</summary>
 public sealed class CellGlyphResolverTests
 {
     /// <summary>Verifies a standard ASCII letter passes validation.</summary>
@@ -36,5 +36,42 @@ public sealed class CellGlyphResolverTests
         var ex = Should.Throw<ArgumentException>(
             () => CellGlyphResolver.ValidateSingleCell(control, "value"));
         ex.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies the default overload validates against Narrow, accepting a glyph that an
+    /// explicit Wide policy would reject (see #121: this is the gap Resolve's Debug.Assert now
+    /// surfaces when the ambient policy diverges from the Narrow default used here).</summary>
+    [Fact]
+    public void ValidateSingleCell_WhenAmbiguousWidthRune_AcceptsUnderNarrowDefault()
+    {
+        // U+00B7 MIDDLE DOT is East Asian Ambiguous: one cell under Narrow, two under Wide.
+        var ambiguous = new Rune(0x00B7);
+
+        var result = CellGlyphResolver.ValidateSingleCell(ambiguous, "glyph");
+
+        result.ShouldBe(ambiguous);
+    }
+
+    /// <summary>Verifies the explicit-policy overload rejects an Ambiguous-width glyph under Wide.</summary>
+    [Fact]
+    public void ValidateSingleCell_WhenAmbiguousWidthRuneValidatedUnderWide_ThrowsArgumentException()
+    {
+        var ambiguous = new Rune(0x00B7);
+
+        var ex = Should.Throw<ArgumentException>(
+            () => CellGlyphResolver.ValidateSingleCell(ambiguous, "glyph", Ambiguous.Wide));
+
+        ex.ParamName.ShouldBe("glyph");
+    }
+
+    /// <summary>Verifies the explicit-policy overload still accepts the same glyph under Narrow.</summary>
+    [Fact]
+    public void ValidateSingleCell_WhenAmbiguousWidthRuneValidatedUnderNarrow_ReturnsRune()
+    {
+        var ambiguous = new Rune(0x00B7);
+
+        var result = CellGlyphResolver.ValidateSingleCell(ambiguous, "glyph", Ambiguous.Narrow);
+
+        result.ShouldBe(ambiguous);
     }
 }

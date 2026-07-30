@@ -92,4 +92,33 @@ public sealed class AppearanceResolverTests
         resolved.Face.Foreground.Literal.ShouldBe(Color.Rgb(3, 3, 3));
         resolved.BackgroundMode.ShouldBe(BackgroundMode.Transparent);
     }
+
+    /// <summary>Verifies a Face whose theme-referenced attributes only conflict with its typed
+    /// underline once the theme resolves them still throws, and that the exception now names the
+    /// offending semantic roles instead of only the generic decoration-conflict message (see #107:
+    /// Face's own constructor cannot catch this because the attribute channel isn't literal yet).</summary>
+    [Fact]
+    public void ResolveSnapshot_WhenThemeResolvedAttributesConflictWithUnderline_ThrowsWithOffendingRoles()
+    {
+        var theme = new Theme();
+        theme.SetAttributes(ThemeDecoration.NormalText, TerminalAttributes.Underline);
+        var face = new Face(
+            Color.Rgb(1, 1, 1),
+            Color.Rgb(2, 2, 2),
+            ThemeDecoration.NormalText,
+            Underline.Straight,
+            Color.Rgb(3, 3, 3));
+        var profile = new ThemeProfile(
+            new ThemeAppearance(
+                face,
+                AppearanceTestValues.Border(BorderSide.None),
+                AppearanceTestValues.Shadow(visible: false)));
+        var control = new StyledProbe { AppearanceProfileOverride = profile };
+
+        var exception = Should.Throw<ArgumentException>(
+            () => AppearanceResolver.ResolveSnapshot(control, VisualState.Normal, theme, profile, parentAmbientFace: null));
+
+        exception.Message.ShouldContain("ThemeDecoration.NormalText");
+        exception.Message.ShouldContain("Straight");
+    }
 }
