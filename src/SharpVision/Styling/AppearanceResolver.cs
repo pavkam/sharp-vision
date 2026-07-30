@@ -115,30 +115,68 @@ internal static class AppearanceResolver
         bool useExplicitAmbient)
     {
         var normal = profile.Normal;
-        var inheritedFace = ResolveFace(theme, normal.Face);
-        inheritedFace = InheritAmbientFace(
-            control,
-            inheritedFace,
-            parentAmbientFace,
-            useExplicitAmbient);
-        var authored = new ThemeAppearance(inheritedFace, normal.Border, normal.Shadow);
-        authored = profile.ApplyStates(authored, visualState);
 
-        authored = ApplyCompleteLocalValues(control, authored);
+        // Ambient inheritance must still act as a base that a later, more specific authoring step
+        // — a state overlay — can win over, exactly as it already wins over Normal's own authored
+        // foreground. Only the transparency gate that decides WHETHER to inherit needs the
+        // fully-folded result, not Normal's background alone (see #131): a dry-run fold with no
+        // inheritance applied answers that question without disturbing the real fold's layering.
+        // A LocalFace is a complete override rather than a partial delta and, unlike a state
+        // overlay, is authored expecting its own foreground to survive regardless of background —
+        // e.g. decorative content (FigletText, Spinner) commonly leaves LocalFace's background at
+        // the default transparent while still choosing its own explicit foreground. It keeps
+        // opting out of inheritance unconditionally.
+        var dryRunFace = ResolveFace(theme, FoldAuthoredAppearance(control, profile, visualState, normal).Face);
+        var isTransparent = control.LocalFace is null &&
+            !control.AppearanceBoundary &&
+            dryRunFace.Background.Literal == Color.Transparent;
+
+        var inheritedFace = ResolveFace(theme, normal.Face);
+
+        if (isTransparent && ResolveAmbientParentFace(control, parentAmbientFace, useExplicitAmbient) is { } ambient)
+        {
+            inheritedFace = ApplyAmbientFace(inheritedFace, ambient);
+        }
+
+        var authored = FoldAuthoredAppearance(
+            control,
+            profile,
+            visualState,
+            new ThemeAppearance(inheritedFace, normal.Border, normal.Shadow));
+
+        var face = ResolveFace(theme, authored.Face);
+        var border = ResolveBorder(theme, authored.Border);
+        var shadow = ResolveShadow(theme, authored.Shadow);
+        return CreateResolved(face, border, shadow);
+    }
+
+    private static ThemeAppearance FoldAuthoredAppearance(
+        Control control,
+        ThemeProfile profile,
+        VisualState visualState,
+        ThemeAppearance baseAppearance)
+    {
+        var authored = profile.ApplyStates(baseAppearance, visualState);
+        authored = new ThemeAppearance(
+            control.LocalFace ?? authored.Face,
+            control.LocalBorder ?? authored.Border,
+            control.LocalShadow ?? authored.Shadow);
+
+        // Combined as plain data first, for the same reason ThemeProfile.ApplyStates folds its
+        // own overlays before validating: an intermediate per-overlay Face construction can
+        // reject a partial combination that the complete local-overlay fold would resolve cleanly.
+        var localCombined = AppearanceSet.Empty;
 
         foreach (var overlay in VisualStateOrder.OrderedOverlays)
         {
             if ((visualState & overlay) != 0 &&
                 control.AppearanceSets.TryGetValue(overlay, out var localSet))
             {
-                authored = authored.Apply(localSet);
+                localCombined = localCombined.Overlay(localSet);
             }
         }
 
-        var face = ResolveFace(theme, authored.Face);
-        var border = ResolveBorder(theme, authored.Border);
-        var shadow = ResolveShadow(theme, authored.Shadow);
-        return CreateResolved(face, border, shadow);
+        return authored.Apply(localCombined);
     }
 
     /// <summary>Compares two concrete appearances for their exact earliest invalidation phase.</summary>
@@ -157,11 +195,6 @@ internal static class AppearanceResolver
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None;
     }
-
-    private static ThemeAppearance ApplyCompleteLocalValues(Control control, ThemeAppearance appearance) => new(
-        control.LocalFace ?? appearance.Face,
-        control.LocalBorder ?? appearance.Border,
-        control.LocalShadow ?? appearance.Shadow);
 
     private static Face ResolveFace(Theme? theme, Face face) => new(
         Resolve(theme, face.Foreground),
@@ -194,47 +227,29 @@ internal static class AppearanceResolver
         ? value.Literal
         : theme?.ResolveAttributes(value.ThemeDecoration) ?? TerminalAttributes.None;
 
-    private static Face InheritAmbientFace(
+    private static Face? ResolveAmbientParentFace(
         Control control,
-        Face face,
         Face? parentAmbientFace,
         bool useExplicitAmbient)
     {
-        if (control.LocalFace is not null || control.AppearanceBoundary ||
-            face.Background.Literal != Color.Transparent)
-        {
-            return face;
-        }
-
-        Face parent;
         if (useExplicitAmbient)
         {
             // Ownership transactions clear Parent before prospective resolution. The explicit face
             // represents that old or new edge without consulting the already-mutated live tree.
-            if (parentAmbientFace is not { } explicitParent)
-            {
-                return face;
-            }
-
-            parent = explicitParent;
-        }
-        else
-        {
-            if (control.Parent is not { } currentParent)
-            {
-                return face;
-            }
-
-            parent = currentParent.GetActualFace(currentParent.AmbientAppearanceState);
+            return parentAmbientFace;
         }
 
-        return new Face(
-            parent.Foreground.Literal,
-            face.Background.Literal,
-            parent.Attributes.Literal,
-            parent.Underline,
-            parent.UnderlineColor.Literal);
+        return control.Parent is { } currentParent
+            ? currentParent.GetActualFace(currentParent.AmbientAppearanceState)
+            : null;
     }
+
+    private static Face ApplyAmbientFace(Face face, Face parent) => new(
+        parent.Foreground.Literal,
+        face.Background.Literal,
+        parent.Attributes.Literal,
+        parent.Underline,
+        parent.UnderlineColor.Literal);
 
     private static ResolvedAppearance CreateResolved(Face face, Border border, Shadow shadow)
     {

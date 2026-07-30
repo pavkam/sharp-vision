@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Styling;
 
+using TerminalAttributes = Attributes;
+
 /// <summary>Verifies global semantic theme-profile composition.</summary>
 public sealed class ThemeProfileTests
 {
@@ -37,6 +39,29 @@ public sealed class ThemeProfileTests
         var resolved = profile.Resolve(VisualState.Focused | VisualState.Disabled);
 
         resolved.Face.Foreground.ThemeColor.ShouldBe(ThemeColor.DisabledText);
+    }
+
+    /// <summary>Verifies a state combination valid only in its final folded form is accepted, even
+    /// though an intermediate per-overlay step (before later overlays run) would conflict.</summary>
+    [Fact]
+    public void Resolve_WhenIntermediateOverlayStepWouldConflict_AcceptsValidFinalFold()
+    {
+        // OrderedOverlays processes PointerOver, then Focused, then Checked. Folding one overlay
+        // at a time and validating on every step would reject the PointerOver+Focused
+        // intermediate (legacy Underline attribute together with a typed Curly underline) before
+        // Checked's clearing overlay ever runs, even though the true final fold — all three
+        // active — is entirely valid.
+        var profile = new ThemeProfile(
+            CreateAppearance(),
+            pointerOver: new AppearanceSet(face: new FaceSet(attributes: TerminalAttributes.Underline)),
+            focused: new AppearanceSet(face: new FaceSet(underline: Underline.Curly)),
+            @checked: new AppearanceSet(face: new FaceSet(attributes: TerminalAttributes.None)));
+
+        var resolved = Should.NotThrow(() =>
+            profile.Resolve(VisualState.PointerOver | VisualState.Focused | VisualState.Checked));
+
+        resolved.Face.Attributes.Literal.ShouldBe(TerminalAttributes.None);
+        resolved.Face.Underline.ShouldBe(Underline.Curly);
     }
 
     /// <summary>Verifies frozen themes resolve known global values without a control type.</summary>

@@ -54,7 +54,10 @@ public sealed class AppearanceCacheTests
         control.UncachedAppearanceResolutionCount.ShouldBe(2);
     }
 
-    /// <summary>Verifies a complete developer face remains authoritative over ambient inheritance.</summary>
+    /// <summary>Verifies a complete developer face remains authoritative over ambient inheritance,
+    /// regardless of its own transparency — unlike Normal or a state overlay, a LocalFace is a
+    /// complete override commonly authored with its own foreground and a left-default transparent
+    /// background (e.g. FigletText, Spinner), so it keeps opting out of inheritance entirely.</summary>
     [Fact]
     public void ActualFace_WhenLocalTransparentFaceIsSet_PreservesDeveloperForeground()
     {

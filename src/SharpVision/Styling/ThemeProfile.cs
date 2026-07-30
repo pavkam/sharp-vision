@@ -99,16 +99,24 @@ public sealed class ThemeProfile
             throw new ArgumentOutOfRangeException(nameof(state), state, "The visual state contains unknown flags.");
         }
 
-        var result = appearance;
+        // Folding one overlay at a time and validating the resulting Face on every intermediate
+        // step (via appearance.Apply -> new Face(...)) can reject a partial combination that a
+        // later overlay in OrderedOverlays would have gone on to resolve cleanly, even though the
+        // final fold of every active state is itself entirely valid. Overlaying the contributions
+        // as plain, unvalidated data first and constructing the Face only once, from the complete
+        // fold, makes acceptance depend on the actual final appearance rather than on
+        // OrderedOverlays' internal sequencing.
+        var combined = AppearanceSet.Empty;
+
         foreach (var overlay in VisualStateOrder.OrderedOverlays)
         {
             if ((state & overlay) != 0)
             {
-                result = result.Apply(GetSet(overlay));
+                combined = combined.Overlay(GetSet(overlay));
             }
         }
 
-        return result;
+        return appearance.Apply(combined);
     }
 
     private AppearanceSet GetSet(VisualState state) => state switch
