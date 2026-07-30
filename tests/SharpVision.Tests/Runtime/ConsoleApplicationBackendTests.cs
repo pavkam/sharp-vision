@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Runtime;
 
-using System.Reflection;
-
 using Terminal.Backends;
 
 using CapabilitySupport = Terminal.Capabilities.Support;
@@ -67,8 +65,8 @@ public sealed class ConsoleApplicationBackendTests
                 _ = capabilitiesChanged.TrySetResult();
             }
         };
-        var session = GetSession(application);
-        var initialBackend = GetSessionContext(session).Backend;
+        var session = application.Session;
+        var initialBackend = session.Backend;
 
         try
         {
@@ -101,7 +99,7 @@ public sealed class ConsoleApplicationBackendTests
             application.TerminalProfile.Description.Name.ShouldBe("xterm-256color");
             application.Capabilities.KittyGraphics.ShouldBe(
                 new Feature(CapabilitySupport.Supported, Origin.Query));
-            GetSessionContext(session).Backend.ShouldBeSameAs(initialBackend);
+            session.Backend.ShouldBeSameAs(initialBackend);
             JoinedWrites(transport).ShouldEndWith(
                 "\u001b[<u\u001b[?1006l\u001b[?1003l\u001b[?2004l" +
                 "\u001b[?1004l\u001b[?25h\u001b[?1049l");
@@ -131,16 +129,6 @@ public sealed class ConsoleApplicationBackendTests
             ansi.Programs,
             ansi.KeyMap);
     }
-
-    private static Session GetSession(Application application) =>
-        (Session) typeof(Application)
-            .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(application)!;
-
-    private static TerminalContext GetSessionContext(Session session) =>
-        (TerminalContext) typeof(Session)
-            .GetField("_context", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(session)!;
 
     private static string JoinedWrites(ConsoleApplicationTransport transport) =>
         Encoding.ASCII.GetString([.. transport.Writes.SelectMany(static value => value)]);

@@ -42,6 +42,10 @@ public sealed class DispatcherTimer: IDisposable
     /// <summary>Raised on the owning dispatcher after one eligible interval.</summary>
     public event EventHandler? Tick;
 
+    /// <summary>Gets the current <see cref="Tick"/> subscriber count for duplicate-subscription
+    /// test seams; a field-like event has no other reachable accessibility.</summary>
+    internal int TickSubscribers => Tick?.GetInvocationList().Length ?? 0;
+
     /// <summary>Gets or sets the interval between eligible ticks.</summary>
     /// <remarks>Changing a running timer starts one complete new interval.</remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the supported range.</exception>

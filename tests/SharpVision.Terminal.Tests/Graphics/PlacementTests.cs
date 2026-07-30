@@ -3,7 +3,6 @@
 
 namespace SharpVision.Terminal.Tests.Graphics;
 
-using System.Reflection;
 using System.Runtime.CompilerServices;
 
 using SharpVision.Terminal.Graphics;
@@ -454,10 +453,7 @@ public sealed class PlacementTests
             CreateImage(1, 1, 1),
             new Rect(0, 0, 1, 1),
             PlacementMode.Stretch);
-        var revision = typeof(Frame).GetField(
-            "_mutationRevision",
-            BindingFlags.Instance | BindingFlags.NonPublic).ShouldNotBeNull();
-        revision.SetValue(frame, ulong.MaxValue);
+        frame.SeedMutationRevision(ulong.MaxValue);
 
         var exception = Should.Throw<InvalidOperationException>(() =>
             frame.Canvas.Draw("X", default));

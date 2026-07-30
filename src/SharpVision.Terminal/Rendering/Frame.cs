@@ -327,6 +327,14 @@ public sealed class Frame: IDisposable
         }
     }
 
+    /// <summary>Overwrites the mutation revision for exhaustion-path test seams.</summary>
+    /// <param name="revision">The revision to seed.</param>
+    internal void SeedMutationRevision(ulong revision)
+    {
+        ThrowIfDisposed();
+        _mutationRevision = revision;
+    }
+
     /// <summary>Creates an independent pooled copy of this active frame.</summary>
     /// <returns>A frame whose semantic state equals this frame.</returns>
     internal Frame Clone()

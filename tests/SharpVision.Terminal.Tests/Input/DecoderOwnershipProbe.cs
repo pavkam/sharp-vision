@@ -3,22 +3,14 @@
 
 namespace SharpVision.Terminal.Tests.Input;
 
-using System.Reflection;
 using System.Runtime.CompilerServices;
 
 using SharpVision.Terminal.Input;
 
-/// <summary>Observes private decoder ownership without adding production diagnostic surface.</summary>
+/// <summary>Observes decoder ownership through the internal test seam <see
+/// cref="InputDecoder.OwnedKeyMatcherState"/>, which is excluded from the public API snapshot.</summary>
 internal static class DecoderOwnershipProbe
 {
-    private static readonly FieldInfo _matcherField =
-        typeof(InputDecoder).GetField("_keyMatcher", BindingFlags.Instance | BindingFlags.NonPublic) ??
-        throw new InvalidOperationException("Decoder matcher ownership field was not found.");
-
-    private static readonly FieldInfo _replayField =
-        typeof(InputDecoder).GetField("_keyReplay", BindingFlags.Instance | BindingFlags.NonPublic) ??
-        throw new InvalidOperationException("Decoder replay ownership field was not found.");
-
     /// <summary>Creates a decoder after exercising shorter-match suffix rematching.</summary>
     /// <param name="options">The described-key options under test.</param>
     /// <returns>The live decoder and weak references to its matcher and replay workspace.</returns>
@@ -28,11 +20,10 @@ internal static class DecoderOwnershipProbe
     {
         var decoder = new InputDecoder(new RecordingInputSink(), options);
         decoder.Decode([0xff, 0xfe, (byte) 'x']);
+        var (matcher, replay) = decoder.OwnedKeyMatcherState ??
+            throw new InvalidOperationException("Decoder did not retain a matcher and replay workspace.");
 
-        return (
-            decoder,
-            ReadOwnedReference(decoder, _matcherField),
-            ReadOwnedReference(decoder, _replayField));
+        return (decoder, new WeakReference(matcher), new WeakReference(replay));
     }
 
     /// <summary>Disposes the decoder outside the caller's JIT lifetime scope.</summary>
@@ -60,12 +51,5 @@ internal static class DecoderOwnershipProbe
         }
 
         return false;
-    }
-
-    private static WeakReference ReadOwnedReference(InputDecoder decoder, FieldInfo field)
-    {
-        var value = field.GetValue(decoder) ??
-            throw new InvalidOperationException($"Decoder field {field.Name} did not retain an object.");
-        return new WeakReference(value);
     }
 }

@@ -264,16 +264,7 @@ public sealed class TooltipTests
             () => surface.Application.Focus.Focus(anchor).ShouldBeTrue(),
             "overlap Tooltip hover with focus");
 
-        var timerField = typeof(Tooltip).GetField(
-            "_showTimer",
-            ReflectionBindingFlags.Instance | ReflectionBindingFlags.NonPublic).ShouldNotBeNull();
-        var timer = timerField.GetValue(tooltip).ShouldBeOfType<DispatcherTimer>();
-        var tickField = typeof(DispatcherTimer).GetField(
-            nameof(DispatcherTimer.Tick),
-            ReflectionBindingFlags.Instance | ReflectionBindingFlags.NonPublic).ShouldNotBeNull();
-        var tick = tickField.GetValue(timer).ShouldBeOfType<EventHandler>();
-
-        tick.GetInvocationList().Length.ShouldBe(1);
+        tooltip.ShowTimerTickSubscribers.ShouldBe(1);
 
         await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "deliver one overlapped Tooltip show");
 
@@ -283,13 +274,8 @@ public sealed class TooltipTests
         await surface.Pointer.LeaveAsync();
         await surface.Pointer.MoveToAsync(anchor);
         await surface.Pointer.LeaveAsync();
-        var hideTimerField = typeof(Tooltip).GetField(
-            "_hideTimer",
-            ReflectionBindingFlags.Instance | ReflectionBindingFlags.NonPublic).ShouldNotBeNull();
-        var hideTimer = hideTimerField.GetValue(tooltip).ShouldBeOfType<DispatcherTimer>();
-        var hideTick = tickField.GetValue(hideTimer).ShouldBeOfType<EventHandler>();
 
-        hideTick.GetInvocationList().Length.ShouldBe(1);
+        tooltip.HideTimerTickSubscribers.ShouldBe(1);
 
         await surface.AdvanceAsync(tooltip.HideDelay, "deliver one overlapped Tooltip hide");
 

@@ -37,7 +37,6 @@ public sealed class Application: ISink, IAsyncDisposable
     private readonly TerminalOptions _options;
     private readonly IAsyncDisposable? _hostLease;
     private readonly TimeProvider _timeProvider;
-    private readonly Session _session;
     private Renderer? _renderer;
     private readonly Action<KeyEventArgs> _initializeModalKey;
     private readonly Engine _engine = new();
@@ -143,7 +142,7 @@ public sealed class Application: ISink, IAsyncDisposable
         Dispatcher = Dispatcher.Start(name: "SharpVision.UI", timeProvider: _timeProvider);
         Pointer = new PointerDevice(() => CaptureValue);
         Terminal = new TerminalServices(this);
-        _session = new Session(
+        Session = new Session(
             transport,
             resize,
             this,
@@ -301,6 +300,9 @@ public sealed class Application: ISink, IAsyncDisposable
     /// <summary>Gets the active immutable terminal description, programs, key map, and capabilities.</summary>
     public TerminalProfile TerminalProfile { get; private set; }
 
+    /// <summary>Gets the owned session, exposed only for test seams that need its identity.</summary>
+    internal Session Session { get; }
+
     /// <summary>Gets the immutable Unicode cell policy used by the active tree and frame.</summary>
     public UnicodePolicy CellPolicy { get; private set; }
 
@@ -339,7 +341,7 @@ public sealed class Application: ISink, IAsyncDisposable
             throw;
         }
 
-        _sessionTask = _session.RunAsync(_lifetime.Token).AsTask();
+        _sessionTask = Session.RunAsync(_lifetime.Token).AsTask();
         _ = ObserveSessionAsync();
 
         try
@@ -1192,7 +1194,7 @@ public sealed class Application: ISink, IAsyncDisposable
         CaptureCleanup(Root.Dispose, ref cleanupFailure);
         var capturedCleanup = cleanupFailure?.SourceException;
         Failure ??= capturedCleanup;
-        LastCleanupException ??= _session.LastCleanupException ??
+        LastCleanupException ??= Session.LastCleanupException ??
             _renderer?.LastCleanupException ??
             (priorFailure is not null ? capturedCleanup : null);
         _stopped = true;
@@ -1569,7 +1571,7 @@ public sealed class Application: ISink, IAsyncDisposable
 
     private async Task<Exception?> DisposeTerminalResourcesAsync()
     {
-        var lifetimeDiagnostic = _renderer?.LastCleanupException ?? _session.LastCleanupException;
+        var lifetimeDiagnostic = _renderer?.LastCleanupException ?? Session.LastCleanupException;
         Exception? failure = null;
 
         if (_renderer is { } renderer)
@@ -1589,7 +1591,7 @@ public sealed class Application: ISink, IAsyncDisposable
 
         try
         {
-            await _session.DisposeAsync().ConfigureAwait(false);
+            await Session.DisposeAsync().ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -1607,7 +1609,7 @@ public sealed class Application: ISink, IAsyncDisposable
 
         LastCleanupException ??= lifetimeDiagnostic ??
             _renderer?.LastCleanupException ??
-            _session.LastCleanupException ??
+            Session.LastCleanupException ??
             failure;
         return failure;
     }

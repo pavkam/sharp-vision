@@ -338,6 +338,14 @@ public sealed class Tooltip: Popup
         Arrange(rootBounds, widthResolved: true, heightResolved: true);
     }
 
+    /// <summary>Gets the show timer's current Tick subscriber count for duplicate-subscription
+    /// test seams, or zero when no show timer has been created yet.</summary>
+    internal int ShowTimerTickSubscribers => _showTimer?.TickSubscribers ?? 0;
+
+    /// <summary>Gets the hide timer's current Tick subscriber count for duplicate-subscription
+    /// test seams, or zero when no hide timer has been created yet.</summary>
+    internal int HideTimerTickSubscribers => _hideTimer?.TickSubscribers ?? 0;
+
     private void StartShowTimer()
     {
         if (IsOpen || _attachedAnchor?.Dispatcher is not { } dispatcher)

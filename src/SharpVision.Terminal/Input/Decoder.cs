@@ -249,6 +249,11 @@ public sealed class Decoder: IDisposable
         _skippedBytes = checked(_skippedBytes + count);
     }
 
+    /// <summary>Gets the currently owned fallback matcher and its replay workspace, or null when
+    /// neither is active, for GC-reachability test seams.</summary>
+    internal (KeySequenceMatcher Matcher, byte[] Replay)? OwnedKeyMatcherState =>
+        _keyMatcher is { } matcher && _keyReplay is { } replay ? (matcher, replay) : null;
+
     /// <summary>Clears pending bytes and returns parser-owned pooled storage.</summary>
     public void Dispose()
     {
