@@ -43,6 +43,20 @@ public sealed class FigletFontTests
         _ = Should.Throw<FormatException>(() => FigletFont.Load(stream, "bad"));
     }
 
+    /// <summary>Verifies an unknown numeric direction falls back to left-to-right instead of
+    /// rejecting an otherwise complete font (see #11).</summary>
+    [Theory]
+    [InlineData("2")]
+    [InlineData("-1")]
+    public void Load_WhenDirectionIsUnknownNumericValue_FallsBackToLeftToRight(string direction)
+    {
+        using var stream = Stream(CreateFont(directionField: direction));
+
+        var font = FigletFont.Load(stream, "test");
+
+        font.Direction.ShouldBe(FigletDirection.LeftToRight);
+    }
+
     /// <summary>Verifies configured byte limits are enforced before parsing.</summary>
     [Fact]
     public void Load_WhenInputExceedsLimit_ThrowsInvalidDataException()
@@ -121,10 +135,10 @@ public sealed class FigletFontTests
 
     #endregion
 
-    private static string CreateFont(Func<int, string>? glyph = null)
+    private static string CreateFont(Func<int, string>? glyph = null, string directionField = "0")
     {
         glyph ??= RuneFor;
-        var builder = new StringBuilder("flf2a$ 1 1 80 -1 1 0\nTest font by SharpVision\n");
+        var builder = new StringBuilder($"flf2a$ 1 1 80 -1 1 {directionField}\nTest font by SharpVision\n");
 
         for (var code = 32; code <= 126; code++)
         {

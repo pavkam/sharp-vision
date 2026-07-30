@@ -249,9 +249,8 @@ internal static class FigletParser
 
     private static FigletDirection Direction(int value) => value switch
     {
-        0 => FigletDirection.LeftToRight,
         1 => FigletDirection.RightToLeft,
-        _ => throw new FormatException("The FIG-font direction is unknown.")
+        _ => FigletDirection.LeftToRight
     };
 
     private static FigletLayout Layout(int value)
