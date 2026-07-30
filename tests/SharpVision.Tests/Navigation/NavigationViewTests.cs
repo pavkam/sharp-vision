@@ -248,6 +248,26 @@ public sealed class NavigationViewTests
         selected.IsSelected.ShouldBeFalse();
     }
 
+    /// <summary>Verifies removing the selected item after it was disabled — leaving it outside
+    /// CollectSelectableItems while still SelectedItem, since neither SelectItem nor disabling
+    /// require the target to stay selectable — repairs selection instead of indexing the
+    /// remaining selectable set with PrepareRemoval's not-found sentinel (see #106).</summary>
+    [Fact]
+    public void Items_WhenDisabledSelectedItemIsRemoved_RepairsSelectionToRemainingItem()
+    {
+        var remaining = new NavigationViewItem { Header = "Remaining" };
+        var selected = new NavigationViewItem { Header = "Selected" };
+        var navigation = new NavigationView();
+        navigation.Items.Add(selected);
+        navigation.Items.Add(remaining);
+        navigation.SelectItem(selected);
+        selected.IsEnabled = false;
+
+        _ = Should.NotThrow(() => navigation.Items.Remove(selected));
+
+        navigation.SelectedItem.ShouldBeSameAs(remaining);
+    }
+
     /// <summary>Verifies removing an entire group repairs selection when the
     /// selected item is a descendant rather than the group entry itself.</summary>
     [Fact]

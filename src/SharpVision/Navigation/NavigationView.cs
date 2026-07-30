@@ -288,7 +288,14 @@ public sealed class NavigationView: CompositeControl
         if (repair.SelectedRemoved)
         {
             var remaining = CollectSelectableItems();
-            Select(remaining.Count == 0 ? null : remaining[Math.Min(repair.SelectedIndex, remaining.Count - 1)]);
+
+            // SelectedIndex is -1 whenever the selected item had already become unselectable
+            // (e.g. disabled) before removal, since PrepareRemoval looks it up in the
+            // selectable set alone — SelectItem/Select never require a selectable target. Treat
+            // that the same as the empty-remaining case instead of indexing with the sentinel.
+            Select(remaining.Count == 0
+                ? null
+                : remaining[Math.Max(0, Math.Min(repair.SelectedIndex, remaining.Count - 1))]);
         }
     }
 
