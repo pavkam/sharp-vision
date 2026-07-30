@@ -230,6 +230,33 @@ public sealed class WriterTests
         output.WrittenCount.ShouldBeLessThan(2_000);
     }
 
+    /// <summary>Verifies a color's plane bits from an earlier band never leak into a later band that
+    /// reuses the same identifier at different bit positions — the targeted per-band clear introduced
+    /// to avoid a full-palette-width clear on every band must still zero exactly what the previous
+    /// band touched (see #141).</summary>
+    [Fact]
+    public void Write_WhenSameColorReappearsInALaterBand_DoesNotLeakBitsAcrossBands()
+    {
+        var pixels = new byte[1 * 12 * 4];
+        pixels[0] = 255;
+        pixels[3] = 255;
+        pixels[11 * 4] = 255;
+        pixels[(11 * 4) + 3] = 255;
+
+        var image = GraphicsImage.FromRgba(new Size(1, 12), pixels);
+        var output = new ArrayBufferWriter<byte>();
+
+        Writer.Write(
+            image,
+            new Rect(0, 0, 1, 12),
+            new Size(1, 12),
+            PlacementMode.Stretch,
+            output);
+
+        output.WrittenSpan.ToArray().ShouldBe(
+            "P0;1;0q\"1;1;1;12#0;2;100;0;0#0@-#0_\\"u8.ToArray());
+    }
+
     /// <summary>Verifies the conservative plane bound is checked without enumerating a huge raster.</summary>
     [Fact]
     public void CalculateMaximumBytes_WhenPaletteAndRasterAreLarge_RemainsCheckedAndFinite()

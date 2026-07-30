@@ -191,18 +191,28 @@ internal static class Encoder
         var planeLength = checked(Math.Max(1, palette.Count) * destination.Width);
         var rentedPlanes = ArrayPool<byte>.Shared.Rent(planeLength);
         var rentedUsed = ArrayPool<bool>.Shared.Rent(Math.Max(1, palette.Count));
+        var rentedTouched = ArrayPool<int>.Shared.Rent(Math.Max(1, palette.Count));
 
         try
         {
             var planes = rentedPlanes.AsSpan(0, planeLength);
             var bandUsed = rentedUsed.AsSpan(0, palette.Count);
+            var touched = rentedTouched.AsSpan(0, Math.Max(1, palette.Count));
+            var touchedCount = 0;
             var bands = checked((destination.Height + 5) / 6);
+
+            planes.Clear();
 
             for (var band = 0; band < bands; band++)
             {
-                planes.Clear();
+                for (var index = 0; index < touchedCount; index++)
+                {
+                    planes.Slice(touched[index] * destination.Width, destination.Width).Clear();
+                }
+
                 bandUsed.Clear();
-                PopulateBand(raster, destination, palette, band, planes, bandUsed);
+                touchedCount = 0;
+                PopulateBand(raster, destination, palette, band, planes, bandUsed, touched, ref touchedCount);
 
                 if (band != 0)
                 {
@@ -236,6 +246,7 @@ internal static class Encoder
         {
             ArrayPool<byte>.Shared.Return(rentedPlanes, clearArray: true);
             ArrayPool<bool>.Shared.Return(rentedUsed, clearArray: true);
+            ArrayPool<int>.Shared.Return(rentedTouched, clearArray: true);
         }
 
         WriteBytes(output, "\u001b\\"u8);
@@ -247,7 +258,9 @@ internal static class Encoder
         Palette palette,
         int band,
         Span<byte> planes,
-        Span<bool> bandUsed)
+        Span<bool> bandUsed,
+        Span<int> touched,
+        ref int touchedCount)
     {
         var origin = checked(band * 6);
         var rows = Math.Min(6, destination.Height - origin);
@@ -267,7 +280,12 @@ internal static class Encoder
 
                 var identifier = palette.GetIdentifier(color);
                 planes[(identifier * destination.Width) + x] |= checked((byte) (1 << bit));
-                bandUsed[identifier] = true;
+
+                if (!bandUsed[identifier])
+                {
+                    bandUsed[identifier] = true;
+                    touched[touchedCount++] = identifier;
+                }
             }
         }
     }
