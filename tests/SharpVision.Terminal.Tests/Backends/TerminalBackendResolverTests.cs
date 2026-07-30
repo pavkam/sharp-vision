@@ -59,6 +59,24 @@ public sealed class TerminalBackendResolverTests
         }
     }
 
+    /// <summary>Verifies a TMUX session with TERM left at a bare xterm value — a common
+    /// tmux.conf configuration (<c>set -g default-terminal "xterm-256color"</c>) — resolves the
+    /// generic multiplexer-safe backend instead of Xterm, agreeing with the multiplexer-aware
+    /// feature gating the rest of discovery already applies to the same environment (see #140).</summary>
+    [Fact]
+    public void Resolve_WhenTmuxEnvironmentVariableIsSetWithBareXtermTerm_ReturnsGenericBackend()
+    {
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM"] = "xterm-256color",
+            ["TMUX"] = "/tmp/tmux-1000/default,1234,0"
+        };
+
+        var resolution = TerminalBackendResolver.Resolve(TerminalProfile.Conservative, environment);
+
+        resolution.Backend.ShouldBeSameAs(VtBackend.Instance);
+    }
+
     /// <summary>Verifies environment evidence wins an equally specific description candidate.</summary>
     [Fact]
     public void Resolve_WhenEnvironmentAndDescriptionRecognizeXterm_PublishesOrderedTypedEvidence()

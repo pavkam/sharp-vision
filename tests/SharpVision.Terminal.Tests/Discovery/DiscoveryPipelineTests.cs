@@ -93,6 +93,28 @@ public sealed class DiscoveryPipelineTests
         capabilities.ColorDepth.ShouldBe(ColorDepth.Indexed256);
     }
 
+    /// <summary>Verifies SSH detection preserves authoritative Osc52 evidence instead of
+    /// discarding it — OSC 52's primary use case is copying to the local clipboard from a
+    /// remote SSH session, so terminfo/query/override evidence must outrank the blanket
+    /// environment-based guess (see #124).</summary>
+    [Fact]
+    public void Detect_WhenSessionIsRemoteWithAuthoritativeOsc52Evidence_PreservesIt()
+    {
+        var database = new Feature(CapabilitySupport.Supported, Origin.Database);
+        var baseline = TerminalCapabilities.Conservative with { Osc52 = database };
+        var environment = new Dictionary<string, string?>()
+        {
+            ["TERM"] = "xterm-256color",
+            ["SSH_CONNECTION"] = "client server"
+        };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(
+            new DiscoveryContext(baseline, environment));
+
+        capabilities.Osc52.ShouldBe(database);
+        capabilities.KittyClipboard.State.ShouldBe(CapabilitySupport.Unsupported);
+    }
+
     /// <summary>
     /// Verifies explicit caller overrides always win over hints and queries.
     /// </summary>

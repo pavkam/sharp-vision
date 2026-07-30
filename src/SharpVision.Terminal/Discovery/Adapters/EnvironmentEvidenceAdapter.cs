@@ -99,7 +99,11 @@ internal static class EnvironmentEvidenceAdapter
         {
             capabilities = capabilities with
             {
-                Osc52 = Feature.Unknown,
+                // OSC 52's primary use case is copying to the *local* clipboard from a *remote*
+                // SSH session, so a blanket environment-based guess must not clobber evidence
+                // that already outranks it (terminfo, an active query, or an explicit override) —
+                // only narrow it when nothing authoritative established support already (see #124).
+                Osc52 = capabilities.Osc52.IsAuthoritative ? capabilities.Osc52 : Feature.Unknown,
                 KittyClipboard = new Feature(Support.Unsupported, Origin.Environment)
             };
         }
