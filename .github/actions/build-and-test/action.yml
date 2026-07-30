@@ -26,6 +26,11 @@ runs:
       shell: bash
       run: make test-ci CONFIGURATION=${{ inputs.configuration }}
 
+    - name: 🧪 Test controlling-terminal Unix console host
+      if: ${{ runner.os != 'Windows' }}
+      shell: bash
+      run: make test-tty CONFIGURATION=${{ inputs.configuration }}
+
     - name: 📊 Generate coverage report
       uses: danielpalme/ReportGenerator-GitHub-Action@7a0988e399533f3680a732dceda1a967cafdafcd # 5.2.3
       with:

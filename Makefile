@@ -1,4 +1,4 @@
-.PHONY: build clean format format-check help lint restore run test test-binding-coverage test-ci watch
+.PHONY: build clean format format-check help lint restore run test test-binding-coverage test-ci test-tty watch
 
 .DEFAULT_GOAL := help
 
@@ -13,6 +13,7 @@ help:
 	@echo "  make test          Run all tests with timeout protection"
 	@echo "  make test-binding-coverage  Gate binding line and branch coverage"
 	@echo "  make test-ci       Run tests with CI reports"
+	@echo "  make test-tty      Run controlling-terminal-gated Unix console host tests (Linux/macOS only)"
 	@echo "  make run           Run the showcase"
 	@echo "  make watch         Run the showcase in watch mode"
 	@echo "  make lint          Check C#, Markdown, and documentation links"
@@ -45,6 +46,15 @@ test-ci: build
 	@dotnet test --project tests/SharpVision.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 3 --timeout 900s --coverage --coverage-settings tests/SharpVision.Tests/coverage.config --coverage-output-format cobertura --report-xunit-trx --parallel none
 	@dotnet test --project tests/SharpVision.Compatibility.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 1 --timeout 300s --report-xunit-trx
 	@node scripts/validate-control-coverage.mjs --results tests/SharpVision.Tests/bin/$${CONFIGURATION:-Release}/net10.0/TestResults --minimum 0.85
+
+test-tty: build
+	@echo "🧪 Running controlling-terminal-gated Unix console host tests..."
+	@if [ "$$(uname -s)" = "Darwin" ]; then \
+		script -q /dev/null dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2 --filter-query "/*/*/UnixConsoleHostTests/*"; \
+	else \
+		script -qec "dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2 --filter-query '/*/*/UnixConsoleHostTests/*'" /dev/null; \
+	fi
+	@echo "✅ Controlling-terminal Unix host tests complete."
 
 test-binding-coverage: build
 	@echo "🧪 Running binding coverage gate..."
