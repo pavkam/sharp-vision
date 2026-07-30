@@ -48,6 +48,86 @@ public sealed class BackendTests
         Encoding.ASCII.GetString(removalBytes.Removals).ShouldBe("\u001b_Ga=d,d=I,i=1,q=2\u001b\\");
     }
 
+    /// <summary>Verifies a logical image replacement can reuse the retiring image's own identifier
+    /// at full identifier capacity instead of renting a fresh one that the allocator has no room
+    /// for — renting before planning the retiring delete threw even though the replaced image's
+    /// identifier was about to free up (see #22).</summary>
+    [Fact]
+    public void Prepare_WhenReplacingTheOnlyImageAtFullCapacity_TransfersTheRetiringIdentifier()
+    {
+        using var backend = new KittyGraphicsBackend(maxImages: 1, maxPlacements: 1);
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        var replacement = backend.Prepare(frameA, frameB, full: false);
+        var bytes = WritePrepared(backend);
+        backend.Commit();
+
+        replacement.ShouldBe(new GraphicsBackendResult(changed: true, uploads: 1, placements: 1, removals: 0));
+        var upload = Encoding.ASCII.GetString(bytes.Uploads);
+        upload.ShouldContain(",i=1,");
+        upload.ShouldContain("BAUG/w==");
+        bytes.Removals.ShouldBeEmpty();
+
+        // The transferred identifier is available again after a second, unrelated replacement,
+        // proving it was not permanently lost or leaked.
+        var imageC = GraphicsImage.FromRgba(new Size(1, 1), [7, 8, 9, 255]);
+        using var frameC = Frame(imageC, new Rect(0, 0, 1, 1));
+        var second = backend.Prepare(frameB, frameC, full: false);
+        second.ShouldBe(new GraphicsBackendResult(changed: true, uploads: 1, placements: 1, removals: 0));
+    }
+
+    /// <summary>Verifies transfer eligibility deliberately excludes an identifier that is already
+    /// quarantined as uncertain by an earlier invalidated attempt: a retry that would need to
+    /// reuse that same identifier still throws today, rather than risk the double-resolution of
+    /// two independent pending dispositions for one physical identifier. See #22 — this is a
+    /// documented scope limit of the fix landed here, not the desired end state.</summary>
+    [Fact]
+    public void Prepare_WhenRetryingAfterInvalidateAtFullCapacity_StillThrowsForAnAlreadyUncertainIdentifier()
+    {
+        using var backend = new KittyGraphicsBackend(maxImages: 1, maxPlacements: 1);
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        _ = backend.Prepare(frameA, frameB, full: false);
+        backend.Invalidate();
+
+        _ = Should.Throw<InvalidOperationException>(() => backend.Prepare(frameA, frameB, full: false));
+    }
+
+    /// <summary>Verifies a logical placement replacement can reuse the retiring placement's own
+    /// identifier at full placement capacity even when the image allocator has spare room,
+    /// isolating placement-identifier transfer from image-identifier transfer (see #22).</summary>
+    [Fact]
+    public void Prepare_WhenReplacingTheOnlyPlacementAtFullPlacementCapacity_TransfersTheRetiringIdentifier()
+    {
+        using var backend = new KittyGraphicsBackend(maxImages: 2, maxPlacements: 1);
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        var replacement = backend.Prepare(frameA, frameB, full: false);
+        var bytes = WritePrepared(backend);
+        backend.Commit();
+
+        replacement.ShouldBe(new GraphicsBackendResult(changed: true, uploads: 1, placements: 1, removals: 0));
+        Encoding.ASCII.GetString(bytes.Placements).ShouldContain(",p=1,");
+    }
+
     /// <summary>Verifies removing one shared placement preserves image data through a soft delete.</summary>
     [Fact]
     public void Prepare_WhenSharedImagePlacementIsRemoved_DeletesOnlyExactPlacement()

@@ -30,6 +30,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private List<uint>? _rentedImageIds;
     private List<uint>? _rentedPlacementIds;
     private List<UncertainPlacementState>? _rentedPlacementStates;
+    private List<uint>? _transferredImageIds;
     private List<uint>? _retiredImageIds;
     private List<uint>? _retiredPlacementIds;
     private byte[] _uploads = [];
@@ -116,6 +117,83 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         var blocked = FindFallbackBlockedPlacements(back, encodable);
 
+        // Identifiers for images the new frame no longer needs. Renting a fresh identifier for a
+        // logical replacement threw at full capacity even though the retiring image's own
+        // identifier was about to free up — the retire delete was only planned later, after
+        // allocation had already failed. Reusing a retiring identifier directly needs no delete at
+        // all: transmitting new content under the same identifier is itself a protocol-level
+        // replacement (see #22). Only images that are provably being dropped by this exact frame
+        // are offered for transfer, so an unrelated in-flight image is never touched.
+        var neededImageIdentities = new HashSet<ulong>();
+
+        for (var index = 0; index < back.PlacementCount; index++)
+        {
+            if (encodable[index] && !blocked[index])
+            {
+                _ = neededImageIdentities.Add(back.GetPlacement(index).Image!.Identity);
+            }
+        }
+
+        var retiringImageIds = new Queue<uint>();
+
+        foreach (var previous in _images)
+        {
+            // An identifier already quarantined as uncertain (a prior transfer that was itself
+            // invalidated before it could commit) is deliberately excluded here rather than
+            // transferred again. Its disposition already depends on a tombstone this transaction
+            // has not yet proven it will actually send, so layering a second transfer on top
+            // would need to reconcile two independent pending resolutions for the same physical
+            // identifier — safe in principle, but not yet proven safe across every
+            // invalidate/retry interleaving. Falling back to a fresh rental here (or exhaustion,
+            // if the allocator has no other room) is the conservative choice.
+            if (!neededImageIdentities.Contains(previous.Key) && !_uncertainImageIds.Contains(previous.Value.Id))
+            {
+                retiringImageIds.Enqueue(previous.Value.Id);
+            }
+        }
+
+        var transferredImageIds = new List<uint>();
+
+        // Same reasoning as retiringImageIds, for placement identifiers. This mirrors the
+        // position/identity matching the main loop below performs to decide whether a placement
+        // is retained in place (the effectiveIndex comparison at line ~193) — it must stay in
+        // exact sync with that check, since it exists only to learn, before the loop runs, which
+        // old placement identifiers the loop will NOT retain and can therefore offer for transfer.
+        var retainedPlacementIds = new HashSet<uint>();
+        var neededEffectiveIndex = 0;
+
+        for (var index = 0; index < back.PlacementCount; index++)
+        {
+            if (!encodable[index] || blocked[index])
+            {
+                continue;
+            }
+
+            if (neededEffectiveIndex < _placements.Count &&
+                _placements[neededEffectiveIndex].Placement.ImageIdentity ==
+                back.GetPlacement(index).ImageIdentity)
+            {
+                _ = retainedPlacementIds.Add(_placements[neededEffectiveIndex].PlacementId);
+            }
+
+            neededEffectiveIndex++;
+        }
+
+        var retiringPlacementIds = new Queue<uint>();
+
+        foreach (var previous in _placements)
+        {
+            // See the identical caution for images above: an already-uncertain placement
+            // identifier is deliberately excluded from transfer.
+            if (!retainedPlacementIds.Contains(previous.PlacementId) &&
+                !IsUncertainPlacement(previous.PlacementId))
+            {
+                retiringPlacementIds.Enqueue(previous.PlacementId);
+            }
+        }
+
+        var transferredPlacementIds = new List<uint>();
+
         try
         {
             for (var index = 0; index < back.PlacementCount; index++)
@@ -133,8 +211,19 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 {
                     if (!_images.TryGetValue(image.Identity, out imageState))
                     {
-                        var id = _imageIds.Rent();
-                        rentedImages.Add(id);
+                        uint id;
+
+                        if (retiringImageIds.TryDequeue(out var transferredId))
+                        {
+                            id = transferredId;
+                            transferredImageIds.Add(id);
+                        }
+                        else
+                        {
+                            id = _imageIds.Rent();
+                            rentedImages.Add(id);
+                        }
+
                         imageState = new ImageState(image, id);
                     }
 
@@ -159,8 +248,19 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 }
                 else
                 {
-                    var id = _placementIds.Rent();
-                    rentedPlacements.Add(id);
+                    uint id;
+
+                    if (retiringPlacementIds.TryDequeue(out var transferredPlacementId))
+                    {
+                        id = transferredPlacementId;
+                        transferredPlacementIds.Add(id);
+                    }
+                    else
+                    {
+                        id = _placementIds.Rent();
+                        rentedPlacements.Add(id);
+                    }
+
                     placementState = new PlacementState(placement, imageState.Id, id);
                     rentedPlacementStates.Add(new UncertainPlacementState(imageState.Id, id));
                 }
@@ -197,17 +297,20 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             remaining -= _placementBytes.Length;
             output.Reset(remaining);
             var retiredPlacements = new List<uint>();
+            var transferredImageIdSet = new HashSet<uint>(transferredImageIds);
             var hardDeletedImageIds = new HashSet<uint>(_uncertainImageIds);
 
             foreach (var previous in _images)
             {
-                if (!images.ContainsKey(previous.Key))
+                if (!images.ContainsKey(previous.Key) && !transferredImageIdSet.Contains(previous.Value.Id))
                 {
                     _ = hardDeletedImageIds.Add(previous.Value.Id);
                 }
             }
 
             removalCount += WriteUncertainDeletes(output, hardDeletedImageIds);
+
+            var transferredPlacementIdSet = new HashSet<uint>(transferredPlacementIds);
 
             for (var index = 0; index < _placements.Count; index++)
             {
@@ -216,8 +319,10 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                     candidate.PlacementId == previous.PlacementId &&
                     candidate.ImageId == previous.ImageId);
 
-                if (retained)
+                if (retained || transferredPlacementIdSet.Contains(previous.PlacementId))
                 {
+                    // A transferred placement identifier is reused directly by a new placement
+                    // above (see the transfer branch near line ~203); it is not being retired.
                     continue;
                 }
 
@@ -239,6 +344,15 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             {
                 if (!images.ContainsKey(previous.Key))
                 {
+                    if (transferredImageIdSet.Contains(previous.Value.Id))
+                    {
+                        // Reused directly by a new image above instead of retired: the upload
+                        // already transmitted under this identifier, which is itself a protocol
+                        // replacement. Deleting it first would be at best redundant and at worst a
+                        // race against the transmit that just claimed it.
+                        continue;
+                    }
+
                     Writer.Write(Command.DeleteImage(previous.Value.Id), [], output);
                     retiredImages.Add(previous.Value.Id);
                     removalCount++;
@@ -251,6 +365,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             _rentedImageIds = rentedImages;
             _rentedPlacementIds = rentedPlacements;
             _rentedPlacementStates = rentedPlacementStates;
+            _transferredImageIds = transferredImageIds;
             _retiredImageIds = retiredImages;
             _retiredPlacementIds = retiredPlacements;
             _prepared = true;
@@ -344,6 +459,10 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     {
         if (_prepared)
         {
+            // Transferred identifiers are excluded from this bound: they were already active
+            // (owned by the _images entry they are replacing) and are only being relabeled from
+            // "owned by _images" to "owned by _uncertainImageIds," not newly consuming allocator
+            // capacity the way a fresh rental does.
             Debug.Assert(
                 _uncertainImageIds.Count + _rentedImageIds!.Count <= _uncertainImageIds.Capacity,
                 "The bounded image allocator must fit every uncertain rental.");
@@ -351,6 +470,11 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                 _uncertainPlacements.Count + _rentedPlacementStates!.Count <= _uncertainPlacements.Capacity,
                 "The bounded placement allocator must fit every uncertain rental.");
             _uncertainImageIds.AddRange(_rentedImageIds!);
+
+            // A transferred identifier's upload is exactly as unconfirmed as a freshly rented
+            // one's: it must be quarantined the same way, so a future transaction cannot reuse it
+            // again until a delete tombstone for it has actually flushed.
+            _uncertainImageIds.AddRange(_transferredImageIds!);
             _uncertainPlacements.AddRange(_rentedPlacementStates!);
             ClearPrepared(returnRented: false);
         }
@@ -584,28 +708,60 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
     private void ReturnRetired()
     {
+        // A retiring identifier can also already be quarantined in the uncertain sets: an earlier
+        // transaction may have transferred it directly from a still-committed entry and then been
+        // invalidated, leaving it referenced by both the (unchanged) committed state and the
+        // uncertain set at once. ReturnUncertain, called right after this in every caller, is the
+        // one that returns it; returning it here too would double-free it (see #22).
         foreach (var id in _retiredPlacementIds!)
         {
-            _placementIds.Return(id);
+            if (!IsUncertainPlacement(id))
+            {
+                _placementIds.Return(id);
+            }
         }
 
         foreach (var id in _retiredImageIds!)
         {
-            _imageIds.Return(id);
+            if (!_uncertainImageIds.Contains(id))
+            {
+                _imageIds.Return(id);
+            }
         }
     }
 
     private void ReturnAllCommitted()
     {
+        // See the identical caution in ReturnRetired: a still-committed entry's identifier can
+        // already be quarantined as uncertain by an earlier transferred-and-invalidated attempt.
         foreach (var placement in _placements)
         {
-            _placementIds.Return(placement.PlacementId);
+            if (!IsUncertainPlacement(placement.PlacementId))
+            {
+                _placementIds.Return(placement.PlacementId);
+            }
         }
 
         foreach (var image in _images.Values)
         {
-            _imageIds.Return(image.Id);
+            if (!_uncertainImageIds.Contains(image.Id))
+            {
+                _imageIds.Return(image.Id);
+            }
         }
+    }
+
+    private bool IsUncertainPlacement(uint placementId)
+    {
+        foreach (var placement in _uncertainPlacements)
+        {
+            if (placement.PlacementId == placementId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ReturnUncertain()
@@ -649,6 +805,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         _rentedImageIds = null;
         _rentedPlacementIds = null;
         _rentedPlacementStates = null;
+        _transferredImageIds = null;
         _retiredImageIds = null;
         _retiredPlacementIds = null;
         _uploads = [];
