@@ -14,7 +14,7 @@ public sealed class ProtocolRouter: IDisposable
     private readonly IProtocolSink _sink;
     private readonly Decoder _decoder;
     private readonly MultiplexerRoute? _multiplexerRoute;
-    private readonly byte[]? _multiplexerCandidate;
+    private byte[]? _multiplexerCandidate;
     private int _multiplexerLength;
     private int _multiplexerDiscardEscapes;
     private int _multiplexerDiscardTerminators;
@@ -73,7 +73,6 @@ public sealed class ProtocolRouter: IDisposable
         if (route?.Policy.IsActive == true)
         {
             _multiplexerRoute = route;
-            _multiplexerCandidate = new byte[route.Policy.MaxEnvelopeBytes];
         }
     }
 
@@ -146,7 +145,6 @@ public sealed class ProtocolRouter: IDisposable
     private void RouteMultiplexerInput(ReadOnlySpan<byte> input)
     {
         Debug.Assert(_multiplexerRoute is not null, "Multiplexer input requires an active route.");
-        Debug.Assert(_multiplexerCandidate is not null, "An active route owns bounded candidate storage.");
         var prefix = _multiplexerRoute.ReplyPrefix;
 
         foreach (var value in input)
@@ -166,7 +164,7 @@ public sealed class ProtocolRouter: IDisposable
                 continue;
             }
 
-            if (_multiplexerLength == _multiplexerCandidate.Length)
+            if (_multiplexerCandidate is not null && _multiplexerLength == _multiplexerCandidate.Length)
             {
                 if (HasCompleteMultiplexerPrefix())
                 {
@@ -186,10 +184,15 @@ public sealed class ProtocolRouter: IDisposable
 
             if (_multiplexerLength == 0)
             {
+                // The first candidate byte of a possible wrapped reply — this is the earliest
+                // point storage could possibly be needed, so the bounded buffer is rented here
+                // instead of unconditionally at construction (see #24). A session that never
+                // receives anything starting with the reply prefix never allocates it.
+                _multiplexerCandidate ??= new byte[_multiplexerRoute.Policy.MaxEnvelopeBytes];
                 _multiplexerCandidateStart = currentRawOffset;
             }
 
-            _multiplexerCandidate[_multiplexerLength++] = value;
+            _multiplexerCandidate![_multiplexerLength++] = value;
 
             if (_multiplexerLength <= prefix.Length)
             {
