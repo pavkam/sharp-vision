@@ -219,8 +219,11 @@ public sealed class TabControl: ItemsControl
             Math.Max(0, bounds.Height - _headerStripHeight)));
     }
 
+    // Drawn after RenderChildren (which paints _headers, the header Stack's own opaque
+    // background) rather than in OnRenderContent, which runs before it and had every
+    // divider glyph overwritten by that background on the very next frame.
     /// <inheritdoc/>
-    protected override void OnRenderContent(TerminalCanvas canvas)
+    internal override void RenderOverlay(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height < _headerStripHeight)
         {

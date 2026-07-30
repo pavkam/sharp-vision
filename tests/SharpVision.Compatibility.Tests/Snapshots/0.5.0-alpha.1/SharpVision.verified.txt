@@ -58,7 +58,6 @@ namespace SharpVision.Controls.Collections
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool RequestClose(SharpVision.Controls.Collections.TabItem item) { }
         public void ResetGlyphs() { }

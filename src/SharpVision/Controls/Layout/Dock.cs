@@ -152,6 +152,13 @@ public sealed class Dock: Container
         var remaining = bounds;
         var last = LastParticipant();
 
+        // Star children share their axis's remaining space by weight instead of each
+        // claiming the whole remainder in child order, mirroring Tracks.AllocateStars for
+        // Grid/StackPanel. Horizontal (Left/Right) and vertical (Top/Bottom) children never
+        // consume each other's axis, so the two groups are allocated independently up front.
+        var horizontalStars = AllocateStarBorders(horizontal: true, bounds.Width, last);
+        var verticalStars = AllocateStarBorders(horizontal: false, bounds.Height, last);
+
         for (var index = 0; index < Children.Count; index++)
         {
             var child = Children[index];
@@ -172,7 +179,10 @@ public sealed class Dock: Container
             var horizontal = side is Side.Left or Side.Right;
             var axis = horizontal ? remaining.Width : remaining.Height;
             var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
-            var border = Resolve(child, axis, horizontal);
+            var length = horizontal ? child.Width : child.Height;
+            var border = length.Kind == Kind.Star
+                ? (horizontal ? horizontalStars : verticalStars)[index]
+                : Resolve(child, axis, horizontal);
             var outer = Math.Min(axis, LayoutMath.Add(border, margin));
 
             var slot = side switch
@@ -212,6 +222,8 @@ public sealed class Dock: Container
         };
     }
 
+    // Resolves a non-Star edge request. Star children are allocated separately by
+    // AllocateStarBorders, sharing their axis's remaining space by weight.
     private static int Resolve(Control child, int available, bool horizontal)
     {
         Debug.Assert(available >= 0, "Available dock axis space is non-negative.");
@@ -230,11 +242,85 @@ public sealed class Dock: Container
             Kind.Auto => desired,
             Kind.Cells => (int) length.Value,
             Kind.Percent => Percent(available, length.Value),
-            Kind.Star => space,
+            Kind.Star => throw new UnreachableException("Star lengths resolve through AllocateStarBorders."),
             _ => throw new UnreachableException()
         };
 
         return Math.Min(space, Math.Clamp(requested, minimum, maximum));
+    }
+
+    // Computes, per Star child sharing one axis (horizontal: Left/Right, vertical: Top/Bottom),
+    // its proportional share of that axis's space left over after every non-Star participant on
+    // the same axis is resolved in child order — the same order ArrangeOverride itself walks, so
+    // this dry run reproduces the identical shrinking "available" sequence Percent-length siblings
+    // already depend on. Only participants are considered: a collapsed child, or the last child
+    // when LastChildFills, never reserves space on either axis.
+    private int[] AllocateStarBorders(bool horizontal, int axisTotal, int last)
+    {
+        var shares = new int[Children.Count];
+        var remaining = axisTotal;
+        List<int>? starIndices = null;
+        var totalWeight = 0d;
+
+        for (var index = 0; index < Children.Count; index++)
+        {
+            var child = Children[index];
+
+            if (child.Visibility == Visibility.Collapsed || (LastChildFills && index == last))
+            {
+                continue;
+            }
+
+            var side = GetSide(child);
+            var onThisAxis = horizontal ? side is Side.Left or Side.Right : side is Side.Top or Side.Bottom;
+
+            if (!onThisAxis)
+            {
+                continue;
+            }
+
+            var length = horizontal ? child.Width : child.Height;
+            var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
+
+            if (length.Kind == Kind.Star)
+            {
+                (starIndices ??= []).Add(index);
+                totalWeight += length.Value;
+                remaining -= Math.Min(remaining, margin);
+            }
+            else
+            {
+                var border = Resolve(child, remaining, horizontal);
+                remaining -= Math.Min(remaining, LayoutMath.Add(border, margin));
+            }
+
+            remaining -= Math.Min(remaining, index == last ? 0 : Spacing);
+        }
+
+        if (starIndices is null || totalWeight <= 0)
+        {
+            return shares;
+        }
+
+        var cumulativeWeight = 0d;
+        var previousEdge = 0;
+
+        foreach (var index in starIndices)
+        {
+            var child = Children[index];
+            var length = horizontal ? child.Width : child.Height;
+            var minimum = horizontal ? child.MinWidth : child.MinHeight;
+            var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+
+            cumulativeWeight += length.Value;
+            var edge = (int) Math.Round(remaining * cumulativeWeight / totalWeight, MidpointRounding.AwayFromZero);
+            var share = edge - previousEdge;
+            previousEdge = edge;
+
+            shares[index] = Math.Clamp(share, minimum, maximum);
+        }
+
+        return shares;
     }
 
     private static int Percent(int axis, double value)

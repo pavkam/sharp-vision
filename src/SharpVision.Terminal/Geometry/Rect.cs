@@ -67,8 +67,8 @@ public readonly record struct Rect
         return new Rect(
             left,
             top,
-            Math.Max(0, right - left),
-            Math.Max(0, bottom - top));
+            ClampedExtent(right, left),
+            ClampedExtent(bottom, top));
     }
 
     /// <inheritdoc />
@@ -79,5 +79,15 @@ public readonly record struct Rect
     {
         var result = (long) value + extent;
         return result > int.MaxValue ? int.MaxValue : (int) result;
+    }
+
+    // Widens to long before subtracting so two edges near opposite ends of the int range
+    // can't wrap around into a bogus small positive extent; clamps the (possibly huge)
+    // true difference into the representable non-negative int range on both ends.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ClampedExtent(int high, int low)
+    {
+        var extent = (long) high - low;
+        return extent <= 0 ? 0 : extent > int.MaxValue ? int.MaxValue : (int) extent;
     }
 }

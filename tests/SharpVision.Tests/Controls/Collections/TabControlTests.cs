@@ -204,6 +204,23 @@ public sealed class TabControlTests
         tabs.UnderlineGlyph.ShouldBe(defaultUnderline);
     }
 
+    /// <summary>Verifies the divider glyph between headers survives on top of the header
+    /// Stack's own opaque background instead of being overwritten every frame.</summary>
+    [Fact]
+    public void Render_WhenTwoHeadersArePresent_DrawsDividerOnTopOfHeaderBackground()
+    {
+        var tabs = Create(Create("A", "One"), Create("B", "Two"));
+        tabs.HeaderWidth = Length.Cells(5);
+        tabs.DividerGlyph = new Rune('|');
+        var size = new Size(10, 4);
+        new Engine().Layout(tabs, size);
+        using Frame frame = new(size);
+
+        tabs.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(5, 0)).ShouldBe("|");
+    }
+
     /// <summary>Verifies color properties reject transparent values before mutation.</summary>
     [Fact]
     public void ColorProperties_WhenTransparentIsAssigned_ThrowBeforeMutation()

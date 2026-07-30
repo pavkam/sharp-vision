@@ -316,6 +316,62 @@ public sealed class DockTests
         child.Bounds.ShouldBe(new Rect(6, 0, 4, 2));
     }
 
+    /// <summary>Verifies two equal-weight Star siblings on the same side split the
+    /// remaining axis proportionally instead of the first claiming it all.</summary>
+    [Fact]
+    public void Layout_WhenTwoEqualStarSiblingsShareASide_SplitsRemainingSpaceEvenly()
+    {
+        var panel = new Panel { LastChildFills = false };
+        var first = new ProbeControl { Width = Length.Star(1) };
+        var second = new ProbeControl { Width = Length.Star(1) };
+        Panel.SetSide(first, Side.Left);
+        Panel.SetSide(second, Side.Left);
+        panel.Children.Add(first);
+        panel.Children.Add(second);
+
+        new Engine().Layout(panel, new Size(100, 1));
+
+        first.Bounds.ShouldBe(new Rect(0, 0, 50, 1));
+        second.Bounds.ShouldBe(new Rect(50, 0, 50, 1));
+    }
+
+    /// <summary>Verifies unequal Star weights on the same side split remaining space proportionally.</summary>
+    [Fact]
+    public void Layout_WhenStarSiblingsHaveUnequalWeight_SplitsProportionally()
+    {
+        var panel = new Panel { LastChildFills = false };
+        var single = new ProbeControl { Width = Length.Star(1) };
+        var doubled = new ProbeControl { Width = Length.Star(2) };
+        Panel.SetSide(single, Side.Left);
+        Panel.SetSide(doubled, Side.Left);
+        panel.Children.Add(single);
+        panel.Children.Add(doubled);
+
+        new Engine().Layout(panel, new Size(90, 1));
+
+        single.Bounds.Width.ShouldBe(30);
+        doubled.Bounds.Width.ShouldBe(60);
+    }
+
+    /// <summary>Verifies Star children on the horizontal axis are unaffected by an
+    /// unrelated vertical-axis sibling's own Star share.</summary>
+    [Fact]
+    public void Layout_WhenStarSiblingsSpanDifferentAxes_EachAxisAllocatesIndependently()
+    {
+        var panel = new Panel { LastChildFills = false };
+        var left = new ProbeControl { Width = Length.Star(1) };
+        var top = new ProbeControl { Height = Length.Star(1) };
+        Panel.SetSide(left, Side.Left);
+        Panel.SetSide(top, Side.Top);
+        panel.Children.Add(left);
+        panel.Children.Add(top);
+
+        new Engine().Layout(panel, new Size(20, 10));
+
+        left.Bounds.Width.ShouldBe(20);
+        top.Bounds.Height.ShouldBe(10);
+    }
+
     private static ProbeControl HeightOnly(int height) => new() { Height = Length.Cells(height) };
 
     private static ProbeControl WidthOnly(int width) => new() { Width = Length.Cells(width) };

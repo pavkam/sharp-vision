@@ -55,7 +55,7 @@ public sealed class ProgressBar: Control
         }
     }
 
-    /// <summary>Gets or sets the upper bound of the progress range. Value is clamped to [Minimum, Maximum]. Default is 100.</summary>
+    /// <summary>Gets or sets the upper bound of the progress range. Value is clamped to [Minimum, Maximum]. Default is 1.</summary>
     /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
     public double Maximum
