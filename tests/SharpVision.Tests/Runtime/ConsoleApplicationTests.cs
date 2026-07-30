@@ -120,7 +120,57 @@ public sealed class ConsoleApplicationTests
         messages.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a fault reported after startup surfaces as Failed instead of an unhandled exception.</summary>
+    /// <remarks>
+    /// Task.WhenAny never adopts the winning task's status; a post-startup fault on
+    /// Application.Completion must be explicitly awaited to observe it, or it is lost and
+    /// RunApplicationAsync falls through to the unguarded StopAsync call below, which rethrows
+    /// the already-faulted Completion unwrapped and uncaught (see #132).
+    /// </remarks>
+    [Fact]
+    public async Task RunAsync_WhenApplicationFailsAfterStartup_ReturnsFailedAsync()
+    {
+        var screen = new StartedSignalScreen();
+        var transport = new ConsoleApplicationTransport();
+        var resize = new ConsoleApplicationResizeSource();
+        var restore = new ConsoleApplicationRestoreLease();
+        resize.QueueResize(new Dimensions(new Size(10, 4)));
+        var connection = new ConsoleConnection(transport, resize, restore);
+        var builder = new ConsoleApplicationBuilder(
+            screen,
+            static () => true,
+            _ => connection,
+            _ => { })
+            .UseTerminalProfile(TerminalProfile.CreateAnsi(Capabilities.Conservative));
+
+        var run = ConsoleApplication.RunCoreAsync(builder, TestContext.Current.CancellationToken).AsTask();
+        var application = await screen.Started.WaitAsync(TestContext.Current.CancellationToken);
+
+        application.Fault(new InvalidOperationException("session boom"));
+
+        var status = await run;
+
+        status.ShouldBe(ConsoleRunStatus.Failed);
+    }
+
     private static TerminalProfile Unsuitable(Suitability suitability) => new(
         new Description("fixture", DescriptionOrigin.Explicit, suitability),
         Capabilities.Conservative);
+
+    /// <summary>Signals the exact application instance once the Started hook fires.</summary>
+    private sealed class StartedSignalScreen: SharpVision.Controls.Screen
+    {
+        private readonly TaskCompletionSource<Application> _started =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal StartedSignalScreen() => InitializeContent(new ProbeControl());
+
+        internal Task<Application> Started => _started.Task;
+
+        protected override void OnStarted(Application application)
+        {
+            base.OnStarted(application);
+            _ = _started.TrySetResult(application);
+        }
+    }
 }

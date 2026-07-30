@@ -104,9 +104,20 @@ public static class ConsoleApplication
         try
         {
             await application.StartAsync(cancellation.Token).ConfigureAwait(false);
-            _ = await Task.WhenAny(
-                application.Completion,
+            var completion = application.Completion;
+            var winner = await Task.WhenAny(
+                completion,
                 Task.Delay(Timeout.InfiniteTimeSpan, cancellation.Token)).ConfigureAwait(false);
+
+            // Task.WhenAny never adopts the winning task's status; a post-startup application
+            // fault on Completion must be awaited here to surface it, or it is lost and this
+            // method falls through to the unguarded StopAsync call below (see #132). When the
+            // delay wins instead, cancellation is already handled by the checks after the
+            // try/catch, so Completion is left unobserved.
+            if (ReferenceEquals(winner, completion))
+            {
+                await completion.ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {

@@ -341,9 +341,21 @@ public sealed class Application: ISink, IAsyncDisposable
 
         _sessionTask = _session.RunAsync(_lifetime.Token).AsTask();
         _ = ObserveSessionAsync();
-        var completed = await Task.WhenAny(_started.Task, _completion.Task)
-            .WaitAsync(cancellationToken);
-        await completed.WaitAsync(cancellationToken);
+
+        try
+        {
+            var completed = await Task.WhenAny(_started.Task, _completion.Task)
+                .WaitAsync(cancellationToken);
+            await completed.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Unlike the Starting-handler guard above, the session and dispatcher are already
+            // live by this point; a cancellation landing here must not leave them running
+            // unobserved by the caller (see #133).
+            await StopAsync(CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <summary>Requests idempotent shutdown and waits for complete cleanup.</summary>
@@ -398,7 +410,16 @@ public sealed class Application: ISink, IAsyncDisposable
     /// <exception cref="ObjectDisposedException">The application is disposed.</exception>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        await StartAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await StartAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // StartAsync has already stopped and cleaned up a session that reached the live
+            // state before this cancellation landed (see #133); nothing further to await here.
+            return;
+        }
 
         try
         {

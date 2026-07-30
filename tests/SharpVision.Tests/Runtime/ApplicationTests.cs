@@ -63,6 +63,58 @@ public sealed class ApplicationTests
         window.IsActive.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a cancellation landing after the session has gone live still stops and disposes
+    /// it, instead of leaking a fully-started session that StartAsync's own throw never observes.</summary>
+    [Fact]
+    public async Task StartAsync_WhenCancelledAfterSessionGoesLive_StopsSessionBeforeThrowingAsync()
+    {
+        await using BlockingResizeTerminal terminal = new();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        using var cancellation = new CancellationTokenSource();
+
+        var starting = application.StartAsync(cancellation.Token).AsTask();
+        await terminal.ResizeRequested.WaitAsync(TestContext.Current.CancellationToken);
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await starting);
+
+        // Without the #133 fix, nothing ever calls StopAsync here, so Completion never
+        // completes and this wait would time out instead of observing a clean shutdown.
+        await Should.NotThrowAsync(async () => await application.Completion
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>Verifies RunAsync mirrors its later cancellation handling for a cancellation that lands
+    /// while StartAsync's own tail wait is pending, returning cleanly instead of leaking the session.</summary>
+    [Fact]
+    public async Task RunAsync_WhenCancelledAfterSessionGoesLive_ReturnsWithoutThrowingAsync()
+    {
+        await using BlockingResizeTerminal terminal = new();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        using var cancellation = new CancellationTokenSource();
+
+        var running = application.RunAsync(cancellation.Token);
+        await terminal.ResizeRequested.WaitAsync(TestContext.Current.CancellationToken);
+        cancellation.Cancel();
+
+        await running.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // RunAsync returning without throwing is not by itself proof of a clean shutdown — the
+        // buggy StartAsync also returns to a caller that swallows its cancellation without ever
+        // calling StopAsync (see #133), leaving the session running unobserved. Completion must
+        // actually finish, not just be left pending forever.
+        await Should.NotThrowAsync(async () => await application.Completion
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+    }
+
     /// <summary>Verifies a visual-only Theme change renders without the former unconditional root measure.</summary>
     [Fact]
     public async Task Theme_WhenOnlyResolvedColorsChange_DoesNotRemeasureRootAsync()
@@ -785,5 +837,35 @@ public sealed class ApplicationTests
         await application.Dispatcher.InvokeAsync(
             static () => { },
             TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Never delivers input or a resize, so a session started against it stays live until
+    /// its lifetime token cancels — signaling exactly when the resize wait is first reached.</summary>
+    private sealed class BlockingResizeTerminal: ITransport, IResizeSource
+    {
+        private readonly TaskCompletionSource _resizeRequested =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal Task ResizeRequested => _resizeRequested.Task;
+
+        public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
+
+        public ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask FlushAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
+
+        public async ValueTask<Dimensions> ReadAsync(CancellationToken cancellationToken)
+        {
+            _ = _resizeRequested.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new UnreachableException();
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }
