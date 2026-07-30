@@ -83,6 +83,48 @@ public sealed class TableTests
         table.CopySelection().ShouldBe("A1\tB1\nA2\tB2");
     }
 
+    /// <summary>Verifies sorting preserves row selection instead of silently clearing it — the
+    /// reorder relocates the exact same row instances rather than removing and re-adding new
+    /// ones, so selection referencing those instances must survive (see #109).</summary>
+    [Fact]
+    public void SortBy_WhenRowsAreSelected_PreservesSelection()
+    {
+        var first = new TableRow([new ControlText("B")]);
+        var second = new TableRow([new ControlText("A")]);
+        var table = new Table { SelectionMode = TableSelectionMode.MultipleRows };
+        table.Columns.Add(TableColumn.Auto("Name"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.SelectRow(first);
+        table.SelectRow(second, Modifiers.Control);
+
+        table.SortBy(0);
+
+        table.Rows.ShouldBe([second, first]);
+        table.SelectedRows.ShouldBe([second, first]);
+    }
+
+    /// <summary>Verifies sorting does not cancel an in-progress edit on a row that survives the
+    /// reorder — the row instance is only relocated, not removed (see #109).</summary>
+    [Fact]
+    public void SortBy_WhenRowIsBeingEdited_DoesNotCancelEdit()
+    {
+        var editor = new TextInput { Text = "one" };
+        var other = new TableRow([new ControlText("two")]);
+        var edited = new TableRow([editor]);
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(other);
+        table.Rows.Add(edited);
+        table.BeginEdit(edited, 0).ShouldBeTrue();
+        editor.Text = "changed";
+
+        table.SortBy(0);
+
+        table.IsEditing.ShouldBeTrue();
+        editor.Text.ShouldBe("changed");
+    }
+
     /// <summary>Verifies default text sorting is ordinal and stable across the direction cycle.</summary>
     [Fact]
     public void SortBy_WhenDefaultTextKeysAreComparedUnderCulture_PreservesOrdinalStableOrder()

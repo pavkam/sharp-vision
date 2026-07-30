@@ -833,6 +833,11 @@ public sealed class Table: ItemsControl
 
         if (_presenter.TryGetHeaderColumn(point, out var headerColumn))
         {
+            // Sorting reorders through Rows.Clear() + re-add rather than moving rows in place, so
+            // an in-progress edit must be committed here — the same as the ordinary
+            // click-elsewhere check below — instead of being silently reverted when the edited
+            // row's removal cancels it (see #109).
+            _ = CommitEdit();
             SortBy(headerColumn);
             return;
         }
@@ -1302,7 +1307,14 @@ public sealed class Table: ItemsControl
     private void RemoveRowCore(TableRowCollection owner, int index, bool repairSelection)
     {
         var row = Rows[index];
-        CancelActiveEditIfOwned(row);
+
+        // A reorder relocates this exact row instance rather than removing it — cancelling an
+        // edit it owns would silently revert uncommitted text for a row that is about to be
+        // re-added unchanged (see #109).
+        if (!_isReordering)
+        {
+            CancelActiveEditIfOwned(row);
+        }
 
         if (repairSelection)
         {
@@ -1337,8 +1349,14 @@ public sealed class Table: ItemsControl
     {
         VerifyRowsOwner(owner);
 
-        var removedRows = Rows.ToArray();
-        RepairSelectionForRows(removedRows, null);
+        // A reorder clears every row only to re-add the exact same instances in a new order —
+        // none of them are actually being removed, so selection referencing those row instances
+        // must survive untouched instead of being unconditionally emptied here (see #109).
+        if (!_isReordering)
+        {
+            var removedRows = Rows.ToArray();
+            RepairSelectionForRows(removedRows, null);
+        }
 
         for (var index = Rows.Count - 1; index >= 0; index--)
         {

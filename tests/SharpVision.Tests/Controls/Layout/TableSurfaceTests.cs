@@ -295,6 +295,36 @@ public sealed class TableSurfaceTests
         ]);
     }
 
+    /// <summary>Verifies clicking a header commits an in-progress cell edit instead of silently
+    /// reverting it, matching the ordinary click-elsewhere behavior a few lines below the header
+    /// branch (see #109).</summary>
+    [Fact]
+    public async Task Pointer_WhenHeaderIsPressedDuringEdit_CommitsInsteadOfRevertingAsync()
+    {
+        var editor = new TextInput { Text = "one" };
+        var table = new Table
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Value", 8));
+        table.Rows.Add(new TableRow([editor]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(8, 3),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(table, new Point(1, 1));
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.PressAsync(Code.End);
+        await surface.Keyboard.TypeAsync("!");
+
+        await surface.Pointer.ClickAsync(table, new Point(1, 0));
+
+        table.IsEditing.ShouldBeFalse();
+        editor.Text.ShouldBe("one!");
+    }
+
     /// <summary>Verifies mounted Ctrl+A commits select-all and raises SelectionChanged.</summary>
     [ComponentBehaviorEvidence(typeof(Table), ComponentBehavior.Tab)]
     [Fact]
