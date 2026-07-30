@@ -515,7 +515,8 @@ public static class BindingExtensions
         change => change.Action switch
         {
             NotifyCollectionChangedAction.Add
-                when change.NewItems is { Count: 1 } && change.NewStartingIndex >= 0 =>
+                when change.NewItems is { Count: 1 } && change.NewStartingIndex >= 0 &&
+                     change.NewStartingIndex <= target.Items.Count =>
                 ApplyListInsert(target, change.NewStartingIndex, change.NewItems[0]),
 
             NotifyCollectionChangedAction.Remove

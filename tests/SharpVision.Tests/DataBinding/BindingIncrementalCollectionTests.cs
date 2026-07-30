@@ -194,6 +194,27 @@ public sealed class BindingIncrementalCollectionTests
     }
 
     /// <summary>
+    /// Verifies an Add notification whose reported index exceeds the target's current item
+    /// count is ignored instead of throwing, matching the guard Remove and Replace already
+    /// apply. Ordinary <see cref="ObservableCollection{T}"/> mutations always report a
+    /// consistent index, so this uses a spoofable source to simulate the hand-rolled
+    /// <see cref="System.Collections.Specialized.INotifyCollectionChanged"/> source, coalesced/batched
+    /// event, or diverged-count timing the underlying bug is actually reachable from.
+    /// </summary>
+    [Fact]
+    public void BindItems_WhenAddIndexExceedsTargetCount_IsIgnoredWithoutThrowing()
+    {
+        var source = new SpoofableAddCollection<BindingItem> { new("A") };
+        var model = new BindingModel { Items = source };
+        var target = new UiListView();
+        using var binding = target.BindItems(model, value => value.Items);
+
+        Should.NotThrow(() => source.RaiseSpoofedAdd(new BindingItem("out-of-range"), 5));
+
+        target.Items.ShouldBe(new object?[] { source[0] });
+    }
+
+    /// <summary>
     /// Verifies the same stale-source interleaving does not mutate the target
     /// after the binding has been disposed.
     /// </summary>
