@@ -584,20 +584,8 @@ internal sealed class NonRetainedGraphicsBackend: IGraphicsBackend
 
     #endregion
 
-    private static void WriteCursor(Point value, IBufferWriter<byte> destination)
-    {
-        Span<byte> cursor = stackalloc byte[64];
-        var position = 0;
-        cursor[position++] = ControlBytes.Escape;
-        cursor[position++] = (byte) '[';
-        _ = Utf8Formatter.TryFormat(value.Y + 1, cursor[position..], out var row);
-        position += row;
-        cursor[position++] = (byte) ';';
-        _ = Utf8Formatter.TryFormat(value.X + 1, cursor[position..], out var column);
-        position += column;
-        cursor[position++] = (byte) 'H';
-        destination.Write(cursor[..position]);
-    }
+    private static void WriteCursor(Point value, IBufferWriter<byte> destination) =>
+        Csi.Position(new Writer(destination), value.Y + 1, value.X + 1);
 
     private void ClearPrepared()
     {
