@@ -40,6 +40,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
     private bool _resizing;
     private Point _resizePointerOrigin;
     private Size _resizeWindowOrigin;
+    private Point _resizeWindowPosition;
     private bool _closePointerOver;
     private bool _closePressed;
     private Rune? _closeGlyph;
@@ -767,6 +768,7 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
                 _resizing = true;
                 _resizePointerOrigin = cells;
                 _resizeWindowOrigin = new Size(LocalBounds.Width, LocalBounds.Height);
+                _resizeWindowPosition = new Point(LocalBounds.X, LocalBounds.Y);
                 eventArgs.Handled = true;
                 return;
             }
@@ -795,12 +797,18 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
             var (floorWidth, floorHeight) = ChromeResizeFloor();
             var minWidth = Math.Max(MinWidth, floorWidth);
             var minHeight = Math.Max(MinHeight, floorHeight);
-            var maximumWidth = Math.Max(minWidth, clientBounds.Width - LocalBounds.X);
-            var maximumHeight = Math.Max(minHeight, clientBounds.Height - LocalBounds.Y);
+            var maximumWidth = Math.Max(minWidth, clientBounds.Width - _resizeWindowPosition.X);
+            var maximumHeight = Math.Max(minHeight, clientBounds.Height - _resizeWindowPosition.Y);
             var width = Math.Clamp(_resizeWindowOrigin.Width + deltaX, minWidth, Math.Min(MaxWidth, maximumWidth));
             var height = Math.Clamp(_resizeWindowOrigin.Height + deltaY, minHeight, Math.Min(MaxHeight, maximumHeight));
             Width = Length.Cells(width);
             Height = Length.Cells(height);
+
+            // Own the origin for the duration of the gesture, exactly as the drag path
+            // already does, so the top-left corner stays fixed regardless of the window's
+            // alignment or Overlay.Right/Bottom anchoring (see #174).
+            Overlay.SetLeft(this, Length.Cells(_resizeWindowPosition.X));
+            Overlay.SetTop(this, Length.Cells(_resizeWindowPosition.Y));
             eventArgs.Handled = true;
         }
         else if (_dragging)

@@ -346,6 +346,95 @@ public sealed class WindowSurfaceTests
         window.Bounds.Height.ShouldBe(7);
     }
 
+    /// <summary>Verifies dragging the bottom-right corner of a centered Window grows it in place
+    /// under the cursor instead of drifting away as ConstrainOverlaySlot re-centers the growing
+    /// extent every arrange (see #174).</summary>
+    [Fact]
+    public async Task Resize_WhenWindowIsCentered_GrowsInPlaceUnderCursorAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var originX = window.Bounds.X;
+        var originY = window.Bounds.Y;
+        var grip = new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1);
+
+        // Act: one diagonal move, the grip must move to exactly follow the cursor
+        await surface.Pointer.MoveToAsync(stage, grip);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(grip.X + 4, grip.Y + 4));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert: the top-left origin stayed fixed, the whole grow happened on the far edges
+        window.Bounds.X.ShouldBe(originX);
+        window.Bounds.Y.ShouldBe(originY);
+        window.Bounds.Width.ShouldBe(14);
+        window.Bounds.Height.ShouldBe(8);
+    }
+
+    /// <summary>Verifies dragging the bottom-right corner of a Right/Bottom-anchored Window grows
+    /// it under the cursor instead of stalling immediately because TrailingOrigin keeps pinning
+    /// the far edge as the extent grows (see #174).</summary>
+    [Fact]
+    public async Task Resize_WhenWindowIsAnchoredTrailing_GrowsUnderCursorInsteadOfStallingAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetRight(window, Length.Cells(2));
+        Overlay.SetBottom(window, Length.Cells(1));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+        var originX = window.Bounds.X;
+        var originY = window.Bounds.Y;
+        var grip = new Point(window.Bounds.Right - 1, window.Bounds.Bottom - 1);
+
+        // Act
+        await surface.Pointer.MoveToAsync(stage, grip);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(grip.X + 2, grip.Y + 1));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert: the top-left origin stayed fixed and the corner actually followed the cursor,
+        // instead of the far Right/Bottom anchor keeping the window pinned near the stage edge.
+        window.Bounds.X.ShouldBe(originX);
+        window.Bounds.Y.ShouldBe(originY);
+        window.Bounds.Width.ShouldBe(12);
+        window.Bounds.Height.ShouldBe(5);
+    }
+
     /// <summary>Verifies the resize gesture clamps to MinWidth/MinHeight instead of shrinking further.</summary>
     [Fact]
     public async Task Resize_WhenDraggedBelowMinimumSize_ClampsToMinimumAsync()
