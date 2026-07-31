@@ -72,6 +72,18 @@ public sealed class Decoder: IDisposable
             TryHandleLegacyCsiKey,
             TryHandleAnsiGrammarCsi
         ];
+        _sequenceHandlers =
+        [
+            TryHandleOscSequence,
+            TryHandleKittyGraphicsSequence,
+            TryHandleProtocolSequence
+        ];
+        _dcsHandlers =
+        [
+            TryHandleDecrqssDcs,
+            TryHandleGetCapDcs,
+            TryHandleProtocolDcs
+        ];
     }
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
@@ -851,6 +863,16 @@ public sealed class Decoder: IDisposable
         EmitStroke(code, null, mapped ? 0 : final);
     }
 
+    /// <summary>Attempts one candidate handler for a parsed OSC/APC/PM string sequence.</summary>
+    /// <param name="kind">The sequence family.</param>
+    /// <param name="value">The borrowed sequence payload.</param>
+    /// <param name="terminator">The observed string terminator.</param>
+    /// <returns>True when this handler claimed and fully processed the sequence.</returns>
+    private delegate bool SequenceHandler(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator);
+
+    /// <summary>Handlers tried in order for every OSC/APC/PM sequence (see #97 step 6).</summary>
+    private readonly SequenceHandler[] _sequenceHandlers;
+
     private void HandleSequence(
         SequenceKind kind,
         ReadOnlySpan<byte> value,
@@ -860,47 +882,68 @@ public sealed class Decoder: IDisposable
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
-        if (kind == SequenceKind.Osc && XtermResponses.TryOsc(value, out var response))
+        foreach (var handler in _sequenceHandlers)
         {
-            if (_protocolSink is { } protocolSink)
+            if (handler(kind, value, terminator))
             {
-                protocolSink.Response(in response);
+                return;
             }
-            else
-            {
-                Report(DiagnosticCode.Unsupported, kind);
-            }
+        }
+    }
 
-            return;
+    private bool TryHandleOscSequence(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator)
+    {
+        if (kind != SequenceKind.Osc || !XtermResponses.TryOsc(value, out var response))
+        {
+            return false;
         }
 
-        if (kind == SequenceKind.Apc && !value.IsEmpty && value[0] == (byte) 'G')
+        if (_protocolSink is { } protocolSink)
         {
-            if (_protocolSink is { } graphicsSink)
-            {
-                graphicsSink.Response(Kitty.Response.Parse(value, _options.Limits));
-            }
-            else
-            {
-                Report(DiagnosticCode.Unsupported, kind);
-            }
-
-            return;
+            protocolSink.Response(in response);
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, kind);
         }
 
+        return true;
+    }
+
+    private bool TryHandleKittyGraphicsSequence(
+        SequenceKind kind,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
+    {
+        if (kind != SequenceKind.Apc || value.IsEmpty || value[0] != (byte) 'G')
+        {
+            return false;
+        }
+
+        if (_protocolSink is { } graphicsSink)
+        {
+            graphicsSink.Response(Kitty.Response.Parse(value, _options.Limits));
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, kind);
+        }
+
+        return true;
+    }
+
+    /// <summary>The terminal handler: always claims the sequence, either forwarding it to the
+    /// protocol sink or reporting it unsupported.</summary>
+    private bool TryHandleProtocolSequence(SequenceKind kind, ReadOnlySpan<byte> value, StringTerminator terminator)
+    {
         if (_protocolSink is null)
         {
             Report(DiagnosticCode.Unsupported, kind);
-            return;
+            return true;
         }
 
-        _protocolSink.Sequence(new ProtocolSequence(
-            kind,
-            [],
-            [],
-            0,
-            value,
-            terminator));
+        _protocolSink.Sequence(new ProtocolSequence(kind, [], [], 0, value, terminator));
+        return true;
     }
 
     private void HandleParserDiagnostic(in Diagnostic value)
@@ -1215,6 +1258,23 @@ public sealed class Decoder: IDisposable
         ReadOnlySpan<byte> value,
         StringTerminator terminator) => HandleSequence(kind, value, terminator);
 
+    /// <summary>Attempts one candidate handler for a parsed DCS sequence.</summary>
+    /// <param name="parameters">The borrowed DCS parameter bytes.</param>
+    /// <param name="intermediates">The borrowed DCS intermediate bytes.</param>
+    /// <param name="final">The DCS final byte.</param>
+    /// <param name="value">The borrowed DCS payload.</param>
+    /// <param name="terminator">The observed string terminator.</param>
+    /// <returns>True when this handler claimed and fully processed the sequence.</returns>
+    private delegate bool DcsHandler(
+        ReadOnlySpan<byte> parameters,
+        ReadOnlySpan<byte> intermediates,
+        byte final,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator);
+
+    /// <summary>Handlers tried in order for every DCS sequence (see #97 step 6).</summary>
+    private readonly DcsHandler[] _dcsHandlers;
+
     /// <summary>Accepts one parsed DCS payload.</summary>
     /// <param name="parameters">Borrowed parameter bytes.</param>
     /// <param name="intermediates">Borrowed intermediate bytes.</param>
@@ -1232,59 +1292,86 @@ public sealed class Decoder: IDisposable
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
-        if (XtermDecrqss.TryParse(parameters, intermediates, final, value, out var status))
+        foreach (var handler in _dcsHandlers)
         {
-            if (_protocolSink is { } statusSink)
+            if (handler(parameters, intermediates, final, value, terminator))
             {
-                statusSink.Response(in status);
-
-                if (status.Name == StatusName.Unknown && status.IsValid)
-                {
-                    Report(DiagnosticCode.Unsupported, SequenceKind.Dcs);
-                }
+                return;
             }
-            else
+        }
+    }
+
+    private bool TryHandleDecrqssDcs(
+        ReadOnlySpan<byte> parameters,
+        ReadOnlySpan<byte> intermediates,
+        byte final,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
+    {
+        if (!XtermDecrqss.TryParse(parameters, intermediates, final, value, out var status))
+        {
+            return false;
+        }
+
+        if (_protocolSink is { } statusSink)
+        {
+            statusSink.Response(in status);
+
+            if (status.Name == StatusName.Unknown && status.IsValid)
             {
                 Report(DiagnosticCode.Unsupported, SequenceKind.Dcs);
             }
-
-            return;
         }
-
-        if (XtermGetCap.TryParse(
-                parameters,
-                intermediates,
-                final,
-                value,
-                _options.Limits,
-                out var capability))
+        else
         {
-            if (_protocolSink is { } capabilitySink)
-            {
-                Debug.Assert(capability is not null, "A successful XTGETTCAP parse owns a response.");
-                capabilitySink.Response(capability);
-            }
-            else
-            {
-                Report(DiagnosticCode.Unsupported, SequenceKind.Dcs);
-            }
-
-            return;
+            Report(DiagnosticCode.Unsupported, SequenceKind.Dcs);
         }
 
+        return true;
+    }
+
+    private bool TryHandleGetCapDcs(
+        ReadOnlySpan<byte> parameters,
+        ReadOnlySpan<byte> intermediates,
+        byte final,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
+    {
+        if (!XtermGetCap.TryParse(parameters, intermediates, final, value, _options.Limits, out var capability))
+        {
+            return false;
+        }
+
+        if (_protocolSink is { } capabilitySink)
+        {
+            Debug.Assert(capability is not null, "A successful XTGETTCAP parse owns a response.");
+            capabilitySink.Response(capability);
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, SequenceKind.Dcs);
+        }
+
+        return true;
+    }
+
+    /// <summary>The terminal handler: always claims the sequence, either forwarding it to the
+    /// protocol sink or reporting it unsupported.</summary>
+    private bool TryHandleProtocolDcs(
+        ReadOnlySpan<byte> parameters,
+        ReadOnlySpan<byte> intermediates,
+        byte final,
+        ReadOnlySpan<byte> value,
+        StringTerminator terminator)
+    {
         if (_protocolSink is null)
         {
             Report(DiagnosticCode.Unsupported, SequenceKind.Dcs);
-            return;
+            return true;
         }
 
-        _protocolSink.Sequence(new ProtocolSequence(
-            SequenceKind.Dcs,
-            parameters,
-            intermediates,
-            final,
-            value,
-            terminator));
+        _protocolSink.Sequence(new ProtocolSequence(SequenceKind.Dcs, parameters, intermediates, final, value, terminator));
+        return true;
     }
 
     /// <summary>Accepts one parser diagnostic.</summary>
