@@ -21,6 +21,7 @@ public sealed class MenuItem: Pressable
     private Popup? _submenuPopup;
     private Rune? _uncheckedGlyph;
     private Rune? _checkedGlyph;
+    private string? _shortcutTextValue;
 
     /// <summary>Initializes an ordinary command item with no content.</summary>
     public MenuItem()
@@ -113,13 +114,37 @@ public sealed class MenuItem: Pressable
     }
 
     /// <summary>Gets or sets the optional keyboard shortcut hint displayed right-aligned after the label.</summary>
-    /// <remarks>When non-null, the text renders with dim attributes and accounts for two extra spacing cells.</remarks>
+    /// <remarks>
+    /// When non-null, the text renders with dim attributes and accounts for two extra spacing cells.
+    /// An explicit assignment always wins over <see cref="Shortcut"/>'s derived display text.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public string? ShortcutText
     {
+        get => _shortcutTextValue ?? Shortcut?.ToString();
+        set => _ = SetProperty(ref _shortcutTextValue, value, InvalidationImpact.Measure);
+    }
+
+    /// <summary>Gets or sets the optional typed keyboard chord this item advertises.</summary>
+    /// <remarks>
+    /// Purely declarative: it derives <see cref="ShortcutText"/> when that is otherwise unset, but
+    /// routes no input. A consumer that wants the gesture to actually invoke this item still owns
+    /// that wiring, exactly as it did with a hand-typed <see cref="ShortcutText"/> before this member
+    /// existed.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
+    public KeyGesture? Shortcut
+    {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+        set
+        {
+            if (SetProperty(ref field, value, InvalidationImpact.Measure) && _shortcutTextValue is null)
+            {
+                NotifyPropertyChanged(nameof(ShortcutText), InvalidationImpact.Measure);
+            }
+        }
     }
 
     /// <inheritdoc/>

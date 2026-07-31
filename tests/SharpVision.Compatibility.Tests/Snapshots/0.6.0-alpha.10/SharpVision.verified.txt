@@ -1964,6 +1964,14 @@ namespace SharpVision.Input
         public KeyEventArgs(SharpVision.Terminal.Input.Stroke stroke) { }
         public SharpVision.Terminal.Input.Stroke Stroke { get; }
     }
+    public readonly struct KeyGesture : System.IEquatable<SharpVision.Input.KeyGesture>
+    {
+        public KeyGesture(SharpVision.Terminal.Input.Code code, SharpVision.Terminal.Input.Modifiers modifiers = 0, System.Text.Rune? character = default) { }
+        public System.Text.Rune? Character { get; }
+        public SharpVision.Terminal.Input.Code Code { get; }
+        public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
+        public override string ToString() { }
+    }
     public sealed class ListSelectionChangedEventArgs : System.EventArgs
     {
         public ListSelectionChangedEventArgs(System.ReadOnlySpan<int> addedIndexes, System.ReadOnlySpan<int> removedIndexes) { }
@@ -2322,6 +2330,7 @@ namespace SharpVision.Menus
         public bool IsChecked { get; set; }
         protected override bool IsCheckedState { get; }
         public SharpVision.Menus.MenuItemKind Kind { get; set; }
+        public SharpVision.Input.KeyGesture? Shortcut { get; set; }
         public string? ShortcutText { get; set; }
         public SharpVision.Menus.Menu? Submenu { get; set; }
         public System.Text.Rune UncheckedGlyph { get; set; }

@@ -491,6 +491,44 @@ public sealed class MenuTests
         submenuPopup.Face.Background.ShouldBe(contextMenuPopup.Face.Background);
     }
 
+    /// <summary>Verifies Shortcut derives ShortcutText's display text when no explicit text is set.</summary>
+    [Fact]
+    public void ShortcutText_WhenShortcutIsSetAndTextIsNot_DerivesDisplayText()
+    {
+        var item = new MenuItem { Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')) };
+
+        item.ShortcutText.ShouldBe("Ctrl+S");
+    }
+
+    /// <summary>Verifies an explicit ShortcutText assignment always wins over Shortcut's derived text.</summary>
+    [Fact]
+    public void ShortcutText_WhenExplicitlyAssigned_WinsOverShortcut()
+    {
+        var item = new MenuItem
+        {
+            Shortcut = new KeyGesture(Code.Character, Modifiers.Control, new Rune('s')),
+            ShortcutText = "Custom"
+        };
+
+        item.ShortcutText.ShouldBe("Custom");
+
+        item.Shortcut = new KeyGesture(Code.F5);
+
+        item.ShortcutText.ShouldBe("Custom");
+    }
+
+    /// <summary>Verifies clearing Shortcut with no explicit text leaves ShortcutText null.</summary>
+    [Fact]
+    public void ShortcutText_WhenShortcutIsClearedAndTextIsUnset_IsNull()
+    {
+        var item = new MenuItem { Shortcut = new KeyGesture(Code.F5) };
+        item.ShortcutText.ShouldBe("F5");
+
+        item.Shortcut = null;
+
+        item.ShortcutText.ShouldBeNull();
+    }
+
     /// <summary>Verifies every vertical row shares one trailing shortcut edge.</summary>
     [Fact]
     public void Render_WhenVerticalItemsHaveDifferentShortcuts_RightAlignsEveryHint()

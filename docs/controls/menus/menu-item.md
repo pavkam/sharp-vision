@@ -15,6 +15,7 @@ inherited `Content` as its sole visible face; there is no competing text-only
 | `Kind`                           | `Command`       | Selects command, check, or radio activation semantics.              |
 | `IsChecked`, `GroupName`         | `false`, `null` | Store check state and scope radio exclusivity.                      |
 | `ShortcutText`                   | `null`          | Adds a dim, right-aligned hint without registering a key binding.   |
+| `Shortcut`                       | `null`          | A typed `KeyGesture` that derives `ShortcutText`; also unbound.      |
 | `Submenu`                        | `null`          | Owns an optional popup-layer child menu.                            |
 | `UncheckedGlyph`, `CheckedGlyph` | Code-owned      | Override state marks; `ResetGlyphs()` restores code-owned defaults. |
 | `Invoked`                        | No subscribers  | Reports committed activation after optional check-state updates.    |
@@ -76,6 +77,16 @@ style with `Attributes.Dim` added, while content is clipped before the gutter.
 Every stretched sibling therefore shares one shortcut edge without allowing a
 longer label-only row to collapse the shortcut column. Setting `ShortcutText` to
 null removes it.
+
+`Shortcut` is an optional typed `SharpVision.Input.KeyGesture` (a validated
+`Code`/`Modifiers`/character combination). When `ShortcutText` is otherwise
+unset, `Shortcut` derives its conventional display text, for example
+`new KeyGesture(Code.Character, Modifiers.Control, new Rune('s'))` displays as
+`"Ctrl+S"`. An explicit `ShortcutText` assignment always wins over `Shortcut`'s
+derived text, the same local-wins-over-derived precedence used throughout the
+library. `Shortcut` is purely declarative like `ShortcutText` before it: it
+routes no input by itself, so it does not replace the application's own
+responsibility for actually invoking the item on that chord.
 
 ## Submenus
 
