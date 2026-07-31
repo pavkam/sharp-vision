@@ -144,6 +144,8 @@ descendant input route completes.
 
 ## Example
 
+![The Popup control rendered in the live showcase](../../images/controls/popup.png)
+
 ```csharp
 var popup = new Popup
 {

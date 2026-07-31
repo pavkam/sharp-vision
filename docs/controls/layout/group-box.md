@@ -39,6 +39,8 @@ an explicit child `Face` remains authoritative.
 
 ## Example
 
+![The GroupBox control rendered in the live showcase](../../images/controls/group-box.png)
+
 ```csharp
 var group = new GroupBox
 {

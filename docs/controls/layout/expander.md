@@ -68,6 +68,8 @@ expansion.
 
 ## Example
 
+![The Expander control rendered in the live showcase](../../images/controls/expander.png)
+
 ```csharp
 var details = new Expander
 {

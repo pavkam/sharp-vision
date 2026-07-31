@@ -100,6 +100,8 @@ they need to change.
 
 ## Example
 
+![The TabControl control rendered in the live showcase](../../images/controls/tab-control.png)
+
 ```csharp
 var tabs = new TabControl();
 tabs.Items.Add(new TabItem

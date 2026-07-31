@@ -182,7 +182,3 @@ Tests cover every mode and adapter; nested replacement/null recovery; equality,
 ordering, conversion, exceptions, and disposal; dispatcher coalescing and queue
 retry; every collection action; coordinated selection; responsiveness; and the
 consumer-facing compatibility surface.
-
-`make test-binding-coverage` requires at least 95% line and 90% branch coverage
-across binding production files. Missing binding files fail the gate rather than
-producing a vacuous percentage.

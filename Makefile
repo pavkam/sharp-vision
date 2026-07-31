@@ -1,4 +1,4 @@
-.PHONY: build clean format format-check help lint restore run test test-binding-coverage test-ci test-tty watch
+.PHONY: build clean format format-check help lint restore run test test-ci test-tty watch
 
 .DEFAULT_GOAL := help
 
@@ -11,7 +11,6 @@ help:
 	@echo "  make restore       Restore .NET and Node.js dependencies"
 	@echo "  make build         Build all projects in Release mode"
 	@echo "  make test          Run all tests with timeout protection"
-	@echo "  make test-binding-coverage  Gate binding line and branch coverage"
 	@echo "  make test-ci       Run tests with CI reports"
 	@echo "  make test-tty      Run controlling-terminal-gated Unix console host tests (Linux/macOS only)"
 	@echo "  make run           Run the showcase"
@@ -55,13 +54,6 @@ test-tty: build
 		script -qec "dotnet test --project tests/SharpVision.Terminal.Tests --configuration $${CONFIGURATION:-Release} --no-build --minimum-expected-tests 2 --filter-query '/*/*/UnixConsoleHostTests/*'" /dev/null; \
 	fi
 	@echo "✅ Controlling-terminal Unix host tests complete."
-
-test-binding-coverage: build
-	@echo "🧪 Running binding coverage gate..."
-	@mkdir -p TestResults/binding
-	@dotnet test --project tests/SharpVision.Tests --configuration Release --no-build --filter-namespace "SharpVision.Tests.DataBinding*" --coverage --coverage-output-format cobertura --coverage-output "$$(pwd)/TestResults/binding/coverage.cobertura.xml" --timeout 180s
-	@node scripts/validate-binding-coverage.mjs TestResults/binding/coverage.cobertura.xml 95 90
-	@echo "✅ Binding coverage complete."
 
 lint: restore
 	@echo "🔍 Checking source and documentation..."

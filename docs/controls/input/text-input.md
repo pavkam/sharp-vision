@@ -181,6 +181,10 @@ swallowing nested scrolling.
 
 ## Example
 
+![The TextInput control rendered in the live showcase](../../images/controls/text-input.png)
+
+![The TextInput control focused for editing in the live showcase](../../images/controls/text-input-focused.png)
+
 ```csharp
 var name = new TextInput
 {

@@ -15,7 +15,7 @@ inherited `Content` as its sole visible face; there is no competing text-only
 | `Kind`                           | `Command`       | Selects command, check, or radio activation semantics.              |
 | `IsChecked`, `GroupName`         | `false`, `null` | Store check state and scope radio exclusivity.                      |
 | `ShortcutText`                   | `null`          | Adds a dim, right-aligned hint without registering a key binding.   |
-| `Shortcut`                       | `null`          | A typed `KeyGesture` that derives `ShortcutText`; also unbound.      |
+| `Shortcut`                       | `null`          | A typed `KeyGesture` that derives `ShortcutText`; also unbound.     |
 | `Submenu`                        | `null`          | Owns an optional popup-layer child menu.                            |
 | `UncheckedGlyph`, `CheckedGlyph` | Code-owned      | Override state marks; `ResetGlyphs()` restores code-owned defaults. |
 | `Invoked`                        | No subscribers  | Reports committed activation after optional check-state updates.    |

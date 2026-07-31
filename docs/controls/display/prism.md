@@ -148,6 +148,8 @@ control never emits terminal protocol bytes.
 
 ## Example
 
+![The Prism control rendered in the live showcase](../../images/controls/prism.png)
+
 ```csharp
 var title = new Prism
 {

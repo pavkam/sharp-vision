@@ -30,6 +30,8 @@ collapsed ancestry pauses phase; disabled does not.
 
 ## Example
 
+![The Spinner control rendered in the live showcase](../../images/controls/spinner.png)
+
 ```csharp
 var spinner = new Spinner
 {

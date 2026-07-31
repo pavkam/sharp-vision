@@ -24,8 +24,9 @@ arrangement.
 `Length.Auto`, `Length.Cells(int)`, `Length.Percent(double)`, and
 `Length.Star(double)` are immutable requests. Fixed cells are non-negative
 integers, percentages are finite values from 0 through 100, and proportional
-weights are finite and positive. The public `Length(LengthKind, double)` constructor
-applies the same validation, so callers cannot bypass factory invariants.
+weights are finite and positive. The public `Length(LengthKind, double)`
+constructor applies the same validation, so callers cannot bypass factory
+invariants.
 
 `Constraint` represents each measure axis as a nullable non-negative integer;
 null is unbounded and zero is a real bound. `Thickness` stores physical
@@ -63,8 +64,8 @@ identical arrange request back through the active ancestor chain. Measure or
 render invalidation, and arrange invalidation outside this exact parent-arrange
 case, retain ordinary propagation.
 
-`LayoutEngine.Layout(Control, Size)` runs both phases in a zero-origin viewport. It
-validates dispatcher affinity, caches unchanged constraints and slots, and
+`LayoutEngine.Layout(Control, Size)` runs both phases in a zero-origin viewport.
+It validates dispatcher affinity, caches unchanged constraints and slots, and
 rejects nested transactions. A changed viewport remeasures even when no property
 is dirty.
 

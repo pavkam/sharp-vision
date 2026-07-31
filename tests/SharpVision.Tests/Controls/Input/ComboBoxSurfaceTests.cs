@@ -393,4 +393,30 @@ public sealed class ComboBoxSurfaceTests
         surface.ShouldHaveCapture(null);
         surface.ShouldHaveFocus(null);
     }
+
+    /// <summary>Verifies a default-height field keeps its closed geometry while its connected drop-down is open.</summary>
+    [Fact]
+    public async Task Input_WhenDefaultHeightDropDownOpens_KeepsFieldHeightAndConnectsListAsync()
+    {
+        // Arrange
+        var combo = new ComboBox
+        {
+            Items = ["One", "Two", "Three"],
+            SelectedIndex = 0
+        };
+        var root = new Stack { Children = { combo } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 16),
+            TestContext.Current.CancellationToken);
+        var closedBounds = combo.Bounds;
+
+        // Act
+        await surface.UpdateAsync(() => combo.IsOpen = true, "open default-height ComboBox drop-down");
+
+        // Assert
+        var list = OwnedTree.Find<ListView>(combo).ShouldNotBeNull();
+        combo.Bounds.ShouldBe(closedBounds);
+        list.Bounds.Y.ShouldBe(combo.Bounds.Bottom);
+    }
 }

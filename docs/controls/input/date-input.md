@@ -20,6 +20,8 @@ optional Calendar popup.
 
 ## Example
 
+![The DateInput control rendered in the live showcase](../../images/controls/date-input.png)
+
 ```csharp
 var dateInput = new DateInput();
 ```

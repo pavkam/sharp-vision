@@ -97,6 +97,8 @@ one-cell family. Every cell of the mark is a hit target.
 
 ## Example
 
+![The TreeView control rendered in the live showcase](../../images/controls/tree-view.png)
+
 ```csharp
 var treeView = new TreeView();
 

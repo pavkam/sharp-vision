@@ -20,10 +20,6 @@ documentation-tooling tests. Microsoft Testing Platform tests enforce a
 discovery minimum and produce xUnit TRX plus Cobertura output. The action
 publishes the test-result check and uploads both the raw TRX files and an
 HTML/Cobertura/badge coverage report as workflow artifacts.
-`make test-binding-coverage` is a separate local supplemental gate. It isolates
-binding production files, requires 95% line plus 90% branch coverage, and fails
-when binding files are absent from the report. The shared workflow does not
-currently invoke it.
 
 `make test-ci` additionally requires at least 85 percent line coverage across
 instrumented UI classes under `src/SharpVision/Controls/`, `Dialogs/`, `Menus/`,

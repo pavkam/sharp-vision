@@ -44,6 +44,8 @@ skipped. Disabled styling wins even when a retained member remains selected.
 
 ## Example
 
+![The RadioButton control rendered in the live showcase](../../images/controls/radio-button.png)
+
 ```csharp
 var compact = new RadioButton
 {

@@ -147,6 +147,8 @@ padding, clipping, and tiny allocations never create invisible targets.
 
 ## Example
 
+![The Calendar control rendered in the live showcase](../../images/controls/calendar.png)
+
 ```csharp
 var booking = new Calendar
 {

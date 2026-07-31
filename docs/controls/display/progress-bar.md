@@ -69,6 +69,8 @@ handles pointer or keyboard input.
 
 ## Example
 
+![The ProgressBar control rendered in the live showcase](../../images/controls/progress-bar.png)
+
 ```csharp
 var bar = new ProgressBar
 {

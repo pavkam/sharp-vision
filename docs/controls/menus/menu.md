@@ -110,6 +110,10 @@ publication has been attempted.
 
 ## Example
 
+![The Menu control rendered in the live showcase](../../images/controls/menu.png)
+
+![The Menu control with its popup open in the live showcase](../../images/controls/menu-open.png)
+
 ```csharp
 var menu = new Menu
 {

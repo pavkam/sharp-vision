@@ -17,6 +17,8 @@ hyperlink with accent foreground and underline.
 
 ## Example
 
+![The HyperlinkButton control rendered in the live showcase](../../images/controls/hyperlink-button.png)
+
 ```csharp
 var link = new HyperlinkButton { Content = new Text("Visit site") };
 link.Click += (_, _) => OpenUrl("https://example.com");

@@ -59,6 +59,9 @@ internal static class ShowcasePaneHelpers
     internal static Overlay ComboStage(int width, int height, ComboBox combo)
     {
         var stage = OverlayStage(width, height, clipToBounds: false);
+        // An unpositioned overlay child stretches to the stage, which would
+        // inflate the field's border over the room reserved for the popup.
+        combo.VerticalAlignment = VerticalAlignment.Top;
         stage.Children.Add(combo);
         return stage;
     }

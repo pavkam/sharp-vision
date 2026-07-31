@@ -50,6 +50,8 @@ frame boundary.
 
 ## Example
 
+![The ColorPicker control rendered in the live showcase](../../images/controls/color-picker.png)
+
 ```csharp
 var picker = new ColorPicker
 {

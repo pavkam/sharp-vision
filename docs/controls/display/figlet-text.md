@@ -30,6 +30,8 @@ background fills the ordinary border box before transparent FIGlet cells draw.
 
 ## Example
 
+![The FigletText control rendered in the live showcase](../../images/controls/figlet-text.png)
+
 ```csharp
 var title = new FigletText(FigletCatalog.Default.Load("Standard"))
 {

@@ -35,6 +35,8 @@ contracts.
 
 ## Example
 
+![The Flyout control rendered in the live showcase](../../images/controls/flyout.png)
+
 ```csharp
 var flyout = new Flyout
 {
