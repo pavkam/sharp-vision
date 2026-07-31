@@ -12,7 +12,7 @@ using Capabilities;
 internal sealed class Provider: IDescriptionProvider
 {
     private static readonly Lock _terminalLock = new();
-    private readonly Func<INative?> _openNative;
+    private readonly Func<IReadOnlyList<string>, INative?> _openNative;
     private readonly Func<string, string?> _readEnvironment;
 
     /// <summary>Initializes a provider using dynamic ncurses library discovery.</summary>
@@ -21,17 +21,20 @@ internal sealed class Provider: IDescriptionProvider
     }
 
     /// <summary>Initializes a provider with a deterministic native-boundary factory.</summary>
-    /// <param name="openNative">The non-null factory returning an owned native boundary.</param>
+    /// <param name="openNative">The non-null factory returning an owned native boundary for one
+    /// candidate library name list.</param>
     /// <exception cref="ArgumentNullException"><paramref name="openNative"/> is <see langword="null"/>.</exception>
-    public Provider(Func<INative?> openNative) : this(openNative, Environment.GetEnvironmentVariable)
+    public Provider(Func<IReadOnlyList<string>, INative?> openNative)
+        : this(openNative, Environment.GetEnvironmentVariable)
     {
     }
 
     /// <summary>Initializes a provider with deterministic native and live-environment seams.</summary>
-    /// <param name="openNative">The non-null factory returning an owned native boundary.</param>
+    /// <param name="openNative">The non-null factory returning an owned native boundary for one
+    /// candidate library name list.</param>
     /// <param name="readEnvironment">The non-null live environment reader invoked under the global lock.</param>
     /// <exception cref="ArgumentNullException">An argument is <see langword="null"/>.</exception>
-    public Provider(Func<INative?> openNative, Func<string, string?> readEnvironment)
+    public Provider(Func<IReadOnlyList<string>, INative?> openNative, Func<string, string?> readEnvironment)
     {
         ArgumentNullException.ThrowIfNull(openNative);
         ArgumentNullException.ThrowIfNull(readEnvironment);
@@ -53,7 +56,7 @@ internal sealed class Provider: IDescriptionProvider
 
         try
         {
-            native = _openNative();
+            native = _openNative(request.Limits.NcursesLibraryNames);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {

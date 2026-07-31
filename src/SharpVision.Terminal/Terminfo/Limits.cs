@@ -20,6 +20,25 @@ namespace SharpVision.Terminal.Terminfo;
 [PublicAPI]
 public sealed record Limits
 {
+    // Declared before Default: static field initializers run in textual declaration order, and
+    // Default's own initializer constructs an instance whose NcursesLibraryNames property
+    // initializer reads this field. Had this stayed below Default, it would still be null (its
+    // own initializer not yet run) at the moment Default's constructor runs.
+    private static readonly IReadOnlyList<string> _defaultNcursesLibraryNames =
+    [
+        "libncursesw.so.6",
+        "libncurses.so.6",
+        "libtinfo.so.6",
+        "libncursesw.so",
+        "libncurses.so",
+        "libtinfo.so",
+        "libncursesw.6.dylib",
+        "libncurses.6.dylib",
+        "libncurses.dylib",
+        "/opt/homebrew/opt/ncurses/lib/libncursesw.6.dylib",
+        "/usr/local/opt/ncurses/lib/libncursesw.6.dylib"
+    ];
+
     /// <summary>
     /// Gets the conservative limits used when no profile is supplied.
     /// </summary>
@@ -226,6 +245,30 @@ public sealed record Limits
     /// never reinterpreted as a C1 introducer.
     /// </remarks>
     public bool AcceptEightBitControls { get; init; }
+
+    /// <summary>
+    /// Gets the ordered native library names or absolute paths attempted when opening ncurses on
+    /// Unix platforms. The first name <see cref="NativeLibrary.TryLoad(string, out nint)"/>
+    /// resolves is used; an empty list means ncurses is never attempted.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to the sonames and Homebrew install locations this library previously hardcoded.
+    /// Overriding replaces the list entirely rather than appending to it, so a distribution with a
+    /// nonstandard install path (or a minimal container without a package manager's default
+    /// locations) can be supported without recompiling (see #98).
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public IReadOnlyList<string> NcursesLibraryNames
+    {
+        get;
+        init => field = RequireNonNull(value, nameof(NcursesLibraryNames));
+    } = _defaultNcursesLibraryNames;
+
+    private static IReadOnlyList<string> RequireNonNull(IReadOnlyList<string> value, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(value, parameterName);
+        return value;
+    }
 
     private static int RequirePositive(int value, string parameterName)
     {

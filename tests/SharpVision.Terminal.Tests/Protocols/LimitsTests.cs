@@ -46,5 +46,19 @@ public sealed class LimitsTests
         limits.MaxCapabilityValueBytes.ShouldBeInRange(1, 65_536);
         limits.QueryTimeout.ShouldBeGreaterThan(TimeSpan.Zero);
         limits.QueryTimeout.ShouldBeLessThan(TimeSpan.FromMinutes(1));
+        limits.NcursesLibraryNames.ShouldNotBeEmpty();
+    }
+
+    /// <summary>Verifies NcursesLibraryNames rejects null and accepts a full override, so a caller
+    /// can replace the built-in search list rather than being stuck with a hardcoded array
+    /// (see #98).</summary>
+    [Fact]
+    public void NcursesLibraryNames_WhenConfigured_RejectsNullAndReplacesTheDefaultList()
+    {
+        _ = Should.Throw<ArgumentNullException>(static () => new Limits { NcursesLibraryNames = null! });
+
+        var limits = Limits.Default with { NcursesLibraryNames = ["/opt/custom/libncursesw.so"] };
+
+        limits.NcursesLibraryNames.ShouldBe(["/opt/custom/libncursesw.so"]);
     }
 }

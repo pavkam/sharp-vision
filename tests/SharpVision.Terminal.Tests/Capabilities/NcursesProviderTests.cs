@@ -13,12 +13,31 @@ public sealed class NcursesProviderTests
     [Fact]
     public void Load_WhenLibraryIsUnavailable_ReportsPlatformUnavailable()
     {
-        var provider = new Provider(() => null);
+        var provider = new Provider(_ => null);
 
         var result = provider.Load(Request("xterm-256color"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.PlatformUnavailable);
         result.Profile.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the native factory receives this request's own configured search list
+    /// rather than one bound at construction time, so a caller can override the ncurses discovery
+    /// path per request without recompiling (see #98).</summary>
+    [Fact]
+    public void Load_WhenLimitsConfigureLibraryNames_ForwardsThemToTheNativeFactory()
+    {
+        IReadOnlyList<string>? observed = null;
+        var provider = new Provider(names =>
+        {
+            observed = names;
+            return null;
+        });
+        var limits = Limits.Default with { NcursesLibraryNames = ["custom-ncurses.so"] };
+
+        _ = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
+
+        observed.ShouldBe(["custom-ncurses.so"]);
     }
 
     /// <summary>Verifies setupterm distinguishes an absent entry from a database failure.</summary>
@@ -35,7 +54,7 @@ public sealed class NcursesProviderTests
             SetupError = error,
             SetupChangesTerminal = false
         };
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -54,7 +73,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.SetFlag(capability, 1);
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -73,7 +92,7 @@ public sealed class NcursesProviderTests
             SetupError = 1,
             SetupChangesTerminal = false
         };
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("printer"));
 
@@ -91,7 +110,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.SetString("cup", NativeString.WrongType);
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -108,7 +127,7 @@ public sealed class NcursesProviderTests
         var source = "\u001b[%i%p1%d;%p2%dH"u8.ToArray();
         var native = ReadyNative();
         native.SetString("cup", NativeString.Present(source));
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
         source.AsSpan().Fill((byte) 'x');
@@ -127,7 +146,7 @@ public sealed class NcursesProviderTests
         native.SetNumber("colors", 256);
         native.SetString("Ms", NativeString.Present("\u001b]52;%p1%s;%p2%s\a"u8));
         native.SetString("ms", NativeString.Present("ignored"u8));
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -148,7 +167,7 @@ public sealed class NcursesProviderTests
         native.SetString("setrgbb", NativeString.Present("B%p1%d;%p2%d;%p3%d"u8));
         native.SetString("setdf", NativeString.Present("DF"u8));
         native.SetString("setdb", NativeString.Present("DB"u8));
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -168,7 +187,7 @@ public sealed class NcursesProviderTests
         native.SetFlag("xenl", 1);
         native.SetString("TS", NativeString.Present("PREFIX"u8));
         native.SetString("fsl", NativeString.Present("SUFFIX"u8));
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -187,7 +206,7 @@ public sealed class NcursesProviderTests
         native.SetString("BE", NativeString.Present("paste-on"u8));
         native.SetString("BD", NativeString.Present("paste-off"u8));
         native.SetString("kmous", NativeString.Present("mouse"u8));
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -202,7 +221,7 @@ public sealed class NcursesProviderTests
     public void Load_WhenCapabilityReadThrows_RestoresAndDeletesTerminal()
     {
         var native = new FakeNcursesNative { ReadException = new InvalidOperationException("fixture") };
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -218,7 +237,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.DeleteException = new InvalidOperationException("fixture cleanup");
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -233,7 +252,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.RestoreException = new InvalidOperationException("restore");
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -252,7 +271,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.CurrentTerminalException = new InvalidOperationException("current terminal");
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -267,7 +286,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.SetupException = new InvalidOperationException("setup");
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -283,7 +302,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.ExtendedRestoreException = new InvalidOperationException("extended");
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -299,7 +318,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.DisposeException = new InvalidOperationException("dispose");
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -317,7 +336,7 @@ public sealed class NcursesProviderTests
             CurrentTerminal = 0,
             SetupChangesTerminal = false
         };
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 
@@ -341,7 +360,7 @@ public sealed class NcursesProviderTests
             SetupChangesTerminal = false
         };
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.ProviderFailed);
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.NativeFailure);
@@ -358,7 +377,7 @@ public sealed class NcursesProviderTests
             LoadedTerminal = 0
         };
 
-        var result = new Provider(() => native).Load(Request("missing"));
+        var result = new Provider(_ => native).Load(Request("missing"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.MissingOrGeneric);
         native.RestoredTerminal.ShouldBe(41);
@@ -373,7 +392,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.RestoreReturn = 999;
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
         native.DeletedTerminal.ShouldBe(0);
@@ -392,7 +411,7 @@ public sealed class NcursesProviderTests
             native.SetString(name, NativeString.Present(Encoding.ASCII.GetBytes(name)));
         }
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         _ = result.Profile.ShouldNotBeNull();
         result.Profile.Capabilities.FocusReporting.IsSupported.ShouldBeTrue();
@@ -407,7 +426,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         var limits = Limits.Default with { MaxDescriptionPathEntries = 1 };
         var provider = new Provider(
-            () => native,
+            _ => native,
             name => name == "TERMINFO_DIRS" ? "/first:/second" : null);
 
         var result = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
@@ -423,7 +442,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         var provider = new Provider(
-            () => native,
+            _ => native,
             name => name == "TERMCAP" ? "/configured/termcap" : null);
 
         var result = provider.Load(Request("fixture"));
@@ -441,7 +460,7 @@ public sealed class NcursesProviderTests
         native.SetNumber("colors", -2);
         native.SetString("bold", NativeString.WrongType);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.WrongType && value.Capability == "am");
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.WrongType && value.Capability == "colors");
@@ -457,7 +476,7 @@ public sealed class NcursesProviderTests
         native.SetNumber("colors", -1);
         native.SetString("bold", NativeString.Absent);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Diagnostics.ShouldNotContain(value => value.Code == DescriptionDiagnosticCode.WrongType);
         _ = result.Profile.ShouldNotBeNull();
@@ -471,7 +490,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("cup", NativeString.OverLimit);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.ProviderFailed);
         result.Profile.ShouldBeNull();
@@ -485,7 +504,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("bold", NativeString.OverLimit);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.ProviderFailed);
         result.Profile.ShouldBeNull();
@@ -503,7 +522,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("bold", NativeString.Present(Encoding.ASCII.GetBytes(bytes)));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         _ = result.Profile.ShouldNotBeNull();
         result.Profile.Description.Suitability.ShouldBe(Suitability.Usable);
@@ -523,7 +542,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("cup", NativeString.Present(Encoding.ASCII.GetBytes(bytes)));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         _ = result.Profile.ShouldNotBeNull();
         result.Profile.Description.Suitability.ShouldBe(suitability);
@@ -552,7 +571,7 @@ public sealed class NcursesProviderTests
             native.SetString("RGB", NativeString.Present(Encoding.ASCII.GetBytes(text)));
         }
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Diagnostics.ShouldNotContain(value =>
             value.Code == DescriptionDiagnosticCode.InvalidProgram && value.Capability == "RGB");
@@ -582,7 +601,7 @@ public sealed class NcursesProviderTests
             native.SetString("RGB", NativeString.Present(Encoding.ASCII.GetBytes(text)));
         }
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Diagnostics.ShouldContain(value =>
             value.Code == DescriptionDiagnosticCode.InvalidProgram && value.Capability == "RGB");
@@ -596,7 +615,7 @@ public sealed class NcursesProviderTests
         native.SetNumber("colors", 256);
         native.SetString("RGB", NativeString.OverLimit);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.ProviderFailed);
         result.Profile.ShouldBeNull();
@@ -612,7 +631,7 @@ public sealed class NcursesProviderTests
         native.SetNumber("U8", 1);
         native.SetFlag("XF", 1);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Diagnostics.ShouldNotContain(value =>
             value.Code == DescriptionDiagnosticCode.WrongType &&
@@ -636,7 +655,7 @@ public sealed class NcursesProviderTests
         native.SetString("kbs", NativeString.Present([0x08]));
         native.SetString("kcub1", NativeString.Present([0x08]));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         _ = result.Profile.ShouldNotBeNull();
         result.Profile.KeyMap.Bindings.ShouldBeEmpty();
@@ -652,7 +671,7 @@ public sealed class NcursesProviderTests
         native.SetString("kcub1", NativeString.Present([0x08]));
         var limits = Limits.Default with { MaxDescriptionKeyBindings = 1 };
 
-        var result = new Provider(() => native).Load(
+        var result = new Provider(_ => native).Load(
             new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
@@ -668,7 +687,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString("kcbt", NativeString.Present("\u001b[Z"u8));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         _ = result.Profile.ShouldNotBeNull();
         var binding = result.Profile.KeyMap.Bindings.ShouldHaveSingleItem();
@@ -698,7 +717,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetString(name, NativeString.Present("\u001b[99~"u8));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         var binding = result.Profile.ShouldNotBeNull().KeyMap.Bindings.ShouldHaveSingleItem();
         binding.Code.ShouldBe(expectedCode);
@@ -713,7 +732,7 @@ public sealed class NcursesProviderTests
         native.SetString("kcuu1", NativeString.Present("\u001b[A"u8));
         native.SetString("kcud1", NativeString.Present([0x9b, (byte) 'A']));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Profile.ShouldNotBeNull().KeyMap.Bindings.ShouldBeEmpty();
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.ConflictingKey);
@@ -727,7 +746,7 @@ public sealed class NcursesProviderTests
         native.SetString("kcuu1", NativeString.Present("\u001bOA"u8));
         native.SetString("kcud1", NativeString.Present([0x8f, (byte) 'A']));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Profile.ShouldNotBeNull().KeyMap.Bindings.ShouldBeEmpty();
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.ConflictingKey);
@@ -801,7 +820,7 @@ public sealed class NcursesProviderTests
         native.SetString("kcuu1", NativeString.Present(Encoding.Latin1.GetBytes(malformed)));
         native.SetString("kcud1", NativeString.Present("\u001b[B"u8));
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
         result.Profile.ShouldNotBeNull().KeyMap.Bindings.ShouldHaveSingleItem().Code.ShouldBe(Code.Down);
@@ -818,7 +837,7 @@ public sealed class NcursesProviderTests
         native.SetString("kcud1", NativeString.Present("\u001b[12B"u8));
         var limits = Limits.Default with { MaxParameterBytes = 2 };
 
-        var result = new Provider(() => native).Load(
+        var result = new Provider(_ => native).Load(
             new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
@@ -836,7 +855,7 @@ public sealed class NcursesProviderTests
         native.SetString("kcud1", NativeString.Present("\u001b(B"u8));
         var limits = Limits.Default with { MaxIntermediateBytes = 1 };
 
-        var result = new Provider(() => native).Load(
+        var result = new Provider(_ => native).Load(
             new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
@@ -856,7 +875,7 @@ public sealed class NcursesProviderTests
         var native = ReadyNative();
         native.SetNumber("colors", colors);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         _ = result.Profile.ShouldNotBeNull();
         result.Profile.Capabilities.ColorDepth.ShouldBe(expected);
@@ -868,7 +887,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         var limits = Limits.Default with { MaxDescriptionSnapshotBytes = 16 };
-        var provider = new Provider(() => native, _ => null);
+        var provider = new Provider(_ => native, _ => null);
 
         var result = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
 
@@ -883,7 +902,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         var limits = Limits.Default with { MaxDescriptionSnapshotBytes = 80 };
-        var provider = new Provider(() => native, _ => null);
+        var provider = new Provider(_ => native, _ => null);
 
         var result = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
 
@@ -898,7 +917,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         var limits = Limits.Default with { MaxDescriptionPathBytes = 1 };
-        var provider = new Provider(() => native, name => name == "HOME" ? "/too-long" : null);
+        var provider = new Provider(_ => native, name => name == "HOME" ? "/too-long" : null);
 
         var result = provider.Load(new DescriptionRequest("fixture", DescriptionPlatform.Unix, 1, limits));
 
@@ -925,7 +944,7 @@ public sealed class NcursesProviderTests
         native.SetNumber("U8", -2);
         native.SetFlag("XF", -1);
 
-        var result = new Provider(() => native).Load(Request("fixture"));
+        var result = new Provider(_ => native).Load(Request("fixture"));
 
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.WrongType && value.Capability == "U8");
         result.Diagnostics.ShouldContain(value => value.Code == DescriptionDiagnosticCode.WrongType && value.Capability == "XF");
@@ -937,7 +956,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         var provider = new Provider(
-            () => native,
+            _ => native,
             name => name == "TERMCAP" ? new string('x', 1_024) : null);
 
         var result = provider.Load(Request("fixture"));
@@ -989,7 +1008,7 @@ public sealed class NcursesProviderTests
     public void Load_WhenExtendedNamesWereDisabled_RestoresPreviousState()
     {
         var native = ReadyNative();
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         _ = provider.Load(Request("fixture"));
 
@@ -1003,7 +1022,7 @@ public sealed class NcursesProviderTests
     {
         var native = ReadyNative();
         native.SetString("cup", NativeString.Present([]));
-        var provider = new Provider(() => native);
+        var provider = new Provider(_ => native);
 
         var result = provider.Load(Request("fixture"));
 

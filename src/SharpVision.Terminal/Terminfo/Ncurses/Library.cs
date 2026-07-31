@@ -6,31 +6,20 @@ namespace SharpVision.Terminal.Terminfo.Ncurses;
 /// <summary>Discovers a current ncurses or split terminfo library without a package-time dependency.</summary>
 internal static class Library
 {
-    private static readonly string[] _names =
-    [
-        "libncursesw.so.6",
-        "libncurses.so.6",
-        "libtinfo.so.6",
-        "libncursesw.so",
-        "libncurses.so",
-        "libtinfo.so",
-        "libncursesw.6.dylib",
-        "libncurses.6.dylib",
-        "libncurses.dylib",
-        "/opt/homebrew/opt/ncurses/lib/libncursesw.6.dylib",
-        "/usr/local/opt/ncurses/lib/libncursesw.6.dylib"
-    ];
-
-    /// <summary>Attempts each platform library name in deterministic order.</summary>
+    /// <summary>Attempts each candidate library name in order.</summary>
+    /// <param name="names">The non-null ordered candidate names or absolute paths.</param>
     /// <returns>An owned native boundary, or <see langword="null"/> when no compatible export set exists.</returns>
-    public static INative? Open()
+    /// <exception cref="ArgumentNullException"><paramref name="names"/> is <see langword="null"/>.</exception>
+    public static INative? Open(IReadOnlyList<string> names)
     {
+        ArgumentNullException.ThrowIfNull(names);
+
         if (OperatingSystem.IsWindows())
         {
             return null;
         }
 
-        foreach (var name in _names)
+        foreach (var name in names)
         {
             if (!NativeLibrary.TryLoad(name, out var handle))
             {
