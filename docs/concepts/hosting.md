@@ -2,7 +2,7 @@
 
 ## Hosting contract
 
-`SharpVision.Runtime.ConsoleApplication` is the fluent public entry point for an
+`SharpVision.ConsoleApplication` is the fluent public entry point for an
 interactive console host. It replaces the removed
 `Application.RunConsoleAsync`/`ConsoleRun` pair with one layered seam: a
 portable Terminal-layer console host

@@ -31,7 +31,7 @@ flowchart LR
 ```
 
 The normal hosting surface is
-`SharpVision.Runtime.ConsoleApplication.CreateBuilder(screen)` or
+`SharpVision.ConsoleApplication.CreateBuilder(screen)` or
 `ConsoleApplication.RunAsync(screen)`. The host constructs the `Application`,
 binds it to the detached screen, and later attaches the retained tree to the UI
 dispatcher.

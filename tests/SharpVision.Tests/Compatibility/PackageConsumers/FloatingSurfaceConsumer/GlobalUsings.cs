@@ -1,10 +1,10 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+global using SharpVision;
 global using SharpVision.Controls;
 global using SharpVision.Controls.Layout;
 global using SharpVision.Layout;
-global using SharpVision.Runtime;
 global using SharpVision.Styling;
 global using SharpVision.Surfaces;
 global using SharpVision.Terminal.Abstractions;

@@ -24,7 +24,7 @@ Replace `Program.cs` with:
 ```csharp
 using SharpVision.Controls;
 using SharpVision.Layout;
-using SharpVision.Runtime;
+using SharpVision;
 using SharpVision.Styling;
 
 var status = await ConsoleApplication.RunAsync(new HelloScreen());

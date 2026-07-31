@@ -39,7 +39,7 @@ pending work for the next transaction, while direct phase reentry is rejected.
 The [invalidation update cycle](../concepts/invalidation.md#update-cycle) owns
 the complete mutation-to-frame sequence.
 
-`SharpVision.Runtime.Application` owns the dispatcher, root, terminal `Session`,
+`SharpVision.Application` owns the dispatcher, root, terminal `Session`,
 renderer, focus, capture, and modality managers, and active back frame. Session
 callbacks copy immutable records into a bounded queue; they never enter the
 control tree. Resize uses a newest-value slot plus one queued wake, so storms

@@ -7,8 +7,6 @@ using System.Runtime.ExceptionServices;
 
 using Layout;
 
-using Runtime;
-
 using SharpVision.Surfaces;
 
 /// <summary>Defines the detached application root control and screen startup hooks.</summary>

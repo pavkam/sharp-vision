@@ -73,6 +73,7 @@ these infrastructure namespaces:
 
 | Namespace                          | Shipped responsibility                                                         |
 | ---------------------------------- | ------------------------------------------------------------------------------ |
+| `SharpVision`                      | `Application`, its console bootstrap, and the events and accessors it exposes. |
 | `SharpVision.Threading`            | Single-owner dispatcher, invocation, and idle transition.                      |
 | `SharpVision.Controls`             | Foundational mutable control tree, ownership, invalidation, and drawing.       |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation controls.                   |
@@ -90,7 +91,6 @@ these infrastructure namespaces:
 | `SharpVision.Scrolling`            | Scroll axes, visibility, chrome, range/thumb math, and transition events.      |
 | `SharpVision.Input`                | Shared routed input, focus, hit testing, and pointer capture.                  |
 | `SharpVision.Styling`              | Shared style resources, chrome contracts, and visual-state resolution.         |
-| `SharpVision.Runtime`              | Terminal session ownership, application lifecycle, and console host bootstrap. |
 
 The UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and

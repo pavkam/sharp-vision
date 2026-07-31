@@ -149,7 +149,7 @@ in the protocol document.
 
 ## Hosting
 
-- Host an interactive console through `SharpVision.Runtime.ConsoleApplication`
+- Host an interactive console through `SharpVision.ConsoleApplication`
   (`CreateBuilder`/`RunAsync`) and its fluent `ConsoleApplicationBuilder`, not
   by hand-wiring `ConsoleHost`, transport, and terminal `Options`.
 - Reach implemented output protocols only through `Application.Terminal`

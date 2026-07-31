@@ -6,6 +6,7 @@ global using System.Diagnostics;
 global using System.Runtime.CompilerServices;
 global using System.Text;
 
+global using SharpVision;
 global using SharpVision.Controls;
 global using SharpVision.Controls.Collections;
 global using SharpVision.Controls.Display;
@@ -19,7 +20,6 @@ global using SharpVision.Layout;
 global using SharpVision.Menus;
 global using SharpVision.Navigation;
 global using SharpVision.Popups;
-global using SharpVision.Runtime;
 global using SharpVision.Scrolling;
 global using SharpVision.Showcase;
 global using SharpVision.Showcase.Controls;

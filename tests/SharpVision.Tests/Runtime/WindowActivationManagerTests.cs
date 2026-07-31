@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Runtime;
 
+using SharpVision.Runtime;
+
 /// <summary>Verifies application-owned Window activation identity and lifetime.</summary>
 public sealed class WindowActivationManagerTests
 {

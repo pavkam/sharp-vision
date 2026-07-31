@@ -1,6 +1,222 @@
 ﻿[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/pavkam/sharp-vision.git")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SharpVision.Tests")]
 [assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v10.0", FrameworkDisplayName=".NET 10.0")]
+namespace SharpVision
+{
+    [System.Diagnostics.DebuggerDisplay("Application {_screen?.GetType().Name,nq}")]
+    public sealed class Application : SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, System.IAsyncDisposable
+    {
+        public Application(SharpVision.Controls.Control root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.Options? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
+        public SharpVision.Windows.Window? ActiveWindow { get; }
+        public SharpVision.Terminal.Capabilities.Capabilities Capabilities { get; }
+        public SharpVision.Input.PointerManager Capture { get; }
+        public SharpVision.Terminal.Unicode.Policy CellPolicy { get; }
+        public System.Threading.Tasks.Task Completion { get; }
+        public SharpVision.Threading.Dispatcher Dispatcher { get; }
+        public System.Exception? Failure { get; }
+        public SharpVision.Input.FocusManager Focus { get; }
+        public bool HasFocus { get; }
+        public System.Exception? LastCleanupException { get; }
+        public SharpVision.Input.ModalityManager Modality { get; }
+        public SharpVision.PointerDevice Pointer { get; }
+        public SharpVision.Controls.Control Root { get; }
+        public SharpVision.Terminal.Geometry.Size Size { get; }
+        public SharpVision.ITerminalServices Terminal { get; }
+        public SharpVision.Terminal.Capabilities.TerminalProfile TerminalProfile { get; }
+        public SharpVision.Styling.Theme Theme { get; set; }
+        public event System.EventHandler<SharpVision.CapabilitiesChangedEventArgs>? CapabilitiesChanged;
+        public event System.EventHandler<SharpVision.CapabilityResponseEventArgs>? CapabilityResponseReceived;
+        public event System.EventHandler<SharpVision.DiagnosticEventArgs>? Diagnostic;
+        public event System.EventHandler<SharpVision.FrameRenderedEventArgs>? FrameRendered;
+        public event System.EventHandler? Idle;
+        public event System.EventHandler<SharpVision.MetricsResponseEventArgs>? MetricsResponseReceived;
+        public event System.EventHandler<SharpVision.PaletteResponseEventArgs>? PaletteResponseReceived;
+        public event System.EventHandler<SharpVision.ResizeEventArgs>? Resize;
+        public event System.EventHandler<SharpVision.ProtocolResponseEventArgs>? ResponseReceived;
+        public event System.EventHandler? Started;
+        public event System.EventHandler? Starting;
+        public event System.EventHandler<SharpVision.StatusResponseEventArgs>? StatusResponseReceived;
+        public event System.EventHandler? Stopped;
+        public event System.EventHandler<SharpVision.StoppingEventArgs>? Stopping;
+        public event System.EventHandler<SharpVision.Threading.UnhandledEventArgs>? UnhandledException;
+        public void Closed() { }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { }
+        public SharpVision.Input.ModalScope EnterModal(SharpVision.Controls.Control root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.Control? initialFocus = null) { }
+        public void Fault(System.Exception exception) { }
+        public void Input(SharpVision.Terminal.Input.Paste value) { }
+        public void Input(in SharpVision.Terminal.Input.Focus value) { }
+        public void Input(in SharpVision.Terminal.Input.Pointer value) { }
+        public void Input(in SharpVision.Terminal.Input.Stroke value) { }
+        public void Input(in SharpVision.Terminal.Input.Text value) { }
+        public void Input(in SharpVision.Terminal.Protocols.Diagnostic value) { }
+        public void Profile(SharpVision.Terminal.Capabilities.Capabilities value) { }
+        public void Response(SharpVision.Terminal.Xterm.CapabilityResponse value) { }
+        public void Response(in SharpVision.Terminal.Xterm.MetricsResponse value) { }
+        public void Response(in SharpVision.Terminal.Xterm.PaletteResponse value) { }
+        public void Response(in SharpVision.Terminal.Xterm.Response value) { }
+        public void Response(in SharpVision.Terminal.Xterm.StatusResponse value) { }
+        public System.Threading.Tasks.Task RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public void Sequence(SharpVision.Terminal.Protocols.ProtocolSequence value) { }
+        public System.Threading.Tasks.ValueTask StartAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.ValueTask StopAsync(System.Threading.CancellationToken cancellationToken = default) { }
+    }
+    public sealed class CapabilitiesChangedEventArgs : System.EventArgs
+    {
+        public CapabilitiesChangedEventArgs(SharpVision.Terminal.Capabilities.Capabilities previous, SharpVision.Terminal.Capabilities.Capabilities current) { }
+        public SharpVision.Terminal.Capabilities.Capabilities Current { get; }
+        public SharpVision.Terminal.Capabilities.Capabilities Previous { get; }
+    }
+    public sealed class CapabilityResponseEventArgs : System.EventArgs
+    {
+        public CapabilityResponseEventArgs(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
+        public SharpVision.Terminal.Xterm.CapabilityResponse Response { get; }
+    }
+    public static class ConsoleApplication
+    {
+        public static SharpVision.ConsoleApplicationBuilder CreateBuilder(SharpVision.Controls.Screen screen) { }
+        public static System.Threading.Tasks.ValueTask<SharpVision.ConsoleRunStatus> RunAsync(SharpVision.Controls.Screen screen, SharpVision.ConsoleRunOptions options) { }
+        public static System.Threading.Tasks.ValueTask<SharpVision.ConsoleRunStatus> RunAsync(SharpVision.Controls.Screen screen, System.Action<SharpVision.ConsoleApplicationBuilder>? configure = null) { }
+    }
+    public sealed class ConsoleApplicationBuilder
+    {
+        public ConsoleApplicationBuilder(SharpVision.Controls.Screen screen) { }
+        public SharpVision.ConsoleRunOptions Options { get; }
+        public SharpVision.Application Build() { }
+        public SharpVision.ConsoleApplicationBuilder ConfigureOptions(System.Func<SharpVision.ConsoleRunOptions, SharpVision.ConsoleRunOptions> configure) { }
+        public System.Threading.Tasks.ValueTask<SharpVision.ConsoleRunStatus> RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public SharpVision.ConsoleApplicationBuilder ShowCursor(bool visible = true) { }
+        public SharpVision.ConsoleApplicationBuilder TreatControlCAsInput(bool enabled = true) { }
+        public SharpVision.ConsoleApplicationBuilder UseAlternateScreen(bool enabled = true) { }
+        public SharpVision.ConsoleApplicationBuilder UseBracketedPaste(bool enabled = true) { }
+        public SharpVision.ConsoleApplicationBuilder UseCapabilities(SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
+        public SharpVision.ConsoleApplicationBuilder UseColorDepth(SharpVision.Terminal.Capabilities.ColorDepth depth) { }
+        public SharpVision.ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true) { }
+        public SharpVision.ConsoleApplicationBuilder UseFocusReporting(bool enabled = true) { }
+        public SharpVision.ConsoleApplicationBuilder UseKeyboardEnhancement(SharpVision.Terminal.Kitty.Keyboard.Enhancement? enhancement) { }
+        public SharpVision.ConsoleApplicationBuilder UseMouse(SharpVision.Terminal.Protocols.MouseTracking tracking = 1003, SharpVision.Terminal.Protocols.MouseCoordinates coordinates = 1006) { }
+        public SharpVision.ConsoleApplicationBuilder UseNegotiation(SharpVision.Terminal.Capabilities.NegotiationOptions negotiation) { }
+        public SharpVision.ConsoleApplicationBuilder UseTerminalProfile(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
+        public SharpVision.ConsoleApplicationBuilder UseTheme(SharpVision.Styling.Theme theme) { }
+        public SharpVision.ConsoleApplicationBuilder WithCleanupTimeout(System.TimeSpan timeout) { }
+        public SharpVision.ConsoleApplicationBuilder WithReadBufferSize(int size) { }
+        public SharpVision.ConsoleApplicationBuilder WithRedirectedMessage(string? message) { }
+        public SharpVision.ConsoleApplicationBuilder WithResizeInterval(System.TimeSpan interval) { }
+        public SharpVision.ConsoleApplicationBuilder WithUnsupportedTerminalMessage(string? message) { }
+        public SharpVision.ConsoleApplicationBuilder WithoutColors() { }
+        public SharpVision.ConsoleApplicationBuilder WithoutMouse() { }
+        public SharpVision.ConsoleApplicationBuilder WithoutNegotiation() { }
+    }
+    public sealed class ConsoleRunOptions : System.IEquatable<SharpVision.ConsoleRunOptions>
+    {
+        public ConsoleRunOptions() { }
+        public bool AlternateScreen { get; init; }
+        public bool BracketedPaste { get; init; }
+        public SharpVision.Terminal.Capabilities.Capabilities? Capabilities { get; init; }
+        public System.TimeSpan CleanupTimeout { get; init; }
+        public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
+        public bool FocusReporting { get; init; }
+        public SharpVision.Terminal.Kitty.Keyboard.Enhancement? KeyboardEnhancement { get; init; }
+        public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
+        public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; init; }
+        public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
+        public SharpVision.Terminal.Capabilities.TerminalProfile? Profile { get; init; }
+        public int ReadBufferSize { get; init; }
+        public string? RedirectedMessage { get; init; }
+        public System.TimeSpan ResizeInterval { get; init; }
+        public bool ShowCursor { get; init; }
+        public SharpVision.Styling.Theme? Theme { get; init; }
+        public bool TreatControlCAsInput { get; init; }
+        public string? UnsupportedTerminalMessage { get; init; }
+        public bool UseEnvironmentSizeOverrides { get; init; }
+        public SharpVision.Styling.Theme ResolveTheme() { }
+        public SharpVision.Terminal.Runtime.ConsoleHostOptions ToHostOptions() { }
+        public SharpVision.Terminal.Runtime.Options ToTerminalOptions() { }
+        public SharpVision.Terminal.Runtime.Options ToTerminalOptions(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
+    }
+    public enum ConsoleRunStatus
+    {
+        Redirected = 0,
+        Completed = 1,
+        Cancelled = 2,
+        Failed = 3,
+        UnsupportedTerminal = 4,
+    }
+    public sealed class DiagnosticEventArgs : System.EventArgs
+    {
+        public DiagnosticEventArgs(SharpVision.Terminal.Protocols.Diagnostic diagnostic) { }
+        public SharpVision.Terminal.Protocols.Diagnostic Diagnostic { get; }
+    }
+    public sealed class FrameRenderedEventArgs : System.EventArgs
+    {
+        public FrameRenderedEventArgs(SharpVision.Terminal.Rendering.Metrics metrics) { }
+        public SharpVision.Terminal.Rendering.Metrics Metrics { get; }
+    }
+    public interface IBell
+    {
+        bool IsSupported { get; }
+        void Ring();
+    }
+    public interface IClipboard
+    {
+        bool IsSupported { get; }
+        void Request(SharpVision.Terminal.Clipboard.Selection selection = 0);
+        void Write(System.ReadOnlySpan<char> text, SharpVision.Terminal.Clipboard.Selection selection = 0);
+    }
+    public interface ITerminalServices
+    {
+        SharpVision.IBell Bell { get; }
+        SharpVision.IClipboard Clipboard { get; }
+        SharpVision.Terminal.Capabilities.Description Description { get; }
+        bool IsTitleSupported { get; }
+        void SetTitle(string title);
+    }
+    public sealed class MetricsResponseEventArgs : System.EventArgs
+    {
+        public MetricsResponseEventArgs(SharpVision.Terminal.Xterm.MetricsResponse response) { }
+        public SharpVision.Terminal.Xterm.MetricsResponse Response { get; }
+    }
+    public sealed class PaletteResponseEventArgs : System.EventArgs
+    {
+        public PaletteResponseEventArgs(SharpVision.Terminal.Xterm.PaletteResponse response) { }
+        public SharpVision.Terminal.Xterm.PaletteResponse Response { get; }
+    }
+    public sealed class PointerDevice
+    {
+        public SharpVision.Terminal.Input.Buttons Buttons { get; }
+        public SharpVision.Controls.Control? Captured { get; }
+        public SharpVision.Controls.Control? Hovered { get; }
+        public SharpVision.Terminal.Input.PointerAction LastAction { get; }
+        public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
+        public SharpVision.Terminal.Geometry.Point? PixelPosition { get; }
+        public SharpVision.Terminal.Geometry.Point? Position { get; }
+        public SharpVision.Controls.Control? PressOrigin { get; }
+    }
+    public sealed class ProtocolResponseEventArgs : System.EventArgs
+    {
+        public ProtocolResponseEventArgs(SharpVision.Terminal.Xterm.Response response) { }
+        public SharpVision.Terminal.Xterm.Response Response { get; }
+    }
+    public sealed class ResizeEventArgs : System.EventArgs
+    {
+        public ResizeEventArgs(SharpVision.Terminal.Geometry.Dimensions dimensions) { }
+        public SharpVision.Terminal.Geometry.Dimensions Dimensions { get; }
+    }
+    public sealed class StatusResponseEventArgs : System.EventArgs
+    {
+        public StatusResponseEventArgs(SharpVision.Terminal.Xterm.StatusResponse response) { }
+        public SharpVision.Terminal.Xterm.StatusResponse Response { get; }
+    }
+    public sealed class StoppingEventArgs : System.EventArgs
+    {
+        public StoppingEventArgs() { }
+        public bool Cancel { get; set; }
+    }
+    public sealed class UnsupportedTerminalException : System.NotSupportedException
+    {
+        public UnsupportedTerminalException(SharpVision.Terminal.Capabilities.DescriptionResult resolution) { }
+        public SharpVision.Terminal.Capabilities.DescriptionResult Resolution { get; }
+    }
+}
 namespace SharpVision.Controls.Collections
 {
     public delegate SharpVision.Controls.Control ItemTemplate(object? item);
@@ -438,12 +654,12 @@ namespace SharpVision.Controls
     public abstract class Screen : SharpVision.Controls.CompositeControl
     {
         protected Screen() { }
-        protected SharpVision.Runtime.Application? Application { get; }
+        protected SharpVision.Application? Application { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected virtual void OnAttach(SharpVision.Runtime.Application application) { }
+        protected virtual void OnAttach(SharpVision.Application application) { }
         protected virtual void OnDispose() { }
-        protected virtual void OnStarted(SharpVision.Runtime.Application application) { }
+        protected virtual void OnStarted(SharpVision.Application application) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
 }
@@ -2543,217 +2759,6 @@ namespace SharpVision.Popups
         public static void SetText(SharpVision.Controls.Control anchor, string text) { }
         public static void SetText(SharpVision.Controls.Control anchor, string text, SharpVision.Popups.PopupPlacement placement) { }
         public static void SetText(SharpVision.Controls.Control anchor, string text, SharpVision.Popups.PopupPlacement placement, System.TimeSpan showDelay) { }
-    }
-}
-namespace SharpVision.Runtime
-{
-    [System.Diagnostics.DebuggerDisplay("Application {_screen?.GetType().Name,nq}")]
-    public sealed class Application : SharpVision.Terminal.Abstractions.IInputSink, SharpVision.Terminal.Abstractions.IProtocolSink, SharpVision.Terminal.Abstractions.ISink, System.IAsyncDisposable
-    {
-        public Application(SharpVision.Controls.Control root, SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Runtime.Options? options = null, System.IAsyncDisposable? hostLease = null, System.TimeProvider? timeProvider = null) { }
-        public SharpVision.Windows.Window? ActiveWindow { get; }
-        public SharpVision.Terminal.Capabilities.Capabilities Capabilities { get; }
-        public SharpVision.Input.PointerManager Capture { get; }
-        public SharpVision.Terminal.Unicode.Policy CellPolicy { get; }
-        public System.Threading.Tasks.Task Completion { get; }
-        public SharpVision.Threading.Dispatcher Dispatcher { get; }
-        public System.Exception? Failure { get; }
-        public SharpVision.Input.FocusManager Focus { get; }
-        public bool HasFocus { get; }
-        public System.Exception? LastCleanupException { get; }
-        public SharpVision.Input.ModalityManager Modality { get; }
-        public SharpVision.Runtime.PointerDevice Pointer { get; }
-        public SharpVision.Controls.Control Root { get; }
-        public SharpVision.Terminal.Geometry.Size Size { get; }
-        public SharpVision.Runtime.ITerminalServices Terminal { get; }
-        public SharpVision.Terminal.Capabilities.TerminalProfile TerminalProfile { get; }
-        public SharpVision.Styling.Theme Theme { get; set; }
-        public event System.EventHandler<SharpVision.Runtime.CapabilitiesChangedEventArgs>? CapabilitiesChanged;
-        public event System.EventHandler<SharpVision.Runtime.CapabilityResponseEventArgs>? CapabilityResponseReceived;
-        public event System.EventHandler<SharpVision.Runtime.DiagnosticEventArgs>? Diagnostic;
-        public event System.EventHandler<SharpVision.Runtime.FrameRenderedEventArgs>? FrameRendered;
-        public event System.EventHandler? Idle;
-        public event System.EventHandler<SharpVision.Runtime.MetricsResponseEventArgs>? MetricsResponseReceived;
-        public event System.EventHandler<SharpVision.Runtime.PaletteResponseEventArgs>? PaletteResponseReceived;
-        public event System.EventHandler<SharpVision.Runtime.ResizeEventArgs>? Resize;
-        public event System.EventHandler<SharpVision.Runtime.ProtocolResponseEventArgs>? ResponseReceived;
-        public event System.EventHandler? Started;
-        public event System.EventHandler? Starting;
-        public event System.EventHandler<SharpVision.Runtime.StatusResponseEventArgs>? StatusResponseReceived;
-        public event System.EventHandler? Stopped;
-        public event System.EventHandler<SharpVision.Runtime.StoppingEventArgs>? Stopping;
-        public event System.EventHandler<SharpVision.Threading.UnhandledEventArgs>? UnhandledException;
-        public void Closed() { }
-        public System.Threading.Tasks.ValueTask DisposeAsync() { }
-        public SharpVision.Input.ModalScope EnterModal(SharpVision.Controls.Control root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.Control? initialFocus = null) { }
-        public void Fault(System.Exception exception) { }
-        public void Input(SharpVision.Terminal.Input.Paste value) { }
-        public void Input(in SharpVision.Terminal.Input.Focus value) { }
-        public void Input(in SharpVision.Terminal.Input.Pointer value) { }
-        public void Input(in SharpVision.Terminal.Input.Stroke value) { }
-        public void Input(in SharpVision.Terminal.Input.Text value) { }
-        public void Input(in SharpVision.Terminal.Protocols.Diagnostic value) { }
-        public void Profile(SharpVision.Terminal.Capabilities.Capabilities value) { }
-        public void Response(SharpVision.Terminal.Xterm.CapabilityResponse value) { }
-        public void Response(in SharpVision.Terminal.Xterm.MetricsResponse value) { }
-        public void Response(in SharpVision.Terminal.Xterm.PaletteResponse value) { }
-        public void Response(in SharpVision.Terminal.Xterm.Response value) { }
-        public void Response(in SharpVision.Terminal.Xterm.StatusResponse value) { }
-        public System.Threading.Tasks.Task RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
-        public void Sequence(SharpVision.Terminal.Protocols.ProtocolSequence value) { }
-        public System.Threading.Tasks.ValueTask StartAsync(System.Threading.CancellationToken cancellationToken = default) { }
-        public System.Threading.Tasks.ValueTask StopAsync(System.Threading.CancellationToken cancellationToken = default) { }
-    }
-    public sealed class CapabilitiesChangedEventArgs : System.EventArgs
-    {
-        public CapabilitiesChangedEventArgs(SharpVision.Terminal.Capabilities.Capabilities previous, SharpVision.Terminal.Capabilities.Capabilities current) { }
-        public SharpVision.Terminal.Capabilities.Capabilities Current { get; }
-        public SharpVision.Terminal.Capabilities.Capabilities Previous { get; }
-    }
-    public sealed class CapabilityResponseEventArgs : System.EventArgs
-    {
-        public CapabilityResponseEventArgs(SharpVision.Terminal.Xterm.CapabilityResponse response) { }
-        public SharpVision.Terminal.Xterm.CapabilityResponse Response { get; }
-    }
-    public static class ConsoleApplication
-    {
-        public static SharpVision.Runtime.ConsoleApplicationBuilder CreateBuilder(SharpVision.Controls.Screen screen) { }
-        public static System.Threading.Tasks.ValueTask<SharpVision.Runtime.ConsoleRunStatus> RunAsync(SharpVision.Controls.Screen screen, SharpVision.Runtime.ConsoleRunOptions options) { }
-        public static System.Threading.Tasks.ValueTask<SharpVision.Runtime.ConsoleRunStatus> RunAsync(SharpVision.Controls.Screen screen, System.Action<SharpVision.Runtime.ConsoleApplicationBuilder>? configure = null) { }
-    }
-    public sealed class ConsoleApplicationBuilder
-    {
-        public ConsoleApplicationBuilder(SharpVision.Controls.Screen screen) { }
-        public SharpVision.Runtime.ConsoleRunOptions Options { get; }
-        public SharpVision.Runtime.Application Build() { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder ConfigureOptions(System.Func<SharpVision.Runtime.ConsoleRunOptions, SharpVision.Runtime.ConsoleRunOptions> configure) { }
-        public System.Threading.Tasks.ValueTask<SharpVision.Runtime.ConsoleRunStatus> RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder ShowCursor(bool visible = true) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder TreatControlCAsInput(bool enabled = true) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseAlternateScreen(bool enabled = true) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseBracketedPaste(bool enabled = true) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseCapabilities(SharpVision.Terminal.Capabilities.Capabilities capabilities) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseColorDepth(SharpVision.Terminal.Capabilities.ColorDepth depth) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseFocusReporting(bool enabled = true) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseKeyboardEnhancement(SharpVision.Terminal.Kitty.Keyboard.Enhancement? enhancement) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseMouse(SharpVision.Terminal.Protocols.MouseTracking tracking = 1003, SharpVision.Terminal.Protocols.MouseCoordinates coordinates = 1006) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseNegotiation(SharpVision.Terminal.Capabilities.NegotiationOptions negotiation) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseTerminalProfile(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder UseTheme(SharpVision.Styling.Theme theme) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithCleanupTimeout(System.TimeSpan timeout) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithReadBufferSize(int size) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithRedirectedMessage(string? message) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithResizeInterval(System.TimeSpan interval) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithUnsupportedTerminalMessage(string? message) { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithoutColors() { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithoutMouse() { }
-        public SharpVision.Runtime.ConsoleApplicationBuilder WithoutNegotiation() { }
-    }
-    public sealed class ConsoleRunOptions : System.IEquatable<SharpVision.Runtime.ConsoleRunOptions>
-    {
-        public ConsoleRunOptions() { }
-        public bool AlternateScreen { get; init; }
-        public bool BracketedPaste { get; init; }
-        public SharpVision.Terminal.Capabilities.Capabilities? Capabilities { get; init; }
-        public System.TimeSpan CleanupTimeout { get; init; }
-        public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
-        public bool FocusReporting { get; init; }
-        public SharpVision.Terminal.Kitty.Keyboard.Enhancement? KeyboardEnhancement { get; init; }
-        public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
-        public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; init; }
-        public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
-        public SharpVision.Terminal.Capabilities.TerminalProfile? Profile { get; init; }
-        public int ReadBufferSize { get; init; }
-        public string? RedirectedMessage { get; init; }
-        public System.TimeSpan ResizeInterval { get; init; }
-        public bool ShowCursor { get; init; }
-        public SharpVision.Styling.Theme? Theme { get; init; }
-        public bool TreatControlCAsInput { get; init; }
-        public string? UnsupportedTerminalMessage { get; init; }
-        public bool UseEnvironmentSizeOverrides { get; init; }
-        public SharpVision.Styling.Theme ResolveTheme() { }
-        public SharpVision.Terminal.Runtime.ConsoleHostOptions ToHostOptions() { }
-        public SharpVision.Terminal.Runtime.Options ToTerminalOptions() { }
-        public SharpVision.Terminal.Runtime.Options ToTerminalOptions(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
-    }
-    public enum ConsoleRunStatus
-    {
-        Redirected = 0,
-        Completed = 1,
-        Cancelled = 2,
-        Failed = 3,
-        UnsupportedTerminal = 4,
-    }
-    public sealed class DiagnosticEventArgs : System.EventArgs
-    {
-        public DiagnosticEventArgs(SharpVision.Terminal.Protocols.Diagnostic diagnostic) { }
-        public SharpVision.Terminal.Protocols.Diagnostic Diagnostic { get; }
-    }
-    public sealed class FrameRenderedEventArgs : System.EventArgs
-    {
-        public FrameRenderedEventArgs(SharpVision.Terminal.Rendering.Metrics metrics) { }
-        public SharpVision.Terminal.Rendering.Metrics Metrics { get; }
-    }
-    public interface IBell
-    {
-        bool IsSupported { get; }
-        void Ring();
-    }
-    public interface IClipboard
-    {
-        bool IsSupported { get; }
-        void Request(SharpVision.Terminal.Clipboard.Selection selection = 0);
-        void Write(System.ReadOnlySpan<char> text, SharpVision.Terminal.Clipboard.Selection selection = 0);
-    }
-    public interface ITerminalServices
-    {
-        SharpVision.Runtime.IBell Bell { get; }
-        SharpVision.Runtime.IClipboard Clipboard { get; }
-        SharpVision.Terminal.Capabilities.Description Description { get; }
-        bool IsTitleSupported { get; }
-        void SetTitle(string title);
-    }
-    public sealed class MetricsResponseEventArgs : System.EventArgs
-    {
-        public MetricsResponseEventArgs(SharpVision.Terminal.Xterm.MetricsResponse response) { }
-        public SharpVision.Terminal.Xterm.MetricsResponse Response { get; }
-    }
-    public sealed class PaletteResponseEventArgs : System.EventArgs
-    {
-        public PaletteResponseEventArgs(SharpVision.Terminal.Xterm.PaletteResponse response) { }
-        public SharpVision.Terminal.Xterm.PaletteResponse Response { get; }
-    }
-    public sealed class PointerDevice
-    {
-        public SharpVision.Terminal.Input.Buttons Buttons { get; }
-        public SharpVision.Controls.Control? Captured { get; }
-        public SharpVision.Controls.Control? Hovered { get; }
-        public SharpVision.Terminal.Input.PointerAction LastAction { get; }
-        public SharpVision.Terminal.Input.Modifiers Modifiers { get; }
-        public SharpVision.Terminal.Geometry.Point? PixelPosition { get; }
-        public SharpVision.Terminal.Geometry.Point? Position { get; }
-        public SharpVision.Controls.Control? PressOrigin { get; }
-    }
-    public sealed class ProtocolResponseEventArgs : System.EventArgs
-    {
-        public ProtocolResponseEventArgs(SharpVision.Terminal.Xterm.Response response) { }
-        public SharpVision.Terminal.Xterm.Response Response { get; }
-    }
-    public sealed class ResizeEventArgs : System.EventArgs
-    {
-        public ResizeEventArgs(SharpVision.Terminal.Geometry.Dimensions dimensions) { }
-        public SharpVision.Terminal.Geometry.Dimensions Dimensions { get; }
-    }
-    public sealed class StatusResponseEventArgs : System.EventArgs
-    {
-        public StatusResponseEventArgs(SharpVision.Terminal.Xterm.StatusResponse response) { }
-        public SharpVision.Terminal.Xterm.StatusResponse Response { get; }
-    }
-    public sealed class StoppingEventArgs : System.EventArgs
-    {
-        public StoppingEventArgs() { }
-        public bool Cancel { get; set; }
     }
 }
 namespace SharpVision.Scrolling

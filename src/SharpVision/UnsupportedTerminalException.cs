@@ -1,12 +1,18 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Runtime;
+namespace SharpVision;
 
 using Terminal.Capabilities;
 
-/// <summary>Identifies only terminal-description preflight rejection for status mapping.</summary>
-internal sealed class UnsupportedTerminalException: NotSupportedException
+/// <summary>Identifies terminal-description preflight rejection during <see cref="ConsoleApplicationBuilder.Build"/>.</summary>
+/// <remarks>
+/// <see cref="ConsoleApplication.RunAsync(Screen, ConsoleRunOptions)"/> catches this internally and reports it through
+/// <see cref="ConsoleRunStatus"/>; a consumer driving <see cref="ConsoleApplicationBuilder"/>
+/// directly can catch it by type.
+/// </remarks>
+[PublicAPI]
+public sealed class UnsupportedTerminalException: NotSupportedException
 {
     /// <summary>Initializes one typed preflight rejection.</summary>
     /// <param name="resolution">The non-null immutable resolution evidence.</param>
