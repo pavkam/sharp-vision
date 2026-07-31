@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Multiplexing;
 
 using Input;
 
+using Kitty;
+
 using Protocols;
 
 /// <summary>Applies one immutable bounded typed multiplexer route.</summary>
@@ -99,7 +101,14 @@ public sealed class Route
         ReadOnlySpan<byte> value,
         bool allowScreen)
     {
-        var current = value.ToArray();
+        // Every accepted layer's encoded length is bounded by Policy.MaxEnvelopeBytes (checked
+        // below before it is ever written), so two pooled buffers sized to that one bound —
+        // ping-ponged as the read side and the write side of each layer — replace what used to be
+        // one fresh heap array per layer plus a starting and ending copy (see #41).
+        using var bufferA = new BoundedWriter(Policy.MaxEnvelopeBytes);
+        using var bufferB = new BoundedWriter(Policy.MaxEnvelopeBytes);
+        var current = value;
+        var useA = true;
 
         try
         {
@@ -118,7 +127,8 @@ public sealed class Route
                     return false;
                 }
 
-                var next = new ArrayBufferWriter<byte>(encodedLength);
+                var next = useA ? bufferA : bufferB;
+                next.Reset(encodedLength);
 
                 if (Policy.Layers[index] == Kind.Tmux)
                 {
@@ -129,7 +139,8 @@ public sealed class Route
                     Screen.WritePassthrough(next, current);
                 }
 
-                current = next.WrittenSpan.ToArray();
+                current = next.WrittenSpan;
+                useA = !useA;
             }
         }
         catch (OverflowException)
