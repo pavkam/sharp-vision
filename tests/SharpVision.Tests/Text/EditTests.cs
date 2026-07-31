@@ -84,6 +84,36 @@ public sealed class EditTests
         Edit.MoveNext(value, second.Selection, extend: false).Selection.ShouldBe(new Selection(4, 4));
     }
 
+    /// <summary>Verifies the internal unchecked variants match their validating counterparts for
+    /// already-valid selections, and skip the boundary re-check entirely -- the point of #42's
+    /// TextInput fast path, since TextInput's own selection is always already valid.</summary>
+    [Fact]
+    public void MoveUnchecked_WhenSelectionIsValid_MatchesValidatingCounterpart()
+    {
+        const string value = "Ae\u0301\u754C";
+        var selection = new Selection(3, 3);
+
+        Edit.MovePreviousUnchecked(value, selection, extend: false)
+            .ShouldBe(Edit.MovePrevious(value, selection, extend: false));
+        Edit.MoveNextUnchecked(value, selection, extend: false)
+            .ShouldBe(Edit.MoveNext(value, selection, extend: false));
+    }
+
+    /// <summary>Verifies the unchecked variants skip Validate: an endpoint that splits a grapheme
+    /// cluster would make the validating counterpart throw, but the unchecked one does not.</summary>
+    [Fact]
+    public void MoveUnchecked_WhenSelectionSplitsACluster_DoesNotThrow()
+    {
+        const string value = "Ae\u0301\u754C";
+        var splitting = new Selection(2, 2);
+
+        // Index 2 sits between "e" and its combining acute; Validate rejects it as a non-boundary.
+        // The unchecked path trusts the caller instead of re-scanning for one.
+        _ = Should.Throw<ArgumentException>(() => Edit.Validate(value, splitting));
+        _ = Should.NotThrow(() => Edit.MovePreviousUnchecked(value, splitting, extend: false));
+        _ = Should.NotThrow(() => Edit.MoveNextUnchecked(value, splitting, extend: false));
+    }
+
     /// <summary>Verifies Backspace and Delete remove whole extended grapheme clusters.</summary>
     [Fact]
     public void Delete_WhenCaretTouchesComplexClusters_RemovesCompleteCluster()

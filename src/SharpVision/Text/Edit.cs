@@ -99,6 +99,24 @@ public static class Edit
     public static EditResult MovePrevious(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
+        return MovePreviousUnchecked(text, selection, extend);
+    }
+
+    /// <summary>Moves or extends to the previous complete cluster, without re-validating that
+    /// <paramref name="selection"/> is already a contained grapheme boundary.</summary>
+    /// <param name="text">The non-null source.</param>
+    /// <param name="selection">A selection already known valid for <paramref name="text"/>, such as
+    /// one this API previously returned.</param>
+    /// <param name="extend">Whether to retain the anchor.</param>
+    /// <returns>The immutable navigation result.</returns>
+    /// <remarks>
+    /// Skips the two full-prefix <see cref="IsBoundary"/> scans <see cref="Validate"/> performs on
+    /// every call. Internal callers that maintain their own selection as an invariant (see
+    /// <c>TextInput</c>) can hold Left/Right through a large document without paying for that
+    /// re-validation on every repeat (see #42).
+    /// </remarks>
+    internal static EditResult MovePreviousUnchecked(string text, Selection selection, bool extend)
+    {
         var caret = !extend && !selection.IsEmpty
             ? selection.Start
             : PreviousBoundary(text, selection.Caret);
@@ -116,6 +134,19 @@ public static class Edit
     public static EditResult MoveNext(string text, Selection selection, bool extend)
     {
         Validate(text, selection);
+        return MoveNextUnchecked(text, selection, extend);
+    }
+
+    /// <summary>Moves or extends to the next complete cluster, without re-validating that
+    /// <paramref name="selection"/> is already a contained grapheme boundary.</summary>
+    /// <param name="text">The non-null source.</param>
+    /// <param name="selection">A selection already known valid for <paramref name="text"/>, such as
+    /// one this API previously returned.</param>
+    /// <param name="extend">Whether to retain the anchor.</param>
+    /// <returns>The immutable navigation result.</returns>
+    /// <remarks>See <see cref="MovePreviousUnchecked"/> (see #42).</remarks>
+    internal static EditResult MoveNextUnchecked(string text, Selection selection, bool extend)
+    {
         var caret = !extend && !selection.IsEmpty
             ? selection.End
             : NextBoundary(text, selection.Caret);

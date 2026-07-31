@@ -778,7 +778,7 @@ public sealed class TextInput: Control
             BuildVisualLines(_editorBounds.Width);
         }
 
-        EnsureCaretVisible(_editorBounds);
+        EnsureCaretVisible(_editorBounds, remeasure: textChanged);
 
         if (textChanged)
         {
@@ -885,13 +885,13 @@ public sealed class TextInput: Control
         {
             result = word
                 ? Edit.MovePreviousWord(Text, _selection, extend)
-                : Edit.MovePrevious(Text, _selection, extend);
+                : Edit.MovePreviousUnchecked(Text, _selection, extend);
         }
         else if (eventArgs.Stroke.Code == Code.Right)
         {
             result = word
                 ? Edit.MoveNextWord(Text, _selection, extend)
-                : Edit.MoveNext(Text, _selection, extend);
+                : Edit.MoveNextUnchecked(Text, _selection, extend);
         }
         else if (eventArgs.Stroke.Code == Code.Home)
         {
@@ -1108,7 +1108,7 @@ public sealed class TextInput: Control
         return new EditResult(Text, selection, selection != _selection);
     }
 
-    private void EnsureCaretVisible(Rect bounds)
+    private void EnsureCaretVisible(Rect bounds, bool remeasure = true)
     {
         if (WordWrap && _visualLines.Length > 0)
         {
@@ -1118,7 +1118,11 @@ public sealed class TextInput: Control
             return;
         }
 
-        MeasureText(out _contentWidth, out _contentHeight);
+        if (remeasure)
+        {
+            MeasureText(out _contentWidth, out _contentHeight);
+        }
+
         Position(_selection.Caret, out var x, out var caretY);
 
         HorizontalOffset = Offset(HorizontalOffset, x, bounds.Width, _contentWidth);

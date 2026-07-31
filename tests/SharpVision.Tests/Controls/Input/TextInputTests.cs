@@ -321,6 +321,35 @@ public sealed class TextInputTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies caret visibility scrolls correctly from selection-only key navigation with no
+    /// intervening layout pass, so the content-width cache Commit reuses instead of remeasuring
+    /// (see #42) stays correct across repeated moves.</summary>
+    [Fact]
+    public void Dispatch_WhenArrowKeyMovesCaretPastViewportWithoutRelayout_ScrollsUsingCachedWidth()
+    {
+        var control = new TextInput { Text = "abcdefghij", CaretIndex = 0 };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new Engine().Layout(control, new Size(4, 1));
+
+        control.HorizontalOffset.ShouldBe(0);
+
+        for (var index = 0; index < 6; index++)
+        {
+            Key(control, Code.Right, Modifiers.None);
+        }
+
+        control.CaretIndex.ShouldBe(6);
+        control.HorizontalOffset.ShouldBeGreaterThan(0);
+
+        for (var index = 0; index < 6; index++)
+        {
+            Key(control, Code.Left, Modifiers.None);
+        }
+
+        control.CaretIndex.ShouldBe(0);
+        control.HorizontalOffset.ShouldBe(0);
+    }
+
     /// <summary>Verifies caret visibility updates horizontal and vertical offsets after resize.</summary>
     [Fact]
     public void Arrange_WhenCaretExceedsViewport_ScrollsAndClampsAfterResize()
