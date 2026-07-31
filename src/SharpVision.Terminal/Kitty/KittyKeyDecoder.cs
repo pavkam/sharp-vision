@@ -127,34 +127,28 @@ internal sealed class KittyKeyDecoder
     /// <returns>True when the field is empty and allowed, or entirely bounded decimal digits.</returns>
     internal static bool TryDecimal(ReadOnlySpan<byte> input, bool allowEmpty, out int value)
     {
-        value = 0;
-
-        if (input.IsEmpty)
+        // Parameters strips a leading DEC private-marker byte (0x3c-0x3f) before parsing; these
+        // fields never carry one, so reject it explicitly rather than silently parsing whatever
+        // follows it as the value.
+        if (!input.IsEmpty && input[0] is >= 0x3c and <= 0x3f)
         {
-            return allowEmpty;
+            value = 0;
+            return false;
         }
 
-        foreach (var item in input)
+        var parameters = new Parameters(input, maxValue: int.MaxValue);
+        var status = parameters.Read(out value, out _);
+
+        return status switch
         {
-            if (item is < (byte) '0' or > (byte) '9')
-            {
-                value = 0;
-                return false;
-            }
-
-            var digit = item - (byte) '0';
-
-            if (value > int.MaxValue / 10 ||
-                (value == int.MaxValue / 10 && digit > int.MaxValue % 10))
-            {
-                value = 0;
-                return false;
-            }
-
-            value = (value * 10) + digit;
-        }
-
-        return true;
+            ParameterStatus.Value => true,
+            ParameterStatus.End => allowEmpty,
+            ParameterStatus.Default => allowEmpty,
+            ParameterStatus.Invalid => false,
+            ParameterStatus.Overflow => false,
+            ParameterStatus.Limit => false,
+            _ => throw new UnreachableException("ParameterStatus has no members beyond this switch.")
+        };
     }
 
     private void EmitAssociatedText(ReadOnlySpan<byte> input)

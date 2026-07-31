@@ -159,6 +159,7 @@ public sealed class KittyKeyboardTests
     [InlineData("\u001b[1114112u")]
     [InlineData("\u001b[97;;31u")]
     [InlineData("\u001b[97;1;65;66u")]
+    [InlineData("\u001b[<97u")]
     public void Decode_WhenKittyEventIsMalformed_ReportsAndRecovers(string input)
     {
         var bytes = Encoding.UTF8.GetBytes(input + "x");
