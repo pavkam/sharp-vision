@@ -373,6 +373,108 @@ public sealed class DockTests
         top.Bounds.Height.ShouldBe(10);
     }
 
+    /// <summary>Verifies a Star clipped by MaxWidth redistributes the clipped remainder to an
+    /// eligible sibling instead of leaving it unused (see #173).</summary>
+    [Fact]
+    public void Layout_WhenStarSiblingIsClippedByMaxWidth_RedistributesRemainderToOtherStar()
+    {
+        var panel = new Panel { LastChildFills = false };
+        var clipped = new ProbeControl { Width = Length.Star(1), MaxWidth = 10 };
+        var free = new ProbeControl { Width = Length.Star(1) };
+        Panel.SetSide(clipped, DockSide.Left);
+        Panel.SetSide(free, DockSide.Left);
+        panel.Children.Add(clipped);
+        panel.Children.Add(free);
+
+        new LayoutEngine().Layout(panel, new Size(100, 1));
+
+        clipped.Bounds.Width.ShouldBe(10);
+        free.Bounds.Width.ShouldBe(90);
+    }
+
+    /// <summary>Verifies the same MaxWidth-clipped remainder reaches the eligible Star sibling
+    /// instead of the fill child when LastChildFills is enabled (see #173).</summary>
+    [Fact]
+    public void Layout_WhenStarSiblingIsClippedWithLastChildFillsEnabled_RedistributesToOtherStarNotFill()
+    {
+        var panel = new Panel { LastChildFills = true };
+        var clipped = new ProbeControl { Width = Length.Star(1), MaxWidth = 10 };
+        var free = new ProbeControl { Width = Length.Star(1) };
+        var fill = new ProbeControl();
+        Panel.SetSide(clipped, DockSide.Left);
+        Panel.SetSide(free, DockSide.Left);
+        Panel.SetSide(fill, DockSide.Left);
+        panel.Children.Add(clipped);
+        panel.Children.Add(free);
+        panel.Children.Add(fill);
+
+        new LayoutEngine().Layout(panel, new Size(100, 1));
+
+        clipped.Bounds.Width.ShouldBe(10);
+        free.Bounds.Width.ShouldBe(90);
+        fill.Bounds.Width.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a Star inflated by MinWidth reserves that minimum first and then shares
+    /// the remainder by weight, rather than the second Star losing cells it was allocated
+    /// (see #173).</summary>
+    [Fact]
+    public void Layout_WhenStarSiblingHasMinWidth_ReservesMinimumThenSplitsRemainderByWeight()
+    {
+        var panel = new Panel { LastChildFills = false };
+        var inflated = new ProbeControl { Width = Length.Star(1), MinWidth = 80 };
+        var free = new ProbeControl { Width = Length.Star(1) };
+        Panel.SetSide(inflated, DockSide.Left);
+        Panel.SetSide(free, DockSide.Left);
+        panel.Children.Add(inflated);
+        panel.Children.Add(free);
+
+        new LayoutEngine().Layout(panel, new Size(100, 1));
+
+        inflated.Bounds.Width.ShouldBe(90);
+        free.Bounds.Width.ShouldBe(10);
+    }
+
+    /// <summary>Verifies a Star followed by a Percent sibling resolves the Percent against the
+    /// axis excluding the Star's own share, so the pair fully covers the axis instead of leaving
+    /// a gap (see #173).</summary>
+    [Fact]
+    public void Layout_WhenStarPrecedesPercentSibling_FullyCoversTheAxis()
+    {
+        var panel = new Panel { LastChildFills = false };
+        var star = new ProbeControl { Width = Length.Star(1) };
+        var percent = new ProbeControl { Width = Length.Percent(50) };
+        Panel.SetSide(star, DockSide.Left);
+        Panel.SetSide(percent, DockSide.Left);
+        panel.Children.Add(star);
+        panel.Children.Add(percent);
+
+        new LayoutEngine().Layout(panel, new Size(100, 1));
+
+        star.Bounds.Width.ShouldBe(50);
+        percent.Bounds.Width.ShouldBe(50);
+        percent.Bounds.Right.ShouldBe(100);
+    }
+
+    /// <summary>Verifies the declaration order between a Star and a Percent sibling does not
+    /// change the resolved split, matching the Percent-precedes-Star order (see #173).</summary>
+    [Fact]
+    public void Layout_WhenPercentPrecedesStarSibling_ResolvesTheSameSplitAsTheReverseOrder()
+    {
+        var panel = new Panel { LastChildFills = false };
+        var percent = new ProbeControl { Width = Length.Percent(50) };
+        var star = new ProbeControl { Width = Length.Star(1) };
+        Panel.SetSide(percent, DockSide.Left);
+        Panel.SetSide(star, DockSide.Left);
+        panel.Children.Add(percent);
+        panel.Children.Add(star);
+
+        new LayoutEngine().Layout(panel, new Size(100, 1));
+
+        percent.Bounds.Width.ShouldBe(50);
+        star.Bounds.Width.ShouldBe(50);
+    }
+
     private static ProbeControl HeightOnly(int height) => new() { Height = Length.Cells(height) };
 
     private static ProbeControl WidthOnly(int width) => new() { Width = Length.Cells(width) };

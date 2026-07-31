@@ -152,12 +152,13 @@ public sealed class Dock: Container
         var remaining = bounds;
         var last = LastParticipant();
 
-        // Star children share their axis's remaining space by weight instead of each
-        // claiming the whole remainder in child order, mirroring Tracks.AllocateStars for
-        // Grid/StackPanel. Horizontal (Left/Right) and vertical (Top/Bottom) children never
-        // consume each other's axis, so the two groups are allocated independently up front.
-        var horizontalStars = AllocateStarBorders(horizontal: true, bounds.Width, last);
-        var verticalStars = AllocateStarBorders(horizontal: false, bounds.Height, last);
+        // Every same-axis participant's size is decided once, up front, by ResolveAxisBorders —
+        // both non-Star children (as Resolve always did) and Star children, which share their
+        // axis's leftover space by weight, mirroring Tracks.AllocateStars for Grid/StackPanel.
+        // Horizontal (Left/Right) and vertical (Top/Bottom) children never consume each other's
+        // axis, so the two groups are resolved independently up front.
+        var horizontalBorders = ResolveAxisBorders(horizontal: true, bounds.Width, last);
+        var verticalBorders = ResolveAxisBorders(horizontal: false, bounds.Height, last);
 
         for (var index = 0; index < Children.Count; index++)
         {
@@ -179,10 +180,7 @@ public sealed class Dock: Container
             var horizontal = side is DockSide.Left or DockSide.Right;
             var axis = horizontal ? remaining.Width : remaining.Height;
             var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
-            var length = horizontal ? child.Width : child.Height;
-            var border = length.Kind == LengthKind.Star
-                ? (horizontal ? horizontalStars : verticalStars)[index]
-                : Resolve(child, axis, horizontal);
+            var border = (horizontal ? horizontalBorders : verticalBorders)[index];
             var outer = Math.Min(axis, LayoutMath.Add(border, margin));
 
             var slot = side switch
@@ -222,8 +220,8 @@ public sealed class Dock: Container
         };
     }
 
-    // Resolves a non-Star edge request. Star children are allocated separately by
-    // AllocateStarBorders, sharing their axis's remaining space by weight.
+    // Resolves a non-Star edge request against the given axis. Called once per participant by
+    // ResolveAxisBorders; Star lengths never reach here.
     private static int Resolve(Control child, int available, bool horizontal)
     {
         Debug.Assert(available >= 0, "Available dock axis space is non-negative.");
@@ -249,15 +247,25 @@ public sealed class Dock: Container
         return Math.Min(space, Math.Clamp(requested, minimum, maximum));
     }
 
-    // Computes, per Star child sharing one axis (horizontal: Left/Right, vertical: Top/Bottom),
-    // its proportional share of that axis's space left over after every non-Star participant on
-    // the same axis is resolved in child order — the same order ArrangeOverride itself walks, so
-    // this dry run reproduces the identical shrinking "available" sequence Percent-length siblings
-    // already depend on. Only participants are considered: a collapsed child, or the last child
-    // when LastChildFills, never reserves space on either axis.
-    private int[] AllocateStarBorders(bool horizontal, int axisTotal, int last)
+    // Resolves every same-axis participant's border in one sequential pass: a non-Star child
+    // exactly as Resolve always did, and every Star child by splitting whatever axis space is
+    // left over by weight. A non-Star child deliberately resolves against the space left after
+    // every OTHER non-Star participant only — never against a Star's own share. Star shares are
+    // themselves only known once every non-Star border on the axis is settled, so letting a later
+    // Percent see a preceding Star's real rendered share would make its own resolution depend on
+    // a value that in turn depends on it, and that circular system has no stable interior fixed
+    // point (see #173): iterating it drives the Star's share toward the whole axis and the
+    // Percent's toward zero, regardless of where either sits in the declared order. Resolving
+    // every non-Star border against a Star-blind "remaining" instead keeps the two declaration
+    // orders symmetric — a Star before or after a Percent claiming the same nominal share yields
+    // the same split. ArrangeOverride still visually reserves each Star's real allocated share
+    // when it walks children in render order; only the SIZE each non-Star sibling resolves to is
+    // decided here, independent of where any Star sits in the sequence. Only participants are
+    // considered: a collapsed child, or the last child when LastChildFills, never reserves space
+    // on either axis.
+    private int[] ResolveAxisBorders(bool horizontal, int axisTotal, int last)
     {
-        var shares = new int[Children.Count];
+        var borders = new int[Children.Count];
         var remaining = axisTotal;
         List<int>? starIndices = null;
         var totalWeight = 0d;
@@ -291,36 +299,106 @@ public sealed class Dock: Container
             else
             {
                 var border = Resolve(child, remaining, horizontal);
+                borders[index] = border;
                 remaining -= Math.Min(remaining, LayoutMath.Add(border, margin));
             }
 
             remaining -= Math.Min(remaining, index == last ? 0 : Spacing);
         }
 
-        if (starIndices is null || totalWeight <= 0)
+        if (starIndices is not null && totalWeight > 0)
         {
-            return shares;
+            DistributeStarShares(starIndices, remaining, horizontal, borders);
         }
 
-        var cumulativeWeight = 0d;
-        var previousEdge = 0;
+        return borders;
+    }
+
+    // Splits one axis's leftover pool across its Star participants by weight, re-running the
+    // split whenever a Min/Max limit clips a share so the clipped remainder reaches the eligible
+    // siblings instead of vanishing or landing on an unrelated child — mirroring
+    // Tracks.AllocateStars's redistribution loop for Grid/StackPanel (see #173). Every Star is
+    // first seeded at its own minimum, exactly as Tracks pre-seeds a track's destination before
+    // splitting the remainder: a large minimum is a reservation the weighted split then adds to,
+    // not a post-hoc floor that silently steals cells another Star was already allocated.
+    private void DistributeStarShares(List<int> starIndices, int pool, bool horizontal, int[] borders)
+    {
+        var reserved = 0;
 
         foreach (var index in starIndices)
         {
             var child = Children[index];
-            var length = horizontal ? child.Width : child.Height;
             var minimum = horizontal ? child.MinWidth : child.MinHeight;
-            var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
-
-            cumulativeWeight += length.Value;
-            var edge = (int) Math.Round(remaining * cumulativeWeight / totalWeight, MidpointRounding.AwayFromZero);
-            var share = edge - previousEdge;
-            previousEdge = edge;
-
-            shares[index] = Math.Clamp(share, minimum, maximum);
+            borders[index] = minimum;
+            reserved += minimum;
         }
 
-        return shares;
+        var remaining = Math.Max(0, pool - reserved);
+        var eligible = new HashSet<int>(starIndices);
+
+        while (remaining > 0 && eligible.Count > 0)
+        {
+            var totalWeight = 0d;
+
+            foreach (var index in eligible)
+            {
+                var length = horizontal ? Children[index].Width : Children[index].Height;
+                totalWeight += length.Value;
+            }
+
+            if (totalWeight <= 0)
+            {
+                return;
+            }
+
+            var pass = remaining;
+            var cumulativeWeight = 0d;
+            var previousEdge = 0;
+            var distributed = 0;
+            List<int>? saturated = null;
+
+            foreach (var index in starIndices)
+            {
+                if (!eligible.Contains(index))
+                {
+                    continue;
+                }
+
+                var child = Children[index];
+                var length = horizontal ? child.Width : child.Height;
+                var maximum = horizontal ? child.MaxWidth : child.MaxHeight;
+
+                cumulativeWeight += length.Value;
+                var edge = (int) Math.Round(pass * cumulativeWeight / totalWeight, MidpointRounding.AwayFromZero);
+                var share = Math.Max(0, edge - previousEdge);
+                previousEdge = edge;
+
+                var capacity = Math.Max(0, maximum - borders[index]);
+                var added = Math.Min(share, capacity);
+                borders[index] += added;
+                distributed += added;
+
+                if (added < share)
+                {
+                    (saturated ??= []).Add(index);
+                }
+            }
+
+            if (distributed == 0)
+            {
+                return;
+            }
+
+            remaining -= distributed;
+
+            if (saturated is not null)
+            {
+                foreach (var index in saturated)
+                {
+                    _ = eligible.Remove(index);
+                }
+            }
+        }
     }
 
     private static int Percent(int axis, double value)
