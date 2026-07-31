@@ -284,6 +284,37 @@ public sealed class LegacyKeyTests
     }
 
     /// <summary>
+    /// Verifies an unrecognized CSI final byte reports Unsupported without emitting a stroke,
+    /// since CSI participates in an extensible dispatch chain that must let later handlers
+    /// (terminfo KeyMap, the ANSI grammar fallback) claim what this table does not (see #97).
+    /// </summary>
+    [Fact]
+    public void Decode_WhenCsiFinalByteIsUnrecognized_ReportsUnsupportedWithoutAStroke()
+    {
+        var sink = Decode(Encoding.UTF8.GetBytes("[X"));
+
+        sink.Strokes.ShouldBeEmpty();
+        sink.Diagnostics.ShouldContain(static item => item.Code == DiagnosticCode.Unsupported);
+    }
+
+    /// <summary>
+    /// Verifies an unrecognized SS3 final byte still emits a Code.Unknown stroke carrying the
+    /// native byte, since SS3 has no further fallback handler once its table is exhausted,
+    /// unlike CSI (see #97).
+    /// </summary>
+    [Fact]
+    public void Decode_WhenSs3FinalByteIsUnrecognized_EmitsUnknownStrokeWithNativeByte()
+    {
+        var sink = Decode(Encoding.UTF8.GetBytes("OX"));
+
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Unknown, null, (byte) 'X', Modifiers.None, InputAction.Press)
+        ]);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>
     /// Verifies CSI keys with Kitty event types decode identically at every byte split.
     /// </summary>
     [Theory]

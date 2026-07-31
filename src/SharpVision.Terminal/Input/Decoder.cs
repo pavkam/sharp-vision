@@ -631,23 +631,59 @@ public sealed class Decoder: IDisposable
         Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
     }
 
+    /// <summary>Maps a CSI or SS3 cursor/function-key final byte shared by both grammars.</summary>
+    /// <param name="final">The final byte.</param>
+    /// <param name="code">The mapped code, or <see cref="Code.Unknown"/> when unmapped.</param>
+    /// <returns>True when <paramref name="final"/> is one of the ten shared final bytes.</returns>
+    private static bool TryMapCursorKey(byte final, out Code code)
+    {
+        switch (final)
+        {
+            case (byte) 'A':
+                code = Code.Up;
+                return true;
+            case (byte) 'B':
+                code = Code.Down;
+                return true;
+            case (byte) 'C':
+                code = Code.Right;
+                return true;
+            case (byte) 'D':
+                code = Code.Left;
+                return true;
+            case (byte) 'H':
+                code = Code.Home;
+                return true;
+            case (byte) 'F':
+                code = Code.End;
+                return true;
+            case (byte) 'P':
+                code = Code.F1;
+                return true;
+            case (byte) 'Q':
+                code = Code.F2;
+                return true;
+            case (byte) 'R':
+                code = Code.F3;
+                return true;
+            case (byte) 'S':
+                code = Code.F4;
+                return true;
+            default:
+                code = Code.Unknown;
+                return false;
+        }
+    }
+
     private bool TryHandleCsiKey(ReadOnlySpan<byte> parameters, byte final)
     {
-        var code = final switch
-        {
-            (byte) 'A' => Code.Up,
-            (byte) 'B' => Code.Down,
-            (byte) 'C' => Code.Right,
-            (byte) 'D' => Code.Left,
-            (byte) 'H' => Code.Home,
-            (byte) 'F' => Code.End,
-            (byte) 'P' => Code.F1,
-            (byte) 'Q' => Code.F2,
-            (byte) 'R' => Code.F3,
-            (byte) 'S' => Code.F4,
-            (byte) 'Z' => Code.Tab,
-            _ => (Code?) null
-        };
+        // CSI Z (cursor back-tab / Shift+Tab) has no SS3 equivalent, so it stays CSI-only. An
+        // unmapped final byte returns false rather than Code.Unknown: CSI sits in an extensible
+        // dispatch chain (terminfo KeyMap, then the ANSI grammar fallback) that must still get a
+        // chance to claim it, unlike SS3 which has no further fallback (see #97).
+        Code? code = final == (byte) 'Z'
+            ? Code.Tab
+            : TryMapCursorKey(final, out var mapped) ? mapped : null;
 
         if (code is null)
         {
@@ -747,21 +783,11 @@ public sealed class Decoder: IDisposable
             return;
         }
 
-        var code = final switch
-        {
-            (byte) 'A' => Code.Up,
-            (byte) 'B' => Code.Down,
-            (byte) 'C' => Code.Right,
-            (byte) 'D' => Code.Left,
-            (byte) 'H' => Code.Home,
-            (byte) 'F' => Code.End,
-            (byte) 'P' => Code.F1,
-            (byte) 'Q' => Code.F2,
-            (byte) 'R' => Code.F3,
-            (byte) 'S' => Code.F4,
-            _ => Code.Unknown
-        };
-        EmitStroke(code, null, code == Code.Unknown ? final : 0);
+        // Unlike CSI, SS3 has no further fallback handler once this table is exhausted, so an
+        // unmapped final byte still becomes a real stroke — Code.Unknown carrying the native byte
+        // for diagnostics — instead of silently dropping the input (see #97).
+        var mapped = TryMapCursorKey(final, out var code);
+        EmitStroke(code, null, mapped ? 0 : final);
     }
 
     private void HandleSequence(
