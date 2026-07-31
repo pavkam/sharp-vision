@@ -47,29 +47,13 @@ public readonly struct ButtonStyle: IEquatable<ButtonStyle>
     /// <param name="other">The other style to compare.</param>
     /// <returns><see langword="true"/> when the resolved padding and complete appearance profiles are equal.</returns>
     public bool Equals(ButtonStyle other) =>
-        Padding == other.Padding && ProfilesEqual(Appearance, other.Appearance);
+        Padding == other.Padding && Appearance.Equals(other.Appearance);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is ButtonStyle other && Equals(other);
 
     /// <inheritdoc/>
-    public override int GetHashCode()
-    {
-        var appearance = Appearance;
-        var hash = new HashCode();
-        hash.Add(Padding);
-        hash.Add(appearance.Normal);
-        hash.Add(appearance.PointerOver);
-        hash.Add(appearance.FocusWithin);
-        hash.Add(appearance.Focused);
-        hash.Add(appearance.Current);
-        hash.Add(appearance.Selected);
-        hash.Add(appearance.Checked);
-        hash.Add(appearance.Indeterminate);
-        hash.Add(appearance.Pressed);
-        hash.Add(appearance.Disabled);
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => HashCode.Combine(Padding, Appearance);
 
     /// <summary>Determines whether two Button styles resolve to the same presentation.</summary>
     /// <param name="left">The first style.</param>
@@ -115,19 +99,6 @@ public readonly struct ButtonStyle: IEquatable<ButtonStyle>
 
         return new ButtonStyle(new Thickness(horizontal: 2, vertical: 0), appearance);
     }
-
-    private static bool ProfilesEqual(ThemeProfile left, ThemeProfile right) =>
-        ReferenceEquals(left, right) ||
-        (left.Normal.Equals(right.Normal) &&
-         left.PointerOver.Equals(right.PointerOver) &&
-         left.FocusWithin.Equals(right.FocusWithin) &&
-         left.Focused.Equals(right.Focused) &&
-         left.Current.Equals(right.Current) &&
-         left.Selected.Equals(right.Selected) &&
-         left.Checked.Equals(right.Checked) &&
-         left.Indeterminate.Equals(right.Indeterminate) &&
-         left.Pressed.Equals(right.Pressed) &&
-         left.Disabled.Equals(right.Disabled));
 
     private ThemeProfile ResolveAppearance() => _appearance ?? _standardAppearance;
 

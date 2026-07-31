@@ -67,21 +67,13 @@ public readonly struct CheckBoxStyle: IEquatable<CheckBoxStyle>
     /// <param name="other">The other style to compare.</param>
     /// <returns><see langword="true"/> when all resolved presentation members are equal.</returns>
     public bool Equals(CheckBoxStyle other) =>
-        MarkStyle == other.MarkStyle && Glyphs == other.Glyphs && ProfilesEqual(Appearance, other.Appearance);
+        MarkStyle == other.MarkStyle && Glyphs == other.Glyphs && Appearance.Equals(other.Appearance);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is CheckBoxStyle other && Equals(other);
 
     /// <inheritdoc/>
-    public override int GetHashCode()
-    {
-        var profile = Appearance;
-        var hash = new HashCode();
-        hash.Add(MarkStyle);
-        hash.Add(Glyphs);
-        AddProfile(ref hash, profile);
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => HashCode.Combine(MarkStyle, Glyphs, Appearance);
 
     /// <summary>Determines whether two checkbox styles resolve to the same presentation.</summary>
     /// <param name="left">The first style.</param>
@@ -96,31 +88,4 @@ public readonly struct CheckBoxStyle: IEquatable<CheckBoxStyle>
     public static bool operator !=(CheckBoxStyle left, CheckBoxStyle right) => !left.Equals(right);
 
     private ThemeProfile ResolveAppearance() => _appearance ?? _standardAppearance;
-
-    private static bool ProfilesEqual(ThemeProfile left, ThemeProfile right) =>
-        ReferenceEquals(left, right) ||
-        (left.Normal.Equals(right.Normal) &&
-         left.PointerOver.Equals(right.PointerOver) &&
-         left.FocusWithin.Equals(right.FocusWithin) &&
-         left.Focused.Equals(right.Focused) &&
-         left.Current.Equals(right.Current) &&
-         left.Selected.Equals(right.Selected) &&
-         left.Checked.Equals(right.Checked) &&
-         left.Indeterminate.Equals(right.Indeterminate) &&
-         left.Pressed.Equals(right.Pressed) &&
-         left.Disabled.Equals(right.Disabled));
-
-    private static void AddProfile(ref HashCode hash, ThemeProfile profile)
-    {
-        hash.Add(profile.Normal);
-        hash.Add(profile.PointerOver);
-        hash.Add(profile.FocusWithin);
-        hash.Add(profile.Focused);
-        hash.Add(profile.Current);
-        hash.Add(profile.Selected);
-        hash.Add(profile.Checked);
-        hash.Add(profile.Indeterminate);
-        hash.Add(profile.Pressed);
-        hash.Add(profile.Disabled);
-    }
 }

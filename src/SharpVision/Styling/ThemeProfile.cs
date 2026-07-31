@@ -4,7 +4,7 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines one global semantic role's normal appearance and state contributions.</summary>
-public sealed class ThemeProfile
+public sealed class ThemeProfile: IEquatable<ThemeProfile>
 {
     private const VisualState _allStates =
         VisualState.PointerOver |
@@ -71,6 +71,51 @@ public sealed class ThemeProfile
 
     /// <summary>Gets the disabled contribution.</summary>
     public AppearanceSet Disabled { get; }
+
+    /// <summary>Determines whether this profile and another resolve the same complete appearance
+    /// across every visual state.</summary>
+    /// <param name="other">The other profile to compare, or null.</param>
+    /// <returns><see langword="true"/> when every normal and state-contribution slot is equal.</returns>
+    public bool Equals(ThemeProfile? other) =>
+        other is not null &&
+        (ReferenceEquals(this, other) ||
+         (Normal.Equals(other.Normal) &&
+          PointerOver.Equals(other.PointerOver) &&
+          FocusWithin.Equals(other.FocusWithin) &&
+          Focused.Equals(other.Focused) &&
+          Current.Equals(other.Current) &&
+          Selected.Equals(other.Selected) &&
+          Checked.Equals(other.Checked) &&
+          Indeterminate.Equals(other.Indeterminate) &&
+          Pressed.Equals(other.Pressed) &&
+          Disabled.Equals(other.Disabled)));
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj) => obj is ThemeProfile other && Equals(other);
+
+    /// <inheritdoc/>
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Normal);
+        hash.Add(PointerOver);
+        hash.Add(FocusWithin);
+        hash.Add(Focused);
+        hash.Add(Current);
+        hash.Add(Selected);
+        hash.Add(Checked);
+        hash.Add(Indeterminate);
+        hash.Add(Pressed);
+        hash.Add(Disabled);
+        return hash.ToHashCode();
+    }
+
+    /// <summary>Determines whether two profiles resolve the same complete appearance.</summary>
+    public static bool operator ==(ThemeProfile? left, ThemeProfile? right) =>
+        left is null ? right is null : left.Equals(right);
+
+    /// <summary>Determines whether two profiles resolve different complete appearances.</summary>
+    public static bool operator !=(ThemeProfile? left, ThemeProfile? right) => !(left == right);
 
     /// <summary>Gets whether any state contribution can alter intrinsic chrome geometry.</summary>
     internal bool StateCanChangeChromeGeometry =>

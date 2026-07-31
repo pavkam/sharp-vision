@@ -67,7 +67,7 @@ public readonly struct SliderStyle: IEquatable<SliderStyle>
         TrackColor == other.TrackColor &&
         ThumbColor == other.ThumbColor &&
         Glyphs == other.Glyphs &&
-        ProfilesEqual(Appearance, other.Appearance);
+        Appearance.Equals(other.Appearance);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is SliderStyle other && Equals(other);
@@ -80,7 +80,7 @@ public readonly struct SliderStyle: IEquatable<SliderStyle>
         hash.Add(TrackColor);
         hash.Add(ThumbColor);
         hash.Add(Glyphs);
-        AddProfile(ref hash, Appearance);
+        hash.Add(Appearance);
         return hash.ToHashCode();
     }
 
@@ -98,30 +98,4 @@ public readonly struct SliderStyle: IEquatable<SliderStyle>
 
     private ThemeProfile ResolveAppearance() => _appearance ?? _standardAppearance;
 
-    private static bool ProfilesEqual(ThemeProfile left, ThemeProfile right) =>
-        ReferenceEquals(left, right) ||
-        (left.Normal.Equals(right.Normal) &&
-         left.PointerOver.Equals(right.PointerOver) &&
-         left.FocusWithin.Equals(right.FocusWithin) &&
-         left.Focused.Equals(right.Focused) &&
-         left.Current.Equals(right.Current) &&
-         left.Selected.Equals(right.Selected) &&
-         left.Checked.Equals(right.Checked) &&
-         left.Indeterminate.Equals(right.Indeterminate) &&
-         left.Pressed.Equals(right.Pressed) &&
-         left.Disabled.Equals(right.Disabled));
-
-    private static void AddProfile(ref HashCode hash, ThemeProfile profile)
-    {
-        hash.Add(profile.Normal);
-        hash.Add(profile.PointerOver);
-        hash.Add(profile.FocusWithin);
-        hash.Add(profile.Focused);
-        hash.Add(profile.Current);
-        hash.Add(profile.Selected);
-        hash.Add(profile.Checked);
-        hash.Add(profile.Indeterminate);
-        hash.Add(profile.Pressed);
-        hash.Add(profile.Disabled);
-    }
 }

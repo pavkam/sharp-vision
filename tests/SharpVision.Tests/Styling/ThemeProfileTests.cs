@@ -74,6 +74,62 @@ public sealed class ThemeProfileTests
         theme.ResolveColor(ThemeColor.ActiveBorder).ShouldBe(Color.Rgb(1, 2, 3));
     }
 
+    /// <summary>Verifies two profiles built from equal normal and state-contribution values are
+    /// equal and hash equally, and that changing any single one of the ten slots breaks equality
+    /// (see #156).</summary>
+    [Fact]
+    public void Equals_WhenEveryStateSlotIsCompared_DetectsADifferenceInAnySingleSlot()
+    {
+        var normal = CreateAppearance();
+        var pointerOver = new AppearanceSet(face: new FaceSet(foreground: ThemeColor.ActiveBorder));
+        var focusWithin = new AppearanceSet(face: new FaceSet(foreground: ThemeColor.FocusedText));
+        var focused = new AppearanceSet(face: new FaceSet(foreground: ThemeColor.DisabledText));
+        var current = new AppearanceSet(face: new FaceSet(background: ThemeColor.Control));
+        var selected = new AppearanceSet(face: new FaceSet(background: ThemeColor.ActiveBorder));
+        var @checked = new AppearanceSet(face: new FaceSet(attributes: TerminalAttributes.Bold));
+        var indeterminate = new AppearanceSet(face: new FaceSet(attributes: TerminalAttributes.Italic));
+        var pressed = new AppearanceSet(face: new FaceSet(underline: Underline.Curly));
+        var disabled = new AppearanceSet(face: new FaceSet(underline: Underline.Dashed));
+
+        var baseline = new ThemeProfile(
+            normal, pointerOver, focusWithin, focused, current, selected, @checked, indeterminate, pressed, disabled);
+        var identicalValues = new ThemeProfile(
+            normal, pointerOver, focusWithin, focused, current, selected, @checked, indeterminate, pressed, disabled);
+
+        baseline.Equals(identicalValues).ShouldBeTrue();
+        baseline.ShouldBe(identicalValues);
+        baseline.GetHashCode().ShouldBe(identicalValues.GetHashCode());
+        (baseline == identicalValues).ShouldBeTrue();
+        (baseline != identicalValues).ShouldBeFalse();
+
+        var differingProfiles = new[]
+        {
+            new ThemeProfile(
+                normal, AppearanceSet.Empty, focusWithin, focused, current, selected, @checked, indeterminate, pressed, disabled),
+            new ThemeProfile(
+                normal, pointerOver, AppearanceSet.Empty, focused, current, selected, @checked, indeterminate, pressed, disabled),
+            new ThemeProfile(
+                normal, pointerOver, focusWithin, AppearanceSet.Empty, current, selected, @checked, indeterminate, pressed, disabled),
+            new ThemeProfile(
+                normal, pointerOver, focusWithin, focused, AppearanceSet.Empty, selected, @checked, indeterminate, pressed, disabled),
+            new ThemeProfile(
+                normal, pointerOver, focusWithin, focused, current, AppearanceSet.Empty, @checked, indeterminate, pressed, disabled),
+            new ThemeProfile(
+                normal, pointerOver, focusWithin, focused, current, selected, AppearanceSet.Empty, indeterminate, pressed, disabled),
+            new ThemeProfile(
+                normal, pointerOver, focusWithin, focused, current, selected, @checked, AppearanceSet.Empty, pressed, disabled),
+            new ThemeProfile(
+                normal, pointerOver, focusWithin, focused, current, selected, @checked, indeterminate, AppearanceSet.Empty, disabled),
+            new ThemeProfile(
+                normal, pointerOver, focusWithin, focused, current, selected, @checked, indeterminate, pressed, AppearanceSet.Empty)
+        };
+
+        foreach (var differing in differingProfiles)
+        {
+            baseline.Equals(differing).ShouldBeFalse();
+        }
+    }
+
     /// <summary>Verifies a programmatically constructed theme starts with usable role-specific chrome.</summary>
     [Fact]
     public void Constructor_WhenProfilesAreNotLoaded_UsesRoleSpecificDefaults()

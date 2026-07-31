@@ -66,7 +66,7 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
     /// <param name="other">The other style to compare.</param>
     /// <returns><see langword="true"/> when all resolved presentation members are equal.</returns>
     public bool Equals(ChaseIndicatorStyle other) =>
-        Active == other.Active && Inactive == other.Inactive && ProfilesEqual(Appearance, other.Appearance);
+        Active == other.Active && Inactive == other.Inactive && Appearance.Equals(other.Appearance);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is ChaseIndicatorStyle other && Equals(other);
@@ -77,7 +77,7 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
         var hash = new HashCode();
         hash.Add(Active);
         hash.Add(Inactive);
-        AddProfile(ref hash, Appearance);
+        hash.Add(Appearance);
         return hash.ToHashCode();
     }
 
@@ -98,30 +98,4 @@ public readonly struct ChaseIndicatorStyle: IEquatable<ChaseIndicatorStyle>
 
     private ThemeProfile ResolveAppearance() => _appearance ?? _standardAppearance;
 
-    private static bool ProfilesEqual(ThemeProfile left, ThemeProfile right) =>
-        ReferenceEquals(left, right) ||
-        (left.Normal.Equals(right.Normal) &&
-         left.PointerOver.Equals(right.PointerOver) &&
-         left.FocusWithin.Equals(right.FocusWithin) &&
-         left.Focused.Equals(right.Focused) &&
-         left.Current.Equals(right.Current) &&
-         left.Selected.Equals(right.Selected) &&
-         left.Checked.Equals(right.Checked) &&
-         left.Indeterminate.Equals(right.Indeterminate) &&
-         left.Pressed.Equals(right.Pressed) &&
-         left.Disabled.Equals(right.Disabled));
-
-    private static void AddProfile(ref HashCode hash, ThemeProfile profile)
-    {
-        hash.Add(profile.Normal);
-        hash.Add(profile.PointerOver);
-        hash.Add(profile.FocusWithin);
-        hash.Add(profile.Focused);
-        hash.Add(profile.Current);
-        hash.Add(profile.Selected);
-        hash.Add(profile.Checked);
-        hash.Add(profile.Indeterminate);
-        hash.Add(profile.Pressed);
-        hash.Add(profile.Disabled);
-    }
 }
