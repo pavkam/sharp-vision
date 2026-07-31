@@ -34,7 +34,6 @@ namespace SharpVision.Controls.Collections
         public event System.EventHandler<SharpVision.Input.ListSelectionChangingEventArgs>? SelectionChanging;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(int index) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -592,6 +591,16 @@ namespace SharpVision.Controls.Display
         public static bool operator !=(SharpVision.Controls.Display.ProgressBarStyle left, SharpVision.Controls.Display.ProgressBarStyle right) { }
         public static bool operator ==(SharpVision.Controls.Display.ProgressBarStyle left, SharpVision.Controls.Display.ProgressBarStyle right) { }
     }
+    public readonly struct ProgressBarStyleSet : System.IEquatable<SharpVision.Controls.Display.ProgressBarStyleSet>
+    {
+        public ProgressBarStyleSet(SharpVision.Styling.ColorValue? fillColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? indeterminateColor = default, SharpVision.Controls.Display.ProgressBarGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
+        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
+        public SharpVision.Styling.ColorValue? FillColor { get; }
+        public SharpVision.Controls.Display.ProgressBarGlyphs? Glyphs { get; }
+        public SharpVision.Styling.ColorValue? IndeterminateColor { get; }
+        public SharpVision.Styling.ColorValue? TrackColor { get; }
+        public SharpVision.Controls.Display.ProgressBarStyle Apply(SharpVision.Controls.Display.ProgressBarStyle baseline) { }
+    }
     public sealed class ProgressValueChangedEventArgs : System.EventArgs
     {
         public ProgressValueChangedEventArgs(double previousValue, double value) { }
@@ -920,7 +929,6 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.ListSelectionChangedEventArgs>? SelectionChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -1128,6 +1136,16 @@ namespace SharpVision.Controls.Input
         public override int GetHashCode() { }
         public static bool operator !=(SharpVision.Controls.Input.SliderStyle left, SharpVision.Controls.Input.SliderStyle right) { }
         public static bool operator ==(SharpVision.Controls.Input.SliderStyle left, SharpVision.Controls.Input.SliderStyle right) { }
+    }
+    public readonly struct SliderStyleSet : System.IEquatable<SharpVision.Controls.Input.SliderStyleSet>
+    {
+        public SliderStyleSet(SharpVision.Styling.ColorValue? fillColor = default, SharpVision.Styling.ColorValue? trackColor = default, SharpVision.Styling.ColorValue? thumbColor = default, SharpVision.Controls.Input.SliderGlyphs? glyphs = default, SharpVision.Styling.AppearanceProfileSet? appearance = default) { }
+        public SharpVision.Styling.AppearanceProfileSet? Appearance { get; }
+        public SharpVision.Styling.ColorValue? FillColor { get; }
+        public SharpVision.Controls.Input.SliderGlyphs? Glyphs { get; }
+        public SharpVision.Styling.ColorValue? ThumbColor { get; }
+        public SharpVision.Styling.ColorValue? TrackColor { get; }
+        public SharpVision.Controls.Input.SliderStyle Apply(SharpVision.Controls.Input.SliderStyle baseline) { }
     }
     public sealed class TextInput : SharpVision.Controls.Control
     {
@@ -1354,7 +1372,6 @@ namespace SharpVision.Controls.Layout
         public void ClearSelection() { }
         public bool CommitEdit() { }
         public string CopySelection() { }
-        protected override string? GetThemeResolvedStylePropertyName(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         public void ResetGridGlyphs() { }
@@ -3057,7 +3074,7 @@ namespace SharpVision.Styling
         Shadow = 7,
         Hotkey = 8,
     }
-    public sealed class ThemeProfile
+    public sealed class ThemeProfile : System.IEquatable<SharpVision.Styling.ThemeProfile>
     {
         public ThemeProfile(SharpVision.Styling.ThemeAppearance normal, SharpVision.Styling.AppearanceSet pointerOver = default, SharpVision.Styling.AppearanceSet focusWithin = default, SharpVision.Styling.AppearanceSet focused = default, SharpVision.Styling.AppearanceSet current = default, SharpVision.Styling.AppearanceSet selected = default, SharpVision.Styling.AppearanceSet checked = default, SharpVision.Styling.AppearanceSet indeterminate = default, SharpVision.Styling.AppearanceSet pressed = default, SharpVision.Styling.AppearanceSet disabled = default) { }
         public SharpVision.Styling.AppearanceSet Checked { get; }
@@ -3070,7 +3087,12 @@ namespace SharpVision.Styling
         public SharpVision.Styling.AppearanceSet PointerOver { get; }
         public SharpVision.Styling.AppearanceSet Pressed { get; }
         public SharpVision.Styling.AppearanceSet Selected { get; }
+        public bool Equals(SharpVision.Styling.ThemeProfile? other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
         public SharpVision.Styling.ThemeAppearance Resolve(SharpVision.Styling.VisualState state) { }
+        public static bool operator !=(SharpVision.Styling.ThemeProfile? left, SharpVision.Styling.ThemeProfile? right) { }
+        public static bool operator ==(SharpVision.Styling.ThemeProfile? left, SharpVision.Styling.ThemeProfile? right) { }
     }
     public enum ThemeRole
     {
