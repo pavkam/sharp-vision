@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
+using Xterm;
+
 /// <summary>Contains nullable results from bounded capability queries.</summary>
 [PublicAPI]
 public sealed record Queries

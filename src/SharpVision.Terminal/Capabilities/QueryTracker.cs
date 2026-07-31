@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Capabilities;
 
+using Xterm;
+
 /// <summary>
 /// Tracks a finite number of correlated, typed-identity, and uncorrelated terminal queries.
 /// </summary>

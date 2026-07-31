@@ -7,6 +7,8 @@ using Capabilities;
 
 using Input;
 
+using Xterm;
+
 using InputText = Input.Text;
 
 /// <summary>Updates capability negotiation before forwarding ordered protocol events.</summary>

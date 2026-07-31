@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Discovery.Queries;
 
 using Capabilities;
 
+using Xterm;
+
 using MultiplexerRoute = Multiplexing.Route;
 
 /// <summary>

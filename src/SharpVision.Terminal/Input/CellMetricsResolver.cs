@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Input;
 
+using Xterm;
+
 /// <summary>
 /// Resolves the current best-known cell-pixel metrics from locally observed geometry and queried
 /// terminal responses, extracted from <see cref="Decoder"/> as one of its four self-contained

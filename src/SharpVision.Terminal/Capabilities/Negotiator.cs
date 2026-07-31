@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Capabilities;
 
 using Discovery.Queries;
 
+using Xterm;
+
 using MultiplexerRoute = Multiplexing.Route;
 
 /// <summary>Coordinates one bounded terminal capability query batch.</summary>

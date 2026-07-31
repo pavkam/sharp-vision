@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Input;
 
+using Xterm;
+
 using InputAction = Action;
 
 /// <summary>

@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Abstractions;
 
+using Xterm;
+
 /// <summary>Receives typed input, terminal replies, and owned extension strings.</summary>
 [PublicAPI]
 public interface IProtocolSink: IInputSink

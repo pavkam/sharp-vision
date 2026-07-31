@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Discovery.Adapters;
 
 using Capabilities;
 
+using Xterm;
+
 /// <summary>Translates bounded query results into query-origin semantic evidence.</summary>
 internal static class QueryEvidenceAdapter
 {

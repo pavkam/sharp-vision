@@ -7,6 +7,8 @@ using Backends;
 
 using Capabilities;
 
+using Xterm;
+
 using MultiplexerRoute = Multiplexing.Route;
 
 /// <summary>
