@@ -1233,8 +1233,8 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         public new void ResetBorder() { }
         public new void ResetShadow() { }
-        public static SharpVision.Layout.Side GetSide(SharpVision.Controls.Control control) { }
-        public static void SetSide(SharpVision.Controls.Control control, SharpVision.Layout.Side value) { }
+        public static SharpVision.Layout.DockSide GetSide(SharpVision.Controls.Control control) { }
+        public static void SetSide(SharpVision.Controls.Control control, SharpVision.Layout.DockSide value) { }
     }
     public sealed class ExpandedChangedEventArgs : System.EventArgs
     {
@@ -2155,6 +2155,13 @@ namespace SharpVision.Layout
         public int? Width { get; }
         public override string ToString() { }
     }
+    public enum DockSide
+    {
+        Left = 0,
+        Top = 1,
+        Right = 2,
+        Bottom = 3,
+    }
     public sealed class Engine
     {
         public Engine() { }
@@ -2198,13 +2205,6 @@ namespace SharpVision.Layout
         Width = 1,
         Height = 2,
         Both = 3,
-    }
-    public enum Side
-    {
-        Left = 0,
-        Top = 1,
-        Right = 2,
-        Bottom = 3,
     }
     [System.Diagnostics.DebuggerDisplay("{ToString(),nq}")]
     public readonly struct Thickness : System.IEquatable<SharpVision.Layout.Thickness>

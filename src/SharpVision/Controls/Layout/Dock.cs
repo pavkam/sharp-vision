@@ -51,10 +51,10 @@ public sealed class Dock: Container
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached side, defaulting to left.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
-    public static Side GetSide(Control control)
+    public static DockSide GetSide(Control control)
     {
         ArgumentNullException.ThrowIfNull(control);
-        return _placements.TryGetValue(control, out var placement) ? placement.Side : Side.Left;
+        return _placements.TryGetValue(control, out var placement) ? placement.Side : DockSide.Left;
     }
 
     /// <summary>Sets one control's attached physical side.</summary>
@@ -64,7 +64,7 @@ public sealed class Dock: Container
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public static void SetSide(Control control, Side value)
+    public static void SetSide(Control control, DockSide value)
     {
         ArgumentNullException.ThrowIfNull(control);
 
@@ -127,7 +127,7 @@ public sealed class Dock: Container
 
             var spacing = index == last ? 0 : Spacing;
 
-            if (GetSide(child) is Side.Left or Side.Right)
+            if (GetSide(child) is DockSide.Left or DockSide.Right)
             {
                 var consumed = LayoutMath.Add(outerWidth, spacing);
                 usedWidth = LayoutMath.Add(usedWidth, consumed);
@@ -176,7 +176,7 @@ public sealed class Dock: Container
             }
 
             var side = GetSide(child);
-            var horizontal = side is Side.Left or Side.Right;
+            var horizontal = side is DockSide.Left or DockSide.Right;
             var axis = horizontal ? remaining.Width : remaining.Height;
             var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
             var length = horizontal ? child.Width : child.Height;
@@ -187,10 +187,10 @@ public sealed class Dock: Container
 
             var slot = side switch
             {
-                Side.Left => new Rect(remaining.X, remaining.Y, outer, remaining.Height),
-                Side.Top => new Rect(remaining.X, remaining.Y, remaining.Width, outer),
-                Side.Right => new Rect(remaining.Right - outer, remaining.Y, outer, remaining.Height),
-                Side.Bottom => new Rect(remaining.X, remaining.Bottom - outer, remaining.Width, outer),
+                DockSide.Left => new Rect(remaining.X, remaining.Y, outer, remaining.Height),
+                DockSide.Top => new Rect(remaining.X, remaining.Y, remaining.Width, outer),
+                DockSide.Right => new Rect(remaining.Right - outer, remaining.Y, outer, remaining.Height),
+                DockSide.Bottom => new Rect(remaining.X, remaining.Bottom - outer, remaining.Width, outer),
                 _ => throw new UnreachableException()
             };
             // Dock resolves both axes: one from the requested edge length and
@@ -207,17 +207,17 @@ public sealed class Dock: Container
         }
     }
 
-    private static Rect Consume(Rect value, Side side, int extent)
+    private static Rect Consume(Rect value, DockSide side, int extent)
     {
         Debug.Assert(extent >= 0, "Consumed dock extent cannot be negative.");
         Debug.Assert(Enum.IsDefined(side), "Dock side must be defined.");
 
         return side switch
         {
-            Side.Left => new Rect(value.X + extent, value.Y, value.Width - extent, value.Height),
-            Side.Top => new Rect(value.X, value.Y + extent, value.Width, value.Height - extent),
-            Side.Right => new Rect(value.X, value.Y, value.Width - extent, value.Height),
-            Side.Bottom => new Rect(value.X, value.Y, value.Width, value.Height - extent),
+            DockSide.Left => new Rect(value.X + extent, value.Y, value.Width - extent, value.Height),
+            DockSide.Top => new Rect(value.X, value.Y + extent, value.Width, value.Height - extent),
+            DockSide.Right => new Rect(value.X, value.Y, value.Width - extent, value.Height),
+            DockSide.Bottom => new Rect(value.X, value.Y, value.Width, value.Height - extent),
             _ => throw new UnreachableException()
         };
     }
@@ -272,7 +272,7 @@ public sealed class Dock: Container
             }
 
             var side = GetSide(child);
-            var onThisAxis = horizontal ? side is Side.Left or Side.Right : side is Side.Top or Side.Bottom;
+            var onThisAxis = horizontal ? side is DockSide.Left or DockSide.Right : side is DockSide.Top or DockSide.Bottom;
 
             if (!onThisAxis)
             {

@@ -106,8 +106,8 @@ internal sealed class StatusBarWorkspace: CompositeControl
         };
         _ = EditorSurface.AddHandler(Events.Pointer, OnEditorPointer);
 
-        Dock.SetSide(header, Side.Top);
-        Dock.SetSide(Bar, Side.Bottom);
+        Dock.SetSide(header, DockSide.Top);
+        Dock.SetSide(Bar, DockSide.Bottom);
         var root = new Dock
         {
             Border = new Border(

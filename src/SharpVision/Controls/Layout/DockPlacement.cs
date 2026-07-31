@@ -7,5 +7,5 @@ namespace SharpVision.Controls.Layout;
 internal sealed class DockPlacement
 {
     /// <summary>Gets or sets the physical edge.</summary>
-    public Side Side { get; set; }
+    public DockSide Side { get; set; }
 }

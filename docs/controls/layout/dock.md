@@ -40,7 +40,7 @@ mutation, then invalidates measure only when the child belongs to a Dock.
 
 ```csharp
 var shell = new Dock { LastChildFills = true, Spacing = 1 };
-Dock.SetSide(sidebar, Side.Left);
+Dock.SetSide(sidebar, DockSide.Left);
 shell.Children.Add(sidebar);
 shell.Children.Add(main);
 ```

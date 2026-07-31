@@ -31,10 +31,10 @@ public sealed class DockSurfaceTests
             VerticalAlignment = VerticalAlignment.Stretch,
             Overflow = Overflow.Clip
         };
-        Dock.SetSide(top, Side.Top);
-        Dock.SetSide(bottom, Side.Bottom);
-        Dock.SetSide(left, Side.Left);
-        Dock.SetSide(right, Side.Right);
+        Dock.SetSide(top, DockSide.Top);
+        Dock.SetSide(bottom, DockSide.Bottom);
+        Dock.SetSide(left, DockSide.Left);
+        Dock.SetSide(right, DockSide.Right);
         var dock = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -63,8 +63,8 @@ public sealed class DockSurfaceTests
         // Arrange
         var left = new ControlText("LL\nLL\nLL") { Width = Length.Cells(2), Overflow = Overflow.Clip };
         var right = new ControlText("RR\nRR\nRR") { Width = Length.Cells(2), Overflow = Overflow.Clip };
-        Dock.SetSide(left, Side.Left);
-        Dock.SetSide(right, Side.Right);
+        Dock.SetSide(left, DockSide.Left);
+        Dock.SetSide(right, DockSide.Right);
         var dock = new Dock
         {
             LastChildFills = false,
@@ -125,10 +125,10 @@ public sealed class DockSurfaceTests
             VerticalAlignment = VerticalAlignment.Stretch
         };
         fill.Click += (_, _) => clicked = true;
-        Dock.SetSide(left, Side.Left);
-        Dock.SetSide(top, Side.Top);
-        Dock.SetSide(right, Side.Right);
-        Dock.SetSide(bottom, Side.Bottom);
+        Dock.SetSide(left, DockSide.Left);
+        Dock.SetSide(top, DockSide.Top);
+        Dock.SetSide(right, DockSide.Right);
+        Dock.SetSide(bottom, DockSide.Bottom);
         var dock = new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -199,14 +199,14 @@ public sealed class DockSurfaceTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Overflow = Overflow.Clip
         };
-        Dock.SetSide(first, Side.Top);
+        Dock.SetSide(first, DockSide.Top);
         var second = new ControlText("222")
         {
             Height = Length.Cells(1),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Overflow = Overflow.Clip
         };
-        Dock.SetSide(second, Side.Top);
+        Dock.SetSide(second, DockSide.Top);
         var fill = new ControlText("FFF")
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -246,7 +246,7 @@ public sealed class DockSurfaceTests
             Visibility = Visibility.Collapsed,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        Dock.SetSide(top, Side.Top);
+        Dock.SetSide(top, DockSide.Top);
         var fill = new ControlText("FILL")
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,

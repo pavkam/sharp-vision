@@ -201,7 +201,7 @@ public sealed class ColorPicker: CompositeControl
     private static Dock CreateSliderRow(string label, Slider slider)
     {
         var text = new DisplayText(label) { Width = Length.Cells(2) };
-        Dock.SetSide(text, Side.Left);
+        Dock.SetSide(text, DockSide.Left);
         return new Dock { Height = Length.Cells(1), Children = { text, slider } };
     }
 

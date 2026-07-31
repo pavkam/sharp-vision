@@ -18,11 +18,11 @@ public sealed class DockTests
 
         panel.LastChildFills.ShouldBeTrue();
         panel.Spacing.ShouldBe(0);
-        Panel.GetSide(child).ShouldBe(Side.Left);
+        Panel.GetSide(child).ShouldBe(DockSide.Left);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => panel.Spacing = -1);
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => Panel.SetSide(child, (Side) int.MaxValue));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => Panel.SetSide(child, (DockSide) int.MaxValue));
         panel.Spacing.ShouldBe(0);
-        Panel.GetSide(child).ShouldBe(Side.Left);
+        Panel.GetSide(child).ShouldBe(DockSide.Left);
     }
 
     /// <summary>Verifies desired size combines consumed axes and cross-axis maxima.</summary>
@@ -33,7 +33,7 @@ public sealed class DockTests
         var left = new ProbeControl(new Size(2, 4));
         var top = new ProbeControl(new Size(5, 1));
         var fill = new ProbeControl(new Size(3, 2));
-        Panel.SetSide(top, Side.Top);
+        Panel.SetSide(top, DockSide.Top);
         panel.Children.Add(left);
         panel.Children.Add(top);
         panel.Children.Add(fill);
@@ -53,10 +53,10 @@ public sealed class DockTests
         var right = WidthOnly(2);
         var bottom = HeightOnly(1);
         var fill = new ProbeControl();
-        Panel.SetSide(left, Side.Left);
-        Panel.SetSide(top, Side.Top);
-        Panel.SetSide(right, Side.Right);
-        Panel.SetSide(bottom, Side.Bottom);
+        Panel.SetSide(left, DockSide.Left);
+        Panel.SetSide(top, DockSide.Top);
+        Panel.SetSide(right, DockSide.Right);
+        Panel.SetSide(bottom, DockSide.Bottom);
         panel.Children.Add(left);
         panel.Children.Add(top);
         panel.Children.Add(right);
@@ -114,7 +114,7 @@ public sealed class DockTests
         var panel = new Panel { LastChildFills = false };
         var first = WidthOnly(2);
         var last = WidthOnly(3);
-        Panel.SetSide(last, Side.Right);
+        Panel.SetSide(last, DockSide.Right);
         panel.Children.Add(first);
         panel.Children.Add(last);
 
@@ -172,15 +172,15 @@ public sealed class DockTests
         panel.Children.Add(child);
         panel.Clear(Invalidation.All);
 
-        Panel.SetSide(child, Side.Top);
+        Panel.SetSide(child, DockSide.Top);
         panel.Pending.ShouldBe(Invalidation.All);
         await dispatcher.InvokeAsync(
             () => panel.Attach(dispatcher),
             TestContext.Current.CancellationToken);
 
-        _ = Should.Throw<InvalidOperationException>(() => Panel.SetSide(child, Side.Right));
+        _ = Should.Throw<InvalidOperationException>(() => Panel.SetSide(child, DockSide.Right));
 
-        Panel.GetSide(child).ShouldBe(Side.Top);
+        Panel.GetSide(child).ShouldBe(DockSide.Top);
     }
 
     /// <summary>Verifies an empty dock produces zero desired size.</summary>
@@ -215,8 +215,8 @@ public sealed class DockTests
         var top = HeightOnly(2);
         var bottom = HeightOnly(3);
         var fill = new ProbeControl();
-        Panel.SetSide(top, Side.Top);
-        Panel.SetSide(bottom, Side.Bottom);
+        Panel.SetSide(top, DockSide.Top);
+        Panel.SetSide(bottom, DockSide.Bottom);
         panel.Children.Add(top);
         panel.Children.Add(bottom);
         panel.Children.Add(fill);
@@ -235,7 +235,7 @@ public sealed class DockTests
         var panel = new Panel { Spacing = 2 };
         var left = WidthOnly(3);
         var top = HeightOnly(2);
-        Panel.SetSide(top, Side.Top);
+        Panel.SetSide(top, DockSide.Top);
         var fill = new ProbeControl();
         panel.Children.Add(left);
         panel.Children.Add(top);
@@ -309,7 +309,7 @@ public sealed class DockTests
     {
         var panel = new Panel { LastChildFills = false };
         var child = WidthOnly(4);
-        Panel.SetSide(child, Side.Right);
+        Panel.SetSide(child, DockSide.Right);
         panel.Children.Add(child);
 
         new Engine().Layout(panel, new Size(10, 2));
@@ -325,8 +325,8 @@ public sealed class DockTests
         var panel = new Panel { LastChildFills = false };
         var first = new ProbeControl { Width = Length.Star(1) };
         var second = new ProbeControl { Width = Length.Star(1) };
-        Panel.SetSide(first, Side.Left);
-        Panel.SetSide(second, Side.Left);
+        Panel.SetSide(first, DockSide.Left);
+        Panel.SetSide(second, DockSide.Left);
         panel.Children.Add(first);
         panel.Children.Add(second);
 
@@ -343,8 +343,8 @@ public sealed class DockTests
         var panel = new Panel { LastChildFills = false };
         var single = new ProbeControl { Width = Length.Star(1) };
         var doubled = new ProbeControl { Width = Length.Star(2) };
-        Panel.SetSide(single, Side.Left);
-        Panel.SetSide(doubled, Side.Left);
+        Panel.SetSide(single, DockSide.Left);
+        Panel.SetSide(doubled, DockSide.Left);
         panel.Children.Add(single);
         panel.Children.Add(doubled);
 
@@ -362,8 +362,8 @@ public sealed class DockTests
         var panel = new Panel { LastChildFills = false };
         var left = new ProbeControl { Width = Length.Star(1) };
         var top = new ProbeControl { Height = Length.Star(1) };
-        Panel.SetSide(left, Side.Left);
-        Panel.SetSide(top, Side.Top);
+        Panel.SetSide(left, DockSide.Left);
+        Panel.SetSide(top, DockSide.Top);
         panel.Children.Add(left);
         panel.Children.Add(top);
 

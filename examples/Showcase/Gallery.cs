@@ -166,7 +166,7 @@ public sealed class Gallery: Screen
         _themePicker.SelectionChanged += OnThemeSelected;
         _quit = new Button { Content = new Text("&Quit  Ctrl+Q") };
         _quit.Click += OnQuitClicked;
-        Dock.SetSide(_pageFilter, Side.Top);
+        Dock.SetSide(_pageFilter, DockSide.Top);
         sidebarLayout.Children.Add(_pageFilter);
         sidebarLayout.Children.Add(NavigationControl);
         Sidebar = new Dock
@@ -189,7 +189,7 @@ public sealed class Gallery: Screen
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        Dock.SetSide(Sidebar, Side.Left);
+        Dock.SetSide(Sidebar, DockSide.Left);
         workspace.Children.Add(Sidebar);
         workspace.Children.Add(_main);
         ApplicationBar = CreateApplicationBar(_themePicker, _quit);
@@ -200,8 +200,8 @@ public sealed class Gallery: Screen
             VerticalAlignment = VerticalAlignment.Stretch,
             Children = { StatusBar, ApplicationBar, workspace }
         };
-        Dock.SetSide(ApplicationBar, Side.Top);
-        Dock.SetSide(StatusBar, Side.Bottom);
+        Dock.SetSide(ApplicationBar, DockSide.Top);
+        Dock.SetSide(StatusBar, DockSide.Bottom);
         InitializeContent(shell);
         Select(0);
     }
@@ -338,7 +338,7 @@ public sealed class Gallery: Screen
             Spacing = 1,
             Children = { themePickerHost, quit }
         };
-        Dock.SetSide(actions, Side.Right);
+        Dock.SetSide(actions, DockSide.Right);
 
         return new Dock
         {

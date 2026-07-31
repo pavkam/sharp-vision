@@ -42,8 +42,8 @@ var shell = new Dock
     Spacing = 1,
 };
 
-Dock.SetSide(status, Side.Bottom);
-Dock.SetSide(navigation, Side.Left);
+Dock.SetSide(status, DockSide.Bottom);
+Dock.SetSide(navigation, DockSide.Left);
 shell.Children.Add(status);
 shell.Children.Add(navigation);
 shell.Children.Add(details);

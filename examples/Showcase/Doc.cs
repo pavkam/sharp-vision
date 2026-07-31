@@ -94,7 +94,7 @@ internal static class Doc
             body.Children.Add(section);
         }
 
-        Dock.SetSide(header, Side.Top);
+        Dock.SetSide(header, DockSide.Top);
         return new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,

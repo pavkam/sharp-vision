@@ -31,7 +31,7 @@ internal sealed class SnakeHud: CompositeControl
             Height = Length.Cells(1),
             Spacing = 0
         };
-        Dock.SetSide(_status, Side.Right);
+        Dock.SetSide(_status, DockSide.Right);
         metricsRow.Children.Add(_status);
         metricsRow.Children.Add(_metrics);
 
@@ -44,7 +44,7 @@ internal sealed class SnakeHud: CompositeControl
             Height = Length.Cells(1),
             Spacing = 0
         };
-        Dock.SetSide(_quit, Side.Right);
+        Dock.SetSide(_quit, DockSide.Right);
         controlsRow.Children.Add(_quit);
         controlsRow.Children.Add(_guidance);
 

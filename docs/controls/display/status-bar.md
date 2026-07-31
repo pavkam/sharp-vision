@@ -4,7 +4,7 @@
 
 `StatusBar` is a persistent horizontal strip for useful, non-critical state
 about the current application context. Applications conventionally place it at
-the bottom edge of a primary screen with `Dock.SetSide(statusBar, Side.Bottom)`.
+the bottom edge of a primary screen with `Dock.SetSide(statusBar, DockSide.Bottom)`.
 It is not a second menu or command bar, and it must not be the only place an
 application communicates an error or action that requires attention.
 
@@ -137,7 +137,7 @@ status.Items.Add(new StatusBarItem
     Content = new CheckBox { Content = new Text("Autosave") }
 });
 
-Dock.SetSide(status, Side.Bottom);
+Dock.SetSide(status, DockSide.Bottom);
 ```
 
 ## Expected behavior

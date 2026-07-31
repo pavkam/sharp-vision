@@ -130,8 +130,8 @@ public sealed class EditorScreen: Screen
             VerticalAlignment = VerticalAlignment.Stretch
         };
 
-        Dock.SetSide(menuBar, Side.Top);
-        Dock.SetSide(statusBar, Side.Bottom);
+        Dock.SetSide(menuBar, DockSide.Top);
+        Dock.SetSide(statusBar, DockSide.Bottom);
         layout.Children.Add(menuBar);
         layout.Children.Add(statusBar);
         layout.Children.Add(_editor);

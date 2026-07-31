@@ -157,9 +157,9 @@ public sealed class NavigationView: CompositeControl
         _navigator = new CurrentItemNavigator(CollectNavigableEntries);
 
         var root = new Dock();
-        Dock.SetSide(_headerText, Side.Top);
+        Dock.SetSide(_headerText, DockSide.Top);
         root.Children.Add(_headerText);
-        Dock.SetSide(_footerStack, Side.Bottom);
+        Dock.SetSide(_footerStack, DockSide.Bottom);
         root.Children.Add(_footerStack);
         root.Children.Add(_itemsStack);
 

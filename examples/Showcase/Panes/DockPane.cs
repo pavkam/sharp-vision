@@ -27,22 +27,22 @@ internal sealed class DockPane: CompositeControl
 
         var left = Card("Explorer", BorderGlyphStyle.Light);
         left.Width = Length.Cells(12);
-        Dock.SetSide(left, Side.Left);
+        Dock.SetSide(left, DockSide.Left);
         allSides.Children.Add(left);
 
         var top = Card("Application header", BorderGlyphStyle.Heavy);
         top.Height = Length.Cells(3);
-        Dock.SetSide(top, Side.Top);
+        Dock.SetSide(top, DockSide.Top);
         allSides.Children.Add(top);
 
         var right = Card("Inspector", BorderGlyphStyle.Paired);
         right.Width = Length.Cells(13);
-        Dock.SetSide(right, Side.Right);
+        Dock.SetSide(right, DockSide.Right);
         allSides.Children.Add(right);
 
         var bottom = Card("Status bar", BorderGlyphStyle.Ascii);
         bottom.Height = Length.Cells(3);
-        Dock.SetSide(bottom, Side.Bottom);
+        Dock.SetSide(bottom, DockSide.Bottom);
         allSides.Children.Add(bottom);
         allSides.Children.Add(Card("Editor workspace", BorderGlyphStyle.Rounded));
 
@@ -51,12 +51,12 @@ internal sealed class DockPane: CompositeControl
 
         var first = Card("1: Left", BorderGlyphStyle.Light);
         first.Width = Length.Cells(12);
-        Dock.SetSide(first, Side.Left);
+        Dock.SetSide(first, DockSide.Left);
         order.Children.Add(first);
 
         var second = Card("2: Left", BorderGlyphStyle.Light);
         second.Width = Length.Cells(12);
-        Dock.SetSide(second, Side.Left);
+        Dock.SetSide(second, DockSide.Left);
         order.Children.Add(second);
         order.Children.Add(Card("3: Fill", BorderGlyphStyle.Rounded));
 
@@ -65,7 +65,7 @@ internal sealed class DockPane: CompositeControl
 
         var onlyChild = Card("No remainder claimed", BorderGlyphStyle.Heavy);
         onlyChild.Width = Length.Cells(24);
-        Dock.SetSide(onlyChild, Side.Top);
+        Dock.SetSide(onlyChild, DockSide.Top);
         noFill.Children.Add(onlyChild);
 
         // Percentage edge sizes resolve against the rectangle available at each iteration.
@@ -73,12 +73,12 @@ internal sealed class DockPane: CompositeControl
 
         var firstPercent = Card("24 cells", BorderGlyphStyle.Light);
         firstPercent.Width = Length.Percent(50);
-        Dock.SetSide(firstPercent, Side.Left);
+        Dock.SetSide(firstPercent, DockSide.Left);
         remaining.Children.Add(firstPercent);
 
         var secondPercent = Card("12 cells", BorderGlyphStyle.Heavy);
         secondPercent.Width = Length.Percent(50);
-        Dock.SetSide(secondPercent, Side.Left);
+        Dock.SetSide(secondPercent, DockSide.Left);
         remaining.Children.Add(secondPercent);
         remaining.Children.Add(Card("Fill", BorderGlyphStyle.Rounded));
 
@@ -87,7 +87,7 @@ internal sealed class DockPane: CompositeControl
 
         var collapsibleSidebar = Card("Sidebar", BorderGlyphStyle.Light);
         collapsibleSidebar.Width = Length.Cells(12);
-        Dock.SetSide(collapsibleSidebar, Side.Left);
+        Dock.SetSide(collapsibleSidebar, DockSide.Left);
         shell.Children.Add(collapsibleSidebar);
         shell.Children.Add(Card("Main content", BorderGlyphStyle.Rounded));
 
@@ -108,11 +108,11 @@ internal sealed class DockPane: CompositeControl
         var constrained = new Dock { Width = Length.Cells(14), Height = Length.Cells(4), Spacing = 2 };
         var tooWide = Card("12 cells", BorderGlyphStyle.Light);
         tooWide.Width = Length.Cells(12);
-        Dock.SetSide(tooWide, Side.Left);
+        Dock.SetSide(tooWide, DockSide.Left);
         constrained.Children.Add(tooWide);
         var trailing = Card("Safe", BorderGlyphStyle.Heavy);
         trailing.Width = Length.Cells(12);
-        Dock.SetSide(trailing, Side.Right);
+        Dock.SetSide(trailing, DockSide.Right);
         constrained.Children.Add(trailing);
         constrained.Children.Add(Card("Fill", BorderGlyphStyle.Rounded));
 
@@ -127,7 +127,7 @@ internal sealed class DockPane: CompositeControl
                     "Explorer, header, inspector, status, and editor",
                     "Each named region uses Dock.SetSide; Editor workspace receives the rectangle left after the four edge regions.",
                     allSides,
-                    "var shell = new Dock { LastChildFills = true };\nDock.SetSide(sidebar, Side.Left);\nshell.Children.Add(sidebar);\nshell.Children.Add(main);")),
+                    "var shell = new Dock { LastChildFills = true };\nDock.SetSide(sidebar, DockSide.Left);\nshell.Children.Add(sidebar);\nshell.Children.Add(main);")),
             new DocSection(
                 "⚓",
                 "Order and spacing",

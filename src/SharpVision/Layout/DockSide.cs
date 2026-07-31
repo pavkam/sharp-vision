@@ -5,7 +5,7 @@ namespace SharpVision.Layout;
 
 /// <summary>Identifies one physical edge of a containing rectangle.</summary>
 [PublicAPI]
-public enum Side
+public enum DockSide
 {
     /// <summary>Consumes the left edge.</summary>
     Left,

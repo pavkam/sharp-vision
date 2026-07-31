@@ -100,7 +100,7 @@ public sealed class DisplayPanelTests
                 ThemeDecoration.Border),
             Children = { label }
         };
-        Dock.SetSide(frame, Side.Left);
+        Dock.SetSide(frame, DockSide.Left);
         dock.Children.Add(frame);
         var stack = new Stack();
         dock.Children.Add(stack);

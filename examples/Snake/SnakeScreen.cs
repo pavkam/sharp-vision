@@ -48,7 +48,7 @@ public sealed class SnakeScreen: Screen
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        Dock.SetSide(_hud, Side.Top);
+        Dock.SetSide(_hud, DockSide.Top);
         layout.Children.Add(_hud);
         layout.Children.Add(gameArea);
         InitializeContent(layout);

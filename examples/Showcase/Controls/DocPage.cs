@@ -52,7 +52,7 @@ internal sealed class DocPage: CompositeControl
             body.Children.Add(section);
         }
 
-        Dock.SetSide(header, Side.Top);
+        Dock.SetSide(header, DockSide.Top);
         InitializeContent(new Dock
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,

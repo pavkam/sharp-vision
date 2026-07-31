@@ -204,7 +204,7 @@ public sealed class TabNavigationScopeTests
             var root = new ProbeContainer();
             var sidebarDock = new Dock();
             var header = new ProbeControl();
-            Dock.SetSide(header, Side.Top);
+            Dock.SetSide(header, DockSide.Top);
             sidebarDock.Children.Add(header);
             var navScope = new ProbeContainer { TabNavigation = TabNavigation.Cycle };
             var i1 = new ProbeControl { Focusable = true };

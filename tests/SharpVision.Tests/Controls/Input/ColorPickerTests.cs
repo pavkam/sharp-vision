@@ -156,7 +156,7 @@ public sealed class ColorPickerTests
         {
             var picker = new ColorPicker();
             var button = new Button { Content = new ControlText("Next") };
-            Dock.SetSide(button, Side.Bottom);
+            Dock.SetSide(button, DockSide.Bottom);
             var root = new Dock { Children = { button, picker } };
             root.SetCapabilities(
                 Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
