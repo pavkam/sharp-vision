@@ -7,9 +7,9 @@ namespace SharpVision.Controls.Display;
 [PublicAPI]
 public sealed class ProgressBar: Control
 {
-    private Rune? _fillGlyph;
-    private Rune? _trackGlyph;
-    private Rune? _indeterminateGlyph;
+    private static readonly Func<ProgressBarStyle?, Theme?, ProgressBarStyle> _styleResolver = ResolveStyle;
+    private static readonly Func<ProgressBarStyle, ProgressBarStyle, InvalidationImpact> _styleComparer = CompareStructure;
+    private static readonly Func<ProgressBarStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
     private double _value;
 
     /// <summary>Initializes a non-focusable horizontal progress bar at zero progress.</summary>
@@ -146,77 +146,66 @@ public sealed class ProgressBar: Control
         set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
     }
 
-    /// <summary>Gets or sets the optional foreground override of completed progress.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
+    /// <summary>Gets or sets the complete local presentation, or null to use the semantic control profile.</summary>
     /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
-    public Color? FillColor
+    public ProgressBarStyle? Style
     {
         get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
+        set => _ = SetControlStyle(
+            ref field,
+            value,
+            _styleResolver,
+            _styleComparer,
+            _appearanceSelector,
+            nameof(Style),
+            nameof(ActualStyle));
     }
 
-    /// <summary>Gets or sets the foreground of incomplete track cells.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
-    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
-    public Color? TrackColor
+    /// <summary>Gets the complete local presentation or the library fill-and-track mechanics completed with the semantic control profile.</summary>
+    public ProgressBarStyle ActualStyle => ResolveStyle(Style, Theme);
+
+    /// <inheritdoc/>
+    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
+
+    /// <inheritdoc/>
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+
+    /// <inheritdoc/>
+    protected override InvalidationImpact GetThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace)
     {
-        get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
+        var styleImpact = GetControlStyleThemeImpact(
+            Style,
+            previous,
+            current,
+            _styleResolver,
+            _styleComparer,
+            _appearanceSelector,
+            previousParentAmbientFace,
+            currentParentAmbientFace);
+        var previousStyle = ResolveStyle(Style, previous);
+        var currentStyle = ResolveStyle(Style, current);
+        var colorImpact = ResolveColor(previousStyle.FillColor, previous) !=
+                          ResolveColor(currentStyle.FillColor, current) ||
+                          ResolveColor(previousStyle.TrackColor, previous) !=
+                          ResolveColor(currentStyle.TrackColor, current) ||
+                          ResolveColor(previousStyle.IndeterminateColor, previous) !=
+                          ResolveColor(currentStyle.IndeterminateColor, current)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.None;
+
+        return MaximumImpact(styleImpact, colorImpact);
     }
 
-    /// <summary>Gets or sets the foreground of the indeterminate state.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
-    /// <exception cref="InvalidOperationException">The attached progress bar is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The progress bar is disposed.</exception>
-    public Color? IndeterminateColor
-    {
-        get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
-    }
-
-    /// <summary>Gets or sets the local fully filled glyph.</summary>
-    public Rune FillGlyph
-    {
-        get => _fillGlyph ?? ControlGlyphs.Progress.Full.Value;
-        set => SetOptionalGlyph(ref _fillGlyph, value, nameof(FillGlyph));
-    }
-
-    /// <summary>Gets or sets the local empty-track glyph.</summary>
-    public Rune TrackGlyph
-    {
-        get => _trackGlyph ?? ControlGlyphs.Progress.Empty.Value;
-        set => SetOptionalGlyph(ref _trackGlyph, value, nameof(TrackGlyph));
-    }
-
-    /// <summary>Gets or sets the local indeterminate glyph.</summary>
-    public Rune IndeterminateGlyph
-    {
-        get => _indeterminateGlyph ?? ControlGlyphs.Progress.Indeterminate.Value;
-        set => SetOptionalGlyph(ref _indeterminateGlyph, value, nameof(IndeterminateGlyph));
-    }
-
-    /// <summary>Clears local progress glyph overrides to the code-owned defaults.</summary>
-    public void ResetGlyphs()
-    {
-        VerifyMutable();
-        _ = ResetOptionalGlyph(ref _fillGlyph, nameof(FillGlyph));
-        _ = ResetOptionalGlyph(ref _trackGlyph, nameof(TrackGlyph));
-        _ = ResetOptionalGlyph(ref _indeterminateGlyph, nameof(IndeterminateGlyph));
-    }
+    /// <inheritdoc/>
+    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
+        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
+            ? nameof(ActualStyle)
+            : null;
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
@@ -245,13 +234,12 @@ public sealed class ProgressBar: Control
         }
 
         var inherited = ResolvedStyle;
+        var actualStyle = ActualStyle;
 
         if (IsIndeterminate)
         {
-            var style = inherited.WithForeground(IndeterminateColor ?? Theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default);
-            var glyph = ResolveConfiguredGlyph(
-                IndeterminateGlyph,
-                ControlGlyphs.Progress.Indeterminate);
+            var style = inherited.WithForeground(ResolveColor(actualStyle.IndeterminateColor));
+            var glyph = ResolveConfiguredGlyph(actualStyle.Glyphs.IndeterminateGlyph);
 
             for (var y = Bounds.Y; y < Bounds.Bottom; y++)
             {
@@ -271,22 +259,25 @@ public sealed class ProgressBar: Control
         {
             RenderHorizontal(
                 canvas,
-                inherited.WithForeground(FillColor ?? Theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default),
-                inherited.WithForeground(TrackColor ?? Theme?.Muted ?? Color.Default),
+                actualStyle.Glyphs,
+                inherited.WithForeground(ResolveColor(actualStyle.FillColor)),
+                inherited.WithForeground(ResolveColor(actualStyle.TrackColor)),
                 ratio);
         }
         else
         {
             RenderVertical(
                 canvas,
-                inherited.WithForeground(FillColor ?? Theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default),
-                inherited.WithForeground(TrackColor ?? Theme?.Muted ?? Color.Default),
+                actualStyle.Glyphs,
+                inherited.WithForeground(ResolveColor(actualStyle.FillColor)),
+                inherited.WithForeground(ResolveColor(actualStyle.TrackColor)),
                 ratio);
         }
     }
 
     private void RenderHorizontal(
         TerminalCanvas canvas,
+        ProgressBarGlyphs glyphs,
         TerminalStyle fillStyle,
         TerminalStyle trackStyle,
         double ratio)
@@ -303,10 +294,10 @@ public sealed class ProgressBar: Control
             {
                 var cellIndex = x - Bounds.X;
                 var glyph = cellIndex < fullCells
-                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
+                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : cellIndex == fullCells && remainder > 0
                         ? ResolveControlGlyph(progress.HorizontalFractions.Span[remainder])
-                        : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                        : ResolveConfiguredGlyph(glyphs.TrackGlyph);
                 var style = cellIndex < fullCells || (cellIndex == fullCells && remainder > 0)
                     ? fillStyle
                     : trackStyle;
@@ -320,8 +311,8 @@ public sealed class ProgressBar: Control
             for (var x = Bounds.X; x < Bounds.Right; x++)
             {
                 var glyph = x - Bounds.X < filled
-                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
-                    : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
+                    : ResolveConfiguredGlyph(glyphs.TrackGlyph);
                 var style = x - Bounds.X < filled ? fillStyle : trackStyle;
                 canvas.DrawRune(glyph, new Point(x, Bounds.Y), style, BackgroundMode.Transparent);
             }
@@ -330,6 +321,7 @@ public sealed class ProgressBar: Control
 
     private void RenderVertical(
         TerminalCanvas canvas,
+        ProgressBarGlyphs glyphs,
         TerminalStyle fillStyle,
         TerminalStyle trackStyle,
         double ratio)
@@ -346,10 +338,10 @@ public sealed class ProgressBar: Control
             {
                 var cellFromBottom = Bounds.Bottom - 1 - y;
                 var glyph = cellFromBottom < fullCells
-                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
+                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : cellFromBottom == fullCells && remainder > 0
                         ? ResolveControlGlyph(progress.VerticalFractions.Span[remainder])
-                        : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                        : ResolveConfiguredGlyph(glyphs.TrackGlyph);
                 var style = cellFromBottom < fullCells || (cellFromBottom == fullCells && remainder > 0)
                     ? fillStyle
                     : trackStyle;
@@ -364,16 +356,33 @@ public sealed class ProgressBar: Control
             for (var y = Bounds.Y; y < Bounds.Bottom; y++)
             {
                 var glyph = y >= emptyEnd
-                    ? ResolveConfiguredGlyph(FillGlyph, progress.Full)
-                    : ResolveConfiguredGlyph(TrackGlyph, progress.Empty);
+                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
+                    : ResolveConfiguredGlyph(glyphs.TrackGlyph);
                 var style = y >= emptyEnd ? fillStyle : trackStyle;
                 canvas.DrawRune(glyph, new Point(Bounds.X, y), style, BackgroundMode.Transparent);
             }
         }
     }
 
-    private Rune ResolveConfiguredGlyph(Rune value, ControlGlyph themed) =>
-        CellGlyphResolver.Resolve(value, themed.Fallback, CellPolicy.AmbiguousWidth);
+    private Rune ResolveConfiguredGlyph(ControlGlyph themed) =>
+        CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+
+    private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
+
+    private static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
+        ? value.Literal
+        : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
+
+    private static ProgressBarStyle ResolveStyle(ProgressBarStyle? localStyle, Theme? theme) =>
+        localStyle ?? new ProgressBarStyle(
+            ProgressBarStyle.Default.FillColor,
+            ProgressBarStyle.Default.TrackColor,
+            ProgressBarStyle.Default.IndeterminateColor,
+            ProgressBarStyle.Default.Glyphs,
+            (theme ?? Themes.Dark).Control);
+
+    private static InvalidationImpact CompareStructure(ProgressBarStyle previous, ProgressBarStyle current) =>
+        previous != current ? InvalidationImpact.Render : InvalidationImpact.None;
 
     // Raised for every committed Value transition regardless of which public
     // setter caused it — Value directly, or Minimum/Maximum clamping it — so

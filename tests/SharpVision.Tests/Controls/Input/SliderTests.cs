@@ -11,7 +11,10 @@ public sealed class SliderTests
     public void Constructor_WhenCreated_UsesDocumentedDefaults()
     {
         // Arrange and act
+        var theme = new Theme();
+        theme.Freeze();
         var slider = new Slider();
+        slider.SetTheme(theme);
 
         // Assert
         slider.Minimum.ShouldBe(0);
@@ -20,9 +23,8 @@ public sealed class SliderTests
         slider.SmallChange.ShouldBe(1);
         slider.LargeChange.ShouldBe(10);
         slider.Orientation.ShouldBe(Orientation.Horizontal);
-        slider.FillColor.ShouldBeNull();
-        slider.TrackColor.ShouldBeNull();
-        slider.ThumbColor.ShouldBeNull();
+        slider.Style.ShouldBeNull();
+        slider.ActualStyle.ShouldBe(SliderStyle.Default);
         slider.CanFocus.ShouldBeTrue();
         slider.IsHitTestVisible.ShouldBeTrue();
     }
@@ -293,20 +295,23 @@ public sealed class SliderTests
         raised.ShouldBeTrue();
     }
 
-    /// <summary>Verifies color properties reject transparent values before mutation.</summary>
+    /// <summary>Verifies assigning a Style built from a transparent part color throws and leaves
+    /// the previous local Style untouched (see #80: colors now live on SliderStyle, not Slider).</summary>
     [Fact]
-    public void ColorProperties_WhenTransparentIsAssigned_ThrowBeforeMutation()
+    public void Style_WhenAssignedStyleHasTransparentPartColor_ThrowsBeforeMutation()
     {
         // Arrange
         var slider = new Slider();
+        var baseline = SliderStyle.Default;
 
         // Act and assert
-        _ = Should.Throw<ArgumentException>(() => slider.FillColor = Color.Transparent);
-        _ = Should.Throw<ArgumentException>(() => slider.TrackColor = Color.Transparent);
-        _ = Should.Throw<ArgumentException>(() => slider.ThumbColor = Color.Transparent);
-        slider.FillColor.ShouldBeNull();
-        slider.TrackColor.ShouldBeNull();
-        slider.ThumbColor.ShouldBeNull();
+        _ = Should.Throw<ArgumentException>(() => slider.Style = new SliderStyle(
+            Color.Transparent,
+            baseline.TrackColor,
+            baseline.ThumbColor,
+            baseline.Glyphs,
+            baseline.Appearance));
+        slider.Style.ShouldBeNull();
     }
 
     /// <summary>Verifies disposing the slider prevents further mutation.</summary>

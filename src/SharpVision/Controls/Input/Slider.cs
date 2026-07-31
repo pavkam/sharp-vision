@@ -9,11 +9,9 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class Slider: Control
 {
-    private static readonly Rune _horizontalTrack = new('─');
-    private static readonly Rune _horizontalFill = new('━');
-    private static readonly Rune _verticalTrack = new('│');
-    private static readonly Rune _verticalFill = new('┃');
-    private static readonly Rune _thumb = new('◆');
+    private static readonly Func<SliderStyle?, Theme?, SliderStyle> _styleResolver = ResolveStyle;
+    private static readonly Func<SliderStyle, SliderStyle, InvalidationImpact> _styleComparer = CompareStructure;
+    private static readonly Func<SliderStyle, ThemeProfile> _appearanceSelector = static style => style.Appearance;
     private int _value;
     private readonly DragBehavior _drag;
     private Rect _dragBounds;
@@ -157,47 +155,66 @@ public sealed class Slider: Control
         }
     } = Orientation.Horizontal;
 
-    /// <summary>Gets or sets the optional foreground override of the filled rail.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
+    /// <summary>Gets or sets the complete local presentation, or null to use the semantic control profile.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Color? FillColor
+    public SliderStyle? Style
     {
         get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
+        set => _ = SetControlStyle(
+            ref field,
+            value,
+            _styleResolver,
+            _styleComparer,
+            _appearanceSelector,
+            nameof(Style),
+            nameof(ActualStyle));
     }
 
-    /// <summary>Gets or sets the foreground of the unfilled rail.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Color? TrackColor
+    /// <summary>Gets the complete local presentation or the library rail-and-thumb mechanics completed with the semantic control profile.</summary>
+    public SliderStyle ActualStyle => ResolveStyle(Style, Theme);
+
+    /// <inheritdoc/>
+    protected override ThemeProfile AppearanceProfile => ActualStyle.Appearance;
+
+    /// <inheritdoc/>
+    protected override ThemeProfile GetAppearanceProfile(Theme? theme) => ResolveStyle(Style, theme).Appearance;
+
+    /// <inheritdoc/>
+    protected override InvalidationImpact GetThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace)
     {
-        get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
+        var styleImpact = GetControlStyleThemeImpact(
+            Style,
+            previous,
+            current,
+            _styleResolver,
+            _styleComparer,
+            _appearanceSelector,
+            previousParentAmbientFace,
+            currentParentAmbientFace);
+        var previousStyle = ResolveStyle(Style, previous);
+        var currentStyle = ResolveStyle(Style, current);
+        var colorImpact = ResolveColor(previousStyle.FillColor, previous) !=
+                          ResolveColor(currentStyle.FillColor, current) ||
+                          ResolveColor(previousStyle.TrackColor, previous) !=
+                          ResolveColor(currentStyle.TrackColor, current) ||
+                          ResolveColor(previousStyle.ThumbColor, previous) !=
+                          ResolveColor(currentStyle.ThumbColor, current)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.None;
+
+        return MaximumImpact(styleImpact, colorImpact);
     }
 
-    /// <summary>Gets or sets the foreground of the thumb.</summary>
-    /// <exception cref="ArgumentException">The value is transparent.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Color? ThumbColor
-    {
-        get;
-        set
-        {
-            ColorValidation.ValidatePaint(value, nameof(value));
-            _ = SetProperty(ref field, value, InvalidationImpact.Render);
-        }
-    }
+    /// <inheritdoc/>
+    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
+        Style is null && ResolveStyle(Style, previous) != ResolveStyle(Style, current)
+            ? nameof(ActualStyle)
+            : null;
 
     /// <summary>Adds one signed command delta with saturation and endpoint clamping.</summary>
     /// <param name="delta">The signed requested change.</param>
@@ -281,9 +298,10 @@ public sealed class Slider: Control
 
         var thumb = PositionFor(Value, length);
         var inherited = ResolvedStyle;
-        var fillStyle = inherited.WithForeground(FillColor ?? Theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default);
-        var trackStyle = inherited.WithForeground(TrackColor ?? Theme?.Muted ?? Color.Default);
-        var thumbStyle = inherited.WithForeground(ThumbColor ?? Theme?.ResolveColor(ThemeColor.Accent) ?? Color.Default);
+        var actualStyle = ActualStyle;
+        var fillStyle = inherited.WithForeground(ResolveColor(actualStyle.FillColor));
+        var trackStyle = inherited.WithForeground(ResolveColor(actualStyle.TrackColor));
+        var thumbStyle = inherited.WithForeground(ResolveColor(actualStyle.ThumbColor));
 
         if (ControlAppearance.HasOpaqueFill(this, GetAppearanceState()))
         {
@@ -471,15 +489,40 @@ public sealed class Slider: Control
         ? new Point(LayoutMath.SaturatingAdd(bounds.X, position), bounds.Y)
         : new Point(bounds.X, LayoutMath.SaturatingAdd(bounds.Y, position));
 
-    private Rune TrackRune() => CellGlyphResolver.Resolve(
-        Orientation == Orientation.Horizontal ? _horizontalTrack : _verticalTrack,
-        new Rune('.'),
-        CellPolicy.AmbiguousWidth);
+    private Color ResolveColor(ColorValue value) => ResolveColor(value, Theme);
 
-    private Rune FillRune() => CellGlyphResolver.Resolve(
-        Orientation == Orientation.Horizontal ? _horizontalFill : _verticalFill,
-        new Rune('='),
-        CellPolicy.AmbiguousWidth);
+    private static Color ResolveColor(ColorValue value, Theme? theme) => value.IsLiteral
+        ? value.Literal
+        : theme?.ResolveColor(value.ThemeColor) ?? Color.Default;
 
-    private Rune ThumbRune() => CellGlyphResolver.Resolve(_thumb, new Rune('#'), CellPolicy.AmbiguousWidth);
+    private Rune TrackRune()
+    {
+        var glyphs = ActualStyle.Glyphs;
+        var themed = Orientation == Orientation.Horizontal ? glyphs.HorizontalTrackGlyph : glyphs.VerticalTrackGlyph;
+        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+    }
+
+    private Rune FillRune()
+    {
+        var glyphs = ActualStyle.Glyphs;
+        var themed = Orientation == Orientation.Horizontal ? glyphs.HorizontalFillGlyph : glyphs.VerticalFillGlyph;
+        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+    }
+
+    private Rune ThumbRune()
+    {
+        var themed = ActualStyle.Glyphs.ThumbGlyph;
+        return CellGlyphResolver.Resolve(themed.Value, themed.Fallback, CellPolicy.AmbiguousWidth);
+    }
+
+    private static SliderStyle ResolveStyle(SliderStyle? localStyle, Theme? theme) =>
+        localStyle ?? new SliderStyle(
+            SliderStyle.Default.FillColor,
+            SliderStyle.Default.TrackColor,
+            SliderStyle.Default.ThumbColor,
+            SliderStyle.Default.Glyphs,
+            (theme ?? Themes.Dark).Control);
+
+    private static InvalidationImpact CompareStructure(SliderStyle previous, SliderStyle current) =>
+        previous != current ? InvalidationImpact.Render : InvalidationImpact.None;
 }

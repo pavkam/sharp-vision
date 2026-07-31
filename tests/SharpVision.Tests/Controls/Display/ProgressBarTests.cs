@@ -315,49 +315,52 @@ public sealed class ProgressBarTests
         bar.Bounds.Height.ShouldBe(expectedHeight);
     }
 
-    /// <summary>Verifies color properties reject transparent values before mutation.</summary>
+    /// <summary>Verifies assigning a Style built from a transparent part color throws and leaves
+    /// the previous local Style untouched (see #80: colors now live on ProgressBarStyle).</summary>
     [Fact]
-    public void ColorProperties_WhenTransparentIsAssigned_ThrowBeforeMutation()
+    public void Style_WhenAssignedStyleHasTransparentPartColor_ThrowsBeforeMutation()
     {
         // Arrange
         var bar = new ProgressBar();
+        var baseline = ProgressBarStyle.Default;
 
         // Act and assert
-        _ = Should.Throw<ArgumentException>(() => bar.FillColor = Color.Transparent);
-        _ = Should.Throw<ArgumentException>(() => bar.TrackColor = Color.Transparent);
-        _ = Should.Throw<ArgumentException>(() => bar.IndeterminateColor = Color.Transparent);
-        bar.FillColor.ShouldBeNull();
-        bar.TrackColor.ShouldBeNull();
-        bar.IndeterminateColor.ShouldBeNull();
+        _ = Should.Throw<ArgumentException>(() => bar.Style = new ProgressBarStyle(
+            Color.Transparent,
+            baseline.TrackColor,
+            baseline.IndeterminateColor,
+            baseline.Glyphs,
+            baseline.Appearance));
+        bar.Style.ShouldBeNull();
     }
 
-    /// <summary>Verifies custom glyphs override defaults and ResetGlyphs restores them.</summary>
+    /// <summary>Verifies a custom Style's glyph family overrides defaults, and clearing Style restores them.</summary>
     [Fact]
-    public void Glyphs_WhenCustomized_OverrideDefaultsAndResetRestores()
+    public void Style_WhenGlyphsAreCustomized_OverrideDefaultsAndClearingRestores()
     {
         // Arrange
         var bar = new ProgressBar();
-        var defaultFill = bar.FillGlyph;
-        var defaultTrack = bar.TrackGlyph;
-        var defaultIndeterminate = bar.IndeterminateGlyph;
+        var defaultGlyphs = bar.ActualStyle.Glyphs;
+        var baseline = ProgressBarStyle.Default;
 
         // Act
-        bar.FillGlyph = new Rune('#');
-        bar.TrackGlyph = new Rune('.');
-        bar.IndeterminateGlyph = new Rune('?');
+        bar.Style = new ProgressBarStyle(
+            baseline.FillColor,
+            baseline.TrackColor,
+            baseline.IndeterminateColor,
+            new ProgressBarGlyphs(new Rune('#'), new Rune('.'), new Rune('?')),
+            baseline.Appearance);
 
         // Assert custom
-        bar.FillGlyph.ShouldBe(new Rune('#'));
-        bar.TrackGlyph.ShouldBe(new Rune('.'));
-        bar.IndeterminateGlyph.ShouldBe(new Rune('?'));
+        bar.ActualStyle.Glyphs.Fill.ShouldBe(new Rune('#'));
+        bar.ActualStyle.Glyphs.Track.ShouldBe(new Rune('.'));
+        bar.ActualStyle.Glyphs.Indeterminate.ShouldBe(new Rune('?'));
 
         // Act reset
-        bar.ResetGlyphs();
+        bar.Style = null;
 
         // Assert restored
-        bar.FillGlyph.ShouldBe(defaultFill);
-        bar.TrackGlyph.ShouldBe(defaultTrack);
-        bar.IndeterminateGlyph.ShouldBe(defaultIndeterminate);
+        bar.ActualStyle.Glyphs.ShouldBe(defaultGlyphs);
     }
 
     /// <summary>Verifies disposing the progress bar prevents further mutation.</summary>

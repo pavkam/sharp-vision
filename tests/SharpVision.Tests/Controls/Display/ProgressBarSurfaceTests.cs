@@ -19,7 +19,18 @@ public sealed class ProgressBarSurfaceTests
     public async Task UpdateAsync_WhenHorizontalValueChanges_RendersPartialThenFullBarAsync()
     {
         // Arrange
-        var bar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 40, FillColor = ReferenceColors.Get(3) };
+        var bar = new ProgressBar
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Value = 40,
+            Style = new ProgressBarStyle(
+                ReferenceColors.Get(3),
+                ProgressBarStyle.Default.TrackColor,
+                ProgressBarStyle.Default.IndeterminateColor,
+                ProgressBarStyle.Default.Glyphs,
+                ProgressBarStyle.Default.Appearance)
+        };
         await using var surface = await ComponentSurface.MountAsync(
             bar,
             new Size(10, 1),

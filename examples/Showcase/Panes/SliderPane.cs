@@ -76,7 +76,7 @@ internal sealed class SliderPane: CompositeControl
             new DocSection(
                 "🎨",
                 "Color customization",
-                "<info>FillColor</info>, <info>TrackColor</info>, and <info>ThumbColor</info> control the appearance of each rail part independently.",
+                "<info>Style</info> assigns a complete <info>SliderStyle</info>, whose FillColor, TrackColor, and ThumbColor control the appearance of each rail part independently.",
                 new DocExample(
                     "Custom rail colors",
                     "Each part uses a distinct local color override.",
@@ -85,11 +85,14 @@ internal sealed class SliderPane: CompositeControl
                         Width = Length.Cells(32),
                         Maximum = 100,
                         Value = 60,
-                        FillColor = Color.Rgb(0x40, 0xc0, 0x40),
-                        TrackColor = Color.Rgb(0x60, 0x60, 0x60),
-                        ThumbColor = Color.Rgb(0xff, 0xff, 0xff)
+                        Style = new SliderStyle(
+                            Color.Rgb(0x40, 0xc0, 0x40),
+                            Color.Rgb(0x60, 0x60, 0x60),
+                            Color.Rgb(0xff, 0xff, 0xff),
+                            SliderStyle.Default.Glyphs,
+                            SliderStyle.Default.Appearance)
                     },
-                    "slider.FillColor = Color.Rgb(0x40, 0xC0, 0x40);\nslider.TrackColor = Color.Rgb(0x60, 0x60, 0x60);\nslider.ThumbColor = Color.Rgb(0xFF, 0xFF, 0xFF);")),
+                    "slider.Style = new SliderStyle(\n    Color.Rgb(0x40, 0xC0, 0x40),\n    Color.Rgb(0x60, 0x60, 0x60),\n    Color.Rgb(0xFF, 0xFF, 0xFF),\n    SliderStyle.Default.Glyphs,\n    SliderStyle.Default.Appearance);")),
             new DocSection(
                 "⌨️",
                 "Keyboard and pointer",

@@ -29,10 +29,20 @@ public sealed class CodeOwnedGlyphRenderingTests
     [Fact]
     public void Render_WhenLocalProgressGlyphsAreSet_OverridesUntilReset()
     {
-        var progress = new ProgressBar { FillGlyph = new Rune('!'), TrackGlyph = new Rune('_'), Value = 0.5 };
+        var baseline = ProgressBarStyle.Default;
+        var progress = new ProgressBar
+        {
+            Style = new ProgressBarStyle(
+                baseline.FillColor,
+                baseline.TrackColor,
+                baseline.IndeterminateColor,
+                new ProgressBarGlyphs(new Rune('!'), new Rune('_'), baseline.Glyphs.Indeterminate),
+                baseline.Appearance),
+            Value = 0.5
+        };
 
         Render(progress, new Size(4, 1), Themes.White).ShouldBe("!!__");
-        progress.ResetGlyphs();
+        progress.Style = null;
         Render(progress, new Size(4, 1), Themes.White).ShouldBe("██░░");
     }
 
