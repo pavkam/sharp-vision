@@ -385,6 +385,56 @@ public sealed class WindowSurfaceTests
         window.Bounds.Height.ShouldBe(3);
     }
 
+    /// <summary>Verifies the resize gesture clamps to a chrome-aware floor even at the documented
+    /// default MinWidth/MinHeight of zero, so an ordinary inward drag never collapses the window
+    /// to 0x0, and the resize corner remains hit-testable afterward (see #170).</summary>
+    [Fact]
+    public async Task Resize_WhenDraggedFarInwardAtDefaultMinimums_ClampsToChromeFloorAndStaysGrabbableAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            Header = "Resize",
+            CanResize = true,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+        };
+        Overlay.SetLeft(window, Length.Cells(2));
+        Overlay.SetTop(window, Length.Cells(1));
+        var stage = new Overlay
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(15),
+            Children = { window }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            stage,
+            new Size(30, 15),
+            TestContext.Current.CancellationToken);
+
+        // Act: drag the resize corner far past where an unclamped gesture would reach 0x0.
+        await surface.Pointer.MoveToAsync(window, new Point(9, 3));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(0, 0));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert: the window stayed visible and its dimensions never touched zero.
+        window.Bounds.Width.ShouldBeGreaterThan(0);
+        window.Bounds.Height.ShouldBeGreaterThan(0);
+
+        // Assert: the resize corner is still exactly where the clamped bounds say it is, so a
+        // second grab succeeds instead of hitting an unreachable window.
+        var corner = new Point(window.Bounds.Width - 1, window.Bounds.Height - 1);
+        await surface.Pointer.MoveToAsync(window, corner);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(stage, new Point(20, 10));
+        await surface.Pointer.ReleaseAsync();
+
+        window.Bounds.Width.ShouldBeGreaterThan(1);
+        window.Bounds.Height.ShouldBeGreaterThan(1);
+    }
+
     /// <summary>Verifies a Window with CanResize false ignores a corner drag entirely.</summary>
     [Fact]
     public async Task Resize_WhenCanResizeIsFalse_LeavesSizeUnchangedAsync()

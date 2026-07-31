@@ -1,7 +1,6 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-
 namespace SharpVision.Windows;
 
 using System.Runtime.ExceptionServices;
@@ -793,10 +792,13 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
             var deltaX = cells.X - _resizePointerOrigin.X;
             var deltaY = cells.Y - _resizePointerOrigin.Y;
             var clientBounds = Parent?.ContentBounds ?? default;
-            var maximumWidth = Math.Max(MinWidth, clientBounds.Width - LocalBounds.X);
-            var maximumHeight = Math.Max(MinHeight, clientBounds.Height - LocalBounds.Y);
-            var width = Math.Clamp(_resizeWindowOrigin.Width + deltaX, MinWidth, Math.Min(MaxWidth, maximumWidth));
-            var height = Math.Clamp(_resizeWindowOrigin.Height + deltaY, MinHeight, Math.Min(MaxHeight, maximumHeight));
+            var (floorWidth, floorHeight) = ChromeResizeFloor();
+            var minWidth = Math.Max(MinWidth, floorWidth);
+            var minHeight = Math.Max(MinHeight, floorHeight);
+            var maximumWidth = Math.Max(minWidth, clientBounds.Width - LocalBounds.X);
+            var maximumHeight = Math.Max(minHeight, clientBounds.Height - LocalBounds.Y);
+            var width = Math.Clamp(_resizeWindowOrigin.Width + deltaX, minWidth, Math.Min(MaxWidth, maximumWidth));
+            var height = Math.Clamp(_resizeWindowOrigin.Height + deltaY, minHeight, Math.Min(MaxHeight, maximumHeight));
             Width = Length.Cells(width);
             Height = Length.Cells(height);
             eventArgs.Handled = true;
@@ -819,6 +821,18 @@ public partial class Window: FloatingSurface, IOverlayPositionConstraint
 
     private bool IsResizeCorner(Point cells) =>
         cells.Y == Bounds.Bottom - 1 && cells.X == Bounds.Right - 1;
+
+    // The resize gesture must never collapse the window past a size the user cannot see or grab
+    // again: enough cells for the border sides that are actually enabled, plus one content cell.
+    // MinWidth/MinHeight default to 0, so clamping to them alone lets an ordinary inward drag
+    // shrink a window to 0x0 (see #170).
+    private (int Width, int Height) ChromeResizeFloor()
+    {
+        var sides = ActualBorder.Sides;
+        var horizontal = ((sides & BorderSide.Left) != 0 ? 1 : 0) + ((sides & BorderSide.Right) != 0 ? 1 : 0);
+        var vertical = ((sides & BorderSide.Top) != 0 ? 1 : 0) + ((sides & BorderSide.Bottom) != 0 ? 1 : 0);
+        return (horizontal + 1, vertical + 1);
+    }
 
     #endregion
 
