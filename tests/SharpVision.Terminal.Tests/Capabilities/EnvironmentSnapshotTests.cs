@@ -12,6 +12,37 @@ using SharpVision.Terminal.Multiplexing;
 /// </summary>
 public sealed class EnvironmentSnapshotTests
 {
+    /// <summary>Verifies the shared constants match their documented variable names, so the
+    /// allowlist and every reader agree by construction rather than by review (see #93).</summary>
+    [Fact]
+    public void EnvironmentNames_WhenRead_MatchDocumentedVariableNames()
+    {
+        EnvironmentNames.Term.ShouldBe("TERM");
+        EnvironmentNames.ColorTerm.ShouldBe("COLORTERM");
+        EnvironmentNames.TermProgram.ShouldBe("TERM_PROGRAM");
+        EnvironmentNames.Tmux.ShouldBe("TMUX");
+        EnvironmentNames.SshConnection.ShouldBe("SSH_CONNECTION");
+        EnvironmentNames.SshTty.ShouldBe("SSH_TTY");
+    }
+
+    /// <summary>
+    /// Verifies a variable supplied only under its EnvironmentNames constant -- not a
+    /// hand-typed literal -- is still recognized and canonicalized, proving the snapshot's
+    /// allowlist and this test reference the same symbol rather than two copies that could drift.
+    /// </summary>
+    [Fact]
+    public void Environment_WhenSuppliedUnderTheSharedConstant_IsRecognized()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            [EnvironmentNames.Term.ToLowerInvariant()] = "xterm-256color"
+        };
+
+        var options = new NegotiationOptions(environment);
+
+        options.Environment[EnvironmentNames.Term].ShouldBe("xterm-256color");
+    }
+
     /// <summary>
     /// Verifies a case-insensitive caller dictionary with lowercase keys is republished under the
     /// canonical spellings that later exact lookups use.

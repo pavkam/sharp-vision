@@ -222,7 +222,7 @@ public sealed class ConsoleConnection: IAsyncDisposable
 
         var terminalName = _terminalName ?? (platform == Terminal.Capabilities.DescriptionPlatform.Windows
             ? "windows-vt"
-            : Environment.GetEnvironmentVariable("TERM"));
+            : Environment.GetEnvironmentVariable(EnvironmentNames.Term));
 
         if (string.IsNullOrWhiteSpace(terminalName))
         {

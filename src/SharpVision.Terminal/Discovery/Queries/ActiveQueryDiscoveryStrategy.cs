@@ -840,14 +840,14 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private bool ShouldQueryXtermKeyboard()
     {
-        _ = _options.Environment.TryGetValue("TERM", out var term);
+        _ = _options.Environment.TryGetValue(EnvironmentNames.Term, out var term);
         return Contains(term, "xterm") && !Contains(term, "kitty") &&
                ShouldQuery(_baseline.XtermKeyboard, _options.Overrides?.XtermKeyboard);
     }
 
     private bool ShouldQueryXtermCapability()
     {
-        _ = _options.Environment.TryGetValue("TERM", out var term);
+        _ = _options.Environment.TryGetValue(EnvironmentNames.Term, out var term);
         return Contains(term, "xterm") && !Contains(term, "kitty") &&
                _baseline.ColorOrigin is Origin.Default or Origin.Environment &&
                _options.Overrides?.ColorDepth is null;

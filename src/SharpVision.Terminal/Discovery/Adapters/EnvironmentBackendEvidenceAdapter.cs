@@ -5,6 +5,8 @@ namespace SharpVision.Terminal.Discovery.Adapters;
 
 using Backends;
 
+using Capabilities;
+
 using MultiplexingKind = Multiplexing.Kind;
 using MultiplexingPolicy = Multiplexing.Policy;
 
@@ -20,8 +22,8 @@ internal sealed class EnvironmentBackendEvidenceAdapter: IBackendEvidenceAdapter
     {
         ArgumentNullException.ThrowIfNull(environment);
 
-        _ = environment.TryGetValue("TERM", out var term);
-        _ = environment.TryGetValue("TERM_PROGRAM", out var program);
+        _ = environment.TryGetValue(EnvironmentNames.Term, out var term);
+        _ = environment.TryGetValue(EnvironmentNames.TermProgram, out var program);
 
         // Reuse the same authoritative multiplexer detection Policy.Detect already applies
         // elsewhere in this discovery pass (TMUX first, then the TERM prefixes), rather than a

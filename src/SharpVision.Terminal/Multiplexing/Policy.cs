@@ -166,8 +166,8 @@ public sealed class Policy
     public static Policy Detect(IReadOnlyDictionary<string, string?> environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
-        _ = environment.TryGetValue("TERM", out var term);
-        var kind = environment.TryGetValue("TMUX", out var tmux) && !string.IsNullOrWhiteSpace(tmux)
+        _ = environment.TryGetValue(EnvironmentNames.Term, out var term);
+        var kind = environment.TryGetValue(EnvironmentNames.Tmux, out var tmux) && !string.IsNullOrWhiteSpace(tmux)
             ? Kind.Tmux
             : StartsWith(term, "tmux-")
                 ? Kind.Tmux

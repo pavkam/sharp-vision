@@ -23,9 +23,9 @@ internal static class EnvironmentEvidenceAdapter
         ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentNullException.ThrowIfNull(environment);
 
-        _ = environment.TryGetValue("TERM", out var term);
-        _ = environment.TryGetValue("COLORTERM", out var colorTerm);
-        _ = environment.TryGetValue("TERM_PROGRAM", out var program);
+        _ = environment.TryGetValue(EnvironmentNames.Term, out var term);
+        _ = environment.TryGetValue(EnvironmentNames.ColorTerm, out var colorTerm);
+        _ = environment.TryGetValue(EnvironmentNames.TermProgram, out var program);
         var kitty = Contains(term, "kitty");
         var xterm = Contains(term, "xterm");
 
@@ -81,8 +81,8 @@ internal static class EnvironmentEvidenceAdapter
         }
 
         var multiplexer = MultiplexingPolicy.Detect(environment).Kind != MultiplexingKind.None;
-        var remote = environment.ContainsKey("SSH_CONNECTION") ||
-                     environment.ContainsKey("SSH_TTY");
+        var remote = environment.ContainsKey(EnvironmentNames.SshConnection) ||
+                     environment.ContainsKey(EnvironmentNames.SshTty);
 
         if (multiplexer)
         {
