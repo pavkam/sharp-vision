@@ -58,8 +58,49 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
 
     internal TreeViewItemCollection(TreeViewItem? parentItem = null) => ParentItem = parentItem;
 
-    /// <inheritdoc/>
-    public TreeViewItem this[int index] => _items[index];
+    /// <summary>Gets or replaces one owned tree view item, preserving its position.</summary>
+    /// <exception cref="ArgumentNullException">The assigned value is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current items.</exception>
+    /// <exception cref="ArgumentException">The assigned item already belongs to this collection.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The assigned item already belongs to another collection, would create a cycle, or an
+    /// attached owner is mutated off its dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    public TreeViewItem this[int index]
+    {
+        get => _items[index];
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            Owner?.VerifyTreeMutable();
+
+            if ((uint) index >= (uint) _items.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), index,
+                    "The replacement index is outside the collection.");
+            }
+
+            var old = _items[index];
+
+            if (ReferenceEquals(old, value))
+            {
+                return;
+            }
+
+            ValidateCandidate(value);
+
+            old.ParentCollection = null;
+            old.Children.Owner = null;
+
+            _items[index] = value;
+            _ = _itemSet.Remove(old);
+            _ = _itemSet.Add(value);
+            value.ParentCollection = this;
+            value.Children.Owner = Owner;
+            Owner?.NotifyStructureChanged();
+        }
+    }
 
     /// <inheritdoc/>
     public int Count => _items.Count;
@@ -72,11 +113,45 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
     /// is mutated off its dispatcher.
     /// </exception>
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
-    public void Add(TreeViewItem item)
+    public void Add(TreeViewItem item) => Insert(_items.Count, item);
+
+    /// <summary>Inserts one detached tree view item at a position.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">The item already belongs to this collection.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The item already belongs to another collection, would create a cycle, or an attached owner
+    /// is mutated off its dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    public void Insert(int index, TreeViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
         Owner?.VerifyTreeMutable();
 
+        if ((uint) index > (uint) _items.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index,
+                "The insertion index is outside the collection.");
+        }
+
+        ValidateCandidate(item);
+
+        _items.Insert(index, item);
+        _ = _itemSet.Add(item);
+        item.ParentCollection = this;
+        item.Children.Owner = Owner;
+        Owner?.NotifyStructureChanged();
+    }
+
+    // Shared by Add/Insert/the indexer setter: the item is always detached at this
+    // point, so it can only be an ancestor of this insertion point by containing it,
+    // which the descendant walk below already detects from the other end. Only
+    // self-insertion needs its own test. An upward walk from the candidate costs
+    // O(depth) on every mutation, which made building a chain-shaped tree quadratic
+    // before any node was even owned.
+    private void ValidateCandidate(TreeViewItem item)
+    {
         if (_itemSet.Contains(item))
         {
             throw new ArgumentException("The item is already in this collection.", nameof(item));
@@ -87,10 +162,6 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
             throw new InvalidOperationException("The item already belongs to a tree item collection.");
         }
 
-        // The item is detached, so it can only be an ancestor of this insertion point by
-        // containing it, which the descendant walk below already detects from the other end. Only
-        // self-insertion needs its own test. The previous upward walk cost O(depth) on every add,
-        // which made building a chain-shaped tree quadratic before any node was even owned.
         if (ReferenceEquals(ParentItem, item))
         {
             throw new InvalidOperationException("A tree item cannot contain itself or one of its ancestors.");
@@ -100,12 +171,6 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         {
             throw new InvalidOperationException("A tree item cannot contain one of its descendants.");
         }
-
-        _items.Add(item);
-        _ = _itemSet.Add(item);
-        item.ParentCollection = this;
-        item.Children.Owner = Owner;
-        Owner?.NotifyStructureChanged();
     }
 
     private static bool ContainsDescendant(TreeViewItem root, TreeViewItem candidate)
@@ -151,6 +216,69 @@ public sealed class TreeViewItemCollection: IReadOnlyList<TreeViewItem>
         item.Children.Owner = null;
         Owner?.NotifyStructureChanged();
         return true;
+    }
+
+    /// <summary>Removes the owned tree view item at a position.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current items.</exception>
+    /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    public void RemoveAt(int index)
+    {
+        Owner?.VerifyTreeMutable();
+
+        if ((uint) index >= (uint) _items.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index,
+                "The removal index is outside the collection.");
+        }
+
+        var item = _items[index];
+        _items.RemoveAt(index);
+        _ = _itemSet.Remove(item);
+        item.ParentCollection = null;
+        item.Children.Owner = null;
+        Owner?.NotifyStructureChanged();
+    }
+
+    /// <summary>Moves one owned tree view item to a different position, preserving its identity.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="oldIndex"/> or <paramref name="newIndex"/> is outside the current items.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">An attached owner is mutated off its dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
+    public void Move(int oldIndex, int newIndex)
+    {
+        Owner?.VerifyTreeMutable();
+
+        if ((uint) oldIndex >= (uint) _items.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oldIndex), oldIndex,
+                "The source index is outside the collection.");
+        }
+
+        if ((uint) newIndex >= (uint) _items.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(newIndex), newIndex,
+                "The destination index is outside the collection.");
+        }
+
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        var item = _items[oldIndex];
+        _items.RemoveAt(oldIndex);
+        _items.Insert(newIndex, item);
+        Owner?.NotifyStructureChanged();
+    }
+
+    /// <summary>Gets the position of one item, or -1 when it is not owned by this collection.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    public int IndexOf(TreeViewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return _items.IndexOf(item);
     }
 
     /// <summary>Removes every owned tree view item.</summary>

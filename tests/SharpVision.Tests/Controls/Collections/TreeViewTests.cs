@@ -732,4 +732,186 @@ public sealed class TreeViewTests
 
         _ = Should.Throw<ArgumentNullException>(() => tree.BringItemIntoView(null!));
     }
+
+    /// <summary>Verifies Insert places a node at the requested position without disturbing existing order.</summary>
+    [Fact]
+    public void Insert_WhenCalled_PlacesNodeAtRequestedPosition()
+    {
+        var tree = new TreeView();
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+        var inserted = new TreeViewItem { Header = "Inserted" };
+
+        tree.Items.Insert(1, inserted);
+
+        tree.Items.ToArray().ShouldBe([first, inserted, second]);
+    }
+
+    /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
+    [Fact]
+    public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "First" };
+        tree.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => tree.Items.Insert(2, new TreeViewItem { Header = "New" }));
+
+        tree.Items.ToArray().ShouldBe([item]);
+    }
+
+    /// <summary>Verifies Insert still rejects an item that would create a cycle in a nested child collection.</summary>
+    [Fact]
+    public void Insert_WhenCandidateIsAnAncestor_ThrowsBeforeMutation()
+    {
+        var root = new TreeViewItem { Header = "Root" };
+        var child = new TreeViewItem { Header = "Child" };
+        root.Children.Add(child);
+
+        _ = Should.Throw<InvalidOperationException>(() => child.Children.Insert(0, root));
+
+        child.Children.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies RemoveAt detaches the node at a position without disposing it.</summary>
+    [Fact]
+    public void RemoveAt_WhenCalled_DetachesNodeWithoutDisposal()
+    {
+        var tree = new TreeView();
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+
+        tree.Items.RemoveAt(0);
+
+        tree.Items.ToArray().ShouldBe([second]);
+        first.ParentCollection.ShouldBeNull();
+    }
+
+    /// <summary>Verifies an out-of-range removal index throws before mutating the collection.</summary>
+    [Fact]
+    public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "First" };
+        tree.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.Items.RemoveAt(1));
+
+        tree.Items.ToArray().ShouldBe([item]);
+    }
+
+    /// <summary>Verifies the indexer replaces one node at a position, detaching the old node without disposal.</summary>
+    [Fact]
+    public void Indexer_WhenAssigned_ReplacesNodeAtPositionWithoutDisposingOld()
+    {
+        var tree = new TreeView();
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+        var replacement = new TreeViewItem { Header = "Replacement" };
+
+        tree.Items[0] = replacement;
+
+        tree.Items.ToArray().ShouldBe([replacement, second]);
+        first.ParentCollection.ShouldBeNull();
+        replacement.ParentCollection.ShouldBeSameAs(tree.Items);
+    }
+
+    /// <summary>Verifies the indexer rejects a candidate already owned by another collection.</summary>
+    [Fact]
+    public void Indexer_WhenCandidateIsAlreadyOwned_ThrowsAndLeavesCollectionUnchanged()
+    {
+        var tree = new TreeView();
+        var other = new TreeView();
+        var item = new TreeViewItem { Header = "First" };
+        tree.Items.Add(item);
+        var owned = new TreeViewItem { Header = "Owned" };
+        other.Items.Add(owned);
+
+        _ = Should.Throw<InvalidOperationException>(() => tree.Items[0] = owned);
+
+        tree.Items.ToArray().ShouldBe([item]);
+        other.Items.ToArray().ShouldBe([owned]);
+    }
+
+    /// <summary>Verifies assigning null through the indexer throws.</summary>
+    [Fact]
+    public void Indexer_WhenAssignedNull_Throws()
+    {
+        var tree = new TreeView();
+        tree.Items.Add(new TreeViewItem { Header = "First" });
+
+        _ = Should.Throw<ArgumentNullException>(() => tree.Items[0] = null!);
+    }
+
+    /// <summary>Verifies Move repositions an owned node while preserving its identity and children.</summary>
+    [Fact]
+    public void Move_WhenCalled_RepositionsNodePreservingIdentityAndChildren()
+    {
+        var tree = new TreeView();
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        var third = new TreeViewItem { Header = "Third" };
+        var grandchild = new TreeViewItem { Header = "Grandchild" };
+        second.Children.Add(grandchild);
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+        tree.Items.Add(third);
+
+        tree.Items.Move(1, 2);
+
+        tree.Items.ToArray().ShouldBe([first, third, second]);
+        second.Children.ToArray().ShouldBe([grandchild]);
+    }
+
+    /// <summary>Verifies an out-of-range move index throws before mutating the collection.</summary>
+    [Fact]
+    public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var tree = new TreeView();
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tree.Items.Move(0, 2));
+
+        tree.Items.ToArray().ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies IndexOf reports the current position of an owned node and -1 for a foreign node.</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
+    {
+        var tree = new TreeView();
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+        var foreign = new TreeViewItem { Header = "Foreign" };
+
+        tree.Items.IndexOf(second).ShouldBe(1);
+        tree.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
+    [Fact]
+    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
+    {
+        var tree = new TreeView();
+        tree.Items.Add(new TreeViewItem { Header = "First" });
+        tree.Items.Add(new TreeViewItem { Header = "Second" });
+        tree.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => tree.Items.Insert(0, new TreeViewItem { Header = "New" }));
+        _ = Should.Throw<ObjectDisposedException>(() => tree.Items.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(() => tree.Items[0] = new TreeViewItem { Header = "New" });
+        _ = Should.Throw<ObjectDisposedException>(() => tree.Items.Move(0, 1));
+    }
 }

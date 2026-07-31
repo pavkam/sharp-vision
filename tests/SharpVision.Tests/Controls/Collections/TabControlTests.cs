@@ -544,6 +544,224 @@ public sealed class TabControlTests
         attached.Parent.ShouldBeSameAs(host);
     }
 
+    /// <summary>Verifies inserting before the selected page shifts SelectedIndex without a selection-changed event.</summary>
+    [Fact]
+    public void Insert_WhenIndexPrecedesSelection_ShiftsSelectedIndexWithoutRaisingSelectionChanged()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        tabs.SelectedIndex = 1;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+        var inserted = Create("Inserted", "Zero");
+
+        tabs.Items.Insert(0, inserted);
+
+        tabs.SelectedIndex.ShouldBe(2);
+        tabs.SelectedItem.ShouldBeSameAs(second);
+        changes.ShouldBeEmpty();
+        tabs.Items.ShouldBe([inserted, first, second]);
+    }
+
+    /// <summary>Verifies inserting into an empty tab control auto-selects the inserted page.</summary>
+    [Fact]
+    public void Insert_WhenListIsEmpty_AutoSelectsInsertedPage()
+    {
+        var tabs = new TabControl();
+        var item = Create("Only", "Content");
+
+        tabs.Items.Insert(0, item);
+
+        tabs.SelectedIndex.ShouldBe(0);
+        tabs.SelectedItem.ShouldBeSameAs(item);
+    }
+
+    /// <summary>Verifies an inserted page renders its header at the requested strip position, not appended.</summary>
+    [Fact]
+    public void Insert_WhenPageIsInsertedBeforeSelection_RendersHeaderStripInNewOrder()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        var inserted = Create("Inserted", "Zero");
+
+        tabs.Items.Insert(0, inserted);
+
+        tabs.HeaderAt(0).Header.ShouldBe("Inserted");
+        tabs.HeaderAt(1).Header.ShouldBe("First");
+        tabs.HeaderAt(2).Header.ShouldBe("Second");
+    }
+
+    /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
+    [Fact]
+    public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var tabs = Create(Create("First", "One"));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.Items.Insert(2, Create("New", "Content")));
+
+        tabs.Items.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies inserting an already-owned candidate throws and leaves both collections unchanged.</summary>
+    [Fact]
+    public void Insert_WhenCandidateIsAlreadyOwnedElsewhere_ThrowsAndLeavesCollectionsUnchanged()
+    {
+        var owned = Create("Owned", "Content");
+        var other = Create(owned);
+        var tabs = Create(Create("First", "One"));
+
+        _ = Should.Throw<ArgumentException>(() => tabs.Items.Insert(0, owned));
+
+        tabs.Items.Count.ShouldBe(1);
+        other.Items.ShouldBe([owned]);
+        owned.Parent.ShouldNotBeNull().Parent.ShouldBeSameAs(other);
+    }
+
+    /// <summary>Verifies removing the selected page by position repairs selection to the nearest eligible page once.</summary>
+    [Fact]
+    public void RemoveAt_WhenSelectedPageIsRemoved_RepairsSelectionToNearestEligibleOnce()
+    {
+        var first = Create("First", "One");
+        var selected = Create("Selected", "Two");
+        var third = Create("Third", "Three");
+        var tabs = Create(first, selected, third);
+        tabs.SelectedIndex = 1;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+
+        tabs.Items.RemoveAt(1);
+
+        tabs.Items.ShouldBe([first, third]);
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            args => args.PreviousItem.ShouldBeSameAs(selected),
+            args => args.CurrentItem.ShouldBeSameAs(third));
+    }
+
+    /// <summary>Verifies an out-of-range removal index throws without mutating the collection.</summary>
+    [Fact]
+    public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var tabs = Create(Create("First", "One"));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.Items.RemoveAt(1));
+
+        tabs.Items.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies replacing the selected page detaches the old page without disposing it and selects the new one.</summary>
+    [Fact]
+    public void Indexer_WhenSelectedPageIsReplaced_DetachesOldWithoutDisposalAndSelectsReplacementOnce()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        tabs.SelectedIndex = 0;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+        var replacement = Create("Replacement", "New");
+
+        tabs.Items[0] = replacement;
+
+        tabs.Items.ShouldBe([replacement, second]);
+        tabs.SelectedIndex.ShouldBe(0);
+        tabs.SelectedItem.ShouldBeSameAs(replacement);
+        first.IsDisposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            args => args.PreviousItem.ShouldBeSameAs(first),
+            args => args.CurrentItem.ShouldBeSameAs(replacement));
+    }
+
+    /// <summary>Verifies replacing a non-selected page does not disturb the current selection.</summary>
+    [Fact]
+    public void Indexer_WhenNonSelectedPageIsReplaced_PreservesSelection()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        tabs.SelectedIndex = 0;
+        var replacement = Create("Replacement", "New");
+
+        tabs.Items[1] = replacement;
+
+        tabs.SelectedIndex.ShouldBe(0);
+        tabs.SelectedItem.ShouldBeSameAs(first);
+        tabs.Items.ShouldBe([first, replacement]);
+    }
+
+    /// <summary>Verifies assigning a null value through the indexer throws.</summary>
+    [Fact]
+    public void Indexer_WhenAssignedNull_Throws()
+    {
+        var tabs = Create(Create("First", "One"));
+
+        _ = Should.Throw<ArgumentNullException>(() => tabs.Items[0] = null!);
+    }
+
+    /// <summary>Verifies moving the selected page preserves its identity, updates SelectedIndex, and reorders headers.</summary>
+    [Fact]
+    public void Move_WhenSelectedPageMoves_PreservesIdentityAndReordersHeaders()
+    {
+        var first = Create("First", "One");
+        var selected = Create("Selected", "Two");
+        var third = Create("Third", "Three");
+        var tabs = Create(first, selected, third);
+        tabs.SelectedIndex = 1;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+
+        tabs.Items.Move(1, 2);
+
+        tabs.Items.ShouldBe([first, third, selected]);
+        tabs.SelectedIndex.ShouldBe(2);
+        tabs.SelectedItem.ShouldBeSameAs(selected);
+        changes.ShouldBeEmpty();
+        tabs.HeaderAt(2).Header.ShouldBe("Selected");
+    }
+
+    /// <summary>Verifies an out-of-range move index throws without mutating the collection.</summary>
+    [Fact]
+    public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.Items.Move(0, 2));
+
+        tabs.Items.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies IndexOf reports the current position of an owned page and -1 for a foreign page.</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
+    {
+        var first = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(first, second);
+        var foreign = Create("Foreign", "Elsewhere");
+
+        tabs.Items.IndexOf(second).ShouldBe(1);
+        tabs.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
+    [Fact]
+    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
+    {
+        var item = Create("First", "One");
+        var second = Create("Second", "Two");
+        var tabs = Create(item, second);
+        tabs.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => tabs.Items.Insert(0, Create("New", "Content")));
+        _ = Should.Throw<ObjectDisposedException>(() => tabs.Items.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(() => tabs.Items[0] = Create("New", "Content"));
+        _ = Should.Throw<ObjectDisposedException>(() => tabs.Items.Move(0, 1));
+    }
+
     /// <summary>Verifies only selected content is arranged below retained headers and separator rows.</summary>
     [Fact]
     public void Layout_WhenSelectionChanges_ExcludesOldContentAndArrangesNewContent()

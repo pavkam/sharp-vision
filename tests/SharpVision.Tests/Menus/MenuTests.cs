@@ -684,4 +684,197 @@ public sealed class MenuTests
         item.Focusable.ShouldBeFalse();
         item.TabStop.ShouldBeFalse();
     }
+
+    /// <summary>Verifies inserting before the selected entry shifts SelectedIndex without changing selection.</summary>
+    [Fact]
+    public void Insert_WhenIndexPrecedesSelection_ShiftsSelectedIndexPreservingIdentity()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var second = new MenuItem { Content = new ControlText("Second") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.SelectedIndex = 1;
+        var inserted = new MenuItem { Content = new ControlText("Inserted") };
+
+        menu.Items.Insert(0, inserted);
+
+        menu.SelectedIndex.ShouldBe(2);
+        menu.SelectedItem.ShouldBeSameAs(second);
+        menu.Items.ShouldBe([inserted, first, second]);
+    }
+
+    /// <summary>Verifies Insert accepts a typed MenuSeparator at a position.</summary>
+    [Fact]
+    public void Insert_WhenGivenSeparator_PlacesItAtRequestedPosition()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var second = new MenuItem { Content = new ControlText("Second") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var separator = new MenuSeparator();
+
+        menu.Items.Insert(1, separator);
+
+        menu.Items.ShouldBe([first, separator, second]);
+    }
+
+    /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
+    [Fact]
+    public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Content = new ControlText("First") };
+        menu.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => menu.Items.Insert(2, new MenuItem { Content = new ControlText("New") }));
+
+        menu.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies RemoveAt detaches the entry at a position and repairs selection to the nearest available item.</summary>
+    [Fact]
+    public void RemoveAt_WhenSelectedEntryIsRemoved_RepairsSelectionToNearestAvailable()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var selected = new MenuItem { Content = new ControlText("Selected") };
+        var third = new MenuItem { Content = new ControlText("Third") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        menu.Items.RemoveAt(1);
+
+        menu.Items.ShouldBe([first, third]);
+        // FindAvailable searches forward from the removal point without including it, so
+        // it wraps to the first item rather than landing on the immediate successor.
+        menu.SelectedItem.ShouldBeSameAs(first);
+    }
+
+    /// <summary>Verifies an out-of-range removal index throws before mutating the collection.</summary>
+    [Fact]
+    public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Content = new ControlText("First") };
+        menu.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Items.RemoveAt(1));
+
+        menu.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies the indexer replaces the selected entry, detaching the old one without disposal.</summary>
+    [Fact]
+    public void Indexer_WhenSelectedEntryIsReplaced_DetachesOldWithoutDisposalAndSelectsReplacement()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var second = new MenuItem { Content = new ControlText("Second") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        menu.SelectedIndex = 0;
+        var replacement = new MenuItem { Content = new ControlText("Replacement") };
+
+        menu.Items[0] = replacement;
+
+        menu.Items.ShouldBe([replacement, second]);
+        menu.SelectedItem.ShouldBeSameAs(replacement);
+        first.IsDisposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the indexer rejects a replacement that is not a MenuItem or MenuSeparator.</summary>
+    [Fact]
+    public void Indexer_WhenReplacementIsNotAnEntry_ThrowsAndLeavesCollectionUnchanged()
+    {
+        var menu = new Menu();
+        var item = new MenuItem { Content = new ControlText("First") };
+        menu.Items.Add(item);
+
+        _ = Should.Throw<InvalidOperationException>(() => menu.Items[0] = new Button());
+
+        menu.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies assigning null through the indexer throws.</summary>
+    [Fact]
+    public void Indexer_WhenAssignedNull_Throws()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
+
+        _ = Should.Throw<ArgumentNullException>(() => menu.Items[0] = null!);
+    }
+
+    /// <summary>Verifies Move repositions an owned entry while preserving the selected item's identity.</summary>
+    [Fact]
+    public void Move_WhenSelectedEntryMoves_PreservesIdentityAndUpdatesSelectedIndex()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var selected = new MenuItem { Content = new ControlText("Selected") };
+        var third = new MenuItem { Content = new ControlText("Third") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(selected);
+        menu.Items.Add(third);
+        menu.SelectedIndex = 1;
+
+        menu.Items.Move(1, 2);
+
+        menu.Items.ShouldBe([first, third, selected]);
+        menu.SelectedIndex.ShouldBe(2);
+        menu.SelectedItem.ShouldBeSameAs(selected);
+    }
+
+    /// <summary>Verifies an out-of-range move index throws before mutating the collection.</summary>
+    [Fact]
+    public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var second = new MenuItem { Content = new ControlText("Second") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.Items.Move(0, 2));
+
+        menu.Items.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies IndexOf reports the current position of an owned entry and -1 for a foreign one.</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
+    {
+        var first = new MenuItem { Content = new ControlText("First") };
+        var second = new MenuItem { Content = new ControlText("Second") };
+        var menu = new Menu();
+        menu.Items.Add(first);
+        menu.Items.Add(second);
+        var foreign = new MenuItem { Content = new ControlText("Foreign") };
+
+        menu.Items.IndexOf(second).ShouldBe(1);
+        menu.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
+    [Fact]
+    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
+    {
+        var menu = new Menu();
+        menu.Items.Add(new MenuItem { Content = new ControlText("First") });
+        menu.Items.Add(new MenuItem { Content = new ControlText("Second") });
+        menu.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(
+            () => menu.Items.Insert(0, new MenuItem { Content = new ControlText("New") }));
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(
+            () => menu.Items[0] = new MenuItem { Content = new ControlText("New") });
+        _ = Should.Throw<ObjectDisposedException>(() => menu.Items.Move(0, 1));
+    }
 }

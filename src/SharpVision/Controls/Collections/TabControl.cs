@@ -281,10 +281,19 @@ public sealed class TabControl: ItemsControl
     internal TabItem ItemAt(int index) => (TabItem) GetItemControl(index);
     internal TabHeader HeaderAt(int index) => (TabHeader) _headers.Children[index];
 
-    internal void AddItem(TabItem item)
+    internal void AddItem(TabItem item) => InsertItem(ItemControlCount, item);
+
+    internal void InsertItem(int index, TabItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
         VerifyMutable();
+
+        if ((uint) index > (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index,
+                "The insertion index is outside the tab control.");
+        }
+
         var requestedPresentation = new TabItemPresentation(item.Visibility, item.Width, item.Height);
         var header = new TabHeader(item.Header)
         {
@@ -292,11 +301,11 @@ public sealed class TabControl: ItemsControl
             Visibility = requestedPresentation.Visibility,
         };
         header.Activated += OnHeaderActivated;
-        InsertItemControl(ItemControlCount, item);
+        InsertItemControl(index, item);
 
         try
         {
-            _headers.Children.Add(header);
+            _headers.Children.Insert(index, header);
         }
         catch
         {
@@ -310,6 +319,14 @@ public sealed class TabControl: ItemsControl
         item.Width = Length.Percent(100);
         item.Height = Length.Percent(100);
         header.Width = HeaderWidth;
+
+        // The newly inserted page never displaces an already-selected page: the
+        // selected item keeps its identity, so only its numeric index shifts.
+        if (_selectedIndex >= index)
+        {
+            _selectedIndex++;
+            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
+        }
 
         if (_selectedIndex < 0 && FindEligible(0, 1) is var first and >= 0)
         {
@@ -331,6 +348,26 @@ public sealed class TabControl: ItemsControl
             return false;
         }
 
+        RemoveItemAtCore(idx);
+        return true;
+    }
+
+    internal void RemoveItemAt(int index)
+    {
+        VerifyMutable();
+
+        if ((uint) index >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index,
+                "The removal index is outside the tab control.");
+        }
+
+        RemoveItemAtCore(index);
+    }
+
+    private void RemoveItemAtCore(int idx)
+    {
+        var item = ItemAt(idx);
         var wasSelected = idx == _selectedIndex;
         var previousSelectedIndex = _selectedIndex;
         // Captured before detachment: once the item is removed, its old index
@@ -355,13 +392,137 @@ public sealed class TabControl: ItemsControl
             if (idx < _selectedIndex)
             {
                 CommitSelectionAfterMutation(_selectedIndex - 1, previousSelectedIndex, previousSelectedItem);
-                return true;
+                return;
             }
 
             ApplyPresentation();
         }
+    }
 
-        return true;
+    internal void ReplaceItem(int index, TabItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        VerifyMutable();
+
+        if ((uint) index >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index,
+                "The replacement index is outside the tab control.");
+        }
+
+        var old = ItemAt(index);
+
+        if (ReferenceEquals(old, item))
+        {
+            return;
+        }
+
+        var wasSelected = index == _selectedIndex;
+        var previousSelectedIndex = _selectedIndex;
+        var previousSelectedItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
+        var oldHeader = HeaderAt(index);
+        var requestedPresentation = new TabItemPresentation(item.Visibility, item.Width, item.Height);
+        var newHeader = new TabHeader(item.Header)
+        {
+            IsEnabled = item.IsEnabled,
+            Visibility = requestedPresentation.Visibility,
+        };
+        newHeader.Activated += OnHeaderActivated;
+
+        // The item host validates and atomically detaches the old item while
+        // attaching the new one; only after that succeeds is the parallel
+        // header strip touched, so a rejected candidate never desynchronizes it.
+        ReplaceItemControl(index, item);
+
+        try
+        {
+            _headers.Children[index] = newHeader;
+        }
+        catch
+        {
+            ReplaceItemControl(index, old);
+            newHeader.Dispose();
+            throw;
+        }
+
+        old.PropertyChanged -= OnItemPropertyChanged;
+        oldHeader.Activated -= OnHeaderActivated;
+        RestorePresentation(old);
+        oldHeader.CommitSelection(false);
+        oldHeader.Dispose();
+
+        _requestedPresentations.Add(item, requestedPresentation);
+        item.PropertyChanged += OnItemPropertyChanged;
+        item.Width = Length.Percent(100);
+        item.Height = Length.Percent(100);
+        newHeader.Width = HeaderWidth;
+
+        if (wasSelected)
+        {
+            _selectedIndex = -1;
+            var target = IsEligible(index) ? index : FindNearestEligible(index);
+            CommitSelection(target, previousSelectedIndex, previousSelectedItem);
+        }
+        else
+        {
+            ApplyPresentation();
+        }
+    }
+
+    internal void MoveItem(int oldIndex, int newIndex)
+    {
+        VerifyMutable();
+
+        if ((uint) oldIndex >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oldIndex), oldIndex,
+                "The source index is outside the tab control.");
+        }
+
+        if ((uint) newIndex >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(newIndex), newIndex,
+                "The destination index is outside the tab control.");
+        }
+
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        var item = ItemAt(oldIndex);
+        var header = HeaderAt(oldIndex);
+
+        // A genuine reposition, not remove+insert through the public surface: the
+        // item and header keep their identity, subscriptions, and presentation
+        // state, and the selected item's identity never changes, so no
+        // SelectionChanged fires — only the numeric SelectedIndex may shift.
+        RemoveItemControlAt(oldIndex);
+        _headers.Children.RemoveAt(oldIndex);
+        InsertItemControl(newIndex, item);
+        _headers.Children.Insert(newIndex, header);
+
+        var previousSelectedIndex = _selectedIndex;
+
+        if (_selectedIndex == oldIndex)
+        {
+            _selectedIndex = newIndex;
+        }
+        else if (oldIndex < _selectedIndex && _selectedIndex <= newIndex)
+        {
+            _selectedIndex--;
+        }
+        else if (newIndex <= _selectedIndex && _selectedIndex < oldIndex)
+        {
+            _selectedIndex++;
+        }
+
+        if (_selectedIndex != previousSelectedIndex)
+        {
+            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Measure);
+        }
+
+        ApplyPresentation();
     }
 
     /// <summary>Requests closure of a closeable tab and removes it when not cancelled.</summary>
@@ -523,7 +684,7 @@ public sealed class TabControl: ItemsControl
             new TabSelectionChangedEventArgs(previousIndex, index, previousItem, currentItem));
     }
 
-    private int IndexOfItem(TabItem item)
+    internal int IndexOfItem(TabItem item)
     {
         for (var index = 0; index < ItemControlCount; index++)
         {

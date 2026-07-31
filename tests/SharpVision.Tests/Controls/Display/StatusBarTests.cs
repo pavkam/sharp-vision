@@ -183,6 +183,155 @@ public sealed class StatusBarTests
         item.Bounds.ShouldBe(new Rect(7, 0, 5, 1));
     }
 
+    /// <summary>Verifies Insert places an item at the requested position without disturbing existing order.</summary>
+    [Fact]
+    public void Insert_WhenCalled_PlacesItemAtRequestedPosition()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        var inserted = Item("Inserted");
+
+        bar.Items.Insert(1, inserted);
+
+        bar.Items.ShouldBe([first, inserted, second]);
+    }
+
+    /// <summary>Verifies an out-of-range insertion index throws before mutating the collection.</summary>
+    [Fact]
+    public void Insert_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        using var bar = new StatusBar();
+        var item = Item("First");
+        bar.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.Insert(2, Item("New")));
+
+        bar.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies RemoveAt detaches the item at a position without disposing it.</summary>
+    [Fact]
+    public void RemoveAt_WhenCalled_DetachesItemWithoutDisposal()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+
+        bar.Items.RemoveAt(0);
+
+        bar.Items.ShouldBe([second]);
+        first.IsDisposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies an out-of-range removal index throws before mutating the collection.</summary>
+    [Fact]
+    public void RemoveAt_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        using var bar = new StatusBar();
+        var item = Item("First");
+        bar.Items.Add(item);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.RemoveAt(1));
+
+        bar.Items.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies the indexer replaces one item at a position, detaching the old one without disposal.</summary>
+    [Fact]
+    public void Indexer_WhenAssigned_ReplacesItemAtPositionWithoutDisposingOld()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        var replacement = Item("Replacement");
+
+        bar.Items[0] = replacement;
+
+        bar.Items.ShouldBe([replacement, second]);
+        first.IsDisposed.ShouldBeFalse();
+        first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies assigning null through the indexer throws.</summary>
+    [Fact]
+    public void Indexer_WhenAssignedNull_Throws()
+    {
+        using var bar = new StatusBar();
+        bar.Items.Add(Item("First"));
+
+        _ = Should.Throw<ArgumentNullException>(() => bar.Items[0] = null!);
+    }
+
+    /// <summary>Verifies Move repositions an owned item while preserving its identity.</summary>
+    [Fact]
+    public void Move_WhenCalled_RepositionsItemPreservingIdentity()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        var third = Item("Third");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        bar.Items.Add(third);
+
+        bar.Items.Move(0, 2);
+
+        bar.Items.ShouldBe([second, third, first]);
+    }
+
+    /// <summary>Verifies an out-of-range move index throws before mutating the collection.</summary>
+    [Fact]
+    public void Move_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.Items.Move(0, 2));
+
+        bar.Items.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies IndexOf reports the current position of an owned item and -1 for a foreign item.</summary>
+    [Fact]
+    public void IndexOf_WhenItemIsOwnedOrForeign_ReportsPositionOrNegativeOne()
+    {
+        using var bar = new StatusBar();
+        var first = Item("First");
+        var second = Item("Second");
+        bar.Items.Add(first);
+        bar.Items.Add(second);
+        using var foreign = Item("Foreign");
+
+        bar.Items.IndexOf(second).ShouldBe(1);
+        bar.Items.IndexOf(foreign).ShouldBe(-1);
+    }
+
+    /// <summary>Verifies disposed collection mutations reject Insert, RemoveAt, indexer assignment, and Move.</summary>
+    [Fact]
+    public void Items_WhenOwnerIsDisposed_RejectsInsertRemoveAtIndexerAndMove()
+    {
+        var bar = new StatusBar();
+        bar.Items.Add(Item("First"));
+        bar.Items.Add(Item("Second"));
+        bar.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items.Insert(0, Item("New")));
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items[0] = Item("New"));
+        _ = Should.Throw<ObjectDisposedException>(() => bar.Items.Move(0, 1));
+    }
+
     private static StatusBarItem Item(
         string content,
         StatusBarItemAlignment alignment = StatusBarItemAlignment.Left) => new()

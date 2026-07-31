@@ -288,12 +288,21 @@ public sealed class Menu: ItemsControl
     /// <summary>Gets the current semantic item count.</summary>
     internal int ItemCount => ItemControlCount;
 
+    /// <summary>Gets the position of one owned entry, or -1 when it is not owned by this menu.</summary>
+    /// <param name="item">The non-null candidate.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    internal int IndexOfEntry(Control item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return IndexOfItemControl(item);
+    }
+
     /// <summary>Adds one typed item and tracks its invocation.</summary>
     /// <param name="item">The non-null detached item.</param>
     internal void Add(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        AddEntry(item);
+        InsertEntry(ItemControlCount, item);
     }
 
     /// <summary>Adds one typed separator.</summary>
@@ -302,12 +311,41 @@ public sealed class Menu: ItemsControl
     internal void Add(MenuSeparator separator)
     {
         ArgumentNullException.ThrowIfNull(separator);
-        AddEntry(separator);
+        InsertEntry(ItemControlCount, separator);
     }
 
-    private void AddEntry(Control item)
+    /// <summary>Inserts one typed item at a position and tracks its invocation.</summary>
+    /// <param name="index">The insertion position from zero through the current item count.</param>
+    /// <param name="item">The non-null detached item.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    internal void Insert(int index, MenuItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        InsertEntry(index, item);
+    }
+
+    /// <summary>Inserts one typed separator at a position.</summary>
+    /// <param name="index">The insertion position from zero through the current item count.</param>
+    /// <param name="separator">The non-null detached separator.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    internal void Insert(int index, MenuSeparator separator)
+    {
+        ArgumentNullException.ThrowIfNull(separator);
+        InsertEntry(index, separator);
+    }
+
+    private void InsertEntry(int index, Control item)
     {
         Debug.Assert(item is MenuItem or MenuSeparator, "Menu entries are constrained by typed collection overloads.");
+
+        VerifyMutable();
+
+        if ((uint) index > (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The insertion index is outside the menu.");
+        }
 
         // Ownership is secured before any authored property is captured or
         // overwritten. InsertItemControl can throw for a duplicate, already
@@ -317,7 +355,7 @@ public sealed class Menu: ItemsControl
 
         try
         {
-            InsertItemControl(ItemControlCount, item);
+            InsertItemControl(index, item);
         }
         finally
         {
@@ -335,9 +373,18 @@ public sealed class Menu: ItemsControl
 
         ApplyItemSizing(item);
 
+        // An already-selected entry never changes identity because of an
+        // insertion; only its numeric position shifts.
+        if (_selectedIndex >= index)
+        {
+            _selectedIndex++;
+            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+            NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+        }
+
         if (_selectedIndex < 0 && item is MenuItem)
         {
-            Select(ItemControlCount - 1, focus: false);
+            Select(index, focus: false);
         }
 
         if (item is MenuItem { Kind: MenuItemKind.Radio, IsChecked: true } radio)
@@ -365,6 +412,21 @@ public sealed class Menu: ItemsControl
         return RemoveEntry(separator);
     }
 
+    /// <summary>Removes the owned entry at a position and its subscription.</summary>
+    /// <param name="index">The valid zero-based entry position.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
+    internal void RemoveAt(int index)
+    {
+        VerifyMutable();
+
+        if ((uint) index >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The removal index is outside the menu.");
+        }
+
+        _ = RemoveEntry(ItemAt(index));
+    }
+
     private bool RemoveEntry(Control item)
     {
         var index = IndexOfItemControl(item);
@@ -389,6 +451,130 @@ public sealed class Menu: ItemsControl
 
         Select(FindAvailable(Math.Min(index, ItemControlCount - 1), 1), focus: false);
         return true;
+    }
+
+    /// <summary>Replaces the owned entry at a position, preserving position and tracking the new entry.</summary>
+    /// <param name="index">The valid zero-based entry position.</param>
+    /// <param name="item">The non-null detached replacement item or separator.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="item"/> is not a <see cref="MenuItem"/> or <see cref="MenuSeparator"/>.</exception>
+    internal void ReplaceEntry(int index, Control item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        _ = RequireEntry(item);
+        VerifyMutable();
+
+        if ((uint) index >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), index, "The replacement index is outside the menu.");
+        }
+
+        var old = ItemAt(index);
+
+        if (ReferenceEquals(old, item))
+        {
+            return;
+        }
+
+        var wasSelected = index == _selectedIndex;
+
+        _isHandlingKnownMutation = true;
+
+        try
+        {
+            ReplaceItemControl(index, item);
+        }
+        finally
+        {
+            _isHandlingKnownMutation = false;
+        }
+
+        RestorePresentation(old);
+        _requestedPresentations.Add(
+            item,
+            new MenuEntryPresentation(item.Focusable, item.TabStop, item.Width, item.Height));
+
+        if (item is MenuItem menuItem)
+        {
+            menuItem.Focusable = false;
+            menuItem.TabStop = false;
+        }
+
+        ApplyItemSizing(item);
+
+        if (wasSelected)
+        {
+            _selectedIndex = -1;
+            Select(item is MenuItem ? index : FindAvailable(index, 1), focus: false);
+        }
+
+        if (item is MenuItem { Kind: MenuItemKind.Radio, IsChecked: true } radio)
+        {
+            SelectRadio(radio);
+        }
+    }
+
+    /// <summary>Moves one owned entry to a different position, preserving its identity and subscription.</summary>
+    /// <param name="oldIndex">The current zero-based entry position.</param>
+    /// <param name="newIndex">The destination zero-based entry position.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="oldIndex"/> or <paramref name="newIndex"/> is outside the current entries.
+    /// </exception>
+    internal void MoveEntry(int oldIndex, int newIndex)
+    {
+        VerifyMutable();
+
+        if ((uint) oldIndex >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oldIndex), oldIndex, "The source index is outside the menu.");
+        }
+
+        if ((uint) newIndex >= (uint) ItemControlCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(newIndex), newIndex,
+                "The destination index is outside the menu.");
+        }
+
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        var item = ItemAt(oldIndex);
+
+        _isHandlingKnownMutation = true;
+
+        try
+        {
+            RemoveItemControlAt(oldIndex);
+            InsertItemControl(newIndex, item);
+        }
+        finally
+        {
+            _isHandlingKnownMutation = false;
+        }
+
+        var previousSelectedIndex = _selectedIndex;
+
+        if (_selectedIndex == oldIndex)
+        {
+            _selectedIndex = newIndex;
+        }
+        else if (oldIndex < _selectedIndex && _selectedIndex <= newIndex)
+        {
+            _selectedIndex--;
+        }
+        else if (newIndex <= _selectedIndex && _selectedIndex < oldIndex)
+        {
+            _selectedIndex++;
+        }
+
+        if (_selectedIndex != previousSelectedIndex)
+        {
+            NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
+            NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+        }
     }
 
     /// <summary>Clears items and subscriptions.</summary>

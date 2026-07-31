@@ -22,8 +22,12 @@ activation, and menu-level invocation notifications.
 ## Behavior
 
 - `Items : MenuEntryCollection` exposes `IReadOnlyList<Control>` inspection plus
-  typed `Add`/`Remove` overloads for `MenuItem` and `MenuSeparator`; arbitrary
-  controls cannot enter through the semantic collection.
+  typed `Add`/`Insert` overloads for `MenuItem` and `MenuSeparator`, along with
+  `Remove` overloads, `RemoveAt`, `Move`, `IndexOf`, `Clear`, and a settable
+  indexer; arbitrary controls cannot enter through the semantic collection, and
+  the indexer rejects a replacement that is neither. Inserting, removing,
+  replacing, or moving an entry preserves the identity of an already-selected
+  entry: `SelectedIndex` shifts silently when unaffected.
 - `Orientation` and `Spacing` control horizontal or vertical geometry. `Spacing`
   defaults to zero so vertical flyout entries occupy adjacent rows; horizontal
   bars can opt into additional separation.

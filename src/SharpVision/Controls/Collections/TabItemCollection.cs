@@ -16,10 +16,23 @@ public sealed class TabItemCollection: IReadOnlyList<TabItem>
     }
 
     /// <inheritdoc/>
-    public TabItem this[int index] => _owner.ItemAt(index);
-
-    /// <inheritdoc/>
     public int Count => _owner.ItemCount;
+
+    /// <summary>Gets or replaces one owned tab item, preserving its position.</summary>
+    /// <exception cref="ArgumentNullException">The assigned value is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current items.</exception>
+    /// <exception cref="ArgumentException">The assigned item is already owned or is attached elsewhere.</exception>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or the assigned item is disposed.</exception>
+    public TabItem this[int index]
+    {
+        get => _owner.ItemAt(index);
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _owner.ReplaceItem(index, value);
+        }
+    }
 
     /// <summary>Adds one detached non-null tab item.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
@@ -32,6 +45,18 @@ public sealed class TabItemCollection: IReadOnlyList<TabItem>
         _owner.AddItem(item);
     }
 
+    /// <summary>Inserts one detached non-null tab item at a position.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">The item is already owned or is attached elsewhere.</exception>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or item is disposed.</exception>
+    public void Insert(int index, TabItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        _owner.InsertItem(index, item);
+    }
+
     /// <summary>Removes one owned tab item.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
@@ -40,6 +65,28 @@ public sealed class TabItemCollection: IReadOnlyList<TabItem>
     {
         ArgumentNullException.ThrowIfNull(item);
         return _owner.RemoveItem(item);
+    }
+
+    /// <summary>Removes the owned tab item at a position.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current items.</exception>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
+    public void RemoveAt(int index) => _owner.RemoveItemAt(index);
+
+    /// <summary>Moves one owned tab item to a different position, preserving its identity and selection.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="oldIndex"/> or <paramref name="newIndex"/> is outside the current items.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
+    public void Move(int oldIndex, int newIndex) => _owner.MoveItem(oldIndex, newIndex);
+
+    /// <summary>Gets the position of one tab item, or -1 when it is not owned by this control.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    public int IndexOf(TabItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return _owner.IndexOfItem(item);
     }
 
     /// <summary>Removes every owned tab item.</summary>
