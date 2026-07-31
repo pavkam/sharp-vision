@@ -31,9 +31,13 @@ public sealed class NavigationViewGroup: Control
                 InvalidationImpact.Measure),
             capacity: 1);
         _childrenSlot.Add(_stack);
+        Items = new NavigationViewItemCollection(this);
         Focusable = false;
         TabStop = false;
     }
+
+    /// <summary>Gets this group's constrained sub-item collection.</summary>
+    public NavigationViewItemCollection Items { get; }
 
     /// <summary>Gets or sets the non-null group label.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -114,7 +118,7 @@ public sealed class NavigationViewGroup: Control
 
     /// <summary>Adds one sub-item to this group.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    public void AddItem(NavigationViewItem item)
+    internal void AddItemCore(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
@@ -133,7 +137,7 @@ public sealed class NavigationViewGroup: Control
 
     /// <summary>Removes one sub-item from this group.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    public bool RemoveItem(NavigationViewItem item)
+    internal bool RemoveItemCore(NavigationViewItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
@@ -161,7 +165,7 @@ public sealed class NavigationViewGroup: Control
     }
 
     /// <summary>Clears all sub-items.</summary>
-    public void ClearItems()
+    internal void ClearItemsCore()
     {
         var owner = FindNavigationView();
         var repair = owner?.PrepareRemoval(this);

@@ -49,7 +49,7 @@ public sealed class NavigationViewSurfaceTests
         // Arrange
         var home = new NavigationViewItem { Header = "Home", Glyph = "◆" };
         var group = new NavigationViewGroup { Header = "Tools" };
-        group.AddItem(new NavigationViewItem { Header = "Edit" });
+        group.Items.Add(new NavigationViewItem { Header = "Edit" });
         var about = new NavigationViewItem { Header = "About", Glyph = "界" };
         var mainSeparator = new NavigationViewSeparator();
         var footerSeparator = new NavigationViewSeparator();
@@ -125,7 +125,7 @@ public sealed class NavigationViewSurfaceTests
         var disabled = new NavigationViewItem { Header = "Disabled", IsEnabled = false };
         var child = new NavigationViewItem { Header = "Child" };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(child);
+        group.Items.Add(child);
         var footer = new NavigationViewItem { Header = "Footer" };
         var view = CreateView(header: null, 14);
         view.Items.Add(first);
@@ -223,8 +223,8 @@ public sealed class NavigationViewSurfaceTests
         var first = new NavigationViewItem { Header = "First" };
         var second = new NavigationViewItem { Header = "Second" };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(first);
-        group.AddItem(second);
+        group.Items.Add(first);
+        group.Items.Add(second);
         var after = new NavigationViewItem { Header = "After" };
         var view = CreateView(header: null, 14);
         view.Items.Add(group);
@@ -281,10 +281,10 @@ public sealed class NavigationViewSurfaceTests
         // Arrange
         var firstItem = new NavigationViewItem { Header = "First" };
         var first = new NavigationViewGroup { Header = "First group" };
-        first.AddItem(firstItem);
+        first.Items.Add(firstItem);
         var secondItem = new NavigationViewItem { Header = "Second" };
         var second = new NavigationViewGroup { Header = "Second group" };
-        second.AddItem(secondItem);
+        second.Items.Add(secondItem);
         var view = CreateView(header: null, 16);
         view.Items.Add(first);
         view.Items.Add(second);
@@ -312,8 +312,8 @@ public sealed class NavigationViewSurfaceTests
         var group = new NavigationViewGroup { Header = "Core" };
         var models = new NavigationViewItem { Header = "Models" };
         var services = new NavigationViewItem { Header = "Services" };
-        group.AddItem(models);
-        group.AddItem(services);
+        group.Items.Add(models);
+        group.Items.Add(services);
         var view = CreateView(header: null, 18);
         view.Items.Add(group);
         await using var surface = await ComponentSurface.MountAsync(
@@ -337,10 +337,10 @@ public sealed class NavigationViewSurfaceTests
         // Arrange
         var core = new NavigationViewGroup { Header = "Core" };
         var models = new NavigationViewItem { Header = "Models" };
-        core.AddItem(models);
+        core.Items.Add(models);
         var tests = new NavigationViewGroup { Header = "Tests" };
         var unit = new NavigationViewItem { Header = "Unit" };
-        tests.AddItem(unit);
+        tests.Items.Add(unit);
         var view = CreateView(header: null, 14);
         view.Items.Add(core);
         view.Items.Add(new NavigationViewSeparator());

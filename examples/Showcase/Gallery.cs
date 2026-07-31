@@ -140,7 +140,7 @@ public sealed class Gallery: Screen
                 };
                 _navigation[index] = item;
                 item.Invoked += OnNavigationItemInvoked;
-                group.AddItem(item);
+                group.Items.Add(item);
             }
 
             NavigationControl.Items.Add(group);

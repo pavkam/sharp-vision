@@ -123,7 +123,7 @@ public sealed class NavigationViewTests
             var nav = new NavigationView();
             var group = new NavigationViewGroup { Header = "Settings" };
             var sub = new NavigationViewItem { Header = "General" };
-            group.AddItem(sub);
+            group.Items.Add(sub);
             nav.Items.Add(group);
             nav.Attach(dispatcher);
             using FocusManager focus = new(nav);
@@ -147,7 +147,7 @@ public sealed class NavigationViewTests
             var nav = new NavigationView();
             var group = new NavigationViewGroup { Header = "Settings" };
             var sub = new NavigationViewItem { Header = "General" };
-            group.AddItem(sub);
+            group.Items.Add(sub);
             nav.Items.Add(group);
             nav.Attach(dispatcher);
 
@@ -166,16 +166,16 @@ public sealed class NavigationViewTests
         var removed = new NavigationViewItem { Header = "Removed" };
         var cleared = new NavigationViewItem { Header = "Cleared" };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(removed);
-        group.AddItem(cleared);
+        group.Items.Add(removed);
+        group.Items.Add(cleared);
         var navigation = new NavigationView();
         navigation.Items.Add(selected);
         navigation.Items.Add(group);
         navigation.SelectItem(selected);
 
         // Act
-        group.RemoveItem(removed).ShouldBeTrue();
-        group.ClearItems();
+        group.Items.Remove(removed).ShouldBeTrue();
+        group.Items.Clear();
         removed.ActivateFromOwner(ActivationCause.Programmatic);
         cleared.ActivateFromOwner(ActivationCause.Programmatic);
 
@@ -212,15 +212,15 @@ public sealed class NavigationViewTests
         var other = new NavigationViewItem { Header = "Other" };
         var selected = new NavigationViewItem { Header = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(other);
-        group.AddItem(selected);
+        group.Items.Add(other);
+        group.Items.Add(selected);
         var navigation = new NavigationView();
         navigation.Items.Add(group);
         navigation.SelectItem(selected);
         var changes = new List<NavigationViewSelectionChangedEventArgs>();
         navigation.SelectionChanged += (_, args) => changes.Add(args);
 
-        group.RemoveItem(selected).ShouldBeTrue();
+        group.Items.Remove(selected).ShouldBeTrue();
 
         navigation.SelectedItem.ShouldBeSameAs(other);
         selected.IsSelected.ShouldBeFalse();
@@ -238,13 +238,13 @@ public sealed class NavigationViewTests
         var before = new NavigationViewItem { Header = "Before" };
         var selected = new NavigationViewItem { Header = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(selected);
+        group.Items.Add(selected);
         var navigation = new NavigationView();
         navigation.Items.Add(before);
         navigation.Items.Add(group);
         navigation.SelectItem(selected);
 
-        group.ClearItems();
+        group.Items.Clear();
 
         navigation.SelectedItem.ShouldBeSameAs(before);
         selected.IsSelected.ShouldBeFalse();
@@ -278,7 +278,7 @@ public sealed class NavigationViewTests
         var remaining = new NavigationViewItem { Header = "Remaining" };
         var selected = new NavigationViewItem { Header = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(selected);
+        group.Items.Add(selected);
         var navigation = new NavigationView();
         navigation.Items.Add(remaining);
         navigation.Items.Add(group);
@@ -297,7 +297,7 @@ public sealed class NavigationViewTests
     {
         var selected = new NavigationViewItem { Header = "Selected" };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(selected);
+        group.Items.Add(selected);
         var navigation = new NavigationView();
         navigation.Items.Add(group);
         navigation.SelectItem(selected);
@@ -315,12 +315,12 @@ public sealed class NavigationViewTests
     {
         var group = new NavigationViewGroup { Header = "Group" };
         var item = new NavigationViewItem { Header = "Item" };
-        group.AddItem(item);
+        group.Items.Add(item);
         var first = new NavigationView();
         first.Items.Add(group);
         first.SelectItem(item);
 
-        group.RemoveItem(item).ShouldBeTrue();
+        group.Items.Remove(item).ShouldBeTrue();
         var second = new NavigationView();
         second.Items.Add(item);
 
@@ -336,7 +336,7 @@ public sealed class NavigationViewTests
     {
         var mainSelected = new NavigationViewItem { Header = "Main" };
         var footerGroup = new NavigationViewGroup { Header = "Footer group" };
-        footerGroup.AddItem(new NavigationViewItem { Header = "Footer item" });
+        footerGroup.Items.Add(new NavigationViewItem { Header = "Footer item" });
         var navigation = new NavigationView();
         navigation.Items.Add(mainSelected);
         navigation.FooterItems.Add(footerGroup);
@@ -360,9 +360,9 @@ public sealed class NavigationViewTests
             TabStop = false
         };
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(item);
+        group.Items.Add(item);
 
-        group.RemoveItem(item).ShouldBeTrue();
+        group.Items.Remove(item).ShouldBeTrue();
 
         item.Padding.ShouldBe(new Thickness(5, 1, 5, 1));
         item.Focusable.ShouldBeFalse();
@@ -380,9 +380,9 @@ public sealed class NavigationViewTests
         var item = new NavigationViewItem { Header = "Item" };
         var authoredPadding = item.Padding;
         var group = new NavigationViewGroup { Header = "Group" };
-        group.AddItem(item);
+        group.Items.Add(item);
 
-        group.RemoveItem(item).ShouldBeTrue();
+        group.Items.Remove(item).ShouldBeTrue();
         var navigation = new NavigationView();
         navigation.Items.Add(item);
 
@@ -398,12 +398,47 @@ public sealed class NavigationViewTests
         var after = new NavigationViewItem { Header = "After" };
         var group = new NavigationViewGroup { Header = "Group" };
 
-        group.AddItem(before);
-        group.AddItem(after);
+        group.Items.Add(before);
+        group.Items.Add(after);
         after.Padding = new Thickness(1, 1, 1, 1);
 
         before.Padding.ShouldBe(new Thickness(3, 0, 0, 0));
         after.Padding.ShouldBe(new Thickness(1, 1, 1, 1));
+    }
+
+    /// <summary>Verifies a group's Items collection enumerates in insertion order and reports the
+    /// correct Count and indexer, matching NavigationViewEntryCollection's constrained collection
+    /// shape (see #72).</summary>
+    [Fact]
+    public void Items_WhenSubItemsAreAdded_EnumeratesInInsertionOrderWithCountAndIndexer()
+    {
+        var group = new NavigationViewGroup { Header = "Group" };
+        var first = new NavigationViewItem { Header = "First" };
+        var second = new NavigationViewItem { Header = "Second" };
+
+        group.Items.Add(first);
+        group.Items.Add(second);
+
+        group.Items.Count.ShouldBe(2);
+        group.Items[0].ShouldBeSameAs(first);
+        group.Items[1].ShouldBeSameAs(second);
+        group.Items.ShouldBe([first, second]);
+    }
+
+    /// <summary>Verifies a sub-item added to a second group throws and leaves the first group's
+    /// count unchanged (see #72).</summary>
+    [Fact]
+    public void Items_WhenSubItemIsAddedToASecondGroup_ThrowsAndLeavesFirstGroupCountUnchanged()
+    {
+        var item = new NavigationViewItem { Header = "Item" };
+        var first = new NavigationViewGroup { Header = "First" };
+        var second = new NavigationViewGroup { Header = "Second" };
+        first.Items.Add(item);
+
+        _ = Should.Throw<ArgumentException>(() => second.Items.Add(item));
+
+        first.Items.Count.ShouldBe(1);
+        second.Items.Count.ShouldBe(0);
     }
 
     /// <summary>Verifies ItemIndent defaults to 2 cells and rejects negative values.</summary>

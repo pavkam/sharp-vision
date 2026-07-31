@@ -2424,14 +2424,12 @@ namespace SharpVision.Navigation
         public string Header { get; set; }
         public bool IsExpanded { get; set; }
         public int ItemIndent { get; set; }
-        public void AddItem(SharpVision.Navigation.NavigationViewItem item) { }
+        public SharpVision.Navigation.NavigationViewItemCollection Items { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        public void ClearItems() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
-        public bool RemoveItem(SharpVision.Navigation.NavigationViewItem item) { }
         public void ResetGlyphs() { }
     }
     public sealed class NavigationViewItem : SharpVision.Controls.Pressable
@@ -2453,6 +2451,15 @@ namespace SharpVision.Navigation
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.Canvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetMarkers() { }
+    }
+    public sealed class NavigationViewItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Navigation.NavigationViewItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Navigation.NavigationViewItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Navigation.NavigationViewItem>, System.Collections.IEnumerable
+    {
+        public int Count { get; }
+        public SharpVision.Navigation.NavigationViewItem this[int index] { get; }
+        public void Add(SharpVision.Navigation.NavigationViewItem item) { }
+        public void Clear() { }
+        public System.Collections.Generic.IEnumerator<SharpVision.Navigation.NavigationViewItem> GetEnumerator() { }
+        public bool Remove(SharpVision.Navigation.NavigationViewItem item) { }
     }
     public sealed class NavigationViewSelectionChangedEventArgs : System.EventArgs
     {

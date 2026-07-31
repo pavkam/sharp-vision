@@ -25,11 +25,11 @@ internal sealed class NavigationViewPane: CompositeControl
 
         var grouped = new NavigationView { Header = "&PROJECT", Width = Length.Cells(24), Height = Length.Cells(16) };
         var core = new NavigationViewGroup { Header = "&Core" };
-        core.AddItem(new NavigationViewItem { Header = "Mo&dels" });
-        core.AddItem(new NavigationViewItem { Header = "&Services" });
+        core.Items.Add(new NavigationViewItem { Header = "Mo&dels" });
+        core.Items.Add(new NavigationViewItem { Header = "&Services" });
         var tests = new NavigationViewGroup { Header = "&Tests" };
-        tests.AddItem(new NavigationViewItem { Header = "&Unit" });
-        tests.AddItem(new NavigationViewItem { Header = "&Integration" });
+        tests.Items.Add(new NavigationViewItem { Header = "&Unit" });
+        tests.Items.Add(new NavigationViewItem { Header = "&Integration" });
         grouped.Items.Add(core);
         grouped.Items.Add(new NavigationViewSeparator());
         grouped.Items.Add(tests);
