@@ -124,6 +124,7 @@ public sealed class DateInput: Control
 
     /// <summary>Gets or sets the Gregorian culture used for date formatting and segment order.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
+    /// <exception cref="ArgumentException">The current <see cref="Format"/> cannot be rendered by a <see cref="DateOnly"/> under this culture.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CultureInfo Culture
@@ -139,6 +140,8 @@ public sealed class DateInput: Control
                 return;
             }
 
+            ValidateFormat(Format, value, nameof(value));
+
             _culture = value;
             _calendar.Culture = value.DateTimeFormat.Calendar is GregorianCalendar
                 ? value
@@ -148,8 +151,11 @@ public sealed class DateInput: Control
     }
 
     /// <summary>Gets or sets the date format string used for display.</summary>
+    /// <remarks>The pattern must be renderable by <see cref="DateOnly"/> under <see cref="Culture"/>: a single
+    /// standard specifier outside <see cref="DateOnly"/>'s own set, or any pattern containing a time specifier,
+    /// is rejected.</remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The value is empty.</exception>
+    /// <exception cref="ArgumentException">The value is empty, or cannot be rendered by a <see cref="DateOnly"/>.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public string Format
@@ -158,9 +164,28 @@ public sealed class DateInput: Control
         set
         {
             ArgumentException.ThrowIfNullOrEmpty(value);
+            ValidateFormat(value, _culture, nameof(value));
             _ = SetProperty(ref field, value, InvalidationImpact.Measure);
         }
     } = "d";
+
+    /// <summary>Validates that a format pattern is renderable by <see cref="DateOnly"/> under a culture,
+    /// so an invalid pattern is rejected at the property boundary instead of throwing later from the
+    /// layout pass, where it would escape as an unhandled exception (see #182).</summary>
+    private static void ValidateFormat(string format, CultureInfo culture, string paramName)
+    {
+        try
+        {
+            _ = DateOnly.MaxValue.ToString(format, culture);
+        }
+        catch (FormatException exception)
+        {
+            throw new ArgumentException(
+                $"The format \"{format}\" cannot be rendered by a DateOnly value.",
+                paramName,
+                exception);
+        }
+    }
 
     /// <summary>Gets or sets the earliest selectable date.</summary>
     /// <exception cref="ArgumentException">The value exceeds <see cref="MaximumDate"/>.</exception>
@@ -746,20 +771,11 @@ public sealed class DateInput: Control
             return BuildPlaceholderSegments();
         }
 
-        // A single-character Format is a standard specifier that DateTime.ToString requires
-        // to be one of a fixed set — anything else throws FormatException. A multi-character
-        // Format is always a custom composite pattern, valid regardless of its first
-        // character (including one starting with a literal), so only the single-character
-        // case needs the fallback below.
-        var expanded = Format.Length == 1 && !IsStandardDateTimeSpecifier(Format[0])
-            ? date.ToString("d", _culture)
-            : date.ToString(Format, _culture);
-
-        return ParseSegments(expanded);
+        // Format is validated at the property boundary (see ValidateFormat), so it is always
+        // renderable here regardless of whether it is a single standard specifier or a custom
+        // composite pattern.
+        return ParseSegments(date.ToString(Format, _culture));
     }
-
-    private static bool IsStandardDateTimeSpecifier(char specifier) =>
-        "dDMmOoRrYy".Contains(specifier);
 
     private static DisplaySegment[] ParseSegments(string formatted)
     {

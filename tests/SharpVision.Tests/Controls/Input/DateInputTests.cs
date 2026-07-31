@@ -57,6 +57,87 @@ public sealed class DateInputTests
         control.Value.ShouldBe(new DateOnly(2026, 7, 15));
     }
 
+    /// <summary>Verifies a single-character Format outside DateOnly's own specifier set is rejected
+    /// by the setter instead of arming a FormatException that would later escape the layout pass
+    /// (see #182).</summary>
+    [Theory]
+    [InlineData('t')]
+    [InlineData('T')]
+    [InlineData('f')]
+    [InlineData('F')]
+    [InlineData('g')]
+    [InlineData('G')]
+    [InlineData('U')]
+    [InlineData('u')]
+    public void Format_WhenSingleSpecifierIsNotSupportedByDateOnly_ThrowsArgumentException(char specifier)
+    {
+        // Arrange
+        using var control = new DateInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Format = specifier.ToString());
+        control.Format.ShouldBe("d");
+    }
+
+    /// <summary>Verifies a composite Format containing a time specifier is rejected, even though it
+    /// is longer than one character (see #182).</summary>
+    [Theory]
+    [InlineData("yyyy-MM-dd HH:mm")]
+    [InlineData("hh:mm tt")]
+    [InlineData("HH:mm")]
+    public void Format_WhenCompositePatternContainsTimeSpecifier_ThrowsArgumentException(string format)
+    {
+        // Arrange
+        using var control = new DateInput();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentException>(() => control.Format = format);
+        control.Format.ShouldBe("d");
+    }
+
+    /// <summary>Verifies patterns DateOnly can actually render are accepted and lay out and render
+    /// without throwing (see #182).</summary>
+    [Theory]
+    [InlineData("(dd/MM/yyyy)")]
+    [InlineData("dd MMM yyyy")]
+    [InlineData("d")]
+    [InlineData("D")]
+    [InlineData("M")]
+    [InlineData("Y")]
+    public void Format_WhenPatternIsRenderableByDateOnly_LaysOutAndRenders(string format)
+    {
+        // Arrange
+        using var control = new DateInput
+        {
+            Value = new DateOnly(2026, 7, 19),
+            Culture = CultureInfo.InvariantCulture,
+            Format = format
+        };
+        new LayoutEngine().Layout(control, new Size(30, 3));
+        using Frame frame = new(new Size(30, 3));
+
+        // Act and assert
+        Should.NotThrow(() => control.Render(frame.Canvas));
+    }
+
+    /// <summary>Verifies setting an invalid Format while Value is still null does not arm a later
+    /// crash: the setter rejects it immediately regardless of the current Value, so there is
+    /// nothing left to detonate when Value or Culture changes afterward (see #182).</summary>
+    [Fact]
+    public void Format_WhenSetWhileValueIsNullThenValueIsAssigned_NeverThrowsLater()
+    {
+        // Arrange
+        using var control = new DateInput { AllowNull = true, Value = null };
+
+        // Act and assert: the invalid format is rejected here, not deferred.
+        _ = Should.Throw<ArgumentException>(() => control.Format = "HH:mm");
+
+        // A subsequent Value assignment and measure-invalidating change both stay safe.
+        _ = Should.NotThrow(() => control.Value = new DateOnly(2026, 7, 19));
+        Should.NotThrow(() => new LayoutEngine().Layout(control, new Size(20, 3)));
+        _ = Should.NotThrow(() => control.Culture = new CultureInfo("de-DE"));
+    }
+
     /// <summary>Verifies changing culture produces different rendered output.</summary>
     [Fact]
     public void Properties_WhenCultureChanges_InvalidatesRender()
