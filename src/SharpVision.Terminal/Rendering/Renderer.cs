@@ -18,8 +18,8 @@ using Graphics.Backends;
 [PublicAPI]
 public sealed class Renderer: IDisposable
 {
-    private static readonly byte[] _synchronizedBegin = "\u001b[?2026h"u8.ToArray();
-    private static readonly byte[] _synchronizedEnd = "\u001b[?2026l"u8.ToArray();
+    private static readonly byte[] _synchronizedBegin = EncodeSynchronizedOutput(enabled: true);
+    private static readonly byte[] _synchronizedEnd = EncodeSynchronizedOutput(enabled: false);
 
     private readonly Buffer _buffer;
     private readonly IGraphicsBackend? _backend;
@@ -655,4 +655,11 @@ public sealed class Renderer: IDisposable
 
     private void ThrowIfDisposed() =>
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+
+    private static byte[] EncodeSynchronizedOutput(bool enabled)
+    {
+        var scratch = new ArrayBufferWriter<byte>();
+        Modes.SynchronizedOutput(new Writer(scratch), enabled);
+        return scratch.WrittenSpan.ToArray();
+    }
 }
