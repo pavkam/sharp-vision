@@ -69,8 +69,8 @@ public sealed class TextInput: Control
             current,
             previousParentAmbientFace,
             currentParentAmbientFace);
-        var previousStyle = ActualScrollBarStyle;
-        var currentStyle = ActualScrollBarStyle;
+        var previousStyle = ScrollBar.ResolveStyle(ScrollBarStyle, previous);
+        var currentStyle = ScrollBar.ResolveStyle(ScrollBarStyle, current);
         var styleImpact = previousStyle.Chrome != currentStyle.Chrome
             ? InvalidationImpact.Measure
             : previousStyle == currentStyle
@@ -81,7 +81,11 @@ public sealed class TextInput: Control
     }
 
     /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) => null;
+    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
+        ScrollBarStyle is null &&
+        ScrollBar.ResolveStyle(ScrollBarStyle, previous) != ScrollBar.ResolveStyle(ScrollBarStyle, current)
+            ? nameof(ActualScrollBarStyle)
+            : null;
 
     /// <inheritdoc/>
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>

@@ -113,7 +113,11 @@ public sealed class ControlCompositeAppearanceTests
 
         root.Pending.ShouldBe(Invalidation.Render);
         child.Pending.ShouldBe(Invalidation.Render);
-        rootNotifications.ShouldBe([nameof(Control.Theme), nameof(Control.ActualFace)]);
+        rootNotifications.ShouldBe([
+            nameof(Control.Theme),
+            nameof(Container.ActualScrollBarStyle),
+            nameof(Control.ActualFace)
+        ]);
         childNotifications.ShouldBe([nameof(Control.ActualFace)]);
         childNotifications.ShouldNotContain(nameof(Control.Theme));
         childNotifications.ShouldNotContain(nameof(StyledProbe.ActualStyle));

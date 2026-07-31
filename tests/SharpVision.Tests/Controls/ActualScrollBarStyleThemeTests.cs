@@ -65,4 +65,105 @@ public sealed class ActualScrollBarStyleThemeTests
 
         stack.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
     }
+
+    /// <summary>Verifies a Theme swap with a differing scrollbar presentation invalidates a
+    /// container's generated bars and publishes the host's theme-resolved style.</summary>
+    [Fact]
+    public void PropagateTheme_WhenScrollBarPresentationDiffers_InvalidatesContainerBarsAndPublishes()
+    {
+        var previousTheme = ThemeWithControl(Color.Rgb(1, 2, 3));
+        var currentTheme = ThemeWithControl(Color.Rgb(4, 5, 6));
+        var container = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            ShowScrollBars = ShowScrollBars.Always
+        };
+        container.Children.Add(new ProbeControl(new Size(20, 10)));
+        container.PropagateTheme(previousTheme);
+        new Engine().Layout(container, new Size(8, 4));
+        var bars = OwnedTree.FindAll<ScrollBar>(container);
+        bars.Count.ShouldBe(2);
+        var notifications = new List<string?>();
+        container.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        container.Clear(Invalidation.All);
+        bars.ForEach(bar => bar.Clear(Invalidation.All));
+
+        container.PropagateTheme(currentTheme);
+
+        bars.ForEach(bar => bar.Pending.ShouldBe(Invalidation.Render));
+        notifications.ShouldContain(nameof(Container.ActualScrollBarStyle));
+        container.ActualScrollBarStyle.ShouldBe(ScrollBar.ResolveStyle(null, currentTheme));
+        (container.Pending & Invalidation.Measure).ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies a Theme swap with a differing scrollbar presentation invalidates the
+    /// editor bars and publishes TextInput's theme-resolved style.</summary>
+    [Fact]
+    public void PropagateTheme_WhenScrollBarPresentationDiffers_InvalidatesEditorBarsAndPublishes()
+    {
+        var previousTheme = ThemeWithControl(Color.Rgb(1, 2, 3));
+        var currentTheme = ThemeWithControl(Color.Rgb(4, 5, 6));
+        var control = new TextInput();
+        control.PropagateTheme(previousTheme);
+        var bars = OwnedTree.FindAll<ScrollBar>(control);
+        bars.Count.ShouldBe(2);
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.Clear(Invalidation.All);
+        bars.ForEach(bar => bar.Clear(Invalidation.All));
+
+        control.PropagateTheme(currentTheme);
+
+        bars.ForEach(bar => bar.Pending.ShouldBe(Invalidation.Render));
+        notifications.ShouldContain(nameof(TextInput.ActualScrollBarStyle));
+        control.ActualScrollBarStyle.ShouldBe(ScrollBar.ResolveStyle(null, currentTheme));
+        (control.Pending & Invalidation.Measure).ShouldBe(Invalidation.None);
+    }
+
+    /// <summary>Verifies a Theme swap never publishes ActualScrollBarStyle while a local complete
+    /// style owns the resolved value.</summary>
+    [Fact]
+    public void PropagateTheme_WhenLocalStyleIsAssigned_DoesNotPublishActualScrollBarStyle()
+    {
+        var previousTheme = ThemeWithControl(Color.Rgb(1, 2, 3));
+        var currentTheme = ThemeWithControl(Color.Rgb(4, 5, 6));
+        var container = new Stack { ScrollBarStyle = ScrollBarStyle.ThinBlock };
+        var editor = new TextInput { ScrollBarStyle = ScrollBarStyle.ThinBlock };
+        container.PropagateTheme(previousTheme);
+        editor.PropagateTheme(previousTheme);
+        var notifications = new List<string?>();
+        container.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        editor.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+
+        container.PropagateTheme(currentTheme);
+        editor.PropagateTheme(currentTheme);
+
+        notifications.ShouldNotContain(nameof(Container.ActualScrollBarStyle));
+        container.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
+        editor.ActualScrollBarStyle.ShouldBe(ScrollBarStyle.ThinBlock);
+    }
+
+    private static Theme ThemeWithControl(Color foreground)
+    {
+        var theme = new Theme();
+        var appearance = Theme.CreateDefaultAppearance(ThemeRole.Control);
+        theme.SetProfiles(
+            new ThemeProfile(
+                new ThemeAppearance(
+                    new Face(
+                        foreground,
+                        appearance.Face.Background,
+                        appearance.Face.Attributes,
+                        appearance.Face.Underline,
+                        appearance.Face.UnderlineColor),
+                    appearance.Border,
+                    appearance.Shadow)),
+            theme.Input,
+            theme.Container,
+            theme.Window,
+            theme.Popup);
+        theme.Freeze();
+        return theme;
+    }
 }

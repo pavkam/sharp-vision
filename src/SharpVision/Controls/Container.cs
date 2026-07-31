@@ -398,8 +398,8 @@ public abstract class Container: Control
             current,
             previousParentAmbientFace,
             currentParentAmbientFace);
-        var previousStyle = ActualScrollBarStyle;
-        var currentStyle = ActualScrollBarStyle;
+        var previousStyle = ScrollBar.ResolveStyle(ScrollBarStyle, previous);
+        var currentStyle = ScrollBar.ResolveStyle(ScrollBarStyle, current);
         var styleImpact = previousStyle.Chrome != currentStyle.Chrome
             ? InvalidationImpact.Measure
             : previousStyle == currentStyle
@@ -410,7 +410,11 @@ public abstract class Container: Control
     }
 
     /// <inheritdoc/>
-    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) => null;
+    protected override string? GetThemeResolvedStylePropertyName(Theme? previous, Theme? current) =>
+        ScrollBarStyle is null &&
+        ScrollBar.ResolveStyle(ScrollBarStyle, previous) != ScrollBar.ResolveStyle(ScrollBarStyle, current)
+            ? nameof(ActualScrollBarStyle)
+            : null;
 
     /// <summary>Gets or sets the non-negative arrow and wheel change in cells.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
