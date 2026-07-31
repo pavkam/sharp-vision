@@ -60,6 +60,18 @@ public sealed class Decoder: IDisposable
         _mouseDecoder = new MouseDecoder(_sink, _cellMetricsResolver, _options.PixelMouse, Report);
         _kittyKeyDecoder = new Kitty.KittyKeyDecoder(_sink, Report);
         _utf8 = new Utf8TextAccumulator(rune => EmitText(rune));
+        _csiHandlers =
+        [
+            TryHandleXtermMetricsCsi,
+            TryHandleXtermCsi,
+            TryHandleKittyCsi,
+            TryHandleFocusCsi,
+            TryHandlePasteBeginCsi,
+            TryHandleMouseCsi,
+            TryHandleKeyMapCsi,
+            TryHandleLegacyCsiKey,
+            TryHandleAnsiGrammarCsi
+        ];
     }
 
     /// <summary>Consumes one borrowed transport fragment synchronously.</summary>
@@ -517,6 +529,23 @@ public sealed class Decoder: IDisposable
         EmitText(new Rune(final), Modifiers.Alt);
     }
 
+    /// <summary>Attempts one candidate handler for a parsed CSI sequence.</summary>
+    /// <param name="parameters">The borrowed CSI parameter bytes.</param>
+    /// <param name="intermediates">The borrowed CSI intermediate bytes.</param>
+    /// <param name="final">The CSI final byte.</param>
+    /// <returns>True when this handler claimed and fully processed the sequence.</returns>
+    private delegate bool CsiHandler(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final);
+
+    /// <summary>
+    /// Handlers tried in order for every CSI sequence. Precedence is data, not statement order:
+    /// a CSI ending in <c>u</c> is inspected by both <see cref="TryHandleXtermCsi"/> (the Kitty
+    /// enhancement-flags query reply, <c>CSI ? &lt;flags&gt; u</c>) and
+    /// <see cref="TryHandleKittyCsi"/> (a Kitty keyboard event report, <c>CSI &lt;code&gt;u</c>
+    /// with no private marker) — the former runs first and only claims its own marker/shape, so
+    /// the latter still sees every report the former does not recognize (see #97 step 6).
+    /// </summary>
+    private readonly CsiHandler[] _csiHandlers;
+
     private void HandleCsi(
         ReadOnlySpan<byte> parameters,
         ReadOnlySpan<byte> intermediates,
@@ -526,109 +555,141 @@ public sealed class Decoder: IDisposable
         _mouseDecoder.EndIfPending();
         EndSs3IfPending();
 
-        if (XtermResponses.TryMetricsCsi(parameters, intermediates, final, out var metrics))
+        foreach (var handler in _csiHandlers)
         {
-            if (_protocolSink is { } protocolSink)
-            {
-                protocolSink.Response(in metrics);
-                _cellMetricsResolver.Apply(in metrics);
-            }
-            else
-            {
-                Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
-            }
-
-            return;
-        }
-
-        if (XtermResponses.TryCsi(parameters, intermediates, final, out var response))
-        {
-            if (_protocolSink is { } protocolSink)
-            {
-                protocolSink.Response(in response);
-            }
-            else
-            {
-                Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
-            }
-
-            return;
-        }
-
-        if (intermediates.IsEmpty && final == (byte) 'u')
-        {
-            _kittyKeyDecoder.Handle(parameters);
-            return;
-        }
-
-        if (intermediates.IsEmpty && parameters.IsEmpty && final is (byte) 'I' or (byte) 'O')
-        {
-            var focus = new Focus(final == (byte) 'I');
-            _sink.Input(in focus);
-            return;
-        }
-
-        if (intermediates.IsEmpty && final == (byte) '~' &&
-            TryReadSingle(parameters, out var native) && native == 200)
-        {
-            BeginPaste();
-            return;
-        }
-
-        if (intermediates.IsEmpty && final is (byte) 'M' or (byte) 'm' &&
-            _mouseDecoder.TryHandleMouse(parameters, final == (byte) 'm'))
-        {
-            return;
-        }
-
-        if (_options.KeyMap.TryGet(
-                KeySignatureKind.Csi,
-                parameters,
-                intermediates,
-                final,
-                out var binding))
-        {
-            EmitBinding(in binding);
-            return;
-        }
-
-        if (intermediates.IsEmpty && TryHandleCsiKey(parameters, final))
-        {
-            return;
-        }
-
-        if (!_options.UseAnsiKeyGrammar)
-        {
-            Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
-            return;
-        }
-
-        if (!intermediates.IsEmpty)
-        {
-            Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
-            return;
-        }
-
-        if (final == (byte) '~')
-        {
-            Span<int> values = stackalloc int[3];
-
-            if (!TryReadParameters(parameters, values, out var count))
-            {
-                Report(DiagnosticCode.Malformed, SequenceKind.Csi);
-                return;
-            }
-
-            if (count == 3 && values[0] == 27 && TryHandleModifiedOtherKey(values[1], values[2]))
+            if (handler(parameters, intermediates, final))
             {
                 return;
             }
+        }
+    }
 
-            HandleTilde(values, count);
-            return;
+    private bool TryHandleXtermMetricsCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!XtermResponses.TryMetricsCsi(parameters, intermediates, final, out var metrics))
+        {
+            return false;
         }
 
-        Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
+        if (_protocolSink is { } protocolSink)
+        {
+            protocolSink.Response(in metrics);
+            _cellMetricsResolver.Apply(in metrics);
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
+        }
+
+        return true;
+    }
+
+    private bool TryHandleXtermCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!XtermResponses.TryCsi(parameters, intermediates, final, out var response))
+        {
+            return false;
+        }
+
+        if (_protocolSink is { } protocolSink)
+        {
+            protocolSink.Response(in response);
+        }
+        else
+        {
+            Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
+        }
+
+        return true;
+    }
+
+    private bool TryHandleKittyCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!intermediates.IsEmpty || final != (byte) 'u')
+        {
+            return false;
+        }
+
+        _kittyKeyDecoder.Handle(parameters);
+        return true;
+    }
+
+    private bool TryHandleFocusCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!intermediates.IsEmpty || !parameters.IsEmpty || final is not ((byte) 'I' or (byte) 'O'))
+        {
+            return false;
+        }
+
+        var focus = new Focus(final == (byte) 'I');
+        _sink.Input(in focus);
+        return true;
+    }
+
+    private bool TryHandlePasteBeginCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!intermediates.IsEmpty ||
+            final != (byte) '~' ||
+            !TryReadSingle(parameters, out var native) ||
+            native != 200)
+        {
+            return false;
+        }
+
+        BeginPaste();
+        return true;
+    }
+
+    private bool TryHandleMouseCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final) =>
+        intermediates.IsEmpty &&
+        final is (byte) 'M' or (byte) 'm' &&
+        _mouseDecoder.TryHandleMouse(parameters, final == (byte) 'm');
+
+    private bool TryHandleKeyMapCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!_options.KeyMap.TryGet(KeySignatureKind.Csi, parameters, intermediates, final, out var binding))
+        {
+            return false;
+        }
+
+        EmitBinding(in binding);
+        return true;
+    }
+
+    private bool TryHandleLegacyCsiKey(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final) =>
+        intermediates.IsEmpty && TryHandleCsiKey(parameters, final);
+
+    /// <summary>The terminal handler: always claims the sequence, either via the ANSI grammar
+    /// fallback or by reporting it unsupported/malformed.</summary>
+    private bool TryHandleAnsiGrammarCsi(ReadOnlySpan<byte> parameters, ReadOnlySpan<byte> intermediates, byte final)
+    {
+        if (!_options.UseAnsiKeyGrammar || !intermediates.IsEmpty)
+        {
+            Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
+            return true;
+        }
+
+        if (final != (byte) '~')
+        {
+            Report(DiagnosticCode.Unsupported, SequenceKind.Csi);
+            return true;
+        }
+
+        Span<int> values = stackalloc int[3];
+
+        if (!TryReadParameters(parameters, values, out var count))
+        {
+            Report(DiagnosticCode.Malformed, SequenceKind.Csi);
+            return true;
+        }
+
+        if (count == 3 && values[0] == 27 && TryHandleModifiedOtherKey(values[1], values[2]))
+        {
+            return true;
+        }
+
+        HandleTilde(values, count);
+        return true;
     }
 
     /// <summary>Maps a CSI or SS3 cursor/function-key final byte shared by both grammars.</summary>
