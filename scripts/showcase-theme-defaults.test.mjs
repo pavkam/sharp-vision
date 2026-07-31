@@ -16,9 +16,6 @@ const conceptAssignments = new Map([
     ["Panes/ChaseIndicatorPane.cs|HeadColor =", 2],
     ["Panes/ChaseIndicatorPane.cs|TrailColor =", 1],
     ["Panes/ChaseIndicatorPane.cs|TrackColor =", 1],
-    ["Panes/SliderPane.cs|FillColor =", 2],
-    ["Panes/SliderPane.cs|TrackColor =", 2],
-    ["Panes/SliderPane.cs|ThumbColor =", 2],
     ["Panes/TabControlPane.cs|DividerColor =", 2],
     ["Panes/TabControlPane.cs|SelectionIndicatorColor =", 2],
 ]);
