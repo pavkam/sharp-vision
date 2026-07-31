@@ -56,10 +56,11 @@ truncation, and disposal, and copies normalized UTF-8 into the delivered
 `Paste`. Its `ReadOnlyMemory<byte>` therefore remains owned and stable after
 later decoder calls; no pooled array or transport memory escapes.
 
-`Osc52.Decode` and `Kitty.Clipboard.Packet.Parse` copy successfully decoded payloads into
-owned arrays. A completed `Kitty.Clipboard.Transaction` transfers its accumulated MIME
-buffers into `Kitty.Clipboard.Result`; the result owner must dispose it, which clears every
-buffer. Temporary Base64 and transaction buffers are returned with clearing.
+`Osc52.Decode` and `Kitty.Clipboard.Packet.Parse` copy successfully decoded
+payloads into owned arrays. A completed `Kitty.Clipboard.Transaction` transfers
+its accumulated MIME buffers into `Kitty.Clipboard.Result`; the result owner
+must dispose it, which clears every buffer. Temporary Base64 and transaction
+buffers are returned with clearing.
 
 `DiscoveryContext` owns an immutable baseline plus copied environment, query,
 and override references for one semantic discovery pass. Source adapters retain
@@ -101,11 +102,11 @@ completes; `ITransport.WriteAsync` borrows renderer memory until its returned
 operation completes and must either transfer the complete memory or throw.
 Renderer disposal never disposes a borrowed transport.
 
-`Terminal.Graphics.ImageSource` copies RGBA or structurally validated PNG bytes into
-private immutable storage. Public callers recover bytes only through a complete
-copy into caller-owned memory. Synchronous terminal encoders may borrow the
-internal source span only until they return; a renderer must copy encoded output
-into its owned finite batch before awaiting transport I/O.
+`Terminal.Graphics.ImageSource` copies RGBA or structurally validated PNG bytes
+into private immutable storage. Public callers recover bytes only through a
+complete copy into caller-owned memory. Synchronous terminal encoders may borrow
+the internal source span only until they return; a renderer must copy encoded
+output into its owned finite batch before awaiting transport I/O.
 
 A rendering frame retains immutable images through a finite cleared pooled
 placement array. Nonempty placement values contain image identity and positive

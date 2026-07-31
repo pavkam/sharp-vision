@@ -2,9 +2,10 @@
 
 ## ImageSource ownership contract
 
-`SharpVision.Terminal.Graphics.ImageSource` is an immutable, finite, transport-neutral
-image source. Construction copies caller bytes before returning. The value never
-exposes its backing array, and later caller mutation cannot change rendering.
+`SharpVision.Terminal.Graphics.ImageSource` is an immutable, finite,
+transport-neutral image source. Construction copies caller bytes before
+returning. The value never exposes its backing array, and later caller mutation
+cannot change rendering.
 
 The first source representations are:
 
@@ -34,9 +35,9 @@ Remote image and placement identifiers remain renderer-owned.
 
 ## Copy boundary
 
-`ImageSource.CopyTo` validates the complete caller destination before copying. A short
-destination is unchanged. Internal synchronous encoders may borrow the immutable
-source bytes only for the duration of the call; no span may cross an
+`ImageSource.CopyTo` validates the complete caller destination before copying. A
+short destination is unchanged. Internal synchronous encoders may borrow the
+immutable source bytes only for the duration of the call; no span may cross an
 asynchronous transport or dispatcher boundary.
 
 ## Supported backends

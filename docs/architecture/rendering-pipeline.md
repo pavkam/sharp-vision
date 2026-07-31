@@ -36,19 +36,19 @@ cost, then mutates in a second pass. A failed capacity check therefore leaves
 the frame unchanged.
 
 `Frame` also owns a finite pooled array of semantic image placements. Each
-nonempty placement retains one immutable `Graphics.ImageSource`, its positive pixel
-source, its clipped positive cell destination, and a contain, cover, or stretch
-mode. `default(Placement)` and `Placement.Empty` are the same valid sentinel:
-they have no image, identity zero, empty rectangles, and contain mode. Empty
-sentinels are never active frame entries; rented unused slots therefore cannot
-be mistaken for graphics. Insertion order is stable paint and z-order. Clone and
-copy operations prepare independent placement arrays before output, while clear
-and disposal release all retained image references before returning cleared
-pooled storage. The default limit is 4,096 placements per frame.
+nonempty placement retains one immutable `Graphics.ImageSource`, its positive
+pixel source, its clipped positive cell destination, and a contain, cover, or
+stretch mode. `default(Placement)` and `Placement.Empty` are the same valid
+sentinel: they have no image, identity zero, empty rectangles, and contain mode.
+Empty sentinels are never active frame entries; rented unused slots therefore
+cannot be mistaken for graphics. Insertion order is stable paint and z-order.
+Clone and copy operations prepare independent placement arrays before output,
+while clear and disposal release all retained image references before returning
+cleared pooled storage. The default limit is 4,096 placements per frame.
 
-`Canvas.DrawImage(ImageSource, Rect, PlacementMode)` is the only control-facing image
-primitive. It clips the requested destination through both the canvas and frame,
-records the image's complete pixel source, and emits no bytes. An empty
+`Canvas.DrawImage(ImageSource, Rect, PlacementMode)` is the only control-facing
+image primitive. It clips the requested destination through both the canvas and
+frame, records the image's complete pixel source, and emits no bytes. An empty
 intersection is a no-op. The canvas never selects Kitty, sixel, iTerm2, or any
 other terminal protocol.
 
