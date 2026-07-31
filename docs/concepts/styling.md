@@ -113,10 +113,12 @@ changes clear the affected cache entries. A theme replacement compares only the
 currently rendered state; inactive state changes are resolved and laid out when
 that state next becomes active.
 
-Global Theme profiles define high-level role chrome. Complete typed Theme styles
-also own control-specific padding, glyph families, part colors, and appearance.
-Ordinary controls receive these automatically; application code needs no Theme
-plumbing. Local complete Style values remain authoritative.
+Global Theme profiles define high-level role chrome. Control-specific padding,
+glyph families, and part colors live in each control's complete typed style
+value, whose structural members are code-owned defaults completed with the
+active semantic profile. Ordinary controls follow profile changes automatically;
+application code needs no Theme plumbing. Local complete Style values remain
+authoritative.
 
 The [Control contract](../controls/control.md#intrinsic-appearance) defines the
 public properties, layout effects, and rendering order. The

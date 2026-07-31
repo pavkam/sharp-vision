@@ -106,23 +106,13 @@ a global semantic value. Border glyph styles and shadow geometry are allowed
 because they define the high-level role's chrome, not a specific control type.
 Individual controls may still set complete local styles that take precedence.
 
-Six further properties complete the library's typed control defaults:
-
-| JSON property    | Complete Theme value  | Partial members                                    |
-| ---------------- | --------------------- | -------------------------------------------------- |
-| `button`         | `ButtonStyle`         | Padding and appearance.                            |
-| `scrollBar`      | `ScrollBarStyle`      | Chrome, fill, glyphs, part colors, and appearance. |
-| `checkBox`       | `CheckBoxStyle`       | Mark style, glyphs, and appearance.                |
-| `radioButton`    | `RadioButtonStyle`    | Mark style, glyphs, and appearance.                |
-| `spinner`        | `SpinnerStyle`        | Frame sequence and appearance.                     |
-| `chaseIndicator` | `ChaseIndicatorStyle` | Active/inactive glyphs and appearance.             |
-
-Each JSON object is partial. The loader overlays supplied members on the
-library's structural defaults and the completed semantic profile, validates the
-result, and stores a complete immutable value on `Theme`. Omitted appearance
-objects still inherit the loaded Theme profile; they do not fall back to static
-code colors. Controls with `Style == null` receive the corresponding Theme value
-automatically.
+Control-specific structure — paddings, glyph families, frame sequences, and part
+colors — is code-owned and is not part of the theme document. Each styled
+control completes its typed `Style` value from library structural defaults plus
+the appropriate semantic profile above, so a theme influences those controls
+only through its five profiles. A complete local `Style` assignment overrides
+both. The five profile properties are the only members `styles` accepts;
+control-named sections are rejected as unknown fields.
 
 When several state flags are active, contributions apply in this order:
 
@@ -218,18 +208,6 @@ inheritance, and resolved values.
         "border": { "foreground": "activeBorder" }
       }
     },
-    "button": {
-      "padding": { "left": 1, "top": 0, "right": 1, "bottom": 0 },
-      "appearance": {
-        "normal": { "border": { "sides": "all", "glyphStyle": "heavy" } },
-        "pointerOver": { "face": { "background": "activeControl" } }
-      }
-    },
-    "scrollBar": { "chrome": "full", "fill": "block" },
-    "checkBox": { "markStyle": "brackets" },
-    "radioButton": { "markStyle": "parentheses" },
-    "spinner": { "frames": ["|", "/", "-", "\\"] },
-    "chaseIndicator": { "active": "*", "inactive": "." },
     "input": {
       "normal": {
         "face": { "background": "surface" },
