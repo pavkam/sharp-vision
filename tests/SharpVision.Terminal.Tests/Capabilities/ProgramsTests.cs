@@ -5,6 +5,25 @@ namespace SharpVision.Terminal.Tests.Capabilities;
 /// <summary>Verifies executable terminal-program contract classification.</summary>
 public sealed class ProgramsTests
 {
+    /// <summary>Verifies IsFullScreenReady's shared constants name exactly the programs required
+    /// to satisfy it -- registering a program under a different name (a stand-in for the
+    /// consumption-site retyping #93 describes) must not satisfy readiness.</summary>
+    [Fact]
+    public void IsFullScreenReady_WhenRequiredProgramsUseSharedConstants_IsSatisfiedByExactNames()
+    {
+        var programs = new Programs(new Dictionary<string, Program>
+        {
+            [CapabilityNames.Cup] = new Program("[%i%p1%d;%p2%dH"u8),
+            [CapabilityNames.Sgr0] = new Program("[0m"u8),
+            [CapabilityNames.El] = new Program("[K"u8),
+            [CapabilityNames.Ed] = new Program("[J"u8)
+        });
+
+        programs.IsFullScreenReady.ShouldBeTrue();
+        programs.Has(CapabilityNames.Cup).ShouldBeTrue();
+        programs.Has("cup").ShouldBeTrue();
+    }
+
     /// <summary>Verifies required programs need exact arity and representative output.</summary>
     /// <param name="name">The required program under test.</param>
     /// <param name="source">The compiled program source.</param>
@@ -66,6 +85,23 @@ public sealed class ProgramsTests
         written.ShouldBeFalse();
         retained.ShouldBeTrue();
         destination.WrittenSpan.ToArray().ShouldBe("0"u8.ToArray());
+    }
+
+    /// <summary>Verifies the shared constants match their documented terminfo capability names.</summary>
+    [Fact]
+    public void CapabilityNames_WhenRead_MatchDocumentedNames()
+    {
+        CapabilityNames.Cup.ShouldBe("cup");
+        CapabilityNames.Sgr0.ShouldBe("sgr0");
+        CapabilityNames.El.ShouldBe("el");
+        CapabilityNames.Ed.ShouldBe("ed");
+        CapabilityNames.Clear.ShouldBe("clear");
+        CapabilityNames.Civis.ShouldBe("civis");
+        CapabilityNames.Cnorm.ShouldBe("cnorm");
+        CapabilityNames.Smcup.ShouldBe("smcup");
+        CapabilityNames.Rmcup.ShouldBe("rmcup");
+        CapabilityNames.Smkx.ShouldBe("smkx");
+        CapabilityNames.Rmkx.ShouldBe("rmkx");
     }
 
     private static Dictionary<string, Program> CorePrograms() => new()

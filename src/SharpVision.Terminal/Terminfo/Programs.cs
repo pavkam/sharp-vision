@@ -46,9 +46,9 @@ internal sealed class Programs
     /// satisfy their exact arity and non-empty expansion contracts.
     /// </summary>
     public bool IsFullScreenReady =>
-        Has("cup") &&
-        Has("sgr0") &&
-        (Has("clear") || (Has("el") && Has("ed")));
+        Has(CapabilityNames.Cup) &&
+        Has(CapabilityNames.Sgr0) &&
+        (Has(CapabilityNames.Clear) || (Has(CapabilityNames.El) && Has(CapabilityNames.Ed)));
 
     /// <summary>Gets the highest color tier backed by complete directional programs.</summary>
     /// <param name="declared">The semantic fidelity declared by the active profile.</param>

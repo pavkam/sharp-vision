@@ -362,19 +362,19 @@ public sealed class Session: IAsyncDisposable
         Debug.Assert(_leases.Count == 0, "A new session run starts without retained terminal-mode leases.");
 
         if (_options.AlternateScreen &&
-            TryCreateDescriptionLease("smcup", "rmcup", out var alternateScreen))
+            TryCreateDescriptionLease(CapabilityNames.Smcup, CapabilityNames.Rmcup, out var alternateScreen))
         {
             await EnableAsync(alternateScreen, cancellationToken).ConfigureAwait(false);
         }
 
         if (_options.HideCursor &&
-            TryCreateDescriptionLease("civis", "cnorm", out var cursor))
+            TryCreateDescriptionLease(CapabilityNames.Civis, CapabilityNames.Cnorm, out var cursor))
         {
             await EnableAsync(cursor, cancellationToken).ConfigureAwait(false);
         }
 
         if (_context.Profile.KeyMap.RequiresApplicationMode &&
-            TryCreateDescriptionLease("smkx", "rmkx", out var keypad))
+            TryCreateDescriptionLease(CapabilityNames.Smkx, CapabilityNames.Rmkx, out var keypad))
         {
             await EnableAsync(keypad, cancellationToken).ConfigureAwait(false);
         }
