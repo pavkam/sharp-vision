@@ -299,6 +299,36 @@ public sealed class TextTests
         frame.GetCell(default).Style.Foreground.ShouldBe(ReferenceColors.Get(1));
     }
 
+    /// <summary>Verifies adjacent multi-character style runs each render their own exact style and
+    /// content, proving RenderLine's per-run batching (see #177) draws each run's characters at
+    /// the correct advancing position instead of only the first character of a batched run.</summary>
+    [Fact]
+    public void Render_WhenLineHasMultipleAdjacentStyledRuns_RendersEachRunAtItsCorrectPosition()
+    {
+        ControlText text = new("<red>abc</red><blue>de</blue>fg");
+        new LayoutEngine().Layout(text, new Size(20, 1));
+        using Frame frame = new(new Size(20, 1));
+
+        text.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("a");
+        FrameOracle.Get(frame, new Point(1, 0)).ShouldBe("b");
+        FrameOracle.Get(frame, new Point(2, 0)).ShouldBe("c");
+        FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("d");
+        FrameOracle.Get(frame, new Point(4, 0)).ShouldBe("e");
+        FrameOracle.Get(frame, new Point(5, 0)).ShouldBe("f");
+        FrameOracle.Get(frame, new Point(6, 0)).ShouldBe("g");
+        var redForeground = frame.GetCell(new Point(0, 0)).Style.Foreground;
+        var blueForeground = frame.GetCell(new Point(3, 0)).Style.Foreground;
+        var plainForeground = frame.GetCell(new Point(6, 0)).Style.Foreground;
+        frame.GetCell(new Point(1, 0)).Style.Foreground.ShouldBe(redForeground);
+        frame.GetCell(new Point(2, 0)).Style.Foreground.ShouldBe(redForeground);
+        frame.GetCell(new Point(4, 0)).Style.Foreground.ShouldBe(blueForeground);
+        blueForeground.ShouldNotBe(redForeground);
+        plainForeground.ShouldNotBe(redForeground);
+        plainForeground.ShouldNotBe(blueForeground);
+    }
+
     /// <summary>Verifies markup blink tags override an incompatible inherited blink kind.</summary>
     [Fact]
     public void Render_WhenMarkupOverridesBlink_ProducesValidLatestBlinkStyle()

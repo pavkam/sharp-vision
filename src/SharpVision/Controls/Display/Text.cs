@@ -365,22 +365,53 @@ public sealed class Text: Control, IAccessKeyCaption
 
     private void RenderLine(TerminalCanvas canvas, Rect bounds, Line line, int row)
     {
+        var origin = new Point(bounds.X + line.Leading, bounds.Y + row);
         var cells = 0;
         var spanIndex = SpanIndexAt(line.Offset);
+        var runOffset = line.Offset;
+        var runLength = 0;
+        var runSpanIndex = spanIndex;
+
+        // Markup.Parse's spans tile the visible text in source order, so every grapheme in one
+        // run shares the identical resolved style and background — batching them into a single
+        // Canvas.Draw call per run (instead of one per grapheme cluster) cannot change the
+        // rendered output, only how many times the cluster-analysis loop inside Draw runs (see
+        // #177). DrawResult.Final carries the exact advance Canvas already computed while
+        // writing, so the run doesn't need a second, redundant Width.Measure pass.
+        void FlushRun()
+        {
+            if (runLength == 0)
+            {
+                return;
+            }
+
+            var span = runSpanIndex >= 0 ? _spans[runSpanIndex] : default;
+            var position = new Point(origin.X + cells, origin.Y);
+            var result = canvas.Draw(
+                _display.AsSpan(runOffset, runLength),
+                position,
+                ResolveSpanStyle(span),
+                background: ResolveBackgroundMode(span));
+            cells += result.Final.X - position.X;
+        }
 
         foreach (var grapheme in Graphemes.Enumerate(_display.AsSpan(line.Offset, line.Length)))
         {
             var offset = line.Offset + grapheme.Offset;
-            spanIndex = AdvanceSpan(spanIndex, offset);
-            var span = spanIndex >= 0 ? _spans[spanIndex] : default;
-            var cluster = _display.AsSpan(offset, grapheme.Length);
-            _ = canvas.Draw(
-                cluster,
-                new Point(bounds.X + line.Leading + cells, bounds.Y + row),
-                ResolveSpanStyle(span),
-                background: ResolveBackgroundMode(span));
-            cells += Terminal.Unicode.Width.Measure(cluster, AmbiguousWidth).Cells;
+            var nextSpanIndex = AdvanceSpan(spanIndex, offset);
+
+            if (nextSpanIndex != runSpanIndex)
+            {
+                FlushRun();
+                runOffset = offset;
+                runSpanIndex = nextSpanIndex;
+            }
+
+            runLength = offset + grapheme.Length - runOffset;
+            spanIndex = nextSpanIndex;
         }
+
+        FlushRun();
 
         if (line.HasEllipsis)
         {
