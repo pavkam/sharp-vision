@@ -47,7 +47,7 @@ public sealed class SeparatorTests
         var separator = new Separator { Orientation = orientation };
 
         // Act
-        new Engine().Layout(separator, new Size(5, 4));
+        new LayoutEngine().Layout(separator, new Size(5, 4));
 
         // Assert
         separator.DesiredSize.ShouldBe(new Size(1, 1));
@@ -59,7 +59,7 @@ public sealed class SeparatorTests
     {
         // Arrange
         var separator = new Separator();
-        new Engine().Layout(separator, new Size(3, 1));
+        new LayoutEngine().Layout(separator, new Size(3, 1));
         using Frame frame = new(new Size(3, 1));
 
         // Act
@@ -76,7 +76,7 @@ public sealed class SeparatorTests
     {
         // Arrange
         var separator = new Separator { Orientation = Orientation.Vertical };
-        new Engine().Layout(separator, new Size(1, 3));
+        new LayoutEngine().Layout(separator, new Size(1, 3));
         using Frame frame = new(new Size(1, 3));
 
         // Act
@@ -93,7 +93,7 @@ public sealed class SeparatorTests
     {
         // Arrange
         var separator = new Separator();
-        new Engine().Layout(separator, new Size(3, 3));
+        new LayoutEngine().Layout(separator, new Size(3, 3));
         using Frame frame = new(new Size(3, 3));
 
         // Act
@@ -148,7 +148,7 @@ public sealed class SeparatorTests
     {
         // Arrange
         var separator = new Separator { HorizontalGlyph = new Rune('=') };
-        new Engine().Layout(separator, new Size(3, 1));
+        new LayoutEngine().Layout(separator, new Size(3, 1));
         using Frame frame = new(new Size(3, 1));
 
         // Act

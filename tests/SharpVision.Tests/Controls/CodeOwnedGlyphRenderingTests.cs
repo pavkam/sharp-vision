@@ -49,7 +49,7 @@ public sealed class CodeOwnedGlyphRenderingTests
     private static string Render(Control control, Size size, Theme theme)
     {
         control.SetTheme(theme);
-        new Engine().Layout(control, size);
+        new LayoutEngine().Layout(control, size);
         using Frame frame = new(size);
         control.Render(frame.Canvas);
         var value = new StringBuilder(size.Width * size.Height);

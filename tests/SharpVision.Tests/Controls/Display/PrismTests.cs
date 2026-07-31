@@ -52,7 +52,7 @@ public sealed class PrismTests
     {
         var content = new ProbeControl(new Size(1, 1)) { Content = "X".AsMemory() };
         var prism = new Prism { Content = content };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var notifications = new List<string?>();
         prism.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
         engine.Layout(prism, new Size(4, 2));
@@ -103,7 +103,7 @@ public sealed class PrismTests
             Direction = PrismDirection.Horizontal,
             CycleLength = 6
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(prism, new Size(5, 3));
         using Frame first = new(new Size(5, 3));
 
@@ -151,7 +151,7 @@ public sealed class PrismTests
         {
             Content = new ControlText("A")
         };
-        new Engine().Layout(prism, new Size(3, 3));
+        new LayoutEngine().Layout(prism, new Size(3, 3));
         using Frame frame = new(new Size(5, 3));
         var outsideStyle = new TerminalStyle(ReferenceColors.Get(9), ReferenceColors.Get(2));
         _ = frame.Canvas.Draw("Z", new Point(4, 2), outsideStyle);
@@ -167,7 +167,7 @@ public sealed class PrismTests
     public void Render_WhenContentIsNull_PreservesStoredCellsInsideContentBounds()
     {
         var prism = new Prism { Width = Length.Cells(2), Height = Length.Cells(1) };
-        new Engine().Layout(prism, new Size(2, 1));
+        new LayoutEngine().Layout(prism, new Size(2, 1));
         using Frame frame = new(new Size(2, 1));
         var original = new TerminalStyle(
             ReferenceColors.Get(9),
@@ -192,7 +192,7 @@ public sealed class PrismTests
             Face = AppearanceTestValues.Face(background: Color.Transparent)
         };
         var prism = new Prism { Content = content, Width = Length.Cells(5), Height = Length.Cells(1) };
-        new Engine().Layout(prism, new Size(5, 1));
+        new LayoutEngine().Layout(prism, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));
         var original = new TerminalStyle(
             ReferenceColors.Get(9),
@@ -225,7 +225,7 @@ public sealed class PrismTests
             Direction = PrismDirection.Horizontal,
             CycleLength = 6
         };
-        new Engine().Layout(prism, new Size(2, 1));
+        new LayoutEngine().Layout(prism, new Size(2, 1));
         using Frame frame = new(new Size(2, 1));
 
         prism.Render(frame.Canvas);
@@ -244,7 +244,7 @@ public sealed class PrismTests
     public void Render_WhenContentStoresSpace_RecolorsSpaceButNotUntouchedBlank()
     {
         var prism = new Prism { Content = new ControlText(" "), HorizontalAlignment = HorizontalAlignment.Stretch };
-        new Engine().Layout(prism, new Size(2, 1));
+        new LayoutEngine().Layout(prism, new Size(2, 1));
         using Frame frame = new(new Size(2, 1));
 
         prism.Render(frame.Canvas);
@@ -258,12 +258,12 @@ public sealed class PrismTests
     public void Render_WhenContentOrContentBoundsAreEmpty_HasNoForegroundEffect()
     {
         var empty = new Prism();
-        new Engine().Layout(empty, new Size(0, 0));
+        new LayoutEngine().Layout(empty, new Size(0, 0));
         using Frame emptyFrame = new(new Size(0, 0));
         Should.NotThrow(() => empty.Render(emptyFrame.Canvas));
 
         var nullContent = new Prism { Width = Length.Cells(1), Height = Length.Cells(1) };
-        new Engine().Layout(nullContent, new Size(1, 1));
+        new LayoutEngine().Layout(nullContent, new Size(1, 1));
         using Frame painted = new(new Size(1, 1));
         nullContent.Render(painted.Canvas);
         painted.GetCell(default).ShouldBe(CellInfo.Blank);
@@ -273,7 +273,7 @@ public sealed class PrismTests
             Content = new ControlText("X"),
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        new Engine().Layout(tiny, new Size(1, 1));
+        new LayoutEngine().Layout(tiny, new Size(1, 1));
         using Frame tinyFrame = new(new Size(1, 1));
         Should.NotThrow(() => tiny.Render(tinyFrame.Canvas));
         tiny.Content.Bounds.ShouldBe(new Rect(0, 0, 1, 1));
@@ -318,7 +318,7 @@ public sealed class PrismTests
             CycleLength = 2,
             Direction = direction
         };
-        new Engine().Layout(prism, new Size(2, 2));
+        new LayoutEngine().Layout(prism, new Size(2, 2));
         using Frame frame = new(new Size(2, 2));
 
         prism.Render(frame.Canvas);

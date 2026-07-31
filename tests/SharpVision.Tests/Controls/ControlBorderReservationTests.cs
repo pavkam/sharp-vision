@@ -22,7 +22,7 @@ public sealed class ControlBorderReservationTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        new Engine().Layout(control, new Size(20, 10));
+        new LayoutEngine().Layout(control, new Size(20, 10));
         var appearance = new ThemeAppearance(
             AppearanceTestValues.Face(),
             AppearanceTestValues.Border(BorderSide.All),
@@ -31,7 +31,7 @@ public sealed class ControlBorderReservationTests
         control.Style = new ButtonStyle(
             ButtonStyle.Standard.Padding,
             new ThemeProfile(appearance));
-        new Engine().Layout(control, new Size(20, 10));
+        new LayoutEngine().Layout(control, new Size(20, 10));
 
         control.ContentBounds.ShouldBe(new Rect(1, 1, 18, 8));
         control.MeasureCalls.ShouldBe(2);
@@ -45,7 +45,7 @@ public sealed class ControlBorderReservationTests
         var container = StretchingContainer(child);
         container.Border = AppearanceTestValues.Border(BorderSide.All);
 
-        new Engine().Layout(container, new Size(20, 10));
+        new LayoutEngine().Layout(container, new Size(20, 10));
 
         child.Bounds.ShouldBe(new Rect(1, 1, 18, 8));
     }
@@ -59,7 +59,7 @@ public sealed class ControlBorderReservationTests
         container.Border = AppearanceTestValues.Border(BorderSide.All);
         container.Padding = new Thickness(1);
 
-        new Engine().Layout(container, new Size(20, 10));
+        new LayoutEngine().Layout(container, new Size(20, 10));
 
         child.Bounds.ShouldBe(new Rect(2, 2, 16, 6));
     }
@@ -84,7 +84,7 @@ public sealed class ControlBorderReservationTests
         var child = StretchingChild();
         var container = StretchingContainer(child);
 
-        new Engine().Layout(container, new Size(20, 10));
+        new LayoutEngine().Layout(container, new Size(20, 10));
 
         child.Bounds.ShouldBe(new Rect(0, 0, 20, 10));
     }
@@ -97,7 +97,7 @@ public sealed class ControlBorderReservationTests
         var container = StretchingContainer(child);
         container.Border = AppearanceTestValues.Border(BorderSide.Left | BorderSide.Top);
 
-        new Engine().Layout(container, new Size(20, 10));
+        new LayoutEngine().Layout(container, new Size(20, 10));
 
         child.Bounds.ShouldBe(new Rect(1, 1, 19, 9));
     }

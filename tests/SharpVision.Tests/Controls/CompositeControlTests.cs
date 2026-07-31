@@ -174,7 +174,7 @@ public sealed class CompositeControlTests
         var owner = new ProbeCompositeControl();
 
         var exception = Should.Throw<InvalidOperationException>(() =>
-            new Engine().Layout(owner, new Size(8, 2)));
+            new LayoutEngine().Layout(owner, new Size(8, 2)));
 
         exception.Message.ShouldContain("composition root");
         owner.Parent.ShouldBeNull();
@@ -192,7 +192,7 @@ public sealed class CompositeControlTests
             VerticalAlignment = VerticalAlignment.Stretch
         };
         var slot = root.OwningSlot;
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(owner, new Size(20, 10));
         engine.Layout(owner, new Size(20, 10));
@@ -211,7 +211,7 @@ public sealed class CompositeControlTests
     {
         var root = new ProbeControl(new Size(4, 2)) { Margin = new Thickness(1) };
         var owner = new ProbeCompositeControl(root);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(owner, new Size(10, 4));
         var measures = root.MeasureConstraints.Count;
         var arrangements = root.ArrangeBounds.Count;
@@ -233,7 +233,7 @@ public sealed class CompositeControlTests
     {
         var root = new ProbeControl(new Size(1, 1)) { Content = "X".AsMemory() };
         var owner = new ProbeCompositeControl(root);
-        new Engine().Layout(owner, new Size(1, 1));
+        new LayoutEngine().Layout(owner, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         owner.Render(frame.Canvas);

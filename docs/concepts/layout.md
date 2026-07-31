@@ -63,7 +63,7 @@ identical arrange request back through the active ancestor chain. Measure or
 render invalidation, and arrange invalidation outside this exact parent-arrange
 case, retain ordinary propagation.
 
-`Engine.Layout(Control, Size)` runs both phases in a zero-origin viewport. It
+`LayoutEngine.Layout(Control, Size)` runs both phases in a zero-origin viewport. It
 validates dispatcher affinity, caches unchanged constraints and slots, and
 rejects nested transactions. A changed viewport remeasures even when no property
 is dirty.

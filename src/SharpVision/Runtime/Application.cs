@@ -39,7 +39,7 @@ public sealed class Application: ISink, IAsyncDisposable
     private readonly TimeProvider _timeProvider;
     private Renderer? _renderer;
     private readonly Action<KeyEventArgs> _initializeModalKey;
-    private readonly Engine _engine = new();
+    private readonly LayoutEngine _engine = new();
     private readonly CancellationTokenSource _lifetime = new();
 
     private readonly TaskCompletionSource _started =

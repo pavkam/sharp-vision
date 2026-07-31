@@ -134,7 +134,7 @@ public sealed class ScreenTests
         screen.ContentRoot.HorizontalAlignment = HorizontalAlignment.Stretch;
         screen.AddPresentation(window);
 
-        new Engine().Layout(screen, new Size(40, 12));
+        new LayoutEngine().Layout(screen, new Size(40, 12));
 
         screen.ContentRoot.Bounds.ShouldBe(new Rect(0, 0, 40, 12));
         var presentation = window.Parent as Overlay;

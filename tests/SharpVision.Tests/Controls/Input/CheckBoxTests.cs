@@ -60,7 +60,7 @@ public sealed class CheckBoxTests
     {
         var checkBox = new CheckBox { Content = new ControlText("Choice") };
 
-        new Engine().Layout(checkBox, new Size(20, 1));
+        new LayoutEngine().Layout(checkBox, new Size(20, 1));
 
         checkBox.DesiredSize.ShouldBe(new Size(10, 1));
         checkBox.Bounds.ShouldBe(new Rect(0, 0, 10, 1));
@@ -169,7 +169,7 @@ public sealed class CheckBoxTests
     {
         var content = new ControlText("界");
         var checkBox = new CheckBox { Content = content, IsChecked = true, Style = CheckBoxStyle.Square };
-        new Engine().Layout(checkBox, new Size(4, 1));
+        new LayoutEngine().Layout(checkBox, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
 
         checkBox.Render(frame.Canvas);
@@ -195,7 +195,7 @@ public sealed class CheckBoxTests
             : CheckBoxStyle.Tick;
         var checkBox = new CheckBox { Content = content, IsChecked = true, Style = checkBoxStyle };
         var size = new Size(width, 1);
-        new Engine().Layout(checkBox, size);
+        new LayoutEngine().Layout(checkBox, size);
         using Frame frame = new(size);
 
         checkBox.Render(frame.Canvas);

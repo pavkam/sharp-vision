@@ -38,7 +38,7 @@ public sealed class DockTests
         panel.Children.Add(top);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(20, 10));
+        new LayoutEngine().Layout(panel, new Size(20, 10));
 
         panel.DesiredSize.ShouldBe(new Size(7, 4));
     }
@@ -63,7 +63,7 @@ public sealed class DockTests
         panel.Children.Add(bottom);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         left.Bounds.ShouldBe(new Rect(0, 0, 2, 6));
         top.Bounds.ShouldBe(new Rect(2, 0, 8, 1));
@@ -82,7 +82,7 @@ public sealed class DockTests
         panel.Children.Add(left);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(8, 3));
+        new LayoutEngine().Layout(panel, new Size(8, 3));
 
         left.Bounds.ShouldBe(new Rect(0, 0, 2, 3));
         fill.Bounds.ShouldBe(new Rect(3, 0, 5, 3));
@@ -100,7 +100,7 @@ public sealed class DockTests
         panel.Children.Add(second);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(10, 1));
+        new LayoutEngine().Layout(panel, new Size(10, 1));
 
         first.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
         second.Bounds.ShouldBe(new Rect(5, 0, 3, 1));
@@ -118,7 +118,7 @@ public sealed class DockTests
         panel.Children.Add(first);
         panel.Children.Add(last);
 
-        new Engine().Layout(panel, new Size(10, 2));
+        new LayoutEngine().Layout(panel, new Size(10, 2));
 
         first.Bounds.ShouldBe(new Rect(0, 0, 2, 2));
         last.Bounds.ShouldBe(new Rect(7, 0, 3, 2));
@@ -135,7 +135,7 @@ public sealed class DockTests
         panel.Children.Add(collapsed);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(6, 2));
+        new LayoutEngine().Layout(panel, new Size(6, 2));
 
         collapsed.Bounds.ShouldBe(default);
         fill.Bounds.ShouldBe(new Rect(0, 0, 6, 2));
@@ -153,7 +153,7 @@ public sealed class DockTests
         panel.Children.Add(second);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(3, 1));
+        new LayoutEngine().Layout(panel, new Size(3, 1));
 
         first.Bounds.ShouldBe(new Rect(0, 0, 3, 1));
         second.Bounds.Width.ShouldBe(0);
@@ -189,7 +189,7 @@ public sealed class DockTests
     {
         var panel = new Panel { Spacing = 5 };
 
-        new Engine().Layout(panel, new Size(10, 10));
+        new LayoutEngine().Layout(panel, new Size(10, 10));
 
         panel.DesiredSize.ShouldBe(default);
     }
@@ -202,7 +202,7 @@ public sealed class DockTests
         var child = new ProbeControl();
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(10, 5));
+        new LayoutEngine().Layout(panel, new Size(10, 5));
 
         child.Bounds.ShouldBe(new Rect(0, 0, 10, 5));
     }
@@ -221,7 +221,7 @@ public sealed class DockTests
         panel.Children.Add(bottom);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(8, 10));
+        new LayoutEngine().Layout(panel, new Size(8, 10));
 
         top.Bounds.ShouldBe(new Rect(0, 0, 8, 2));
         bottom.Bounds.ShouldBe(new Rect(0, 7, 8, 3));
@@ -241,7 +241,7 @@ public sealed class DockTests
         panel.Children.Add(top);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(20, 10));
+        new LayoutEngine().Layout(panel, new Size(20, 10));
 
         left.Bounds.ShouldBe(new Rect(0, 0, 3, 10));
         top.Bounds.X.ShouldBe(5);
@@ -260,7 +260,7 @@ public sealed class DockTests
         panel.Children.Add(left);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(10, 2));
+        new LayoutEngine().Layout(panel, new Size(10, 2));
 
         left.Bounds.Width.ShouldBe(3);
         fill.Bounds.X.ShouldBe(3);
@@ -278,7 +278,7 @@ public sealed class DockTests
         var fill = new ProbeControl();
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(20, 10));
+        new LayoutEngine().Layout(panel, new Size(20, 10));
 
         fill.Bounds.X.ShouldBeGreaterThanOrEqualTo(2);
         fill.Bounds.Y.ShouldBeGreaterThanOrEqualTo(1);
@@ -296,7 +296,7 @@ public sealed class DockTests
         panel.Children.Add(left);
         panel.Children.Add(fill);
 
-        new Engine().Layout(panel, new Size(20, 10));
+        new LayoutEngine().Layout(panel, new Size(20, 10));
 
         left.Bounds.X.ShouldBe(1);
         left.Bounds.Width.ShouldBe(4);
@@ -312,7 +312,7 @@ public sealed class DockTests
         Panel.SetSide(child, DockSide.Right);
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(10, 2));
+        new LayoutEngine().Layout(panel, new Size(10, 2));
 
         child.Bounds.ShouldBe(new Rect(6, 0, 4, 2));
     }
@@ -330,7 +330,7 @@ public sealed class DockTests
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new Engine().Layout(panel, new Size(100, 1));
+        new LayoutEngine().Layout(panel, new Size(100, 1));
 
         first.Bounds.ShouldBe(new Rect(0, 0, 50, 1));
         second.Bounds.ShouldBe(new Rect(50, 0, 50, 1));
@@ -348,7 +348,7 @@ public sealed class DockTests
         panel.Children.Add(single);
         panel.Children.Add(doubled);
 
-        new Engine().Layout(panel, new Size(90, 1));
+        new LayoutEngine().Layout(panel, new Size(90, 1));
 
         single.Bounds.Width.ShouldBe(30);
         doubled.Bounds.Width.ShouldBe(60);
@@ -367,7 +367,7 @@ public sealed class DockTests
         panel.Children.Add(left);
         panel.Children.Add(top);
 
-        new Engine().Layout(panel, new Size(20, 10));
+        new LayoutEngine().Layout(panel, new Size(20, 10));
 
         left.Bounds.Width.ShouldBe(20);
         top.Bounds.Height.ShouldBe(10);

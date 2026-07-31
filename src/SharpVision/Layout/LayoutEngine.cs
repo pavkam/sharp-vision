@@ -9,7 +9,7 @@ namespace SharpVision.Layout;
 /// thread-safe because an attached tree is owned by exactly one dispatcher.
 /// </remarks>
 [PublicAPI]
-public sealed class Engine
+public sealed class LayoutEngine
 {
     private bool IsActive { get; set; }
 

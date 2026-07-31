@@ -17,7 +17,7 @@ public sealed class DisplayPanelPerformanceTests
     {
         var root = Representative();
         var size = new Size(width, height);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         using Frame frame = new(size);
 
         Run();
@@ -54,7 +54,7 @@ public sealed class DisplayPanelPerformanceTests
             stack.Children.Add(new ControlText((index % 10).ToString(CultureInfo.InvariantCulture)));
         }
 
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var size = new Size(200, 60);
         engine.Layout(grid, size);
 

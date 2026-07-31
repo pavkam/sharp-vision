@@ -44,7 +44,7 @@ public sealed class OverlayPositionTests
         Panel.SetTop(child, Length.Cells(1));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         child.Bounds.ShouldBe(new Rect(2, 1, 3, 2));
     }
@@ -59,7 +59,7 @@ public sealed class OverlayPositionTests
         Panel.SetBottom(child, Length.Cells(1));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         child.Bounds.ShouldBe(new Rect(5, 3, 3, 2));
     }
@@ -76,7 +76,7 @@ public sealed class OverlayPositionTests
         Panel.SetBottom(child, Length.Cells(1));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         child.Bounds.ShouldBe(new Rect(2, 1, 5, 4));
     }
@@ -93,7 +93,7 @@ public sealed class OverlayPositionTests
         Panel.SetBottom(child, Length.Cells(1));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         child.Bounds.ShouldBe(new Rect(2, 1, 4, 2));
     }
@@ -107,7 +107,7 @@ public sealed class OverlayPositionTests
         Panel.SetLeft(child, Length.Percent(25));
         Panel.SetTop(child, Length.Percent(50));
         panel.Children.Add(child);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(panel, new Size(8, 4));
         child.Bounds.ShouldBe(new Rect(2, 2, 2, 1));
@@ -130,7 +130,7 @@ public sealed class OverlayPositionTests
         panel.Children.Add(fixedChild);
         panel.Children.Add(percentChild);
 
-        new Engine().Layout(panel, new Size(20, 10));
+        new LayoutEngine().Layout(panel, new Size(20, 10));
 
         panel.DesiredSize.ShouldBe(new Size(6, 2));
     }
@@ -145,7 +145,7 @@ public sealed class OverlayPositionTests
         Panel.SetBottom(child, Length.Cells(1));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(5, 3));
+        new LayoutEngine().Layout(panel, new Size(5, 3));
 
         child.Bounds.ShouldBe(new Rect(-4, -3, 8, 5));
     }
@@ -163,7 +163,7 @@ public sealed class OverlayPositionTests
         Panel.SetRight(child, Length.Cells(int.MaxValue));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(1, 1));
+        new LayoutEngine().Layout(panel, new Size(1, 1));
 
         child.Bounds.ShouldBe(new Rect(int.MinValue, 0, int.MaxValue, 1));
     }
@@ -178,7 +178,7 @@ public sealed class OverlayPositionTests
         Panel.SetRight(child, Length.Cells(int.MaxValue));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(1, 1));
+        new LayoutEngine().Layout(panel, new Size(1, 1));
 
         child.Bounds.ShouldBe(new Rect(int.MaxValue, 0, 0, 1));
     }
@@ -202,7 +202,7 @@ public sealed class OverlayPositionTests
         panel.Children.Add(shared);
         panel.Children.Add(positioned);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         shared.Bounds.ShouldBe(new Rect(4, 3, 5, 2));
         positioned.Bounds.ShouldBe(new Rect(2, 1, 3, 2));
@@ -229,7 +229,7 @@ public sealed class OverlayPositionTests
         panel.Children.Add(horizontal);
         panel.Children.Add(vertical);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         horizontal.Bounds.ShouldBe(new Rect(3, 3, 3, 2));
         vertical.Bounds.ShouldBe(new Rect(5, 1, 5, 1));
@@ -250,7 +250,7 @@ public sealed class OverlayPositionTests
         Panel.SetZIndex(low, -3);
         panel.Children.Add(high);
         panel.Children.Add(low);
-        new Engine().Layout(panel, new Size(1, 1));
+        new LayoutEngine().Layout(panel, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         panel.Render(frame.Canvas);
@@ -306,7 +306,7 @@ public sealed class OverlayPositionTests
         var content = new ProbeControl { Width = Length.Cells(4), Height = Length.Cells(4) };
         panel.Children.Add(content);
 
-        new Engine().Layout(panel, new Size(4, 4));
+        new LayoutEngine().Layout(panel, new Size(4, 4));
 
         // Column 3 row 1 is the reserved vertical bar's rendered track, even
         // though unclipped content also spans that cell.

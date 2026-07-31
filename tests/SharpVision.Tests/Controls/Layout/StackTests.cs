@@ -37,7 +37,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new Engine().Layout(panel, new Size(10, 6));
+        new LayoutEngine().Layout(panel, new Size(10, 6));
 
         first.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
         second.Bounds.ShouldBe(new Rect(0, 3, 4, 1));
@@ -63,7 +63,7 @@ public sealed class StackTests
         panel.Children.Add(percentChild);
         panel.Children.Add(starChild);
 
-        new Engine().Layout(panel, new Size(20, 2));
+        new LayoutEngine().Layout(panel, new Size(20, 2));
 
         fixedChild.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
         percentChild.Bounds.ShouldBe(new Rect(5, 0, 5, 2));
@@ -83,7 +83,7 @@ public sealed class StackTests
         panel.Children.Add(collapsed);
         panel.Children.Add(last);
 
-        new Engine().Layout(panel, new Size(2, 5));
+        new LayoutEngine().Layout(panel, new Size(2, 5));
 
         first.Bounds.ShouldBe(new Rect(0, 0, 1, 1));
         collapsed.Bounds.ShouldBe(default);
@@ -102,7 +102,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new Engine().Layout(panel, new Size(5, 6));
+        new LayoutEngine().Layout(panel, new Size(5, 6));
 
         first.Bounds.ShouldBe(new Rect(1, 1, 1, 1));
         second.Bounds.ShouldBe(new Rect(0, 4, 1, 1));
@@ -121,7 +121,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new Engine().Layout(panel, new Size(1, 2));
+        new LayoutEngine().Layout(panel, new Size(1, 2));
 
         using Frame frame = new(new Size(1, 2));
 
@@ -192,7 +192,7 @@ public sealed class StackTests
         panel.Children.Add(percent);
         panel.Children.Add(star);
 
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(panel, new Size(9, 1));
         percent.Bounds.Width.ShouldBe(5);
@@ -214,7 +214,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new Engine().Layout(panel, new Size(3, 1));
+        new LayoutEngine().Layout(panel, new Size(3, 1));
 
         first.Bounds.X.ShouldBeGreaterThanOrEqualTo(0);
         second.Bounds.X.ShouldBeGreaterThanOrEqualTo(0);
@@ -250,7 +250,7 @@ public sealed class StackTests
         panel.Children.Add(top);
         panel.Children.Add(bottom);
 
-        new Engine().Layout(panel, new Size(4, 10));
+        new LayoutEngine().Layout(panel, new Size(4, 10));
 
         top.Bounds.ShouldBe(new Rect(0, 0, 0, 3));
         bottom.Bounds.ShouldBe(new Rect(0, 3, 0, 7));
@@ -272,7 +272,7 @@ public sealed class StackTests
         panel.Children.Add(one);
         panel.Children.Add(two);
 
-        new Engine().Layout(panel, new Size(12, 1));
+        new LayoutEngine().Layout(panel, new Size(12, 1));
 
         one.Bounds.Width.ShouldBe(4);
         two.Bounds.Width.ShouldBe(8);
@@ -284,7 +284,7 @@ public sealed class StackTests
     {
         var panel = new Panel { Spacing = 5 };
 
-        new Engine().Layout(panel, new Size(10, 10));
+        new LayoutEngine().Layout(panel, new Size(10, 10));
 
         panel.DesiredSize.ShouldBe(default);
     }
@@ -298,7 +298,7 @@ public sealed class StackTests
 
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(5, 5));
+        new LayoutEngine().Layout(panel, new Size(5, 5));
 
         panel.DesiredSize.ShouldBe(new Size(2, 2));
         child.Bounds.ShouldBe(new Rect(0, 0, 2, 2));
@@ -315,7 +315,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new Engine().Layout(panel, new Size(10, 10));
+        new LayoutEngine().Layout(panel, new Size(10, 10));
 
         panel.DesiredSize.ShouldBe(default);
         first.Bounds.ShouldBe(default);
@@ -335,7 +335,7 @@ public sealed class StackTests
         panel.Children.Add(hidden);
         panel.Children.Add(last);
 
-        new Engine().Layout(panel, new Size(5, 10));
+        new LayoutEngine().Layout(panel, new Size(5, 10));
 
         visible.Bounds.ShouldBe(new Rect(0, 0, 2, 2));
         hidden.Bounds.Height.ShouldBe(3);
@@ -353,7 +353,7 @@ public sealed class StackTests
         panel.Children.Add(first);
         panel.Children.Add(second);
 
-        new Engine().Layout(panel, new Size(10, 5));
+        new LayoutEngine().Layout(panel, new Size(10, 5));
 
         first.Bounds.Width.ShouldBe(3);
         first.Bounds.X.ShouldBe(0);
@@ -382,7 +382,7 @@ public sealed class StackTests
         panel.Children.Add(constrained);
         panel.Children.Add(@fixed);
 
-        new Engine().Layout(panel, new Size(4, 20));
+        new LayoutEngine().Layout(panel, new Size(4, 20));
 
         constrained.Bounds.Height.ShouldBeGreaterThanOrEqualTo(3);
         constrained.Bounds.Height.ShouldBeLessThanOrEqualTo(5);
@@ -404,7 +404,7 @@ public sealed class StackTests
         panel.Children.Add(fixedChild);
         panel.Children.Add(percentChild);
 
-        new Engine().Layout(panel, new Size(20, 1));
+        new LayoutEngine().Layout(panel, new Size(20, 1));
 
         fixedChild.Bounds.Width.ShouldBe(4);
         percentChild.Bounds.Width.ShouldBe(10);
@@ -423,7 +423,7 @@ public sealed class StackTests
         panel.Children.Add(second);
         panel.Children.Add(third);
 
-        new Engine().Layout(panel, new Size(5, 10));
+        new LayoutEngine().Layout(panel, new Size(5, 10));
 
         first.Bounds.Y.ShouldBe(0);
         second.Bounds.Y.ShouldBe(3);
@@ -444,7 +444,7 @@ public sealed class StackTests
         var child = new ProbeControl(new Size(3, 2));
         panel.Children.Add(child);
 
-        new Engine().Layout(panel, new Size(20, 10));
+        new LayoutEngine().Layout(panel, new Size(20, 10));
 
         child.Bounds.X.ShouldBeGreaterThanOrEqualTo(3);
         child.Bounds.Y.ShouldBeGreaterThanOrEqualTo(2);

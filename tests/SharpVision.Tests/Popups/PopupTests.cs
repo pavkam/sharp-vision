@@ -454,7 +454,7 @@ public sealed class PopupTests
             using var focus = new FocusManager(root);
             using var capture = new PointerManager(root);
             popup.IsOpen = true;
-            new Engine().Layout(root, new Size(12, 6));
+            new LayoutEngine().Layout(root, new Size(12, 6));
             content.CaptureProbePointer().ShouldBeTrue();
             var openSurface = popup.SurfaceBounds;
             openSurface.ShouldNotBe(default);
@@ -564,7 +564,7 @@ public sealed class PopupTests
     {
         var content = new ProbeControl(new Size(4, 2));
         var popup = new Popup { Content = content, IsOpen = true };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(popup, new Size(12, 6));
         var measureCalls = content.MeasureConstraints.Count;
@@ -590,7 +590,7 @@ public sealed class PopupTests
     {
         var child = new ProbeControl(new Size(3, 1)) { Content = "pop".AsMemory() };
         var popup = new Popup { Content = child };
-        new Engine().Layout(popup, new Size(8, 4));
+        new LayoutEngine().Layout(popup, new Size(8, 4));
         using Frame frame = new(new Size(8, 4));
 
         popup.Render(frame.Canvas);
@@ -608,7 +608,7 @@ public sealed class PopupTests
         var child = new ProbeControl(new Size(4, 2));
         var popup = new Popup { Anchor = anchor, Content = child, IsOpen = true };
 
-        new Engine().Layout(popup, new Size(10, 5));
+        new LayoutEngine().Layout(popup, new Size(10, 5));
 
         child.Bounds.ShouldBe(new Rect(3, 2, 4, 2));
     }
@@ -621,7 +621,7 @@ public sealed class PopupTests
         var child = new ProbeControl(new Size(4, 1)) { Content = "pick".AsMemory() };
         var popup = new Popup { Anchor = anchor, Content = child, IsOpen = true };
         var size = new Size(12, 6);
-        new Engine().Layout(popup, size);
+        new LayoutEngine().Layout(popup, size);
         using Frame frame = new(size);
 
         popup.Render(frame.Canvas);
@@ -648,7 +648,7 @@ public sealed class PopupTests
         };
         var popup = new Popup { Anchor = anchor, Content = content, IsOpen = true };
         var size = new Size(12, 6);
-        new Engine().Layout(popup, size);
+        new LayoutEngine().Layout(popup, size);
         using Frame frame = new(size);
 
         popup.Render(frame.Canvas);
@@ -680,7 +680,7 @@ public sealed class PopupTests
         root.Children.Add(comboBox);
         root.Children.Add(cover);
         var size = new Size(16, 8);
-        new Engine().Layout(root, size);
+        new LayoutEngine().Layout(root, size);
         var list = OwnedTree.Find<ListView>(comboBox).ShouldNotBeNull();
         var point = new Point(list.Bounds.X + 1, list.Bounds.Y);
         using Frame frame = new(size);
@@ -731,7 +731,7 @@ public sealed class PopupTests
             Items = ["pick"]
         };
         var size = new Size(12, 6);
-        new Engine().Layout(box, size);
+        new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);

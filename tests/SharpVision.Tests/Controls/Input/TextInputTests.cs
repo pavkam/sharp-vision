@@ -184,7 +184,7 @@ public sealed class TextInputTests
         };
         control.SetTheme(TestThemes.BorderlessInput);
         control.SetFocused(true);
-        new Engine().Layout(control, new Size(6, 1));
+        new LayoutEngine().Layout(control, new Size(6, 1));
         using Frame frame = new(new Size(6, 1));
 
         control.Render(frame.Canvas);
@@ -215,7 +215,7 @@ public sealed class TextInputTests
         var control = new TextInput { Text = "A界Z" };
         control.SetTheme(TestThemes.BorderlessInput);
         control.Select(start: 1, length: 1);
-        new Engine().Layout(control, new Size(4, 1));
+        new LayoutEngine().Layout(control, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
 
         control.Render(frame.Canvas);
@@ -233,7 +233,7 @@ public sealed class TextInputTests
     {
         var control = new TextInput { Width = Length.Cells(6), Height = Length.Cells(3), Text = "A" };
         control.SetFocused(true);
-        new Engine().Layout(control, new Size(6, 3));
+        new LayoutEngine().Layout(control, new Size(6, 3));
         using Frame frame = new(new Size(6, 3));
 
         control.Render(frame.Canvas);
@@ -261,7 +261,7 @@ public sealed class TextInputTests
             ShowScrollBars = ShowScrollBars.Always
         };
 
-        new Engine().Layout(control, new Size(8, 5));
+        new LayoutEngine().Layout(control, new Size(8, 5));
 
         control.HitTest(new Point(6, 1)).ShouldBeOfType<ScrollBar>()
             .Orientation.ShouldBe(Orientation.Vertical);
@@ -330,7 +330,7 @@ public sealed class TextInputTests
     {
         var control = new TextInput { Text = "abcdefghij", CaretIndex = 0 };
         control.SetTheme(TestThemes.BorderlessInput);
-        new Engine().Layout(control, new Size(4, 1));
+        new LayoutEngine().Layout(control, new Size(4, 1));
 
         control.HorizontalOffset.ShouldBe(0);
 
@@ -362,7 +362,7 @@ public sealed class TextInputTests
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         control.SetTheme(TestThemes.BorderlessInput);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(control, new Size(3, 2));
         control.HorizontalOffset.ShouldBe(2);
@@ -387,7 +387,7 @@ public sealed class TextInputTests
             CaretIndex = 0
         };
         control.SetTheme(TestThemes.BorderlessInput);
-        new Engine().Layout(control, new Size(4, 2));
+        new LayoutEngine().Layout(control, new Size(4, 2));
 
         var first = Wheel(wheelX: -1, wheelY: -1);
         Route(control, first, Events.Pointer);
@@ -421,7 +421,7 @@ public sealed class TextInputTests
             ScrollBarStyle = ScrollBarStyle.ThinLine
         };
         control.PropagateTheme(TestThemes.BorderlessInput);
-        new Engine().Layout(control, new Size(8, 3));
+        new LayoutEngine().Layout(control, new Size(8, 3));
 
         var rail = control.HitTest(new Point(7, 0)).ShouldBeOfType<ScrollBar>();
         rail.Orientation.ShouldBe(Orientation.Vertical);
@@ -451,7 +451,7 @@ public sealed class TextInputTests
             Children = { content }
         };
         input.SetTheme(TestThemes.BorderlessInput);
-        new Engine().Layout(outer, new Size(5, 3));
+        new LayoutEngine().Layout(outer, new Size(5, 3));
 
         Route(input, Wheel(wheelX: 0, wheelY: -100), Events.Pointer);
         input.VerticalOffset.ShouldBe(4);
@@ -645,7 +645,7 @@ public sealed class TextInputTests
         control.SetTheme(TestThemes.BorderlessInput);
         control.SetFocused(true);
         control.Select(0, control.Text.Length);
-        new Engine().Layout(control, new Size(8, 1));
+        new LayoutEngine().Layout(control, new Size(8, 1));
         using Frame frame = new(new Size(8, 1));
 
         control.ReplaceSelection("Bye").ShouldBeTrue();

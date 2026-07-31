@@ -72,7 +72,7 @@ public sealed class TextTests
     {
         var text = new ControlText("e\u0301界x") { Overflow = Overflow.WrapAnywhere };
 
-        new Engine().Layout(text, new Size(2, 4));
+        new LayoutEngine().Layout(text, new Size(2, 4));
 
         text.DesiredSize.ShouldBe(new Size(2, 3));
         text.Lines.ToArray().ShouldBe([
@@ -92,7 +92,7 @@ public sealed class TextTests
             TextAlignment = Alignment.End,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(text, new Size(2, 3));
         text.Lines.Length.ShouldBe(2);
@@ -107,7 +107,7 @@ public sealed class TextTests
     public void Render_WhenContentIsTrimmedAndMultiline_WritesExpectedCells()
     {
         var text = new ControlText("ab界c\nZ") { Overflow = Overflow.Ellipsis };
-        new Engine().Layout(text, new Size(4, 2));
+        new LayoutEngine().Layout(text, new Size(4, 2));
         using Frame frame = new(new Size(4, 2));
 
         text.Render(frame.Canvas);
@@ -123,7 +123,7 @@ public sealed class TextTests
     public void Render_WhenEllipsisIsAmbiguousWide_UsesThemeFallback()
     {
         var text = new ControlText("abcde") { Overflow = Overflow.Ellipsis, AmbiguousWidth = Ambiguous.Wide };
-        new Engine().Layout(text, new Size(4, 1));
+        new LayoutEngine().Layout(text, new Size(4, 1));
         using Frame frame = new(new Size(4, 1), ambiguousWidth: Ambiguous.Wide);
 
         text.Render(frame.Canvas);
@@ -139,7 +139,7 @@ public sealed class TextTests
     public void Render_WhenMarkedWideClusterBecomesEllipsis_PreservesMarkupStyle()
     {
         var text = new ControlText("<red>界</red>") { Overflow = Overflow.Ellipsis };
-        new Engine().Layout(text, new Size(1, 1));
+        new LayoutEngine().Layout(text, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         text.Render(frame.Canvas);
@@ -156,7 +156,7 @@ public sealed class TextTests
         {
             Face = AppearanceTestValues.Face(foreground: ReferenceColors.Get(45))
         };
-        new Engine().Layout(text, new Size(1, 1));
+        new LayoutEngine().Layout(text, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
         frame.Canvas.Fill(
             new Rect(0, 0, 1, 1),
@@ -175,7 +175,7 @@ public sealed class TextTests
     public void Render_WhenTextIsUnavailable_WritesNoCells(Visibility visibility)
     {
         var text = new ControlText("secret") { Visibility = visibility };
-        new Engine().Layout(text, new Size(6, 1));
+        new LayoutEngine().Layout(text, new Size(6, 1));
         using Frame frame = new(new Size(6, 1));
 
         text.Render(frame.Canvas);
@@ -189,7 +189,7 @@ public sealed class TextTests
     public void Render_WhenLayoutIsUnchanged_AllocatesNoManagedMemoryAfterWarmup()
     {
         var text = new ControlText("e\u0301 · 界 · 👩‍💻") { Overflow = Overflow.Wrap };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var size = new Size(80, 2);
         using Frame frame = new(size);
         Render();
@@ -231,7 +231,7 @@ public sealed class TextTests
     {
         ControlText text = new("<b>hi</b>");
 
-        new Engine().Layout(text, new Size(80, 1));
+        new LayoutEngine().Layout(text, new Size(80, 1));
 
         text.DesiredSize.ShouldBe(new Size(2, 1));
         text.Lines.ToArray().ShouldBe([new Line(0, 2, 2, 0, false)]);
@@ -242,7 +242,7 @@ public sealed class TextTests
     public void Render_WhenMarkupIsMalformed_PreservesLiteralContent()
     {
         ControlText text = new("<unknown <b>x");
-        new Engine().Layout(text, new Size(40, 1));
+        new LayoutEngine().Layout(text, new Size(40, 1));
         using Frame frame = new(new Size(40, 1));
 
         Should.NotThrow(() => text.Render(frame.Canvas));
@@ -256,7 +256,7 @@ public sealed class TextTests
     public void Escape_WhenAssignedToContent_RendersLiteralText()
     {
         ControlText text = new(ControlText.Escape(@"a < b\c"));
-        new Engine().Layout(text, new Size(20, 1));
+        new LayoutEngine().Layout(text, new Size(20, 1));
         using Frame frame = new(new Size(20, 1));
 
         text.Render(frame.Canvas);
@@ -272,7 +272,7 @@ public sealed class TextTests
     {
         ControlText text = new(
             "<fg=green><bg=#102030><u=curly><uc=#ffaf00><link=https://example.test>x</link></uc></u></bg></fg>");
-        new Engine().Layout(text, new Size(1, 1));
+        new LayoutEngine().Layout(text, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         text.Render(frame.Canvas);
@@ -290,7 +290,7 @@ public sealed class TextTests
     public void Render_WhenStyleBoundarySplitsGrapheme_UsesStyleAtClusterStart()
     {
         ControlText text = new("<red>e</red><blue>\u0301</blue>");
-        new Engine().Layout(text, new Size(1, 1));
+        new LayoutEngine().Layout(text, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         text.Render(frame.Canvas);
@@ -307,7 +307,7 @@ public sealed class TextTests
         {
             Face = AppearanceTestValues.Face(attributes: TerminalAttributes.Blink)
         };
-        new Engine().Layout(text, new Size(1, 1));
+        new LayoutEngine().Layout(text, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         Should.NotThrow(() => text.Render(frame.Canvas));
@@ -323,7 +323,7 @@ public sealed class TextTests
         {
             Face = AppearanceTestValues.Face(attributes: TerminalAttributes.Underline)
         };
-        new Engine().Layout(text, new Size(1, 1));
+        new LayoutEngine().Layout(text, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         text.Render(frame.Canvas);

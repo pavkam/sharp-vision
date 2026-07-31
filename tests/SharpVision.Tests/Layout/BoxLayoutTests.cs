@@ -19,7 +19,7 @@ public sealed class BoxLayoutTests
             Padding = new Thickness(1)
         };
 
-        new Engine().Layout(control, new Size(20, 10));
+        new LayoutEngine().Layout(control, new Size(20, 10));
 
         control.DesiredSize.ShouldBe(new Size(10, 5));
         control.Bounds.ShouldBe(new Rect(1, 1, 10, 5));
@@ -39,7 +39,7 @@ public sealed class BoxLayoutTests
             Margin = new Thickness(1)
         };
 
-        new Engine().Layout(control, new Size(20, 10));
+        new LayoutEngine().Layout(control, new Size(20, 10));
 
         control.DesiredSize.ShouldBe(new Size(6, 8));
         control.Bounds.ShouldBe(new Rect(1, 1, 6, 8));
@@ -76,7 +76,7 @@ public sealed class BoxLayoutTests
             Padding = new Thickness(4)
         };
 
-        new Engine().Layout(control, new Size(5, 4));
+        new LayoutEngine().Layout(control, new Size(5, 4));
 
         control.Bounds.ShouldBe(new Rect(3, 3, 0, 0));
         control.ArrangeBounds.ShouldBe([new Rect(3, 3, 0, 0)]);
@@ -103,7 +103,7 @@ public sealed class BoxLayoutTests
             VerticalAlignment = vertical
         };
 
-        new Engine().Layout(control, new Size(10, 7));
+        new LayoutEngine().Layout(control, new Size(10, 7));
 
         control.Bounds.ShouldBe(new Rect(x, y, 3, 2));
     }
@@ -118,7 +118,7 @@ public sealed class BoxLayoutTests
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        new Engine().Layout(control, new Size(10, 6));
+        new LayoutEngine().Layout(control, new Size(10, 6));
 
         control.Bounds.ShouldBe(new Rect(0, 0, 4, 6));
     }
@@ -128,7 +128,7 @@ public sealed class BoxLayoutTests
     public void Layout_WhenCollapsed_ClearsGeometryWithoutCallingCore()
     {
         var control = new ProbeControl(new Size(4, 2));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(control, new Size(10, 6));
         control.Visibility = Visibility.Collapsed;
 
@@ -145,7 +145,7 @@ public sealed class BoxLayoutTests
     public void Layout_WhenConstraintIsUnchanged_CachesUntilResize()
     {
         var control = new ProbeControl(new Size(4, 2));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(control, new Size(10, 6));
         engine.Layout(control, new Size(10, 6));
@@ -166,7 +166,7 @@ public sealed class BoxLayoutTests
             Arranging = current => current.HorizontalAlignment = HorizontalAlignment.Left
         };
 
-        new Engine().Layout(control, new Size(10, 6));
+        new LayoutEngine().Layout(control, new Size(10, 6));
 
         control.MeasureConstraints.Count.ShouldBe(1);
         control.ArrangeBounds.Count.ShouldBe(1);
@@ -178,7 +178,7 @@ public sealed class BoxLayoutTests
     public void Layout_WhenReentered_ThrowsInvalidOperationException()
     {
         var control = new ProbeControl(new Size(4, 2));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         control.Measuring = current => engine.Layout(current, new Size(5, 5));
 
         _ = Should.Throw<InvalidOperationException>(() =>
@@ -190,7 +190,7 @@ public sealed class BoxLayoutTests
     public void Measure_WhenReenteredAfterCachedPass_ThrowsInvalidOperationException()
     {
         var control = new ProbeControl(new Size(4, 2));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var constraint = new Constraint(10, 6);
         engine.Layout(control, new Size(10, 6));
         control.Width = Length.Cells(5);
@@ -213,7 +213,7 @@ public sealed class BoxLayoutTests
             TestContext.Current.CancellationToken);
 
         _ = Should.Throw<InvalidOperationException>(() =>
-            new Engine().Layout(control, new Size(10, 6)));
+            new LayoutEngine().Layout(control, new Size(10, 6)));
 
         control.MeasureConstraints.ShouldBeEmpty();
     }
@@ -244,7 +244,7 @@ public sealed class BoxLayoutTests
     {
         var random = new Random(seed);
         var result = new List<(Rect Bounds, Rect Available)>(count);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         for (var index = 0; index < count; index++)
         {

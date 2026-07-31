@@ -136,7 +136,7 @@ public sealed class ButtonTests
             button.Content = new ProbeControl(new Size(9, 4)) { Visibility = Visibility.Collapsed };
         }
 
-        new Engine().Layout(button, new Size(20, 10));
+        new LayoutEngine().Layout(button, new Size(20, 10));
 
         button.DesiredSize.ShouldBe(new Size(4, 2));
     }
@@ -158,7 +158,7 @@ public sealed class ButtonTests
             Style = composite,
             Content = new ProbeControl(new Size(2, 1))
         };
-        new Engine().Layout(button, new Size(10, 5));
+        new LayoutEngine().Layout(button, new Size(10, 5));
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
             new Rune(' '),
@@ -250,7 +250,7 @@ public sealed class ButtonTests
         };
 
         // Act
-        new Engine().Layout(row, new Size(30, 3));
+        new LayoutEngine().Layout(row, new Size(30, 3));
 
         // Assert
         standard.Bounds.Height.ShouldBe(3);
@@ -276,7 +276,7 @@ public sealed class ButtonTests
         };
 
         // Act
-        new Engine().Layout(row, new Size(30, 3));
+        new LayoutEngine().Layout(row, new Size(30, 3));
 
         // Assert
         standard.Bounds.Height.ShouldBe(3);
@@ -294,7 +294,7 @@ public sealed class ButtonTests
         };
         var button = new Button { Width = Length.Cells(10), Height = Length.Cells(3), Content = content };
 
-        new Engine().Layout(button, new Size(10, 3));
+        new LayoutEngine().Layout(button, new Size(10, 3));
 
         button.Bounds.ShouldBe(new Rect(0, 0, 10, 3));
         content.Bounds.ShouldBe(new Rect(2, 1, 6, 1));
@@ -319,7 +319,7 @@ public sealed class ButtonTests
                 AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
             Content = content
         };
-        new Engine().Layout(button, new Size(10, 6));
+        new LayoutEngine().Layout(button, new Size(10, 6));
         var released = content.Bounds;
 
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
@@ -332,7 +332,7 @@ public sealed class ButtonTests
         released.ShouldBe(new Rect(1, 0, 4, 3));
         content.Bounds.ShouldBe(new Rect(2, 1, 4, 3));
 
-        new Engine().Layout(button, new Size(10, 6));
+        new LayoutEngine().Layout(button, new Size(10, 6));
 
         content.Bounds.ShouldBe(new Rect(2, 1, 4, 3));
     }
@@ -354,7 +354,7 @@ public sealed class ButtonTests
             Height = Length.Cells(1),
             Content = content
         };
-        new Engine().Layout(button, new Size(9, 2));
+        new LayoutEngine().Layout(button, new Size(9, 2));
         var released = content.Bounds;
 
         // Act
@@ -379,7 +379,7 @@ public sealed class ButtonTests
         var size = new Size(9, 5);
         button.Width = Length.Cells(size.Width);
         button.Height = Length.Cells(size.Height);
-        new Engine().Layout(button, size);
+        new LayoutEngine().Layout(button, size);
         using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
@@ -403,7 +403,7 @@ public sealed class ButtonTests
             Height = Length.Cells(5)
         };
         var size = new Size(9, 5);
-        new Engine().Layout(button, size);
+        new LayoutEngine().Layout(button, size);
         using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
@@ -427,7 +427,7 @@ public sealed class ButtonTests
             Content = new ControlText("Go")
         };
         var size = new Size(10, 6);
-        new Engine().Layout(button, size);
+        new LayoutEngine().Layout(button, size);
         using Frame released = new(size);
         button.Render(released.Canvas);
 
@@ -523,7 +523,7 @@ public sealed class ButtonTests
             Content = new ControlText("Go")
         };
         var size = new Size(10, 6);
-        new Engine().Layout(button, size);
+        new LayoutEngine().Layout(button, size);
 
         _ = Router.Route(button, Events.Key, new KeyEventArgs(new Stroke(
             Code.Character,
@@ -556,7 +556,7 @@ public sealed class ButtonTests
             Style = TestButtonStyles.WithShadow(
                 AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1), attributes: Attributes.Dim)),
         };
-        new Engine().Layout(button, new Size(10, 6));
+        new LayoutEngine().Layout(button, new Size(10, 6));
         using Frame frame = new(new Size(10, 6));
 
         button.Render(frame.Canvas);
@@ -664,7 +664,7 @@ public sealed class ButtonTests
     {
         await using var dispatcher = Dispatcher.Start();
         var button = new Button { Bounds = new Rect(0, 0, 6, 1), Content = new ControlText("Click") };
-        new Engine().Layout(button, new Size(6, 1));
+        new LayoutEngine().Layout(button, new Size(6, 1));
         var clicks = 0;
         button.Click += (_, _) => clicks++;
 
@@ -686,7 +686,7 @@ public sealed class ButtonTests
         await using var dispatcher = Dispatcher.Start();
         var content = new ControlText("Hover");
         var button = new Button { Bounds = new Rect(0, 0, 6, 1), Content = content };
-        new Engine().Layout(button, new Size(6, 1));
+        new LayoutEngine().Layout(button, new Size(6, 1));
 
         await dispatcher.InvokeAsync(() =>
         {
@@ -707,7 +707,7 @@ public sealed class ButtonTests
     {
         var content = new ControlText("界") { Margin = new Thickness(1, 0) };
         var button = new Button { Content = content };
-        new Engine().Layout(button, new Size(8, 3));
+        new LayoutEngine().Layout(button, new Size(8, 3));
         using Frame frame = new(new Size(8, 3));
 
         button.Render(frame.Canvas);
@@ -731,7 +731,7 @@ public sealed class ButtonTests
             Height = Length.Cells(3)
         };
         var size = new Size(8, 3);
-        new Engine().Layout(button, size);
+        new LayoutEngine().Layout(button, size);
         using Frame frame = new(size);
 
         button.Render(frame.Canvas);

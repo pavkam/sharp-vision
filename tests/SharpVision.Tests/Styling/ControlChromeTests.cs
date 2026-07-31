@@ -66,7 +66,7 @@ public sealed class ControlChromeTests
         var border = new LayoutProbe { Border = AppearanceTestValues.Border(BorderSide.Left) };
         border.Children.Add(new ControlText("ab"));
 
-        new Engine().Layout(border, new Size(10, 4));
+        new LayoutEngine().Layout(border, new Size(10, 4));
 
         border.DesiredSize.ShouldBe(new Size(3, 1));
     }

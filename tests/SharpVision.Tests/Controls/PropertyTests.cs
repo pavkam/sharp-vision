@@ -39,7 +39,7 @@ public sealed class PropertyTests
     {
         var control = new ProbeControl(new Size(3, 2));
 
-        new Engine().Layout(control, new Size(10, 6));
+        new LayoutEngine().Layout(control, new Size(10, 6));
 
         control.Bounds.ShouldBe(new Rect(0, 0, 3, 6));
     }

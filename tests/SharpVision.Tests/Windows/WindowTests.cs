@@ -92,7 +92,7 @@ public sealed class WindowTests
             var fired = 0;
             window.Shown += (_, _) => fired++;
             root.Children.Add(window);
-            new Engine().Layout(root, new Size(30, 12));
+            new LayoutEngine().Layout(root, new Size(30, 12));
 
             root.Attach(dispatcher);
 
@@ -141,7 +141,7 @@ public sealed class WindowTests
             using var root = new Overlay();
             var window = new Window { Width = Length.Cells(12), Height = Length.Cells(5) };
             root.Children.Add(window);
-            new Engine().Layout(root, new Size(30, 12));
+            new LayoutEngine().Layout(root, new Size(30, 12));
             var arranged = window.Bounds;
 
             window.SurfaceBounds.ShouldBe(default);
@@ -167,7 +167,7 @@ public sealed class WindowTests
                 Visibility = Visibility.Hidden
             };
             root.Children.Add(window);
-            new Engine().Layout(root, new Size(30, 12));
+            new LayoutEngine().Layout(root, new Size(30, 12));
             var arranged = window.Bounds;
             root.Attach(dispatcher);
 
@@ -238,7 +238,7 @@ public sealed class WindowTests
     {
         var content = new ProbeControl(new Size(4, 2)) { Margin = new Thickness(3) };
         var window = new Window { Content = content };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(window, new Size(20, 10));
         var measureCalls = content.MeasureConstraints.Count;
@@ -268,7 +268,7 @@ public sealed class WindowTests
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var size = new Size(10, 4);
-        new Engine().Layout(window, size);
+        new LayoutEngine().Layout(window, size);
         using Frame frame = new(size);
 
         window.Render(frame.Canvas);
@@ -295,7 +295,7 @@ public sealed class WindowTests
             Height = Length.Cells(3)
         };
         var size = new Size(12, 3);
-        new Engine().Layout(window, size);
+        new LayoutEngine().Layout(window, size);
         using Frame frame = new(size);
 
         window.Render(frame.Canvas);
@@ -347,7 +347,7 @@ public sealed class WindowTests
             Shadow = AppearanceTestValues.Shadow(visible: false),
             Content = content
         };
-        new Engine().Layout(window, new Size(5, 4));
+        new LayoutEngine().Layout(window, new Size(5, 4));
         using Frame frame = new(new Size(5, 4));
 
         window.Render(frame.Canvas);
@@ -384,7 +384,7 @@ public sealed class WindowTests
     {
         var window = new Window { Header = "A deliberately long title" };
         var size = new Size(6, 2);
-        new Engine().Layout(window, size);
+        new LayoutEngine().Layout(window, size);
         using Frame frame = new(size);
 
         window.Render(frame.Canvas);
@@ -519,7 +519,7 @@ public sealed class WindowTests
     {
         var window = new Window { CanClose = true, Header = "界" };
 
-        new Engine().Layout(window, new Size(40, 8));
+        new LayoutEngine().Layout(window, new Size(40, 8));
 
         window.DesiredSize.Width.ShouldBe(13);
     }
@@ -753,7 +753,7 @@ public sealed class WindowTests
             window.Closing += (_, _) => window.Dispose();
             window.Closed += (_, _) => closed++;
             var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(20, 8));
+            new LayoutEngine().Layout(root, new Size(20, 8));
             root.Attach(dispatcher);
 
             _ = Router.Route(window, Events.Key, Key(Code.Escape));
@@ -774,7 +774,7 @@ public sealed class WindowTests
             var window = ClosableWindow();
             window.Closing += (_, _) => closing++;
             var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(20, 8));
+            new LayoutEngine().Layout(root, new Size(20, 8));
             root.Attach(dispatcher);
             using PointerManager pointer = new(root);
 
@@ -802,7 +802,7 @@ public sealed class WindowTests
             var window = ClosableWindow();
             window.Closing += (_, _) => closing++;
             var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(20, 8));
+            new LayoutEngine().Layout(root, new Size(20, 8));
             root.Attach(dispatcher);
             using PointerManager pointer = new(root);
 
@@ -829,7 +829,7 @@ public sealed class WindowTests
             var window = ClosableWindow();
             window.Closing += (_, _) => closing++;
             var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(20, 8));
+            new LayoutEngine().Layout(root, new Size(20, 8));
             root.Attach(dispatcher);
             using PointerManager pointer = new(root);
 
@@ -855,7 +855,7 @@ public sealed class WindowTests
             var window = ClosableWindow();
             window.Closing += (_, _) => closing++;
             var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(20, 8));
+            new LayoutEngine().Layout(root, new Size(20, 8));
             root.Attach(dispatcher);
             using PointerManager pointer = new(root);
 
@@ -896,7 +896,7 @@ public sealed class WindowTests
                 Top = Length.Cells(1)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(30, 15));
+            new LayoutEngine().Layout(canvas, new Size(30, 15));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 
@@ -927,7 +927,7 @@ public sealed class WindowTests
                 Top = Length.Cells(1)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(30, 15));
+            new LayoutEngine().Layout(canvas, new Size(30, 15));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 
@@ -963,7 +963,7 @@ public sealed class WindowTests
                 Top = Length.Cells(1)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(20, 10));
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 
@@ -996,7 +996,7 @@ public sealed class WindowTests
         canvas.Children.Add(window);
 
         // Act
-        new Engine().Layout(canvas, new Size(8, 5));
+        new LayoutEngine().Layout(canvas, new Size(8, 5));
 
         // Assert
         window.Bounds.ShouldBe(new Rect(2, 1, 10, 6));
@@ -1017,7 +1017,7 @@ public sealed class WindowTests
         var canvas = new Overlay { Children = { window } };
 
         // Act
-        new Engine().Layout(canvas, new Size(30, 12));
+        new LayoutEngine().Layout(canvas, new Size(30, 12));
 
         // Assert
         window.Bounds.ShouldBe(new Rect(10, 4, 10, 4));
@@ -1045,7 +1045,7 @@ public sealed class WindowTests
                 Top = Length.Cells(0)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(outer, new Size(40, 20));
+            new LayoutEngine().Layout(outer, new Size(40, 20));
             outer.Attach(dispatcher);
             using PointerManager capture = new(outer);
 
@@ -1079,7 +1079,7 @@ public sealed class WindowTests
                 Top = Length.Cells(1)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(20, 10));
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 
@@ -1109,7 +1109,7 @@ public sealed class WindowTests
                 Top = Length.Cells(0)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(20, 10));
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 
@@ -1143,7 +1143,7 @@ public sealed class WindowTests
                 Top = Length.Cells(0)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(20, 10));
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 
@@ -1178,7 +1178,7 @@ public sealed class WindowTests
                 Top = Length.Cells(0)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(20, 10));
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 
@@ -1220,7 +1220,7 @@ public sealed class WindowTests
                 Top = Length.Cells(2)
             };
             canvas.Children.Add(window);
-            new Engine().Layout(canvas, new Size(20, 10));
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
             canvas.Attach(dispatcher);
             using PointerManager capture = new(canvas);
 

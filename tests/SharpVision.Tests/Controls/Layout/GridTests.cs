@@ -15,7 +15,7 @@ public sealed class GridTests
         var child = new ProbeControl(new Size(3, 2));
         grid.Children.Add(child);
 
-        new Engine().Layout(grid, new Size(8, 5));
+        new LayoutEngine().Layout(grid, new Size(8, 5));
 
         grid.DesiredSize.ShouldBe(new Size(3, 2));
         child.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
@@ -40,7 +40,7 @@ public sealed class GridTests
         grid.Children.Add(autoChild);
         grid.Children.Add(starChild);
 
-        new Engine().Layout(grid, new Size(20, 2));
+        new LayoutEngine().Layout(grid, new Size(20, 2));
 
         fixedChild.Bounds.ShouldBe(new Rect(0, 0, 3, 1));
         percentChild.Bounds.ShouldBe(new Rect(4, 0, 4, 1));
@@ -59,7 +59,7 @@ public sealed class GridTests
         grid.Children.Add(narrow);
         grid.Children.Add(wide);
 
-        new Engine().Layout(grid, new Size(10, 4));
+        new LayoutEngine().Layout(grid, new Size(10, 4));
 
         grid.DesiredSize.ShouldBe(new Size(5, 2));
         narrow.Bounds.Width.ShouldBe(5);
@@ -77,7 +77,7 @@ public sealed class GridTests
         Grid.SetColumnSpan(child, 2);
         grid.Children.Add(child);
 
-        new Engine().Layout(grid, new Size(10, 2));
+        new LayoutEngine().Layout(grid, new Size(10, 2));
 
         grid.DesiredSize.Width.ShouldBe(5);
         child.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
@@ -95,7 +95,7 @@ public sealed class GridTests
         grid.Children.Add(first);
         grid.Children.Add(second);
 
-        new Engine().Layout(grid, new Size(10, 1));
+        new LayoutEngine().Layout(grid, new Size(10, 1));
 
         first.Bounds.Width.ShouldBe(2);
         second.Bounds.ShouldBe(new Rect(2, 0, 8, 1));
@@ -111,7 +111,7 @@ public sealed class GridTests
         grid.Children.Add(visible);
         grid.Children.Add(collapsed);
 
-        new Engine().Layout(grid, new Size(30, 20));
+        new LayoutEngine().Layout(grid, new Size(30, 20));
 
         grid.DesiredSize.ShouldBe(new Size(2, 1));
         collapsed.Bounds.ShouldBe(default);
@@ -128,7 +128,7 @@ public sealed class GridTests
         Grid.SetColumnSpan(child, 2);
         grid.Children.Add(child);
 
-        new Engine().Layout(grid, new Size(12, 3));
+        new LayoutEngine().Layout(grid, new Size(12, 3));
 
         child.MeasureConstraints.ShouldContain(new Constraint(12, 1));
         child.Bounds.Width.ShouldBe(12);
@@ -158,7 +158,7 @@ public sealed class GridTests
             MaxWidth = 72
         };
         var canvas = new Overlay { Children = { window } };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         // Act
         engine.Layout(canvas, new Size(90, 20));
@@ -186,7 +186,7 @@ public sealed class GridTests
         var text = new ControlText("One two three four five six") { Overflow = Overflow.Wrap };
         grid.Children.Add(text);
 
-        new Engine().Layout(grid, new Size(10, 10));
+        new LayoutEngine().Layout(grid, new Size(10, 10));
 
         text.Bounds.Height.ShouldBeGreaterThan(1);
         grid.DesiredSize.Height.ShouldBeGreaterThan(1);
@@ -203,7 +203,7 @@ public sealed class GridTests
         var star = Child(column: 1);
         grid.Children.Add(percent);
         grid.Children.Add(star);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(grid, new Size(9, 1));
         percent.Bounds.Width.ShouldBe(5);
@@ -225,7 +225,7 @@ public sealed class GridTests
         grid.Children.Add(first);
         grid.Children.Add(second);
 
-        new Engine().Layout(grid, new Size(3, 1));
+        new LayoutEngine().Layout(grid, new Size(3, 1));
 
         first.Bounds.Width.ShouldBe(0);
         second.Bounds.Width.ShouldBe(0);
@@ -241,7 +241,7 @@ public sealed class GridTests
         grid.Children.Add(new ProbeControl(new Size(3, 1)));
         var host = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         host.Children.Add(grid);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(host, new Size(5, 5));
         _ = host.ScrollBy(0, 2);
@@ -278,7 +278,7 @@ public sealed class GridTests
         var second = Child(column: 1, content: "B");
         grid.Children.Add(first);
         grid.Children.Add(second);
-        new Engine().Layout(grid, new Size(2, 1));
+        new LayoutEngine().Layout(grid, new Size(2, 1));
         using Frame frame = new(new Size(2, 1));
 
         grid.Render(frame.Canvas);
@@ -295,7 +295,7 @@ public sealed class GridTests
         grid.Rows.Add(Track.Auto());
         grid.Columns.Add(Track.Auto());
 
-        new Engine().Layout(grid, new Size(20, 20));
+        new LayoutEngine().Layout(grid, new Size(20, 20));
 
         grid.DesiredSize.ShouldBe(default);
     }
@@ -315,7 +315,7 @@ public sealed class GridTests
         grid.Children.Add(b);
         grid.Children.Add(c);
 
-        new Engine().Layout(grid, new Size(12, 1));
+        new LayoutEngine().Layout(grid, new Size(12, 1));
 
         a.Bounds.Width.ShouldBe(4);
         b.Bounds.Width.ShouldBe(4);
@@ -337,7 +337,7 @@ public sealed class GridTests
         grid.Children.Add(percent);
         grid.Children.Add(star);
 
-        new Engine().Layout(grid, new Size(20, 1));
+        new LayoutEngine().Layout(grid, new Size(20, 1));
 
         percent.Bounds.Width.ShouldBeGreaterThanOrEqualTo(5);
         percent.Bounds.Width.ShouldBeLessThanOrEqualTo(10);
@@ -353,7 +353,7 @@ public sealed class GridTests
         var child = new ProbeControl(new Size(3, 2)) { Margin = new Thickness(1) };
         grid.Children.Add(child);
 
-        new Engine().Layout(grid, new Size(20, 10));
+        new LayoutEngine().Layout(grid, new Size(20, 10));
 
         child.Bounds.X.ShouldBe(1);
         child.Bounds.Y.ShouldBe(1);
@@ -381,7 +381,7 @@ public sealed class GridTests
         grid.Children.Add(bottomLeft);
         grid.Children.Add(bottomRight);
 
-        new Engine().Layout(grid, new Size(20, 10));
+        new LayoutEngine().Layout(grid, new Size(20, 10));
 
         topLeft.Bounds.ShouldBe(new Rect(0, 0, 5, 3));
         topRight.Bounds.ShouldBe(new Rect(7, 0, 5, 3));
@@ -400,7 +400,7 @@ public sealed class GridTests
         grid.Children.Add(visible);
         grid.Children.Add(hidden);
 
-        new Engine().Layout(grid, new Size(20, 5));
+        new LayoutEngine().Layout(grid, new Size(20, 5));
 
         grid.DesiredSize.Width.ShouldBe(8);
     }
@@ -418,7 +418,7 @@ public sealed class GridTests
         var child = new ProbeControl(new Size(3, 2));
         grid.Children.Add(child);
 
-        new Engine().Layout(grid, new Size(20, 10));
+        new LayoutEngine().Layout(grid, new Size(20, 10));
 
         child.Bounds.X.ShouldBeGreaterThanOrEqualTo(3);
         child.Bounds.Y.ShouldBeGreaterThanOrEqualTo(2);

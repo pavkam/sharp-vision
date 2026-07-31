@@ -19,7 +19,7 @@ public sealed class ContainerAutoSizeTests
         };
         container.Children.Add(child);
 
-        new Engine().Layout(container, new Size(40, 40));
+        new LayoutEngine().Layout(container, new Size(40, 40));
 
         container.DesiredSize.ShouldBe(new Size(11, 7));
         container.Bounds.ShouldBe(new Rect(0, 0, 11, 7));
@@ -50,7 +50,7 @@ public sealed class ContainerAutoSizeTests
         var container = new LayoutProbe { AutoSize = true, HorizontalAlignment = HorizontalAlignment.Stretch };
         container.Children.Add(new ProbeControl(new Size(5, 3)) { HorizontalAlignment = HorizontalAlignment.Left });
 
-        new Engine().Layout(container, new Size(40, 40));
+        new LayoutEngine().Layout(container, new Size(40, 40));
 
         container.Bounds.Width.ShouldBe(5);
         container.Bounds.Height.ShouldBe(3);
@@ -68,7 +68,7 @@ public sealed class ContainerAutoSizeTests
         };
         container.Children.Add(new ProbeControl(new Size(4, 2)));
 
-        new Engine().Layout(container, new Size(40, 40));
+        new LayoutEngine().Layout(container, new Size(40, 40));
 
         container.Bounds.Width.ShouldBe(4);
     }
@@ -85,7 +85,7 @@ public sealed class ContainerAutoSizeTests
         };
         container.Children.Add(new ProbeControl(new Size(4, 2)));
 
-        new Engine().Layout(container, new Size(40, 40));
+        new LayoutEngine().Layout(container, new Size(40, 40));
 
         container.Bounds.Width.ShouldBe(10);
     }
@@ -102,7 +102,7 @@ public sealed class ContainerAutoSizeTests
         };
         container.Children.Add(new ProbeControl(new Size(20, 2)));
 
-        new Engine().Layout(container, new Size(40, 40));
+        new LayoutEngine().Layout(container, new Size(40, 40));
 
         container.Bounds.Width.ShouldBe(20);
     }
@@ -120,7 +120,7 @@ public sealed class ContainerAutoSizeTests
         };
         container.Children.Add(new ProbeControl(new Size(5, 3)) { HorizontalAlignment = HorizontalAlignment.Left });
 
-        new Engine().Layout(container, new Size(40, 40));
+        new LayoutEngine().Layout(container, new Size(40, 40));
 
         container.Bounds.ShouldBe(new Rect(0, 0, 9, 7));
     }

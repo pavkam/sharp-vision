@@ -474,7 +474,7 @@ public sealed class NavigationViewTests
             Height = Length.Cells(10)
         };
         var size = new Size(24, 10);
-        new Engine().Layout(nav, size);
+        new LayoutEngine().Layout(nav, size);
         using Frame frame = new(size);
 
         nav.Render(frame.Canvas);
@@ -544,7 +544,7 @@ public sealed class NavigationViewTests
             nav.Items.Add(new NavigationViewItem { Header = $"Item {index}" });
         }
 
-        new Engine().Layout(nav, new Size(10, 4));
+        new LayoutEngine().Layout(nav, new Size(10, 4));
         List<ScrollChangedEventArgs> changes = [];
         nav.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
 
@@ -569,7 +569,7 @@ public sealed class NavigationViewTests
             nav.Items.Add(last);
         }
 
-        new Engine().Layout(nav, new Size(10, 4));
+        new LayoutEngine().Layout(nav, new Size(10, 4));
 
         var moved = nav.BringItemIntoView(last!);
 

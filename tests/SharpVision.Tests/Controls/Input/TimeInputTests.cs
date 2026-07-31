@@ -64,14 +64,14 @@ public sealed class TimeInputTests
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(14, 30) };
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame before = new(new Size(20, 3));
         control.Render(before.Canvas);
         var rowBefore = Row(before, 1);
 
         // Act
         control.Use24HourFormat = false;
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame after = new(new Size(20, 3));
         control.Render(after.Canvas);
         var rowAfter = Row(after, 1);
@@ -86,12 +86,12 @@ public sealed class TimeInputTests
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(14, 30, 45) };
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         var widthBefore = control.DesiredSize.Width;
 
         // Act
         control.ShowSeconds = true;
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         var widthAfter = control.DesiredSize.Width;
 
         // Assert
@@ -146,7 +146,7 @@ public sealed class TimeInputTests
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(14, 30) };
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame frame = new(new Size(20, 3));
 
         // Act
@@ -163,7 +163,7 @@ public sealed class TimeInputTests
         // Arrange
         using var control = new TimeInput { AllowNull = true };
         control.Value = null;
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame frame = new(new Size(20, 3));
 
         // Act

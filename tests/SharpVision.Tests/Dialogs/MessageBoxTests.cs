@@ -59,7 +59,7 @@ public sealed class MessageBoxTests
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(messageBox, new Size(32, 12));
 
@@ -74,7 +74,7 @@ public sealed class MessageBoxTests
     {
         var messageBox = new MessageBox("OK", "Notice");
 
-        new Engine().Layout(messageBox, new Size(80, 24));
+        new LayoutEngine().Layout(messageBox, new Size(80, 24));
 
         messageBox.DesiredSize.Width.ShouldBeGreaterThanOrEqualTo(32);
         messageBox.DesiredSize.Height.ShouldBeGreaterThanOrEqualTo(8);
@@ -176,7 +176,7 @@ public sealed class MessageBoxTests
         var message = OwnedTree.Find<ControlText>(messageBox).ShouldNotBeNull();
 
         // Act
-        new Engine().Layout(messageBox, new Size(40, 12));
+        new LayoutEngine().Layout(messageBox, new Size(40, 12));
 
         // Assert
         message.Bounds.Y.ShouldBe(window.Bounds.Y + 3);
@@ -298,7 +298,7 @@ public sealed class MessageBoxTests
     public void Constructor_WhenButtonLayoutIsStandard_CreatesMeasuredSurface(MessageBoxButtons buttons)
     {
         var messageBox = new MessageBox("Choose an action.", "Action", buttons);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(messageBox, new Size(40, 12));
 
@@ -391,7 +391,7 @@ public sealed class MessageBoxTests
                 new Thickness(horizontal: 1, vertical: 3),
                 ButtonStyle.Standard.Appearance)
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(flat, new Size(60, 20));
         engine.Layout(tall, new Size(60, 20));

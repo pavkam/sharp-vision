@@ -25,7 +25,7 @@ public sealed class FigletTextTests
     {
         var control = new FigletText(FigletCatalog.Default.Load("Standard")) { Content = "H" };
 
-        new Engine().Layout(control, new Size(20, 10));
+        new LayoutEngine().Layout(control, new Size(20, 10));
 
         control.DesiredSize.ShouldBe(new Size(7, 6));
     }
@@ -35,7 +35,7 @@ public sealed class FigletTextTests
     public void Render_WhenContentIsSet_WritesExactFigletCells()
     {
         var control = new FigletText(FigletCatalog.Default.Load("Standard")) { Content = "H" };
-        new Engine().Layout(control, new Size(7, 6));
+        new LayoutEngine().Layout(control, new Size(7, 6));
         using Frame frame = new(new Size(7, 6));
 
         control.Render(frame.Canvas);
@@ -54,7 +54,7 @@ public sealed class FigletTextTests
             Content = "H",
             Face = AppearanceTestValues.Face(foreground: ReferenceColors.Get(45)),
         };
-        new Engine().Layout(control, new Size(7, 6));
+        new LayoutEngine().Layout(control, new Size(7, 6));
         using Frame frame = new(new Size(7, 6));
         var destinationBackground = ReferenceColors.Get(238);
         frame.Canvas.Fill(

@@ -437,7 +437,7 @@ public sealed class ContentControlTests
     public void Content_WhenAssignedAfterLayout_RemeasuresAtSameViewport()
     {
         var owner = new ProbeContentControl();
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(owner, new Size(8, 2));
         var content = new ProbeControl(new Size(3, 1));
 
@@ -457,7 +457,7 @@ public sealed class ContentControlTests
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var viewport = new Size(8, 2);
         var observed = new List<Control>();
         engine.Layout(owner, viewport);
@@ -547,7 +547,7 @@ public sealed class ContentControlTests
         var content = new ProbeControl(new Size(4, 2)) { Margin = new Thickness(5), Visibility = Visibility.Collapsed };
         var owner = new ProbeContentControl { Content = content };
 
-        new Engine().Layout(owner, new Size(20, 10));
+        new LayoutEngine().Layout(owner, new Size(20, 10));
 
         owner.DesiredSize.ShouldBe(default);
         content.MeasureConstraints.ShouldBeEmpty();
@@ -561,7 +561,7 @@ public sealed class ContentControlTests
     {
         var content = new ProbeControl(new Size(4, 2)) { Margin = new Thickness(1) };
         var owner = new ProbeContentControl { Content = content };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(owner, new Size(10, 4));
         var measureCalls = content.MeasureConstraints.Count;
         var arrangeCalls = content.ArrangeBounds.Count;
@@ -609,7 +609,7 @@ public sealed class ContentControlTests
             VerticalAlignment = VerticalAlignment.Stretch
         };
 
-        new Engine().Layout(owner, new Size(20, 10));
+        new LayoutEngine().Layout(owner, new Size(20, 10));
 
         content.Bounds.ShouldBe(new Rect(1, 2, 16, 4));
         content.ArrangeBounds.ShouldBe([content.Bounds]);
@@ -621,7 +621,7 @@ public sealed class ContentControlTests
     {
         var content = new ProbeControl(new Size(1, 1)) { Content = "X".AsMemory() };
         var owner = new ProbeContentControl { Content = content };
-        new Engine().Layout(owner, new Size(1, 1));
+        new LayoutEngine().Layout(owner, new Size(1, 1));
         using Frame frame = new(new Size(1, 1));
 
         owner.Render(frame.Canvas);

@@ -173,7 +173,7 @@ public sealed class TabControlTests
         tabs.HeaderWidth = Length.Cells(5);
         tabs.HeaderOverflowPolicy = TabHeaderOverflowPolicy.Scroll;
         tabs.SelectedIndex = 2;
-        new Engine().Layout(tabs, new Size(10, 4));
+        new LayoutEngine().Layout(tabs, new Size(10, 4));
 
         tabs.HeaderAt(0).Bounds.Width.ShouldBe(5);
         tabs.HeaderAt(2).Bounds.Width.ShouldBe(5);
@@ -214,7 +214,7 @@ public sealed class TabControlTests
         tabs.HeaderWidth = Length.Cells(5);
         tabs.DividerGlyph = new Rune('|');
         var size = new Size(10, 4);
-        new Engine().Layout(tabs, size);
+        new LayoutEngine().Layout(tabs, size);
         using Frame frame = new(size);
 
         tabs.Render(frame.Canvas);
@@ -551,7 +551,7 @@ public sealed class TabControlTests
         var first = Create("General", "General body");
         var second = Create("界", "Wide body");
         var tabs = Create(first, second);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(tabs, new Size(20, 5));
 

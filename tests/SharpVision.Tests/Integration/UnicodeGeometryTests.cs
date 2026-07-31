@@ -35,7 +35,7 @@ public sealed class UnicodeGeometryTests
             stack.Children.Add(combo);
             stack.SetTheme(TestThemes.BorderlessInput);
             stack.Attach(dispatcher, policy);
-            new Engine().Layout(stack, new Size(20, 12));
+            new LayoutEngine().Layout(stack, new Size(20, 12));
 
             // Assert
             text.DesiredSize.Width.ShouldBe(2);
@@ -60,7 +60,7 @@ public sealed class UnicodeGeometryTests
             var input = new TextInputControl { Text = source, Width = Length.Cells(2) };
             input.SetTheme(TestThemes.BorderlessInput);
             input.Attach(dispatcher, Policy.Default);
-            new Engine().Layout(input, new Size(2, 1));
+            new LayoutEngine().Layout(input, new Size(2, 1));
             using Frame frame = new(new Size(2, 1));
 
             // Act

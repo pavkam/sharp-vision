@@ -2162,17 +2162,17 @@ namespace SharpVision.Layout
         Right = 2,
         Bottom = 3,
     }
-    public sealed class Engine
-    {
-        public Engine() { }
-        public void Layout(SharpVision.Controls.Control root, SharpVision.Terminal.Geometry.Size size) { }
-    }
     public enum HorizontalAlignment
     {
         Left = 0,
         Center = 1,
         Right = 2,
         Stretch = 3,
+    }
+    public sealed class LayoutEngine
+    {
+        public LayoutEngine() { }
+        public void Layout(SharpVision.Controls.Control root, SharpVision.Terminal.Geometry.Size size) { }
     }
     [System.Diagnostics.DebuggerDisplay("{ToString(),nq}")]
     public readonly struct Length : System.IEquatable<SharpVision.Layout.Length>

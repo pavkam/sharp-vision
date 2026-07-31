@@ -691,7 +691,7 @@ public sealed class TreeViewTests
             tree.Items.Add(new TreeViewItem { Header = $"Item {index}" });
         }
 
-        new Engine().Layout(tree, new Size(10, 4));
+        new LayoutEngine().Layout(tree, new Size(10, 4));
         List<ScrollChangedEventArgs> changes = [];
         tree.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
 
@@ -716,7 +716,7 @@ public sealed class TreeViewTests
             tree.Items.Add(last);
         }
 
-        new Engine().Layout(tree, new Size(10, 4));
+        new LayoutEngine().Layout(tree, new Size(10, 4));
 
         var moved = tree.BringItemIntoView(last!);
 

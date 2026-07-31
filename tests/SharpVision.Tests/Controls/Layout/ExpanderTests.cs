@@ -48,7 +48,7 @@ public sealed class ExpanderTests
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(expander, new Size(20, 8));
 
@@ -185,7 +185,7 @@ public sealed class ExpanderTests
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         // Act
         engine.Layout(expander, new Size(20, 8));
@@ -267,7 +267,7 @@ public sealed class ExpanderTests
         };
 
         // Act
-        new Engine().Layout(expander, new Size(20, 8));
+        new LayoutEngine().Layout(expander, new Size(20, 8));
 
         // Assert
         content.Bounds.X.ShouldBe(0);

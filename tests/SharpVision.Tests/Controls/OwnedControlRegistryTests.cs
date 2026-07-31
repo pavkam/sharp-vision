@@ -272,7 +272,7 @@ public sealed class OwnedControlRegistryTests
     public void Add_WhenSlotPublishesChange_InvalidatesBeforeNotification()
     {
         var owner = new ProbeOwnedControl();
-        new Engine().Layout(owner, new Size(4, 1));
+        new LayoutEngine().Layout(owner, new Size(4, 1));
         (owner.Pending & Invalidation.Measure).ShouldBe(Invalidation.None);
         var pendingDuringNotification = Invalidation.None;
         owner.PrimaryChanging = control =>

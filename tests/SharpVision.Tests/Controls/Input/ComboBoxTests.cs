@@ -33,7 +33,7 @@ public sealed class ComboBoxTests
             SelectedIndex = 1
         };
         var size = new Size(12, 6);
-        new Engine().Layout(box, size);
+        new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
@@ -61,7 +61,7 @@ public sealed class ComboBoxTests
         };
         box.SetTheme(Themes.Dark);
         var size = new Size(24, 3);
-        new Engine().Layout(box, size);
+        new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
@@ -167,7 +167,7 @@ public sealed class ComboBoxTests
     public void SelectedIndex_WhenSetWhileOpenToAvailableItem_FiresSelectionChangedExactlyOnce()
     {
         var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
-        new Engine().Layout(box, new Size(24, 12));
+        new LayoutEngine().Layout(box, new Size(24, 12));
         var selectionChanges = 0;
         box.SelectionChanged += (_, _) => selectionChanges++;
 
@@ -185,7 +185,7 @@ public sealed class ComboBoxTests
     public void SelectedIndex_WhenListVetoesWhileOpen_RollsBackWithoutPublishing()
     {
         var box = new ComboBox { Items = ["One", "Two", "Three"], DropDownHeight = 4, IsOpen = true };
-        new Engine().Layout(box, new Size(24, 12));
+        new LayoutEngine().Layout(box, new Size(24, 12));
         var popup = OwnedTree.Find<Popup>(box).ShouldNotBeNull();
         var list = popup.Content.ShouldBeOfType<ListView>();
         list.SelectionChanging += (_, eventArgs) => eventArgs.Cancel = true;
@@ -204,7 +204,7 @@ public sealed class ComboBoxTests
     {
         var box = new ComboBox { DropDownHeight = 4, Items = ["1Row", "3-D", "Standard"], IsOpen = true };
         var size = new Size(24, 12);
-        new Engine().Layout(box, size);
+        new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
@@ -236,7 +236,7 @@ public sealed class ComboBoxTests
         };
         var root = new Overlay { Children = { box } };
         var size = new Size(12, 7);
-        new Engine().Layout(root, size);
+        new LayoutEngine().Layout(root, size);
         using Frame frame = new(size);
 
         // Act
@@ -271,7 +271,7 @@ public sealed class ComboBoxTests
         };
         var root = new Overlay { Children = { box } };
         var size = new Size(12, 6);
-        new Engine().Layout(root, size);
+        new LayoutEngine().Layout(root, size);
         using Frame frame = new(size);
 
         // Act
@@ -301,7 +301,7 @@ public sealed class ComboBoxTests
             ScrollBarStyle = ScrollBarStyle.ThinLine,
             IsOpen = true
         };
-        new Engine().Layout(box, new Size(12, 6));
+        new LayoutEngine().Layout(box, new Size(12, 6));
 
         box.ScrollBars.ShouldBe(ScrollBars.Vertical);
         box.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
@@ -321,7 +321,7 @@ public sealed class ComboBoxTests
         await dispatcher.InvokeAsync(() =>
         {
             var box = new ComboBox { Items = ["Small", "Large"], SelectedIndex = 0 };
-            new Engine().Layout(box, new Size(12, 6));
+            new LayoutEngine().Layout(box, new Size(12, 6));
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
             focus.Focus(box).ShouldBeTrue();
@@ -348,7 +348,7 @@ public sealed class ComboBoxTests
         await dispatcher.InvokeAsync(() =>
         {
             var box = new ComboBox { Items = ["Small", "Large"], SelectedIndex = 0 };
-            new Engine().Layout(box, new Size(12, 6));
+            new LayoutEngine().Layout(box, new Size(12, 6));
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
             focus.Focus(box).ShouldBeTrue();
@@ -377,13 +377,13 @@ public sealed class ComboBoxTests
                 DropDownHeight = 2
             };
             var size = new Size(12, 6);
-            new Engine().Layout(box, size);
+            new LayoutEngine().Layout(box, size);
             box.Attach(dispatcher);
             using FocusManager focus = new(box);
             using PointerManager capture = new(box);
             focus.Focus(box).ShouldBeTrue();
             box.IsOpen = true;
-            new Engine().Layout(box, size);
+            new LayoutEngine().Layout(box, size);
             var list = OwnedTree.Find<ListView>(box).ShouldNotBeNull();
 
             _ = capture.Dispatch(Pointer(new Point(list.Bounds.X + 1, list.Bounds.Y), PointerAction.Press));
@@ -408,7 +408,7 @@ public sealed class ComboBoxTests
             var outside = new ProbeControl { Focusable = true };
             root.Children.Add(box);
             root.Children.Add(outside);
-            new Engine().Layout(root, new Size(20, 10));
+            new LayoutEngine().Layout(root, new Size(20, 10));
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
             focus.Focus(box).ShouldBeTrue();
@@ -438,7 +438,7 @@ public sealed class ComboBoxTests
             var sibling = new ProbeControl { Focusable = true };
             root.Children.Add(box);
             root.Children.Add(sibling);
-            new Engine().Layout(root, new Size(20, 10));
+            new LayoutEngine().Layout(root, new Size(20, 10));
             root.Attach(dispatcher);
             using FocusManager focus = new(root);
             focus.Focus(box).ShouldBeTrue();
@@ -503,7 +503,7 @@ public sealed class ComboBoxTests
             SelectedIndex = 1
         };
         var size = new Size(12, 6);
-        new Engine().Layout(box, size);
+        new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
@@ -542,7 +542,7 @@ public sealed class ComboBoxTests
             IsOpen = true
         };
         var size = new Size(24, 12);
-        new Engine().Layout(box, size);
+        new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);
@@ -567,7 +567,7 @@ public sealed class ComboBoxTests
             SelectedIndex = 0
         };
         var size = new Size(12, 6);
-        new Engine().Layout(box, size);
+        new LayoutEngine().Layout(box, size);
         using Frame frame = new(size);
 
         box.Render(frame.Canvas);

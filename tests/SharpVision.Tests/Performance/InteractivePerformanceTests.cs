@@ -18,7 +18,7 @@ public sealed class InteractivePerformanceTests
     {
         var root = Representative();
         var size = new Size(width, height);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         using Frame frame = new(size);
         Render();
 
@@ -101,7 +101,7 @@ public sealed class InteractivePerformanceTests
     {
         var list = new UiListView();
         var weak = PopulateAndReplace(list, count: 1_000);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var size = new Size(200, 60);
         engine.Layout(list, size);
 
@@ -123,7 +123,7 @@ public sealed class InteractivePerformanceTests
         inner.Width = Length.Cells(5);
         inner.Height = Length.Cells(8);
         var outer = Hidden(inner);
-        new Engine().Layout(outer, new Size(5, 4));
+        new LayoutEngine().Layout(outer, new Size(5, 4));
         var down = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: -20));
         var up = new PointerEventArgs(Pointer(default, PointerAction.Wheel, wheelY: 20));
         var descending = true;

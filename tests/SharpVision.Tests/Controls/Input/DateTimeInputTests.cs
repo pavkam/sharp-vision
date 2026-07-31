@@ -99,7 +99,7 @@ public sealed class DateTimeInputTests
         {
             Value = new DateTime(2026, 7, 19, 14, 30, 0)
         };
-        new Engine().Layout(control, new Size(30, 3));
+        new LayoutEngine().Layout(control, new Size(30, 3));
         using Frame frame = new(new Size(30, 3));
 
         // Act
@@ -118,7 +118,7 @@ public sealed class DateTimeInputTests
         // Arrange
         using var control = new DateTimeInput { AllowNull = true };
         control.Value = null;
-        new Engine().Layout(control, new Size(30, 3));
+        new LayoutEngine().Layout(control, new Size(30, 3));
         using Frame frame = new(new Size(30, 3));
 
         // Act

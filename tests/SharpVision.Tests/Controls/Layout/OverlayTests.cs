@@ -19,7 +19,7 @@ public sealed class OverlayTests
         layer.Children.Add(first);
         layer.Children.Add(second);
 
-        new Engine().Layout(layer, new Size(20, 10));
+        new LayoutEngine().Layout(layer, new Size(20, 10));
 
         layer.ClipToBounds.ShouldBeTrue();
         layer.DesiredSize.ShouldBe(new Size(6, 3));
@@ -39,7 +39,7 @@ public sealed class OverlayTests
         };
         layer.Children.Add(child);
 
-        new Engine().Layout(layer, new Size(10, 4));
+        new LayoutEngine().Layout(layer, new Size(10, 4));
 
         child.Bounds.ShouldBe(new Rect(5, 2, 5, 2));
     }
@@ -163,7 +163,7 @@ public sealed class OverlayTests
         Layer.SetZIndex(low, -3);
         layer.Children.Add(high);
         layer.Children.Add(low);
-        new Engine().Layout(layer, new Size(2, 1));
+        new LayoutEngine().Layout(layer, new Size(2, 1));
         using Frame frame = new(new Size(4, 1));
 
         layer.Render(frame.Canvas);
@@ -193,7 +193,7 @@ public sealed class OverlayTests
         layer.Children.Add(high);
         layer.Children.Add(low);
         var size = new Size(4, 3);
-        new Engine().Layout(layer, size);
+        new LayoutEngine().Layout(layer, size);
         using Frame frame = new(size);
 
         layer.Render(frame.Canvas);
@@ -232,7 +232,7 @@ public sealed class OverlayTests
         layer.Children.Add(popup);
         layer.Children.Add(cover);
         var size = new Size(8, 4);
-        new Engine().Layout(layer, size);
+        new LayoutEngine().Layout(layer, size);
         var point = new Point(popup.SurfaceBounds.X, layer.Bounds.Bottom - 1);
         using Frame frame = new(size);
 
@@ -265,7 +265,7 @@ public sealed class OverlayTests
         layer.Children.Add(high);
         layer.Children.Add(low);
         var size = new Size(6, 4);
-        new Engine().Layout(layer, size);
+        new LayoutEngine().Layout(layer, size);
         var bounds = high.Content!.Bounds;
         var point = new Point(bounds.X, bounds.Y);
         using Frame frame = new(size);
@@ -290,7 +290,7 @@ public sealed class OverlayTests
         layer.Children.Add(first);
         layer.Children.Add(second);
         var size = new Size(6, 4);
-        new Engine().Layout(layer, size);
+        new LayoutEngine().Layout(layer, size);
         var bounds = second.Content!.Bounds;
         var point = new Point(bounds.X, bounds.Y);
         using Frame frame = new(size);

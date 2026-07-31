@@ -68,7 +68,7 @@ public sealed class SpinnerTests
         var spinner = new Spinner();
 
         // Act
-        new Engine().Layout(spinner, new Size(8, 3));
+        new LayoutEngine().Layout(spinner, new Size(8, 3));
 
         // Assert
         spinner.DesiredSize.ShouldBe(new Size(1, 1));

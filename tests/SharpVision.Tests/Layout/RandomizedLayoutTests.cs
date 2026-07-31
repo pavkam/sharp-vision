@@ -30,7 +30,7 @@ public sealed class RandomizedLayoutTests
         using FocusManager focus = new(root);
         using PointerManager capture = new(root);
         List<ProbeControl> controls = [];
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var size = new Size(80, 24);
 
         for (var sample = 0; sample < _caseCount; sample++)

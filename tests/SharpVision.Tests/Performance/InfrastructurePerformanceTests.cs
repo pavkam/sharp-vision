@@ -11,7 +11,7 @@ public sealed class InfrastructurePerformanceTests
     [Fact]
     public void Layout_WhenConstraintAndStateAreUnchanged_AllocatesZeroBytes()
     {
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var control = new ProbeControl(new Size(20, 4));
         var size = new Size(80, 24);
         engine.Layout(control, size);

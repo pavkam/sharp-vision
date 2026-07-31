@@ -159,7 +159,7 @@ public sealed class ProgressBarTests
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top
         };
-        new Engine().Layout(bar, new Size(3, 1));
+        new LayoutEngine().Layout(bar, new Size(3, 1));
         using Frame frame = new(new Size(3, 1));
 
         // Act
@@ -309,7 +309,7 @@ public sealed class ProgressBarTests
         };
 
         // Act
-        new Engine().Layout(bar, new Size(100, 100));
+        new LayoutEngine().Layout(bar, new Size(100, 100));
 
         // Assert
         bar.Bounds.Width.ShouldBe(expectedWidth);
@@ -401,7 +401,7 @@ public sealed class ProgressBarTests
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top
         };
-        new Engine().Layout(bar, new Size(5, 1));
+        new LayoutEngine().Layout(bar, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));
 
         // Act
@@ -425,7 +425,7 @@ public sealed class ProgressBarTests
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top
         };
-        new Engine().Layout(bar, new Size(5, 1));
+        new LayoutEngine().Layout(bar, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));
 
         // Act

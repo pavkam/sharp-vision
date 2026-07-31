@@ -222,7 +222,7 @@ public sealed class WindowModalityTests
             var action = new ProbeControl { Focusable = true };
             var window = new Window { Content = action };
             var root = new Overlay { Children = { background, window } };
-            new Engine().Layout(root, new Size(24, 10));
+            new LayoutEngine().Layout(root, new Size(24, 10));
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
             using var pointer = new PointerManager(root);
@@ -276,7 +276,7 @@ public sealed class WindowModalityTests
         {
             using var window = new Window { Width = Length.Cells(12), Height = Length.Cells(5) };
             using var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(24, 10));
+            new LayoutEngine().Layout(root, new Size(24, 10));
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
             using var pointer = new PointerManager(root);
@@ -308,7 +308,7 @@ public sealed class WindowModalityTests
         {
             var window = new Window { Width = Length.Cells(12), Height = Length.Cells(5) };
             using var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(24, 10));
+            new LayoutEngine().Layout(root, new Size(24, 10));
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
             using var pointer = new PointerManager(root);
@@ -610,7 +610,7 @@ public sealed class WindowModalityTests
                 Height = Length.Cells(5),
             };
             var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(24, 10));
+            new LayoutEngine().Layout(root, new Size(24, 10));
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
             using var pointer = new PointerManager(root);
@@ -668,7 +668,7 @@ public sealed class WindowModalityTests
                 Height = Length.Cells(5)
             };
             using var root = new Overlay { Children = { window } };
-            new Engine().Layout(root, new Size(24, 10));
+            new LayoutEngine().Layout(root, new Size(24, 10));
             root.Attach(dispatcher);
             using var focus = new FocusManager(root);
             using var pointer = new PointerManager(root);

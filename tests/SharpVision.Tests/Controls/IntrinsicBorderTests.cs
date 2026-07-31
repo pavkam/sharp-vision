@@ -84,7 +84,7 @@ public sealed class IntrinsicBorderTests
         };
         control.Children.Add(child);
 
-        new Engine().Layout(control, new Size(8, 7));
+        new LayoutEngine().Layout(control, new Size(8, 7));
 
         control.DesiredSize.ShouldBe(new Size(8, 7));
         control.Bounds.ShouldBe(new Rect(0, 0, 8, 7));
@@ -107,7 +107,7 @@ public sealed class IntrinsicBorderTests
             Color.Transparent,
             ThemeDecoration.Border);
         control.Children.Add(new ControlText("界"));
-        new Engine().Layout(control, new Size(4, 3));
+        new LayoutEngine().Layout(control, new Size(4, 3));
         using Frame frame = new(new Size(4, 3));
 
         control.Render(frame.Canvas);
@@ -135,7 +135,7 @@ public sealed class IntrinsicBorderTests
             BorderGlyphStyle.Ascii,
             ReferenceColors.Get(3));
         control.Face = AppearanceTestValues.Face(background: ReferenceColors.Get(4));
-        new Engine().Layout(control, new Size(3, 2));
+        new LayoutEngine().Layout(control, new Size(3, 2));
         using Frame frame = new(new Size(3, 2));
 
         control.Render(frame.Canvas);
@@ -165,7 +165,7 @@ public sealed class IntrinsicBorderTests
             ThemeColor.ControlBorder,
             Color.Transparent,
             ThemeDecoration.Border);
-        new Engine().Layout(control, new Size(width, height));
+        new LayoutEngine().Layout(control, new Size(width, height));
         using Frame frame = new(new Size(Math.Max(1, width), Math.Max(1, height)));
 
         control.Render(frame.Canvas);

@@ -42,7 +42,7 @@ public sealed class MenuTests
         var second = menu.Items[1];
         var separator = menu.Items[2];
         var size = new Size(12, 3);
-        new Engine().Layout(menu, size);
+        new LayoutEngine().Layout(menu, size);
         using Frame frame = new(size);
 
         menu.Render(frame.Canvas);
@@ -226,7 +226,7 @@ public sealed class MenuTests
             var separator = new MenuSeparator();
             menu.Items.Add(item);
             menu.Items.Add(separator);
-            new Engine().Layout(menu, new Size(12, 1));
+            new LayoutEngine().Layout(menu, new Size(12, 1));
             menu.Attach(dispatcher);
             using FocusManager focus = new(menu);
 
@@ -435,7 +435,7 @@ public sealed class MenuTests
         };
         horizontal.Items.Add(horizontalItem);
         var horizontalRoot = new Overlay { Children = { horizontal } };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(horizontalRoot, new Size(30, 10));
 
         // Act horizontal
@@ -542,7 +542,7 @@ public sealed class MenuTests
         menu.Items.Add(shortHint);
         menu.Items.Add(longHint);
         var size = new Size(30, 3);
-        new Engine().Layout(menu, size);
+        new LayoutEngine().Layout(menu, size);
         using Frame frame = new(size);
 
         // Act

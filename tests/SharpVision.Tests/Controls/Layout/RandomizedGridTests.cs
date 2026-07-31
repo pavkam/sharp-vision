@@ -22,7 +22,7 @@ public sealed class RandomizedGridTests
             var second = CreateGrid(new Random(caseSeed), out var secondColumns, out var secondRows);
             var size = new Size(caseSeed % 31, caseSeed / 31 % 17);
             var context = $"seed=0x{_seed:X8}, case={sample}, caseSeed={caseSeed}, size={size}";
-            var engine = new Engine();
+            var engine = new LayoutEngine();
 
             engine.Layout(first, size);
             engine.Layout(second, size);

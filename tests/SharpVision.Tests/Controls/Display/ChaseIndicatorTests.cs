@@ -84,7 +84,7 @@ public sealed class ChaseIndicatorTests
         var indicator = new ChaseIndicator { Length = 7 };
 
         // Act
-        new Engine().Layout(indicator, new Size(10, 3));
+        new LayoutEngine().Layout(indicator, new Size(10, 3));
 
         // Assert
         indicator.DesiredSize.ShouldBe(new Size(7, 1));
@@ -100,7 +100,7 @@ public sealed class ChaseIndicatorTests
         var indicator = new ChaseIndicator { Length = 4, Orientation = Orientation.Vertical, Spacing = 2 };
 
         // Act
-        new Engine().Layout(indicator, new Size(20, 20));
+        new LayoutEngine().Layout(indicator, new Size(20, 20));
 
         // Assert
         indicator.DesiredSize.ShouldBe(new Size(1, 10));
@@ -153,7 +153,7 @@ public sealed class ChaseIndicatorTests
         };
         var indicator = new ChaseIndicator { Style = style, TrailLength = 0 };
         indicator.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(indicator, new Size(5, 1));
+        new LayoutEngine().Layout(indicator, new Size(5, 1));
         using Frame frame = new(new Size(5, 1), ambiguousWidth: Ambiguous.Wide);
 
         // Act
@@ -224,7 +224,7 @@ public sealed class ChaseIndicatorTests
             TrailColor = Color.Rgb(60, 30, 0),
             TrackColor = Color.Rgb(15, 15, 15)
         };
-        new Engine().Layout(indicator, new Size(5, 1));
+        new LayoutEngine().Layout(indicator, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));
 
         // Act

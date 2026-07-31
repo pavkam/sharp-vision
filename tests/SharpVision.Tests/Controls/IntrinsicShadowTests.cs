@@ -31,7 +31,7 @@ public sealed class IntrinsicShadowTests
         var control = CreateSurface(ShadowMode.Composite, new Point(2, 1));
         control.Children.Add(child);
 
-        new Engine().Layout(control, new Size(3, 2));
+        new LayoutEngine().Layout(control, new Size(3, 2));
 
         control.DesiredSize.ShouldBe(new Size(3, 2));
         control.Bounds.ShouldBe(new Rect(0, 0, 3, 2));
@@ -284,7 +284,7 @@ public sealed class IntrinsicShadowTests
     public void Render_WhenShadowIsNestedThroughClippingAncestors_DrawsCompletePositiveFootprint()
     {
         var (root, shadowed) = CreateNestedSurface(ShadowMode.BlockGlyph, new Point(2, 1));
-        new Engine().Layout(root, new Size(3, 2));
+        new LayoutEngine().Layout(root, new Size(3, 2));
         using Frame frame = new(new Size(5, 3));
 
         root.Render(frame.Canvas);
@@ -335,7 +335,7 @@ public sealed class IntrinsicShadowTests
             ClipToBounds = clipToBounds,
             Children = { middle }
         };
-        new Engine().Layout(overlay, new Size(3, 2));
+        new LayoutEngine().Layout(overlay, new Size(3, 2));
         using Frame frame = new(new Size(5, 3));
 
         overlay.Render(frame.Canvas);
@@ -395,7 +395,7 @@ public sealed class IntrinsicShadowTests
     public void Render_WhenNestedShadowMeetsCallerCanvasClip_DoesNotEscapeClip()
     {
         var (root, _) = CreateNestedSurface(ShadowMode.BlockGlyph, new Point(2, 1));
-        new Engine().Layout(root, new Size(3, 2));
+        new LayoutEngine().Layout(root, new Size(3, 2));
         using Frame frame = new(new Size(5, 3));
 
         root.Render(frame.Canvas.Clip(new Rect(0, 0, 4, 3)));
@@ -432,7 +432,7 @@ public sealed class IntrinsicShadowTests
         {
             Face = AppearanceTestValues.Face(background: Color.Transparent)
         });
-        new Engine().Layout(control, new Size(3, 2));
+        new LayoutEngine().Layout(control, new Size(3, 2));
         return control;
     }
 

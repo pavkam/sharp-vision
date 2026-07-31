@@ -81,7 +81,7 @@ public sealed class GroupBoxSurfaceTests
         group.SetTheme(Themes.Dark);
         var borderColor = group.ActualBorder.Foreground.Literal;
         var size = new Size(10, 3);
-        new Engine().Layout(group, size);
+        new LayoutEngine().Layout(group, size);
         using Frame frame = new(size);
 
         // Act

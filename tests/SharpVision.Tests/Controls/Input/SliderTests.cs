@@ -91,7 +91,7 @@ public sealed class SliderTests
     public void Render_WhenHorizontal_WritesExactRailCells()
     {
         var slider = new Slider { Maximum = 100, Value = 50, HorizontalAlignment = HorizontalAlignment.Stretch };
-        new Engine().Layout(slider, new Size(9, 1));
+        new LayoutEngine().Layout(slider, new Size(9, 1));
         using Frame frame = new(new Size(9, 1));
 
         slider.Render(frame.Canvas);
@@ -111,7 +111,7 @@ public sealed class SliderTests
             Value = 0,
             VerticalAlignment = VerticalAlignment.Stretch
         };
-        new Engine().Layout(slider, new Size(1, 5));
+        new LayoutEngine().Layout(slider, new Size(1, 5));
         using Frame frame = new(new Size(1, 5));
 
         slider.Render(frame.Canvas);

@@ -27,7 +27,7 @@ public sealed class ContainerScrollGeometryTests
         };
         container.Children.Add(child);
 
-        new Engine().Layout(container, new Size(10, 6));
+        new LayoutEngine().Layout(container, new Size(10, 6));
 
         container.Viewport.ShouldBe(new Size(5, 1));
         child.Bounds.X.ShouldBe(2);
@@ -55,7 +55,7 @@ public sealed class ContainerScrollGeometryTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden,
             Children = { child }
         };
-        new Engine().Layout(container, new Size(3, 2));
+        new LayoutEngine().Layout(container, new Size(3, 2));
         using Frame frame = new(new Size(4, 3));
 
         container.Render(frame.Canvas);
@@ -71,7 +71,7 @@ public sealed class ContainerScrollGeometryTests
     public void Layout_WhenCasesAreRandomized_PreservesStableContainedGeometry()
     {
         var random = new Random(_seed);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var container = new LayoutProbe { AutoScroll = true, ScrollBars = ScrollBars.Both };
         container.Children.Add(new ProbeControl(new Size(50, 30)));
 

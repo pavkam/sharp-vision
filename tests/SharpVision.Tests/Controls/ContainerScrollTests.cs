@@ -13,7 +13,7 @@ public sealed class ContainerScrollTests
         var container = new LayoutProbe();
         container.Children.Add(new ProbeControl(new Size(4, 40)));
 
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         container.AutoScroll.ShouldBeFalse();
         container.Extent.ShouldBe(container.Viewport);
@@ -28,7 +28,7 @@ public sealed class ContainerScrollTests
         var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
 
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         container.Extent.Height.ShouldBe(40);
         container.Viewport.Height.ShouldBe(10);
@@ -43,10 +43,10 @@ public sealed class ContainerScrollTests
         var child = new ProbeControl(new Size(4, 40));
         var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(child);
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         _ = container.ScrollBy(0, 6);
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         child.Bounds.Y.ShouldBe(-6);
     }
@@ -57,12 +57,12 @@ public sealed class ContainerScrollTests
     {
         var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
         _ = container.ScrollBy(0, 1000);
         container.VerticalOffset.ShouldBe(30);
 
         container.AutoScroll = false;
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         container.VerticalOffset.ShouldBe(0);
         container.Extent.ShouldBe(container.Viewport);
@@ -83,7 +83,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Always
         };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
         _ = container.ScrollBy(0, 1000);
         container.VerticalOffset.ShouldBe(31);
         var bar = container.HitTest(new Point(3, 4)).ShouldBeOfType<ScrollBar>();
@@ -115,7 +115,7 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(new ProbeControl(new Size(4, 40)) { Focusable = true });
         var navigationCount = container.NavigationCount;
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
         container.NavigationCount.ShouldBe(navigationCount);
 
         container.AutoScroll = false;
@@ -143,7 +143,7 @@ public sealed class ContainerScrollTests
         await dispatcher.InvokeAsync(() =>
         {
             panel.Attach(dispatcher);
-            new Engine().Layout(panel, new Size(4, 10));
+            new LayoutEngine().Layout(panel, new Size(4, 10));
             using FocusManager focus = new(panel);
 
             focus.MoveNext().ShouldBeTrue();
@@ -167,7 +167,7 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(new ProbeControl(new Size(1, 4)));
         var size = new Size(3, 3);
-        new Engine().Layout(container, size);
+        new LayoutEngine().Layout(container, size);
         using Frame frame = new(size);
 
         container.Render(frame.Canvas);
@@ -190,7 +190,7 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(new ProbeControl(new Size(5, 4)));
 
-        new Engine().Layout(container, new Size(5, 3));
+        new LayoutEngine().Layout(container, new Size(5, 3));
 
         container.Extent.ShouldBe(new Size(5, 4));
         container.Viewport.ShouldBe(new Size(4, 2));
@@ -202,7 +202,7 @@ public sealed class ContainerScrollTests
     {
         var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never, LineSize = 2 };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         container.RaiseKey(Code.Down);
 
@@ -219,7 +219,7 @@ public sealed class ContainerScrollTests
         outer.Children.Add(inner);
         // outer content taller than viewport via a second tall child
         outer.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(outer, new Size(4, 10));
+        new LayoutEngine().Layout(outer, new Size(4, 10));
 
         inner.RaiseWheel(0, -3); // wheel over inner, which has no room
 
@@ -238,7 +238,7 @@ public sealed class ContainerScrollTests
         bridge.AddNormal(inner);
         outer.Children.Add(bridge);
         outer.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(outer, new Size(4, 10));
+        new LayoutEngine().Layout(outer, new Size(4, 10));
 
         inner.RaiseWheel(0, -3);
 
@@ -258,7 +258,7 @@ public sealed class ContainerScrollTests
             IsEnabled = false
         };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         container.RaiseKey(Code.Down);
 
@@ -271,7 +271,7 @@ public sealed class ContainerScrollTests
     {
         var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
         ScrollChangedEventArgs? captured = null;
         container.ScrollChanged += (_, e) => captured = e;
 
@@ -290,7 +290,7 @@ public sealed class ContainerScrollTests
     {
         var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
         var raised = false;
         container.ScrollChanged += (_, _) => raised = true;
 
@@ -307,7 +307,7 @@ public sealed class ContainerScrollTests
         container.Children.Add(new ProbeControl(new Size(4, 20)));
         var target = new ProbeControl(new Size(4, 1));
         container.Children.Add(target);
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         var changed = container.BringIntoView(target);
 
@@ -321,7 +321,7 @@ public sealed class ContainerScrollTests
     {
         var container = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
         container.Children.Add(new ProbeControl(new Size(4, 20)));
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
         var stray = new ProbeControl(new Size(4, 1));
 
         _ = Should.Throw<ArgumentException>(() => container.BringIntoView(stray));
@@ -359,7 +359,7 @@ public sealed class ContainerScrollTests
         var container = new LayoutProbe { AutoScroll = true };
         container.Children.Add(new ProbeControl(new Size(4, 40)));
 
-        new Engine().Layout(container, new Size(4, 10));
+        new LayoutEngine().Layout(container, new Size(4, 10));
 
         // Render legitimately stays pending — Layout never renders — but a
         // second Measure/Arrange pass would mean the first one left the tree
@@ -395,10 +395,10 @@ public sealed class ContainerScrollTests
             ShowScrollBars = ShowScrollBars.Never,
             Children = { inner }
         };
-        new Engine().Layout(outer, new Size(4, 4));
+        new LayoutEngine().Layout(outer, new Size(4, 4));
 
         _ = inner.ScrollBy(0, 10);
-        new Engine().Layout(outer, new Size(4, 4));
+        new LayoutEngine().Layout(outer, new Size(4, 4));
 
         inner.VerticalOffset.ShouldBe(10);
         leaf.Bounds.Y.ShouldBe(-10);
@@ -416,7 +416,7 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(new ProbeControl(new Size(4, 1)));
         var size = new Size(3, 3);
-        new Engine().Layout(container, size);
+        new LayoutEngine().Layout(container, size);
         using Frame frame = new(size);
 
         container.Render(frame.Canvas);
@@ -440,7 +440,7 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(new ProbeControl(new Size(1, 100)));
         var size = new Size(3, 6);
-        new Engine().Layout(container, size);
+        new LayoutEngine().Layout(container, size);
         using Frame frame = new(size);
 
         container.Render(frame.Canvas);
@@ -461,7 +461,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Auto
         };
         container.Children.Add(new ProbeControl(new Size(5, 3)));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(container, new Size(5, 3));
         container.Viewport.ShouldBe(new Size(5, 3));
@@ -484,7 +484,7 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(new ProbeControl(new Size(8, 10)));
 
-        new Engine().Layout(container, new Size(4, 3));
+        new LayoutEngine().Layout(container, new Size(4, 3));
 
         container.Viewport.ShouldBe(new Size(4, 3));
         container.HorizontalOffset.ShouldBe(0);
@@ -506,7 +506,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden
         };
         container.Children.Add(new ProbeControl(new Size(20, 10)));
-        new Engine().Layout(container, new Size(5, 3));
+        new LayoutEngine().Layout(container, new Size(5, 3));
         List<ScrollChangedEventArgs> changes = [];
         container.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
 
@@ -533,7 +533,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden
         };
         container.Children.Add(new ProbeControl(new Size(20, 10)));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(container, new Size(5, 3));
         _ = container.ScrollBy(100, 100);
         ScrollChangedEventArgs? change = null;
@@ -560,9 +560,9 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden
         };
         container.Children.Add(content);
-        new Engine().Layout(container, new Size(4, 1));
+        new LayoutEngine().Layout(container, new Size(4, 1));
         _ = container.ScrollBy(2, 0);
-        new Engine().Layout(container, new Size(4, 1));
+        new LayoutEngine().Layout(container, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
 
         container.Render(frame.Canvas);
@@ -587,7 +587,7 @@ public sealed class ContainerScrollTests
         };
         container.Children.Add(text);
 
-        new Engine().Layout(container, new Size(5, 3));
+        new LayoutEngine().Layout(container, new Size(5, 3));
 
         container.Extent.ShouldBe(new Size(5, 3));
         container.Viewport.ShouldBe(new Size(5, 3));
@@ -607,7 +607,7 @@ public sealed class ContainerScrollTests
             PageOverlap = 1
         };
         container.Children.Add(new ProbeControl(new Size(20, 20)));
-        new Engine().Layout(container, new Size(5, 4));
+        new LayoutEngine().Layout(container, new Size(5, 4));
 
         container.RaiseWheel(-1, -2);
         container.RaiseKey(Code.Right);
@@ -636,7 +636,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden
         };
         container.Children.Add(new ProbeControl(new Size(20, 10)));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(container, new Size(5, 3));
         _ = container.ScrollBy(100, 100);
         ScrollChangedEventArgs? change = null;
@@ -665,9 +665,9 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Hidden
         };
         container.Children.Add(content);
-        new Engine().Layout(container, new Size(2, 1));
+        new LayoutEngine().Layout(container, new Size(2, 1));
         _ = container.ScrollBy(1, 0);
-        new Engine().Layout(container, new Size(2, 1));
+        new LayoutEngine().Layout(container, new Size(2, 1));
         using Frame frame = new(new Size(2, 1));
 
         container.Render(frame.Canvas);
@@ -691,7 +691,7 @@ public sealed class ContainerScrollTests
             VerticalBarVisibility = ScrollBarVisibility.Always
         };
         container.Children.Add(content);
-        new Engine().Layout(container, new Size(8, 4));
+        new LayoutEngine().Layout(container, new Size(8, 4));
         var horizontal = container.HitTest(new Point(2, 3)).ShouldBeOfType<ScrollBar>();
         var vertical = container.HitTest(new Point(7, 2)).ShouldBeOfType<ScrollBar>();
 
@@ -717,7 +717,7 @@ public sealed class ContainerScrollTests
         var thinTheme = CreateTheme(ScrollBarStyle.ThinLine);
         var fullTheme = CreateTheme(ScrollBarStyle.FullBlock);
         container.PropagateTheme(thinTheme);
-        new Engine().Layout(container, new Size(8, 4));
+        new LayoutEngine().Layout(container, new Size(8, 4));
         var horizontal = container.HitTest(new Point(2, 3)).ShouldBeOfType<ScrollBar>();
         var vertical = container.HitTest(new Point(7, 2)).ShouldBeOfType<ScrollBar>();
 
@@ -731,7 +731,7 @@ public sealed class ContainerScrollTests
         vertical.ActualStyle.ShouldBe(ScrollBarStyle.Default);
 
         container.PropagateTheme(fullTheme);
-        new Engine().Layout(container, new Size(8, 4));
+        new LayoutEngine().Layout(container, new Size(8, 4));
 
         container.HitTest(new Point(2, 3)).ShouldBeSameAs(horizontal);
         container.HitTest(new Point(7, 2)).ShouldBeSameAs(vertical);

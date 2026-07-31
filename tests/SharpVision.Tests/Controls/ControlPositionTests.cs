@@ -143,7 +143,7 @@ public sealed class ControlPositionTests
         var child = new ProbeControl(new Size(3, 2)) { Left = Length.Cells(4), Top = Length.Cells(2) };
         canvas.Children.Add(child);
 
-        new Engine().Layout(canvas, new Size(12, 8));
+        new LayoutEngine().Layout(canvas, new Size(12, 8));
 
         child.Bounds.ShouldBe(new Rect(4, 2, 3, 2));
     }
@@ -156,7 +156,7 @@ public sealed class ControlPositionTests
         var child = new ProbeControl(new Size(3, 2)) { Left = Length.Cells(1), Top = Length.Cells(1) };
         canvas.Children.Add(child);
 
-        new Engine().Layout(canvas, new Size(20, 10));
+        new LayoutEngine().Layout(canvas, new Size(20, 10));
 
         child.Bounds.X.ShouldBeGreaterThan(1);
         child.LocalBounds.X.ShouldBe(1);
@@ -170,7 +170,7 @@ public sealed class ControlPositionTests
     public void LocalBounds_WhenNoParent_EqualsBounds()
     {
         var control = new ProbeControl(new Size(5, 3));
-        new Engine().Layout(control, new Size(10, 8));
+        new LayoutEngine().Layout(control, new Size(10, 8));
 
         control.LocalBounds.ShouldBe(control.Bounds);
     }
@@ -183,7 +183,7 @@ public sealed class ControlPositionTests
         var child = new ProbeControl(new Size(3, 2));
         dock.Children.Add(child);
 
-        new Engine().Layout(dock, new Size(10, 6));
+        new LayoutEngine().Layout(dock, new Size(10, 6));
 
         child.Bounds.X.ShouldBe(1);
         child.LocalBounds.X.ShouldBe(0);
@@ -195,7 +195,7 @@ public sealed class ControlPositionTests
     public void ContentBounds_WhenAccessed_DeflatesBorderAndPadding()
     {
         var dock = new Dock { Border = AppearanceTestValues.Border(BorderSide.All), Padding = new Thickness(1) };
-        new Engine().Layout(dock, new Size(10, 8));
+        new LayoutEngine().Layout(dock, new Size(10, 8));
 
         dock.ContentBounds.X.ShouldBe(2);
         dock.ContentBounds.Y.ShouldBe(2);

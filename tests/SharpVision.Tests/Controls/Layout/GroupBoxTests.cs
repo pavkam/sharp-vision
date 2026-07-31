@@ -38,7 +38,7 @@ public sealed class GroupBoxTests
             VerticalAlignment = VerticalAlignment.Top
         };
 
-        new Engine().Layout(group, new Size(20, 8));
+        new LayoutEngine().Layout(group, new Size(20, 8));
 
         group.DesiredSize.ShouldBe(new Size(12, 4));
         group.Bounds.ShouldBe(new Rect(0, 0, 12, 4));
@@ -88,7 +88,7 @@ public sealed class GroupBoxTests
         };
 
         // Act
-        new Engine().Layout(group, new Size(20, 8));
+        new LayoutEngine().Layout(group, new Size(20, 8));
 
         // Assert
         group.Content.ShouldBeNull();
@@ -124,7 +124,7 @@ public sealed class GroupBoxTests
             Height = Length.Cells(4),
             Content = content
         };
-        new Engine().Layout(group, new Size(5, 4));
+        new LayoutEngine().Layout(group, new Size(5, 4));
         using Frame frame = new(new Size(5, 4));
 
         group.Render(frame.Canvas);

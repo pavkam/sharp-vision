@@ -138,7 +138,7 @@ public sealed class ScrollBarTests
             ViewportSize = 20,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        new Engine().Layout(control, new Size(10, 1));
+        new LayoutEngine().Layout(control, new Size(10, 1));
         using Frame frame = new(new Size(10, 1));
 
         control.Render(frame.Canvas);
@@ -160,7 +160,7 @@ public sealed class ScrollBarTests
             ViewportSize = 20,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        new Engine().Layout(control, new Size(10, 1));
+        new LayoutEngine().Layout(control, new Size(10, 1));
         using Frame frame = new(new Size(10, 1));
 
         control.Render(frame.Canvas);
@@ -182,7 +182,7 @@ public sealed class ScrollBarTests
             Style = WithBlockGlyphs(track: new Rune('.')),
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        new Engine().Layout(control, new Size(10, 1));
+        new LayoutEngine().Layout(control, new Size(10, 1));
         using Frame frame = new(new Size(10, 1));
 
         control.Render(frame.Canvas);

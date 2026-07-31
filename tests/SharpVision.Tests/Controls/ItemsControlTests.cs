@@ -152,7 +152,7 @@ public sealed class ItemsControlTests
         var owner = new ProbeItemsControl();
         var item = new ProbeControl(new Size(1, 1)) { Content = "X".AsMemory() };
         owner.Insert(0, item);
-        new Engine().Layout(owner, new Size(4, 2));
+        new LayoutEngine().Layout(owner, new Size(4, 2));
         using Frame frame = new(new Size(4, 2));
 
         owner.Render(frame.Canvas);

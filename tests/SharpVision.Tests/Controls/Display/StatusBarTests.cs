@@ -107,7 +107,7 @@ public sealed class StatusBarTests
         bar.Items.Add(item);
 
         // Act
-        new Engine().Layout(bar, new Size(12, 1));
+        new LayoutEngine().Layout(bar, new Size(12, 1));
 
         // Assert
         item.DesiredSize.ShouldBe(new Size(7, 1));
@@ -131,7 +131,7 @@ public sealed class StatusBarTests
         bar.Items.Add(position);
 
         // Act
-        new Engine().Layout(bar, new Size(24, 1));
+        new LayoutEngine().Layout(bar, new Size(24, 1));
 
         // Assert
         ready.Bounds.ShouldBe(new Rect(0, 0, 5, 1));
@@ -154,7 +154,7 @@ public sealed class StatusBarTests
         bar.Items.Add(position);
 
         // Act
-        new Engine().Layout(bar, new Size(9, 1));
+        new LayoutEngine().Layout(bar, new Size(9, 1));
 
         // Assert
         message.Bounds.Width.ShouldBe(0);
@@ -171,7 +171,7 @@ public sealed class StatusBarTests
         using var bar = new StatusBar();
         var item = Item("Ready");
         bar.Items.Add(item);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(bar, new Size(12, 1));
         item.Bounds.X.ShouldBe(0);
 

@@ -500,7 +500,7 @@ public sealed class TableTests
         table.Columns.Add(TableColumn.Fill("Details"));
         table.Rows.Add(new TableRow([first, second, third]));
 
-        new Engine().Layout(table, new Size(20, 4));
+        new LayoutEngine().Layout(table, new Size(20, 4));
 
         first.Bounds.ShouldBe(new Rect(0, 2, 5, 1));
         second.Bounds.ShouldBe(new Rect(6, 2, 5, 1));
@@ -525,7 +525,7 @@ public sealed class TableTests
             option
         ]));
 
-        new Engine().Layout(table, new Size(48, 8));
+        new LayoutEngine().Layout(table, new Size(48, 8));
 
         option.Bounds.Width.ShouldBe(option.DesiredSize.Width);
         option.Bounds.Height.ShouldBe(option.DesiredSize.Height);
@@ -549,7 +549,7 @@ public sealed class TableTests
             option
         ]));
 
-        new Engine().Layout(table, new Size(20, 3));
+        new LayoutEngine().Layout(table, new Size(20, 3));
 
         option.Bounds.ShouldBe(new Rect(10, 0, 10, 3));
     }
@@ -564,7 +564,7 @@ public sealed class TableTests
         table.Columns.Add(TableColumn.Fixed("IJKLMNOP", 8));
         table.Rows.Add(new TableRow([first, new ControlText("abcdefgh")]));
         var size = new Size(10, 4);
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(table, size);
         table.HorizontalOffset = 3;
 
@@ -595,7 +595,7 @@ public sealed class TableTests
             ]));
         }
 
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var size = new Size(10, 5);
         engine.Layout(table, size);
         table.HorizontalOffset = 3;
@@ -616,7 +616,7 @@ public sealed class TableTests
         table.Columns.Add(TableColumn.Fixed("First", 8));
         table.Columns.Add(TableColumn.Fixed("Second", 8));
         table.Rows.Add(new TableRow([first, new ProbeControl(new Size(2, 1))]));
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         var size = new Size(10, 3);
         engine.Layout(table, size);
         var measurements = first.MeasureConstraints.Count;
@@ -637,7 +637,7 @@ public sealed class TableTests
         table.Columns.Add(TableColumn.Fill("Value"));
         table.Rows.Add(new TableRow([new ControlText("A"), new ControlText("B")]));
         var size = new Size(14, 4);
-        new Engine().Layout(table, size);
+        new LayoutEngine().Layout(table, size);
         using Frame frame = new(size);
 
         table.Render(frame.Canvas);
@@ -676,7 +676,7 @@ public sealed class TableTests
         table.Columns.Add(TableColumn.Fixed("Name", 5));
         table.Columns.Add(TableColumn.Fixed("Value", 5));
         var size = new Size(12, 4);
-        new Engine().Layout(table, size);
+        new LayoutEngine().Layout(table, size);
         using Frame frame = new(size);
 
         table.Render(frame.Canvas);
@@ -699,7 +699,7 @@ public sealed class TableTests
             table.Rows.Add(new TableRow([new ControlText($"Row {index}"), new ControlText("Value")]));
         }
 
-        new Engine().Layout(table, new Size(30, 10));
+        new LayoutEngine().Layout(table, new Size(30, 10));
 
         table.Extent.Height.ShouldBeGreaterThan(table.Viewport.Height);
     }

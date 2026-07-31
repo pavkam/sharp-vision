@@ -166,7 +166,7 @@ public sealed class HyperlinkButtonTests
     public void Layout_WhenTextIsSet_MeasuresTightToContent()
     {
         var link = new HyperlinkButton("Link");
-        new Engine().Layout(link, new Size(20, 3));
+        new LayoutEngine().Layout(link, new Size(20, 3));
 
         link.DesiredSize.ShouldBe(new Size(4, 1));
     }
@@ -176,7 +176,7 @@ public sealed class HyperlinkButtonTests
     public void Render_WhenTextIsSet_WritesTextCells()
     {
         var link = new HyperlinkButton("Go");
-        new Engine().Layout(link, new Size(4, 1));
+        new LayoutEngine().Layout(link, new Size(4, 1));
         using Frame frame = new(new Size(4, 1));
 
         link.Render(frame.Canvas);

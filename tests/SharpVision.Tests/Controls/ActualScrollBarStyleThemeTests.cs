@@ -81,7 +81,7 @@ public sealed class ActualScrollBarStyleThemeTests
         };
         container.Children.Add(new ProbeControl(new Size(20, 10)));
         container.PropagateTheme(previousTheme);
-        new Engine().Layout(container, new Size(8, 4));
+        new LayoutEngine().Layout(container, new Size(8, 4));
         var bars = OwnedTree.FindAll<ScrollBar>(container);
         bars.Count.ShouldBe(2);
         var notifications = new List<string?>();

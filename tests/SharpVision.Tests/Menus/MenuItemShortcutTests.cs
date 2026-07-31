@@ -18,7 +18,7 @@ public sealed class MenuItemShortcutTests
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var size = new Size(20, 1);
-        new Engine().Layout(item, size);
+        new LayoutEngine().Layout(item, size);
         using Frame frame = new(size);
 
         item.Render(frame.Canvas);
@@ -39,7 +39,7 @@ public sealed class MenuItemShortcutTests
     {
         var item = new MenuItem { Content = new ControlText("Open"), ShortcutText = "Ctrl+O" };
 
-        new Engine().Layout(item, new Size(100, 1));
+        new LayoutEngine().Layout(item, new Size(100, 1));
 
         // "Open" = 4 chars, "Ctrl+O" = 6 chars + 2 spacing = 8 extra.
         // Command items have PrefixWidth = 0, so desired = 4 + 8 = 12.
@@ -52,7 +52,7 @@ public sealed class MenuItemShortcutTests
     {
         var item = new MenuItem { Content = new ControlText("Exit") };
         var size = new Size(10, 1);
-        new Engine().Layout(item, size);
+        new LayoutEngine().Layout(item, size);
         using Frame frame = new(size);
 
         item.Render(frame.Canvas);
@@ -74,7 +74,7 @@ public sealed class MenuItemShortcutTests
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var size = new Size(10, 1);
-        new Engine().Layout(item, size);
+        new LayoutEngine().Layout(item, size);
         using Frame frame = new(size);
 
         // Act

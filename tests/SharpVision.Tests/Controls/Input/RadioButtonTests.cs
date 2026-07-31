@@ -306,7 +306,7 @@ public sealed class RadioButtonTests
     public void Render_WhenSelectedWithUnicodeContent_WritesExactCells()
     {
         var radio = new RadioButton { IsChecked = true, Content = new ControlText("界") };
-        new Engine().Layout(radio, new Size(6, 1));
+        new LayoutEngine().Layout(radio, new Size(6, 1));
         using Frame frame = new(new Size(6, 1));
 
         radio.Render(frame.Canvas);
@@ -334,7 +334,7 @@ public sealed class RadioButtonTests
             IsChecked = isChecked,
             Style = RadioButtonStyle.Parentheses
         };
-        new Engine().Layout(radio, new Size(5, 1));
+        new LayoutEngine().Layout(radio, new Size(5, 1));
         using Frame frame = new(new Size(5, 1));
 
         radio.Render(frame.Canvas);

@@ -58,7 +58,7 @@ public sealed class CalendarTests
             Culture = CultureInfo.InvariantCulture,
             DisplayMonth = new DateOnly(2026, 7, 1)
         };
-        new Engine().Layout(calendar, new Size(32, 10));
+        new LayoutEngine().Layout(calendar, new Size(32, 10));
         var active = calendar.ActiveDate;
         var header = new PointerEventArgs(Pointer(
             new Point(calendar.ContentBounds.Right - 1, calendar.ContentBounds.Y),
@@ -107,7 +107,7 @@ public sealed class CalendarTests
             DisplayMonth = new DateOnly(2026, 7, 1)
         };
         calendar.SetMarkup(new DateOnly(2026, 7, 19), "abc界");
-        new Engine().Layout(calendar, new Size(32, 10));
+        new LayoutEngine().Layout(calendar, new Size(32, 10));
         using Frame frame = new(new Size(32, 10));
 
         // Act
@@ -128,7 +128,7 @@ public sealed class CalendarTests
             Culture = CultureInfo.InvariantCulture,
             DisplayMonth = DateOnly.MaxValue
         };
-        new Engine().Layout(calendar, new Size(32, 10));
+        new LayoutEngine().Layout(calendar, new Size(32, 10));
         using Frame frame = new(new Size(32, 10));
 
         // Act and assert
@@ -186,7 +186,7 @@ public sealed class CalendarTests
             Culture = CultureInfo.InvariantCulture,
             DisplayMonth = new DateOnly(2026, 7, 1)
         };
-        new Engine().Layout(calendar, new Size(32, 10));
+        new LayoutEngine().Layout(calendar, new Size(32, 10));
         var eventArgs = new PointerEventArgs(Pointer(
             new Point(calendar.ContentBounds.X, calendar.ContentBounds.Y + 5),
             PointerAction.Press));
@@ -253,7 +253,7 @@ public sealed class CalendarTests
             FirstDayOfWeek = DayOfWeek.Monday,
             DisplayMonth = new DateOnly(2026, 7, 1)
         };
-        new Engine().Layout(calendar, new Size(32, 10));
+        new LayoutEngine().Layout(calendar, new Size(32, 10));
         using Frame frame = new(new Size(32, 10));
 
         calendar.Render(frame.Canvas);
@@ -289,7 +289,7 @@ public sealed class CalendarTests
             Culture = CultureInfo.InvariantCulture,
             DisplayMonth = new DateOnly(2026, 7, 1)
         };
-        new Engine().Layout(calendar, new Size(32, 10));
+        new LayoutEngine().Layout(calendar, new Size(32, 10));
         using Frame frame = new(new Size(32, 10));
 
         // Act
@@ -332,7 +332,7 @@ public sealed class CalendarTests
             Culture = CultureInfo.InvariantCulture,
             DisplayMonth = new DateOnly(2026, 7, 1)
         };
-        new Engine().Layout(calendar, new Size(32, 10));
+        new LayoutEngine().Layout(calendar, new Size(32, 10));
         using Frame frame = new(new Size(32, 10));
 
         // Act

@@ -729,7 +729,7 @@ public sealed class PopupModalityTests
             using var modality = new ModalityManager(root, focus, pointer);
             popup.IsOpen = true;
             var first = modality.Active.ShouldNotBeNull();
-            new Engine().Layout(root, new Size(12, 6));
+            new LayoutEngine().Layout(root, new Size(12, 6));
             var bounds = popup.SurfaceBounds;
 
             popup.IsEnabled = false;
@@ -764,7 +764,7 @@ public sealed class PopupModalityTests
             using var modality = new ModalityManager(root, focus, pointer);
             popup.IsOpen = true;
             var first = modality.Active.ShouldNotBeNull();
-            new Engine().Layout(root, new Size(12, 6));
+            new LayoutEngine().Layout(root, new Size(12, 6));
             popup.SurfaceBounds.ShouldNotBe(default);
 
             popup.Visibility = Visibility.Hidden;

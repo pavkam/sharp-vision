@@ -132,7 +132,7 @@ public sealed class ColorPickerTests
                 dispatcher,
                 Policy.Default,
                 Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
-            new Engine().Layout(picker, new Size(40, 18));
+            new LayoutEngine().Layout(picker, new Size(40, 18));
             using Frame frame = new(new Size(40, 18));
 
             picker.Render(frame.Canvas);
@@ -161,7 +161,7 @@ public sealed class ColorPickerTests
             root.SetCapabilities(
                 Capabilities.Conservative with { ColorDepth = ColorDepth.TrueColor });
             root.Attach(dispatcher);
-            new Engine().Layout(root, new Size(40, 20));
+            new LayoutEngine().Layout(root, new Size(40, 20));
             using FocusManager focus = new(root);
             using PointerManager pointer = new(root);
             var point = new Point(

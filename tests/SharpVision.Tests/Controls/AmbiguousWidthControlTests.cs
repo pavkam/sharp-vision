@@ -17,7 +17,7 @@ public sealed class AmbiguousWidthControlTests
             VerticalAlignment = VerticalAlignment.Stretch
         };
         border.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(border, new Size(3, 2));
+        new LayoutEngine().Layout(border, new Size(3, 2));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
         border.Render(frame.Canvas);
@@ -37,7 +37,7 @@ public sealed class AmbiguousWidthControlTests
         };
         shadow.Children.Add(new ProbeControl(new Size(2, 1)));
         shadow.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(shadow, new Size(2, 1));
+        new LayoutEngine().Layout(shadow, new Size(2, 1));
         using Frame frame = new(new Size(3, 2), ambiguousWidth: Ambiguous.Wide);
 
         shadow.Render(frame.Canvas);
@@ -55,7 +55,7 @@ public sealed class AmbiguousWidthControlTests
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         scrollBar.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(scrollBar, new Size(5, 1));
+        new LayoutEngine().Layout(scrollBar, new Size(5, 1));
         using Frame frame = new(new Size(5, 1), ambiguousWidth: Ambiguous.Wide);
 
         scrollBar.Render(frame.Canvas);
@@ -77,7 +77,7 @@ public sealed class AmbiguousWidthControlTests
                 CheckBoxStyle.Default.Appearance)
         };
         checkBox.SetCellPolicy(new Policy(Ambiguous.Wide));
-        new Engine().Layout(checkBox, new Size(1, 1));
+        new LayoutEngine().Layout(checkBox, new Size(1, 1));
         using Frame frame = new(new Size(1, 1), ambiguousWidth: Ambiguous.Wide);
 
         checkBox.Render(frame.Canvas);
@@ -98,7 +98,7 @@ public sealed class AmbiguousWidthControlTests
         input.SetCellPolicy(new Policy(Ambiguous.Wide));
         input.SetTheme(TestThemes.BorderlessInput);
         input.SetFocused(true);
-        new Engine().Layout(input, new Size(4, 1));
+        new LayoutEngine().Layout(input, new Size(4, 1));
         using Frame frame = new(new Size(4, 1), ambiguousWidth: Ambiguous.Wide);
 
         input.Render(frame.Canvas);

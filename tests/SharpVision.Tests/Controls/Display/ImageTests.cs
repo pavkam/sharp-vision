@@ -45,7 +45,7 @@ public sealed class ImageTests
     public void Properties_WhenChanged_InvalidateMeasureOrRenderPrecisely()
     {
         var image = new Image();
-        var engine = new Engine();
+        var engine = new LayoutEngine();
         engine.Layout(image, new Size(8, 3));
         using (var frame = new Frame(new Size(8, 3)))
         {
@@ -82,7 +82,7 @@ public sealed class ImageTests
             Source = Rgba(new Size(7, 5)),
             AlternateText = "preview"
         };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(image, new Size(20, 10));
         image.DesiredSize.ShouldBe(new Size(7, 1));
@@ -101,7 +101,7 @@ public sealed class ImageTests
     public void Measure_WhenSourceGeometryIsUnavailable_UsesAlternateTextOrPreviewCell()
     {
         var image = new Image { AlternateText = "界x" };
-        var engine = new Engine();
+        var engine = new LayoutEngine();
 
         engine.Layout(image, new Size(10, 2));
         image.DesiredSize.ShouldBe(new Size(3, 1));
@@ -117,7 +117,7 @@ public sealed class ImageTests
     public void Render_WhenSourceAndAlternateTextAreEmpty_DesiresNothingAndPaintsNothing()
     {
         var image = new Image();
-        new Engine().Layout(image, new Size(2, 1));
+        new LayoutEngine().Layout(image, new Size(2, 1));
         using var frame = new Frame(new Size(2, 1));
 
         image.Render(frame.Canvas);
@@ -140,7 +140,7 @@ public sealed class ImageTests
             Width = Length.Cells(4),
             Height = Length.Cells(2)
         };
-        new Engine().Layout(image, new Size(4, 2));
+        new LayoutEngine().Layout(image, new Size(4, 2));
         using var frame = new Frame(new Size(4, 2));
 
         image.Render(frame.Canvas);
@@ -168,7 +168,7 @@ public sealed class ImageTests
             Width = Length.Cells(2),
             Height = Length.Cells(1)
         };
-        new Engine().Layout(image, new Size(2, 1));
+        new LayoutEngine().Layout(image, new Size(2, 1));
         using var frame = new Frame(new Size(2, 1));
         _ = frame.Canvas.Draw("XX", default);
 
@@ -193,7 +193,7 @@ public sealed class ImageTests
         };
         var root = new Overlay { Children = { image, window } };
         var size = new Size(8, 4);
-        new Engine().Layout(root, size);
+        new LayoutEngine().Layout(root, size);
         using var frame = new Frame(size);
 
         root.Render(frame.Canvas);
@@ -224,7 +224,7 @@ public sealed class ImageTests
         var cover = new Dock();
         var root = new Overlay { Children = { image, anchor, popup, cover } };
         var size = new Size(8, 4);
-        new Engine().Layout(root, size);
+        new LayoutEngine().Layout(root, size);
         using var frame = new Frame(size);
 
         root.Render(frame.Canvas);

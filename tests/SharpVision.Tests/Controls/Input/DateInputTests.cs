@@ -67,14 +67,14 @@ public sealed class DateInputTests
             Value = new DateOnly(2026, 7, 19),
             Culture = CultureInfo.InvariantCulture
         };
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame before = new(new Size(20, 3));
         control.Render(before.Canvas);
         var rowBefore = Row(before, 1);
 
         // Act
         control.Culture = new CultureInfo("de-DE");
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame after = new(new Size(20, 3));
         control.Render(after.Canvas);
         var rowAfter = Row(after, 1);
@@ -172,7 +172,7 @@ public sealed class DateInputTests
             Culture = CultureInfo.InvariantCulture,
             Format = "(dd/MM/yyyy)"
         };
-        new Engine().Layout(control, new Size(24, 3));
+        new LayoutEngine().Layout(control, new Size(24, 3));
         using Frame frame = new(new Size(24, 3));
 
         // Act and assert
@@ -192,7 +192,7 @@ public sealed class DateInputTests
             Value = new DateOnly(2026, 7, 19),
             Culture = CultureInfo.InvariantCulture
         };
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame frame = new(new Size(20, 3));
 
         // Act
@@ -215,7 +215,7 @@ public sealed class DateInputTests
             Culture = CultureInfo.InvariantCulture
         };
         control.Value = null;
-        new Engine().Layout(control, new Size(20, 3));
+        new LayoutEngine().Layout(control, new Size(20, 3));
         using Frame frame = new(new Size(20, 3));
 
         // Act

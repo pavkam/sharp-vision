@@ -32,7 +32,7 @@ public sealed class ListViewTests
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
             Items = new object?[] { "One", "界", null }
         };
-        new Engine().Layout(control, new Size(5, 3));
+        new LayoutEngine().Layout(control, new Size(5, 3));
         using Frame frame = new(new Size(5, 3));
 
         control.Render(frame.Canvas);
@@ -58,7 +58,7 @@ public sealed class ListViewTests
         control.ScrollBars = ScrollBars.Vertical;
         control.ShowScrollBars = ShowScrollBars.Always;
         control.ScrollBarStyle = ScrollBarStyle.ThinLine;
-        new Engine().Layout(control, new Size(6, 3));
+        new LayoutEngine().Layout(control, new Size(6, 3));
 
         control.ScrollBars.ShouldBe(ScrollBars.Vertical);
         control.ShowScrollBars.ShouldBe(ShowScrollBars.Always);
@@ -68,7 +68,7 @@ public sealed class ListViewTests
         rail.ActualStyle.ShouldBe(ScrollBarStyle.ThinLine);
 
         control.ShowScrollBars = ShowScrollBars.Never;
-        new Engine().Layout(control, new Size(6, 3));
+        new LayoutEngine().Layout(control, new Size(6, 3));
 
         control.HitTest(new Point(5, 0)).ShouldNotBeOfType<ScrollBar>();
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.ScrollBars = (ScrollBars) 99);
@@ -111,7 +111,7 @@ public sealed class ListViewTests
             ItemTemplate = _ => probe = new PopupHitProbe(),
             Items = ["item"]
         };
-        new Engine().Layout(control, new Size(4, 1));
+        new LayoutEngine().Layout(control, new Size(4, 1));
 
         var hit = control.HitTest(default);
 
@@ -433,7 +433,7 @@ public sealed class ListViewTests
         var control = Create("A", "B", "C", "D");
         control.Bounds = new Rect(0, 0, 4, 4);
         control.SelectionMode = ListSelectionMode.Multiple;
-        new Engine().Layout(control, new Size(4, 4));
+        new LayoutEngine().Layout(control, new Size(4, 4));
 
         await dispatcher.InvokeAsync(() =>
         {
@@ -457,7 +457,7 @@ public sealed class ListViewTests
             ItemTemplate = item => Add(realized, new Label((string) item!)),
             Items = Enumerable.Range(0, 8).Select(value => (object?) $"Item {value}").ToArray()
         };
-        new Engine().Layout(control, new Size(8, 3));
+        new LayoutEngine().Layout(control, new Size(8, 3));
 
         await dispatcher.InvokeAsync(() =>
         {
@@ -554,7 +554,7 @@ public sealed class ListViewTests
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
             Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
         };
-        new Engine().Layout(control, new Size(10, 4));
+        new LayoutEngine().Layout(control, new Size(10, 4));
         List<ScrollChangedEventArgs> changes = [];
         control.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
 
@@ -577,7 +577,7 @@ public sealed class ListViewTests
             ItemTemplate = item => Add(realized, new Label(item?.ToString() ?? "null")),
             Items = Enumerable.Range(0, 20).Select(value => (object?) $"Item {value}").ToArray()
         };
-        new Engine().Layout(control, new Size(10, 4));
+        new LayoutEngine().Layout(control, new Size(10, 4));
 
         var moved = control.BringIntoView(19);
 
@@ -591,7 +591,7 @@ public sealed class ListViewTests
     public void BringIntoView_WhenIndexIsOutOfRange_ThrowsArgumentOutOfRangeException()
     {
         var control = Create("A", "B", "C");
-        new Engine().Layout(control, new Size(10, 4));
+        new LayoutEngine().Layout(control, new Size(10, 4));
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => control.BringIntoView(3));
     }
